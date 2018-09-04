@@ -1,6 +1,6 @@
 @import 'styles.css';
 
-.ant-layout-sider-children{
+.ant-layout-sider-children {
  overflow-y: scroll;
 }
 
