@@ -123,6 +123,9 @@ class TapQueryForm extends React.Component {
     };
   }
 
+  // Each time state.query is updated, this method calls the equivalent
+  // onChange method to reflect the update in url query params. These onChange
+  // methods are automatically added to props by react-url-query.
   handleUrlUpdate = (name, formVal) => {
     this.props[`onChange${_.upperFirst(name)}`](formVal);
   }
