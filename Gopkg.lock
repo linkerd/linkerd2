@@ -217,7 +217,7 @@
     "go/tap",
   ]
   pruneopts = "UT"
-  revision = "61a94b46b5c576eb7c5c6ab6d9e74efc69fdc768"
+  revision = "0196017993a73f0ee28a9f52f30d2b6f5702198e"
 
 [[projects]]
   digest = "1:e2d1d410fb367567c2b53ed9e2d719d3c1f0891397bb2fa49afd747cfbf1e8e4"
@@ -827,6 +827,7 @@
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/julienschmidt/httprouter",
     "github.com/linkerd/linkerd2-proxy-api/go/destination",
+    "github.com/linkerd/linkerd2-proxy-api/go/http_types",
     "github.com/linkerd/linkerd2-proxy-api/go/net",
     "github.com/linkerd/linkerd2-proxy-api/go/tap",
     "github.com/mattn/go-runewidth",
