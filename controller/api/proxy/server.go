@@ -47,6 +47,11 @@ func (s *server) Get(dest *destination.GetDestination, stream destination.Destin
 	return nil
 }
 
+// TODO: unimplemented
+func (s *server) GetProfile(dest *destination.GetDestination, stream destination.Destination_GetProfileServer) error {
+	return nil
+}
+
 /*
  * The Proxy-API server accepts requests from proxy instances and forwards those
  * requests to the appropriate controller service.

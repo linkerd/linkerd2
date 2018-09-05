@@ -73,7 +73,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:da4bc890ae1ced78e4d2898b5f41d53ff28a54d84042f4c46536ceca21e31061"
+  digest = "1:b746be1272035dd3643aed45a302cf150ca3ce0e9cfd38992f0f91771433620f"
   name = "github.com/golang/protobuf"
   packages = [
     "jsonpb",
@@ -81,6 +81,7 @@
     "protoc-gen-go",
     "protoc-gen-go/descriptor",
     "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
     "protoc-gen-go/grpc",
     "protoc-gen-go/plugin",
     "ptypes",
@@ -90,7 +91,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = "UT"
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -206,16 +208,16 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:53f80313e881dba2a355de7b4a9e4c2aada82fc62adcf87651a2d52d47f22959"
+  digest = "1:fa43d88923950d66c5e0431be6389ac68893d1a5456dc1cd15cd82c7de21648b"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
+    "go/http_types",
     "go/net",
     "go/tap",
   ]
   pruneopts = "UT"
-  revision = "b0543809839fd0e6bc7cb8e4a644ce48df88b27d"
-  version = "v0.1.1"
+  revision = "61a94b46b5c576eb7c5c6ab6d9e74efc69fdc768"
 
 [[projects]]
   digest = "1:e2d1d410fb367567c2b53ed9e2d719d3c1f0891397bb2fa49afd747cfbf1e8e4"
