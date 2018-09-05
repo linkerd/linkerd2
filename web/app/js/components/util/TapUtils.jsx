@@ -14,7 +14,7 @@ export const setMaxRps = query => {
   }
 };
 
-export const tapQueryPropType = PropTypes.shape({
+export const tapQueryProps = {
   resource: PropTypes.string,
   namespace: PropTypes.string,
   toResource: PropTypes.string,
@@ -24,7 +24,9 @@ export const tapQueryPropType = PropTypes.shape({
   scheme: PropTypes.string,
   authority: PropTypes.string,
   maxRps: PropTypes.string
-});
+};
+
+export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);

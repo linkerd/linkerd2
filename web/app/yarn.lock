@@ -6570,7 +6570,7 @@ qs@6.5.1, qs@~6.5.1:
   version "6.5.1"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.1.tgz#349cdf6eef89ec45c12d7d5eb3fc0c870343a6d8"
 
-query-string@^4.1.0:
+query-string@^4.1.0, query-string@^4.2.3:
   version "4.3.4"
   resolved "https://registry.yarnpkg.com/query-string/-/query-string-4.3.4.tgz#bbb693b9ca915c232515b228b1a02b609043dbeb"
   dependencies:
@@ -7140,6 +7140,14 @@ react-test-renderer@^16.0.0-0:
     fbjs "^0.8.16"
     object-assign "^4.1.1"
     prop-types "^15.6.0"
+
+react-url-query@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/react-url-query/-/react-url-query-1.4.0.tgz#e0e639e25ec63e28c548140f4b12fba4c10cfcb2"
+  dependencies:
+    loose-envify "^1.2.0"
+    prop-types "^15.5.9"
+    query-string "^4.2.3"
 
 react@^16.2.0:
   version "16.3.2"

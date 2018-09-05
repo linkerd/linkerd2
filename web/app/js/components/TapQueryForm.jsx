@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import {
   AutoComplete,
   Button,
@@ -11,7 +12,7 @@ import {
   Row,
   Select
 } from 'antd';
-import { defaultMaxRps, httpMethods, tapQueryPropType } from './util/TapUtils.jsx';
+import { defaultMaxRps, httpMethods, tapQueryProps, tapQueryPropType } from './util/TapUtils.jsx';
 
 const colSpan = 5;
 const rowGutter = 16;
@@ -19,7 +20,12 @@ const rowGutter = 16;
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _.uniq(_.flatten(_.values(resourcesByNs)));
 };
-export default class TapQueryForm extends React.Component {
+
+const urlPropsQueryConfig = _.mapValues(tapQueryProps, () => {
+  return { type: UrlQueryParamTypes.string };
+});
+
+class TapQueryForm extends React.Component {
   static propTypes = {
     enableAdvancedForm: PropTypes.bool,
     handleTapStart: PropTypes.func.isRequired,
@@ -36,11 +42,18 @@ export default class TapQueryForm extends React.Component {
   constructor(props) {
     super(props);
 
+    let query = _.merge({}, props.query, _.pick(this.props, _.keys(tapQueryProps)));
+    props.updateQuery(query);
+
+    let showAdvancedForm = _.some(
+      _.omit(query, ['namespace', 'resource']),
+      v => !_.isEmpty(v));
+
     this.state = {
+      query,
+      showAdvancedForm,
       authoritiesByNs: {},
       resourcesByNs: {},
-      showAdvancedForm: false,
-      query: props.query,
       autocomplete: {
         namespace: [],
         resource: [],
@@ -90,13 +103,17 @@ export default class TapQueryForm extends React.Component {
 
     return formVal => {
       state.query[name] = formVal;
+      this.handleUrlUpdate(name, formVal);
+
       if (!_.isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
         if (_.isEmpty(state.query[scopeResource]) || state.query[scopeResource].indexOf("namespace") !== -1) {
           state.query[scopeResource] = `namespace/${formVal}`;
+          this.handleUrlUpdate(scopeResource, `namespace/${formVal}`);
         }
       }
+
       if (shouldScopeAuthority) {
         state.autocomplete.authority = this.state.authoritiesByNs[formVal];
       }
@@ -106,6 +123,13 @@ export default class TapQueryForm extends React.Component {
     };
   }
 
+  // Each time state.query is updated, this method calls the equivalent
+  // onChange method to reflect the update in url query params. These onChange
+  // methods are automatically added to props by react-url-query.
+  handleUrlUpdate = (name, formVal) => {
+    this.props[`onChange${_.upperFirst(name)}`](formVal);
+  }
+
   handleFormEvent = name => {
     let state = {
       query: this.state.query
@@ -113,6 +137,7 @@ export default class TapQueryForm extends React.Component {
 
     return event => {
       state.query[name] = event.target.value;
+      this.handleUrlUpdate(name, event.target.value);
       this.setState(state);
       this.props.updateQuery(state.query);
     };
@@ -136,7 +161,8 @@ export default class TapQueryForm extends React.Component {
                 allowClear
                 placeholder="To Namespace"
                 optionFilterProp="children"
-                onChange={this.handleFormChange("toNamespace", "toResource")}>
+                onChange={this.handleFormChange("toNamespace", "toResource")}
+                value={this.state.query.toNamespace}>
                 {
                   _.map(this.state.autocomplete.toNamespace, (n, i) => (
                     <Select.Option key={`ns-dr-${i}`} value={n}>{n}</Select.Option>
@@ -162,14 +188,18 @@ export default class TapQueryForm extends React.Component {
                 dataSource={this.autoCompleteData("authority")}
                 onSelect={this.handleFormChange("authority")}
                 onSearch={this.handleFormChange("authority")}
-                placeholder="Authority" />
+                placeholder="Authority"
+                value={this.state.query.authority} />
             </Form.Item>
           </Col>
 
           <Col span={2 * colSpan}>
             <Form.Item
               extra="Display requests with paths that start with this prefix">
-              <Input placeholder="Path" onChange={this.handleFormEvent("path")} />
+              <Input
+                placeholder="Path"
+                onChange={this.handleFormEvent("path")}
+                value={this.state.query.path} />
             </Form.Item>
           </Col>
 
@@ -179,7 +209,10 @@ export default class TapQueryForm extends React.Component {
           <Col span={colSpan}>
             <Form.Item
               extra="Display requests with this scheme">
-              <Input placeholder="Scheme" onChange={this.handleFormEvent("scheme")} />
+              <Input
+                placeholder="Scheme"
+                onChange={this.handleFormEvent("scheme")}
+                value={this.state.query.scheme} />
             </Form.Item>
           </Col>
 
@@ -188,7 +221,8 @@ export default class TapQueryForm extends React.Component {
               extra={`Maximum requests per second to tap (default ${defaultMaxRps})`}>
               <Input
                 placeholder="Max RPS"
-                onChange={this.handleFormEvent("maxRps")} />
+                onChange={this.handleFormEvent("maxRps")}
+                value={this.state.query.maxRps} />
             </Form.Item>
           </Col>
 
@@ -198,7 +232,8 @@ export default class TapQueryForm extends React.Component {
               <Select
                 allowClear
                 placeholder="HTTP method"
-                onChange={this.handleFormChange("method")}>
+                onChange={this.handleFormChange("method")}
+                value={this.state.query.method}>
                 {
                   _.map(httpMethods, m =>
                     <Select.Option key={`method-select-${m}`} value={m}>{m}</Select.Option>
@@ -254,7 +289,8 @@ export default class TapQueryForm extends React.Component {
                 allowClear
                 placeholder="Namespace"
                 optionFilterProp="children"
-                onChange={this.handleFormChange("namespace", "resource", true)}>
+                onChange={this.handleFormChange("namespace", "resource", true)}
+                value={this.state.query.namespace}>
                 {
                 _.map(this.state.autocomplete.namespace, (n, i) => (
                   <Select.Option key={`ns-dr-${i}`} value={n}>{n}</Select.Option>
@@ -299,3 +335,5 @@ export default class TapQueryForm extends React.Component {
     );
   }
 }
+
+export default addUrlProps({ urlPropsQueryConfig })(TapQueryForm);

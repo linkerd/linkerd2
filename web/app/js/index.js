@@ -7,6 +7,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ResourceDetail from './components/ResourceDetail.jsx';
 import ResourceList from './components/ResourceList.jsx';
+import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Tap from './components/Tap.jsx';
@@ -34,41 +35,43 @@ const context = {
 let applicationHtml = (
   <AppContext.Provider value={context}>
     <BrowserRouter>
-      <Layout>
-        <Route component={Sidebar} />
+      <RouterToUrlQuery>
         <Layout>
-          <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
-            <div className="main-content">
-              <Switch>
-                <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
-                <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
-                <Route exact path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
-                <Route path={`${pathPrefix}/namespaces/:namespace/pods/:pod`} component={ResourceDetail} />
-                <Route path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`} component={ResourceDetail} />
-                <Route path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`} component={ResourceDetail} />
-                <Route path={`${pathPrefix}/tap`} component={Tap} />
-                <Route path={`${pathPrefix}/top`} component={Top} />
-                <Route
-                  path={`${pathPrefix}/namespaces`}
-                  render={() => <ResourceList resource="namespace" />} />
-                <Route
-                  path={`${pathPrefix}/deployments`}
-                  render={() => <ResourceList resource="deployment" />} />
-                <Route
-                  path={`${pathPrefix}/replicationcontrollers`}
-                  render={() => <ResourceList resource="replicationcontroller" />} />
-                <Route
-                  path={`${pathPrefix}/pods`}
-                  render={() => <ResourceList resource="pod" />} />
-                <Route
-                  path={`${pathPrefix}/authorities`}
-                  render={() => <ResourceList resource="authority" />} />
-                <Route component={NoMatch} />
-              </Switch>
-            </div>
-          </Layout.Content>
+          <Route component={Sidebar} />
+          <Layout>
+            <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
+              <div className="main-content">
+                <Switch>
+                  <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/servicemesh`} />
+                  <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
+                  <Route exact path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
+                  <Route path={`${pathPrefix}/namespaces/:namespace/pods/:pod`} component={ResourceDetail} />
+                  <Route path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`} component={ResourceDetail} />
+                  <Route path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`} component={ResourceDetail} />
+                  <Route path={`${pathPrefix}/tap`} component={Tap} />
+                  <Route path={`${pathPrefix}/top`} component={Top} />
+                  <Route
+                    path={`${pathPrefix}/namespaces`}
+                    render={() => <ResourceList resource="namespace" />} />
+                  <Route
+                    path={`${pathPrefix}/deployments`}
+                    render={() => <ResourceList resource="deployment" />} />
+                  <Route
+                    path={`${pathPrefix}/replicationcontrollers`}
+                    render={() => <ResourceList resource="replicationcontroller" />} />
+                  <Route
+                    path={`${pathPrefix}/pods`}
+                    render={() => <ResourceList resource="pod" />} />
+                  <Route
+                    path={`${pathPrefix}/authorities`}
+                    render={() => <ResourceList resource="authority" />} />
+                  <Route component={NoMatch} />
+                </Switch>
+              </div>
+            </Layout.Content>
+          </Layout>
         </Layout>
-      </Layout>
+      </RouterToUrlQuery>
     </BrowserRouter>
   </AppContext.Provider>
 );
