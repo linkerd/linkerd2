@@ -32,48 +32,34 @@ export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 /*
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
-export const processNeighborData = (jsonString, resourceAgg, resourceType) => {
-  let d = JSON.parse(jsonString);
+export const processNeighborData = (labels, resourceAgg, resourceType) => {
+  if (_.isEmpty(labels)) {
+    return resourceAgg;
+  }
 
-  if (d.proxyDirection === "INBOUND") {
-    if (_.isEmpty(d.sourceMeta) || _.isEmpty(d.sourceMeta.labels)) {
-      return resourceAgg;
-    }
+  let neighb = {};
+  if (_.has(labels, resourceType)) {
+    neighb = {
+      type: resourceType,
+      name: labels[resourceType],
+      namespace: labels.namespace
+    };
+  } else if (_.has(labels, "pod")) {
+    neighb = {
+      type: "pod",
+      name: labels.pod,
+      namespace: labels.namespace
+    };
+  }
 
-    let neighb = getNeighborData(d, "source", "sourceMeta", resourceType);
-    let key = neighb.type + "/" + neighb.name;
-    if (_.has(d.sourceMeta.labels, "control_plane_ns")) {
-      delete resourceAgg[key];
-    } else {
-      resourceAgg[key] = neighb;
-    }
+  let key = neighb.type + "/" + neighb.name;
+  if (_.has(labels, "control_plane_ns")) {
+    delete resourceAgg[key];
+  } else {
+    resourceAgg[key] = neighb;
   }
 
   return resourceAgg;
-};
-
-/*
-  Extract the neighbor's data for display
-*/
-const getNeighborData = (d, label, metaLabel, resourceType) => {
-  let neighb = {
-    type: "ip",
-    name: publicAddressToString(_.get(d, [label, "ip.ipv4"]))
-  };
-  if (_.has(d, [metaLabel, "labels", resourceType])) {
-    neighb = {
-      type: resourceType,
-      name: d[metaLabel].labels[resourceType],
-      namespace: d[metaLabel].labels.namespace
-    };
-  } else if (_.has(d, [metaLabel, "labels.pod"])) {
-    neighb = {
-      type: "pod",
-      name: d[metaLabel].labels.pod,
-      namespace: d[metaLabel].labels.namespace
-    };
-  }
-  return neighb;
 };
 
 export const processTapEvent = jsonString => {

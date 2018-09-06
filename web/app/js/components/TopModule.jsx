@@ -161,6 +161,10 @@ class TopModule extends React.Component {
       this.deleteOldestIndexedResult(topResults);
     }
 
+    if (d.base.proxyDirection === "INBOUND") {
+      this.props.updateNeighbors(_.get(d, "requestInit.sourceMeta.labels", null));
+    }
+
     return topResults;
   }
 
