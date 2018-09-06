@@ -262,6 +262,10 @@ div.status-dot {
   }
 }
 
+.anticon-check-circle.status-ok {
+  color: var(--green);
+}
+
 div.ant-layout-has-sider {
   height: 100vh;
   overflow: hidden;

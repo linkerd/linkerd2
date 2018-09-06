@@ -132,8 +132,10 @@ class Namespaces extends React.Component {
           <div>
             <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
-            { _.isEmpty(deploymentsWithMetrics) ? null :
-            <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />}
+            {
+              _.isEmpty(deploymentsWithMetrics) ? null :
+              <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
+            }
             {this.renderResourceSection("deployment", metrics.deployment)}
             {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
             {this.renderResourceSection("pod", metrics.pod)}

@@ -119,6 +119,8 @@ export const getComponentPods = componentPods => {
 
 const processStatTable = table => {
   return _(table.podGroup.rows).map(row => {
+    let runningPodCount = parseInt(row.runningPodCount, 10);
+    let meshedPodCount = parseInt(row.meshedPodCount, 10);
     return {
       name: row.resource.name,
       namespace: row.resource.namespace,
@@ -128,11 +130,11 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tlsRequestPercent: getTlsRequestPercentage(row),
-      added: row.meshedPodCount === row.runningPodCount,
+      added: runningPodCount > 0 && meshedPodCount > 0,
       pods: {
         totalPods: row.runningPodCount,
         meshedPods: row.meshedPodCount,
-        meshedPercentage: new Percentage(parseInt(row.meshedPodCount, 10), parseInt(row.runningPodCount, 10))
+        meshedPercentage: new Percentage(meshedPodCount, runningPodCount)
       },
       errors: row.errorsByPod
     };
