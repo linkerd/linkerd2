@@ -36,13 +36,17 @@ export const processNeighborData = (jsonString, resourceAgg, resourceType) => {
   let d = JSON.parse(jsonString);
 
   if (d.proxyDirection === "INBOUND") {
-    if (_.isEmpty(d.sourceMeta) || _.isEmpty(d.sourceMeta.labels) ||
-      _.has(d.sourceMeta.labels, "control_plane_ns")) {
+    if (_.isEmpty(d.sourceMeta) || _.isEmpty(d.sourceMeta.labels)) {
       return resourceAgg;
     }
 
     let neighb = getNeighborData(d, "source", "sourceMeta", resourceType);
-    resourceAgg[neighb.type + "/" + neighb.name] = neighb;
+    let key = neighb.type + "/" + neighb.name;
+    if (_.has(d.sourceMeta.labels, "control_plane_ns")) {
+      delete resourceAgg[key];
+    } else {
+      resourceAgg[key] = neighb;
+    }
   }
 
   return resourceAgg;
