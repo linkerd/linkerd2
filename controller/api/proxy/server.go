@@ -39,7 +39,7 @@ func (s *server) Get(dest *destination.GetDestination, stream destination.Destin
 			return err
 		}
 
-		log.Debug("Get update: %v", update)
+		log.Debugf("Get update: %v", update)
 		stream.Send(update)
 	}
 

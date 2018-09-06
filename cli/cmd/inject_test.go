@@ -45,8 +45,9 @@ func TestInjectYAML(t *testing.T) {
 			read := bufio.NewReader(file)
 
 			output := new(bytes.Buffer)
+			report := new(bytes.Buffer)
 
-			err = InjectYAML(read, output, tc.testInjectOptions)
+			err = InjectYAML(read, output, report, tc.testInjectOptions)
 			if err != nil {
 				t.Errorf("Unexpected error injecting YAML: %v\n", err)
 			}
@@ -80,6 +81,7 @@ func TestRunInjectCmd(t *testing.T) {
 		{
 			inputFileName:        "inject_gettest_deployment.good.input.yml",
 			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
+			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
 			exitCode:             0,
 		},
 	}
@@ -123,9 +125,20 @@ func TestInjectFilePath(t *testing.T) {
 			resource     string
 			resourceFile string
 			expectedFile string
+			stdErrFile   string
 		}{
-			{resource: "nginx", resourceFile: filepath.Join(resourceFolder, "nginx.yaml"), expectedFile: filepath.Join(expectedFolder, "injected_nginx.yaml")},
-			{resource: "redis", resourceFile: filepath.Join(resourceFolder, "db/redis.yaml"), expectedFile: filepath.Join(expectedFolder, "injected_redis.yaml")},
+			{
+				resource:     "nginx",
+				resourceFile: filepath.Join(resourceFolder, "nginx.yaml"),
+				expectedFile: filepath.Join(expectedFolder, "injected_nginx.yaml"),
+				stdErrFile:   filepath.Join(expectedFolder, "injected_nginx.stderr"),
+			},
+			{
+				resource:     "redis",
+				resourceFile: filepath.Join(resourceFolder, "db/redis.yaml"),
+				expectedFile: filepath.Join(expectedFolder, "injected_redis.yaml"),
+				stdErrFile:   filepath.Join(expectedFolder, "injected_redis.stderr"),
+			},
 		}
 
 		for i, testCase := range testCases {
@@ -135,14 +148,20 @@ func TestInjectFilePath(t *testing.T) {
 					t.Fatal("Unexpected error: ", err)
 				}
 
+				errBuf := &bytes.Buffer{}
 				actual := &bytes.Buffer{}
-				if exitCode := runInjectCmd(in, actual, actual, options); exitCode != 0 {
+				if exitCode := runInjectCmd(in, errBuf, actual, options); exitCode != 0 {
 					t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 				}
 
 				expected := readOptionalTestFile(t, testCase.expectedFile)
 				if expected != actual.String() {
 					t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expected, actual.String())
+				}
+
+				stdErr := readOptionalTestFile(t, testCase.stdErrFile)
+				if stdErr != errBuf.String() {
+					t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", stdErr, errBuf.String())
 				}
 			})
 		}
@@ -154,14 +173,20 @@ func TestInjectFilePath(t *testing.T) {
 			t.Fatal("Unexpected error: ", err)
 		}
 
+		errBuf := &bytes.Buffer{}
 		actual := &bytes.Buffer{}
-		if exitCode := runInjectCmd(in, actual, actual, options); exitCode != 0 {
+		if exitCode := runInjectCmd(in, errBuf, actual, options); exitCode != 0 {
 			t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 		}
 
 		expected := readOptionalTestFile(t, filepath.Join(expectedFolder, "injected_nginx_redis.yaml"))
 		if expected != actual.String() {
 			t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expected, actual.String())
+		}
+
+		stdErr := readOptionalTestFile(t, filepath.Join(expectedFolder, "injected_nginx_redis.stderr"))
+		if stdErr != errBuf.String() {
+			t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", stdErr, errBuf.String())
 		}
 	})
 }

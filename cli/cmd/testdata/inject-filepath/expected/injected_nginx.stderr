@@ -1,0 +1,7 @@
+
+hostNetwork: pods do not use host networking...............................[ok]
+supported: at least one resource injected..................................[ok]
+
+Summary: 1 of 1 YAML document(s) injected
+  deployment/nginx
+
