@@ -87,6 +87,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	return s.streamResolutionUsingCorrectResolverFor(host, port, stream)
 }
 
+// TODO: unimplemented
+func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
+	return nil
+}
+
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
 	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
 

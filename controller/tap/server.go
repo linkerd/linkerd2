@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	netpb "github.com/linkerd/linkerd2-proxy-api/go/net"
+	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
+	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
@@ -49,7 +50,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
 	}
 	if req.Target == nil {
-		return status.Errorf(codes.InvalidArgument, "TapByResource received nil target ResourceSelection: %+v", *req)
+		return status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection")
 	}
 	if req.MaxRps == 0.0 {
 		req.MaxRps = defaultMaxRps
@@ -75,7 +76,8 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	if len(pods) == 0 {
-		return status.Errorf(codes.NotFound, "no pods found for ResourceSelection: %+v", *req.Target)
+		return status.Errorf(codes.NotFound, "no pods found for %s/%s",
+			req.GetTarget().GetResource().GetType(), req.GetTarget().GetResource().GetName())
 	}
 
 	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
@@ -114,34 +116,34 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 }
 
 // TODO: validate scheme
-func parseScheme(scheme string) *proxy.Scheme {
-	value, ok := proxy.Scheme_Registered_value[strings.ToUpper(scheme)]
+func parseScheme(scheme string) *httpPb.Scheme {
+	value, ok := httpPb.Scheme_Registered_value[strings.ToUpper(scheme)]
 	if ok {
-		return &proxy.Scheme{
-			Type: &proxy.Scheme_Registered_{
-				Registered: proxy.Scheme_Registered(value),
+		return &httpPb.Scheme{
+			Type: &httpPb.Scheme_Registered_{
+				Registered: httpPb.Scheme_Registered(value),
 			},
 		}
 	}
-	return &proxy.Scheme{
-		Type: &proxy.Scheme_Unregistered{
+	return &httpPb.Scheme{
+		Type: &httpPb.Scheme_Unregistered{
 			Unregistered: strings.ToUpper(scheme),
 		},
 	}
 }
 
 // TODO: validate method
-func parseMethod(method string) *proxy.HttpMethod {
-	value, ok := proxy.HttpMethod_Registered_value[strings.ToUpper(method)]
+func parseMethod(method string) *httpPb.HttpMethod {
+	value, ok := httpPb.HttpMethod_Registered_value[strings.ToUpper(method)]
 	if ok {
-		return &proxy.HttpMethod{
-			Type: &proxy.HttpMethod_Registered_{
-				Registered: proxy.HttpMethod_Registered(value),
+		return &httpPb.HttpMethod{
+			Type: &httpPb.HttpMethod_Registered_{
+				Registered: httpPb.HttpMethod_Registered(value),
 			},
 		}
 	}
-	return &proxy.HttpMethod{
-		Type: &proxy.HttpMethod_Unregistered{
+	return &httpPb.HttpMethod{
+		Type: &httpPb.HttpMethod_Unregistered{
 			Unregistered: strings.ToUpper(method),
 		},
 	}
@@ -304,10 +306,10 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
-	tcp := func(orig *netpb.TcpAddress) *public.TcpAddress {
-		ip := func(orig *netpb.IPAddress) *public.IPAddress {
+	tcp := func(orig *netPb.TcpAddress) *public.TcpAddress {
+		ip := func(orig *netPb.IPAddress) *public.IPAddress {
 			switch i := orig.GetIp().(type) {
-			case *netpb.IPAddress_Ipv6:
+			case *netPb.IPAddress_Ipv6:
 				return &public.IPAddress{
 					Ip: &public.IPAddress_Ipv6{
 						Ipv6: &public.IPv6{
@@ -316,7 +318,7 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 						},
 					},
 				}
-			case *netpb.IPAddress_Ipv4:
+			case *netPb.IPAddress_Ipv4:
 				return &public.IPAddress{
 					Ip: &public.IPAddress_Ipv4{
 						Ipv4: i.Ipv4,
@@ -341,15 +343,15 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 			}
 		}
 
-		method := func(orig *proxy.HttpMethod) *public.HttpMethod {
+		method := func(orig *httpPb.HttpMethod) *public.HttpMethod {
 			switch m := orig.GetType().(type) {
-			case *proxy.HttpMethod_Registered_:
+			case *httpPb.HttpMethod_Registered_:
 				return &public.HttpMethod{
 					Type: &public.HttpMethod_Registered_{
 						Registered: public.HttpMethod_Registered(m.Registered),
 					},
 				}
-			case *proxy.HttpMethod_Unregistered:
+			case *httpPb.HttpMethod_Unregistered:
 				return &public.HttpMethod{
 					Type: &public.HttpMethod_Unregistered{
 						Unregistered: m.Unregistered,
@@ -360,15 +362,15 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 			}
 		}
 
-		scheme := func(orig *proxy.Scheme) *public.Scheme {
+		scheme := func(orig *httpPb.Scheme) *public.Scheme {
 			switch s := orig.GetType().(type) {
-			case *proxy.Scheme_Registered_:
+			case *httpPb.Scheme_Registered_:
 				return &public.Scheme{
 					Type: &public.Scheme_Registered_{
 						Registered: public.Scheme_Registered(s.Registered),
 					},
 				}
-			case *proxy.Scheme_Unregistered:
+			case *httpPb.Scheme_Unregistered:
 				return &public.Scheme{
 					Type: &public.Scheme_Unregistered{
 						Unregistered: s.Unregistered,
