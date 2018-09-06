@@ -41,7 +41,7 @@ export const processNeighborData = (jsonString, resourceAgg, resourceType) => {
       return resourceAgg;
     }
 
-    let neighb = getNeighbData(d, "source", "sourceMeta", resourceType);
+    let neighb = getNeighborData(d, "source", "sourceMeta", resourceType);
     resourceAgg[neighb.type + "/" + neighb.name] = neighb;
   }
 
@@ -51,7 +51,7 @@ export const processNeighborData = (jsonString, resourceAgg, resourceType) => {
 /*
   Extract the neighbor's data for display
 */
-const getNeighbData = (d, label, metaLabel, resourceType) => {
+const getNeighborData = (d, label, metaLabel, resourceType) => {
   let neighb = {
     type: "ip",
     name: publicAddressToString(_.get(d, [label, "ip.ipv4"]))
