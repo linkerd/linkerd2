@@ -20,7 +20,8 @@ import 'whatwg-fetch';
 const classificationLabels = {
   good: "success",
   neutral: "warning",
-  bad: "error"
+  bad: "error",
+  default: "default"
 };
 
 class Sidebar extends React.Component {
