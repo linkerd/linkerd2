@@ -123,6 +123,10 @@ class NamespaceLanding extends React.Component {
   }
 
   renderNamespaceSection(namespace) {
+    if (!_.has(this.state.metricsByNs, namespace)) {
+      return <Spin size="large" className="short-spin-section" />;
+    }
+
     let metrics = this.state.metricsByNs[namespace] || {};
     let noMetrics = _.isEmpty(metrics.pod);
 
