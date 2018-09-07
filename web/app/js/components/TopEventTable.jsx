@@ -1,6 +1,7 @@
-import BaseTable from './BaseTable.jsx';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { srcDstColumn } from './util/TapUtils.jsx';
+import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
@@ -58,10 +59,21 @@ const topColumns = ResourceLink => [
   }
 ];
 
-class TopEventTable extends BaseTable {
+class TopEventTable extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      ResourceLink: PropTypes.func.isRequired,
+    }).isRequired,
+    tableRows: PropTypes.shape([]),
+  }
+
+  static defaultProps = {
+    tableRows: []
+  }
+
   render() {
     return (
-      <BaseTable
+      <Table
         dataSource={this.props.tableRows}
         columns={topColumns(this.props.api.ResourceLink)}
         rowKey="key"
