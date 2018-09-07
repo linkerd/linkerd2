@@ -264,20 +264,20 @@ class Sidebar extends React.Component {
                     {
                       _.map(_.sortBy(sidebarComponents[resourceName], r => `${r.namespace}/${r.name}`), r => {
                         // only display resources that have been meshed
-                          return (
-                            <Menu.Item
-                              className="sidebar-submenu-item"
-                              title={`${r.namespace}/${r.name}`}
-                              key={this.api.generateResourceURL(r)}>
-                              <div>
-                                <PrefixedLink
-                                  to={this.api.generateResourceURL(r)}>
-                                  {`${r.namespace}/${r.name}`}
-                                </PrefixedLink>
-                                <Badge status={getSuccessRateClassification(r.successRate, classificationLabels)} />
-                              </div>
-                            </Menu.Item>
-                          );
+                        return (
+                          <Menu.Item
+                            className="sidebar-submenu-item"
+                            title={`${r.namespace}/${r.name}`}
+                            key={this.api.generateResourceURL(r)}>
+                            <div>
+                              <PrefixedLink
+                                to={this.api.generateResourceURL(r)}>
+                                {`${r.namespace}/${r.name}`}
+                              </PrefixedLink>
+                              <Badge status={getSuccessRateClassification(r.successRate, classificationLabels)} />
+                            </div>
+                          </Menu.Item>
+                        );
                       })
                     }
                   </Menu.SubMenu>
