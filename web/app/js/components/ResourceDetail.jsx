@@ -167,8 +167,8 @@ export class ResourceDetailBase extends React.Component {
     });
   }
 
-  updateNeighborsFromTapData = d => {
-    let n = processNeighborData(d, this.state.unmeshedSources, this.state.resource.type);
+  updateNeighborsFromTapData = (source, sourceLabels) => {
+    let n = processNeighborData(source, sourceLabels, this.state.unmeshedSources, this.state.resource.type);
 
     this.setState({
       unmeshedSources: n

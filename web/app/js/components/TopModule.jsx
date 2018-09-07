@@ -162,7 +162,7 @@ class TopModule extends React.Component {
     }
 
     if (d.base.proxyDirection === "INBOUND") {
-      this.props.updateNeighbors(_.get(d, "requestInit.sourceMeta.labels", null));
+      this.props.updateNeighbors(d.requestInit.source, _.get(d, "requestInit.sourceMeta.labels"), null);
     }
 
     return topResults;

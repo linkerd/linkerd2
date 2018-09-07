@@ -32,7 +32,7 @@ export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 /*
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
-export const processNeighborData = (labels, resourceAgg, resourceType) => {
+export const processNeighborData = (source, labels, resourceAgg, resourceType) => {
   if (_.isEmpty(labels)) {
     return resourceAgg;
   }
@@ -49,6 +49,11 @@ export const processNeighborData = (labels, resourceAgg, resourceType) => {
       type: "pod",
       name: labels.pod,
       namespace: labels.namespace
+    };
+  } else {
+    neighb = {
+      type: "ip",
+      name: source.str
     };
   }
 

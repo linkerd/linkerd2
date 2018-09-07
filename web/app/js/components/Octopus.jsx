@@ -49,9 +49,11 @@ export default class Octopus extends React.Component {
     return (
       <div key={resource.name} className={`octopus-body ${type}`}>
         <div className={`octopus-title ${type}`}>
+          { _.isNil(resource.namespace) ? displayName(resource) :
           <this.props.api.ResourceLink
             resource={resource}
             linkText={displayName(resource)} />
+          }
         </div>
         {
           unmeshed ? <div>Unmeshed</div> :
