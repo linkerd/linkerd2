@@ -14,6 +14,10 @@ const getPodCategorization = pod => {
 };
 
 export const getSuccessRateClassification = (rate, successRateLabels) => {
+  if (_.isNull(rate)) {
+    return successRateLabels.default;
+  }
+
   if (rate < 0.9) {
     return successRateLabels.bad;
   } else if (rate < 0.95) {
