@@ -210,7 +210,7 @@ class TopModule extends React.Component {
   addSuccessCount = d => {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
-    let success = parseInt(d.responseInit.http.responseInit.httpStatus, 10) < 500;
+    let success = parseInt(_.get(d, "responseInit.http.responseInit.httpStatus"), 10) < 500;
     if (success) {
       let grpcStatusCode = _.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
       if (!_.isNil(grpcStatusCode)) {
