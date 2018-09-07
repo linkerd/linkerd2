@@ -173,7 +173,7 @@ class Sidebar extends React.Component {
         <div className="sidebar">
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
-            <PrefixedLink to="/servicemesh">
+            <PrefixedLink to="/overview">
               {this.state.collapsed ? linkerdLogoOnly : linkerdWordLogo}
             </PrefixedLink>
           </div>
@@ -182,17 +182,11 @@ class Sidebar extends React.Component {
             className="sidebar-menu"
             theme="dark"
             selectedKeys={[normalizedPath]}>
-            <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <PrefixedLink to="/servicemesh">
-                <Icon type="home" />
-                <span>Service mesh</span>
-              </PrefixedLink>
-            </Menu.Item>
 
-            <Menu.Item className="sidebar-menu-item" key="/namespaces">
-              <PrefixedLink to="/namespaces">
-                <Icon type="dashboard" />
-                <span>Namespaces</span>
+            <Menu.Item className="sidebar-menu-item" key="/overview">
+              <PrefixedLink to="/overview">
+                <Icon type="home" />
+                <span>Overview</span>
               </PrefixedLink>
             </Menu.Item>
 
@@ -210,12 +204,20 @@ class Sidebar extends React.Component {
               </PrefixedLink>
             </Menu.Item>
 
+            <Menu.Item className="sidebar-menu-item" key="/servicemesh">
+              <PrefixedLink to="/servicemesh">
+                <Icon type="cloud" />
+                <span>Service mesh</span>
+              </PrefixedLink>
+            </Menu.Item>
+
             <Menu.SubMenu
               className="sidebar-menu-item"
               key="byresource"
               title={<span className="sidebar-title"><Icon type="bars" />{this.state.collapsed ? "" : "Resources"}</span>}>
               <Menu.Item><PrefixedLink to="/authorities">Authorities</PrefixedLink></Menu.Item>
               <Menu.Item><PrefixedLink to="/deployments">Deployments</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to="/namespaces">Namespaces</PrefixedLink></Menu.Item>
               <Menu.Item><PrefixedLink to="/pods">Pods</PrefixedLink></Menu.Item>
               <Menu.Item><PrefixedLink to="/replicationcontrollers">Replication Controllers</PrefixedLink></Menu.Item>
             </Menu.SubMenu>

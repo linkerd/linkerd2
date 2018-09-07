@@ -83,6 +83,10 @@ h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   height: 75vh;
+
+  &.short-spin-section {
+    height: 100px;
+  }
 }
 
 .page-section {
@@ -260,6 +264,10 @@ div.status-dot {
   &.status-dot-ok {
     background-color: #ffd54f;
   }
+}
+
+.anticon-check-circle.status-ok {
+  color: var(--green);
 }
 
 div.ant-layout-has-sider {
