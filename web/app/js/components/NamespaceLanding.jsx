@@ -6,10 +6,15 @@ import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
-import { Collapse, Icon, Spin } from 'antd';
+import { Collapse, Icon, Spin, Tooltip } from 'antd';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
 import 'whatwg-fetch';
 
+const isMeshedTooltip = (
+  <Tooltip placement="right" title="Namespace is meshed" overlayStyle={{ fontSize: "12px" }}>
+    <Icon className="status-ok" type="check-circle" />
+  </Tooltip>
+);
 class NamespaceLanding extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -153,9 +158,7 @@ class NamespaceLanding extends React.Component {
           {
             _.map(this.state.namespaces, ns => {
               let header = (
-                <React.Fragment>
-                  {ns.name} {!ns.added ? null : <Icon className="status-ok" type="check-circle" />}
-                </React.Fragment>
+                <React.Fragment>{ns.name} {!ns.added ? null : isMeshedTooltip}</React.Fragment>
               );
 
               return (
