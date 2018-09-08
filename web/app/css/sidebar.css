@@ -1,8 +1,7 @@
 @import 'styles.css';
 
-.ant-layout-sider-children {
- overflow-y: scroll;
-}
+/*.ant-layout-sider-children {*/
+/*}*/
 
 ul.ant-menu.ant-menu-sub {
   background: var(--sider-black);
@@ -11,6 +10,12 @@ ul.ant-menu.ant-menu-sub {
 .sidebar {
   background: var(--header-black);
   color: white;
+  /* position: absolute; */
+  overflow-x: hidden;
+  overflow-y: scroll;
+  right: -16px;
+  height: 100%;
+  position: relative;
 
   & .ant-menu-submenu {
     & .ant-menu-submenu-title, & .anticon{
@@ -105,6 +110,7 @@ ul.ant-menu.ant-menu-sub {
 .ant-layout-sider {
   /* override ant color */
   background: var(--header-black);
+  overflow: hidden;
 }
 
 .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
