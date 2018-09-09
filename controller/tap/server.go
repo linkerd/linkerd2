@@ -13,7 +13,7 @@ import (
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
-	public "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"sync"
 )
 
 const podIPIndex = "ip"
@@ -83,9 +84,11 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
 
 	events := make(chan *public.TapEvent)
+	var wg sync.WaitGroup
 
 	go func() { // Stop sending back events if the request is cancelled
 		<-stream.Context().Done()
+		wg.Wait()
 		close(events)
 	}()
 
@@ -100,9 +103,11 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return apiUtil.GRPCError(err)
 	}
 
+	wg.Add(len(pods))
+	log.Infof("Adding [%d] pods to waitGroup", len(pods))
 	for _, pod := range pods {
 		// initiate a tap on the pod
-		go s.tapProxy(stream.Context(), rpsPerPod, match, pod.Status.PodIP, events)
+		go s.tapProxy(rpsPerPod, match, pod.Status.PodIP, events, wg)
 	}
 
 	// read events from the taps and send them back
@@ -254,15 +259,18 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
+func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan<- *public.TapEvent, wait sync.WaitGroup) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
+	ctx := context.Background()
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
+	defer wait.Done()
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	client := proxy.NewTapClient(conn)
+	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
 		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
@@ -292,6 +300,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 			time.Sleep(time.Until(windowEnd))
 		}
 	}
+	log.Info("Canceled tapping for [%s]", addr)
 }
 
 func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
