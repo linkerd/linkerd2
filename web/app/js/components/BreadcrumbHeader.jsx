@@ -7,6 +7,14 @@ import { Breadcrumb, Layout } from 'antd';
 import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
 import './../../css/breadcrumb-header.css';
 
+
+const routeToCrumbTitle = {
+  "servicemesh": "Service Mesh",
+  "replicationcontrollers": "Replication Controllers",
+  "tap": "Tap",
+  "top": "Top"
+};
+
 class BreadcrumbHeader extends React.Component {
 
   static propTypes = {
@@ -56,27 +64,16 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  renderBreadcrumbSegment(segment, index) {
+  renderBreadcrumbSegment(segment) {
+    console.log(segment);
     let isMeshResource = isResource(segment);
 
-    // hack to make sure we print out a friendly service mesh breadcrumb.
-    if (segment === "servicemesh") {
-      return "Service mesh";
-    }
-
     if (isMeshResource) {
-      // hack to make sure we print out a friendly replication controller breadcrumb.
-      if (segment === "replicationcontrollers") {
-        return friendlyTitle("replicationcontroller").plural;
-      }
-      return friendlyTitle(segment).singular;
+      return routeToCrumbTitle[segment] || friendlyTitle(segment).singular;
     }
 
-    if (!isMeshResource && index === 0) {
-      return _.startCase(segment);
-    }
-
-    return segment;
+    console.log(routeToCrumbTitle[segment]);
+    return routeToCrumbTitle[segment] || segment;
   }
 
   render() {
@@ -87,12 +84,12 @@ class BreadcrumbHeader extends React.Component {
       <Layout.Header>
         <Breadcrumb separator=">">
           {
-            _.map(breadcrumbs, (pathSegment, key) => {
+            _.map(breadcrumbs, pathSegment => {
               return (
                 <Breadcrumb.Item key={pathSegment.segment}>
                   <PrefixedLink
                     to={pathSegment.link}>
-                    {this.renderBreadcrumbSegment(pathSegment.segment, key)}
+                    {this.renderBreadcrumbSegment(pathSegment.segment)}
                   </PrefixedLink>
                 </Breadcrumb.Item>
               );
@@ -105,5 +102,3 @@ class BreadcrumbHeader extends React.Component {
 }
 
 export default withContext(BreadcrumbHeader);
-
-

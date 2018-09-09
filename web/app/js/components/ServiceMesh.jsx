@@ -357,10 +357,6 @@ class ServiceMesh extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <Spin size="large" /> : (
           <div>
-            <PageHeader
-              header="Service mesh overview"
-              hideButtons={this.proxyCount() === 0} />
-
             {this.proxyCount() === 0 ?
               <CallToAction
                 numResources={_.size(this.state.nsStatuses)}

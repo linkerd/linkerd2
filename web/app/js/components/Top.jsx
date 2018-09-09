@@ -142,7 +142,7 @@ class Top extends React.Component {
   handleTapStop = () => {
     this.setState({
       tapRequestInProgress: false
-    });
+    });o;
   }
 
   render() {
@@ -150,7 +150,6 @@ class Top extends React.Component {
       <div>
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
-        <PageHeader header="Top" />
         <TapQueryForm
           enableAdvancedForm={false}
           handleTapStart={this.handleTapStart}

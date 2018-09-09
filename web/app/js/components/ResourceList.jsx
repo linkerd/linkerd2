@@ -59,7 +59,6 @@ export class ResourceListBase extends React.Component {
       <div className="page-content">
         <div>
           {this.banner()}
-          {loading ? null : <PageHeader header={friendlyTitle(resource).plural} />}
           {this.content()}
         </div>
       </div>

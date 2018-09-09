@@ -130,7 +130,6 @@ class Namespaces extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <Spin size="large" /> : (
           <div>
-            <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
             {
               _.isEmpty(deploymentsWithMetrics) ? null :

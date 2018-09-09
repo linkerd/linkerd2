@@ -1,14 +1,17 @@
 @import 'styles.css';
 
 .ant-layout-header {
-  background-color: var(--header-black);
+  background-color: #26e99d;
+  height: 60px;
   z-index: 100;
   position: fixed;
   width: 100vw;
-  padding: 22px 40px;
+  padding:16px 50px;
 
   & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
-     color: var(--white);
+     color: black;
+     font-size: 22px;
+     font-weight: 500;
   }
 }
 
