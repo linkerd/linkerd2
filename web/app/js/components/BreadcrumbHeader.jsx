@@ -21,7 +21,8 @@ class BreadcrumbHeader extends React.Component {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    location: ReactRouterPropTypes.location.isRequired
+    location: ReactRouterPropTypes.location.isRequired,
+    pathPrefix: PropTypes.string.isRequired
   }
 
   constructor(props) {
@@ -65,20 +66,22 @@ class BreadcrumbHeader extends React.Component {
   }
 
   renderBreadcrumbSegment(segment) {
-    console.log(segment);
     let isMeshResource = isResource(segment);
 
     if (isMeshResource) {
       return routeToCrumbTitle[segment] || friendlyTitle(segment).singular;
     }
 
-    console.log(routeToCrumbTitle[segment]);
     return routeToCrumbTitle[segment] || segment;
   }
 
   render() {
     let PrefixedLink = this.api.PrefixedLink;
-    let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname);
+    let prefix = this.props.pathPrefix;
+
+    let breadcrumbs = _.isNil(prefix) ?
+      this.convertURLToBreadcrumbs(this.props.location.pathname) :
+      this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
 
     return (
       <Layout.Header>

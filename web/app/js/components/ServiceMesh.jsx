@@ -6,7 +6,6 @@ import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import moment from 'moment';
 import { numericSort } from './util/Utils.js';
-import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';

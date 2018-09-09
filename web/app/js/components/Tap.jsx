@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
-import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';

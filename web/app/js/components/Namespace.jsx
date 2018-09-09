@@ -3,7 +3,6 @@ import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import NetworkGraph from './NetworkGraph.jsx';
-import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
