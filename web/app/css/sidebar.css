@@ -90,7 +90,7 @@ ul.ant-menu.ant-menu-sub {
 
   & .sidebar-menu-header {
     height: 60px;
-    padding: calc(var(--base-width)*2) 14px;
+    padding: calc((var(--base-width) - 3)*2) 14px;
 
     &.collapsed {
       text-align: center;

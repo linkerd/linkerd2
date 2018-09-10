@@ -2,15 +2,14 @@ import _ from 'lodash';
 import PropTypes from "prop-types";
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
-import { withContext } from './util/AppContext.jsx';
-import { Breadcrumb, Layout } from 'antd';
-import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
+import {withContext} from './util/AppContext.jsx';
+import {Breadcrumb, Layout} from 'antd';
+import {friendlyTitle, isResource, singularResource} from "./util/Utils.js";
 import './../../css/breadcrumb-header.css';
 
 
 const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",
-  "replicationcontrollers": "Replication Controllers",
   "tap": "Tap",
   "top": "Top"
 };
@@ -65,38 +64,64 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  renderBreadcrumbSegment(segment) {
+  segmentToFriendlyTitle(segment, isResourceType) {
+    if (isResourceType) {
+      return routeToCrumbTitle[segment] || friendlyTitle(segment).plural;
+    } else {
+      return routeToCrumbTitle[segment] || segment;
+    }
+  }
+
+  renderBreadcrumbSegment(segment, index) {
     let isMeshResource = isResource(segment);
 
     if (isMeshResource) {
-      return routeToCrumbTitle[segment] || friendlyTitle(segment).singular;
+      if (index === 0) {
+        return friendlyTitle(segment).singular;
+      }
+      return this.segmentToFriendlyTitle(segment, true);
     }
+    return this.segmentToFriendlyTitle(segment, false);
+  }
 
-    return routeToCrumbTitle[segment] || segment;
+  renderSingleBreadCrumb(breadcrumb) {
+    let PrefixedLink = this.api.PrefixedLink;
+    return (
+      <Breadcrumb.Item key={breadcrumb.segment}>
+        <PrefixedLink
+          to={breadcrumb.link}>
+          { this.renderBreadcrumbSegment(breadcrumb.segment) }
+        </PrefixedLink>
+      </Breadcrumb.Item>
+    );
+  }
+
+  renderMultipleBreadCrumbs(breadcrumbs) {
+    let PrefixedLink = this.api.PrefixedLink;
+
+    return _.map(breadcrumbs, (pathSegment, index) => {
+      return (
+        <Breadcrumb.Item key={pathSegment.segment}>
+          <PrefixedLink
+            to={pathSegment.link}>
+            {this.renderBreadcrumbSegment(pathSegment.segment, index)}
+          </PrefixedLink>
+        </Breadcrumb.Item>
+      );
+    });
   }
 
   render() {
-    let PrefixedLink = this.api.PrefixedLink;
     let prefix = this.props.pathPrefix;
-
-    let breadcrumbs = _.isNil(prefix) ?
-      this.convertURLToBreadcrumbs(this.props.location.pathname) :
-      this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
+    let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
 
     return (
       <Layout.Header>
         <Breadcrumb separator=">">
           {
-            _.map(breadcrumbs, pathSegment => {
-              return (
-                <Breadcrumb.Item key={pathSegment.segment}>
-                  <PrefixedLink
-                    to={pathSegment.link}>
-                    {this.renderBreadcrumbSegment(pathSegment.segment)}
-                  </PrefixedLink>
-                </Breadcrumb.Item>
-              );
-            })
+            breadcrumbs.length === 1 ?
+              this.renderSingleBreadCrumb(breadcrumbs[0]) :
+              this.renderMultipleBreadCrumbs(breadcrumbs)
           }
         </Breadcrumb>
       </Layout.Header>

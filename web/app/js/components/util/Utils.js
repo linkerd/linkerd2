@@ -118,12 +118,13 @@ export const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : 
   Nicely readable names for the stat resources
 */
 export const friendlyTitle = resource => {
-  let singular = _.startCase(resource);
-  if (resource === "replicationcontroller") {
-    singular = _.startCase("replication controller");
+  let singleResource = singularResource(resource);
+  let titleCase = _.startCase(singleResource);
+  if (singleResource === "replicationcontroller") {
+    titleCase = _.startCase("replication controller");
   }
-  let titles = { singular: singular };
-  if (resource === "authority") {
+  let titles = { singular: titleCase };
+  if (singleResource === "authority") {
     titles.plural = "Authorities";
   } else {
     titles.plural = titles.singular + "s";
@@ -171,10 +172,8 @@ const shortNameLookup = {
 export const toShortResourceName = name => shortNameLookup[name] || name;
 
 export const isResource = name => {
-  let singular = singularResource(name);
-  // If we end up getting the same resource name after running it through
-  // toShortResourceName, the resource is not in the shortNameLookup.
-  return toShortResourceName(singular) !== singular;
+  let singularResourceName = singularResource(name);
+  return _.has(shortNameLookup, singularResourceName);
 };
 
 /*
