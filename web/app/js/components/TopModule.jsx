@@ -23,7 +23,7 @@ class TopModule extends React.Component {
     super(props);
     this.tapResultsById = {};
     this.topEventIndex = {};
-    this.debouncedWebsocketRecvHandler = _.debounce(this.updateTapEventIndexState, 500);
+    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
 
     this.state = {
       error: null,
