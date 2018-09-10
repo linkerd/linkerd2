@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -73,9 +74,9 @@ func NewTestHelper() *TestHelper {
 		tls:       *tls,
 	}
 
-	version, err := testHelper.LinkerdRun("version", "--client", "--short")
+	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
-		exit(1, "error getting linkerd version")
+		exit(1, "error getting linkerd version: "+err.Error())
 	}
 	testHelper.version = strings.TrimSpace(version)
 
@@ -117,19 +118,18 @@ func (h *TestHelper) TLS() bool {
 }
 
 // CombinedOutput executes a shell command and returns the output.
-func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, error) {
+func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, string, error) {
 	command := exec.Command(name, arg...)
-	bytes, err := command.CombinedOutput()
-	if err != nil {
-		return string(bytes), err
-	}
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
 
-	return string(bytes), nil
+	stdout, err := command.Output()
+	return string(stdout), stderr.String(), err
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
 // flag.
-func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
+func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
 	return h.CombinedOutput(h.linkerd, withNamespace...)
 }
@@ -179,7 +179,7 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, err := h.LinkerdRun("version")
+	out, _, err := h.LinkerdRun("version")
 	if err != nil {
 		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
 	}

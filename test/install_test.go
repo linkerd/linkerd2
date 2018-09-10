@@ -54,7 +54,7 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestCheckPreInstall(t *testing.T) {
-	out, err := TestHelper.LinkerdRun("check", "--pre", "--expected-version", TestHelper.GetVersion())
+	out, _, err := TestHelper.LinkerdRun("check", "--pre", "--expected-version", TestHelper.GetVersion())
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
@@ -72,7 +72,7 @@ func TestInstall(t *testing.T) {
 		linkerdDeployReplicas["ca"] = 1
 	}
 
-	out, err := TestHelper.LinkerdRun(cmd...)
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("linkerd install command failed\n%s", out)
 	}
@@ -131,7 +131,7 @@ func TestCheckPostInstall(t *testing.T) {
 	var out string
 	var err error
 	overallErr := TestHelper.RetryFor(30*time.Second, func() error {
-		out, err = TestHelper.LinkerdRun("check", "--expected-version", TestHelper.GetVersion())
+		out, _, err = TestHelper.LinkerdRun("check", "--expected-version", TestHelper.GetVersion())
 		return err
 	})
 	if overallErr != nil {
@@ -185,9 +185,14 @@ func TestInject(t *testing.T) {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 	}
 
-	out, err := TestHelper.LinkerdRun(cmd...)
+	out, injectReport, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s", out)
+	}
+
+	err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
+	if err != nil {
+		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
@@ -215,7 +220,7 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	out, err := TestHelper.LinkerdRun(
+	out, _, err := TestHelper.LinkerdRun(
 		"check",
 		"--proxy",
 		"--expected-version",

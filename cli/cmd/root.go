@@ -14,7 +14,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultNamespace = "linkerd"
+const (
+	defaultNamespace = "linkerd"
+
+	lineWidth  = 80
+	okStatus   = "[ok]"
+	warnStatus = "[warn]"
+)
 
 var controlPlaneNamespace string
 var apiAddr string // An empty value means "use the Kubernetes configuration"

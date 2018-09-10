@@ -10,8 +10,6 @@ import (
 )
 
 const (
-	lineWidth   = 80
-	okStatus    = "[ok]"
 	retryStatus = "[retry]"
 	failStatus  = "[FAIL]"
 )
