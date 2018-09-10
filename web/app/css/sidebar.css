@@ -1,9 +1,5 @@
 @import 'styles.css';
 
-.ant-layout-sider-children {
- overflow-y: scroll;
-}
-
 ul.ant-menu.ant-menu-sub {
   background: var(--sider-black);
 }
@@ -11,9 +7,17 @@ ul.ant-menu.ant-menu-sub {
 .sidebar {
   background: var(--header-black);
   color: white;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  height: 100%;
+  position: relative;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   & .ant-menu-submenu {
-    & .ant-menu-submenu-title, & .anticon{
+    & .ant-menu-submenu-title, & .anticon {
       /* override ant transition animation */
       transition: none;
       font-size: 16px;
@@ -105,9 +109,17 @@ ul.ant-menu.ant-menu-sub {
 .ant-layout-sider {
   /* override ant color */
   background: var(--header-black);
+  overflow: hidden;
 }
 
 .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
   /* override ant color */
   background: var(--sider-black);
+}
+
+/* Hack to hide the scrollbar for firefox browsers */
+@-moz-document url-prefix() {
+  .ant-layout-sider-children {
+    margin-right: -15px;
+  }
 }
