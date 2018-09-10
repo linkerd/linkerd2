@@ -22,17 +22,69 @@ func TestInjectYAML(t *testing.T) {
 	testCases := []struct {
 		inputFileName     string
 		goldenFileName    string
+		reportFileName    string
 		testInjectOptions *injectOptions
 	}{
-		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment.golden.yml", defaultOptions},
-		{"inject_emojivoto_list.input.yml", "inject_emojivoto_list.golden.yml", defaultOptions},
-		{"inject_emojivoto_deployment_hostNetwork_false.input.yml", "inject_emojivoto_deployment_hostNetwork_false.golden.yml", defaultOptions},
-		{"inject_emojivoto_deployment_hostNetwork_true.input.yml", "inject_emojivoto_deployment_hostNetwork_true.golden.yml", defaultOptions},
-		{"inject_emojivoto_deployment_controller_name.input.yml", "inject_emojivoto_deployment_controller_name.golden.yml", defaultOptions},
-		{"inject_emojivoto_statefulset.input.yml", "inject_emojivoto_statefulset.golden.yml", defaultOptions},
-		{"inject_emojivoto_pod.input.yml", "inject_emojivoto_pod.golden.yml", defaultOptions},
-		{"inject_emojivoto_deployment.input.yml", "inject_emojivoto_deployment_tls.golden.yml", tlsOptions},
-		{"inject_emojivoto_pod.input.yml", "inject_emojivoto_pod_tls.golden.yml", tlsOptions},
+		{
+			inputFileName:     "inject_emojivoto_deployment.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_list.input.yml",
+			goldenFileName:    "inject_emojivoto_list.golden.yml",
+			reportFileName:    "inject_emojivoto_list.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_hostNetwork_false.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_hostNetwork_false.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_hostNetwork_true.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_hostNetwork_true.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_hostNetwork_true.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_controller_name.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_controller_name.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_controller_name.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_statefulset.input.yml",
+			goldenFileName:    "inject_emojivoto_statefulset.golden.yml",
+			reportFileName:    "inject_emojivoto_statefulset.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_pod.input.yml",
+			goldenFileName:    "inject_emojivoto_pod.golden.yml",
+			reportFileName:    "inject_emojivoto_pod.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_tls.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment.report",
+			testInjectOptions: tlsOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_pod.input.yml",
+			goldenFileName:    "inject_emojivoto_pod_tls.golden.yml",
+			reportFileName:    "inject_emojivoto_pod.report",
+			testInjectOptions: tlsOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_udp.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_udp.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_udp.report",
+			testInjectOptions: defaultOptions,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -53,13 +105,16 @@ func TestInjectYAML(t *testing.T) {
 			}
 
 			actualOutput := output.String()
-
-			goldenFileBytes, err := ioutil.ReadFile("testdata/" + tc.goldenFileName)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+			expectedOutput := readOptionalTestFile(t, tc.goldenFileName)
+			if expectedOutput != actualOutput {
+				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedOutput, actualOutput)
 			}
-			expectedOutput := string(goldenFileBytes)
-			diffCompare(t, actualOutput, expectedOutput)
+
+			actualReport := report.String()
+			expectedReport := readOptionalTestFile(t, tc.reportFileName)
+			if expectedReport != actualReport {
+				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedReport, actualReport)
+			}
 		})
 	}
 }
@@ -103,12 +158,15 @@ func TestRunInjectCmd(t *testing.T) {
 
 			actualStdOutResult := outBuffer.String()
 			expectedStdOutResult := readOptionalTestFile(t, tc.stdOutGoldenFileName)
-
-			diffCompare(t, actualStdOutResult, expectedStdOutResult)
+			if expectedStdOutResult != actualStdOutResult {
+				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedStdOutResult, actualStdOutResult)
+			}
 
 			actualStdErrResult := errBuffer.String()
 			expectedStdErrResult := readOptionalTestFile(t, tc.stdErrGoldenFileName)
-			diffCompare(t, actualStdErrResult, expectedStdErrResult)
+			if expectedStdErrResult != actualStdErrResult {
+				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedStdErrResult, actualStdErrResult)
+			}
 		})
 	}
 }

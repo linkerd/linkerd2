@@ -1,6 +1,7 @@
 
 hostNetwork: pods do not use host networking...............................[ok]
 supported: at least one resource injected..................................[ok]
+udp: pod specs do not include UDP ports....................................[ok]
 
 Summary: 2 of 4 YAML document(s) injected
   deployment/smoke-test-terminus
