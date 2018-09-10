@@ -166,7 +166,7 @@ class Sidebar extends React.Component {
 
     return (
       <Layout.Sider
-        width="275px"
+        width="260px"
         breakpoint="lg"
         collapsed={this.state.collapsed}
         collapsible={true}
