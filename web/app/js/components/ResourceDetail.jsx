@@ -42,6 +42,7 @@ export class ResourceDetailBase extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
+    this.unmeshedSources = {};
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.state = this.getInitialState(props.match, props.pathPrefix);
@@ -77,6 +78,7 @@ export class ResourceDetailBase extends React.Component {
   componentWillReceiveProps(newProps) {
     // React won't unmount this component when switching resource pages so we need to clear state
     this.api.cancelCurrentRequests();
+    this.unmeshedSources = {};
     this.setState(this.getInitialState(newProps.match, newProps.pathPrefix));
   }
 
@@ -149,7 +151,8 @@ export class ResourceDetailBase extends React.Component {
           },
           loaded: true,
           pendingRequests: false,
-          error: null
+          error: null,
+          unmeshedSources: this.unmeshedSources // in place of debouncing, just update this when we update the rest of the state
         });
       })
       .catch(this.handleApiError);
@@ -168,11 +171,9 @@ export class ResourceDetailBase extends React.Component {
   }
 
   updateNeighborsFromTapData = (source, sourceLabels) => {
-    let n = processNeighborData(source, sourceLabels, this.state.unmeshedSources, this.state.resource.type);
-
-    this.setState({
-      unmeshedSources: n
-    });
+    // store this outside of state, as updating the state upon every websocket event received
+    // is very costly and causes the page to freeze up
+    this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, this.state.resource.type);
   }
 
   banner = () => {
