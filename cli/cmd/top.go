@@ -286,11 +286,7 @@ func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 
 	found := false
 	for i, row := range *table {
-		match := row.by == by && row.destination == destination
-		if withSource {
-			match = row.by == by && row.source == source && row.destination == destination
-		}
-		if match {
+		if row.by == by && row.destination == destination && (row.source == source || !withSource) {
 			(*table)[i].count++
 			if latency.Nanoseconds() < row.best.Nanoseconds() {
 				(*table)[i].best = latency
