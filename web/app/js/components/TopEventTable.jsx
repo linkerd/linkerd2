@@ -64,7 +64,7 @@ class TopEventTable extends React.Component {
     api: PropTypes.shape({
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
-    tableRows: PropTypes.shape([]),
+    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
   static defaultProps = {
