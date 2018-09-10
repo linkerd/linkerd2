@@ -21,10 +21,12 @@ class TopModule extends React.Component {
 
   constructor(props) {
     super(props);
+    this.tapResultsById = {};
+    this.topEventIndex = {};
+    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
 
     this.state = {
       error: null,
-      tapResultsById: {},
       topEventIndex: {},
       maxRowsToStore: 40 // max un-ended tap results to keep in index (pre-aggregation into the top counts)
     };
@@ -46,6 +48,7 @@ class TopModule extends React.Component {
   }
 
   componentWillUnmount() {
+    this.debouncedWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
   }
 
@@ -64,6 +67,7 @@ class TopModule extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
+    this.debouncedWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
@@ -157,11 +161,21 @@ class TopModule extends React.Component {
     return topResults;
   }
 
+  updateTapEventIndexState = () => {
+    // tap websocket events come in at a really high, bursty rate
+    // calling setState every time an event comes in causes a lot of re-rendering
+    // and causes the page to freeze. To fix this, limit the times we
+    // update the state (and thus trigger a render)
+    this.setState({
+      topEventIndex: this.topEventIndex
+    });
+  }
+
   indexTapResult = data => {
     // keep an index of tap results by id until the request is complete.
     // when the request has completed, add it to the aggregated Top counts and
     // discard the individual tap result
-    let resultIndex = this.state.tapResultsById;
+    let resultIndex = this.tapResultsById;
     let d = this.parseTapResult(data);
 
     if (_.isNil(resultIndex[d.id])) {
@@ -178,18 +192,12 @@ class TopModule extends React.Component {
     resultIndex[d.id].base = d;
     resultIndex[d.id].lastUpdated = Date.now();
 
-    let topIndex = this.state.topEventIndex;
     if (d.completed) {
       // only add results into top if the request has completed
       // we can also now delete this result from the Tap result index
-      topIndex = this.indexTopResult(resultIndex[d.id], topIndex);
+      this.topEventIndex = this.indexTopResult(resultIndex[d.id], this.topEventIndex);
       delete resultIndex[d.id];
     }
-
-    this.setState({
-      tapResultsById: resultIndex,
-      topEventIndex: topIndex
-    });
   }
 
   addSuccessCount = d => {
