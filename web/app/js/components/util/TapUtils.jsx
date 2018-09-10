@@ -1,7 +1,7 @@
 import _ from 'lodash';
-import { Popover } from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Popover, Tooltip } from 'antd';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -135,34 +135,66 @@ const publicAddressToString = ipv4 => {
 /*
   display more human-readable information about source/destination
 */
-export const srcDstColumn = (display, labels, ResourceLink) => {
-  let podLink = (
-    <ResourceLink
-      resource={{ type: "pod", name: labels.pod, namespace: labels.namespace }}
-      linkText={"po/" + labels.pod} />
+const podLink = (labels, ResourceLink) => (
+  <ResourceLink
+    resource={{ type: "pod", name: labels.pod, namespace: labels.namespace }}
+    linkText={"po/" + labels.pod} />
+);
+
+const deployLink = (labels, ResourceLink) => (
+  <ResourceLink
+    resource={{ type: "deployment", name: labels.deployment, namespace: labels.namespace}}
+    linkText={"deploy/" + labels.deployment} />
+);
+
+const resourceSection = (ip, labels, ResourceLink) => {
+  return (
+    <React.Fragment>
+      <div>{ !labels.deployment ? null : deployLink(labels, ResourceLink) }</div>
+      <div>{ !labels.pod ? null : podLink(labels, ResourceLink) }</div>
+      <div>{ip}</div>
+    </React.Fragment>
   );
+};
+
+export const directionColumn = d => (
+  <Tooltip
+    title={d}
+    overlayStyle={{ fontSize: "12px" }}>
+    {d === "INBOUND" ? "FROM" : "TO"}
+  </Tooltip>
+);
+
+export const srcDstColumn = (d, ResourceLink) => {
+  let display = {};
+  let labels = {};
+
+  if (d.direction === "INBOUND") {
+    display = d.source;
+    labels = d.sourceLabels;
+  } else {
+    display = d.destination;
+    labels = d.destinationLabels;
+  }
 
   let content = (
     <React.Fragment>
-      <div>
-        {
-          !labels.deployment ? null :
-          <ResourceLink
-            resource={{ type: "deployment", name: labels.deployment, namespace: labels.namespace}}
-            linkText={"deploy/" + labels.deployment} />
-        }
-      </div>
-      <div>{ !labels.pod ? null : podLink }</div>
+      <h3>Source</h3>
+      {resourceSection(d.source.str, d.sourceLabels, ResourceLink)}
+      <br />
+      <h3>Destination</h3>
+      {resourceSection(d.destination.str, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 
   return (
     <Popover
       content={content}
-      trigger="hover"
-      title={display.str}>
+      trigger="hover">
       <div className="src-dst-name">
-        { !_.isEmpty(display.pod) ? podLink : display.str }
+        { !_.isEmpty(labels.deployment) ? deployLink(labels, ResourceLink) :
+            !_.isEmpty(display.pod) ? podLink(labels, ResourceLink) : display.str
+        }
       </div>
     </Popover>
   );

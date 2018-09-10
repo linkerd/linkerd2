@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { srcDstColumn } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { Col, Icon, Row, Table } from 'antd';
+import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
@@ -42,28 +42,29 @@ let tapColumns = (filterOptions, ResourceLink) => [
   },
   {
     title: "Direction",
+    key: "direction",
     dataIndex: "base.proxyDirection",
+    width: "60px",
     filters: [
       { text: "Inbound", value: "INBOUND" },
       { text: "Outbound", value: "OUTBOUND" }
     ],
+    render: directionColumn,
     onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
   },
   {
-    title: "Source",
-    key: "source",
-    dataIndex: "base",
-    filters: genFilterOptionList(filterOptions.source),
-    onFilter: (value, row) => row.base.source.pod === value || row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}), ResourceLink)
-  },
-  {
-    title: "Destination",
-    key: "destination",
-    dataIndex: "base",
-    filters: genFilterOptionList(filterOptions.destination),
-    onFilter: (value, row) => row.base.destination.pod === value || row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}), ResourceLink)
+    title: "Source/Destination",
+    key: "src-dst",
+    render: d => {
+      let datum = {
+        direction: _.get(d, "base.proxyDirection"),
+        source: _.get(d, "base.source"),
+        destination: _.get(d, "base.destination"),
+        sourceLabels: _.get(d, "base.sourceMeta.labels", {}),
+        destinationLabels: _.get(d, "base.destinationMeta.labels", {})
+      };
+      return srcDstColumn(datum, ResourceLink);
+    }
   },
   {
     title: "TLS",

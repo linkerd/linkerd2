@@ -1,26 +1,22 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import { srcDstColumn } from './util/TapUtils.jsx';
 import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
+import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
-
-const srcDstSorter = key => {
-  return (a, b) => (a[key].pod || a[key].str).localeCompare(b[key].pod || b[key].str);
-};
 
 const topColumns = ResourceLink => [
   {
-    title: "Source",
-    key: "source",
-    sorter: srcDstSorter("source"),
-    render: d => srcDstColumn(d.source, d.sourceLabels, ResourceLink)
+    title: " ",
+    key: "direction",
+    dataIndex: "direction",
+    width: "60px",
+    render: directionColumn
   },
   {
-    title: "Destination",
-    key: "destination",
-    sorter: srcDstSorter("destination"),
-    render: d => srcDstColumn(d.destination, d.destinationLabels, ResourceLink)
+    title: "Source/Destination",
+    key: "src-dst",
+    render: d => srcDstColumn(d, ResourceLink)
   },
   {
     title: "Path",

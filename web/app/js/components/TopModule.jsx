@@ -117,6 +117,7 @@ class TopModule extends React.Component {
       success: !d.success ? 0 : 1,
       failure: !d.success ? 1 : 0,
       successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
       destination: d.requestInit.destination,
