@@ -1,0 +1,151 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web1
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v3
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources: {}
+      - image: gcr.io/linkerd-io/proxy:foo
+status: {}
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web2
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v3
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources: {}
+      - name: linkerd-proxy
+status: {}
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web3
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v3
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources: {}
+      initContainers:
+      - image: gcr.io/linkerd-io/proxy-init:foo
+status: {}
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web4
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: EMOJISVC_HOST
+          value: emoji-svc.emojivoto:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc.emojivoto:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v3
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources: {}
+      initContainers:
+      - name: linkerd-init
+status: {}
+---
