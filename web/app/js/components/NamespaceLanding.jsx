@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
 import { Collapse, Icon, Spin, Tooltip } from 'antd';
-import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.js';
+import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
 
 const isMeshedTooltip = (

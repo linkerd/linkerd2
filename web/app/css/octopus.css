@@ -36,15 +36,6 @@
     & .ant-progress-text {
       color: black;
     }
-    & .status-good .ant-progress-circle-path {
-      stroke: var(--green);
-    }
-    & .status-ok .ant-progress-circle-path {
-      stroke: var(--orange)
-    }
-    & .status-poor .ant-progress-circle-path {
-      stroke: var(--siennared);
-    }
   }
 
   & .octopus-metric {
@@ -57,7 +48,7 @@
       color: var(--siennared);
     }
     &.status-neutral {
-      color: #E0E0E0;
+      color: var(--graphgrey);
     }
     &.status-ok {
       color: var(--orange);

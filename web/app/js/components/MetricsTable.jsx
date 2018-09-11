@@ -2,7 +2,6 @@ import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
-import { processedMetricsPropType } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Tooltip } from 'antd';
@@ -12,11 +11,13 @@ import {
   metricToFormatter,
   numericSort
 } from './util/Utils.js';
+import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
 
 /*
   Table to display Success Rate, Requests and Latency in tabs.
   Expects rollup and timeseries data.
 */
+const smMetricColWidth = "70px";
 
 const withTooltip = (d, metricName) => {
   return (
@@ -75,6 +76,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       title: formatTitle("Dash", "Grafana Dashboard"),
       key: "grafanaDashboard",
       className: "numeric",
+      width: smMetricColWidth,
       render: row => !row.added || _.get(row, "pods.totalPods") === "0" ? null : (
         <GrafanaLink
           name={row.name}
@@ -117,14 +119,16 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       dataIndex: "successRate",
       key: "successRateRollup",
       className: "numeric",
+      width: "120px",
       sorter: (a, b) => numericSort(a.successRate, b.successRate),
-      render: d => metricToFormatter["SUCCESS_RATE"](d)
+      render: successRateWithMiniChart
     },
     {
       title: formatTitle("RPS", "Request Rate"),
       dataIndex: "requestRate",
       key: "requestRateRollup",
       className: "numeric",
+      width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
       render: d => withTooltip(d, "REQUEST_RATE")
     },
@@ -133,6 +137,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       dataIndex: "P50",
       key: "p50LatencyRollup",
       className: "numeric",
+      width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.P50, b.P50),
       render: metricToFormatter["LATENCY"]
     },
@@ -141,6 +146,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       dataIndex: "P95",
       key: "p95LatencyRollup",
       className: "numeric",
+      width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.P95, b.P95),
       render: metricToFormatter["LATENCY"]
     },
@@ -149,6 +155,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       dataIndex: "P99",
       key: "p99LatencyRollup",
       className: "numeric",
+      width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.P99, b.P99),
       render: metricToFormatter["LATENCY"]
     },
@@ -157,6 +164,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       key: "tlsTraffic",
       dataIndex: "tlsRequestPercent",
       className: "numeric",
+      width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.tlsRequestPercent.get(), b.tlsRequestPercent.get()),
       render: d => _.isNil(d) || d.get() === -1 ? "---" : d.prettyRate()
     }

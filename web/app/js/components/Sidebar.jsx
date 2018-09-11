@@ -12,7 +12,7 @@ import {
   getSuccessRateClassification,
   processMultiResourceRollup,
   processSingleResourceRollup
-} from './util/MetricUtils.js';
+} from './util/MetricUtils.jsx';
 import {linkerdLogoOnly, linkerdWordLogo} from './util/SvgWrappers.jsx';
 import './../../css/sidebar.css';
 import 'whatwg-fetch';

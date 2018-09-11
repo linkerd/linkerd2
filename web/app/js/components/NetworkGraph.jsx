@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { metricsPropType } from './util/MetricUtils.js';
+import { metricsPropType } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';

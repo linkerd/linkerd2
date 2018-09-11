@@ -11,6 +11,7 @@
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
   --neutralgrey: #828282;
+  --graphgrey: #E0E0E0;
   --silver: #BDBDBD;
   --green: #27AE60;
   --siennared: #EB5757;
@@ -242,6 +243,30 @@ a.button.primary:active {
 
   & tr .numeric {
     text-align: right;
+  }
+
+  & .metric-table-sr {
+    margin-right: 6px;
+  }
+
+  & .metric-table-sr-chart.ant-progress-circle {
+    /* override ant progress circle height */
+    & div.ant-progress-inner {
+      max-height: 16px;
+    }
+  }
+}
+
+/* ant Progress bar color orverrides */
+.success-rate-arc {
+  &.status-good .ant-progress-circle-path {
+    stroke: var(--green);
+  }
+  &.status-ok .ant-progress-circle-path {
+    stroke: var(--orange)
+  }
+  &.status-poor .ant-progress-circle-path {
+    stroke: var(--siennared);
   }
 }
 

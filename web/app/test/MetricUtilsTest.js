@@ -7,7 +7,7 @@ import Percentage from '../js/components/util/Percentage';
 import {
   processMultiResourceRollup,
   processSingleResourceRollup
-} from '../js/components/util/MetricUtils.js';
+} from '../js/components/util/MetricUtils.jsx';
 
 describe('MetricUtils', () => {
   describe('processSingleResourceRollup', () => {
