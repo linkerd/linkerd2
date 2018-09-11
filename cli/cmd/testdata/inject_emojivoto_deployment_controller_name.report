@@ -4,6 +4,6 @@ supported: at least one resource injected..................................[ok]
 udp: pod specs do not include UDP ports....................................[ok]
 
 Summary: 2 of 2 YAML document(s) injected
-  deployment/get-test-deploy-injected-1
-  deployment/get-test-deploy-injected-2
+  deployment/controller
+  deployment/not-controller
 

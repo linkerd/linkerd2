@@ -36,6 +36,7 @@ const (
 	// for inject reports
 	hostNetworkDesc = "hostNetwork: pods do not use host networking"
 	unsupportedDesc = "supported: at least one resource injected"
+	udpDesc         = "udp: pod specs do not include UDP ports"
 )
 
 type injectOptions struct {
@@ -49,6 +50,7 @@ type injectOptions struct {
 type injectReport struct {
 	name                string
 	hostNetwork         bool
+	udp                 bool // true if any port in any container has `protocol: UDP`
 	unsupportedResource bool
 }
 
@@ -177,7 +179,9 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  * injected, return false.
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
-	// Pods with `hostNetwork=true` share a network namespace with the host. The
+	report.udp = checkUDPPorts(t)
+
+	// Pods with `hostNetwork: true` share a network namespace with the host. The
 	// init-container would destroy the iptables configuration on the host, so
 	// skip the injection in this case.
 	if t.HostNetwork {
@@ -218,7 +222,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: initArgs,
+		Args:                     initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -633,14 +637,25 @@ func generateReport(injectReports []injectReport, output io.Writer) {
 
 	injected := []string{}
 	hostNetwork := []string{}
+	udp := []string{}
 
 	for _, r := range injectReports {
 		if !r.hostNetwork && !r.unsupportedResource {
 			injected = append(injected, r.name)
-		} else if r.hostNetwork {
+		}
+
+		if r.hostNetwork {
 			hostNetwork = append(hostNetwork, r.name)
 		}
+
+		if r.udp {
+			udp = append(udp, r.name)
+		}
 	}
+
+	//
+	// Warnings
+	//
 
 	// leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
@@ -663,6 +678,21 @@ func generateReport(injectReports []injectReport, output io.Writer) {
 		output.Write([]byte(fmt.Sprintf("%s%s -- no supported objects found\n", unsupportedPrefix, warnStatus)))
 	}
 
+	udpPrefix := fmt.Sprintf("%s%s", udpDesc, getFiller(udpDesc))
+	if len(udp) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", udpPrefix, okStatus)))
+	} else {
+		verb := "uses"
+		if len(udp) > 1 {
+			verb = "use"
+		}
+		output.Write([]byte(fmt.Sprintf("%s%s -- %s %s \"protocol: UDP\"\n", udpPrefix, warnStatus, strings.Join(udp, ", "), verb)))
+	}
+
+	//
+	// Summary
+	//
+
 	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) injected", len(injected), len(injectReports))
 	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
 
@@ -681,4 +711,16 @@ func getFiller(text string) string {
 	}
 
 	return filler
+}
+
+func checkUDPPorts(t *v1.PodSpec) bool {
+	// check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	for _, container := range t.Containers {
+		for _, port := range container.Ports {
+			if port.Protocol == v1.ProtocolUDP {
+				return true
+			}
+		}
+	}
+	return false
 }

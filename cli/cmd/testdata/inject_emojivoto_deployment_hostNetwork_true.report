@@ -1,0 +1,7 @@
+
+hostNetwork: pods do not use host networking...............................[warn] -- deployment/web uses "hostNetwork: true"
+supported: at least one resource injected..................................[warn] -- no supported objects found
+udp: pod specs do not include UDP ports....................................[ok]
+
+Summary: 0 of 1 YAML document(s) injected
+
