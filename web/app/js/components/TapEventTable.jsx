@@ -40,10 +40,10 @@ let tapColumns = (resourceType, filterOptions, ResourceLink) => [
     title: "Direction",
     key: "direction",
     dataIndex: "base.proxyDirection",
-    width: "60px",
+    width: "80px",
     filters: [
-      { text: "Inbound", value: "INBOUND" },
-      { text: "Outbound", value: "OUTBOUND" }
+      { text: "FROM", value: "INBOUND" },
+      { text: "TO", value: "OUTBOUND" }
     ],
     render: directionColumn,
     onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
