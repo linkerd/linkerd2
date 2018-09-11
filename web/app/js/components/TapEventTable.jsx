@@ -37,10 +37,6 @@ const genFilterOptionList = options => _.map(options,  (_v, k) => {
 
 let tapColumns = (filterOptions, ResourceLink) => [
   {
-    title: "ID",
-    dataIndex: "requestInit.http.requestInit.id.stream"
-  },
-  {
     title: "Direction",
     key: "direction",
     dataIndex: "base.proxyDirection",
