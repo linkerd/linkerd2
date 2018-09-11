@@ -35,6 +35,7 @@ const (
 
 	// for inject reports
 	hostNetworkDesc = "hostNetwork: pods do not use host networking"
+	sidecarDesc     = "sidecar: pods do not have a proxy or initContainer already injected"
 	unsupportedDesc = "supported: at least one resource injected"
 	udpDesc         = "udp: pod specs do not include UDP ports"
 )
@@ -50,6 +51,7 @@ type injectOptions struct {
 type injectReport struct {
 	name                string
 	hostNetwork         bool
+	sidecar             bool
 	udp                 bool // true if any port in any container has `protocol: UDP`
 	unsupportedResource bool
 }
@@ -179,13 +181,16 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  * injected, return false.
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
+	report.hostNetwork = t.HostNetwork
+	report.sidecar = checkSidecars(t)
 	report.udp = checkUDPPorts(t)
 
-	// Pods with `hostNetwork: true` share a network namespace with the host. The
-	// init-container would destroy the iptables configuration on the host, so
-	// skip the injection in this case.
-	if t.HostNetwork {
-		report.hostNetwork = true
+	// Skip injection if:
+	// 1) Pods with `hostNetwork: true` share a network namespace with the host.
+	//    The init-container would destroy the iptables configuration on the host.
+	// OR
+	// 2) Known sidecars already present.
+	if report.hostNetwork || report.sidecar {
 		return false
 	}
 
@@ -637,15 +642,20 @@ func generateReport(injectReports []injectReport, output io.Writer) {
 
 	injected := []string{}
 	hostNetwork := []string{}
+	sidecar := []string{}
 	udp := []string{}
 
 	for _, r := range injectReports {
-		if !r.hostNetwork && !r.unsupportedResource {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
 			injected = append(injected, r.name)
 		}
 
 		if r.hostNetwork {
 			hostNetwork = append(hostNetwork, r.name)
+		}
+
+		if r.sidecar {
+			sidecar = append(sidecar, r.name)
 		}
 
 		if r.udp {
@@ -664,11 +674,14 @@ func generateReport(injectReports []injectReport, output io.Writer) {
 	if len(hostNetwork) == 0 {
 		output.Write([]byte(fmt.Sprintf("%s%s\n", hostNetworkPrefix, okStatus)))
 	} else {
-		verb := "uses"
-		if len(hostNetwork) > 1 {
-			verb = "use"
-		}
-		output.Write([]byte(fmt.Sprintf("%s%s -- %s %s \"hostNetwork: true\"\n", hostNetworkPrefix, warnStatus, strings.Join(hostNetwork, ", "), verb)))
+		output.Write([]byte(fmt.Sprintf("%s%s -- \"hostNetwork: true\" detected in %s\n", hostNetworkPrefix, warnStatus, strings.Join(hostNetwork, ", "))))
+	}
+
+	sidecarPrefix := fmt.Sprintf("%s%s", sidecarDesc, getFiller(sidecarDesc))
+	if len(sidecar) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", sidecarPrefix, okStatus)))
+	} else {
+		output.Write([]byte(fmt.Sprintf("%s%s -- known sidecar detected in %s\n", sidecarPrefix, warnStatus, strings.Join(sidecar, ", "))))
 	}
 
 	unsupportedPrefix := fmt.Sprintf("%s%s", unsupportedDesc, getFiller(unsupportedDesc))
@@ -722,5 +735,33 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 			}
 		}
 	}
+	return false
+}
+
+func checkSidecars(t *v1.PodSpec) bool {
+	// check for known proxies and initContainers
+	for _, container := range t.Containers {
+		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||
+			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
+			strings.HasPrefix(container.Image, "gcr.io/heptio-images/contour:") ||
+			strings.HasPrefix(container.Image, "docker.io/envoyproxy/envoy-alpine:") ||
+			container.Name == "linkerd-proxy" ||
+			container.Name == "istio-proxy" ||
+			container.Name == "contour" ||
+			container.Name == "envoy" {
+			return true
+		}
+	}
+	for _, ic := range t.InitContainers {
+		if strings.HasPrefix(ic.Image, "gcr.io/linkerd-io/proxy-init:") ||
+			strings.HasPrefix(ic.Image, "gcr.io/istio-release/proxy_init:") ||
+			strings.HasPrefix(ic.Image, "gcr.io/heptio-images/contour:") ||
+			ic.Name == "linkerd-init" ||
+			ic.Name == "istio-init" ||
+			ic.Name == "envoy-initconfig" {
+			return true
+		}
+	}
+
 	return false
 }
