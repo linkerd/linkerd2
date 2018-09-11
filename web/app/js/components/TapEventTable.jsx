@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import BaseTable from './BaseTable.jsx';
+import PropTypes from 'prop-types';
 import React from 'react';
 import { srcDstColumn } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -210,10 +210,23 @@ const expandedRowRender = d => {
   );
 };
 
-class TapEventTable extends BaseTable {
+class TapEventTable extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      ResourceLink: PropTypes.func.isRequired,
+    }).isRequired,
+    filterOptions: PropTypes.shape({}),
+    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  }
+
+  static defaultProps = {
+    filterOptions: {},
+    tableRows: []
+  }
+
   render() {
     return (
-      <BaseTable
+      <Table
         dataSource={this.props.tableRows}
         columns={tapColumns(this.props.filterOptions, this.props.api.ResourceLink)}
         expandedRowRender={expandedRowRender}

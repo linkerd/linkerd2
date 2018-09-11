@@ -25,7 +25,7 @@ class TopModule extends React.Component {
     super(props);
     this.tapResultsById = {};
     this.topEventIndex = {};
-    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
 
     this.state = {
       error: null,
@@ -50,7 +50,7 @@ class TopModule extends React.Component {
   }
 
   componentWillUnmount() {
-    this.debouncedWebsocketRecvHandler.cancel();
+    this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
   }
 
@@ -70,7 +70,7 @@ class TopModule extends React.Component {
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
     this.props.updateNeighbors(e.data);
-    this.debouncedWebsocketRecvHandler();
+    this.throttledWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
