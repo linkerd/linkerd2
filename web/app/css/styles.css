@@ -12,9 +12,9 @@
   --coldgrey: #c9c9c9;
   --neutralgrey: #828282;
   --silver: #BDBDBD;
-  --green: #27AE60;
-  --siennared: #EB5757;
-  --orange: #FF8C00;
+  --green: #26E99D;
+  --siennared: #FF4D2B;
+  --orange: #ffae4b;
   --latency-p99: var(--royalblue);
   --latency-p95: var(--curiousblue);
   --latency-p50: var(--pictonblue);

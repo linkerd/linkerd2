@@ -1,7 +1,7 @@
 @import 'styles.css';
 
 .ant-layout-header {
-  background-color: #26e99d;
+  background-color: var(--green);
   height: 60px;
   z-index: 100;
   position: fixed;
@@ -9,7 +9,7 @@
   padding:16px 50px;
 
   & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
-     color: black;
+     color: #404544;
      font-size: 22px;
      font-weight: 500;
   }

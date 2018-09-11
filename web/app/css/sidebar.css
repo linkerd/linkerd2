@@ -104,6 +104,14 @@ ul.ant-menu.ant-menu-sub {
     line-height: 2;
     min-height: 56px;
   }
+
+  & .ant-badge-status-success {
+    background-color: var(--green);
+  }
+
+  & .ant-badge-status-error {
+    background-color: var(--siennared);
+  }
 }
 
 .ant-layout-sider {
