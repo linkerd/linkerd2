@@ -2,9 +2,9 @@ import _ from 'lodash';
 import PropTypes from "prop-types";
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
-import {withContext} from './util/AppContext.jsx';
-import {Breadcrumb, Layout} from 'antd';
-import {friendlyTitle, isResource, singularResource} from "./util/Utils.js";
+import { withContext } from './util/AppContext.jsx';
+import { Breadcrumb, Layout } from 'antd';
+import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
 import './../../css/breadcrumb-header.css';
 
 
@@ -91,7 +91,7 @@ class BreadcrumbHeader extends React.Component {
       <Breadcrumb.Item key={breadcrumb.segment}>
         <PrefixedLink
           to={breadcrumb.link}>
-          { this.renderBreadcrumbSegment(breadcrumb.segment) }
+          {this.renderBreadcrumbSegment(breadcrumb.segment)}
         </PrefixedLink>
       </Breadcrumb.Item>
     );
