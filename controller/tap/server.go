@@ -116,6 +116,19 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 			return apiUtil.GRPCError(err)
 		}
 	}
+
+	select {
+	case <-stream.Context().Done():
+		wg.Wait()
+		return nil
+	case event := <-events:
+		err := stream.Send(event)
+		if err != nil {
+			return apiUtil.GRPCError(err)
+		}
+	default:
+	}
+
 	return nil
 }
 
@@ -262,13 +275,14 @@ func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, add
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(tapAddr, grpc.WithInsecure())
 	defer wait.Done()
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	client := proxy.NewTapClient(conn)
+
 	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
