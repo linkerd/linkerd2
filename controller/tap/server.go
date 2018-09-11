@@ -104,10 +104,9 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	wg.Add(len(pods))
-	log.Infof("Adding [%d] pods to waitGroup", len(pods))
 	for _, pod := range pods {
 		// initiate a tap on the pod
-		go s.tapProxy(rpsPerPod, match, pod.Status.PodIP, events, wg)
+		go s.tapProxy(rpsPerPod, match, pod.Status.PodIP, events, &wg)
 	}
 
 	// read events from the taps and send them back
@@ -259,7 +258,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan<- *public.TapEvent, wait sync.WaitGroup) {
+func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan<- *public.TapEvent, wait *sync.WaitGroup) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	ctx := context.Background()
@@ -300,7 +299,6 @@ func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, add
 			time.Sleep(time.Until(windowEnd))
 		}
 	}
-	log.Info("Canceled tapping for [%s]", addr)
 }
 
 func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
