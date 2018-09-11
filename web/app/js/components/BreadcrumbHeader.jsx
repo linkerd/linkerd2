@@ -85,31 +85,33 @@ class BreadcrumbHeader extends React.Component {
     return this.segmentToFriendlyTitle(segment, false);
   }
 
-  renderSingleBreadCrumb(breadcrumb) {
-    let PrefixedLink = this.api.PrefixedLink;
-    return (
-      <Breadcrumb.Item key={breadcrumb.segment}>
-        <PrefixedLink
-          to={breadcrumb.link}>
-          {this.renderBreadcrumbSegment(breadcrumb.segment)}
-        </PrefixedLink>
-      </Breadcrumb.Item>
-    );
-  }
-
-  renderMultipleBreadCrumbs(breadcrumbs) {
+  renderBreadcrumbs(breadcrumbs) {
     let PrefixedLink = this.api.PrefixedLink;
 
-    return _.map(breadcrumbs, (pathSegment, index) => {
+    if (breadcrumbs.length === 1) {
+      // Check for a single segment so that we can pluralize it.
+      let singleBreadcrumb = breadcrumbs[0];
+
       return (
-        <Breadcrumb.Item key={pathSegment.segment}>
+        <Breadcrumb.Item key={singleBreadcrumb.segment}>
           <PrefixedLink
-            to={pathSegment.link}>
-            {this.renderBreadcrumbSegment(pathSegment.segment, index)}
+            to={singleBreadcrumb.link}>
+            {this.renderBreadcrumbSegment(singleBreadcrumb.segment)}
           </PrefixedLink>
         </Breadcrumb.Item>
       );
-    });
+    } else {
+      return _.map(breadcrumbs, (pathSegment, index) => {
+        return (
+          <Breadcrumb.Item key={pathSegment.segment}>
+            <PrefixedLink
+              to={pathSegment.link}>
+              {this.renderBreadcrumbSegment(pathSegment.segment, index)}
+            </PrefixedLink>
+          </Breadcrumb.Item>
+        );
+      });
+    }
   }
 
   render() {
@@ -119,11 +121,7 @@ class BreadcrumbHeader extends React.Component {
     return (
       <Layout.Header>
         <Breadcrumb separator=">">
-          {
-            breadcrumbs.length === 1 ?
-              this.renderSingleBreadCrumb(breadcrumbs[0]) :
-              this.renderMultipleBreadCrumbs(breadcrumbs)
-          }
+          { this.renderBreadcrumbs(breadcrumbs) }
         </Breadcrumb>
       </Layout.Header>
     );
