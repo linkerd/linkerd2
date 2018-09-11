@@ -29,7 +29,7 @@ type topOptions struct {
 	method      string
 	authority   string
 	path        string
-	withSource  bool
+	hideSources bool
 }
 
 type topRequest struct {
@@ -78,7 +78,7 @@ func newTopOptions() *topOptions {
 		method:      "",
 		authority:   "",
 		path:        "",
-		withSource:  true,
+		hideSources: false,
 	}
 }
 
@@ -151,7 +151,7 @@ func newCmdTop() *cobra.Command {
 		"Display requests with this :authority")
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
-	cmd.PersistentFlags().BoolVar(&options.withSource, "with-source", options.withSource, "Include the source column")
+	cmd.PersistentFlags().BoolVar(&options.hideSources, "hide-sources", options.hideSources, "Hide the source column")
 
 	return cmd
 }
@@ -174,7 +174,7 @@ func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapBy
 	go recvEvents(rsp, requestCh, done)
 	go pollInput(done)
 
-	renderTable(requestCh, done, options.withSource)
+	renderTable(requestCh, done, !options.hideSources)
 
 	return nil
 }
