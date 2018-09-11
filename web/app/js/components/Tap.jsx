@@ -24,7 +24,7 @@ class Tap extends React.Component {
     this.api = this.props.api;
     this.tapResultsById = {};
     this.tapResultFilterOptions = this.getInitialTapFilterOptions();
-    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapResults, 500);
+    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapResults, 500);
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
@@ -59,7 +59,7 @@ class Tap extends React.Component {
     if (this.ws) {
       this.ws.close(1000);
     }
-    this.debouncedWebsocketRecvHandler.cancel();
+    this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
     this.stopServerPolling();
   }
@@ -79,7 +79,7 @@ class Tap extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
-    this.debouncedWebsocketRecvHandler();
+    this.throttledWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
