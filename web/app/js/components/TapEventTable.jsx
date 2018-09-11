@@ -35,7 +35,7 @@ const genFilterOptionList = options => _.map(options,  (_v, k) => {
   return { text: k, value: k };
 });
 
-let tapColumns = (filterOptions, ResourceLink) => [
+let tapColumns = (resourceType, filterOptions, ResourceLink) => [
   {
     title: "Direction",
     key: "direction",
@@ -59,7 +59,7 @@ let tapColumns = (filterOptions, ResourceLink) => [
         sourceLabels: _.get(d, "base.sourceMeta.labels", {}),
         destinationLabels: _.get(d, "base.destinationMeta.labels", {})
       };
-      return srcDstColumn(datum, ResourceLink);
+      return srcDstColumn(datum, resourceType, ResourceLink);
     }
   },
   {
@@ -222,10 +222,11 @@ class TapEventTable extends React.Component {
   }
 
   render() {
+    let resourceType = this.props.resource.split("/")[0];
     return (
       <Table
         dataSource={this.props.tableRows}
-        columns={tapColumns(this.props.filterOptions, this.props.api.ResourceLink)}
+        columns={tapColumns(resourceType, this.props.filterOptions, this.props.api.ResourceLink)}
         expandedRowRender={expandedRowRender}
         rowKey={r => r.base.id}
         pagination={false}

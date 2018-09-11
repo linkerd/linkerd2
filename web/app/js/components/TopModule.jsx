@@ -11,7 +11,9 @@ class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
-    query: PropTypes.shape({}).isRequired,
+    query: PropTypes.shape({
+      resource: PropTypes.string.isRequired
+    }).isRequired,
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func
   }
@@ -263,11 +265,12 @@ class TopModule extends React.Component {
 
   render() {
     let tableRows = _.values(this.state.topEventIndex);
+    let resourceType = this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>
         {this.banner()}
-        <TopEventTable tableRows={tableRows} />
+        <TopEventTable resourceType={resourceType} tableRows={tableRows} />
       </React.Fragment>
     );
   }

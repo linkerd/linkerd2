@@ -5,7 +5,7 @@ import { withContext } from './util/AppContext.jsx';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
-const topColumns = ResourceLink => [
+const topColumns = (resourceType, ResourceLink) => [
   {
     title: " ",
     key: "direction",
@@ -16,7 +16,7 @@ const topColumns = ResourceLink => [
   {
     title: "Name",
     key: "src-dst",
-    render: d => srcDstColumn(d, ResourceLink)
+    render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Path",
@@ -60,6 +60,7 @@ class TopEventTable extends React.Component {
     api: PropTypes.shape({
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
+    resourceType: PropTypes.string.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
@@ -71,7 +72,7 @@ class TopEventTable extends React.Component {
     return (
       <Table
         dataSource={this.props.tableRows}
-        columns={topColumns(this.props.api.ResourceLink)}
+        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink)}
         rowKey="key"
         pagination={false}
         className="top-event-table"

@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { toShortResourceName } from './Utils.js';
 import { Popover, Tooltip } from 'antd';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
@@ -135,23 +136,17 @@ const publicAddressToString = ipv4 => {
 /*
   display more human-readable information about source/destination
 */
-const podLink = (labels, ResourceLink) => (
+const resourceShortLink = (labels, resourceType, ResourceLink) => (
   <ResourceLink
-    resource={{ type: "pod", name: labels.pod, namespace: labels.namespace }}
-    linkText={"po/" + labels.pod} />
-);
-
-const deployLink = (labels, ResourceLink) => (
-  <ResourceLink
-    resource={{ type: "deployment", name: labels.deployment, namespace: labels.namespace}}
-    linkText={"deploy/" + labels.deployment} />
+    resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
+    linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
 const resourceSection = (ip, labels, ResourceLink) => {
   return (
     <React.Fragment>
-      <div>{ !labels.deployment ? null : deployLink(labels, ResourceLink) }</div>
-      <div>{ !labels.pod ? null : podLink(labels, ResourceLink) }</div>
+      <div>{ !labels.deployment ? null : resourceShortLink(labels, "deployment", ResourceLink) }</div>
+      <div>{ !labels.pod ? null : resourceShortLink(labels, "pod", ResourceLink) }</div>
       <div>{ip}</div>
     </React.Fragment>
   );
@@ -165,7 +160,7 @@ export const directionColumn = d => (
   </Tooltip>
 );
 
-export const srcDstColumn = (d, ResourceLink) => {
+export const srcDstColumn = (d, resourceType, ResourceLink) => {
   let display = {};
   let labels = {};
 
@@ -192,9 +187,7 @@ export const srcDstColumn = (d, ResourceLink) => {
       content={content}
       trigger="hover">
       <div className="src-dst-name">
-        { !_.isEmpty(labels.deployment) ? deployLink(labels, ResourceLink) :
-            !_.isEmpty(display.pod) ? podLink(labels, ResourceLink) : display.str
-        }
+        { !_.isEmpty(labels[resourceType]) ? resourceShortLink(labels, resourceType, ResourceLink) : display.str }
       </div>
     </Popover>
   );
