@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { toShortResourceName } from './Utils.js';
 import { Popover, Tooltip } from 'antd';
+import { shortNameLookup, toShortResourceName } from './Utils.js';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -136,7 +136,7 @@ const publicAddressToString = ipv4 => {
 /*
   display more human-readable information about source/destination
 */
-const resourceShortLink = (labels, resourceType, ResourceLink) => (
+const resourceShortLink = (resourceType, labels, ResourceLink) => (
   <ResourceLink
     resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
@@ -145,8 +145,13 @@ const resourceShortLink = (labels, resourceType, ResourceLink) => (
 const resourceSection = (ip, labels, ResourceLink) => {
   return (
     <React.Fragment>
-      <div>{ !labels.deployment ? null : resourceShortLink(labels, "deployment", ResourceLink) }</div>
-      <div>{ !labels.pod ? null : resourceShortLink(labels, "pod", ResourceLink) }</div>
+      {
+        _.map(labels, (labelVal, labelName) => {
+          if (_.has(shortNameLookup, labelName) && labelName !== "namespace") {
+            return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
+          }
+        })
+      }
       <div>{ip}</div>
     </React.Fragment>
   );
@@ -187,7 +192,7 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
       content={content}
       trigger="hover">
       <div className="src-dst-name">
-        { !_.isEmpty(labels[resourceType]) ? resourceShortLink(labels, resourceType, ResourceLink) : display.str }
+        { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
       </div>
     </Popover>
   );

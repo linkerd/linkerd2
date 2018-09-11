@@ -156,7 +156,7 @@ export const resourceTypeToCamelCase = resource => camelCaseLookUp[resource] || 
 /*
   A simplified version of ShortNameFromCanonicalResourceName
 */
-const shortNameLookup = {
+export const shortNameLookup = {
   "deployment": "deploy",
   "daemonset": "ds",
   "namespace": "ns",
