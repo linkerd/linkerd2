@@ -22,11 +22,14 @@ class Tap extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
+    this.tapResultsById = {};
+    this.tapResultFilterOptions = this.getInitialTapFilterOptions();
+    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapResults, 500);
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
-      tapResultsById: {},
-      tapResultFilterOptions: this.getInitialTapFilterOptions(),
+      tapResultsById: this.tapResultsById,
+      tapResultFilterOptions: this.tapResultFilterOptions,
       error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
@@ -56,6 +59,7 @@ class Tap extends React.Component {
     if (this.ws) {
       this.ws.close(1000);
     }
+    this.debouncedWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
     this.stopServerPolling();
   }
@@ -75,6 +79,7 @@ class Tap extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
+    this.debouncedWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
@@ -145,7 +150,7 @@ class Tap extends React.Component {
   }
 
   getFilterOptions(d) {
-    let filters = this.state.tapResultFilterOptions;
+    let filters = this.tapResultFilterOptions;
     // keep track of unique values we encounter, to populate the table filters
     let addFilter = this.genFilterAdder(filters, Date.now());
     addFilter("source", d.source.str);
@@ -207,8 +212,9 @@ class Tap extends React.Component {
     // keep an index of tap request rows by id. this allows us to collate
     // requestInit/responseInit/responseEnd into one single table row,
     // as opposed to three separate rows as in the CLI
-    let resultIndex = this.state.tapResultsById;
+    let resultIndex = this.tapResultsById;
     let parsedResults = this.parseTapResult(data);
+    this.tapResultFilterOptions = parsedResults.updatedFilters;
     let d = parsedResults.tapResult;
 
     if (_.isNil(resultIndex[d.id])) {
@@ -223,10 +229,12 @@ class Tap extends React.Component {
     // assumption: requests of a given id all share the same high level metadata
     resultIndex[d.id]["base"] = d;
     resultIndex[d.id].lastUpdated = Date.now();
+  }
 
+  updateTapResults = () => {
     this.setState({
-      tapResultsById: resultIndex,
-      tapResultFilterOptions: parsedResults.updatedFilters
+      tapResultsById: this.tapResultsById,
+      tapResultFilterOptions: this.tapResultFilterOptions
     });
   }
 
@@ -255,10 +263,13 @@ class Tap extends React.Component {
   }
 
   startTapStreaming() {
+    this.tapResultsById = {};
+    this.tapResultFilterOptions = this.getInitialTapFilterOptions();
+
     this.setState({
       tapRequestInProgress: true,
-      tapResultsById: {},
-      tapResultFilterOptions: this.getInitialTapFilterOptions()
+      tapResultsById: this.tapResultsById,
+      tapResultFilterOptions: this.tapResultFilterOptions
     });
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
