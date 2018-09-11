@@ -53,7 +53,7 @@ let tapColumns = (filterOptions, ResourceLink) => [
     onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
   },
   {
-    title: "Source/Destination",
+    title: "Name",
     key: "src-dst",
     render: d => {
       let datum = {
