@@ -85,8 +85,10 @@ class NamespaceLanding extends React.Component {
           metricsByNs[this.state.selectedNs] = processMultiResourceRollup(metricsForNs);
         }
 
-        // by default, show the first non-linkerd meshed resource
+        // by default, show the first non-linkerd meshed namesapce
+        // if no other meshed namespaces are found, show the linkerd namespace
         let defaultOpenNs = _.find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
+        defaultOpenNs = defaultOpenNs || _.find(namespaces, ['name', this.props.controllerNamespace]);
 
         this.setState({
           namespaces,
