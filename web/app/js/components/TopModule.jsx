@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { processTapEvent, setMaxRps } from './util/TapUtils.jsx';
+import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 class TopModule extends React.Component {
   static propTypes = {
@@ -76,14 +76,16 @@ class TopModule extends React.Component {
   onWebsocketClose = e => {
     if (!e.wasClean) {
       this.setState({
-        error: { error: `Websocket [${e.code}] ${e.reason}` }
+        error: {
+          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+        }
       });
     }
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: e.message }
+      error: { error: `Websocket error: ${e.message}` }
     });
   }
 
