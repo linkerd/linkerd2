@@ -3,7 +3,6 @@ import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
-import PageHeader from './PageHeader.jsx';
 import { processNeighborData } from './util/TapUtils.jsx';
 import { processSingleResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
