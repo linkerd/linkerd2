@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import { srcDstColumn } from './util/TapUtils.jsx';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
