@@ -147,7 +147,7 @@ const resourceSection = (ip, labels, ResourceLink) => {
     <React.Fragment>
       {
         _.map(labels, (labelVal, labelName) => {
-          if (_.has(shortNameLookup, labelName) && labelName !== "namespace") {
+          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service") {
             return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
           }
         })
