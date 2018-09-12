@@ -121,7 +121,6 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 }
 
 func websocketError(ws *websocket.Conn, wsError int, msg string) {
-	log.Infof("sending websocket close %d: %s", wsError, msg)
 	ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),
 		time.Time{})
@@ -133,10 +132,7 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 		renderJsonError(w, err, http.StatusInternalServerError)
 		return
 	}
-	defer func() {
-		log.Info("closing websocket connection")
-		ws.Close()
-	}()
+	defer ws.Close()
 
 	messageType, message, err := ws.ReadMessage()
 	if err != nil {
@@ -173,31 +169,25 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 		for {
 			rsp, err := tapClient.Recv()
 			if err == io.EOF {
-				return
+				break
 			}
 			if err != nil {
-				log.Errorf("Receive error: %s", err)
-				return
+				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+				break
 			}
 
 			buf := new(bytes.Buffer)
 			err = pbMarshaler.Marshal(buf, rsp)
 			if err != nil {
 				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
-				return
+				break
 			}
 
-			select {
-			case <-req.Context().Done():
-				log.Infof("HTTP request context closed")
-				return
-			default:
-				if err := ws.WriteMessage(websocket.TextMessage, []byte(buf.String())); err != nil {
-					if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-						log.Errorf("Unexpected close error, write side: %s", err)
-					}
-					break
+			if err := ws.WriteMessage(websocket.TextMessage, []byte(buf.String())); err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+					log.Error(err)
 				}
+				break
 			}
 		}
 	}()
@@ -206,11 +196,9 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 		_, _, err := ws.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-				log.Errorf("Unexpected close error, read side: %s", err)
+				log.Errorf("Unexpected close error: %s", err)
 			}
-			break
+			return
 		}
 	}
-
-	websocketError(ws, websocket.CloseNormalClosure, "")
 }
