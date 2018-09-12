@@ -213,6 +213,7 @@ class TapEventTable extends React.Component {
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
     filterOptions: PropTypes.shape({}),
+    resource: PropTypes.string.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
