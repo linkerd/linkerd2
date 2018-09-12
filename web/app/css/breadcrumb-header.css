@@ -11,7 +11,7 @@
   & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
      color: #404544;
      font-size: 22px;
-     font-weight: 500;
+     font-weight: var(--font-weight-bold);
      font-family: var(--font-stack);
   }
 }
