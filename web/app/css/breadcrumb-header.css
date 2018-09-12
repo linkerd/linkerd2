@@ -12,6 +12,7 @@
      color: #404544;
      font-size: 22px;
      font-weight: 500;
+     font-family: var(--font-stack);
   }
 }
 
