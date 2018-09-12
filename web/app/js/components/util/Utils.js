@@ -12,6 +12,7 @@ export const rowGutter = 3 * baseWidth;
 */
 const successRateFormatter = d3.format(".2%");
 const commaFormatter = d3.format(",");
+const secondsFormatter = d3.format(",.3s");
 
 export const formatWithComma = m => {
   if (_.isNil(m)) {
@@ -42,7 +43,7 @@ export const formatLatencySec = latency => {
   } else if (s < 1.0) {
     return `${niceLatency(s * 1000)} ms`;
   } else {
-    return `${niceLatency(s)} s`;
+    return `${secondsFormatter(s)} s`;
   }
 };
 
@@ -195,4 +196,12 @@ const decodeIPToOctets = ip => {
 export const publicAddressToString = (ipv4, port) => {
   let octets = decodeIPToOctets(ipv4);
   return octets.join(".") + ":" + port;
+};
+
+export const getSrClassification = sr => {
+  if (sr < 0.9) {
+    return "status-poor";
+  } else if (sr < 0.95) {
+    return "status-ok";
+  } else {return "status-good";}
 };

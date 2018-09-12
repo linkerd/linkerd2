@@ -2,18 +2,11 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Icon, Progress, Row } from 'antd';
+import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
 import { metricToFormatter, toShortResourceName } from './util/Utils.js';
 import './../../css/octopus.css';
 
 const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
-
-const getSrClassification = sr => {
-  if (sr < 0.9) {
-    return "status-poor";
-  } else if (sr < 0.95) {
-    return "status-ok";
-  } else {return "status-good";}
-};
 
 const Metric = ({title, value, className}) => {
   return (
@@ -60,7 +53,7 @@ export default class Octopus extends React.Component {
           <div>
             <div className="octopus-sr-gauge">
               <Progress
-                className={getSrClassification(resource.successRate)}
+                className={`success-rate-arc ${getSuccessRateClassification(resource.successRate, srArcClassLabels)}`}
                 type="dashboard"
                 format={() => metricToFormatter["SUCCESS_RATE"](resource.successRate)}
                 width={type === "main" ? 132 : 64}

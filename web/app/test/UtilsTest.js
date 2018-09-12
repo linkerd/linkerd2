@@ -79,8 +79,8 @@ describe('Utils', () => {
     });
 
     it('formats latency greater than 1s as s', () => {
-      expect(metricToFormatter["LATENCY"](1000)).to.equal('1 s');
-      expect(metricToFormatter["LATENCY"](9999)).to.equal('10 s');
+      expect(metricToFormatter["LATENCY"](1000)).to.equal('1.00 s');
+      expect(metricToFormatter["LATENCY"](9999)).to.equal('10.0 s');
       expect(metricToFormatter["LATENCY"](99999)).to.equal('100 s');
     });
 
@@ -99,7 +99,8 @@ describe('Utils', () => {
       expect(formatLatencySec("0.000231910")).to.equal("232 µs");
       expect(formatLatencySec("0.000988600")).to.equal("989 µs");
       expect(formatLatencySec("0.005598200")).to.equal("6 ms");
-      expect(formatLatencySec("3.029409200")).to.equal("3 s");
+      expect(formatLatencySec("3.029409200")).to.equal("3.03 s");
+      expect(formatLatencySec("34.395600")).to.equal("34.4 s");
     });
   });
 

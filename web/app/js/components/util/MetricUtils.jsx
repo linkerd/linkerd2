@@ -1,6 +1,9 @@
 import _ from 'lodash';
+import { metricToFormatter } from './Utils.js';
 import Percentage from './Percentage.js';
+import { Progress } from 'antd';
 import PropTypes from 'prop-types';
+import React from 'react';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
@@ -26,6 +29,27 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
     return successRateLabels.good;
   }
 };
+
+export const srArcClassLabels = {
+  good: "status-good",
+  neutral: "status-ok",
+  bad: "status-poor",
+  default: "status-ok"
+};
+
+export const successRateWithMiniChart = sr => (
+  <div>
+    <span className="metric-table-sr">{metricToFormatter["SUCCESS_RATE"](sr)}</span>
+    <Progress
+      className={`success-rate-arc ${getSuccessRateClassification(sr, srArcClassLabels)} metric-table-sr-chart`}
+      type="dashboard"
+      showInfo={false}
+      width={32}
+      strokeWidth={12}
+      percent={sr * 100}
+      gapDegree={180} />
+  </div>
+);
 
 const getTotalRequests = row => {
   let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);

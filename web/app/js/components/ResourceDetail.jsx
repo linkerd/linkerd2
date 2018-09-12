@@ -4,7 +4,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import { processNeighborData } from './util/TapUtils.jsx';
-import { processSingleResourceRollup } from './util/MetricUtils.js';
+import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
@@ -226,7 +226,7 @@ export class ResourceDetailBase extends React.Component {
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
           <div className="page-section">
-            <h2 className="subsection-header">Upstreams</h2>
+            <h2 className="subsection-header">Inbound</h2>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={this.state.neighborMetrics.upstream} />
@@ -236,7 +236,7 @@ export class ResourceDetailBase extends React.Component {
 
         { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
           <div className="page-section">
-            <h2 className="subsection-header">Downstreams</h2>
+            <h2 className="subsection-header">Outbound</h2>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={this.state.neighborMetrics.downstream} />

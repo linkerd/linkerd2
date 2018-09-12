@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
 import withREST from './util/withREST.jsx';
-import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.js';
+import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
 
 export class ResourceListBase extends React.Component {
