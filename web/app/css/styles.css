@@ -13,9 +13,9 @@
   --neutralgrey: #828282;
   --graphgrey: #E0E0E0;
   --silver: #BDBDBD;
-  --green: #27AE60;
-  --siennared: #EB5757;
-  --orange: #FF8C00;
+  --green: #26E99D;
+  --red: #FF4D2B;
+  --orange: #ffae4b;
   --latency-p99: var(--royalblue);
   --latency-p95: var(--curiousblue);
   --latency-p50: var(--pictonblue);
@@ -155,7 +155,7 @@ h2, h3, h4, h5, h6 {
   padding: var(--base-width);
   margin-bottom: calc(3 * var(--base-width));
   border-radius: 5px;
-  background: var(--siennared);
+  background: var(--red);
   color: white;
   font-size: 12px;
   font-weight: var(--font-weight-bold);
@@ -281,7 +281,7 @@ div.status-dot {
     background-color: var(--green);
   }
   &.status-dot-poor {
-    background-color: var(--siennared);
+    background-color: var(--red);
   }
   &.status-dot-neutral {
     background-color: #E0E0E0;

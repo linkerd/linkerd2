@@ -45,7 +45,7 @@
       color: var(--green);
     }
     &.status-poor {
-      color: var(--siennared);
+      color: var(--red);
     }
     &.status-neutral {
       color: var(--graphgrey);

@@ -1,9 +1,7 @@
 import _ from 'lodash';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
-import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
-import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
@@ -53,13 +51,11 @@ export class ResourceListBase extends React.Component {
   }
 
   render() {
-    const {loading, resource} = this.props;
 
     return (
       <div className="page-content">
         <div>
           {this.banner()}
-          {loading ? null : <PageHeader header={friendlyTitle(resource).plural} />}
           {this.content()}
         </div>
       </div>

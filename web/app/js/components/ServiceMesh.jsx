@@ -6,7 +6,6 @@ import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
 import moment from 'moment';
 import { numericSort } from './util/Utils.js';
-import PageHeader from './PageHeader.jsx';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -357,10 +356,6 @@ class ServiceMesh extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <Spin size="large" /> : (
           <div>
-            <PageHeader
-              header="Service mesh overview"
-              hideButtons={this.proxyCount() === 0} />
-
             {this.proxyCount() === 0 ?
               <CallToAction
                 numResources={_.size(this.state.nsStatuses)}

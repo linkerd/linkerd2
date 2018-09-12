@@ -3,7 +3,6 @@ import deployRollup from './fixtures/deployRollup.json';
 import ErrorBanner from '../js/components/ErrorBanner.jsx';
 import { expect } from 'chai';
 import MetricsTable from '../js/components/MetricsTable.jsx';
-import PageHeader from '../js/components/PageHeader.jsx';
 import React from 'react';
 import { ResourceListBase } from '../js/components/ResourceList.jsx';
 import { Spin } from 'antd';
@@ -29,7 +28,6 @@ describe('Tests for <ResourceListBase>', () => {
 
     const err = component.find(ErrorBanner);
     expect(err).to.have.length(1);
-    expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(Spin)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(1);
     expect(err.props().message.statusText).to.equal(msg);
@@ -44,7 +42,6 @@ describe('Tests for <ResourceListBase>', () => {
     );
 
     expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(PageHeader)).to.have.length(0);
     expect(component.find(Spin)).to.have.length(1);
     expect(component.find(MetricsTable)).to.have.length(0);
   });
@@ -58,7 +55,6 @@ describe('Tests for <ResourceListBase>', () => {
     );
 
     expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(Spin)).to.have.length(0);
     expect(component.find(MetricsTable)).to.have.length(1);
   });
@@ -76,7 +72,6 @@ describe('Tests for <ResourceListBase>', () => {
     const metrics = component.find(MetricsTable);
 
     expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(PageHeader)).to.have.length(1);
     expect(component.find(Spin)).to.have.length(0);
     expect(metrics).to.have.length(1);
 
