@@ -18,6 +18,7 @@ const topColumns = (resourceType, ResourceLink) => [
   {
     title: "Name",
     key: "src-dst",
+    width: "180px",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
