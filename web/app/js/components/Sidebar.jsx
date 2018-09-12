@@ -193,14 +193,14 @@ class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/tap">
               <PrefixedLink to="/tap">
-                <Icon type="filter" />
+                <Icon type="phone" />
                 <span>Tap</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/top">
               <PrefixedLink to="/top">
-                <Icon type="caret-up" />
+                <Icon type="arrow-up" />
                 <span>Top</span>
               </PrefixedLink>
             </Menu.Item>
