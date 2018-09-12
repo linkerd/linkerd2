@@ -4,24 +4,21 @@ import { srcDstColumn } from './util/TapUtils.jsx';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
+import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
-const srcDstSorter = key => {
-  return (a, b) => (a[key].pod || a[key].str).localeCompare(b[key].pod || b[key].str);
-};
-
-const topColumns = ResourceLink => [
+const topColumns = (resourceType, ResourceLink) => [
   {
-    title: "Source",
-    key: "source",
-    sorter: srcDstSorter("source"),
-    render: d => srcDstColumn(d.source, d.sourceLabels, ResourceLink)
+    title: " ",
+    key: "direction",
+    dataIndex: "direction",
+    width: "60px",
+    render: directionColumn
   },
   {
-    title: "Destination",
-    key: "destination",
-    sorter: srcDstSorter("destination"),
-    render: d => srcDstColumn(d.destination, d.destinationLabels, ResourceLink)
+    title: "Name",
+    key: "src-dst",
+    render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Path",
@@ -71,6 +68,7 @@ class TopEventTable extends React.Component {
     api: PropTypes.shape({
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
+    resourceType: PropTypes.string.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
@@ -82,7 +80,7 @@ class TopEventTable extends React.Component {
     return (
       <Table
         dataSource={this.props.tableRows}
-        columns={topColumns(this.props.api.ResourceLink)}
+        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink)}
         rowKey="key"
         pagination={false}
         className="top-event-table metric-table"

@@ -5,13 +5,15 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { processTapEvent, setMaxRps } from './util/TapUtils.jsx';
+import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
-    query: PropTypes.shape({}).isRequired,
+    query: PropTypes.shape({
+      resource: PropTypes.string.isRequired
+    }).isRequired,
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func
   }
@@ -76,14 +78,16 @@ class TopModule extends React.Component {
   onWebsocketClose = e => {
     if (!e.wasClean) {
       this.setState({
-        error: { error: `Websocket [${e.code}] ${e.reason}` }
+        error: {
+          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+        }
       });
     }
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: e.message }
+      error: { error: `Websocket error: ${e.message}` }
     });
   }
 
@@ -117,6 +121,7 @@ class TopModule extends React.Component {
       success: !d.success ? 0 : 1,
       failure: !d.success ? 1 : 0,
       successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
       destination: d.requestInit.destination,
@@ -262,11 +267,12 @@ class TopModule extends React.Component {
 
   render() {
     let tableRows = _.values(this.state.topEventIndex);
+    let resourceType = this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>
         {this.banner()}
-        <TopEventTable tableRows={tableRows} />
+        <TopEventTable resourceType={resourceType} tableRows={tableRows} />
       </React.Fragment>
     );
   }
