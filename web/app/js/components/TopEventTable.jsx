@@ -60,7 +60,7 @@ const topColumns = ResourceLink => [
     title: "Success Rate",
     dataIndex: "successRate",
     className: "numeric",
-    width: "120px",
+    width: "128px",
     sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
     render: d => successRateWithMiniChart(d.get())
   }
