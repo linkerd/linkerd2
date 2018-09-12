@@ -6,10 +6,11 @@ import TapEventTable from './TapEventTable.jsx';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { httpMethods, processTapEvent, setMaxRps } from './util/TapUtils.jsx';
+import { httpMethods, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const maxNumFilterOptions = 12;
+
 class Tap extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -87,7 +88,7 @@ class Tap extends React.Component {
     if (!e.wasClean) {
       this.setState({
         error: {
-          error: `Websocket [${e.code}] ${e.reason}`
+          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
         }
       });
     }
@@ -95,7 +96,7 @@ class Tap extends React.Component {
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: e.message }
+      error: { error: `Websocket error: ${e.message}` }
     });
 
     this.stopTapStreaming();
