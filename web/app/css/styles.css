@@ -266,7 +266,7 @@ a.button.primary:active {
     stroke: var(--orange)
   }
   &.status-poor .ant-progress-circle-path {
-    stroke: var(--siennared);
+    stroke: var(--red);
   }
 }
 
@@ -287,7 +287,7 @@ div.status-dot {
     background-color: #E0E0E0;
   }
   &.status-dot-ok {
-    background-color: #ffd54f;
+    background-color: var(--orange);
   }
 }
 

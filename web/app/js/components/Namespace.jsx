@@ -3,7 +3,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import NetworkGraph from './NetworkGraph.jsx';
-import { processMultiResourceRollup } from './util/MetricUtils.js';
+import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
