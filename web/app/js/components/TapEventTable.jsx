@@ -40,7 +40,7 @@ let tapColumns = (resourceType, filterOptions, ResourceLink) => [
     title: "Direction",
     key: "direction",
     dataIndex: "base.proxyDirection",
-    width: "80px",
+    width: "98px",
     filters: [
       { text: "FROM", value: "INBOUND" },
       { text: "TO", value: "OUTBOUND" }
