@@ -28,6 +28,45 @@ export const tapQueryProps = {
 
 export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 
+
+/*
+  Use tap data to figure out a resource's unmeshed upstreams/downstreams
+*/
+export const processNeighborData = (source, labels, resourceAgg, resourceType) => {
+  if (_.isEmpty(labels)) {
+    return resourceAgg;
+  }
+
+  let neighb = {};
+  if (_.has(labels, resourceType)) {
+    neighb = {
+      type: resourceType,
+      name: labels[resourceType],
+      namespace: labels.namespace
+    };
+  } else if (_.has(labels, "pod")) {
+    neighb = {
+      type: "pod",
+      name: labels.pod,
+      namespace: labels.namespace
+    };
+  } else {
+    neighb = {
+      type: "ip",
+      name: source.str
+    };
+  }
+
+  let key = neighb.type + "/" + neighb.name;
+  if (_.has(labels, "control_plane_ns")) {
+    delete resourceAgg[key];
+  } else {
+    resourceAgg[key] = neighb;
+  }
+
+  return resourceAgg;
+};
+
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
   d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));

@@ -13,7 +13,7 @@ import (
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
-	"github.com/linkerd/linkerd2/controller/gen/public"
+	public "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -24,7 +24,6 @@ import (
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"sync"
 )
 
 const podIPIndex = "ip"
@@ -84,13 +83,6 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
 
 	events := make(chan *public.TapEvent)
-	var wg sync.WaitGroup
-
-	go func() { // Stop sending back events if the request is cancelled
-		<-stream.Context().Done()
-		wg.Wait()
-		close(events)
-	}()
 
 	// divide the rps evenly between all pods to tap
 	rpsPerPod := req.MaxRps / float32(len(pods))
@@ -103,32 +95,23 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return apiUtil.GRPCError(err)
 	}
 
-	wg.Add(len(pods))
 	for _, pod := range pods {
 		// initiate a tap on the pod
-		go s.tapProxy(rpsPerPod, match, pod.Status.PodIP, events, &wg)
+		go s.tapProxy(stream.Context(), rpsPerPod, match, pod.Status.PodIP, events)
 	}
 
 	// read events from the taps and send them back
-	for event := range events {
-		err := stream.Send(event)
-		if err != nil {
-			return apiUtil.GRPCError(err)
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case event := <-events:
+			err := stream.Send(event)
+			if err != nil {
+				return apiUtil.GRPCError(err)
+			}
 		}
 	}
-
-	select {
-	case <-stream.Context().Done():
-		wg.Wait()
-		return nil
-	case event := <-events:
-		err := stream.Send(event)
-		if err != nil {
-			return apiUtil.GRPCError(err)
-		}
-	default:
-	}
-
 	return nil
 }
 
@@ -271,19 +254,15 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan<- *public.TapEvent, wait *sync.WaitGroup) {
+func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
-	ctx := context.Background()
-	conn, err := grpc.Dial(tapAddr, grpc.WithInsecure())
-	defer wait.Done()
+	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	client := proxy.NewTapClient(conn)
-
-	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
 		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
@@ -301,13 +280,23 @@ func (s *server) tapProxy(maxRps float32, match *proxy.ObserveRequest_Match, add
 		for { // Stream loop
 			event, err := rsp.Recv()
 			if err == io.EOF {
+				log.Debugf("[%s] proxy terminated the stream", addr)
 				break
 			}
 			if err != nil {
-				log.Error(err)
+				log.Errorf("[%s] encountered an error: %s", addr, err)
 				return
 			}
-			events <- s.translateEvent(event)
+
+			translatedEvent := s.translateEvent(event)
+
+			select {
+			case <-ctx.Done():
+				log.Debugf("[%s] client terminated the stream", addr)
+				return
+			default:
+				events <- translatedEvent
+			}
 		}
 		if time.Now().Before(windowEnd) {
 			time.Sleep(time.Until(windowEnd))

@@ -12,18 +12,20 @@ class TopModule extends React.Component {
     maxRowsToDisplay: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
     query: PropTypes.shape({}).isRequired,
-    startTap: PropTypes.bool.isRequired
+    startTap: PropTypes.bool.isRequired,
+    updateNeighbors: PropTypes.func
   }
 
   static defaultProps = {
-    maxRowsToDisplay: 40 // max aggregated top rows to index and display in table
+    maxRowsToDisplay: 40, // max aggregated top rows to index and display in table
+    updateNeighbors: _.noop
   }
 
   constructor(props) {
     super(props);
     this.tapResultsById = {};
     this.topEventIndex = {};
-    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
 
     this.state = {
       error: null,
@@ -48,7 +50,7 @@ class TopModule extends React.Component {
   }
 
   componentWillUnmount() {
-    this.debouncedWebsocketRecvHandler.cancel();
+    this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
   }
 
@@ -67,7 +69,8 @@ class TopModule extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
-    this.debouncedWebsocketRecvHandler();
+    this.props.updateNeighbors(e.data);
+    this.throttledWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
@@ -158,6 +161,10 @@ class TopModule extends React.Component {
       this.deleteOldestIndexedResult(topResults);
     }
 
+    if (d.base.proxyDirection === "INBOUND") {
+      this.props.updateNeighbors(d.requestInit.source, _.get(d, "requestInit.sourceMeta.labels"), null);
+    }
+
     return topResults;
   }
 
@@ -203,7 +210,7 @@ class TopModule extends React.Component {
   addSuccessCount = d => {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
-    let success = parseInt(d.responseInit.http.responseInit.httpStatus, 10) < 500;
+    let success = parseInt(_.get(d, "responseInit.http.responseInit.httpStatus"), 10) < 500;
     if (success) {
       let grpcStatusCode = _.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
       if (!_.isNil(grpcStatusCode)) {

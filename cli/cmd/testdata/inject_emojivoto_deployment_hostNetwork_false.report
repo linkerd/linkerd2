@@ -5,5 +5,5 @@ supported: at least one resource injected..................................[ok]
 udp: pod specs do not include UDP ports....................................[ok]
 
 Summary: 1 of 1 YAML document(s) injected
-  deployment/redis
+  deployment/web
 
