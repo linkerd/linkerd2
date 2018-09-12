@@ -263,6 +263,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 		return
 	}
 	client := proxy.NewTapClient(conn)
+	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
 		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
