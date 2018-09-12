@@ -6,6 +6,7 @@ import { withContext } from './util/AppContext.jsx';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
+const topMetricColWidth = "80px";
 const topColumns = (resourceType, ResourceLink) => [
   {
     title: " ",
@@ -28,6 +29,7 @@ const topColumns = (resourceType, ResourceLink) => [
     title: "Count",
     dataIndex: "count",
     className: "numeric",
+    width: topMetricColWidth,
     defaultSortOrder: "descend",
     sorter: (a, b) => numericSort(a.count, b.count),
   },
@@ -35,6 +37,7 @@ const topColumns = (resourceType, ResourceLink) => [
     title: "Best",
     dataIndex: "best",
     className: "numeric",
+    width: topMetricColWidth,
     sorter: (a, b) => numericSort(a.best, b.best),
     render: formatLatencySec
   },
@@ -42,6 +45,7 @@ const topColumns = (resourceType, ResourceLink) => [
     title: "Worst",
     dataIndex: "worst",
     className: "numeric",
+    width: topMetricColWidth,
     sorter: (a, b) => numericSort(a.worst, b.worst),
     render: formatLatencySec
   },
@@ -49,6 +53,7 @@ const topColumns = (resourceType, ResourceLink) => [
     title: "Last",
     dataIndex: "last",
     className: "numeric",
+    width: topMetricColWidth,
     sorter: (a, b) => numericSort(a.last, b.last),
     render: formatLatencySec
   },

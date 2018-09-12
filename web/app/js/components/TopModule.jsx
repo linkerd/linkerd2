@@ -25,7 +25,7 @@ class TopModule extends React.Component {
     // max rows to keep in index. there are two indexes we keep:
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
-    maxRowsToStore: 40,
+    maxRowsToStore: 50,
     updateNeighbors: _.noop
   }
 
