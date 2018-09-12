@@ -1,7 +1,8 @@
 import _ from 'lodash';
-import { Popover } from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Popover, Tooltip } from 'antd';
+import { shortNameLookup, toShortResourceName } from './Utils.js';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -154,34 +155,63 @@ const publicAddressToString = ipv4 => {
 /*
   display more human-readable information about source/destination
 */
-export const srcDstColumn = (display, labels, ResourceLink) => {
-  let podLink = (
-    <ResourceLink
-      resource={{ type: "pod", name: labels.pod, namespace: labels.namespace }}
-      linkText={"po/" + labels.pod} />
+const resourceShortLink = (resourceType, labels, ResourceLink) => (
+  <ResourceLink
+    resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
+    linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
+);
+
+const resourceSection = (ip, labels, ResourceLink) => {
+  return (
+    <React.Fragment>
+      {
+        _.map(labels, (labelVal, labelName) => {
+          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service") {
+            return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
+          }
+        })
+      }
+      <div>{ip}</div>
+    </React.Fragment>
   );
+};
+
+export const directionColumn = d => (
+  <Tooltip
+    title={d}
+    overlayStyle={{ fontSize: "12px" }}>
+    {d === "INBOUND" ? "FROM" : "TO"}
+  </Tooltip>
+);
+
+export const srcDstColumn = (d, resourceType, ResourceLink) => {
+  let display = {};
+  let labels = {};
+
+  if (d.direction === "INBOUND") {
+    display = d.source;
+    labels = d.sourceLabels;
+  } else {
+    display = d.destination;
+    labels = d.destinationLabels;
+  }
 
   let content = (
     <React.Fragment>
-      <div>
-        {
-          !labels.deployment ? null :
-          <ResourceLink
-            resource={{ type: "deployment", name: labels.deployment, namespace: labels.namespace}}
-            linkText={"deploy/" + labels.deployment} />
-        }
-      </div>
-      <div>{ !labels.pod ? null : podLink }</div>
+      <h3>Source</h3>
+      {resourceSection(d.source.str, d.sourceLabels, ResourceLink)}
+      <br />
+      <h3>Destination</h3>
+      {resourceSection(d.destination.str, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 
   return (
     <Popover
       content={content}
-      trigger="hover"
-      title={display.str}>
+      trigger="hover">
       <div className="src-dst-name">
-        { !_.isEmpty(display.pod) ? podLink : display.str }
+        { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
       </div>
     </Popover>
   );

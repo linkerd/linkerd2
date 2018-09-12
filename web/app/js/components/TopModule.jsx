@@ -11,7 +11,9 @@ class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
-    query: PropTypes.shape({}).isRequired,
+    query: PropTypes.shape({
+      resource: PropTypes.string.isRequired
+    }).isRequired,
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func
   }
@@ -119,6 +121,7 @@ class TopModule extends React.Component {
       success: !d.success ? 0 : 1,
       failure: !d.success ? 1 : 0,
       successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
       destination: d.requestInit.destination,
@@ -264,11 +267,12 @@ class TopModule extends React.Component {
 
   render() {
     let tableRows = _.values(this.state.topEventIndex);
+    let resourceType = this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>
         {this.banner()}
-        <TopEventTable tableRows={tableRows} />
+        <TopEventTable resourceType={resourceType} tableRows={tableRows} />
       </React.Fragment>
     );
   }
