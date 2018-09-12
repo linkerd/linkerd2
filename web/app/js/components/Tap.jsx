@@ -83,6 +83,7 @@ class Tap extends React.Component {
   }
 
   onWebsocketClose = e => {
+    console.log("onWebsocketClose ", e)
     this.stopTapStreaming();
 
     if (!e.wasClean) {
@@ -95,6 +96,7 @@ class Tap extends React.Component {
   }
 
   onWebsocketError = e => {
+    console.log("onWebsocketError ", e)
     this.setState({
       error: { error: e.message }
     });
@@ -283,6 +285,7 @@ class Tap extends React.Component {
   }
 
   stopTapStreaming() {
+    console.log("stopTapStreaming")
     this.setState({
       tapRequestInProgress: false
     });
@@ -294,6 +297,7 @@ class Tap extends React.Component {
   }
 
   handleTapStop = () => {
+    console.log("handleTapStop")
     this.ws.close(1000);
   }
 
