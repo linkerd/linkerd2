@@ -3,6 +3,6 @@
         "env", "react-app"
     ],
     "plugins": [
-        ["import", { "libraryName": "antd", "style": "css" }], // `style: true` for less
+        ["import", { "libraryName": "antd", "style": true }]
     ]
 }

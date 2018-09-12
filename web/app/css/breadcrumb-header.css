@@ -2,17 +2,17 @@
 
 .ant-layout-header {
   background-color: var(--green);
-  height: 60px;
+  height: 64px;
   z-index: 100;
   position: fixed;
   width: 100vw;
   padding:16px 40px;
 
   & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
-     color: #404544;
-     font-size: 22px;
+     color: rgb(0, 0, 0, 0.85);
+     font-size: 21px;
      font-weight: var(--font-weight-bold);
-     font-family: var(--font-stack);
+     line-height: 32px;
   }
 }
 

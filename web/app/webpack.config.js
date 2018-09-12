@@ -52,6 +52,22 @@ module.exports = {
             }
           }
         ]
+      },
+      {
+        test: /\.less$/,
+        use: [
+          'style-loader',
+          'css-loader',
+          {
+            loader: 'less-loader',
+            options: {
+              modifyVars: {
+                'font-family': '\'Lato\', helvetica, arial, sans-serif'
+              },
+              javascriptEnabled: true
+            }
+          }
+        ]
       }
     ]
   }
