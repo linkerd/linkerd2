@@ -6,7 +6,7 @@ import { withContext } from './util/AppContext.jsx';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
-const topMetricColWidth = "80px";
+const topMetricColWidth = "85px";
 const topColumns = (resourceType, ResourceLink) => [
   {
     title: " ",
