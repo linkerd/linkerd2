@@ -43,7 +43,7 @@
       stroke: var(--orange)
     }
     & .status-poor .ant-progress-circle-path {
-      stroke: var(--siennared);
+      stroke: var(--red);
     }
   }
 
@@ -54,7 +54,7 @@
       color: var(--green);
     }
     &.status-poor {
-      color: var(--siennared);
+      color: var(--red);
     }
     &.status-neutral {
       color: #E0E0E0;

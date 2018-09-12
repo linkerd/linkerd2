@@ -7,8 +7,8 @@
       border-color: var(--green);
     }
     &.tap-stop {
-      background-color: var(--siennared);
-      border-color: var(--siennared);
+      background-color: var(--red);
+      border-color: var(--red);
     }
   }
 

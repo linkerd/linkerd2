@@ -38,7 +38,7 @@ ul.ant-menu.ant-menu-sub {
     }
 
     & .update {
-      color: var(--siennared);
+      color: var(--red);
     }
 
     & .ant-select-selection {
@@ -90,7 +90,7 @@ ul.ant-menu.ant-menu-sub {
 
   & .sidebar-menu-header {
     height: 60px;
-    padding: calc((var(--base-width) - 3)*2) 14px;
+    padding: calc(var(--base-width)) 14px;
 
     &.collapsed {
       text-align: center;
@@ -110,7 +110,7 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .ant-badge-status-error {
-    background-color: var(--siennared);
+    background-color: var(--red);
   }
 }
 

@@ -82,7 +82,7 @@ td div.status-dot {
 .controller-error-icon {
   cursor: pointer;
   margin-left: 5px;
-  color: var(--siennared);
+  color: var(--red);
 }
 
 .controller-pod-error {
