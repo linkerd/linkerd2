@@ -84,11 +84,6 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 
 	events := make(chan *public.TapEvent)
 
-	go func() { // Stop sending back events if the request is cancelled
-		<-stream.Context().Done()
-		close(events)
-	}()
-
 	// divide the rps evenly between all pods to tap
 	rpsPerPod := req.MaxRps / float32(len(pods))
 	if rpsPerPod < 1 {
@@ -106,13 +101,17 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	// read events from the taps and send them back
-	for event := range events {
-		err := stream.Send(event)
-		if err != nil {
-			return apiUtil.GRPCError(err)
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case event := <-events:
+			err := stream.Send(event)
+			if err != nil {
+				return apiUtil.GRPCError(err)
+			}
 		}
 	}
-	return nil
 }
 
 // TODO: validate scheme
@@ -263,6 +262,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 		return
 	}
 	client := proxy.NewTapClient(conn)
+	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
 		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
@@ -280,13 +280,23 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 		for { // Stream loop
 			event, err := rsp.Recv()
 			if err == io.EOF {
+				log.Debugf("[%s] proxy terminated the stream", addr)
 				break
 			}
 			if err != nil {
-				log.Error(err)
+				log.Errorf("[%s] encountered an error: %s", addr, err)
 				return
 			}
-			events <- s.translateEvent(event)
+
+			translatedEvent := s.translateEvent(event)
+
+			select {
+			case <-ctx.Done():
+				log.Debugf("[%s] client terminated the stream", addr)
+				return
+			default:
+				events <- translatedEvent
+			}
 		}
 		if time.Now().Before(windowEnd) {
 			time.Sleep(time.Until(windowEnd))
