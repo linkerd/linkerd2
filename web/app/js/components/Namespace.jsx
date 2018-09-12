@@ -3,7 +3,6 @@ import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import NetworkGraph from './NetworkGraph.jsx';
-import PageHeader from './PageHeader.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -130,7 +129,6 @@ class Namespaces extends React.Component {
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
         { !this.state.loaded ? <Spin size="large" /> : (
           <div>
-            <PageHeader header={`Namespace: ${this.state.ns}`} />
             { noMetrics ? <div>No resources detected.</div> : null}
             {
               _.isEmpty(deploymentsWithMetrics) ? null :

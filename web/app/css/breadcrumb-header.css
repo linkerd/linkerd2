@@ -1,0 +1,20 @@
+@import 'styles.css';
+
+.ant-layout-header {
+  background-color: var(--green);
+  height: 60px;
+  z-index: 100;
+  position: fixed;
+  width: 100vw;
+  padding:16px 40px;
+
+  & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
+     color: #404544;
+     font-size: 22px;
+     font-weight: 500;
+  }
+}
+
+.ant-layout-header:last-child {
+  color: var(--white);
+}

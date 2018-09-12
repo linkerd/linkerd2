@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
-import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
@@ -346,7 +345,6 @@ class Tap extends React.Component {
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
-        <PageHeader header="Tap" />
         <TapQueryForm
           tapRequestInProgress={this.state.tapRequestInProgress}
           handleTapStart={this.handleTapStart}

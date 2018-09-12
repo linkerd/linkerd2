@@ -117,12 +117,13 @@ export const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : 
 /*
   Nicely readable names for the stat resources
 */
-export const friendlyTitle = resource => {
-  let singular = _.startCase(resource);
+export const friendlyTitle = singularOrPluralResource => {
+  let resource = singularResource(singularOrPluralResource);
+  let titleCase = _.startCase(resource);
   if (resource === "replicationcontroller") {
-    singular = _.startCase("replication controller");
+    titleCase = _.startCase("replication controller");
   }
-  let titles = { singular: singular };
+  let titles = { singular: titleCase };
   if (resource === "authority") {
     titles.plural = "Authorities";
   } else {
@@ -169,6 +170,11 @@ const shortNameLookup = {
 };
 
 export const toShortResourceName = name => shortNameLookup[name] || name;
+
+export const isResource = name => {
+  let singularResourceName = singularResource(name);
+  return _.has(shortNameLookup, singularResourceName);
+};
 
 /*
   produce octets given an ip address

@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import ErrorBanner from './ErrorBanner.jsx';
-import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
@@ -150,7 +149,6 @@ class Top extends React.Component {
       <div>
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
-        <PageHeader header="Top" />
         <TapQueryForm
           enableAdvancedForm={false}
           handleTapStart={this.handleTapStart}
