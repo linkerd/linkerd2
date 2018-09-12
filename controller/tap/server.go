@@ -112,7 +112,6 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 			}
 		}
 	}
-	return nil
 }
 
 // TODO: validate scheme
