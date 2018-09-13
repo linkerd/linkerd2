@@ -113,13 +113,13 @@ const requestInitSection = d => (
   <React.Fragment>
     <h3>Request Init</h3>
     <Row gutter={8} className="expand-section-header">
-      <Col span={6}>Authority</Col>
+      <Col span={8}>Authority</Col>
       <Col span={10}>Path</Col>
       <Col span={2}>Scheme</Col>
       <Col span={2}>Method</Col>
     </Row>
     <Row gutter={8}>
-      <Col span={6}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
+      <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
       <Col span={10}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
       <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
       <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
