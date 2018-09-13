@@ -16,10 +16,28 @@
   --latency-p99: var(--royalblue);
   --latency-p95: var(--curiousblue);
   --latency-p50: var(--pictonblue);
+
+  --base-unit: 8px;
+  --spacer: calc(var(--base-unit) * 1);
+  --spacer-double: calc(var(--base-unit) * 2);
+  --spacer-triple: calc(var(--base-unit) * 3);
+  --spacer-quadruple: calc(var(--base-unit) * 4);
+  --spacer-quintuple: calc(var(--base-unit) * 5);
+  --border-radius: 2px;
+
   --font-stack: 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-bold: 700;
   --font-weight-extra-bold: 900;
-  --base-width: 8px;
+  --base-width: var(--base-unit);
+
+  --card {
+    background: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+  }
+  --card-padding {
+    padding: var(--spacer-triple);
+  }
 }

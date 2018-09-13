@@ -37,12 +37,17 @@ h2, h3, h4, h5, h6 {
 .main-content {
   max-width: 100%;
   width: 100%;
-  padding: 40px;
   float: left;
 }
 
-.page-header {
-  margin-bottom: 30px;
+.page-content {
+  padding: var(--spacer-quintuple);
+}
+
+.page-header-container {
+  @apply --card;
+  border-radius: 0;
+  padding: var(--spacer-triple) var(--spacer-quintuple);
 }
 
 .page-header .subsection-header {
@@ -66,15 +71,17 @@ h2, h3, h4, h5, h6 {
 }
 
 .page-section {
+  @apply --card;
   margin-bottom: calc(var(--base-width) * 3);
 }
 
 .subsection-header {
+  @apply --card-padding;
   text-transform: uppercase;
   font-size: 14px;
   font-weight: var(--font-weight-extra-bold);
-  margin-bottom: 15px;
 }
+
 .subsection-header.border-container {
   height: 48px; /* override height */
 }

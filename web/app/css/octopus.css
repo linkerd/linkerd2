@@ -2,7 +2,6 @@
 
 .octopus-graph {
   padding: calc(var(--base-width) * 4);
-  background-color: #FAFAFA;
 
   & .octopus-body {
     background-color: white;

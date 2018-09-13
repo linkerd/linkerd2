@@ -269,11 +269,13 @@ export class ResourceDetailBase extends React.Component {
     );
 
     return (
-      <div className="page-content">
-        <div>
+      <div>
+        <div className="page-header-container">
           {this.banner()}
           {resourceBreadcrumb}
           <PageHeader header={`${this.state.resource.type}/${this.state.resource.name}`} />
+        </div>
+        <div className="page-content">
           {this.content()}
         </div>
       </div>

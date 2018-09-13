@@ -40,7 +40,7 @@ let applicationHtml = (
         <Layout>
           <Route component={Sidebar} />
           <Layout>
-            <Layout.Content style={{ margin: '0 0', padding: 0, background: '#fff' }}>
+            <Layout.Content className="main-content-container">
               <div className="main-content">
                 <Switch>
                   <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/overview`} />
