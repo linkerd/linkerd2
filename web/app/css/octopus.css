@@ -1,7 +1,10 @@
 @import 'styles.css';
 
 .octopus-graph {
+  background-color: rgba(12, 37, 72, 0.1);
   padding: calc(var(--base-width) * 4);
+  border: 10px solid var(--green); /* Changes dependent on the state of the central node in octopus */
+  border-radius: var(--border-radius);
 
   & .octopus-body {
     background-color: white;

@@ -8,7 +8,7 @@
   --pictonblue: #56CCF2;
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
-  --neutralgrey: #828282;
+  --neutralgrey: #f8f8f8;
   --graphgrey: #E0E0E0;
   --silver: #BDBDBD;
   --green: #26E99D;
@@ -24,6 +24,12 @@
   --font-weight-extra-bold: 900;
   --base-width: 8px;
 
+  --gray-one: var(--neutralgrey);
+  --gray-two: var(--silver);
+
+  --color-primary: var(--green);
+  --color-secondary: var(--royalblue);
+
   --spacer: calc(var(--base-width) * 1);
   --spacer-double: calc(var(--base-width) * 2);
   --spacer-triple: calc(var(--base-width) * 3);
@@ -37,11 +43,19 @@
   --card {
     background: white;
     box-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.1), 
+      0 1px 0 rgba(0, 0, 0, 0.1),
       0 4px 10px rgba(0, 0, 0, 0.1);
     border-radius: var(--border-radius);
   }
   --card-padding {
     padding: var(--spacer-triple);
   }
+
+  --text-overflow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  --table-row-hover: rgba(47, 128, 237, .05);
 }
