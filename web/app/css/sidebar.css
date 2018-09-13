@@ -51,6 +51,10 @@ ul.ant-menu.ant-menu-sub {
     }
   }
 
+  & .anticon {
+    opacity: 0.5;
+  }
+
   & .sidebar-submenu-item {
     font-size: 14px;
     font-weight: 500;
@@ -78,10 +82,11 @@ ul.ant-menu.ant-menu-sub {
         text-overflow: ellipsis;
         display: inline-block;
         width: 160px;
+        padding-left: var(--spacer-double);
       }
 
      & span.ant-badge-status {
-        padding-left: 26px;
+        padding-left: var(--spacer-double);
         vertical-align: top;
      }
     }
