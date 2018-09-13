@@ -74,16 +74,29 @@ h2, h3, h4, h5, h6 {
   }
 }
 
+.text-left {
+  text-align: left !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
 .page-section {
-  margin-bottom: var(--spacer-triple);
+  margin-bottom: var(--spacer-quintuple);
 }
 
 .subsection-header {
-  @apply --card-padding;
-  text-transform: uppercase;
+  margin-bottom: var(--spacer-double);
+  /* text-transform: uppercase;
   font-size: 14px;
-  margin-bottom: 0;
-  font-weight: var(--font-weight-extra-bold);
+  font-weight: var(--font-weight-extra-bold); */
+  font-size: 1rem;
+  @apply --typography-label;
 }
 
 .subsection-header.border-container {
@@ -213,7 +226,7 @@ a.button.primary:active {
     background: none;
     color: var(--white);
     text-transform: uppercase;
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-extra-bold);
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     word-break: keep-all;
     padding: var(--spacer);
@@ -254,6 +267,10 @@ a.button.primary:active {
       max-height: 16px;
     }
   }
+}
+
+.ant-table-column-sorter-down.on .anticon-caret-down {
+  color: var(--white);
 }
 
 /* ant Progress bar color orverrides */
