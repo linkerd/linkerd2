@@ -1,9 +1,9 @@
 import _ from 'lodash';
-import BaseTable from './BaseTable.jsx';
+import PropTypes from 'prop-types';
 import React from 'react';
-import { srcDstColumn } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { Col, Icon, Row, Table } from 'antd';
+import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
@@ -35,35 +35,32 @@ const genFilterOptionList = options => _.map(options,  (_v, k) => {
   return { text: k, value: k };
 });
 
-let tapColumns = (filterOptions, ResourceLink) => [
-  {
-    title: "ID",
-    dataIndex: "requestInit.http.requestInit.id.stream"
-  },
+let tapColumns = (resourceType, filterOptions, ResourceLink) => [
   {
     title: "Direction",
+    key: "direction",
     dataIndex: "base.proxyDirection",
+    width: "98px",
     filters: [
-      { text: "Inbound", value: "INBOUND" },
-      { text: "Outbound", value: "OUTBOUND" }
+      { text: "FROM", value: "INBOUND" },
+      { text: "TO", value: "OUTBOUND" }
     ],
+    render: directionColumn,
     onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
   },
   {
-    title: "Source",
-    key: "source",
-    dataIndex: "base",
-    filters: genFilterOptionList(filterOptions.source),
-    onFilter: (value, row) => row.base.source.pod === value || row.base.source.str === value,
-    render: d => srcDstColumn(_.get(d, "source"), _.get(d, "sourceMeta.labels", {}), ResourceLink)
-  },
-  {
-    title: "Destination",
-    key: "destination",
-    dataIndex: "base",
-    filters: genFilterOptionList(filterOptions.destination),
-    onFilter: (value, row) => row.base.destination.pod === value || row.base.destination.str === value,
-    render: d => srcDstColumn(_.get(d, "destination"), _.get(d, "destinationMeta.labels", {}), ResourceLink)
+    title: "Name",
+    key: "src-dst",
+    render: d => {
+      let datum = {
+        direction: _.get(d, "base.proxyDirection"),
+        source: _.get(d, "base.source"),
+        destination: _.get(d, "base.destination"),
+        sourceLabels: _.get(d, "base.sourceMeta.labels", {}),
+        destinationLabels: _.get(d, "base.destinationMeta.labels", {})
+      };
+      return srcDstColumn(datum, resourceType, ResourceLink);
+    }
   },
   {
     title: "TLS",
@@ -210,12 +207,27 @@ const expandedRowRender = d => {
   );
 };
 
-class TapEventTable extends BaseTable {
+class TapEventTable extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      ResourceLink: PropTypes.func.isRequired,
+    }).isRequired,
+    filterOptions: PropTypes.shape({}),
+    resource: PropTypes.string.isRequired,
+    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  }
+
+  static defaultProps = {
+    filterOptions: {},
+    tableRows: []
+  }
+
   render() {
+    let resourceType = this.props.resource.split("/")[0];
     return (
-      <BaseTable
+      <Table
         dataSource={this.props.tableRows}
-        columns={tapColumns(this.props.filterOptions, this.props.api.ResourceLink)}
+        columns={tapColumns(resourceType, this.props.filterOptions, this.props.api.ResourceLink)}
         expandedRowRender={expandedRowRender}
         rowKey={r => r.base.id}
         pagination={false}

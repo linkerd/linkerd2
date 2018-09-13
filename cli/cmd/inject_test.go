@@ -85,6 +85,24 @@ func TestInjectYAML(t *testing.T) {
 			reportFileName:    "inject_emojivoto_deployment_udp.report",
 			testInjectOptions: defaultOptions,
 		},
+		{
+			inputFileName:     "inject_emojivoto_already_injected.input.yml",
+			goldenFileName:    "inject_emojivoto_already_injected.input.yml",
+			reportFileName:    "inject_emojivoto_already_injected.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_istio.input.yml",
+			goldenFileName:    "inject_emojivoto_istio.input.yml",
+			reportFileName:    "inject_emojivoto_istio.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_contour.input.yml",
+			goldenFileName:    "inject_contour.input.yml",
+			reportFileName:    "inject_contour.report",
+			testInjectOptions: defaultOptions,
+		},
 	}
 
 	for i, tc := range testCases {

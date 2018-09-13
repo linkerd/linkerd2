@@ -45,7 +45,6 @@ h2, h3, h4, h5, h6 {
 }
 
 .page-header-container {
-  @apply --card;
   border-radius: 0;
   padding: var(--spacer-triple) var(--spacer-quintuple);
 }
@@ -137,7 +136,7 @@ h2, h3, h4, h5, h6 {
   padding: var(--base-width);
   margin-bottom: calc(3 * var(--base-width));
   border-radius: 5px;
-  background: var(--siennared);
+  background: var(--red);
   color: white;
   font-size: 12px;
   font-weight: var(--font-weight-bold);
@@ -226,6 +225,30 @@ a.button.primary:active {
   & tr .numeric {
     text-align: right;
   }
+
+  & .metric-table-sr {
+    margin-right: 6px;
+  }
+
+  & .metric-table-sr-chart.ant-progress-circle {
+    /* override ant progress circle height */
+    & div.ant-progress-inner {
+      max-height: 16px;
+    }
+  }
+}
+
+/* ant Progress bar color orverrides */
+.success-rate-arc {
+  &.status-good .ant-progress-circle-path {
+    stroke: var(--green);
+  }
+  &.status-ok .ant-progress-circle-path {
+    stroke: var(--orange)
+  }
+  &.status-poor .ant-progress-circle-path {
+    stroke: var(--red);
+  }
 }
 
 /* Colored dot for indicating statuses */
@@ -239,13 +262,13 @@ div.status-dot {
     background-color: var(--green);
   }
   &.status-dot-poor {
-    background-color: var(--siennared);
+    background-color: var(--red);
   }
   &.status-dot-neutral {
     background-color: #E0E0E0;
   }
   &.status-dot-ok {
-    background-color: #ffd54f;
+    background-color: var(--orange);
   }
 }
 

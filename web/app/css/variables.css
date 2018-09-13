@@ -9,28 +9,30 @@
   --warmgrey: #f6f6f6;
   --coldgrey: #c9c9c9;
   --neutralgrey: #828282;
+  --graphgrey: #E0E0E0;
   --silver: #BDBDBD;
-  --green: #27AE60;
-  --siennared: #EB5757;
-  --orange: #FF8C00;
+  --green: #26E99D;
+  --red: #FF4D2B;
+  --orange: #ffae4b;
   --latency-p99: var(--royalblue);
   --latency-p95: var(--curiousblue);
   --latency-p50: var(--pictonblue);
-
-  --base-unit: 8px;
-  --spacer: calc(var(--base-unit) * 1);
-  --spacer-double: calc(var(--base-unit) * 2);
-  --spacer-triple: calc(var(--base-unit) * 3);
-  --spacer-quadruple: calc(var(--base-unit) * 4);
-  --spacer-quintuple: calc(var(--base-unit) * 5);
-  --border-radius: 2px;
-
   --font-stack: 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-bold: 700;
   --font-weight-extra-bold: 900;
-  --base-width: var(--base-unit);
+  --base-width: 8px;
+
+  --spacer: calc(var(--base-width) * 1);
+  --spacer-double: calc(var(--base-width) * 2);
+  --spacer-triple: calc(var(--base-width) * 3);
+  --spacer-quadruple: calc(var(--base-width) * 4);
+  --spacer-quintuple: calc(var(--base-width) * 5);
+  --spacer-sextuple: calc(var(--base-width) * 6);
+  --spacer-septuple: calc(var(--base-width) * 7);
+  --spacer-octuple: calc(var(--base-width) * 8);
+  --border-radius: 2px;
 
   --card {
     background: white;

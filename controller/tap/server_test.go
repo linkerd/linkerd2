@@ -210,12 +210,12 @@ status:
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			tapClient, err := client.TapByResource(ctx, &exp.req)
+			tapByResourceClient, err := client.TapByResource(ctx, &exp.req)
 			if err != nil {
 				t.Fatalf("TapByResource failed: %v", err)
 			}
 
-			_, err = tapClient.Recv()
+			_, err = tapByResourceClient.Recv()
 			if err.Error() != exp.msg && (!exp.eofOk || err.Error() != "EOF") {
 				t.Fatalf("Expected error to be [%s], but was [%s]. eofOk: %v", exp.msg, err, exp.eofOk)
 			}

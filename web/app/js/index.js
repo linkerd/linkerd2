@@ -1,5 +1,6 @@
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
+import BreadcrumbHeader from './components/BreadcrumbHeader.jsx';
 import { Layout } from 'antd';
 import Namespace from './components/Namespace.jsx';
 import NamespaceLanding from './components/NamespaceLanding.jsx';
@@ -40,6 +41,7 @@ let applicationHtml = (
         <Layout>
           <Route component={Sidebar} />
           <Layout>
+            <Route component={BreadcrumbHeader}  />
             <Layout.Content className="main-content-container">
               <div className="main-content">
                 <Switch>

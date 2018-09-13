@@ -5,19 +5,27 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { processTapEvent, setMaxRps } from './util/TapUtils.jsx';
+import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
+    maxRowsToStore: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
-    query: PropTypes.shape({}).isRequired,
+    query: PropTypes.shape({
+      resource: PropTypes.string.isRequired
+    }).isRequired,
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func
   }
 
   static defaultProps = {
-    maxRowsToDisplay: 40, // max aggregated top rows to index and display in table
+    // max aggregated top rows to index and display in table
+    maxRowsToDisplay: 40,
+    // max rows to keep in index. there are two indexes we keep:
+    // - un-ended tap results, pre-aggregation into the top counts
+    // - aggregated top rows
+    maxRowsToStore: 50,
     updateNeighbors: _.noop
   }
 
@@ -25,12 +33,11 @@ class TopModule extends React.Component {
     super(props);
     this.tapResultsById = {};
     this.topEventIndex = {};
-    this.debouncedWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
 
     this.state = {
       error: null,
-      topEventIndex: {},
-      maxRowsToStore: 40 // max un-ended tap results to keep in index (pre-aggregation into the top counts)
+      topEventIndex: {}
     };
   }
 
@@ -50,7 +57,7 @@ class TopModule extends React.Component {
   }
 
   componentWillUnmount() {
-    this.debouncedWebsocketRecvHandler.cancel();
+    this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
   }
 
@@ -70,20 +77,22 @@ class TopModule extends React.Component {
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
     this.props.updateNeighbors(e.data);
-    this.debouncedWebsocketRecvHandler();
+    this.throttledWebsocketRecvHandler();
   }
 
   onWebsocketClose = e => {
     if (!e.wasClean) {
       this.setState({
-        error: { error: `Websocket [${e.code}] ${e.reason}` }
+        error: {
+          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+        }
       });
     }
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: e.message }
+      error: { error: `Websocket error: ${e.message}` }
     });
   }
 
@@ -117,6 +126,7 @@ class TopModule extends React.Component {
       success: !d.success ? 0 : 1,
       failure: !d.success ? 1 : 0,
       successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
+      direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
       destination: d.requestInit.destination,
@@ -157,7 +167,7 @@ class TopModule extends React.Component {
       this.incrementTopResult(d, topResults[eventKey]);
     }
 
-    if (_.size(topResults) > this.props.maxRowsToDisplay) {
+    if (_.size(topResults) > this.props.maxRowsToStore) {
       this.deleteOldestIndexedResult(topResults);
     }
 
@@ -187,7 +197,7 @@ class TopModule extends React.Component {
 
     if (_.isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
-      if (_.size(resultIndex) > this.state.maxRowsToStore) {
+      if (_.size(resultIndex) > this.props.maxRowsToStore) {
         this.deleteOldestIndexedResult(resultIndex);
       }
 
@@ -261,12 +271,13 @@ class TopModule extends React.Component {
   }
 
   render() {
-    let tableRows = _.values(this.state.topEventIndex);
+    let tableRows = _.take(_.values(this.state.topEventIndex), this.props.maxRowsToDisplay);
+    let resourceType = this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>
         {this.banner()}
-        <TopEventTable tableRows={tableRows} />
+        <TopEventTable resourceType={resourceType} tableRows={tableRows} />
       </React.Fragment>
     );
   }

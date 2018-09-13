@@ -38,7 +38,7 @@ ul.ant-menu.ant-menu-sub {
     }
 
     & .update {
-      color: var(--siennared);
+      color: var(--red);
     }
 
     & .ant-select-selection {
@@ -89,8 +89,8 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .sidebar-menu-header {
-    height: 80px;
-    padding: calc(var(--base-width)*2) 14px;
+    height: 60px;
+    padding: var(--base-width) 14px;
 
     &.collapsed {
       text-align: center;
@@ -103,6 +103,14 @@ ul.ant-menu.ant-menu-sub {
     font-weight: var(--font-weight-bold);
     line-height: 2;
     min-height: 56px;
+  }
+
+  & .ant-badge-status-success {
+    background-color: var(--green);
+  }
+
+  & .ant-badge-status-error {
+    background-color: var(--red);
   }
 }
 
