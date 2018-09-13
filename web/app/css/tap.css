@@ -23,12 +23,7 @@
   padding-right: 50px;
 
   & .tap-info-section {
-    padding: 24px 0;
-
-    & hr {
-      color: red;
-
-    }
+    padding: 4px 0;
 
     & .expand-section-header {
       font-weight: var(--font-weight-bold);
