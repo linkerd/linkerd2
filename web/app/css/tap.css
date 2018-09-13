@@ -18,3 +18,20 @@
     color: rgba(52, 137, 206, 0.906);
   }
 }
+
+.tap-more-info {
+  padding-right: 50px;
+
+  & .tap-info-section {
+    padding: 24px 0;
+
+    & hr {
+      color: red;
+
+    }
+
+    & .expand-section-header {
+      font-weight: var(--font-weight-bold);
+    }
+  }
+}
