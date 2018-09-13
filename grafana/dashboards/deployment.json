@@ -2097,6 +2097,22 @@
       "repeat": "outbound",
       "title": "deploy/$outbound",
       "type": "row"
+    },
+    {
+      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://linkerd.io\" target=\"_blank\"><img src=\"https://linkerd.io/images/identity/svg/linkerd_primary_color_white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div id=\"version\" style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n  </div>\n</div>\n<script type=\"text/javascript\">\nvar localReqURL =\n  window.location.href.substring(\n    0,\n    window.location.href.indexOf(\n    \"/services/grafana:http/proxy/\"\n    )\n  )+'/services/web:http/proxy/overview';\n\nfetch(localReqURL, {\n  credentials: 'include',\n  headers: {\n    \"Content-Type\": \"text/html; charset=utf-8\",\n  },\n})\n.then(response => response.text())\n.then(text => (new window.DOMParser()).parseFromString(text, \"text/html\"))\n.then(function(html) {\n  var main = html.getElementById('main');\n  var localVersion = main.getAttribute(\"data-release-version\");\n  var uuid = main.getAttribute(\"data-uuid\");\n\n  var versionElem = document.getElementById('version');\n  versionElem.innerHTML += 'Running Linkerd ' + localVersion + '.<br>';\n\n  fetch('https://versioncheck.linkerd.io/version.json?version='+localVersion+'&uuid='+uuid+'&source=grafana', {\n    credentials: 'include',\n    headers: {\n      \"Content-Type\": \"application/json; charset=utf-8\",\n    },\n  })\n  .then(response => response.json())\n  .then(function(json) {\n    if (json.version === localVersion) {\n      versionElem.innerHTML += 'Linkerd is up to date.';\n    } else {\n      versionElem.innerHTML += \"A new version (\"+json.version+\") is available. <a href='https://versioncheck.linkerd.io/update' target='_blank'>Update now</a>.\";\n    }\n  });\n});\n</script>",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 36.2
+      },
+      "height": "1px",
+      "id": 171,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
     }
   ],
   "refresh": "5s",
