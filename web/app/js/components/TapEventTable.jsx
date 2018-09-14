@@ -101,50 +101,58 @@ const formatTapLatency = str => {
 
 const requestInitSection = d => (
   <React.Fragment>
-    <h3>Request Init</h3>
-    <Row gutter={8} className="expand-section-header">
-      <Col span={8}>Authority</Col>
-      <Col span={9}>Path</Col>
-      <Col span={2}>Scheme</Col>
-      <Col span={2}>Method</Col>
-      <Col span={3}>TLS</Col>
-    </Row>
-    <Row gutter={8}>
-      <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
-      <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
-      <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
-      <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
-      <Col span={3}>{_.get(d, "base.tls")}</Col>
-    </Row>
-  </React.Fragment>
-);
-
-const responseInitSection = d => (
-  <React.Fragment>
-    <h3>Response Init</h3>
-    <Row gutter={8} className="expand-section-header">
-      <Col span={4}>HTTP Status</Col>
-      <Col span={4}>Latency</Col>
-    </Row>
-    <Row gutter={8}>
-      <Col span={4}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Col>
-      <Col span={4}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Col>
+    <Row gutter={8} className="tap-info-section">
+      <h3>Request Init</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={8}>Authority</Col>
+        <Col span={9}>Path</Col>
+        <Col span={2}>Scheme</Col>
+        <Col span={2}>Method</Col>
+        <Col span={3}>TLS</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
+        <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
+        <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
+        <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
+        <Col span={3}>{_.get(d, "base.tls")}</Col>
+      </Row>
     </Row>
   </React.Fragment>
 );
 
-const responseEndSection = d => (
+const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <h3>Response End</h3>
-    <Row gutter={8} className="expand-section-header">
-      <Col span={4}>GRPC Status</Col>
-      <Col span={4}>Latency</Col>
-      <Col span={4}>Response Length (B)</Col>
+    <hr />
+    <Row gutter={8} className="tap-info-section">
+      <h3>Response Init</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={4}>HTTP Status</Col>
+        <Col span={4}>Latency</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={4}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Col>
+        <Col span={4}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Col>
+      </Row>
     </Row>
-    <Row gutter={8}>
-      <Col span={4}>{grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
-      <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
-      <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
+  </React.Fragment>
+);
+
+const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
+  <React.Fragment>
+    <hr />
+    <Row gutter={8} className="tap-info-section">
+      <h3>Response End</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={4}>GRPC Status</Col>
+        <Col span={4}>Latency</Col>
+        <Col span={4}>Response Length (B)</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={4}>{grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
+        <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
+        <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
+      </Row>
     </Row>
   </React.Fragment>
 );
@@ -153,17 +161,9 @@ const responseEndSection = d => (
 const expandedRowRender = d => {
   return (
     <div className="tap-more-info">
-      <Row gutter={8} className="tap-info-section">
-        {requestInitSection(d)}
-      </Row>
-      <hr />
-      <Row gutter={8} className="tap-info-section">
-        {responseInitSection(d)}
-      </Row>
-      <hr />
-      <Row gutter={8} className="tap-info-section">
-        {responseEndSection(d)}
-      </Row>
+      {requestInitSection(d)}
+      {responseInitSection(d)}
+      {responseEndSection(d)}
     </div>
   );
 };
