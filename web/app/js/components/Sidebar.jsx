@@ -85,7 +85,7 @@ class Sidebar extends React.Component {
   }
 
   fetchVersion() {
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}`;
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
     fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp =>
