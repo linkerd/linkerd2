@@ -59,7 +59,7 @@ const (
 )
 
 var (
-	maxRetries  = 10
+	maxRetries  = 60
 	retryWindow = 5 * time.Second
 )
 
