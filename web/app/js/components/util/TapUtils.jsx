@@ -157,22 +157,38 @@ const publicAddressToString = ipv4 => {
 */
 const resourceShortLink = (resourceType, labels, ResourceLink) => (
   <ResourceLink
+    key={labels[resourceType]}
     resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
-const resourceSection = (ips, labels, ResourceLink) => {
-  // don't display more than three ips.... it'd be a long list
-  let ipList = _(ips).keys().take(3).value().join(", ") + (_.size(ips) > 3 ? "..." : "");
+const resourceSection = (display, labels, ResourceLink) => {
+  // don't display more than three ips/pods.... it could be a long list
+  let ipList = _(display.ips).keys().take(3).value().join(", ") + (_.size(display.ips) > 3 ? "..." : "");
+  let podList = (
+    <div>
+      {
+        _.map(display.pods, (namespace, pod, i) => {
+          if (i > 3) {
+            return null;
+          } else {
+            return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+          }
+        })
+      }
+      { (_.size(display.pods) > 3 ? "..." : "") }
+    </div>
+  );
   return (
     <React.Fragment>
       {
         _.map(labels, (labelVal, labelName) => {
-          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service") {
+          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service" && labelName!== "pod") {
             return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
           }
         })
       }
+      {podList}
       <div>{ipList}</div>
     </React.Fragment>
   );
@@ -201,10 +217,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   let content = (
     <React.Fragment>
       <h3>Source</h3>
-      {resourceSection(d.sourceIps, d.sourceLabels, ResourceLink)}
+      {resourceSection(d.sourceDisplay, d.sourceLabels, ResourceLink)}
       <br />
       <h3>Destination</h3>
-      {resourceSection(d.destinationIps, d.destinationLabels, ResourceLink)}
+      {resourceSection(d.destinationDisplay, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 

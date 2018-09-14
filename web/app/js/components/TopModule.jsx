@@ -126,10 +126,18 @@ class TopModule extends React.Component {
 
   initialTopResult(d, eventKey) {
     // in the event that we key on resources with multiple ips, store and display them
-    let sourceIps = {};
-    sourceIps[d.base.source.str] = true;
-    let destinationIps = {};
-    destinationIps[d.base.destination.str] = true;
+    let sourceDisplay = {
+      ips: {},
+      pods: {}
+    };
+    sourceDisplay.ips[d.base.source.str] = true;
+    sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    let destinationDisplay = {
+      ips: {},
+      pods: {}
+    };
+    destinationDisplay.ips[d.base.destination.str] = true;
+    destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
 
     return {
       count: 1,
@@ -142,10 +150,10 @@ class TopModule extends React.Component {
       direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
-      sourceIps,
+      sourceDisplay,
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
-      destinationIps,
+      destinationDisplay,
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
@@ -169,8 +177,10 @@ class TopModule extends React.Component {
       result.worst = d.responseEnd.latency;
     }
 
-    result.sourceIps[d.base.source.str] = true;
-    result.destinationIps[d.base.destination.str] = true;
+    result.sourceDisplay.ips[d.base.source.str] = true;
+    result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    result.destinationDisplay.ips[d.base.destination.str] = true;
+    result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     result.lastUpdated = Date.now();
   }
 
