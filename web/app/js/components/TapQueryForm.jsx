@@ -17,6 +17,15 @@ import { defaultMaxRps, httpMethods, tapQueryProps, tapQueryPropType } from './u
 const colSpan = 5;
 const rowGutter = 16;
 
+// you can also tap resources to tap all pods in the resource
+const resourceTypes = [
+  "deployment",
+  "daemonset",
+  "pod",
+  "replicationcontroller",
+  "statefulset"
+];
+
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _.uniq(_.flatten(_.values(resourcesByNs)));
 };
@@ -252,6 +261,7 @@ class TapQueryForm extends React.Component {
     let nsEmpty = _.isNil(selectedNs) || _.isEmpty(selectedNs);
 
     let resourceOptions = _.concat(
+      resourceTypes,
       this.state.autocomplete[resourceKey] || [],
       nsEmpty ? [] : [`namespace/${selectedNs}`]
     );

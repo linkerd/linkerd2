@@ -114,10 +114,23 @@ class TopModule extends React.Component {
   }
 
   topEventKey = event => {
-    return [event.source.str, event.destination.str, event.http.requestInit.path].join("_");
+    let resType = this.props.query.resource.split("/")[0];
+    let sourceKey = _.has(event, ["sourceMeta", "labels", resType]) ?
+      event.sourceMeta.labels[resType] : _.has(event.source, "pod") ? event.source.pod : event.source.str;
+
+    let dstKey =  _.has(event, ["destinationMeta", "labels", resType]) ?
+      event.destinationMeta.labels[resType] : _.has(event.destination, "pod") ? event.destination.pod : event.destination.str;
+
+    return [sourceKey, dstKey, event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
+    // in the event that we key on resources with multiple ips, store and display them
+    let sourceIps = {};
+    sourceIps[d.base.source.str] = true;
+    let destinationIps = {};
+    destinationIps[d.base.destination.str] = true;
+
     return {
       count: 1,
       best: d.responseEnd.latency,
@@ -129,8 +142,10 @@ class TopModule extends React.Component {
       direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
+      sourceIps,
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
+      destinationIps,
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
@@ -154,6 +169,8 @@ class TopModule extends React.Component {
       result.worst = d.responseEnd.latency;
     }
 
+    result.sourceIps[d.base.source.str] = true;
+    result.destinationIps[d.base.destination.str] = true;
     result.lastUpdated = Date.now();
   }
 

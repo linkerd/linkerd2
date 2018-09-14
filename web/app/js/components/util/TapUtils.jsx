@@ -161,7 +161,9 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
-const resourceSection = (ip, labels, ResourceLink) => {
+const resourceSection = (ips, labels, ResourceLink) => {
+  // don't display more than three ips.... it'd be a long list
+  let ipList = _(ips).keys().take(3).value().join(", ") + (_.size(ips) > 3 ? "..." : "");
   return (
     <React.Fragment>
       {
@@ -171,7 +173,7 @@ const resourceSection = (ip, labels, ResourceLink) => {
           }
         })
       }
-      <div>{ip}</div>
+      <div>{ipList}</div>
     </React.Fragment>
   );
 };
@@ -199,10 +201,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   let content = (
     <React.Fragment>
       <h3>Source</h3>
-      {resourceSection(d.source.str, d.sourceLabels, ResourceLink)}
+      {resourceSection(d.sourceIps, d.sourceLabels, ResourceLink)}
       <br />
       <h3>Destination</h3>
-      {resourceSection(d.destination.str, d.destinationLabels, ResourceLink)}
+      {resourceSection(d.destinationIps, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 
