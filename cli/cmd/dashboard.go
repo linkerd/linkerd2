@@ -111,7 +111,7 @@ func newCmdDashboard() *cobra.Command {
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
 	cmd.PersistentFlags().IntVarP(&options.dashboardProxyPort, "port", "p", options.dashboardProxyPort, "The port on which to run the proxy (when set to 0, a random port will be used)")
 	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
-	cmd.PersistentFlags().BoolVar(&options.wait, "wait", true, "Wait for dashboard to become available if it's not available when the command is run")
+	cmd.PersistentFlags().BoolVar(&options.wait, "wait", options.wait, "Wait for dashboard to become available if it's not available when the command is run")
 
 	return cmd
 }
