@@ -16,7 +16,8 @@ class TopModule extends React.Component {
       resource: PropTypes.string.isRequired
     }).isRequired,
     startTap: PropTypes.bool.isRequired,
-    updateNeighbors: PropTypes.func
+    updateNeighbors: PropTypes.func,
+    updateTapClosingState: PropTypes.func.isRequired
   }
 
   static defaultProps = {
@@ -81,7 +82,8 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    if (!e.wasClean) {
+    this.props.updateTapClosingState(false);
+    if (!e.wasClean && e.code !== 1006) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
