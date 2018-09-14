@@ -12,8 +12,10 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Checks int
@@ -100,6 +102,7 @@ type HealthChecker struct {
 	// these fields are set in the process of running checks
 	kubeAPI       *k8s.KubernetesAPI
 	httpClient    *http.Client
+	clientset     *kubernetes.Clientset
 	kubeVersion   *k8sVersion.Info
 	apiClient     pb.ApiClient
 	dataPlanePods []v1.Pod
@@ -181,6 +184,69 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 				return fmt.Errorf("The \"%s\" namespace already exists", hc.ControlPlaneNamespace)
 			}
 			return nil
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Namespaces",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "", "v1", "Namespace")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ClusterRoles",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ClusterRoleBindings",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ServiceAccounts",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Services",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Deployments",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ConfigMaps",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
 		},
 	})
 }
@@ -447,6 +513,43 @@ func (hc *HealthChecker) checkNamespace(namespace string) error {
 	}
 	if !exists {
 		return fmt.Errorf("The \"%s\" namespace does not exist", namespace)
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+	if hc.clientset == nil {
+		var err error
+		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	auth := hc.clientset.AuthorizationV1beta1()
+
+	sar := &authorizationapi.SelfSubjectAccessReview{
+		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationapi.ResourceAttributes{
+				Namespace: namespace,
+				Verb:      "create",
+				Group:     group,
+				Version:   version,
+				Resource:  resource,
+			},
+		},
+	}
+
+	response, err := auth.SelfSubjectAccessReviews().Create(sar)
+	if err != nil {
+		return err
+	}
+
+	if !response.Status.Allowed {
+		if len(response.Status.Reason) > 0 {
+			return fmt.Errorf("Missing perissions to create %s: %v", resource, response.Status.Reason)
+		}
+		return fmt.Errorf("Missing perissions to create %s", resource)
 	}
 	return nil
 }
