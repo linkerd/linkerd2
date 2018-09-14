@@ -1,8 +1,9 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { podOwnerLookup, toShortResourceName } from './Utils.js';
 import { Popover, Tooltip } from 'antd';
-import { shortNameLookup, toShortResourceName } from './Utils.js';
+
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -89,11 +90,16 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
-  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
-  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
 
-  d.source.pod = _.has(d, "sourceMeta.labels.pod") ? "po/" + d.sourceMeta.labels.pod : null;
-  d.destination.pod = _.has(d, "destinationMeta.labels.pod") ? "po/" + d.destinationMeta.labels.pod : null;
+  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
+  d.source.pod = _.get(d, "sourceMeta.labels.pod", null);
+  d.source.owner = extractPodOwner(d.sourceMeta.labels);
+  d.source.namespace = _.get(d, "sourceMeta.labels.namespace", null);
+
+  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
+  d.destination.pod = _.get(d, "destinationMeta.labels.pod", null);
+  d.destination.owner = extractPodOwner(d.destinationMeta.labels);
+  d.destination.namespace = _.get(d, "destinationMeta.labels.namespace", null);
 
   switch (d.proxyDirection) {
     case "INBOUND":
@@ -162,28 +168,38 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
-const resourceSection = (display, labels, ResourceLink) => {
-  // don't display more than three ips/pods.... it could be a long list
-  let ipList = _(display.ips).keys().take(3).value().join(", ") + (_.size(display.ips) > 3 ? "..." : "");
-  let podList = (
-    <div>
-      {
-        _.map(display.pods, (namespace, pod, i) => {
-          if (i > 3) {
-            return null;
-          } else {
-            return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
-          }
-        })
-      }
-      { (_.size(display.pods) > 3 ? "..." : "") }
-    </div>
-  );
+// display consists of a list of ips and pods for aggregated displays (Top)
+const resourceSection = (endpoint, display, labels, ResourceLink) => {
+  let ipList = null;
+  let podList = null;
+
+  if (!display) {
+    ipList = endpoint.str;
+    podList = <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
+  } else {
+    // don't display more than three ips/pods.... it could be a long list
+    ipList = _(display.ips).keys().take(3).value().join(", ") + (_.size(display.ips) > 3 ? "..." : "");
+    podList = (
+      <div>
+        {
+          _.map(display.pods, (namespace, pod, i) => {
+            if (i > 3) {
+              return null;
+            } else {
+              return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+            }
+          })
+        }
+        { (_.size(display.pods) > 3 ? "..." : "") }
+      </div>
+    );
+  }
+
   return (
     <React.Fragment>
       {
         _.map(labels, (labelVal, labelName) => {
-          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service" && labelName!== "pod") {
+          if (_.has(podOwnerLookup, labelName)) {
             return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
           }
         })
@@ -192,6 +208,16 @@ const resourceSection = (display, labels, ResourceLink) => {
       <div>{ipList}</div>
     </React.Fragment>
   );
+};
+
+export const extractPodOwner = labels => {
+  let podOwner = "";
+  _.map(labels, (labelVal, labelName) => {
+    if (_.has(podOwnerLookup, labelName)) {
+      podOwner = labelName + "/" + labelVal;
+    }
+  });
+  return podOwner;
 };
 
 export const directionColumn = d => (
@@ -217,10 +243,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   let content = (
     <React.Fragment>
       <h3>Source</h3>
-      {resourceSection(d.sourceDisplay, d.sourceLabels, ResourceLink)}
+      {resourceSection(d.source, d.sourceDisplay, d.sourceLabels, ResourceLink)}
       <br />
       <h3>Destination</h3>
-      {resourceSection(d.destinationDisplay, d.destinationLabels, ResourceLink)}
+      {resourceSection(d.destination, d.destinationDisplay, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 

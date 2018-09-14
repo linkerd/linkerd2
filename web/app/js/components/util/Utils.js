@@ -170,6 +170,14 @@ export const shortNameLookup = {
   "authority": "au"
 };
 
+export const podOwnerLookup = {
+  "deployment": "deploy",
+  "daemonset": "ds",
+  "replicationcontroller": "rc",
+  "replicaset": "rs",
+  "statefulset": "sts",
+};
+
 export const toShortResourceName = name => shortNameLookup[name] || name;
 
 export const isResource = name => {

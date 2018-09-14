@@ -114,30 +114,26 @@ class TopModule extends React.Component {
   }
 
   topEventKey = event => {
-    let resType = this.props.query.resource.split("/")[0];
-    let sourceKey = _.has(event, ["sourceMeta", "labels", resType]) ?
-      event.sourceMeta.labels[resType] : _.has(event.source, "pod") ? event.source.pod : event.source.str;
-
-    let dstKey =  _.has(event, ["destinationMeta", "labels", resType]) ?
-      event.destinationMeta.labels[resType] : _.has(event.destination, "pod") ? event.destination.pod : event.destination.str;
+    let sourceKey = event.source.owner || event.source.pod || event.source.str;
+    let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
 
     return [sourceKey, dstKey, event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
-    // in the event that we key on resources with multiple ips, store and display them
+    // in the event that we key on resources with multiple pods/ips, store them so we can display
     let sourceDisplay = {
       ips: {},
       pods: {}
     };
     sourceDisplay.ips[d.base.source.str] = true;
-    sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
     let destinationDisplay = {
       ips: {},
       pods: {}
     };
     destinationDisplay.ips[d.base.destination.str] = true;
-    destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
+    destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
 
     return {
       count: 1,
