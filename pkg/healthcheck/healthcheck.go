@@ -547,9 +547,9 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 
 	if !response.Status.Allowed {
 		if len(response.Status.Reason) > 0 {
-			return fmt.Errorf("Missing perissions to create %s: %v", resource, response.Status.Reason)
+			return fmt.Errorf("Missing permissions to create %s: %v", resource, response.Status.Reason)
 		}
-		return fmt.Errorf("Missing perissions to create %s", resource)
+		return fmt.Errorf("Missing permissions to create %s", resource)
 	}
 	return nil
 }
