@@ -89,12 +89,6 @@ const topLevelColumns = (resourceType, filterOptions, ResourceLink) => [
       };
       return srcDstColumn(datum, resourceType, ResourceLink);
     }
-  },
-  {
-    title: "TLS",
-    dataIndex: "base.tls",
-    filters: genFilterOptionList(filterOptions.tls),
-    onFilter: (value, row) => row.tls === value
   }
 ];
 
@@ -114,15 +108,17 @@ const requestInitSection = d => (
     <h3>Request Init</h3>
     <Row gutter={8} className="expand-section-header">
       <Col span={8}>Authority</Col>
-      <Col span={10}>Path</Col>
+      <Col span={9}>Path</Col>
       <Col span={2}>Scheme</Col>
       <Col span={2}>Method</Col>
+      <Col span={3}>TLS</Col>
     </Row>
     <Row gutter={8}>
       <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
-      <Col span={10}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
+      <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
       <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
       <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
+      <Col span={3}>{_.get(d, "base.tls")}</Col>
     </Row>
   </React.Fragment>
 );
