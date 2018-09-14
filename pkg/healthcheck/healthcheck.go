@@ -98,12 +98,13 @@ type HealthChecker struct {
 	*HealthCheckOptions
 
 	// these fields are set in the process of running checks
-	kubeAPI       *k8s.KubernetesAPI
-	httpClient    *http.Client
-	kubeVersion   *k8sVersion.Info
-	apiClient     pb.ApiClient
-	dataPlanePods []v1.Pod
-	latestVersion string
+	kubeAPI          *k8s.KubernetesAPI
+	httpClient       *http.Client
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []v1.Pod
+	apiClient        pb.ApiClient
+	dataPlanePods    []v1.Pod
+	latestVersion    string
 }
 
 func NewHealthChecker(checks []Checks, options *HealthCheckOptions) *HealthChecker {
@@ -201,11 +202,12 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			pods, err := hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+			var err error
+			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
 				return err
 			}
-			return validateControlPlanePods(pods)
+			return validateControlPlanePods(hc.controlPlanePods)
 		},
 	})
 
@@ -298,7 +300,24 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			if hc.VersionOverride != "" {
 				hc.latestVersion = hc.VersionOverride
 			} else {
-				hc.latestVersion, err = version.GetLatestVersion()
+				// The UUID is only known to the web process. At some point we may want
+				// to consider providing it in the Public API.
+				uuid := "unknown"
+				for _, pod := range hc.controlPlanePods {
+					if strings.Split(pod.Name, "-")[0] == "web" {
+						for _, container := range pod.Spec.Containers {
+							if container.Name == "web" {
+								for _, arg := range container.Args {
+									if strings.HasPrefix(arg, "-uuid=") {
+										uuid = arg[len("-uuid="):]
+									}
+								}
+							}
+						}
+					}
+				}
+
+				hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
 			}
 			return
 		},
