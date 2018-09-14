@@ -29,10 +29,6 @@ const grpcStatusCodes = {
 
 const smallMetricColWidth = "120px";
 
-const genFilterOptionList = options => _.map(options,  (_v, k) => {
-  return { text: k, value: k };
-});
-
 const httpStatusCol =   {
   title: "HTTP status",
   key: "http-status",
