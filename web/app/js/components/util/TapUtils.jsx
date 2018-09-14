@@ -236,6 +236,9 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
   if (_.has(d.destinationLabels, resourceType)) {
     toNamespace = d.destinationLabels.namespace,
     toResource = `${resourceType}/${d.destinationLabels[resourceType]}`;
+  } else if (_.has(d.destinationLabels, "pod")) {
+    toNamespace = d.destinationLabels.namespace,
+    toResource = `${resourceType}/${d.destinationLabels.pod}`;
   }
 
   return (

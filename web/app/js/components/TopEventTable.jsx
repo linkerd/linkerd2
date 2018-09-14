@@ -70,7 +70,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Tap",
     key: "tap",
     className: "numeric",
-    width: topMetricColWidth,
+    width: "30px",
     render: d => tapLink(d, resourceType, PrefixedLink)
   }
 ];
