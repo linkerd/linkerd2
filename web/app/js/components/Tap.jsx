@@ -6,17 +6,27 @@ import TapEventTable from './TapEventTable.jsx';
 import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import { httpMethods, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const maxNumFilterOptions = 12;
+
+const urlPropsQueryConfig = {
+  autostart: { type: UrlQueryParamTypes.string }
+};
 
 class Tap extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
+    autostart: PropTypes.string,
     pathPrefix: PropTypes.string.isRequired
+  }
+
+  static defaultProps = {
+    autostart: ""
   }
 
   constructor(props) {
@@ -53,6 +63,9 @@ class Tap extends React.Component {
 
   componentDidMount() {
     this.startServerPolling();
+    if (this.props.autostart === "true") {
+      this.startTapStreaming();
+    }
   }
 
   componentWillUnmount() {
@@ -366,4 +379,4 @@ class Tap extends React.Component {
   }
 }
 
-export default withContext(Tap);
+export default addUrlProps({ urlPropsQueryConfig })(withContext(Tap));
