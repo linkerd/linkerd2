@@ -109,7 +109,7 @@ describe('Version', () => {
     return withPromise(() => {
       expect(component.html()).to.include("A new version (");
       expect(component.html()).to.include(newVer);
-      expect(component.html()).to.include(") is available");
+      expect(component.html()).to.include(") is available.");
     });
   });
 
@@ -136,7 +136,7 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Version check failed");
+      expect(component.html()).to.include("Version check failed: Fake error.");
       expect(component.html()).to.include(errMsg);
     });
   });

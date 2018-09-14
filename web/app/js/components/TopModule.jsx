@@ -10,6 +10,7 @@ import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
+    maxRowsToStore: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
     query: PropTypes.shape({
       resource: PropTypes.string.isRequired
@@ -19,7 +20,12 @@ class TopModule extends React.Component {
   }
 
   static defaultProps = {
-    maxRowsToDisplay: 40, // max aggregated top rows to index and display in table
+    // max aggregated top rows to index and display in table
+    maxRowsToDisplay: 40,
+    // max rows to keep in index. there are two indexes we keep:
+    // - un-ended tap results, pre-aggregation into the top counts
+    // - aggregated top rows
+    maxRowsToStore: 50,
     updateNeighbors: _.noop
   }
 
@@ -31,8 +37,7 @@ class TopModule extends React.Component {
 
     this.state = {
       error: null,
-      topEventIndex: {},
-      maxRowsToStore: 40 // max un-ended tap results to keep in index (pre-aggregation into the top counts)
+      topEventIndex: {}
     };
   }
 
@@ -162,7 +167,7 @@ class TopModule extends React.Component {
       this.incrementTopResult(d, topResults[eventKey]);
     }
 
-    if (_.size(topResults) > this.props.maxRowsToDisplay) {
+    if (_.size(topResults) > this.props.maxRowsToStore) {
       this.deleteOldestIndexedResult(topResults);
     }
 
@@ -192,7 +197,7 @@ class TopModule extends React.Component {
 
     if (_.isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
-      if (_.size(resultIndex) > this.state.maxRowsToStore) {
+      if (_.size(resultIndex) > this.props.maxRowsToStore) {
         this.deleteOldestIndexedResult(resultIndex);
       }
 
@@ -266,7 +271,7 @@ class TopModule extends React.Component {
   }
 
   render() {
-    let tableRows = _.values(this.state.topEventIndex);
+    let tableRows = _.take(_.values(this.state.topEventIndex), this.props.maxRowsToDisplay);
     let resourceType = this.props.query.resource.split("/")[0];
 
     return (

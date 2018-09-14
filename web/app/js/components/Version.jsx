@@ -26,18 +26,18 @@ class Version extends React.Component {
       return (
         <div>
           Version check failed
-          {error ? `: ${error.statusText}` : ''}
+          {error ? `: ${error.statusText}` : ''}.
         </div>
       );
     }
 
     if (isLatest) {
-      return "Linkerd is up to date";
+      return "Linkerd is up to date.";
     }
 
     return (
       <div>
-        A new version ({latestVersion}) is available<br />
+        A new version ({latestVersion}) is available.<br />
         <Link
           to="https://versioncheck.linkerd.io/update"
           className="button primary"
@@ -51,7 +51,7 @@ class Version extends React.Component {
   render() {
     return (
       <div className="version">
-        Running {this.props.productName || "controller"} {this.props.releaseVersion}<br />
+        Running {this.props.productName || "controller"} {this.props.releaseVersion}.<br />
         {this.renderVersionCheck()}
       </div>
     );
