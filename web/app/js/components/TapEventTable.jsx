@@ -29,12 +29,20 @@ const grpcStatusCodes = {
 
 const smallMetricColWidth = "120px";
 
-const httpStatusCol =   {
+const httpStatusCol = {
   title: "HTTP status",
   key: "http-status",
   width: smallMetricColWidth,
   dataIndex: "responseInit.http.responseInit",
   render: d => !d ? <Icon type="loading" /> : d.httpStatus
+};
+
+const responseInitLatencyCol = {
+  title: "Latency",
+  key: "rsp-latency",
+  width: smallMetricColWidth,
+  dataIndex: "responseInit.http.responseInit",
+  render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
 };
 
 const grpcStatusCol = {
@@ -91,7 +99,7 @@ const topLevelColumns = (resourceType, filterOptions, ResourceLink) => [
 const tapColumns = (resourceType, filterOptions, ResourceLink) => {
   return _.concat(
     topLevelColumns(resourceType, filterOptions, ResourceLink),
-    [ methodCol, pathCol, httpStatusCol, grpcStatusCol ]
+    [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
   );
 };
 
