@@ -54,7 +54,7 @@ const (
 	LinkerdVersionChecks
 
 	KubernetesAPICategory     = "kubernetes-api"
-	LinkerdPreInstallCategory = "linkerd-ns"
+	LinkerdPreInstallCategory = "kubernetes-setup"
 	LinkerdDataPlaneCategory  = "linkerd-data-plane"
 	LinkerdAPICategory        = "linkerd-api"
 	LinkerdVersionCategory    = "linkerd-version"
