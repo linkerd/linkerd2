@@ -309,14 +309,13 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 							if container.Name == "web" {
 								for _, arg := range container.Args {
 									if strings.HasPrefix(arg, "-uuid=") {
-										uuid = arg[len("-uuid="):]
+										uuid = strings.TrimPrefix(arg, "-uuid=")
 									}
 								}
 							}
 						}
 					}
 				}
-
 				hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
 			}
 			return
