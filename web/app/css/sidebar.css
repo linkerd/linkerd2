@@ -51,7 +51,8 @@ ul.ant-menu.ant-menu-sub {
     }
   }
 
-  & .anticon {
+  & .anticon,
+  & .fas {
     opacity: 0.5;
   }
 
