@@ -112,7 +112,8 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .version {
-    padding: 0 0 0 16px;
+    padding: 0 var(--spacer-double);
+    margin-top: var(--spacer-triple);
     font-size: 13px;
     font-weight: var(--font-weight-bold);
     line-height: 2;
@@ -136,8 +137,11 @@ ul.ant-menu.ant-menu-sub {
 
 /* override ant .ant-menu-item */
 .ant-menu-vertical .ant-menu-item,
-.ant-menu-vertical > .ant-menu-submenu > .ant-menu-submenu-title {
-  padding: var(--spacer) var(--spacer-double);
+.ant-menu-vertical > .ant-menu-submenu > .ant-menu-submenu-title,
+.ant-menu-inline > .ant-menu-item,
+.sidebar .ant-menu-submenu .ant-menu-submenu-title {
+  padding: var(--spacer) var(--spacer-double) !important;
+  line-height: var(--spacer-quadruple);
   height: auto;
 }
 
@@ -150,6 +154,25 @@ ul.ant-menu.ant-menu-sub {
 .ant-layout .ant-layout-sider .ant-layout-sider-trigger {
   /* override ant color */
   background: var(--sider-black);
+}
+
+/* override ant form select in sidebar */
+.ant-form-inline .ant-form-item {
+  margin-right: 0;
+}
+
+.sidebar .sidebar-menu-item .ant-select-selection {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: none;
+  line-height: var(--spacer-quintuple);
+}
+
+.ant-select-selection--single {
+  height: auto;
+}
+
+.ant-select-selection__rendered {
+  line-height: var(--spacer-quintuple);
 }
 
 /* Hack to hide the scrollbar for firefox browsers */
