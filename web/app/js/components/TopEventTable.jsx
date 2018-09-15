@@ -3,11 +3,11 @@ import React from 'react';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
-import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
+import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 import { formatLatencySec, numericSort } from './util/Utils.js';
 
 const topMetricColWidth = "85px";
-const topColumns = (resourceType, ResourceLink) => [
+const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: " ",
     key: "direction",
@@ -65,12 +65,20 @@ const topColumns = (resourceType, ResourceLink) => [
     width: "128px",
     sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
     render: d => successRateWithMiniChart(d.get())
+  },
+  {
+    title: "Tap",
+    key: "tap",
+    className: "numeric",
+    width: "30px",
+    render: d => tapLink(d, resourceType, PrefixedLink)
   }
 ];
 
 class TopEventTable extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
+      PrefixedLink: PropTypes.func.isRequired,
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
     resourceType: PropTypes.string.isRequired,
@@ -85,7 +93,7 @@ class TopEventTable extends React.Component {
     return (
       <Table
         dataSource={this.props.tableRows}
-        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink)}
+        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink, this.props.api.PrefixedLink)}
         rowKey="key"
         pagination={false}
         className="top-event-table metric-table"

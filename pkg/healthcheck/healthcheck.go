@@ -59,7 +59,7 @@ const (
 )
 
 var (
-	maxRetries  = 10
+	maxRetries  = 60
 	retryWindow = 5 * time.Second
 )
 
@@ -98,11 +98,13 @@ type HealthChecker struct {
 	*HealthCheckOptions
 
 	// these fields are set in the process of running checks
-	kubeAPI       *k8s.KubernetesAPI
-	httpClient    *http.Client
-	kubeVersion   *k8sVersion.Info
-	apiClient     pb.ApiClient
-	latestVersion string
+	kubeAPI          *k8s.KubernetesAPI
+	httpClient       *http.Client
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []v1.Pod
+	apiClient        pb.ApiClient
+	dataPlanePods    []v1.Pod
+	latestVersion    string
 }
 
 func NewHealthChecker(checks []Checks, options *HealthCheckOptions) *HealthChecker {
@@ -200,11 +202,12 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			pods, err := hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+			var err error
+			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
 				return err
 			}
-			return validateControlPlanePods(pods)
+			return validateControlPlanePods(hc.controlPlanePods)
 		},
 	})
 
@@ -252,7 +255,8 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			pods, err := hc.kubeAPI.GetPodsByControllerNamespace(
+			var err error
+			hc.dataPlanePods, err = hc.kubeAPI.GetPodsByControllerNamespace(
 				hc.httpClient,
 				hc.ControlPlaneNamespace,
 				hc.DataPlaneNamespace,
@@ -260,7 +264,29 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 			if err != nil {
 				return err
 			}
-			return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+
+			return validateDataPlanePods(hc.dataPlanePods, hc.DataPlaneNamespace)
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdDataPlaneCategory,
+		description: "data plane proxy metrics are present in Prometheus",
+		retry:       hc.ShouldRetry,
+		fatal:       false,
+		check: func() error {
+			req := &pb.ListPodsRequest{}
+			if hc.DataPlaneNamespace != "" {
+				req.Namespace = hc.DataPlaneNamespace
+			}
+			// ListPods returns all pods, but we can use the `Added` field to verify
+			// which are found in Prometheus
+			resp, err := hc.apiClient.ListPods(context.Background(), req)
+			if err != nil {
+				return err
+			}
+
+			return validateDataPlanePodReporting(hc.dataPlanePods, resp.GetPods())
 		},
 	})
 }
@@ -274,7 +300,23 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			if hc.VersionOverride != "" {
 				hc.latestVersion = hc.VersionOverride
 			} else {
-				hc.latestVersion, err = version.GetLatestVersion()
+				// The UUID is only known to the web process. At some point we may want
+				// to consider providing it in the Public API.
+				uuid := "unknown"
+				for _, pod := range hc.controlPlanePods {
+					if strings.Split(pod.Name, "-")[0] == "web" {
+						for _, container := range pod.Spec.Containers {
+							if container.Name == "web" {
+								for _, arg := range container.Args {
+									if strings.HasPrefix(arg, "-uuid=") {
+										uuid = strings.TrimPrefix(arg, "-uuid=")
+									}
+								}
+							}
+						}
+					}
+				}
+				hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
 			}
 			return
 		},
@@ -306,15 +348,7 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			description: "data plane is up-to-date",
 			fatal:       false,
 			check: func() error {
-				pods, err := hc.kubeAPI.GetPodsByControllerNamespace(
-					hc.httpClient,
-					hc.ControlPlaneNamespace,
-					hc.DataPlaneNamespace,
-				)
-				if err != nil {
-					return err
-				}
-				return hc.kubeAPI.CheckProxyVersion(pods, hc.latestVersion)
+				return hc.kubeAPI.CheckProxyVersion(hc.dataPlanePods, hc.latestVersion)
 			},
 		})
 	}
@@ -495,6 +529,49 @@ func validateDataPlanePods(pods []v1.Pod, targetNamespace string) error {
 			return fmt.Errorf("The \"%s\" container in the \"%s\" pod in the \"%s\" namespace is not ready",
 				k8s.ProxyContainerName, pod.Name, pod.Namespace)
 		}
+	}
+
+	return nil
+}
+
+func validateDataPlanePodReporting(k8sPods []v1.Pod, promPods []*pb.Pod) error {
+	k8sMap := map[string]struct{}{}
+	promMap := map[string]struct{}{}
+
+	for _, p := range k8sPods {
+		k8sMap[p.Namespace+"/"+p.Name] = struct{}{}
+	}
+	for _, p := range promPods {
+		// the `Added` field indicates the pod was found in Prometheus
+		if p.Added {
+			promMap[p.Name] = struct{}{}
+		}
+	}
+
+	onlyInK8s := []string{}
+	for k := range k8sMap {
+		if _, ok := promMap[k]; !ok {
+			onlyInK8s = append(onlyInK8s, k)
+		}
+	}
+
+	onlyInProm := []string{}
+	for k := range promMap {
+		if _, ok := k8sMap[k]; !ok {
+			onlyInProm = append(onlyInProm, k)
+		}
+	}
+
+	errMsg := ""
+	if len(onlyInK8s) > 0 {
+		errMsg = fmt.Sprintf("Data plane metrics not found for %s. ", strings.Join(onlyInK8s, ", "))
+	}
+	if len(onlyInProm) > 0 {
+		errMsg += fmt.Sprintf("Found data plane metrics for %s, but not found in Kubernetes.", strings.Join(onlyInProm, ", "))
+	}
+
+	if errMsg != "" {
+		return fmt.Errorf(errMsg)
 	}
 
 	return nil

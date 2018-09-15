@@ -85,7 +85,7 @@ class Sidebar extends React.Component {
   }
 
   fetchVersion() {
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}`;
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
     fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp =>
@@ -193,14 +193,14 @@ class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/tap">
               <PrefixedLink to="/tap">
-                <Icon type="filter" />
+                <i className="fas fa-microscope" />
                 <span>Tap</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/top">
               <PrefixedLink to="/top">
-                <Icon type="caret-up" />
+                <i className="fas fa-stream" />
                 <span>Top</span>
               </PrefixedLink>
             </Menu.Item>

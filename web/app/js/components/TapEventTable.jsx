@@ -27,15 +27,47 @@ const grpcStatusCodes = {
   16: "Unauthenticated"
 };
 
-const grpcStatusCodeFilters = _.map(grpcStatusCodes, (description, code) => {
-  return { text: `${code}: ${description}`, value: code };
-});
+const smallMetricColWidth = "120px";
 
-const genFilterOptionList = options => _.map(options,  (_v, k) => {
-  return { text: k, value: k };
-});
+const httpStatusCol = {
+  title: "HTTP status",
+  key: "http-status",
+  width: smallMetricColWidth,
+  dataIndex: "responseInit.http.responseInit",
+  render: d => !d ? <Icon type="loading" /> : d.httpStatus
+};
 
-let tapColumns = (resourceType, filterOptions, ResourceLink) => [
+const responseInitLatencyCol = {
+  title: "Latency",
+  key: "rsp-latency",
+  width: smallMetricColWidth,
+  dataIndex: "responseInit.http.responseInit",
+  render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
+};
+
+const grpcStatusCol = {
+  title: "GRPC status",
+  key: "grpc-status",
+  width: smallMetricColWidth,
+  dataIndex: "responseEnd.http.responseEnd",
+  render: d => !d ? <Icon type="loading" /> : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")]
+};
+
+const pathCol = {
+  title: "Path",
+  key: "path",
+  dataIndex: "requestInit.http.requestInit",
+  render: d => !d ? <Icon type="loading" /> : d.path
+};
+
+const methodCol = {
+  title: "Method",
+  key: "method",
+  dataIndex: "requestInit.http.requestInit",
+  render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
+};
+
+const topLevelColumns = (resourceType, filterOptions, ResourceLink) => [
   {
     title: "Direction",
     key: "direction",
@@ -61,149 +93,86 @@ let tapColumns = (resourceType, filterOptions, ResourceLink) => [
       };
       return srcDstColumn(datum, resourceType, ResourceLink);
     }
-  },
-  {
-    title: "TLS",
-    dataIndex: "base.tls",
-    filters: genFilterOptionList(filterOptions.tls),
-    onFilter: (value, row) => row.tls === value
-  },
-  {
-    title: "Request Init",
-    children: [
-      {
-        title: "Authority",
-        key: "authority",
-        dataIndex: "requestInit.http.requestInit",
-        filters: genFilterOptionList(filterOptions.authority),
-        onFilter: (value, row) =>
-          _.get(row, "requestInit.http.requestInit.authority") === value,
-        render: d => !d ? <Icon type="loading" /> : d.authority
-      },
-      {
-        title: "Path",
-        key: "path",
-        dataIndex: "requestInit.http.requestInit",
-        filters: genFilterOptionList(filterOptions.path),
-        onFilter: (value, row) =>
-          _.get(row, "requestInit.http.requestInit.path") === value,
-        render: d => !d ? <Icon type="loading" /> : d.path
-      },
-      {
-        title: "Scheme",
-        key: "scheme",
-        dataIndex: "requestInit.http.requestInit",
-        filters: genFilterOptionList(filterOptions.scheme),
-        onFilter: (value, row) =>
-          _.get(row, "requestInit.http.requestInit.scheme.registered") === value,
-        render: d => !d ? <Icon type="loading" /> : _.get(d, "scheme.registered")
-      },
-      {
-        title: "Method",
-        key: "method",
-        dataIndex: "requestInit.http.requestInit",
-        filters: _.map(filterOptions.httpMethod, d => {
-          return { text: d, value: d};
-        }),
-        onFilter: (value, row) =>
-          _.get(row, "requestInit.http.requestInit.method.registered") === value,
-        render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
-      }
-    ]
-  },
-  {
-    title: "Response Init",
-    children: [
-      {
-        title: "HTTP status",
-        key: "http-status",
-        dataIndex: "responseInit.http.responseInit",
-        filters: genFilterOptionList(filterOptions.httpStatus),
-        onFilter: (value, row) =>
-          _.get(row, "responseInit.http.responseInit.httpStatus") + "" === value,
-        render: d => !d ? <Icon type="loading" /> : d.httpStatus
-      },
-      {
-        title: "Latency",
-        key: "rsp-latency",
-        dataIndex: "responseInit.http.responseInit",
-        render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
-      },
-    ]
-  },
-  {
-    title: "Response End",
-    children: [
-      {
-        title: "GRPC status",
-        key: "grpc-status",
-        dataIndex: "responseEnd.http.responseEnd",
-        filters: grpcStatusCodeFilters,
-        onFilter: (value, row) =>
-          (_.get(row, "responseEnd.http.responseEnd.eos.grpcStatusCode") + "") === value,
-        render: d => !d ? <Icon type="loading" /> : _.get(d, "eos.grpcStatusCode")
-      },
-      {
-        title: "Latency",
-        key: "end-latency",
-        dataIndex: "responseEnd.http.responseEnd",
-        render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceResponseInit)
-      },
-      {
-        title: "Response Length (B)",
-        key: "rsp-length",
-        dataIndex: "responseEnd.http.responseEnd",
-        render: d => !d ? <Icon type="loading" /> : formatWithComma(d.responseBytes)
-      },
-    ]
-
   }
 ];
+
+const tapColumns = (resourceType, filterOptions, ResourceLink) => {
+  return _.concat(
+    topLevelColumns(resourceType, filterOptions, ResourceLink),
+    [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
+  );
+};
 
 const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
-const srcDstMetaColumns = [
-  {
-    title: "",
-    dataIndex: "labelName"
-  },
-  {
-    title: "",
-    dataIndex: "labelVal"
-  }
-];
-const renderMetaLabels = (title, labels) => {
-  let data = _.map(labels, (v, k) => {
-    return {
-      labelName: k,
-      labelVal: v
-    };
-  });
-  return (
-    <React.Fragment>
-      <div>{title}</div>
-      <Table
-        className="meta-table-nested"
-        columns={srcDstMetaColumns}
-        dataSource={data}
-        size="small"
-        rowKey={row => title.replace(" ", "_") + row.labelName + row.labelVal}
-        bordered={false}
-        showHeader={false}
-        pagination={false} />
-    </React.Fragment>
-  );
-};
+const requestInitSection = d => (
+  <React.Fragment>
+    <Row gutter={8} className="tap-info-section">
+      <h3>Request Init</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={8}>Authority</Col>
+        <Col span={9}>Path</Col>
+        <Col span={2}>Scheme</Col>
+        <Col span={2}>Method</Col>
+        <Col span={3}>TLS</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
+        <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
+        <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
+        <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
+        <Col span={3}>{_.get(d, "base.tls")}</Col>
+      </Row>
+    </Row>
+  </React.Fragment>
+);
+
+const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
+  <React.Fragment>
+    <hr />
+    <Row gutter={8} className="tap-info-section">
+      <h3>Response Init</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={4}>HTTP Status</Col>
+        <Col span={4}>Latency</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={4}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Col>
+        <Col span={4}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Col>
+      </Row>
+    </Row>
+  </React.Fragment>
+);
+
+const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
+  <React.Fragment>
+    <hr />
+    <Row gutter={8} className="tap-info-section">
+      <h3>Response End</h3>
+      <Row gutter={8} className="expand-section-header">
+        <Col span={4}>GRPC Status</Col>
+        <Col span={4}>Latency</Col>
+        <Col span={4}>Response Length (B)</Col>
+      </Row>
+      <Row gutter={8}>
+        <Col span={4}>{grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
+        <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
+        <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
+      </Row>
+    </Row>
+  </React.Fragment>
+);
 
 // hide verbose information
 const expandedRowRender = d => {
   return (
-    <Row gutter={8}>
-      <Col span={12}>{ renderMetaLabels("Source Metadata", _.get(d, "base.sourceMeta.labels", {})) }</Col>
-      <Col span={12}>{ renderMetaLabels("Destination Metadata", _.get(d, "base.destinationMeta.labels", {})) }</Col>
-    </Row>
+    <div className="tap-more-info">
+      {requestInitSection(d)}
+      {responseInitSection(d)}
+      {responseEndSection(d)}
+    </div>
   );
 };
 
@@ -228,7 +197,8 @@ class TapEventTable extends React.Component {
       <Table
         dataSource={this.props.tableRows}
         columns={tapColumns(resourceType, this.props.filterOptions, this.props.api.ResourceLink)}
-        expandedRowRender={expandedRowRender}
+        expandedRowRender={expandedRowRender} // hide extra info in expandable row
+        expandRowByClick={true} // click anywhere on row to expand
         rowKey={r => r.base.id}
         pagination={false}
         className="tap-event-table"

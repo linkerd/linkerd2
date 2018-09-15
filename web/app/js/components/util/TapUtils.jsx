@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import TapLink from '../TapLink.jsx';
 import { Popover, Tooltip } from 'antd';
 import { shortNameLookup, toShortResourceName } from './Utils.js';
 
@@ -214,5 +215,39 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
         { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
       </div>
     </Popover>
+  );
+};
+
+export const tapLink = (d, resourceType, PrefixedLink) => {
+  let namespace = d.sourceLabels.namespace;
+  let resource = "";
+
+  if (_.has(d.sourceLabels, resourceType)) {
+    resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
+  } else if (_.has(d.sourceLabels, "pod")) {
+    resource = `pod/${d.sourceLabels.pod}`;
+  } else {
+    return null; // can't tap a resource by IP from the web UI
+  }
+
+  let toNamespace = "";
+  let toResource = "";
+
+  if (_.has(d.destinationLabels, resourceType)) {
+    toNamespace = d.destinationLabels.namespace,
+    toResource = `${resourceType}/${d.destinationLabels[resourceType]}`;
+  } else if (_.has(d.destinationLabels, "pod")) {
+    toNamespace = d.destinationLabels.namespace,
+    toResource = `${resourceType}/${d.destinationLabels.pod}`;
+  }
+
+  return (
+    <TapLink
+      namespace={namespace}
+      resource={resource}
+      toNamespace={toNamespace}
+      toResource={toResource}
+      path={d.path}
+      PrefixedLink={PrefixedLink} />
   );
 };

@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -391,6 +392,84 @@ func TestValidateDataPlanePods(t *testing.T) {
 		err := validateDataPlanePods(pods, "emojivoto")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+}
+
+func TestValidateDataPlanePodReporting(t *testing.T) {
+	t.Run("Returns success if no pods present", func(t *testing.T) {
+		err := validateDataPlanePodReporting([]v1.Pod{}, []*pb.Pod{})
+		if err != nil {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns success if pods match", func(t *testing.T) {
+		k8sPods := []v1.Pod{
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test1", Namespace: "ns1"}},
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test2", Namespace: "ns2"}},
+		}
+		promPods := []*pb.Pod{
+			&pb.Pod{Name: "ns1/test1", Added: true},
+			&pb.Pod{Name: "ns2/test2", Added: true},
+		}
+
+		err := validateDataPlanePodReporting(k8sPods, promPods)
+		if err != nil {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if pods found in k8s but not in Prometheus", func(t *testing.T) {
+		k8sPods := []v1.Pod{
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test1", Namespace: "ns1"}},
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test2", Namespace: "ns2"}},
+		}
+		promPods := []*pb.Pod{
+			&pb.Pod{Name: "ns1/test1", Added: true},
+		}
+
+		err := validateDataPlanePodReporting(k8sPods, promPods)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "Data plane metrics not found for ns2/test2. " {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if pods found in Prometheus but not in k8s", func(t *testing.T) {
+		k8sPods := []v1.Pod{
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test1", Namespace: "ns1"}},
+		}
+		promPods := []*pb.Pod{
+			&pb.Pod{Name: "ns1/test1", Added: true},
+			&pb.Pod{Name: "ns2/test2", Added: true},
+		}
+
+		err := validateDataPlanePodReporting(k8sPods, promPods)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "Found data plane metrics for ns2/test2, but not found in Kubernetes." {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Returns an error if pods found in k8s are completely different from those found in Prometheus", func(t *testing.T) {
+		k8sPods := []v1.Pod{
+			v1.Pod{ObjectMeta: meta.ObjectMeta{Name: "test1", Namespace: "ns1"}},
+		}
+		promPods := []*pb.Pod{
+			&pb.Pod{Name: "ns2/test2", Added: true},
+		}
+
+		err := validateDataPlanePodReporting(k8sPods, promPods)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != "Data plane metrics not found for ns1/test1. Found data plane metrics for ns2/test2, but not found in Kubernetes." {
+			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
 }

@@ -18,7 +18,7 @@ var Version = undefinedVersion
 
 const (
 	undefinedVersion = "undefined"
-	versionCheckURL  = "https://versioncheck.linkerd.io/version.json"
+	versionCheckURL  = "https://versioncheck.linkerd.io/version.json?version=%s&uuid=%s&source=%s"
 )
 
 func init() {
@@ -61,8 +61,9 @@ func CheckServerVersion(apiClient pb.ApiClient, latestVersion string) error {
 	return nil
 }
 
-func GetLatestVersion() (string, error) {
-	req, err := http.NewRequest("GET", versionCheckURL, nil)
+func GetLatestVersion(uuid string, source string) (string, error) {
+	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
