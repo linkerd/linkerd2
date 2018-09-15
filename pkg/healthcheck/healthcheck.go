@@ -64,12 +64,12 @@ var (
 )
 
 type checker struct {
-	category    string
-	description string
-	fatal       bool
-	retry       bool
-	check       func() error
-	checkRPC    func() (*healthcheckPb.SelfCheckResponse, error)
+	category      string
+	description   string
+	fatal         bool
+	retryDeadline time.Time
+	check         func() error
+	checkRPC      func() (*healthcheckPb.SelfCheckResponse, error)
 }
 
 type CheckResult struct {
@@ -87,7 +87,7 @@ type HealthCheckOptions struct {
 	KubeConfig                     string
 	APIAddr                        string
 	VersionOverride                string
-	ShouldRetry                    bool
+	RetryDeadline                  time.Time
 	ShouldCheckKubeVersion         bool
 	ShouldCheckControlPlaneVersion bool
 	ShouldCheckDataPlaneVersion    bool
@@ -196,10 +196,10 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
-		description: "control plane pods are ready",
-		retry:       hc.ShouldRetry,
-		fatal:       true,
+		category:      LinkerdAPICategory,
+		description:   "control plane pods are ready",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
 		check: func() error {
 			pods, err := hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
@@ -248,10 +248,10 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 	}
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdDataPlaneCategory,
-		description: "data plane proxies are ready",
-		retry:       hc.ShouldRetry,
-		fatal:       true,
+		category:      LinkerdDataPlaneCategory,
+		description:   "data plane proxies are ready",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
 		check: func() error {
 			var err error
 			hc.dataPlanePods, err = hc.kubeAPI.GetPodsByControllerNamespace(
@@ -268,10 +268,10 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdDataPlaneCategory,
-		description: "data plane proxy metrics are present in Prometheus",
-		retry:       hc.ShouldRetry,
-		fatal:       false,
+		category:      LinkerdDataPlaneCategory,
+		description:   "data plane proxy metrics are present in Prometheus",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         false,
 		check: func() error {
 			req := &pb.ListPodsRequest{}
 			if hc.DataPlaneNamespace != "" {
@@ -378,11 +378,6 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 }
 
 func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
-	var retries int
-	if c.retry {
-		retries = maxRetries
-	}
-
 	for {
 		err := c.check()
 		checkResult := &CheckResult{
@@ -391,8 +386,7 @@ func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
 			Err:         err,
 		}
 
-		if err != nil && retries > 0 {
-			retries--
+		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			observer(checkResult)
 			time.Sleep(retryWindow)

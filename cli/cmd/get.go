@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -55,7 +56,7 @@ Only pod resources (aka pods, po) are supported.`,
 				return fmt.Errorf("invalid resource type %s, valid types: %s", friendlyName, k8s.Pod)
 			}
 
-			podNames, err := getPods(validatedPublicAPIClient(false), options)
+			podNames, err := getPods(validatedPublicAPIClient(time.Time{}), options)
 			if err != nil {
 				return err
 			}
