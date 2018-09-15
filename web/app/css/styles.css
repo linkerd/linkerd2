@@ -42,7 +42,7 @@ h2, h3, h4, h5, h6 {
 
 .page-content {
   padding: var(--spacer-quintuple);
-  margin-top: var(--spacer-octuple);
+  margin-top: calc( var(--spacer) * 9 );
 }
 
 .page-header-container {

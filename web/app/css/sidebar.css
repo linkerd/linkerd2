@@ -17,10 +17,11 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .ant-menu-submenu {
-    & .ant-menu-submenu-title, & .anticon {
+    & .ant-menu-submenu-title {
       /* override ant transition animation */
       transition: none;
       font-size: 16px;
+      margin: 0;
     }
   }
 
@@ -64,13 +65,19 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .ant-menu-item {
+    margin: 0 !important;
+
+    a {
+      padding: var(--spacer-double) 0;
+    }
+
     & div {
       & a {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: inline-block;
-          width: 160px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+        width: 160px;
       }
 
      & span.ant-badge-status {
@@ -80,7 +87,8 @@ ul.ant-menu.ant-menu-sub {
     }
   }
 
-  & .ant-menu-item:hover {
+  & .ant-menu-item:hover,
+  & .ant-menu-submenu-title:hover {
     background-color: #007EFF;
   }
 
@@ -93,8 +101,10 @@ ul.ant-menu.ant-menu-sub {
   }
 
   & .sidebar-menu-header {
-    height: 60px;
-    padding: var(--base-width) 14px;
+    height: calc( var(--spacer) * 9 );
+    width: 160px;
+    padding-left: var(--spacer-double);
+    padding-top: calc( var(--spacer) * 2.5 );
 
     &.collapsed {
       text-align: center;
@@ -116,6 +126,19 @@ ul.ant-menu.ant-menu-sub {
   & .ant-badge-status-error {
     background-color: var(--red);
   }
+}
+
+/* override ant menu-item-divider */
+.ant-menu > .ant-menu-item-divider {
+  background-color: rgba(255, 255, 255, 0.2);
+  margin: var(--spacer) 0;
+}
+
+/* override ant .ant-menu-item */
+.ant-menu-vertical .ant-menu-item,
+.ant-menu-vertical > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding: var(--spacer) var(--spacer-double);
+  height: auto;
 }
 
 .ant-layout-sider {

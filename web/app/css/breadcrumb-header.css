@@ -2,7 +2,8 @@
 
 .ant-layout-header {
   @apply --card;
-  height: var(--spacer-octuple);
+  border-radius: 0;
+  height: calc( var(--spacer) * 9 );
   z-index: 100;
   position: fixed;
   width: 100%;
