@@ -29,6 +29,7 @@
 
   --color-primary: var(--green);
   --color-secondary: var(--royalblue);
+  --color-background: #F0F2F5;
 
   --spacer: calc(var(--base-width) * 1);
   --spacer-double: calc(var(--base-width) * 2);

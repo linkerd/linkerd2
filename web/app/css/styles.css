@@ -273,6 +273,25 @@ a.button.primary:active {
   color: var(--white);
 }
 
+/* override ant-collapse */
+.ant-collapse {
+  border: none;
+  background-color: var(--color-secondary);
+  font-weight: var(--font-weight-extra-bold);
+}
+
+.ant-collapse-content {
+  background: var(--color-background);
+}
+
+.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  color: var(--white);
+}
+
+.ant-collapse > .ant-collapse-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 /* ant Progress bar color orverrides */
 .success-rate-arc {
   &.status-good .ant-progress-circle-path {
@@ -314,4 +333,8 @@ div.status-dot {
 div.ant-layout-has-sider {
   height: 100vh;
   overflow: hidden;
+}
+
+.ant-layout {
+  background: var(--color-background);
 }
