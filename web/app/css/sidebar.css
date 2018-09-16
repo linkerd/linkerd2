@@ -61,6 +61,7 @@ ul.ant-menu.ant-menu-sub {
     font-weight: 500;
 
     & a {
+      vertical-align: top;
       color: var(--white);
     }
   }
@@ -95,11 +96,11 @@ ul.ant-menu.ant-menu-sub {
 
   & .ant-menu-item:hover,
   & .ant-menu-submenu-title:hover {
-    background-color: #007EFF;
+    background-color: var(--color-secondary);
   }
 
   & .ant-menu-item-active, & .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
-    background: #007EFF;
+    background: var(--color-secondary);
 
     & a {
       text-decoration: none;
@@ -135,6 +136,11 @@ ul.ant-menu.ant-menu-sub {
   }
 }
 
+.ant-menu-sub .ant-menu-item:hover,
+.ant-menu-sub .ant-menu-item-active {
+  background-color: var(--color-secondary)
+}
+
 /* override ant menu-item-divider */
 .ant-menu > .ant-menu-item-divider {
   background-color: rgba(255, 255, 255, 0.2);
@@ -145,7 +151,8 @@ ul.ant-menu.ant-menu-sub {
 .ant-menu-vertical .ant-menu-item,
 .ant-menu-vertical > .ant-menu-submenu > .ant-menu-submenu-title,
 .ant-menu-inline > .ant-menu-item,
-.sidebar .ant-menu-submenu .ant-menu-submenu-title {
+.sidebar .ant-menu-submenu .ant-menu-submenu-title,
+.ant-menu-sub.ant-menu-inline > .ant-menu-item {
   padding: var(--spacer) var(--spacer-double) !important;
   line-height: var(--spacer-quadruple);
   height: auto;
