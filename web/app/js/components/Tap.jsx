@@ -370,10 +370,14 @@ class Tap extends React.Component {
 
         <TapQueryCliCmd cmdName="tap" query={this.state.query} />
 
-        <TapEventTable
-          resource={this.state.query.resource}
-          tableRows={tableRows}
-          filterOptions={this.state.tapResultFilterOptions} />
+        <div className="page-section">
+          <div className="card">
+            <TapEventTable
+              resource={this.state.query.resource}
+              tableRows={tableRows}
+              filterOptions={this.state.tapResultFilterOptions} />
+          </div>
+        </div>
       </div>
     );
   }

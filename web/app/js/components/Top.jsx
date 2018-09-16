@@ -160,10 +160,14 @@ class Top extends React.Component {
           query={this.state.query} />
 
         <TapQueryCliCmd cmdName="top" query={this.state.query} />
-        <TopModule
-          pathPrefix={this.props.pathPrefix}
-          query={this.state.query}
-          startTap={this.state.tapRequestInProgress} />
+        <div className="page-section">
+          <div className="card">
+            <TopModule
+              pathPrefix={this.props.pathPrefix}
+              query={this.state.query}
+              startTap={this.state.tapRequestInProgress} />
+          </div>
+        </div>
       </div>
     );
   }
