@@ -355,7 +355,7 @@ class Tap extends React.Component {
       .values().sortBy('lastUpdated').reverse().value();
 
     return (
-      <div>
+      <div className="page-content">
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
