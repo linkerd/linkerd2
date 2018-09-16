@@ -146,7 +146,7 @@ class Top extends React.Component {
 
   render() {
     return (
-      <div>
+      <div className="page-content">
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
         <TapQueryForm
