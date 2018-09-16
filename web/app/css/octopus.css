@@ -34,11 +34,9 @@
 
   & .octopus-body {
     @apply --card;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: var(--border-radius);
     margin-bottom: calc(var(--base-width) * 3);
-  }
-
-  & .octopus-body.main {
-    @apply --card-emphasized;
   }
 
   & .octopus-body:last-child {
