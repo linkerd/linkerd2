@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"fmt"
+
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	net "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -24,6 +26,10 @@ type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
 type updateAddress struct {
 	address *net.TcpAddress
 	pod     *coreV1.Pod
+}
+
+func (ua updateAddress) String() string {
+	return fmt.Sprintf("{address:%v, pod:%s.%s}", ua.address, ua.pod.Namespace, ua.pod.Name)
 }
 
 func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress, []*updateAddress) {
