@@ -44,10 +44,6 @@ ul.ant-menu.ant-menu-sub {
     & .ant-select-selection {
       width: 220px;
     }
-
-    & .fas {
-      margin-right: 10px;
-    }
   }
 
   & .sidebar-submenu-item {
