@@ -272,11 +272,13 @@ class ServiceMesh extends React.Component {
           <Metric title="Components" value={this.componentCount()} className="metric-large" />
         </div>
 
-        <StatusTable
-          data={this.state.components}
-          statusColumnTitle="Pod Status"
-          shouldLink={false}
-          api={this.api} />
+        <div className="card">
+          <StatusTable
+            data={this.state.components}
+            statusColumnTitle="Pod Status"
+            shouldLink={false}
+            api={this.api} />
+        </div>
       </div>
     );
   }
@@ -288,7 +290,7 @@ class ServiceMesh extends React.Component {
           <div className="subsection-header">Service mesh details</div>
         </div>
 
-        <div className="service-mesh-table">
+        <div className="service-mesh-table card">
           <Table
             className="metric-table"
             dataSource={this.getServiceMeshDetails()}
@@ -336,7 +338,7 @@ class ServiceMesh extends React.Component {
         <Row gutter={16}>
           <Col span={16}>
             <Table
-              className="metric-table service-mesh-table mesh-completion-table"
+              className="metric-table service-mesh-table mesh-completion-table card"
               dataSource={this.state.nsStatuses}
               columns={namespacesColumns(this.api.PrefixedLink)}
               rowKey="namespace"

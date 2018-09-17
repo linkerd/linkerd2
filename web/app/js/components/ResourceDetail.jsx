@@ -198,38 +198,46 @@ export class ResourceDetailBase extends React.Component {
         {
           this.state.resourceIsMeshed ? null :
           <div className="page-section">
-            <AddResources
-              resourceName={this.state.resourceName}
-              resourceType={this.state.resourceType} />
+            <div className="card">
+              <AddResources
+                resourceName={this.state.resourceName}
+                resourceType={this.state.resourceType} />
+            </div>
           </div>
         }
 
         <div className="page-section">
-          <Octopus
-            resource={this.state.resourceMetrics[0]}
-            neighbors={this.state.neighborMetrics}
-            unmeshedSources={_.values(this.state.unmeshedSources)}
-            api={this.api} />
+          <div className="card">
+            <Octopus
+              resource={this.state.resourceMetrics[0]}
+              neighbors={this.state.neighborMetrics}
+              unmeshedSources={_.values(this.state.unmeshedSources)}
+              api={this.api} />
+          </div>
         </div>
 
         {
           !this.state.resourceIsMeshed ? null :
           <div className="page-section">
-            <TopModule
-              pathPrefix={this.props.pathPrefix}
-              query={topQuery}
-              startTap={true}
-              updateNeighbors={this.updateNeighborsFromTapData}
-              maxRowsToDisplay={10} />
+            <div className="card">
+              <TopModule
+                pathPrefix={this.props.pathPrefix}
+                query={topQuery}
+                startTap={true}
+                updateNeighbors={this.updateNeighborsFromTapData}
+                maxRowsToDisplay={10} />
+            </div>
           </div>
         }
 
         { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
           <div className="page-section">
             <h2 className="subsection-header">Inbound</h2>
-            <MetricsTable
-              resource={this.state.resource.type}
-              metrics={this.state.neighborMetrics.upstream} />
+            <div className="card">
+              <MetricsTable
+                resource={this.state.resource.type}
+                metrics={this.state.neighborMetrics.upstream} />
+            </div>
           </div>
           )
         }
@@ -237,9 +245,11 @@ export class ResourceDetailBase extends React.Component {
         { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
           <div className="page-section">
             <h2 className="subsection-header">Outbound</h2>
-            <MetricsTable
-              resource={this.state.resource.type}
-              metrics={this.state.neighborMetrics.downstream} />
+            <div className="card">
+              <MetricsTable
+                resource={this.state.resource.type}
+                metrics={this.state.neighborMetrics.downstream} />
+            </div>
           </div>
           )
         }
@@ -248,9 +258,11 @@ export class ResourceDetailBase extends React.Component {
           this.state.resource.type === "pod" ? null : (
             <div className="page-section">
               <h2 className="subsection-header">Pods</h2>
-              <MetricsTable
-                resource="pod"
-                metrics={this.state.podMetrics} />
+              <div className="card">
+                <MetricsTable
+                  resource="pod"
+                  metrics={this.state.podMetrics} />
+              </div>
             </div>
           )
         }

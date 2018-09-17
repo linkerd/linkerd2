@@ -121,10 +121,12 @@ class NamespaceLanding extends React.Component {
     return (
       <div className="page-section">
         <h3>{friendlyTitle(resource).plural}</h3>
-        <MetricsTable
-          resource={resource}
-          metrics={metrics}
-          showNamespaceColumn={false} />
+        <div className="card">
+          <MetricsTable
+            resource={resource}
+            metrics={metrics}
+            showNamespaceColumn={false} />
+        </div>
       </div>
     );
   }

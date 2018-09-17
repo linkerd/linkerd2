@@ -1,31 +1,6 @@
 @import url('https://use.fontawesome.com/releases/v5.3.1/css/all.css');
 
-:root {
-  --white: #fff;
-  --header-black: #1e2322;
-  --sider-black: #343838;
-  --royalblue: #2F80ED;
-  --darkblue: #071E3C;
-  --curiousblue: #2D9CDB;
-  --pictonblue: #56CCF2;
-  --warmgrey: #f6f6f6;
-  --coldgrey: #c9c9c9;
-  --neutralgrey: #828282;
-  --graphgrey: #E0E0E0;
-  --silver: #BDBDBD;
-  --green: #26E99D;
-  --red: #FF4D2B;
-  --orange: #ffae4b;
-  --latency-p99: var(--royalblue);
-  --latency-p95: var(--curiousblue);
-  --latency-p50: var(--pictonblue);
-  --font-stack: 'Lato', helvetica, arial, sans-serif;
-  --font-weight-light: 300;
-  --font-weight-regular: 400;
-  --font-weight-bold: 700;
-  --font-weight-extra-bold: 900;
-  --base-width: 8px;
-}
+@import "variables";
 
 .hide {
   display: none;
@@ -62,16 +37,17 @@ h2, h3, h4, h5, h6 {
 .main-content {
   max-width: 100%;
   width: 100%;
-  padding: 40px;
   float: left;
 }
 
-.page-header {
-  margin-bottom: 30px;
+.page-content {
+  padding: var(--spacer-quintuple);
+  margin-top: calc( var(--spacer) * 9 );
 }
 
-.page-header .subsection-header {
-  margin-bottom: 0px;
+.page-header-container {
+  border-radius: 0;
+  padding: var(--spacer-triple) var(--spacer-quintuple);
 }
 
 .time-window-btns {
@@ -90,16 +66,39 @@ h2, h3, h4, h5, h6 {
   }
 }
 
+.card {
+  @apply --card;
+
+  &--padding {
+    @apply --card-padding;
+  }
+}
+
+.text-left {
+  text-align: left !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
 .page-section {
-  margin-bottom: calc(var(--base-width) * 3);
+  margin-bottom: var(--spacer-quintuple);
 }
 
 .subsection-header {
-  text-transform: uppercase;
+  margin-bottom: var(--spacer-double);
+  /* text-transform: uppercase;
   font-size: 14px;
-  font-weight: var(--font-weight-extra-bold);
-  margin-bottom: 15px;
+  font-weight: var(--font-weight-extra-bold); */
+  font-size: 1rem;
+  @apply --typography-label;
 }
+
 .subsection-header.border-container {
   height: 48px; /* override height */
 }
@@ -209,36 +208,49 @@ a.button.primary:active {
   font-family: var(--font-stack);
 }
 
+.ant-table-thead {
+  background-color: var(--color-secondary);
+}
+
+.ant-table-middle > .ant-table-content > .ant-table-body > table > .ant-table-tbody > tr > td,
+.ant-table-middle > .ant-table-content > .ant-table-body > table > .ant-table-thead > tr > th {
+  padding: calc( var(--spacer) * 1.5);
+}
+
 .metric-table {
   & .ant-table-content {
     font-size: 12px;
   }
 
   & thead > tr > th {
-    background: var(--white);
+    background: none;
+    color: var(--white);
     text-transform: uppercase;
-    font-weight: var(--font-weight-bold);
-    border-bottom: 1px solid;
-    border-color: var(--silver);
+    font-weight: var(--font-weight-extra-bold);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     word-break: keep-all;
+    padding: var(--spacer);
 
     &.ant-table-column-sort {
-      background: none;
+      background-color: rgba(0, 0, 0, 0.1);
     }
   }
 
   & .ant-table table {
     font-weight: bold;
     font-size: .8rem;
+    display: block;
   }
 
   & tr > th, & tr > td {
-    padding-left: 0;
-    padding-right: 0;
+    @apply --text-overflow;
+    max-width: var(--spacer-octuple);
+    width: 10%;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   }
 
   & .ant-table-tbody > tr:hover > td {
-    background: rgba(47, 128, 237, .1);
+    background: var(--table-row-hover);
   }
 
   & tr .numeric {
@@ -255,6 +267,29 @@ a.button.primary:active {
       max-height: 16px;
     }
   }
+}
+
+.ant-table-column-sorter-down.on .anticon-caret-down {
+  color: var(--white);
+}
+
+/* override ant-collapse */
+.ant-collapse {
+  border: none;
+  background-color: var(--color-secondary);
+  font-weight: var(--font-weight-extra-bold);
+}
+
+.ant-collapse-content {
+  background: var(--color-background);
+}
+
+.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  color: var(--white);
+}
+
+.ant-collapse > .ant-collapse-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* ant Progress bar color orverrides */
@@ -298,4 +333,8 @@ div.status-dot {
 div.ant-layout-has-sider {
   height: 100vh;
   overflow: hidden;
+}
+
+.ant-layout {
+  background: var(--color-background);
 }

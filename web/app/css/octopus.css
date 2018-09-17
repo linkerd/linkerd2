@@ -1,24 +1,56 @@
 @import 'styles.css';
 
 .octopus-graph {
-  padding: calc(var(--base-width) * 4);
-  background-color: #FAFAFA;
+  background-color: rgba(12, 37, 72, 0.1);
+  padding: var(--spacer-quadruple) 0;
+  border: var(--spacer) solid;
+  border-color: rgba(0, 0, 0, 0.15); /* Default */
+  border-color: var(--red); /* bad */
+  border-color: var(--orange); /* not good */
+  border-color: var(--green); /* good */
+  border-radius: var(--border-radius);
+  position: relative;
+
+  &:before,
+  &:after {
+    content: '';
+    display: block;
+    width: 6%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    z-index: 10;
+  }
+
+  &:before {
+    left: 0;
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0));
+  }
+
+  &:after {
+    right: 0;
+    background-image: linear-gradient(-90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0));
+  }
 
   & .octopus-body {
-    background-color: white;
+    @apply --card;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: var(--border-radius);
     margin-bottom: calc(var(--base-width) * 3);
-    border: 1px solid #F2F2F2;
+  }
+
+  & .octopus-body:last-child {
+    margin-bottom: 0;
   }
 
   & .octopus-col {
     text-align: center;
-  }
-  & .resource-col {
-    padding: 32px;
+    padding: 0;
   }
 
   & .octopus-title {
-    padding: 8px 0;
+    padding-top: var(--spacer-quintuple);
+    margin-bottom: var(--spacer-triple);
 
     &.main {
       font-size: 24px;
@@ -31,15 +63,15 @@
   }
 
   & .octopus-sr-gauge {
-    padding-top: calc(var(--base-width) * 2);
-
     & .ant-progress-text {
       color: black;
     }
   }
 
   & .octopus-metric {
-    line-height: 32px;
+    padding: var(--spacer-double);
+    background-color: var(--gray-one);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
 
     &.status-good {
       color: var(--green);
@@ -54,4 +86,13 @@
       color: var(--orange);
     }
   }
+}
+
+.octopus-metric-title {
+  @apply --typography-label;
+  text-align: left;
+}
+
+.octopus-metric-value {
+  text-align: right;
 }

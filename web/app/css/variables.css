@@ -1,0 +1,70 @@
+:root {
+  --white: #fff;
+  --header-black: #1e2322;
+  --sider-black: #343838;
+  --royalblue: #2F80ED;
+  --darkblue: #071E3C;
+  --curiousblue: #2D9CDB;
+  --pictonblue: #56CCF2;
+  --warmgrey: #f6f6f6;
+  --coldgrey: #c9c9c9;
+  --neutralgrey: #f8f8f8;
+  --graphgrey: #E0E0E0;
+  --silver: #BDBDBD;
+  --green: #26E99D;
+  --red: #FF4D2B;
+  --orange: #ffae4b;
+  --latency-p99: var(--royalblue);
+  --latency-p95: var(--curiousblue);
+  --latency-p50: var(--pictonblue);
+  --font-stack: 'Lato', helvetica, arial, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 900;
+  --base-width: 8px;
+
+  --gray-one: var(--neutralgrey);
+  --gray-two: var(--silver);
+
+  --color-primary: var(--green);
+  --color-secondary: var(--royalblue);
+  --color-background: #F0F2F5;
+
+  --spacer: calc(var(--base-width) * 1);
+  --spacer-double: calc(var(--base-width) * 2);
+  --spacer-triple: calc(var(--base-width) * 3);
+  --spacer-quadruple: calc(var(--base-width) * 4);
+  --spacer-quintuple: calc(var(--base-width) * 5);
+  --spacer-sextuple: calc(var(--base-width) * 6);
+  --spacer-septuple: calc(var(--base-width) * 7);
+  --spacer-octuple: calc(var(--base-width) * 8);
+  --border-radius: 2px;
+
+  --card {
+    background: white;
+    box-shadow:
+      0 1px 0 0 rgba(0, 0, 0, 0.14),
+      0 2px 1px -1px rgba(0, 0, 0, 0.12),
+      0 10px 8px -6px rgba(0, 0, 0, 0.09);
+    border-radius: var(--border-radius);
+  }
+  --card-padding {
+    padding: var(--spacer-triple);
+  }
+
+  --text-overflow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  --table-row-hover: rgba(47, 128, 237, .05);
+
+  --typography-label {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: var(--font-weight-bold);
+    color: rgba(0, 0, 0, 0.35);
+  }
+}

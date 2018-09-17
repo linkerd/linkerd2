@@ -1,8 +1,6 @@
 @import 'styles.css';
 
 .header-with-metric {
-  margin-top: 32px;
-
   & .subsection-header {
     float: left;
   }

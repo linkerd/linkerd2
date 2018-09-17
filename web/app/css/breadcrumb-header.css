@@ -1,19 +1,32 @@
 @import 'styles.css';
 
 .ant-layout-header {
-  background-color: var(--green);
-  height: 64px;
+  @apply --card;
+  border-radius: 0;
+  height: calc( var(--spacer) * 9 );
   z-index: 100;
   position: fixed;
-  width: 100vw;
-  padding:16px 40px;
+  width: 100%;
+  padding: var(--spacer-double) var(--spacer-quintuple);
 
-  & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
+  & span.ant-breadcrumb-link {
      color: rgb(0, 0, 0, 0.85);
-     font-size: 21px;
+     font-size: 1rem;
      font-weight: var(--font-weight-bold);
      line-height: 32px;
   }
+
+  & span.ant-breadcrumb-separator {
+    color: rgb(0, 0, 0, 0.25);
+    font-size: 1rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 32px;
+  }
+
+  & .ant-breadcrumb > span:last-child .ant-breadcrumb-link a {
+    color: rgba(0, 0, 0, 0.85);
+  }
+
 }
 
 .ant-layout-header:last-child {

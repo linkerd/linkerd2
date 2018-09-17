@@ -355,7 +355,7 @@ class Tap extends React.Component {
       .values().sortBy('lastUpdated').reverse().value();
 
     return (
-      <div>
+      <div className="page-content">
         {!this.state.error ? null :
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
@@ -370,10 +370,14 @@ class Tap extends React.Component {
 
         <TapQueryCliCmd cmdName="tap" query={this.state.query} />
 
-        <TapEventTable
-          resource={this.state.query.resource}
-          tableRows={tableRows}
-          filterOptions={this.state.tapResultFilterOptions} />
+        <div className="page-section">
+          <div className="card">
+            <TapEventTable
+              resource={this.state.query.resource}
+              tableRows={tableRows}
+              filterOptions={this.state.tapResultFilterOptions} />
+          </div>
+        </div>
       </div>
     );
   }
