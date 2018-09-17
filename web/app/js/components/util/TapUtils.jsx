@@ -169,6 +169,7 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 );
 
 // display consists of a list of ips and pods for aggregated displays (Top)
+const displayLimit = 3;
 const resourceSection = (endpoint, display, labels, ResourceLink) => {
   let ipList = null;
   let podList = null;
@@ -178,19 +179,20 @@ const resourceSection = (endpoint, display, labels, ResourceLink) => {
     podList = !endpoint.pod ? null : <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
   } else {
     // don't display more than three ips/pods.... it could be a long list
-    ipList = _(display.ips).keys().take(3).value().join(", ") + (_.size(display.ips) > 3 ? "..." : "");
+    ipList = _(display.ips).keys().take(displayLimit).value().join(", ") +
+      (_.size(display.ips) > displayLimit ? "..." : "");
     podList = (
       <div>
         {
           _.map(display.pods, (namespace, pod, i) => {
-            if (i > 3) {
+            if (i > displayLimit) {
               return null;
             } else {
               return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
             }
           })
         }
-        { (_.size(display.pods) > 3 ? "..." : "") }
+        { (_.size(display.pods) > displayLimit ? "..." : "") }
       </div>
     );
   }
