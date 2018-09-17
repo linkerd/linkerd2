@@ -5,7 +5,6 @@ import TapLink from '../TapLink.jsx';
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
 import { Popover, Tooltip } from 'antd';
 
-
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
 export const defaultMaxRps = "100.0";
