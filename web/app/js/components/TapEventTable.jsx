@@ -67,7 +67,7 @@ const methodCol = {
   render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
 };
 
-const topLevelColumns = (resourceType, filterOptions, ResourceLink) => [
+const topLevelColumns = (resourceType, ResourceLink) => [
   {
     title: "Direction",
     key: "direction",
@@ -96,9 +96,9 @@ const topLevelColumns = (resourceType, filterOptions, ResourceLink) => [
   }
 ];
 
-const tapColumns = (resourceType, filterOptions, ResourceLink) => {
+const tapColumns = (resourceType, ResourceLink) => {
   return _.concat(
-    topLevelColumns(resourceType, filterOptions, ResourceLink),
+    topLevelColumns(resourceType, ResourceLink),
     [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
   );
 };
@@ -181,13 +181,12 @@ class TapEventTable extends React.Component {
     api: PropTypes.shape({
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
-    filterOptions: PropTypes.shape({}),
-    resource: PropTypes.string.isRequired,
+    resource: PropTypes.string,
     tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
   static defaultProps = {
-    filterOptions: {},
+    resource: "",
     tableRows: []
   }
 
@@ -196,7 +195,7 @@ class TapEventTable extends React.Component {
     return (
       <Table
         dataSource={this.props.tableRows}
-        columns={tapColumns(resourceType, this.props.filterOptions, this.props.api.ResourceLink)}
+        columns={tapColumns(resourceType, this.props.api.ResourceLink)}
         expandedRowRender={expandedRowRender} // hide extra info in expandable row
         expandRowByClick={true} // click anywhere on row to expand
         rowKey={r => r.base.id}
