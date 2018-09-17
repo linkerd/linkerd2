@@ -19,6 +19,15 @@ class Version extends React.Component {
     releaseVersion: PropTypes.string.isRequired,
   }
 
+  numericVersion = version => {
+    let parts = version.split("-", 2);
+    if (parts.length === 2) {
+      return parts[1];
+    } else {
+      return version;
+    }
+  }
+
   renderVersionCheck = () => {
     const {latestVersion, error, isLatest} = this.props;
 
@@ -37,7 +46,7 @@ class Version extends React.Component {
 
     return (
       <div>
-        A new version ({latestVersion}) is available.<br />
+        A new version ({this.numericVersion(latestVersion)}) is available.<br />
         <Link
           to="https://versioncheck.linkerd.io/update"
           className="button primary"
@@ -51,7 +60,7 @@ class Version extends React.Component {
   render() {
     return (
       <div className="version">
-        Running {this.props.productName || "controller"} {this.props.releaseVersion}.<br />
+        Running {this.props.productName || "controller"} {this.numericVersion(this.props.releaseVersion)}.<br />
         {this.renderVersionCheck()}
       </div>
     );
