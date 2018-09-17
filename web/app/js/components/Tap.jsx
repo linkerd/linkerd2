@@ -10,8 +10,6 @@ import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import { httpMethods, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
-const maxNumFilterOptions = 12;
-
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }
 };
@@ -33,13 +31,11 @@ class Tap extends React.Component {
     super(props);
     this.api = this.props.api;
     this.tapResultsById = {};
-    this.tapResultFilterOptions = this.getInitialTapFilterOptions();
     this.throttledWebsocketRecvHandler = _.throttle(this.updateTapResults, 500);
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
       tapResultsById: this.tapResultsById,
-      tapResultFilterOptions: this.tapResultFilterOptions,
       error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
@@ -162,73 +158,12 @@ class Tap extends React.Component {
     };
   }
 
-  getFilterOptions(d) {
-    let filters = this.tapResultFilterOptions;
-    // keep track of unique values we encounter, to populate the table filters
-    let addFilter = this.genFilterAdder(filters, Date.now());
-    addFilter("source", d.source.str);
-    addFilter("destination", d.destination.str);
-    if (d.source.pod) {
-      addFilter("source", d.source.pod);
-    }
-    if (d.destination.pod) {
-      addFilter("destination", d.destination.pod);
-    }
-
-    if (d.tls) {
-      addFilter("tls", d.tls);
-    }
-    switch (d.eventType) {
-      case "requestInit":
-        addFilter("authority", d.http.requestInit.authority);
-        addFilter("path", d.http.requestInit.path);
-        addFilter("scheme", _.get(d, "http.requestInit.scheme.registered"));
-        break;
-      case "responseInit":
-        addFilter("httpStatus", _.get(d, "http.responseInit.httpStatus"));
-        break;
-    }
-
-    return filters;
-  }
-
-  parseTapResult = data => {
-    let d = processTapEvent(data);
-
-    return {
-      tapResult: d,
-      updatedFilters: this.getFilterOptions(d)
-    };
-  }
-
-  genFilterAdder(filterOptions, now) {
-    return (filterName, filterValue) => {
-      filterOptions[filterName][filterValue] = now;
-
-      if (_.size(filterOptions[filterName]) > maxNumFilterOptions) {
-        // reevaluate this if table updating gets too slow
-        let oldest = Date.now();
-        let oldestOption = "";
-        _.each(filterOptions[filterName], (timestamp, value) => {
-          if (timestamp < oldest) {
-            oldest = timestamp;
-            oldestOption = value;
-          }
-        });
-
-        delete filterOptions[filterName][oldestOption];
-      }
-    };
-  }
-
   indexTapResult = data => {
     // keep an index of tap request rows by id. this allows us to collate
     // requestInit/responseInit/responseEnd into one single table row,
     // as opposed to three separate rows as in the CLI
     let resultIndex = this.tapResultsById;
-    let parsedResults = this.parseTapResult(data);
-    this.tapResultFilterOptions = parsedResults.updatedFilters;
-    let d = parsedResults.tapResult;
+    let d = processTapEvent(data);
 
     if (_.isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
@@ -246,8 +181,7 @@ class Tap extends React.Component {
 
   updateTapResults = () => {
     this.setState({
-      tapResultsById: this.tapResultsById,
-      tapResultFilterOptions: this.tapResultFilterOptions
+      tapResultsById: this.tapResultsById
     });
   }
 
@@ -277,12 +211,10 @@ class Tap extends React.Component {
 
   startTapStreaming() {
     this.tapResultsById = {};
-    this.tapResultFilterOptions = this.getInitialTapFilterOptions();
 
     this.setState({
       tapRequestInProgress: true,
-      tapResultsById: this.tapResultsById,
-      tapResultFilterOptions: this.tapResultFilterOptions
+      tapResultsById: this.tapResultsById
     });
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -372,8 +304,7 @@ class Tap extends React.Component {
 
         <TapEventTable
           resource={this.state.query.resource}
-          tableRows={tableRows}
-          filterOptions={this.state.tapResultFilterOptions} />
+          tableRows={tableRows} />
       </div>
     );
   }
