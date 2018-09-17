@@ -2,8 +2,8 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
+import { podOwnerLookup, toShortResourceName } from './Utils.js';
 import { Popover, Tooltip } from 'antd';
-import { shortNameLookup, toShortResourceName } from './Utils.js';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -90,11 +90,16 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
-  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
-  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
 
-  d.source.pod = _.has(d, "sourceMeta.labels.pod") ? "po/" + d.sourceMeta.labels.pod : null;
-  d.destination.pod = _.has(d, "destinationMeta.labels.pod") ? "po/" + d.destinationMeta.labels.pod : null;
+  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
+  d.source.pod = _.get(d, "sourceMeta.labels.pod", null);
+  d.source.owner = extractPodOwner(d.sourceMeta.labels);
+  d.source.namespace = _.get(d, "sourceMeta.labels.namespace", null);
+
+  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
+  d.destination.pod = _.get(d, "destinationMeta.labels.pod", null);
+  d.destination.owner = extractPodOwner(d.destinationMeta.labels);
+  d.destination.namespace = _.get(d, "destinationMeta.labels.namespace", null);
 
   switch (d.proxyDirection) {
     case "INBOUND":
@@ -158,23 +163,63 @@ const publicAddressToString = ipv4 => {
 */
 const resourceShortLink = (resourceType, labels, ResourceLink) => (
   <ResourceLink
+    key={labels[resourceType]}
     resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
-const resourceSection = (ip, labels, ResourceLink) => {
+// display consists of a list of ips and pods for aggregated displays (Top)
+const displayLimit = 3;
+const resourceSection = (endpoint, display, labels, ResourceLink) => {
+  let ipList = null;
+  let podList = null;
+
+  if (!display) {
+    ipList = endpoint.str;
+    podList = !endpoint.pod ? null : <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
+  } else {
+    // don't display more than three ips/pods.... it could be a long list
+    ipList = _(display.ips).keys().take(displayLimit).value().join(", ") +
+      (_.size(display.ips) > displayLimit ? "..." : "");
+    podList = (
+      <div>
+        {
+          _.map(display.pods, (namespace, pod, i) => {
+            if (i > displayLimit) {
+              return null;
+            } else {
+              return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+            }
+          })
+        }
+        { (_.size(display.pods) > displayLimit ? "..." : "") }
+      </div>
+    );
+  }
+
   return (
     <React.Fragment>
       {
         _.map(labels, (labelVal, labelName) => {
-          if (_.has(shortNameLookup, labelName) && labelName !== "namespace" && labelName !== "service") {
+          if (_.has(podOwnerLookup, labelName)) {
             return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
           }
         })
       }
-      <div>{ip}</div>
+      { podList }
+      <div>{ipList}</div>
     </React.Fragment>
   );
+};
+
+export const extractPodOwner = labels => {
+  let podOwner = "";
+  _.each(labels, (labelVal, labelName) => {
+    if (_.has(podOwnerLookup, labelName)) {
+      podOwner = labelName + "/" + labelVal;
+    }
+  });
+  return podOwner;
 };
 
 export const directionColumn = d => (
@@ -200,10 +245,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   let content = (
     <React.Fragment>
       <h3>Source</h3>
-      {resourceSection(d.source.str, d.sourceLabels, ResourceLink)}
+      {resourceSection(d.source, d.sourceDisplay, d.sourceLabels, ResourceLink)}
       <br />
       <h3>Destination</h3>
-      {resourceSection(d.destination.str, d.destinationLabels, ResourceLink)}
+      {resourceSection(d.destination, d.destinationDisplay, d.destinationLabels, ResourceLink)}
     </React.Fragment>
   );
 

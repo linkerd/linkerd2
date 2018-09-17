@@ -122,10 +122,32 @@ class TopModule extends React.Component {
   }
 
   topEventKey = event => {
-    return [event.source.str, event.destination.str, event.http.requestInit.path].join("_");
+    let sourceKey = event.source.owner || event.source.pod || event.source.str;
+    let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
+
+    return [sourceKey, dstKey, event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
+    // in the event that we key on resources with multiple pods/ips, store them so we can display
+    let sourceDisplay = {
+      ips: {},
+      pods: {}
+    };
+    sourceDisplay.ips[d.base.source.str] = true;
+    if (!_.isNil(d.base.source.pod)) {
+      sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
+    }
+
+    let destinationDisplay = {
+      ips: {},
+      pods: {}
+    };
+    destinationDisplay.ips[d.base.destination.str] = true;
+    if (!_.isNil(d.base.destination.pod)) {
+      destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
+    }
+
     return {
       count: 1,
       best: d.responseEnd.latency,
@@ -137,8 +159,10 @@ class TopModule extends React.Component {
       direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
+      sourceDisplay,
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
+      destinationDisplay,
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
@@ -160,6 +184,15 @@ class TopModule extends React.Component {
     }
     if (d.responseEnd.latency > result.worst) {
       result.worst = d.responseEnd.latency;
+    }
+
+    result.sourceDisplay.ips[d.base.source.str] = true;
+    if (!_.isNil(d.requestInit.sourceMeta.labels.pod)) {
+      result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    }
+    result.destinationDisplay.ips[d.base.destination.str] = true;
+    if (!_.isNil(d.requestInit.destinationMeta.labels.pod)) {
+      result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     }
 
     result.lastUpdated = Date.now();
