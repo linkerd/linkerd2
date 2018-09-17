@@ -24,7 +24,7 @@ ENV NODE_ENV production
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:a4f825be as golang
+FROM gcr.io/linkerd-io/go-deps:6a07271e as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY web web
 COPY controller controller
