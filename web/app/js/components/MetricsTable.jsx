@@ -19,16 +19,6 @@ import { processedMetricsPropType, successRateWithMiniChart } from './util/Metri
 */
 const smMetricColWidth = "70px";
 
-const withTooltip = (d, metricName) => {
-  return (
-    <Tooltip
-      title={metricToFormatter["UNTRUNCATED"](d)}
-      overlayStyle={{ fontSize: "12px" }}>
-      <span>{metricToFormatter[metricName](d)}</span>
-    </Tooltip>
-  );
-};
-
 const formatTitle = (title, tooltipText) => {
   if (!tooltipText) {
     return title;
@@ -130,7 +120,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       className: "numeric",
       width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
-      render: d => withTooltip(d, "REQUEST_RATE")
+      render: metricToFormatter["NO_UNIT"]
     },
     {
       title: formatTitle("P50", "P50 Latency"),
