@@ -7,7 +7,7 @@ import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
-import { httpMethods, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const urlPropsQueryConfig = {
@@ -109,19 +109,6 @@ class Tap extends React.Component {
     });
 
     this.stopTapStreaming();
-  }
-
-  getInitialTapFilterOptions() {
-    return {
-      source: {},
-      destination: {},
-      path: {},
-      authority: {},
-      scheme: {},
-      httpStatus: {},
-      tls: {},
-      httpMethod: httpMethods
-    };
   }
 
   getResourcesByNs(rsp) {
