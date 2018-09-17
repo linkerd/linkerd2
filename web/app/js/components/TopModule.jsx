@@ -16,7 +16,8 @@ class TopModule extends React.Component {
       resource: PropTypes.string.isRequired
     }).isRequired,
     startTap: PropTypes.bool.isRequired,
-    updateNeighbors: PropTypes.func
+    updateNeighbors: PropTypes.func,
+    updateTapClosingState: PropTypes.func
   }
 
   static defaultProps = {
@@ -26,7 +27,8 @@ class TopModule extends React.Component {
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
     maxRowsToStore: 50,
-    updateNeighbors: _.noop
+    updateNeighbors: _.noop,
+    updateTapClosingState: _.noop
   }
 
   constructor(props) {
@@ -81,7 +83,13 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    if (!e.wasClean) {
+    this.props.updateTapClosingState(false);
+    /* We ignore any abnormal closure since it doesn't matter as long as
+    the connection to the websocket is closed. This is also a workaround
+    where Chrome browsers incorrectly displays a 1006 close code
+    https://github.com/linkerd/linkerd2/issues/1630
+    */
+    if (!e.wasClean && e.code !== 1006) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`

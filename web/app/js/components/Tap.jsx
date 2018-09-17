@@ -56,6 +56,7 @@ class Tap extends React.Component {
       },
       maxLinesToDisplay: 40,
       tapRequestInProgress: false,
+      tapIsClosing: false,
       pollingInterval: 10000,
       pendingRequests: false
     };
@@ -97,8 +98,12 @@ class Tap extends React.Component {
 
   onWebsocketClose = e => {
     this.stopTapStreaming();
-
-    if (!e.wasClean) {
+    /* We ignore any abnormal closure since it doesn't matter as long as
+    the connection to the websocket is closed. This is also a workaround
+    where Chrome browsers incorrectly displays a 1006 close code
+    https://github.com/linkerd/linkerd2/issues/1630
+    */
+    if (!e.wasClean && e.code !== 1006) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
@@ -297,7 +302,8 @@ class Tap extends React.Component {
 
   stopTapStreaming() {
     this.setState({
-      tapRequestInProgress: false
+      tapRequestInProgress: false,
+      tapIsClosing: false
     });
   }
 
@@ -308,6 +314,7 @@ class Tap extends React.Component {
 
   handleTapStop = () => {
     this.ws.close(1000);
+    this.setState({ tapIsClosing: true });
   }
 
   loadFromServer() {
@@ -361,6 +368,7 @@ class Tap extends React.Component {
 
         <TapQueryForm
           tapRequestInProgress={this.state.tapRequestInProgress}
+          tapIsClosing={this.state.tapIsClosing}
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           resourcesByNs={this.state.resourcesByNs}

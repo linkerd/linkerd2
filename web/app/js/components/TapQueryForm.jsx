@@ -31,12 +31,14 @@ class TapQueryForm extends React.Component {
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
+    tapIsClosing: PropTypes.bool,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired
   }
 
   static defaultProps = {
-    enableAdvancedForm: true
+    enableAdvancedForm: true,
+    tapIsClosing: false
   }
 
   constructor(props) {
@@ -278,6 +280,16 @@ class TapQueryForm extends React.Component {
     );
   }
 
+  renderTapButton(tapInProgress, tapIsClosing) {
+    if (tapIsClosing) {
+      return (<Button type="primary" className="top-stop" disabled={true}>Stop</Button>);
+    } else if (tapInProgress) {
+      return (<Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
+    } else {
+      return (<Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>);
+    }
+  }
+
   render() {
     return (
       <Form className="tap-form">
@@ -308,11 +320,7 @@ class TapQueryForm extends React.Component {
 
           <Col span={colSpan}>
             <Form.Item>
-              {
-                this.props.tapRequestInProgress ?
-                  <Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button> :
-                  <Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>
-              }
+              { this.renderTapButton(this.props.tapRequestInProgress, this.props.tapIsClosing) }
             </Form.Item>
           </Col>
         </Row>

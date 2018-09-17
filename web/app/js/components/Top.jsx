@@ -20,6 +20,7 @@ class Top extends React.Component {
     super(props);
     this.api = this.props.api;
     this.loadFromServer = this.loadFromServer.bind(this);
+    this.updateTapClosingState = this.updateTapClosingState.bind(this);
 
     this.state = {
       error: null,
@@ -140,8 +141,13 @@ class Top extends React.Component {
 
   handleTapStop = () => {
     this.setState({
-      tapRequestInProgress: false
+      tapRequestInProgress: false,
+      tapIsClosing: true
     });
+  }
+
+  updateTapClosingState(isTapClosing) {
+    this.setState({tapIsClosing: isTapClosing});
   }
 
   render() {
@@ -156,6 +162,7 @@ class Top extends React.Component {
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           tapRequestInProgress={this.state.tapRequestInProgress}
+          tapIsClosing={this.state.tapIsClosing}
           updateQuery={this.updateQuery}
           query={this.state.query} />
 
@@ -163,7 +170,8 @@ class Top extends React.Component {
         <TopModule
           pathPrefix={this.props.pathPrefix}
           query={this.state.query}
-          startTap={this.state.tapRequestInProgress} />
+          startTap={this.state.tapRequestInProgress}
+          updateTapClosingState={this.updateTapClosingState} />
       </div>
     );
   }
