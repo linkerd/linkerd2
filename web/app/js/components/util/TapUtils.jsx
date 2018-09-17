@@ -212,7 +212,7 @@ const resourceSection = (endpoint, display, labels, ResourceLink) => {
 
 export const extractPodOwner = labels => {
   let podOwner = "";
-  _.map(labels, (labelVal, labelName) => {
+  _.each(labels, (labelVal, labelName) => {
     if (_.has(podOwnerLookup, labelName)) {
       podOwner = labelName + "/" + labelVal;
     }
