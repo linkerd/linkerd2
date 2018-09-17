@@ -51,7 +51,8 @@ export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": formatLatencyMs,
-  "UNTRUNCATED": m => styleNum(m, "", false)
+  "UNTRUNCATED": m => styleNum(m, "", false),
+  "NO_UNIT": m => _.isNil(m) ? "---" : styleNum(m, "", true)
 };
 
 /*

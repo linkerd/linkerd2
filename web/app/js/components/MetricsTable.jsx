@@ -19,12 +19,12 @@ import { processedMetricsPropType, successRateWithMiniChart } from './util/Metri
 */
 const smMetricColWidth = "70px";
 
-const withTooltip = (d, metricName) => {
+const withTooltip = (d, metricName, hideUnit) => {
   return (
     <Tooltip
       title={metricToFormatter["UNTRUNCATED"](d)}
       overlayStyle={{ fontSize: "12px" }}>
-      <span>{metricToFormatter[metricName](d)}</span>
+      <span>{ !hideUnit ? metricToFormatter[metricName](d) : metricToFormatter["NO_UNIT"](d)}</span>
     </Tooltip>
   );
 };
@@ -130,7 +130,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       className: "numeric",
       width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
-      render: d => withTooltip(d, "REQUEST_RATE")
+      render: d => withTooltip(d, "REQUEST_RATE", true)
     },
     {
       title: formatTitle("P50", "P50 Latency"),
