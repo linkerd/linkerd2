@@ -17,7 +17,7 @@ class TopModule extends React.Component {
     }).isRequired,
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func,
-    updateTapClosingState: PropTypes.func.isRequired
+    updateTapClosingState: PropTypes.func
   }
 
   static defaultProps = {
@@ -27,7 +27,8 @@ class TopModule extends React.Component {
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
     maxRowsToStore: 50,
-    updateNeighbors: _.noop
+    updateNeighbors: _.noop,
+    updateTapClosingState: _.noop
   }
 
   constructor(props) {

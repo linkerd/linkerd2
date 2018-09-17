@@ -31,13 +31,14 @@ class TapQueryForm extends React.Component {
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
-    tapIsClosing: PropTypes.bool.isRequired,
+    tapIsClosing: PropTypes.bool,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired
   }
 
   static defaultProps = {
-    enableAdvancedForm: true
+    enableAdvancedForm: true,
+    tapIsClosing: false
   }
 
   constructor(props) {
