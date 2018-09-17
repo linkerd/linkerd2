@@ -127,13 +127,18 @@ class TopModule extends React.Component {
       pods: {}
     };
     sourceDisplay.ips[d.base.source.str] = true;
-    sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
+    if (!_.isNil(d.base.source.pod)) {
+      sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
+    }
+
     let destinationDisplay = {
       ips: {},
       pods: {}
     };
     destinationDisplay.ips[d.base.destination.str] = true;
-    destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
+    if (!_.isNil(d.base.destination.pod)) {
+      destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
+    }
 
     return {
       count: 1,
@@ -174,9 +179,14 @@ class TopModule extends React.Component {
     }
 
     result.sourceDisplay.ips[d.base.source.str] = true;
-    result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    if (!_.isNil(d.requestInit.sourceMeta.labels.pod)) {
+      result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    }
     result.destinationDisplay.ips[d.base.destination.str] = true;
-    result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
+    if (!_.isNil(d.requestInit.destinationMeta.labels.pod)) {
+      result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
+    }
+
     result.lastUpdated = Date.now();
   }
 
