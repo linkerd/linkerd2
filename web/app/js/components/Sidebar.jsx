@@ -89,14 +89,14 @@ class Sidebar extends React.Component {
     fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp => {
-        let channel = "version";
+        let latestVersion;
         let parts = this.props.releaseVersion.split("-", 2);
         if (parts.length === 2) {
-          channel = parts[0];
+          latestVersion = versionRsp[parts[0]];
         }
         this.setState({
-          latestVersion: versionRsp[channel],
-          isLatest: versionRsp[channel] === this.props.releaseVersion
+          latestVersion,
+          isLatest: latestVersion === this.props.releaseVersion
         });
       }).catch(this.handleApiError);
   }

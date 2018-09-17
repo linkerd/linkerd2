@@ -28,14 +28,20 @@ class Version extends React.Component {
     }
   }
 
+  versionChannel = version => {
+    let parts = version.split("-", 2);
+    if (parts.length === 2) {
+      return parts[0];
+    }
+  }
+
   renderVersionCheck = () => {
     const {latestVersion, error, isLatest} = this.props;
 
     if (!latestVersion) {
       return (
         <div>
-          Version check failed
-          {error ? `: ${error.statusText}` : ''}.
+          Version check failed{error ? `: ${error.statusText}` : ''}.
         </div>
       );
     }
@@ -58,9 +64,17 @@ class Version extends React.Component {
   }
 
   render() {
+    let channel = this.versionChannel(this.props.releaseVersion);
+    let message = `Running ${this.props.productName || "controller"}`;
+    message += ` ${this.numericVersion(this.props.releaseVersion)}`;
+    if (channel) {
+      message += ` (${channel})`;
+    }
+    message += ".";
+
     return (
       <div className="version">
-        Running {this.props.productName || "controller"} {this.numericVersion(this.props.releaseVersion)}.<br />
+        {message}<br />
         {this.renderVersionCheck()}
       </div>
     );
