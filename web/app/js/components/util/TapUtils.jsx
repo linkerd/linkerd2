@@ -176,7 +176,7 @@ const resourceSection = (endpoint, display, labels, ResourceLink) => {
 
   if (!display) {
     ipList = endpoint.str;
-    podList = <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
+    podList = !endpoint.pod ? null : <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
   } else {
     // don't display more than three ips/pods.... it could be a long list
     ipList = _(display.ips).keys().take(3).value().join(", ") + (_.size(display.ips) > 3 ? "..." : "");
@@ -205,7 +205,7 @@ const resourceSection = (endpoint, display, labels, ResourceLink) => {
           }
         })
       }
-      {podList}
+      { podList }
       <div>{ipList}</div>
     </React.Fragment>
   );
