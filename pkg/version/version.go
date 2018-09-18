@@ -91,9 +91,9 @@ func GetLatestVersion(uuid string, source string) (string, error) {
 		return "", err
 	}
 
-	channel, err := parseChannel(Version)
-	if err != nil {
-		return "", err
+	channel := parseChannel(Version)
+	if channel == "" {
+		return "", fmt.Errorf("Unsupported version format: %s", Version)
 	}
 
 	version, ok := versionRsp[channel]
@@ -104,36 +104,30 @@ func GetLatestVersion(uuid string, source string) (string, error) {
 	return version, nil
 }
 
-func parseVersion(version string) (string, error) {
+func parseVersion(version string) string {
 	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
-		return parts[1], nil
+		return parts[1]
 	}
-	return "", fmt.Errorf("Unsupported version format: %s", version)
+	return version
 }
 
-func parseChannel(version string) (string, error) {
+func parseChannel(version string) string {
 	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
-		return parts[0], nil
+		return parts[0]
 	}
-	return "", fmt.Errorf("Unsupported version format: %s", version)
+	return ""
 }
 
 func versionMismatchError(expectedVersion, actualVersion string) error {
-	channel, err := parseChannel(expectedVersion)
-	if err != nil {
-		return err
-	}
+	channel := parseChannel(expectedVersion)
+	expectedVersionStr := parseVersion(expectedVersion)
+	actualVersionStr := parseVersion(actualVersion)
 
-	expectedVersionStr, err := parseVersion(expectedVersion)
-	if err != nil {
-		return err
+	if channel != "" {
+		return fmt.Errorf("is running version %s but the latest %s version is %s",
+			actualVersionStr, channel, expectedVersionStr)
+	} else {
+		return fmt.Errorf("is running version %s but the latest version is %s",
+			actualVersionStr, expectedVersionStr)
 	}
-
-	actualVersionStr, err := parseVersion(actualVersion)
-	if err != nil {
-		return err
-	}
-
-	return fmt.Errorf("is running version %s but the latest %s version is %s",
-		actualVersionStr, channel, expectedVersionStr)
 }
