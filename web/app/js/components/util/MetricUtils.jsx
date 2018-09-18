@@ -46,7 +46,7 @@ export const successRateWithMiniChart = sr => (
       showInfo={false}
       width={32}
       strokeWidth={12}
-      percent={sr * 100}
+      percent={sr === 0 ? 100 : sr * 100} // if success rate is 0, we want a red chart, not a gray chart
       gapDegree={180} />
   </div>
 );
