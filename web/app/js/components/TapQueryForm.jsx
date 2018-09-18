@@ -296,7 +296,14 @@ class TapQueryForm extends React.Component {
     } else if (tapInProgress) {
       return (<Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
     } else {
-      return (<Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>);
+      return (
+        <Button
+          type="primary"
+          className="tap-start"
+          disabled={!this.state.query.namespace || !this.state.query.resource}
+          onClick={this.props.handleTapStart}>
+          Start
+        </Button>);
     }
   }
 
