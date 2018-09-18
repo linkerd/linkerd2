@@ -19,8 +19,8 @@ const loc = {
 };
 
 describe('Version', () => {
-  let curVer = "v1.2.3";
-  let newVer = "v2.3.4";
+  let curVer = "edge-1.2.3";
+  let newVer = "edge-2.3.4";
 
   let component, fetchStub;
   let apiHelpers = ApiHelpers("");
@@ -46,7 +46,7 @@ describe('Version', () => {
   it('is hidden when the sidebar is collapsed', () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve({ version: curVer })
+      json: () => Promise.resolve({ edge: curVer })
     });
 
     component = mount(
@@ -70,7 +70,7 @@ describe('Version', () => {
   it('renders up to date message when versions match', () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve({ version: curVer })
+      json: () => Promise.resolve({ edge: curVer })
     });
 
     component = mount(
@@ -92,7 +92,7 @@ describe('Version', () => {
   it('renders update message when versions do not match', () => {
     fetchStub.returnsPromise().resolves({
       ok: true,
-      json: () => Promise.resolve({ version: newVer })
+      json: () => Promise.resolve({ edge: newVer })
     });
 
     component = mount(
@@ -107,9 +107,7 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("A new version (");
-      expect(component.html()).to.include(newVer);
-      expect(component.html()).to.include(") is available.");
+      expect(component.html()).to.include("A new version (2.3.4) is available.");
     });
   });
 

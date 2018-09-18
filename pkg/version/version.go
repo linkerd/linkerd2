@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -35,16 +36,15 @@ func init() {
 	}
 }
 
-func CheckClientVersion(latestVersion string) error {
-	if Version != latestVersion {
-		return fmt.Errorf("is running version %s but the latest version is %s",
-			Version, latestVersion)
+func CheckClientVersion(expectedVersion string) error {
+	if Version != expectedVersion {
+		return versionMismatchError(expectedVersion, Version)
 	}
 
 	return nil
 }
 
-func CheckServerVersion(apiClient pb.ApiClient, latestVersion string) error {
+func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -53,9 +53,8 @@ func CheckServerVersion(apiClient pb.ApiClient, latestVersion string) error {
 		return err
 	}
 
-	if rsp.GetReleaseVersion() != latestVersion {
-		return fmt.Errorf("is running version %s but the latest version is %s",
-			rsp.GetReleaseVersion(), latestVersion)
+	if v := rsp.GetReleaseVersion(); v != expectedVersion {
+		return versionMismatchError(expectedVersion, v)
 	}
 
 	return nil
@@ -92,5 +91,49 @@ func GetLatestVersion(uuid string, source string) (string, error) {
 		return "", err
 	}
 
-	return versionRsp["version"], nil
+	channel, err := parseChannel(Version)
+	if err != nil {
+		return "", err
+	}
+
+	version, ok := versionRsp[channel]
+	if !ok {
+		return "", fmt.Errorf("Unsupported version channel: %s", channel)
+	}
+
+	return version, nil
+}
+
+func parseVersion(version string) (string, error) {
+	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
+		return parts[1], nil
+	}
+	return "", fmt.Errorf("Unsupported version format: %s", version)
+}
+
+func parseChannel(version string) (string, error) {
+	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
+		return parts[0], nil
+	}
+	return "", fmt.Errorf("Unsupported version format: %s", version)
+}
+
+func versionMismatchError(expectedVersion, actualVersion string) error {
+	channel, err := parseChannel(expectedVersion)
+	if err != nil {
+		return err
+	}
+
+	expectedVersionStr, err := parseVersion(expectedVersion)
+	if err != nil {
+		return err
+	}
+
+	actualVersionStr, err := parseVersion(actualVersion)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("is running version %s but the latest %s version is %s",
+		actualVersionStr, channel, expectedVersionStr)
 }
