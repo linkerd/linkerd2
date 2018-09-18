@@ -1,3 +1,5 @@
+## stable-2.0.0
+
 ## edge-18.9.2
 
 * **New** _edge_ and _stable_ release channels
