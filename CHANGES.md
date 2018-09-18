@@ -1,3 +1,16 @@
+## edge-18.9.2
+
+* **New** _edge_ and _stable_ release channels
+* Web UI
+  * **Improved** Tap & Top UIs with better layout and linking
+* CLI
+  * **Improved** `check --pre` command verifies the caller has sufficient
+    permissions to install Linkerd
+  * **Improved** `check` command verifies that Prometheus has data for proxied
+    pods
+* Proxy
+  * **Fix** `hyper` crate dependency corrects HTTP/1.0 Keep-Alive behavior
+
 ## v18.9.1
 
 * Web UI
