@@ -13,8 +13,8 @@ class TopModule extends React.Component {
     maxRowsToStore: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
     query: PropTypes.shape({
-      resource: PropTypes.string.isRequired
-    }).isRequired,
+      resource: PropTypes.string
+    }),
     startTap: PropTypes.bool.isRequired,
     updateNeighbors: PropTypes.func,
     updateTapClosingState: PropTypes.func
@@ -28,7 +28,10 @@ class TopModule extends React.Component {
     // - aggregated top rows
     maxRowsToStore: 50,
     updateNeighbors: _.noop,
-    updateTapClosingState: _.noop
+    updateTapClosingState: _.noop,
+    query: {
+      resource: ""
+    }
   }
 
   constructor(props) {
@@ -313,7 +316,7 @@ class TopModule extends React.Component {
 
   render() {
     let tableRows = _.take(_.values(this.state.topEventIndex), this.props.maxRowsToDisplay);
-    let resourceType = this.props.query.resource.split("/")[0];
+    let resourceType = _.isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>
