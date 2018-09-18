@@ -7,7 +7,7 @@ sudo: false
 branches:
   only:
     - master
-    - /^v\d+\.\d+\.[\w-]+$/ # build version tags
+    - /^(edge|stable)-\d+\.\d+\.[\w-]+$/ # build version tags
 
 stages:
   - name: test
