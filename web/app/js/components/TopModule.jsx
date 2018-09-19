@@ -292,6 +292,9 @@ class TopModule extends React.Component {
   }
 
   startTapStreaming() {
+    this.tapResultsById = {};
+    this.topEventIndex = {};
+
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
     let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;
 
