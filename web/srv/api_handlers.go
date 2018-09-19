@@ -158,14 +158,14 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 		return
 	}
 
-	tapClient, err := h.apiClient.TapByResource(req.Context(), tapReq)
-	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
-		return
-	}
-	defer tapClient.CloseSend()
-
 	go func() {
+		tapClient, err := h.apiClient.TapByResource(req.Context(), tapReq)
+		if err != nil {
+			websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+			return
+		}
+		defer tapClient.CloseSend()
+
 		for {
 			rsp, err := tapClient.Recv()
 			if err == io.EOF {
@@ -195,6 +195,7 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 	for {
 		_, _, err := ws.ReadMessage()
 		if err != nil {
+			log.Debugf("Received close frame: %v", err)
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 				log.Errorf("Unexpected close error: %s", err)
 			}
