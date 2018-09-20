@@ -29,7 +29,7 @@ type updateAddress struct {
 }
 
 func (ua updateAddress) String() string {
-	return fmt.Sprintf("{address:%v, pod:%s.%s}", ua.address, ua.pod.Namespace, ua.pod.Name)
+	return fmt.Sprintf("{address:%v, pod:%s.%s}", addr.ProxyAddressToString(ua.address), ua.pod.Namespace, ua.pod.Name)
 }
 
 func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress, []*updateAddress) {
