@@ -4,12 +4,12 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import { processNeighborData } from './util/TapUtils.jsx';
-import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
 import TopModule from './TopModule.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
 import 'whatwg-fetch';
 
@@ -193,6 +193,12 @@ export class ResourceDetailBase extends React.Component {
       namespace: this.state.namespace
     };
 
+    let unmeshed = _.map(this.state.unmeshedSources, d => {
+      return _.merge(emptyMetric, d, { unmeshed: true });
+    });
+
+    let upstreams = _.concat(this.state.neighborMetrics.upstream, unmeshed);
+
     return (
       <div>
         {
@@ -224,12 +230,12 @@ export class ResourceDetailBase extends React.Component {
           </div>
         }
 
-        { _.isEmpty(this.state.neighborMetrics.upstream) ? null : (
+        { _.isEmpty(upstreams) ? null : (
           <div className="page-section">
             <h2 className="subsection-header">Inbound</h2>
             <MetricsTable
               resource={this.state.resource.type}
-              metrics={this.state.neighborMetrics.upstream} />
+              metrics={upstreams} />
           </div>
           )
         }

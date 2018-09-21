@@ -3,11 +3,9 @@ import OctopusArms from './util/OctopusArms.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Progress, Row } from 'antd';
+import { displayName, metricToFormatter } from './util/Utils.js';
 import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
-import { metricToFormatter, toShortResourceName } from './util/Utils.js';
 import './../../css/octopus.css';
-
-const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
 
 const Metric = ({title, value, className}) => {
   return (

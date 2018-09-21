@@ -7,6 +7,7 @@ import React from 'react';
 import { Tooltip } from 'antd';
 import { withContext } from './util/AppContext.jsx';
 import {
+  displayName,
   friendlyTitle,
   metricToFormatter,
   numericSort
@@ -36,11 +37,10 @@ const formatTitle = (title, tooltipText) => {
 
 const meshedColumn = {
   title: formatTitle("Meshed"),
-  dataIndex: "pods",
   key: "pods",
   className: "numeric",
   sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods),
-  render: p => p.meshedPods + "/" + p.totalPods
+  render: d => d.unmeshed ? "unmeshed" : d.pods.meshedPods + "/" + d.pods.totalPods
 };
 
 const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink) => {
@@ -55,9 +55,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-      render: ns => {
-        return <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>;
-      }
+      render: ns => !ns ? "---" : <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>
     }
   ];
 
@@ -84,6 +82,10 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       defaultSortOrder: 'ascend',
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
+        if (row.unmeshed) {
+          return displayName(row);
+        }
+
         let nameContents;
         if (resource === "namespace") {
           nameContents = <PrefixedLink to={"/namespaces/" + row.name}>{row.name}</PrefixedLink>;
