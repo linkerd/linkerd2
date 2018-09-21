@@ -59,6 +59,7 @@ class Tap extends React.Component {
   }
 
   componentDidMount() {
+    this._isMounted = true; // https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
     this.startServerPolling();
     if (this.props.autostart === "true") {
       this.startTapStreaming();
@@ -66,11 +67,11 @@ class Tap extends React.Component {
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     if (this.ws) {
       this.ws.close(1000);
     }
     this.throttledWebsocketRecvHandler.cancel();
-    this.stopTapStreaming();
     this.stopServerPolling();
   }
 
@@ -99,7 +100,7 @@ class Tap extends React.Component {
     where Chrome browsers incorrectly displays a 1006 close code
     https://github.com/linkerd/linkerd2/issues/1630
     */
-    if (!e.wasClean && e.code !== 1006) {
+    if (!e.wasClean && e.code !== 1006 && this._isMounted) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
@@ -220,6 +221,10 @@ class Tap extends React.Component {
   }
 
   stopTapStreaming() {
+    if (!this._isMounted) {
+      return;
+    }
+
     this.setState({
       tapRequestInProgress: false,
       tapIsClosing: false
