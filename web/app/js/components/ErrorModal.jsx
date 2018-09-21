@@ -2,7 +2,7 @@ import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Badge, Button, Icon, Modal, Switch } from 'antd';
+import { Button, Icon, Modal, Switch, Tooltip } from 'antd';
 
 // max characters we display for error messages before truncating them
 const maxErrorLength = 500;
@@ -125,19 +125,27 @@ export default class ErrorModal extends React.Component {
   }
 
   renderIconStatus = errors => {
-    let containers = errors.byPodAndContainer;
-    let showInit = _.flatten(_.map(containers, container => {
-      return _.map(container.byContainer, con => {
-        return con[0].reason;
+    let showInit = true;
+
+    _.each(errors.byPodAndContainer, container => {
+      _.each(container.byContainer, con => {
+        if (con[0].reason !== "PodInitializing") {
+          showInit = false;
+        }
       });
-    }));
-    if (_.every(showInit, status => status === "PodInitializing")) {
-      return <Badge status="processing" className="controller-init-icon" onClick={this.showModal} />;
+    });
+
+    if (showInit) {
+      return (
+        <Tooltip
+          title="Pods are initializing"
+          overlayStyle={{ fontSize: "12px" }}>
+          <Icon type="loading" theme="outlined" className="controller-init-icon" />
+        </Tooltip>
+      );
     } else {
       return <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />;
-
     }
-
   }
 
   render() {

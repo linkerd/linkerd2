@@ -85,16 +85,7 @@ td div.status-dot {
   color: var(--red);
 }
 .controller-init-icon {
-
-  & .ant-badge-status-processing {
-    background-color: var(--orange);
-    margin-left: 5px;
-  }
-
-  & .ant-badge-status-processing::after {
-    border: 1px solid var(--orange);
-  }
-
+  margin-left: 5px;
 }
 
 .controller-pod-error {
