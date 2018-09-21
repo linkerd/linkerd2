@@ -2,6 +2,7 @@
 
 .octopus-graph {
   max-width: 940px;
+  padding: calc(var(--base-width) * 2);
   margin-left: auto;
   margin-right: auto;
   background-color: #FAFAFA;

@@ -4,7 +4,7 @@ const stroke = "#000000";
 const strokeOpacity = "0.2";
 
 const svgArrow = (x1, y1, width, height, direction) => {
-  let segmentWidth = width / 2;
+  let segmentWidth = width / 2 - 10;
 
   let x2 = x1 + segmentWidth + 10;
   let y2 = y1 + 10;
@@ -55,7 +55,7 @@ const up = (width, svgHeight, arrowHeight, isOutbound) => {
         d={svgPaths.arrow}
         stroke={stroke}
         strokeOpacity={strokeOpacity}
-        transform="translate(54.000000, 54.000000) scale(-1, 1) translate(-44.000000, -54.000000) " />
+        transform="translate(31, 54) scale(-1, 1) translate(-44, -54) " />
       <circle cx={svgPaths.circle.cx} cy={svgPaths.circle.cy} fill="#CCCCCC" r="4" />
       <polyline points={svgPaths.arrowHead} stroke="#CCCCCC" strokeLinecap="round" />
     </g>
