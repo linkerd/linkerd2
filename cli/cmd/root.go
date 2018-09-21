@@ -47,6 +47,11 @@ var RootCmd = &cobra.Command{
 			log.SetLevel(log.PanicLevel)
 		}
 
+		controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
+		if controlPlaneNamespace == defaultNamespace && controlPlaneNamespaceFromEnv != "" {
+			controlPlaneNamespace = controlPlaneNamespaceFromEnv
+		}
+
 		if !alphaNumDash.MatchString(controlPlaneNamespace) {
 			return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
 		}
@@ -56,7 +61,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "l", defaultNamespace, "Namespace in which Linkerd is installed")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "l", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
@@ -155,7 +160,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyControlPort:      4190,
 		proxyMetricsPort:      4191,
 		proxyOutboundCapacity: map[string]uint{},
-		tls: "",
+		tls:                   "",
 	}
 }
 
