@@ -7,7 +7,7 @@ import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
-import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import './../../css/tap.css';
 
 const urlPropsQueryConfig = {
@@ -241,6 +241,21 @@ class Tap extends React.Component {
     this.setState({ tapIsClosing: true });
   }
 
+  handleTapClear = () => {
+    this.resetTapResults();
+    this.setState({
+      query: emptyTapQuery()
+    });
+  }
+
+  resetTapResults = () => {
+    this.tapResultsById = {};
+    this.setState({
+      tapResultsById: {},
+      query: emptyTapQuery()
+    });
+  }
+
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -276,6 +291,7 @@ class Tap extends React.Component {
   }
 
   updateQuery = query => {
+    this.resetTapResults();
     this.setState({
       query
     });
@@ -295,6 +311,7 @@ class Tap extends React.Component {
           tapIsClosing={this.state.tapIsClosing}
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
+          handleTapClear={this.handleTapClear}
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           updateQuery={this.updateQuery}

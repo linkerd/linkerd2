@@ -16,6 +16,19 @@ export const setMaxRps = query => {
   }
 };
 
+// use a generator to get this object, to prevent it from being overwritten
+export const emptyTapQuery = () => ({
+  resource: "",
+  namespace: "",
+  toResource: "",
+  toNamespace: "",
+  method: "",
+  path: "",
+  scheme: "",
+  authority: "",
+  maxRps: ""
+});
+
 export const tapQueryProps = {
   resource: PropTypes.string,
   namespace: PropTypes.string,

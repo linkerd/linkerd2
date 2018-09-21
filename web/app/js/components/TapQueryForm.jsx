@@ -12,7 +12,13 @@ import {
   Row,
   Select
 } from 'antd';
-import { defaultMaxRps, httpMethods, tapQueryProps, tapQueryPropType } from './util/TapUtils.jsx';
+import {
+  defaultMaxRps,
+  emptyTapQuery,
+  httpMethods,
+  tapQueryProps,
+  tapQueryPropType
+} from './util/TapUtils.jsx';
 
 const colSpan = 5;
 const rowGutter = 16;
@@ -37,6 +43,7 @@ const urlPropsQueryConfig = _.mapValues(tapQueryProps, () => {
 class TapQueryForm extends React.Component {
   static propTypes = {
     enableAdvancedForm: PropTypes.bool,
+    handleTapClear: PropTypes.func,
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
@@ -47,6 +54,7 @@ class TapQueryForm extends React.Component {
 
   static defaultProps = {
     enableAdvancedForm: true,
+    handleTapClear: _.noop,
     tapIsClosing: false
   }
 
@@ -157,8 +165,22 @@ class TapQueryForm extends React.Component {
   autoCompleteData = name => {
     return _(this.state.autocomplete[name])
       .filter(d => d.indexOf(this.state.query[name]) !== -1)
+      .uniq()
       .sortBy()
       .value();
+  }
+
+  resetTapForm = () => {
+    this.setState({
+      query: emptyTapQuery()
+    });
+
+    _.each(this.state.query, (_val, name) => {
+      this.handleUrlUpdate(name, null);
+    });
+
+    this.props.updateQuery(emptyTapQuery(), true);
+    this.props.handleTapClear();
   }
 
   renderAdvancedTapForm = () => {
@@ -290,16 +312,16 @@ class TapQueryForm extends React.Component {
     );
   }
 
-  renderTapButton(tapInProgress, tapIsClosing) {
+  renderTapButton = (tapInProgress, tapIsClosing) => {
     if (tapIsClosing) {
-      return (<Button type="primary" className="top-stop" disabled={true}>Stop</Button>);
+      return (<Button type="primary" className="tap-ctrl tap-stop" disabled={true}>Stop</Button>);
     } else if (tapInProgress) {
-      return (<Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
+      return (<Button type="primary" className="tap-ctrl tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
     } else {
       return (
         <Button
           type="primary"
-          className="tap-start"
+          className="tap-ctrl tap-start"
           disabled={!this.state.query.namespace || !this.state.query.resource}
           onClick={this.props.handleTapStart}>
           Start
@@ -338,6 +360,7 @@ class TapQueryForm extends React.Component {
           <Col span={colSpan}>
             <Form.Item>
               { this.renderTapButton(this.props.tapRequestInProgress, this.props.tapIsClosing) }
+              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress}>Reset</Button>
             </Form.Item>
           </Col>
         </Row>
