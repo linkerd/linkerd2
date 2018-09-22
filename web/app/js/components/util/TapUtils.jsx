@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
-import { Popover, Tooltip } from 'antd';
+import { Popover, Table, Tooltip } from 'antd';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -163,52 +163,88 @@ const publicAddressToString = ipv4 => {
 */
 const resourceShortLink = (resourceType, labels, ResourceLink) => (
   <ResourceLink
-    key={labels[resourceType]}
+    key={`${labels[resourceType]}-${labels.namespace}`}
     resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
     linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
 );
 
-// display consists of a list of ips and pods for aggregated displays (Top)
-const displayLimit = 3;
-const resourceSection = (endpoint, display, labels, ResourceLink) => {
-  let ipList = null;
-  let podList = null;
+const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
+const popoverSrcDstColumns = [
+  { title: "Source", dataIndex: "source", key: "source" },
+  { title: "Destination", dataIndex: "destination", key: "destination" }
+];
 
+const getPodOwner = (labels, ResourceLink) => {
+  let podOwner = "---";
+  _.each(labels, (labelVal, labelName) => {
+    if (_.has(podOwnerLookup, labelName)) {
+      podOwner = <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
+    }
+  });
+
+  return <div className="popover-td">{podOwner}</div>;
+};
+
+const getPodList = (endpoint, display, labels, ResourceLink) => {
+  let podList = "---";
   if (!display) {
-    ipList = endpoint.str;
-    podList = !endpoint.pod ? null : <div>{resourceShortLink("pod", { pod: endpoint.pod, namespace: endpoint.namespace }, ResourceLink)}</div>;
-  } else {
-    // don't display more than three ips/pods.... it could be a long list
-    ipList = _(display.ips).keys().take(displayLimit).value().join(", ") +
-      (_.size(display.ips) > displayLimit ? "..." : "");
+    if (endpoint.pod) {
+      podList = resourceShortLink("pod", { pod: endpoint.pod, namespace: labels.namespace }, ResourceLink);
+    }
+  } else if (!_.isEmpty(display.pods)) {
     podList = (
-      <div>
+      <React.Fragment>
         {
-          _.map(display.pods, (namespace, pod, i) => {
-            if (i > displayLimit) {
-              return null;
-            } else {
-              return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
-            }
-          })
-        }
+            _.map(display.pods, (namespace, pod, i) => {
+              if (i > displayLimit) {
+                return null;
+              } else {
+                return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+              }
+            })
+          }
         { (_.size(display.pods) > displayLimit ? "..." : "") }
-      </div>
+      </React.Fragment>
     );
   }
+  return <div className="popover-td">{podList}</div>;
+};
+
+// display consists of a list of ips and pods for aggregated displays (Top)
+const getIpList = (endpoint, display) => {
+  let ipList = endpoint.str;
+  if (display) {
+    ipList = _(display.ips).keys().take(displayLimit).value().join(", ") +
+    (_.size(display.ips) > displayLimit ? "..." : "");
+  }
+  return <div className="popover-td">{ipList}</div>;
+};
+
+const popoverResourceTable = (d, ResourceLink) => {
+  let tableData = [
+    {
+      source: getPodOwner(d.sourceLabels, ResourceLink),
+      destination: getPodOwner(d.destinationLabels, ResourceLink),
+      key: "podOwner"
+    },
+    {
+      source: getPodList(d.source, d.sourceDisplay, d.sourceLabels, ResourceLink),
+      destination: getPodList(d.destination, d.destinationDisplay, d.destinationLabels, ResourceLink),
+      key: "podList"
+    },
+    {
+      source: getIpList(d.source, d.sourceDisplay),
+      destination: getIpList(d.destination, d.destinationDisplay),
+      key: "ipList"
+    }
+  ];
 
   return (
-    <React.Fragment>
-      {
-        _.map(labels, (labelVal, labelName) => {
-          if (_.has(podOwnerLookup, labelName)) {
-            return <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
-          }
-        })
-      }
-      { podList }
-      <div>{ipList}</div>
-    </React.Fragment>
+    <Table
+      columns={popoverSrcDstColumns}
+      dataSource={tableData}
+      className="metric-table"
+      pagination={false} />
   );
 };
 
@@ -242,19 +278,9 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
-  let content = (
-    <React.Fragment>
-      <h3>Source</h3>
-      {resourceSection(d.source, d.sourceDisplay, d.sourceLabels, ResourceLink)}
-      <br />
-      <h3>Destination</h3>
-      {resourceSection(d.destination, d.destinationDisplay, d.destinationLabels, ResourceLink)}
-    </React.Fragment>
-  );
-
   return (
     <Popover
-      content={content}
+      content={popoverResourceTable(d, ResourceLink)}
       trigger="hover">
       <div className="src-dst-name">
         { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }

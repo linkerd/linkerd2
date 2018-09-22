@@ -30,3 +30,9 @@
     }
   }
 }
+
+.metric-table {
+  & .popover-td {
+    padding: 5px;
+  }
+}
