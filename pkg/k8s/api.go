@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -69,22 +68,6 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 		return fmt.Errorf("Kubernetes is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
 			apiVersion[0], apiVersion[1], apiVersion[2],
 			minApiVersion[0], minApiVersion[1], minApiVersion[2])
-	}
-
-	return nil
-}
-
-func (kubeAPI *KubernetesAPI) CheckProxyVersion(pods []v1.Pod, version string) error {
-	for _, pod := range pods {
-		for _, container := range pod.Spec.Containers {
-			if container.Name == ProxyContainerName {
-				parts := strings.Split(container.Image, ":")
-				if len(parts) == 2 && parts[1] != version {
-					return fmt.Errorf("%s is running version %s but the latest version is %s",
-						pod.Name, parts[1], version)
-				}
-			}
-		}
 	}
 
 	return nil

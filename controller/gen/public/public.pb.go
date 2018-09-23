@@ -295,6 +295,8 @@ type Pod struct {
 	ControllerNamespace  string             `protobuf:"bytes,7,opt,name=controllerNamespace,proto3" json:"controllerNamespace,omitempty"`
 	ControlPlane         bool               `protobuf:"varint,8,opt,name=controlPlane,proto3" json:"controlPlane,omitempty"`
 	Uptime               *duration.Duration `protobuf:"bytes,9,opt,name=uptime,proto3" json:"uptime,omitempty"`
+	ProxyReady           bool               `protobuf:"varint,10,opt,name=proxyReady,proto3" json:"proxyReady,omitempty"`
+	ProxyVersion         string             `protobuf:"bytes,11,opt,name=proxyVersion,proto3" json:"proxyVersion,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
