@@ -22,6 +22,11 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
+    title: "Method",
+    dataIndex: "httpMethod",
+    sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod),
+  },
+  {
     title: "Path",
     dataIndex: "path",
     sorter: (a, b) => a.path.localeCompare(b.path),

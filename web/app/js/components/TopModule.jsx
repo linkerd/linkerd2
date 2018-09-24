@@ -130,7 +130,7 @@ class TopModule extends React.Component {
     let sourceKey = event.source.owner || event.source.pod || event.source.str;
     let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
 
-    return [sourceKey, dstKey, event.http.requestInit.path].join("_");
+    return [sourceKey, dstKey, _.get(event, "http.requestInit.method.registered"), event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
@@ -168,6 +168,7 @@ class TopModule extends React.Component {
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
       destinationDisplay,
+      httpMethod: _.get(d, "requestInit.http.requestInit.method.registered"),
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
