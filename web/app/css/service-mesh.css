@@ -84,6 +84,9 @@ td div.status-dot {
   margin-left: 5px;
   color: var(--red);
 }
+.controller-init-icon {
+  margin-left: 5px;
+}
 
 .controller-pod-error {
   margin-bottom: calc(3 * var(--base-width));

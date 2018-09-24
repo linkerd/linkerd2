@@ -2,7 +2,7 @@ import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, Icon, Modal, Switch } from 'antd';
+import { Button, Icon, Modal, Switch, Tooltip } from 'antd';
 
 // max characters we display for error messages before truncating them
 const maxErrorLength = 500;
@@ -124,12 +124,35 @@ export default class ErrorModal extends React.Component {
     });
   }
 
+  renderIconStatus = errors => {
+    let showInit = true;
+
+    _.each(errors.byPodAndContainer, container => {
+      _.each(container.byContainer, con => {
+        if (con[0].reason !== "PodInitializing") {
+          showInit = false;
+        }
+      });
+    });
+
+    if (showInit) {
+      return (
+        <Tooltip
+          title="Pods are initializing"
+          overlayStyle={{ fontSize: "12px" }}>
+          <Icon type="loading" theme="outlined" className="controller-init-icon" />
+        </Tooltip>
+      );
+    } else {
+      return <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />;
+    }
+  }
+
   render() {
     let errors = this.processErrorData(this.props.errors);
-
     return (
       <React.Fragment>
-        <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />
+        {this.renderIconStatus(errors)}
         <Modal
           className="controller-pod-error-modal"
           title={`Errors in ${friendlyTitle(this.props.resourceType).singular} ${this.props.resourceName}`}
