@@ -39,6 +39,7 @@ class TopModule extends React.Component {
     this.tapResultsById = {};
     this.topEventIndex = {};
     this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.updateTapClosingState = this.props.updateTapClosingState;
 
     this.state = {
       error: null,
@@ -64,6 +65,7 @@ class TopModule extends React.Component {
   componentWillUnmount() {
     this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
+    this.updateTapClosingState = _.noop;
   }
 
   onWebsocketOpen = () => {
@@ -86,7 +88,7 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    this.props.updateTapClosingState(false);
+    this.updateTapClosingState(false);
     /* We ignore any abnormal closure since it doesn't matter as long as
     the connection to the websocket is closed. This is also a workaround
     where Chrome browsers incorrectly displays a 1006 close code
