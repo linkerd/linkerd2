@@ -1,30 +1,40 @@
 @import 'styles.css';
 
 .octopus-graph {
-  padding: calc(var(--base-width) * 4);
+  max-width: 940px;
+  padding: calc(var(--base-width) * 2);
+  margin-left: auto;
+  margin-right: auto;
   background-color: #FAFAFA;
 
   & .octopus-body {
     background-color: white;
-    margin-bottom: calc(var(--base-width) * 3);
     border: 1px solid #F2F2F2;
+    padding: var(--base-width);
   }
 
   & .octopus-col {
     text-align: center;
-  }
-  & .resource-col {
-    padding: 32px;
+
+    & .neighbor {
+      height: 200px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
   }
 
   & .octopus-title {
     padding: 8px 0;
 
-    &.main {
+    &.main-title {
       font-size: 24px;
       font-weight: var(--font-weight-extra-bold);
     }
-    &.neighbor {
+
+    &.neighbor-title {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow-x: hidden;
       font-size: 16px;
       font-weight: var(--font-weight-bold);
     }
