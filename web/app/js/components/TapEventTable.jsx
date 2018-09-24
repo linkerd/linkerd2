@@ -50,7 +50,8 @@ const grpcStatusCol = {
   key: "grpc-status",
   width: smallMetricColWidth,
   dataIndex: "responseEnd.http.responseEnd",
-  render: d => !d ? <Icon type="loading" /> : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")]
+  render: d => !d ? <Icon type="loading" /> :
+    _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")]
 };
 
 const pathCol = {
@@ -157,7 +158,7 @@ const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
         <Col span={4}>Response Length (B)</Col>
       </Row>
       <Row gutter={8}>
-        <Col span={4}>{grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
+        <Col span={4}>{_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
         <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
         <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
       </Row>
