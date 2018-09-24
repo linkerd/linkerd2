@@ -17,7 +17,9 @@
     text-align: center;
 
     & .neighbor {
-      height: 240px;
+      height: 200px;
+      margin-top: 5px;
+      margin-bottom: 5px;
     }
   }
 
@@ -28,7 +30,11 @@
       font-size: 24px;
       font-weight: var(--font-weight-extra-bold);
     }
+
     &.neighbor-title {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow-x: hidden;
       font-size: 16px;
       font-weight: var(--font-weight-bold);
     }

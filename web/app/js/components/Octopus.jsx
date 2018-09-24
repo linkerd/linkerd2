@@ -38,13 +38,14 @@ export default class Octopus extends React.Component {
   }
 
   renderResourceSummary(resource, type) {
+    let display = displayName(resource);
     return (
-      <div key={resource.name} className={`octopus-body ${type}`}>
+      <div key={resource.name} className={`octopus-body ${type}`} title={display}>
         <div className={`octopus-title ${type}-title`}>
-          { _.isNil(resource.namespace) ? displayName(resource) :
+          { _.isNil(resource.namespace) ? display :
           <this.props.api.ResourceLink
             resource={resource}
-            linkText={displayName(resource)} />
+            linkText={display} />
           }
         </div>
         <div>
@@ -68,13 +69,13 @@ export default class Octopus extends React.Component {
     return (
       <div key="unmeshed-resources" className="octopus-body neighbor unmeshed">
         <div className="octopus-title neighbor-title">Unmeshed</div>
-        { _.map(unmeshedResources, r => <div key={r}>{displayName(r)}</div>) }
+        { _.map(unmeshedResources, r => <div key={r} title={displayName(r)}>{displayName(r)}</div>) }
       </div>
     );
   }
 
   renderArrowCol = (numNeighbors, isOutbound) => {
-    let baseHeight = 222;
+    let baseHeight = 180;
     let width = 75;
     let showArrow = numNeighbors > 0;
     let isEven = numNeighbors % 2 === 0;
@@ -113,6 +114,7 @@ export default class Octopus extends React.Component {
 
     let upstreams = _.sortBy(neighbors.upstream, "resource.name");
     let downstreams = _.sortBy(neighbors.downstream, "resource.name");
+
     let numUpstreams = _.size(upstreams) + (_.isEmpty(unmeshedSources) ? 0 : 1);
     let hasUpstreams = numUpstreams > 0;
     let hasDownstreams = _.size(neighbors.downstream) > 0;
