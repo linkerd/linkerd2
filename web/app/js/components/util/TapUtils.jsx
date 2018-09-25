@@ -171,6 +171,7 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
   { title: "Source", dataIndex: "source", key: "source" },
+  { title: "", render: () => "➡️"},
   { title: "Destination", dataIndex: "destination", key: "destination" }
 ];
 
