@@ -176,14 +176,15 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 /** @extends React.Component */
 export class MetricsTableBase extends BaseTable {
   static defaultProps = {
-    showNamespaceColumn: true
+    showNamespaceColumn: true,
+    metrics: []
   }
 
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
+    metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
     showNamespaceColumn: PropTypes.bool
   }
