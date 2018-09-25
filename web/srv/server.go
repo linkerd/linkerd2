@@ -37,7 +37,7 @@ type (
 		Contents interface{}
 	}
 	appParams struct {
-		Data                *pb.VersionInfo
+		Data                pb.VersionInfo
 		UUID                string
 		ControllerNamespace string
 		Error               bool
