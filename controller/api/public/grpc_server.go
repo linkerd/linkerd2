@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -120,6 +121,17 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 		controllerComponent := pod.Labels[pkgK8s.ControllerComponentLabel]
 		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 
+		proxyReady := false
+		proxyVersion := ""
+		for _, container := range pod.Status.ContainerStatuses {
+			if container.Name == pkgK8s.ProxyContainerName {
+				proxyReady = container.Ready
+
+				parts := strings.Split(container.Image, ":")
+				proxyVersion = parts[1]
+			}
+		}
+
 		item := &pb.Pod{
 			Name:                pod.Namespace + "/" + pod.Name,
 			Status:              status,
@@ -127,6 +139,8 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			Added:               added,
 			ControllerNamespace: controllerNS,
 			ControlPlane:        controllerComponent != "",
+			ProxyReady:          proxyReady,
+			ProxyVersion:        proxyVersion,
 		}
 
 		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
