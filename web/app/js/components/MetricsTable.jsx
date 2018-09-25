@@ -7,7 +7,6 @@ import React from 'react';
 import { Tooltip } from 'antd';
 import { withContext } from './util/AppContext.jsx';
 import {
-  displayName,
   friendlyTitle,
   metricToFormatter,
   numericSort
@@ -83,10 +82,6 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       defaultSortOrder: 'ascend',
       sorter: (a, b) => (a.name || "").localeCompare(b.name),
       render: row => {
-        if (row.unmeshed) {
-          return displayName(row);
-        }
-
         let nameContents;
         if (resource === "namespace") {
           nameContents = <PrefixedLink to={"/namespaces/" + row.name}>{row.name}</PrefixedLink>;

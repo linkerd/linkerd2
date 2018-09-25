@@ -80,15 +80,16 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 
   // keep track of pods under this resource to display the number of unmeshed source pods
   neighb.pods = {};
-  !labels.pod ? null : neighb.pods[labels.pod] = true;
+  if (labels.pod) {
+    neighb.pods[labels.pod] = true;
+  }
 
   let key = neighb.type + "/" + neighb.name;
   if (_.has(labels, "control_plane_ns")) {
     delete resourceAgg[key];
   } else {
     if (_.has(resourceAgg, key)) {
-      neighb.pods = resourceAgg[key].pods;
-      !labels.pod ? null : neighb.pods[labels.pod] = true;
+      _.merge(neighb.pods, resourceAgg[key].pods);
     }
     resourceAgg[key] = neighb;
   }
