@@ -24,6 +24,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: "Method",
     dataIndex: "httpMethod",
+    width: "95px",
     sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod),
   },
   {

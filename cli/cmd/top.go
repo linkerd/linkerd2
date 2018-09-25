@@ -66,7 +66,7 @@ const headerHeight = 3
 
 var (
 	columnNames  = []string{"Source", "Destination", "Method", "Path", "Count", "Best", "Worst", "Last", "Success Rate"}
-	columnWidths = []int{23, 23, 10, 55, 6, 6, 6, 6, 3}
+	columnWidths = []int{23, 23, 10, 37, 6, 6, 6, 6, 3}
 )
 
 func newTopOptions() *topOptions {
