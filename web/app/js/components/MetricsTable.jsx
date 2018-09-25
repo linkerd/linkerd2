@@ -37,10 +37,11 @@ const formatTitle = (title, tooltipText) => {
 
 const meshedColumn = {
   title: formatTitle("Meshed"),
+  dataIndex: "pods",
   key: "pods",
   className: "numeric",
   sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods),
-  render: d => d.unmeshed ? "unmeshed" : d.pods.meshedPods + "/" + d.pods.totalPods
+  render: p => p.meshedPods + "/" + p.totalPods
 };
 
 const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceColumn, PrefixedLink) => {

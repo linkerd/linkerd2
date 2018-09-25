@@ -193,9 +193,16 @@ export class ResourceDetailBase extends React.Component {
       namespace: this.state.namespace
     };
 
-    let unmeshed = _.map(this.state.unmeshedSources, d => {
-      return _.merge(emptyMetric, d, { unmeshed: true });
-    });
+    let unmeshed = _.chain(this.state.unmeshedSources)
+      .filter(['type', this.state.resourceType])
+      .map(d => _.merge({}, emptyMetric, d, {
+        unmeshed: true,
+        pods: {
+          totalPods: _.size(d.pods),
+          meshedPods: 0
+        }
+      }))
+      .value();
 
     let upstreams = _.concat(this.state.neighborMetrics.upstream, unmeshed);
 
