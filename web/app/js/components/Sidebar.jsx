@@ -73,6 +73,15 @@ class Sidebar extends React.Component {
     };
   }
 
+  static getDerivedStateFromProps(props) {
+    if (props.namespaceURLFilter === "") {
+      return {
+        namespaceFilter: "all"
+      };
+    }
+    return null;
+  }
+
   componentDidMount() {
     this.fetchVersion();
     this.startServerPolling();
@@ -257,7 +266,7 @@ class Sidebar extends React.Component {
                   <Form layout="inline">
                     <Form.Item>
                       <Select
-                        defaultValue={this.state.namespaceFilter || "All Namespaces"}
+                        value={this.state.namespaceFilter || "all"}
                         dropdownMatchSelectWidth={true}
                         onChange={this.handleNamespaceSelector}>
                         {
