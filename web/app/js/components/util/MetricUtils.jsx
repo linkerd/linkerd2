@@ -209,6 +209,14 @@ export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) =>
   return rollupMetrics;
 };
 
+export const filterNamespacesFromRollup = (rollupMetrics, filter, resourceType) => {
+  // Check to see if the resource is not a namespace resource since it has a the
+  // name property that uniquely identifies what namespace it is in.
+  let resourceFilter = resourceType === "namespace" ?
+    m => m.name === filter : m => m.namespace === filter;
+  return filter ? _.filter(rollupMetrics, resourceFilter) : rollupMetrics;
+};
+
 export const metricsPropType = PropTypes.shape({
   ok: PropTypes.shape({
     statTables: PropTypes.arrayOf(PropTypes.shape({

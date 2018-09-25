@@ -6,18 +6,25 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Spin } from 'antd';
 import withREST from './util/withREST.jsx';
-import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
+import { filterNamespacesFromRollup, metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
+
+const urlPropsQueryConfig = {
+  namespaceURLFilter: { type: UrlQueryParamTypes.string, queryParam: 'namespace' },
+};
 
 export class ResourceListBase extends React.Component {
   static defaultProps = {
-    error: null
+    error: null,
+    namespaceURLFilter: ''
   }
 
   static propTypes = {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
     error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
+    namespaceURLFilter: PropTypes.string,
     resource: PropTypes.string.isRequired,
   }
 
@@ -40,7 +47,7 @@ export class ResourceListBase extends React.Component {
 
     let processedMetrics = [];
     if (_.has(data, '[0]')) {
-      processedMetrics = processSingleResourceRollup(data[0]);
+      processedMetrics = filterNamespacesFromRollup(processSingleResourceRollup(data[0]), this.props.namespaceURLFilter, this.props.resource);
     }
 
     return (
@@ -63,10 +70,10 @@ export class ResourceListBase extends React.Component {
   }
 }
 
-export default withREST(
+export default addUrlProps({ urlPropsQueryConfig })(withREST(
   ResourceListBase,
   ({api, resource}) => [api.fetchMetrics(api.urlsForResource(resource))],
   {
     resetProps: ['resource'],
   },
-);
+));

@@ -6,6 +6,7 @@ import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import { Collapse, Icon, Spin, Tooltip } from 'antd';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
@@ -15,6 +16,11 @@ const isMeshedTooltip = (
     <Icon className="status-ok" type="check-circle" />
   </Tooltip>
 );
+
+const urlPropsQueryConfig = {
+  namespace: {type: UrlQueryParamTypes.string}
+};
+
 class NamespaceLanding extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -24,7 +30,12 @@ class NamespaceLanding extends React.Component {
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
-    controllerNamespace: PropTypes.string.isRequired
+    controllerNamespace: PropTypes.string.isRequired,
+    namespace: PropTypes.string
+  }
+
+  static defaultProps = {
+    namespace: ""
   }
 
   constructor(props) {
@@ -57,6 +68,15 @@ class NamespaceLanding extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  static getDerivedStateFromProps(props, state) {
+    if (state.selectedNs !== props.namespace) {
+      return {
+        selectedNs: props.namespace
+      };
+    }
+    return null;
+  }
+
   onNsSelect = ns => {
     this.setState({
       selectedNs: ns
@@ -86,8 +106,11 @@ class NamespaceLanding extends React.Component {
         }
 
         // by default, show the first non-linkerd meshed namesapce
-        // if no other meshed namespaces are found, show the linkerd namespace
-        let defaultOpenNs = _.find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
+        // if there is a namespace query param in the URL, show that namespace
+        // otherwise, if no other meshed namespaces are found, show the linkerd namespace
+        let defaultOpenNs = this.props.namespace ?
+          _.find(namespaces, ns => ns.name === this.props.namespace) :
+          _.find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
         defaultOpenNs = defaultOpenNs || _.find(namespaces, ['name', this.props.controllerNamespace]);
 
         this.setState({
@@ -156,6 +179,7 @@ class NamespaceLanding extends React.Component {
         <Collapse
           accordion={true}
           defaultActiveKey={_.get(this.state.defaultOpenNs, 'name', null)}
+          activeKey={this.state.selectedNs}
           onChange={this.onNsSelect}>
           {
             _.map(this.state.namespaces, ns => {
@@ -188,4 +212,4 @@ class NamespaceLanding extends React.Component {
   }
 }
 
-export default withContext(NamespaceLanding);
+export default addUrlProps({urlPropsQueryConfig})(withContext(NamespaceLanding));

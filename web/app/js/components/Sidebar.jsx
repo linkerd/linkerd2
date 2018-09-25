@@ -6,6 +6,7 @@ import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import { Badge, Form, Icon, Layout, Menu, Select } from 'antd';
 import {
   excludeResourcesFromRollup,
@@ -24,9 +25,15 @@ const classificationLabels = {
   default: "default"
 };
 
+const urlPropsQueryConfig = {
+  namespaceURLFilter: { type: UrlQueryParamTypes.string, queryParam: 'namespace' },
+};
+
 class Sidebar extends React.Component {
   static defaultProps = {
-    productName: 'controller'
+    namespaceURLFilter: '',
+    productName: 'controller',
+    onChangeNamespaceURLFilter: _.noop
   }
 
   static propTypes = {
@@ -34,6 +41,8 @@ class Sidebar extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     location: ReactRouterPropTypes.location.isRequired,
+    namespaceURLFilter: PropTypes.string,
+    onChangeNamespaceURLFilter: PropTypes.func,
     pathPrefix: PropTypes.string.isRequired,
     productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
@@ -60,7 +69,7 @@ class Sidebar extends React.Component {
       latestVersion: '',
       isLatest: true,
       pendingRequests: false,
-      namespaceFilter: "all"
+      namespaceFilter: this.props.namespaceURLFilter || "all"
     };
   }
 
@@ -148,8 +157,14 @@ class Sidebar extends React.Component {
 
   handleNamespaceSelector(value) {
     this.setState({
-      namespaceFilter: value
+      namespaceFilter: value,
     });
+    if (value !== 'all') {
+      this.props.onChangeNamespaceURLFilter(value);
+    } else {
+      this.props.onChangeNamespaceURLFilter('');
+    }
+
   }
 
   filterResourcesByNamespace(resources, namespace) {
@@ -179,7 +194,7 @@ class Sidebar extends React.Component {
         <div className="sidebar">
 
           <div className={`sidebar-menu-header ${this.state.collapsed ? "collapsed" : ""}`}>
-            <PrefixedLink to="/overview">
+            <PrefixedLink to={`/overview${this.props.location.search}`}>
               {this.state.collapsed ? linkerdLogoOnly : linkerdWordLogo}
             </PrefixedLink>
           </div>
@@ -190,28 +205,28 @@ class Sidebar extends React.Component {
             selectedKeys={[normalizedPath]}>
 
             <Menu.Item className="sidebar-menu-item" key="/overview">
-              <PrefixedLink to="/overview">
+              <PrefixedLink to={`/overview${this.props.location.search}`}>
                 <Icon type="home" />
                 <span>Overview</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/tap">
-              <PrefixedLink to="/tap">
+              <PrefixedLink to={`/tap${this.props.location.search}`}>
                 <Icon><i className="fas fa-microscope" /></Icon>
                 <span>Tap</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/top">
-              <PrefixedLink to="/top">
+              <PrefixedLink to={`/top${this.props.location.search}`}>
                 <Icon><i className="fas fa-stream" /></Icon>
                 <span>Top</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/servicemesh">
-              <PrefixedLink to="/servicemesh">
+              <PrefixedLink to={`/servicemesh${this.props.location.search}`}>
                 <Icon type="cloud" />
                 <span>Service mesh</span>
               </PrefixedLink>
@@ -221,11 +236,11 @@ class Sidebar extends React.Component {
               className="sidebar-menu-item"
               key="byresource"
               title={<span className="sidebar-title"><Icon type="bars" />{this.state.collapsed ? "" : "Resources"}</span>}>
-              <Menu.Item><PrefixedLink to="/authorities">Authorities</PrefixedLink></Menu.Item>
-              <Menu.Item><PrefixedLink to="/deployments">Deployments</PrefixedLink></Menu.Item>
-              <Menu.Item><PrefixedLink to="/namespaces">Namespaces</PrefixedLink></Menu.Item>
-              <Menu.Item><PrefixedLink to="/pods">Pods</PrefixedLink></Menu.Item>
-              <Menu.Item><PrefixedLink to="/replicationcontrollers">Replication Controllers</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to={`/authorities${this.props.location.search}`}>Authorities</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to={`/deployments${this.props.location.search}`}>Deployments</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to={`/namespaces${this.props.location.search}`}>Namespaces</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to={`/pods${this.props.location.search}`}>Pods</PrefixedLink></Menu.Item>
+              <Menu.Item><PrefixedLink to={`/replicationcontrollers${this.props.location.search}`}>Replication Controllers</PrefixedLink></Menu.Item>
             </Menu.SubMenu>
             <Menu.Divider />
           </Menu>
@@ -327,4 +342,4 @@ class Sidebar extends React.Component {
   }
 }
 
-export default withContext(Sidebar);
+export default addUrlProps({ urlPropsQueryConfig })(withContext(Sidebar));
