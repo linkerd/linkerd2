@@ -51,6 +51,7 @@ func (id topRequestID) String() string {
 
 type tableRow struct {
 	by          string
+	method      string
 	source      string
 	destination string
 	count       int
@@ -64,8 +65,8 @@ type tableRow struct {
 const headerHeight = 3
 
 var (
-	columnNames  = []string{"Source", "Destination", "Path", "Count", "Best", "Worst", "Last", "Success Rate"}
-	columnWidths = []int{23, 23, 55, 6, 6, 6, 6, 3}
+	columnNames  = []string{"Source", "Destination", "Method", "Path", "Count", "Best", "Worst", "Last", "Success Rate"}
+	columnWidths = []int{23, 23, 10, 37, 6, 6, 6, 6, 3}
 )
 
 func newTopOptions() *topOptions {
@@ -259,6 +260,7 @@ func renderTable(requestCh <-chan topRequest, done <-chan struct{}, withSource b
 
 func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 	by := req.reqInit.GetPath()
+	method := req.reqInit.GetMethod().GetRegistered().String()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
 	if pod := req.event.SourceMeta.Labels["pod"]; pod != "" {
 		source = pod
@@ -286,7 +288,7 @@ func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 
 	found := false
 	for i, row := range *table {
-		if row.by == by && row.destination == destination && (row.source == source || !withSource) {
+		if row.by == by && row.method == method && row.destination == destination && (row.source == source || !withSource) {
 			(*table)[i].count++
 			if latency.Nanoseconds() < row.best.Nanoseconds() {
 				(*table)[i].best = latency
@@ -314,6 +316,7 @@ func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 		}
 		row := tableRow{
 			by:          by,
+			method:      method,
 			source:      source,
 			destination: destination,
 			count:       1,
@@ -357,16 +360,18 @@ func renderTableBody(table *[]tableRow, withSource bool) {
 		}
 		tbprint(x, i+headerHeight, row.destination)
 		x += columnWidths[1] + 1
-		tbprint(x, i+headerHeight, row.by)
+		tbprint(x, i+headerHeight, row.method)
 		x += columnWidths[2] + 1
-		tbprint(x, i+headerHeight, strconv.Itoa(row.count))
+		tbprint(x, i+headerHeight, row.by)
 		x += columnWidths[3] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.best))
+		tbprint(x, i+headerHeight, strconv.Itoa(row.count))
 		x += columnWidths[4] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.worst))
+		tbprint(x, i+headerHeight, formatDuration(row.best))
 		x += columnWidths[5] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.last))
+		tbprint(x, i+headerHeight, formatDuration(row.worst))
 		x += columnWidths[6] + 1
+		tbprint(x, i+headerHeight, formatDuration(row.last))
+		x += columnWidths[7] + 1
 		successRate := fmt.Sprintf("%.2f%%", 100.0*float32(row.successes)/float32(row.successes+row.failures))
 		tbprint(x, i+headerHeight, successRate)
 	}
