@@ -1,3 +1,24 @@
+## edge-18.9.3
+
+* Web UI
+  * **Improved** Resource Detail page
+    * Better rendering of the dependency graph at the top of the page
+    * Unmeshed sources are now populated in the Inbound traffic table
+    * Sources and destinations are aligned in the popover
+  * **Improved** Tap and Top pages
+    * Additional validation and polish for the form controls
+    * The top table clears older results when a new top call is started
+    * The top table now aggregates by HTTP method as well
+* CLI
+  * **New** The namespace in which Linkerd is installed is configurable via the
+    `LINKERD_NAMESPACE` env var, in addition to the `--linkerd-namespace` flag
+  * **New** The wait time for the `check` and `dashboard` commands is
+    configurable via the `--wait` flag
+  * **Improved** The `top` command now aggregates by HTTP method as well
+
+Special thanks to @rochacon, @fahrradflucht and @alenkacz for contributing to
+this release!
+
 ## stable-2.0.0
 
 ## edge-18.9.2
