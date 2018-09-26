@@ -95,5 +95,5 @@ func (p *Patch) addPodAnnotation(annotation map[string]string) {
 type patchOp struct {
 	Op    string      `json:"op"`
 	Path  string      `json:"path"`
-	Value interface{} `json:"value",omitempty`
+	Value interface{} `json:"value,omitempty"`
 }
