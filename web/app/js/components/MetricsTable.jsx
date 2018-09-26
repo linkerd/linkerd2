@@ -55,9 +55,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-      render: ns => {
-        return <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>;
-      }
+      render: ns => !ns ? "---" : <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>
     }
   ];
 

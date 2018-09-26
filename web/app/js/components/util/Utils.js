@@ -181,6 +181,8 @@ export const podOwnerLookup = {
 
 export const toShortResourceName = name => shortNameLookup[name] || name;
 
+export const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
+
 export const isResource = name => {
   let singularResourceName = singularResource(name);
   return _.has(shortNameLookup, singularResourceName);

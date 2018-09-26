@@ -78,10 +78,19 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
     };
   }
 
+  // keep track of pods under this resource to display the number of unmeshed source pods
+  neighb.pods = {};
+  if (labels.pod) {
+    neighb.pods[labels.pod] = true;
+  }
+
   let key = neighb.type + "/" + neighb.name;
   if (_.has(labels, "control_plane_ns")) {
     delete resourceAgg[key];
   } else {
+    if (_.has(resourceAgg, key)) {
+      _.merge(neighb.pods, resourceAgg[key].pods);
+    }
     resourceAgg[key] = neighb;
   }
 
@@ -176,14 +185,17 @@ const popoverSrcDstColumns = [
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
-  let podOwner = "---";
-  _.each(labels, (labelVal, labelName) => {
-    if (_.has(podOwnerLookup, labelName)) {
-      podOwner = <div key={labelName + "-" + labelVal}>{ resourceShortLink(labelName, labels, ResourceLink) }</div>;
-    }
-  });
-
-  return <div className="popover-td">{podOwner}</div>;
+  let podOwner = extractPodOwner(labels);
+  if (!podOwner) {
+    return null;
+  } else {
+    let [labelName] = podOwner.split("/");
+    return (
+      <div className="popover-td">
+        { resourceShortLink(labelName, labels, ResourceLink) }
+      </div>
+    );
+  }
 };
 
 const getPodList = (endpoint, display, labels, ResourceLink) => {

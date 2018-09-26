@@ -209,28 +209,45 @@ export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) =>
   return rollupMetrics;
 };
 
+export const emptyMetric = {
+  name: "",
+  namespace: "",
+  type: "",
+  totalRequests: null,
+  requestRate: null,
+  successRate: null,
+  latency: null,
+  tlsRequestPercent: null,
+  added: false,
+  pods: {
+    totalPods: null,
+    meshedPods: null,
+    meshedPercentage: null
+  }
+};
+
 export const metricsPropType = PropTypes.shape({
   ok: PropTypes.shape({
     statTables: PropTypes.arrayOf(PropTypes.shape({
       podGroup: PropTypes.shape({
         rows: PropTypes.arrayOf(PropTypes.shape({
           failedPodCount: PropTypes.string,
-          meshedPodCount: PropTypes.string.isRequired,
+          meshedPodCount: PropTypes.string,
           resource: PropTypes.shape({
-            name: PropTypes.string.isRequired,
-            namespace: PropTypes.string.isRequired,
-            type: PropTypes.string.isRequired,
+            name: PropTypes.string,
+            namespace: PropTypes.string,
+            type: PropTypes.string,
           }).isRequired,
-          runningPodCount: PropTypes.string.isRequired,
+          runningPodCount: PropTypes.string,
           stats: PropTypes.shape({
-            failureCount: PropTypes.string.isRequired,
-            latencyMsP50: PropTypes.string.isRequired,
-            latencyMsP95: PropTypes.string.isRequired,
-            latencyMsP99: PropTypes.string.isRequired,
-            tlsRequestCount: PropTypes.string.isRequired,
-            successCount: PropTypes.string.isRequired,
+            failureCount: PropTypes.string,
+            latencyMsP50: PropTypes.string,
+            latencyMsP95: PropTypes.string,
+            latencyMsP99: PropTypes.string,
+            tlsRequestCount: PropTypes.string,
+            successCount: PropTypes.string,
           }),
-          timeWindow: PropTypes.string.isRequired,
+          timeWindow: PropTypes.string,
         }).isRequired),
       }),
     }).isRequired).isRequired,
@@ -240,7 +257,7 @@ export const metricsPropType = PropTypes.shape({
 export const processedMetricsPropType = PropTypes.shape({
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string.isRequired,
-  totalRequests: PropTypes.number.isRequired,
+  totalRequests: PropTypes.number,
   requestRate: PropTypes.number,
   successRate: PropTypes.number,
 });
