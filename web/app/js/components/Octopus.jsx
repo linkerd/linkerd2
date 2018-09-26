@@ -112,6 +112,10 @@ export default class Octopus extends React.Component {
   render() {
     let { resource, neighbors, unmeshedSources } = this.props;
 
+    if (_.isEmpty(resource)) {
+      return null;
+    }
+
     let upstreams = _.sortBy(neighbors.upstream, "resource.name");
     let downstreams = _.sortBy(neighbors.downstream, "resource.name");
 
