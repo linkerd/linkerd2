@@ -95,21 +95,6 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(client *http.Client, namespace 
 	return kubeAPI.getPods(client, "/api/v1/namespaces/"+namespace+"/pods")
 }
 
-// GetPodsByControllerNamespace returns all pods that have been injected to
-// interface with a given controllerNamespace. If targetNamespace is provided,
-// only pods from that namespace are returned.
-func (kubeAPI *KubernetesAPI) GetPodsByControllerNamespace(client *http.Client, controllerNamespace, targetNamespace string) ([]v1.Pod, error) {
-	selector := url.QueryEscape(fmt.Sprintf("%s=%s", ControllerNSLabel, controllerNamespace))
-	var path string
-	if targetNamespace == "" {
-		path = "/api/v1/pods"
-	} else {
-		path = "/api/v1/namespaces/" + targetNamespace + "/pods"
-	}
-
-	return kubeAPI.getPods(client, fmt.Sprintf("%s?labelSelector=%s", path, selector))
-}
-
 func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Pod, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

@@ -102,7 +102,6 @@ type HealthChecker struct {
 	httpClient    *http.Client
 	kubeVersion   *k8sVersion.Info
 	apiClient     pb.ApiClient
-	dataPlanePods []*pb.Pod
 	latestVersion string
 }
 
@@ -253,19 +252,12 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       true,
 		check: func() error {
-			req := &pb.ListPodsRequest{}
-			if hc.DataPlaneNamespace != "" {
-				req.Namespace = hc.DataPlaneNamespace
-			}
-			// ListPods returns all pods, but we can use the `Added` field to verify
-			// which are found in Prometheus
-			resp, err := hc.apiClient.ListPods(context.Background(), req)
+			pods, err := hc.getDataPlanePods()
 			if err != nil {
 				return err
 			}
-			hc.dataPlanePods = resp.GetPods()
 
-			return validateDataPlanePods(hc.dataPlanePods, hc.DataPlaneNamespace)
+			return validateDataPlanePods(pods, hc.DataPlaneNamespace)
 		},
 	})
 
@@ -275,7 +267,12 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 		retry:       hc.ShouldRetry,
 		fatal:       false,
 		check: func() error {
-			return validateDataPlanePodReporting(hc.dataPlanePods)
+			pods, err := hc.getDataPlanePods()
+			if err != nil {
+				return err
+			}
+
+			return validateDataPlanePodReporting(pods)
 		},
 	})
 }
@@ -321,7 +318,12 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			description: "data plane is up-to-date",
 			fatal:       false,
 			check: func() error {
-				for _, pod := range hc.dataPlanePods {
+				pods, err := hc.getDataPlanePods()
+				if err != nil {
+					return err
+				}
+
+				for _, pod := range pods {
 					if pod.ProxyVersion != hc.latestVersion {
 						return fmt.Errorf("%s is running version %s but the latest version is %s",
 							pod.Name, pod.ProxyVersion, hc.latestVersion)
@@ -446,6 +448,27 @@ func (hc *HealthChecker) checkNamespace(namespace string) error {
 		return fmt.Errorf("The \"%s\" namespace does not exist", namespace)
 	}
 	return nil
+}
+
+func (hc *HealthChecker) getDataPlanePods() ([]*pb.Pod, error) {
+	req := &pb.ListPodsRequest{}
+	if hc.DataPlaneNamespace != "" {
+		req.Namespace = hc.DataPlaneNamespace
+	}
+
+	resp, err := hc.apiClient.ListPods(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	pods := make([]*pb.Pod, 0)
+	for _, pod := range resp.GetPods() {
+		if pod.ControllerNamespace == hc.ControlPlaneNamespace {
+			pods = append(pods, pod)
+		}
+	}
+
+	return pods, nil
 }
 
 func validateControlPlanePods(pods []v1.Pod) error {
