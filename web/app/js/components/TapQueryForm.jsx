@@ -2,9 +2,9 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
+import Button from '@material-ui/core/Button';
 import {
   AutoComplete,
-  Button,
   Col,
   Form,
   Icon,
@@ -314,13 +314,14 @@ class TapQueryForm extends React.Component {
 
   renderTapButton = (tapInProgress, tapIsClosing) => {
     if (tapIsClosing) {
-      return (<Button type="primary" className="tap-ctrl tap-stop" disabled={true}>Stop</Button>);
+      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" disabled={true}>Stop</Button>);
     } else if (tapInProgress) {
-      return (<Button type="primary" className="tap-ctrl tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
+      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
     } else {
       return (
         <Button
-          type="primary"
+          color="primary"
+          variant="outlined"
           className="tap-ctrl tap-start"
           disabled={!this.state.query.namespace || !this.state.query.resource}
           onClick={this.props.handleTapStart}>
