@@ -21,10 +21,11 @@ metadata:
 
 ### Controller RBAC ###
 ---
-kind: ClusterRole
+kind: {{if not .SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -34,13 +35,14 @@ rules:
   verbs: ["list", "get", "watch"]
 
 ---
-kind: ClusterRoleBinding
+kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
   name: linkerd-{{.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
@@ -57,23 +59,25 @@ metadata:
 
 ### Prometheus RBAC ###
 ---
-kind: ClusterRole
+kind: {{if not .SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-prometheus
+  name: linkerd-{{.Namespace}}-prometheus{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
 
 ---
-kind: ClusterRoleBinding
+kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-prometheus
+  name: linkerd-{{.Namespace}}-prometheus{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
   name: linkerd-{{.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
@@ -152,6 +156,7 @@ spec:
         - "public-api"
         - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
@@ -173,6 +178,8 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "destination"
+        - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
         - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
@@ -217,8 +224,9 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
-        - "-log-level={{.ControllerLogLevel}}"
         - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -420,7 +428,9 @@ data:
 
     - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
-      - role: pod
+      - role: pod{{ if .SingleNamespace }}
+        namespaces:
+          names: ['{{.Namespace}}']{{ end }}
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -596,10 +606,11 @@ metadata:
 
 ### CA RBAC ###
 ---
-kind: ClusterRole
+kind: {{if not .SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-ca
+  name: linkerd-{{.Namespace}}-ca{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -624,13 +635,14 @@ rules:
 {{- end }}
 
 ---
-kind: ClusterRoleBinding
+kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-ca
+  name: linkerd-{{.Namespace}}-ca{{if .SingleNamespace}}
+  namespace: {{.Namespace}}{{end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
   name: linkerd-{{.Namespace}}-ca
 subjects:
 - kind: ServiceAccount
@@ -668,6 +680,7 @@ spec:
         args:
         - "ca"
         - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
         {{- if and .EnableTLS .ProxyAutoInjectEnabled }}
         - "-proxy-auto-inject={{ .ProxyAutoInjectEnabled }}"
         {{- end }}

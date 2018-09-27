@@ -145,6 +145,7 @@ spec:
         - public-api
         - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
+        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -167,6 +168,8 @@ spec:
         resources: {}
       - args:
         - destination
+        - -controller-namespace=Namespace
+        - -single-namespace=false
         - -enable-tls=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
@@ -213,8 +216,9 @@ spec:
         resources: {}
       - args:
         - tap
-        - -log-level=ControllerLogLevel
         - -controller-namespace=Namespace
+        - -single-namespace=false
+        - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -938,6 +942,7 @@ spec:
       - args:
         - ca
         - -controller-namespace=Namespace
+        - -single-namespace=false
         - -proxy-auto-inject=true
         - -log-level=ControllerLogLevel
         image: ControllerImage

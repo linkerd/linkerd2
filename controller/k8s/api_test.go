@@ -10,7 +10,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
@@ -132,6 +134,19 @@ metadata:
   namespace: not-my-ns`,
 				},
 			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "",
+				resType:   k8s.Namespace,
+				name:      "",
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-ns`,
+				},
+				k8sResMisc: []string{},
+			},
 		}
 
 		for _, exp := range expectations {
@@ -153,6 +168,37 @@ metadata:
 				}
 			}
 		}
+	})
+
+	t.Run("In single-namespace mode", func(t *testing.T) {
+		t.Run("Returns only the configured namespace", func(t *testing.T) {
+			ns1 := &apiv1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace1",
+				},
+			}
+			ns2 := &apiv1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace2",
+				},
+			}
+
+			clientSet := fake.NewSimpleClientset(ns1, ns2)
+			api := NewAPI(clientSet, "namespace1")
+
+			namespaces, err := api.GetObjects("", k8s.Namespace, "")
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if len(namespaces) != 1 {
+				t.Fatalf("expected 1 namespace, got %d", len(namespaces))
+			}
+
+			if namespaces[0].(*apiv1.Namespace).Name != "namespace1" {
+				t.Fatalf("expected namespace1, got %v", namespaces[0])
+			}
+		})
 	})
 
 	t.Run("If objects are pods", func(t *testing.T) {

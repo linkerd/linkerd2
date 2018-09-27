@@ -94,6 +94,7 @@ type HealthCheckOptions struct {
 	ShouldCheckKubeVersion         bool
 	ShouldCheckControlPlaneVersion bool
 	ShouldCheckDataPlaneVersion    bool
+	SingleNamespace                bool
 }
 
 type HealthChecker struct {
@@ -197,23 +198,43 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 		},
 	})
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create ClusterRoles",
-		fatal:       true,
-		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
-		},
-	})
+	if hc.SingleNamespace {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create Roles",
+			fatal:       true,
+			check: func() error {
+				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
+			},
+		})
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create ClusterRoleBindings",
-		fatal:       true,
-		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
-		},
-	})
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create RoleBindings",
+			fatal:       true,
+			check: func() error {
+				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
+			},
+		})
+	} else {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create ClusterRoles",
+			fatal:       true,
+			check: func() error {
+				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+			},
+		})
+
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create ClusterRoleBindings",
+			fatal:       true,
+			check: func() error {
+				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+			},
+		})
+	}
 
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdPreInstallCategory,

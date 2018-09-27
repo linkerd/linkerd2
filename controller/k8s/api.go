@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -28,7 +29,6 @@ const (
 	CM ApiResource = iota
 	Deploy
 	Endpoint
-	NS
 	Pod
 	RC
 	RS
@@ -43,7 +43,6 @@ type API struct {
 	cm       coreinformers.ConfigMapInformer
 	deploy   appinformers.DeploymentInformer
 	endpoint coreinformers.EndpointsInformer
-	ns       coreinformers.NamespaceInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appinformers.ReplicaSetInformer
@@ -52,16 +51,28 @@ type API struct {
 
 	syncChecks      []cache.InformerSynced
 	sharedInformers informers.SharedInformerFactory
+	namespace       string
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API
-func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiResource) *API {
+	var sharedInformers informers.SharedInformerFactory
+	if namespace == "" {
+		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+	} else {
+		sharedInformers = informers.NewFilteredSharedInformerFactory(
+			k8sClient,
+			10*time.Minute,
+			namespace,
+			nil,
+		)
+	}
 
 	api := &API{
 		Client:          k8sClient,
 		syncChecks:      make([]cache.InformerSynced, 0),
 		sharedInformers: sharedInformers,
+		namespace:       namespace,
 	}
 
 	for _, resource := range resources {
@@ -75,9 +86,6 @@ func NewAPI(k8sClient kubernetes.Interface, resources ...ApiResource) *API {
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
-		case NS:
-			api.ns = sharedInformers.Core().V1().Namespaces()
-			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
@@ -117,13 +125,6 @@ func (api *API) Sync(readyCh chan<- struct{}) {
 	if readyCh != nil {
 		close(readyCh)
 	}
-}
-
-func (api *API) NS() coreinformers.NamespaceInformer {
-	if api.ns == nil {
-		panic("NS informer not configured")
-	}
-	return api.ns
 }
 
 func (api *API) Deploy() appinformers.DeploymentInformer {
@@ -286,20 +287,32 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 	return allPods, nil
 }
 
+// getNamespaces returns the namespace matching the specified name. If no name
+// is given, it returns all namespaces, unless the API was configured to only
+// work with a single namespace, in which case it returns that namespace. Note
+// that namespace reads are not cached.
 func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
-	var err error
-	var namespaces []*apiv1.Namespace
+	namespaces := make([]*apiv1.Namespace, 0)
 
-	if name == "" {
-		namespaces, err = api.NS().Lister().List(labels.Everything())
-	} else {
-		var namespace *apiv1.Namespace
-		namespace, err = api.NS().Lister().Get(name)
-		namespaces = []*apiv1.Namespace{namespace}
+	if name == "" && api.namespace != "" {
+		name = api.namespace
 	}
 
-	if err != nil {
-		return nil, err
+	if name == "" {
+		namespaceList, err := api.Client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range namespaceList.Items {
+			ns := item // must create separate var in order to get unique pointers
+			namespaces = append(namespaces, &ns)
+		}
+	} else {
+		namespace, err := api.Client.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		namespaces = []*apiv1.Namespace{namespace}
 	}
 
 	objects := []runtime.Object{}

@@ -58,6 +58,7 @@ type installConfig struct {
 	ProxyResourceRequestCPU          string
 	ProxyResourceRequestMemory       string
 	ProxyBindTimeout                 string
+	SingleNamespace                  bool
 }
 
 type installOptions struct {
@@ -66,6 +67,7 @@ type installOptions struct {
 	prometheusReplicas uint
 	controllerLogLevel string
 	proxyAutoInject    bool
+	singleNamespace    bool
 	*proxyConfigOptions
 }
 
@@ -78,6 +80,7 @@ func newInstallOptions() *installOptions {
 		prometheusReplicas: 1,
 		controllerLogLevel: "info",
 		proxyAutoInject:    false,
+		singleNamespace:    false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -105,12 +108,13 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
 	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Enable proxy sidecar auto-injection webhook; default to false")
+	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Configure the control plane to only operate in the installed namespace")
 
 	return cmd
 }
 
 func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
-	if err := validate(options); err != nil {
+	if err := options.validate(); err != nil {
 		return nil, err
 	}
 
@@ -168,6 +172,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyResourceRequestCPU:          options.proxyCpuRequest,
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
 		ProxyBindTimeout:                 "1m",
+		SingleNamespace:                  options.singleNamespace,
 	}, nil
 }
 
@@ -212,9 +217,14 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	return InjectYAML(buf, w, ioutil.Discard, injectOptions)
 }
 
-func validate(options *installOptions) error {
+func (options *installOptions) validate() error {
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
-	return options.validate()
+
+	if options.proxyAutoInject && options.singleNamespace {
+		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
+	}
+
+	return options.proxyConfigOptions.validate()
 }
