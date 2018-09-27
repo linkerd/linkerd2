@@ -1,4 +1,6 @@
 @import url('https://use.fontawesome.com/releases/v5.3.1/css/all.css');
+/* material-ui uses Roboto */
+@import url("https://fonts.googleapis.com/css?family=Montserrat:400,700|Roboto:100,300,400");
 
 :root {
   --white: #fff;
@@ -19,7 +21,7 @@
   --latency-p99: var(--royalblue);
   --latency-p95: var(--curiousblue);
   --latency-p50: var(--pictonblue);
-  --font-stack: 'Lato', helvetica, arial, sans-serif;
+  --font-stack: 'Roboto', 'Lato', helvetica, arial, sans-serif;
   --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-bold: 700;
