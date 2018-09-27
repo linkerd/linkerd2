@@ -12,8 +12,10 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 )
 
 type Checks int
@@ -52,7 +54,7 @@ const (
 	LinkerdVersionChecks
 
 	KubernetesAPICategory     = "kubernetes-api"
-	LinkerdPreInstallCategory = "linkerd-ns"
+	LinkerdPreInstallCategory = "kubernetes-setup"
 	LinkerdDataPlaneCategory  = "linkerd-data-plane"
 	LinkerdAPICategory        = "linkerd-api"
 	LinkerdVersionCategory    = "linkerd-version"
@@ -64,12 +66,12 @@ var (
 )
 
 type checker struct {
-	category    string
-	description string
-	fatal       bool
-	retry       bool
-	check       func() error
-	checkRPC    func() (*healthcheckPb.SelfCheckResponse, error)
+	category      string
+	description   string
+	fatal         bool
+	retryDeadline time.Time
+	check         func() error
+	checkRPC      func() (*healthcheckPb.SelfCheckResponse, error)
 }
 
 type CheckResult struct {
@@ -87,7 +89,7 @@ type HealthCheckOptions struct {
 	KubeConfig                     string
 	APIAddr                        string
 	VersionOverride                string
-	ShouldRetry                    bool
+	RetryDeadline                  time.Time
 	ShouldCheckKubeVersion         bool
 	ShouldCheckControlPlaneVersion bool
 	ShouldCheckDataPlaneVersion    bool
@@ -98,11 +100,13 @@ type HealthChecker struct {
 	*HealthCheckOptions
 
 	// these fields are set in the process of running checks
-	kubeAPI       *k8s.KubernetesAPI
-	httpClient    *http.Client
-	kubeVersion   *k8sVersion.Info
-	apiClient     pb.ApiClient
-	latestVersion string
+	kubeAPI          *k8s.KubernetesAPI
+	httpClient       *http.Client
+	clientset        *kubernetes.Clientset
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []v1.Pod
+	apiClient        pb.ApiClient
+	latestVersion    string
 }
 
 func NewHealthChecker(checks []Checks, options *HealthCheckOptions) *HealthChecker {
@@ -182,6 +186,69 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 			return nil
 		},
 	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Namespaces",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "", "v1", "Namespace")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ClusterRoles",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ClusterRoleBindings",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ServiceAccounts",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Services",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create Deployments",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: "can create ConfigMaps",
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
+		},
+	})
 }
 
 func (hc *HealthChecker) addLinkerdAPIChecks() {
@@ -195,16 +262,17 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
-		description: "control plane pods are ready",
-		retry:       hc.ShouldRetry,
-		fatal:       true,
+		category:      LinkerdAPICategory,
+		description:   "control plane pods are ready",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
 		check: func() error {
-			pods, err := hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+			var err error
+			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
 			if err != nil {
 				return err
 			}
-			return validateControlPlanePods(pods)
+			return validateControlPlanePods(hc.controlPlanePods)
 		},
 	})
 
@@ -247,10 +315,10 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 	}
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdDataPlaneCategory,
-		description: "data plane proxies are ready",
-		retry:       hc.ShouldRetry,
-		fatal:       true,
+		category:      LinkerdDataPlaneCategory,
+		description:   "data plane proxies are ready",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
 		check: func() error {
 			pods, err := hc.getDataPlanePods()
 			if err != nil {
@@ -262,10 +330,10 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdDataPlaneCategory,
-		description: "data plane proxy metrics are present in Prometheus",
-		retry:       hc.ShouldRetry,
-		fatal:       false,
+		category:      LinkerdDataPlaneCategory,
+		description:   "data plane proxy metrics are present in Prometheus",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         false,
 		check: func() error {
 			pods, err := hc.getDataPlanePods()
 			if err != nil {
@@ -286,7 +354,23 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			if hc.VersionOverride != "" {
 				hc.latestVersion = hc.VersionOverride
 			} else {
-				hc.latestVersion, err = version.GetLatestVersion()
+				// The UUID is only known to the web process. At some point we may want
+				// to consider providing it in the Public API.
+				uuid := "unknown"
+				for _, pod := range hc.controlPlanePods {
+					if strings.Split(pod.Name, "-")[0] == "web" {
+						for _, container := range pod.Spec.Containers {
+							if container.Name == "web" {
+								for _, arg := range container.Args {
+									if strings.HasPrefix(arg, "-uuid=") {
+										uuid = strings.TrimPrefix(arg, "-uuid=")
+									}
+								}
+							}
+						}
+					}
+				}
+				hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
 			}
 			return
 		},
@@ -377,11 +461,6 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 }
 
 func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
-	var retries int
-	if c.retry {
-		retries = maxRetries
-	}
-
 	for {
 		err := c.check()
 		checkResult := &CheckResult{
@@ -390,8 +469,7 @@ func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
 			Err:         err,
 		}
 
-		if err != nil && retries > 0 {
-			retries--
+		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			observer(checkResult)
 			time.Sleep(retryWindow)
@@ -469,6 +547,43 @@ func (hc *HealthChecker) getDataPlanePods() ([]*pb.Pod, error) {
 	}
 
 	return pods, nil
+}
+
+func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+	if hc.clientset == nil {
+		var err error
+		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	auth := hc.clientset.AuthorizationV1beta1()
+
+	sar := &authorizationapi.SelfSubjectAccessReview{
+		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationapi.ResourceAttributes{
+				Namespace: namespace,
+				Verb:      "create",
+				Group:     group,
+				Version:   version,
+				Resource:  resource,
+			},
+		},
+	}
+
+	response, err := auth.SelfSubjectAccessReviews().Create(sar)
+	if err != nil {
+		return err
+	}
+
+	if !response.Status.Allowed {
+		if len(response.Status.Reason) > 0 {
+			return fmt.Errorf("Missing permissions to create %s: %v", resource, response.Status.Reason)
+		}
+		return fmt.Errorf("Missing permissions to create %s", resource)
+	}
+	return nil
 }
 
 func validateControlPlanePods(pods []v1.Pod) error {

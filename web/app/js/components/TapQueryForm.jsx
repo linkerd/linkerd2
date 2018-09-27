@@ -17,6 +17,15 @@ import { defaultMaxRps, httpMethods, tapQueryProps, tapQueryPropType } from './u
 const colSpan = 5;
 const rowGutter = 16;
 
+// you can also tap resources to tap all pods in the resource
+const resourceTypes = [
+  "deployment",
+  "daemonset",
+  "pod",
+  "replicationcontroller",
+  "statefulset"
+];
+
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _.uniq(_.flatten(_.values(resourcesByNs)));
 };
@@ -31,12 +40,14 @@ class TapQueryForm extends React.Component {
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
+    tapIsClosing: PropTypes.bool,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired
   }
 
   static defaultProps = {
-    enableAdvancedForm: true
+    enableAdvancedForm: true,
+    tapIsClosing: false
   }
 
   constructor(props) {
@@ -252,6 +263,7 @@ class TapQueryForm extends React.Component {
     let nsEmpty = _.isNil(selectedNs) || _.isEmpty(selectedNs);
 
     let resourceOptions = _.concat(
+      resourceTypes,
       this.state.autocomplete[resourceKey] || [],
       nsEmpty ? [] : [`namespace/${selectedNs}`]
     );
@@ -276,6 +288,23 @@ class TapQueryForm extends React.Component {
       }
       </Select>
     );
+  }
+
+  renderTapButton(tapInProgress, tapIsClosing) {
+    if (tapIsClosing) {
+      return (<Button type="primary" className="top-stop" disabled={true}>Stop</Button>);
+    } else if (tapInProgress) {
+      return (<Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
+    } else {
+      return (
+        <Button
+          type="primary"
+          className="tap-start"
+          disabled={!this.state.query.namespace || !this.state.query.resource}
+          onClick={this.props.handleTapStart}>
+          Start
+        </Button>);
+    }
   }
 
   render() {
@@ -308,11 +337,7 @@ class TapQueryForm extends React.Component {
 
           <Col span={colSpan}>
             <Form.Item>
-              {
-                this.props.tapRequestInProgress ?
-                  <Button type="primary" className="tap-stop" onClick={this.props.handleTapStop}>Stop</Button> :
-                  <Button type="primary" className="tap-start" onClick={this.props.handleTapStart}>Start</Button>
-              }
+              { this.renderTapButton(this.props.tapRequestInProgress, this.props.tapIsClosing) }
             </Form.Item>
           </Col>
         </Row>

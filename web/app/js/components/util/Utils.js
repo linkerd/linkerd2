@@ -51,7 +51,8 @@ export const metricToFormatter = {
   "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
   "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": formatLatencyMs,
-  "UNTRUNCATED": m => styleNum(m, "", false)
+  "UNTRUNCATED": m => styleNum(m, "", false),
+  "NO_UNIT": m => _.isNil(m) ? "---" : styleNum(m, "", true)
 };
 
 /*
@@ -170,7 +171,17 @@ export const shortNameLookup = {
   "authority": "au"
 };
 
+export const podOwnerLookup = {
+  "deployment": "deploy",
+  "daemonset": "ds",
+  "replicationcontroller": "rc",
+  "replicaset": "rs",
+  "statefulset": "sts",
+};
+
 export const toShortResourceName = name => shortNameLookup[name] || name;
+
+export const displayName = resource => `${toShortResourceName(resource.type)}/${resource.name}`;
 
 export const isResource = name => {
   let singularResourceName = singularResource(name);

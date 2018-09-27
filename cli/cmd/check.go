@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ type checkOptions struct {
 	versionOverride string
 	preInstallOnly  bool
 	dataPlaneOnly   bool
-	wait            bool
+	wait            time.Duration
 	namespace       string
 }
 
@@ -27,7 +28,7 @@ func newCheckOptions() *checkOptions {
 		versionOverride: "",
 		preInstallOnly:  false,
 		dataPlaneOnly:   false,
-		wait:            true,
+		wait:            300 * time.Second,
 		namespace:       "",
 	}
 }
@@ -62,7 +63,7 @@ non-zero exit code.`,
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
-	cmd.PersistentFlags().BoolVar(&options.wait, "wait", options.wait, "Retry and wait for some checks to succeed if they don't pass the first time")
+	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Retry and wait for some checks to succeed if they don't pass the first time")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 
 	return cmd
@@ -88,7 +89,7 @@ func configureAndRunChecks(options *checkOptions) {
 		KubeConfig:                     kubeconfigPath,
 		APIAddr:                        apiAddr,
 		VersionOverride:                options.versionOverride,
-		ShouldRetry:                    options.wait,
+		RetryDeadline:                  time.Now().Add(options.wait),
 		ShouldCheckKubeVersion:         true,
 		ShouldCheckControlPlaneVersion: !(options.preInstallOnly || options.dataPlaneOnly),
 		ShouldCheckDataPlaneVersion:    options.dataPlaneOnly,

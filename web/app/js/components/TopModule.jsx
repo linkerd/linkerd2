@@ -13,10 +13,11 @@ class TopModule extends React.Component {
     maxRowsToStore: PropTypes.number,
     pathPrefix: PropTypes.string.isRequired,
     query: PropTypes.shape({
-      resource: PropTypes.string.isRequired
-    }).isRequired,
+      resource: PropTypes.string
+    }),
     startTap: PropTypes.bool.isRequired,
-    updateNeighbors: PropTypes.func
+    updateNeighbors: PropTypes.func,
+    updateTapClosingState: PropTypes.func
   }
 
   static defaultProps = {
@@ -26,7 +27,11 @@ class TopModule extends React.Component {
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
     maxRowsToStore: 50,
-    updateNeighbors: _.noop
+    updateNeighbors: _.noop,
+    updateTapClosingState: _.noop,
+    query: {
+      resource: ""
+    }
   }
 
   constructor(props) {
@@ -34,6 +39,7 @@ class TopModule extends React.Component {
     this.tapResultsById = {};
     this.topEventIndex = {};
     this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.updateTapClosingState = this.props.updateTapClosingState;
 
     this.state = {
       error: null,
@@ -59,6 +65,7 @@ class TopModule extends React.Component {
   componentWillUnmount() {
     this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
+    this.updateTapClosingState = _.noop;
   }
 
   onWebsocketOpen = () => {
@@ -81,7 +88,13 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    if (!e.wasClean) {
+    this.updateTapClosingState(false);
+    /* We ignore any abnormal closure since it doesn't matter as long as
+    the connection to the websocket is closed. This is also a workaround
+    where Chrome browsers incorrectly displays a 1006 close code
+    https://github.com/linkerd/linkerd2/issues/1630
+    */
+    if (!e.wasClean && e.code !== 1006) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
@@ -114,10 +127,32 @@ class TopModule extends React.Component {
   }
 
   topEventKey = event => {
-    return [event.source.str, event.destination.str, event.http.requestInit.path].join("_");
+    let sourceKey = event.source.owner || event.source.pod || event.source.str;
+    let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
+
+    return [sourceKey, dstKey, _.get(event, "http.requestInit.method.registered"), event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
+    // in the event that we key on resources with multiple pods/ips, store them so we can display
+    let sourceDisplay = {
+      ips: {},
+      pods: {}
+    };
+    sourceDisplay.ips[d.base.source.str] = true;
+    if (!_.isNil(d.base.source.pod)) {
+      sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
+    }
+
+    let destinationDisplay = {
+      ips: {},
+      pods: {}
+    };
+    destinationDisplay.ips[d.base.destination.str] = true;
+    if (!_.isNil(d.base.destination.pod)) {
+      destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
+    }
+
     return {
       count: 1,
       best: d.responseEnd.latency,
@@ -129,8 +164,11 @@ class TopModule extends React.Component {
       direction: d.base.proxyDirection,
       source: d.requestInit.source,
       sourceLabels: d.requestInit.sourceMeta.labels,
+      sourceDisplay,
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
+      destinationDisplay,
+      httpMethod: _.get(d, "requestInit.http.requestInit.method.registered"),
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
@@ -152,6 +190,15 @@ class TopModule extends React.Component {
     }
     if (d.responseEnd.latency > result.worst) {
       result.worst = d.responseEnd.latency;
+    }
+
+    result.sourceDisplay.ips[d.base.source.str] = true;
+    if (!_.isNil(d.requestInit.sourceMeta.labels.pod)) {
+      result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+    }
+    result.destinationDisplay.ips[d.base.destination.str] = true;
+    if (!_.isNil(d.requestInit.destinationMeta.labels.pod)) {
+      result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     }
 
     result.lastUpdated = Date.now();
@@ -248,6 +295,9 @@ class TopModule extends React.Component {
   }
 
   startTapStreaming() {
+    this.tapResultsById = {};
+    this.topEventIndex = {};
+
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
     let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;
 
@@ -272,7 +322,7 @@ class TopModule extends React.Component {
 
   render() {
     let tableRows = _.take(_.values(this.state.topEventIndex), this.props.maxRowsToDisplay);
-    let resourceType = this.props.query.resource.split("/")[0];
+    let resourceType = _.isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>

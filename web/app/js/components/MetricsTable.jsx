@@ -19,16 +19,6 @@ import { processedMetricsPropType, successRateWithMiniChart } from './util/Metri
 */
 const smMetricColWidth = "70px";
 
-const withTooltip = (d, metricName) => {
-  return (
-    <Tooltip
-      title={metricToFormatter["UNTRUNCATED"](d)}
-      overlayStyle={{ fontSize: "12px" }}>
-      <span>{metricToFormatter[metricName](d)}</span>
-    </Tooltip>
-  );
-};
-
 const formatTitle = (title, tooltipText) => {
   if (!tooltipText) {
     return title;
@@ -65,9 +55,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       onFilterDropdownVisibleChange: onFilterClick,
       onFilter: (value, row) => row.namespace.indexOf(value) === 0,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-      render: ns => {
-        return <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>;
-      }
+      render: ns => !ns ? "---" : <PrefixedLink to={"/namespaces/" + ns}>{ns}</PrefixedLink>
     }
   ];
 
@@ -130,7 +118,7 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
       className: "numeric",
       width: smMetricColWidth,
       sorter: (a, b) => numericSort(a.requestRate, b.requestRate),
-      render: d => withTooltip(d, "REQUEST_RATE")
+      render: metricToFormatter["NO_UNIT"]
     },
     {
       title: formatTitle("P50", "P50 Latency"),
@@ -186,14 +174,15 @@ const columnDefinitions = (resource, namespaces, onFilterClick, showNamespaceCol
 /** @extends React.Component */
 export class MetricsTableBase extends BaseTable {
   static defaultProps = {
-    showNamespaceColumn: true
+    showNamespaceColumn: true,
+    metrics: []
   }
 
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    metrics: PropTypes.arrayOf(processedMetricsPropType.isRequired).isRequired,
+    metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
     showNamespaceColumn: PropTypes.bool
   }

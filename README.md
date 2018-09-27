@@ -1,66 +1,39 @@
-![Linkerd2][logo]
+![Linkerd][logo]
 
 [![Build Status][ci-badge]][ci]
 [![GitHub license][license-badge]](LICENSE)
 [![Slack Status][slack-badge]][slack]
 
-:balloon: Welcome to Linkerd2! :wave:
+:balloon: Welcome to Linkerd! :wave:
 
-Linkerd2 is an ultralight *service mesh*, designed to make modern applications
-safe and sane by transparently adding service discovery, load balancing, failure
-handling, instrumentation, and routing to all inter-service communication.
+Linkerd is a *service sidecar* designed to give service owners automatic
+observability, reliability, and runtime diagnostics for their service without
+requiring configuration or code changes. Linkerd is also a *service mesh*,
+running across an entire cluster to provide platform-wide telemetry, security,
+and reliability.
 
-Linkerd2 (pronouned "linker-DEE-two") acts as a transparent
-HTTP/gRPC/thrift/tcp/etc proxy, and can be deployed alongside existing
-applications regardless of what language they're written in. It works with many
-common protocols and utilizes Kubernetes as a backend for service discovery.
+Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
-It is separated into two major components: the control plane and the data plane.
-The control plane interacts with the service discovery backend, orchestrates the
-data plane and is written in [Go][golang]. The data plane runs alongside
-existing applications, provides the proxy that manages traffic itself and is
-written in [Rust][rust].
+## Repo layout
 
-Currently, Linkerd2 is capable of proxying all TCP traffic, including WebSockets
-and HTTP tunneling, along with reporting top-line metrics (success rates,
-latencies, etc) for all HTTP, HTTP/2, and gRPC traffic.
+This is the primary repo for the Linkerd 2.x line of development.
 
-Linkerd is hosted by the Cloud Native Computing Foundation ([CNCF][cncf]).
+The complete list of Linkerd repos is:
+* [linkerd2][linkerd2]: Main Linkerd 2.x repo, including control plane and CLI
+* [linkerd2-proxy][proxy]: Linkerd 2.x data plane proxy
+* [linkerd2-proxy-api][proxy-api]: Linkerd 2.x gRPC API bindings
+* [linkerd][linkerd1]: Linkerd 1.x
+* [linkerd-website][linkerd-website]: linkerd.io website (including docs for 1.x and 2.x)
+* [linkerd-examples][linkerd-examples]: example configs and apps
 
-## Get involved
+## Quickstart and documentation
 
-* [Users mailing list][linkerd-users]: Linkerd2 user discussion mailing
-  list.
-* [Developers mailing list][linkerd-dev]: Linkerd2 development discussion
-  mailing list.
-* [Announcements mailing list][linkerd-announce]: Linkerd2 announcements only
-  (low volume).
-* Follow [@linkerd][twitter] on Twitter.
-* Join the #linkerd2 channel on the [Linkerd Slack][slack].
+You can run Linkerd on any Kubernetes 1.9+ cluster in a matter of seconds. See
+the [Linkerd Getting Started Guide][getting-started] for how.
 
-## Documentation
-
-View [Linkerd2 docs][linkerd-docs] for a more comprehensive guide to getting
-started, or use the instructions below.
-
-The doc source code is available in the [website][linkerd-website] repo.
-
-## Getting started with Linkerd2
-
-1. Install the Linkerd2 CLI with `curl https://run.linkerd.io/install | sh`.
-
-1. Add `$HOME/.linkerd2/bin` to your `PATH`.
-
-1. Install Linkerd2 into your Kubernetes cluster with `linkerd install | kubectl
-   apply -f -`.
-
-1. Verify that the installation succeeded with `linkerd check`.
-
-1. Explore the Linkerd2 controller dashboard with `linkerd dashboard`.
-
-1. Optionally, install a [demo application][linkerd-demo] to run with Linkerd2.
-
-1. Add [your own service][linkerd-inject] to the Linkerd2 mesh!
+For more comprehensive documentation, start with the [Linkerd
+docs][linkerd-docs]. (The doc source code is available in the
+[website][linkerd-website] repo.)
 
 ## Working in this repo ##
 
@@ -69,13 +42,12 @@ The doc source code is available in the [website][linkerd-website] repo.
 We :heart: pull requests! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for info on
 contributing changes.
 
-## Dependencies ##
+## Get involved
 
-There are some projects used by Linkerd2 that are not part of this repo.
-
-* [linkerd2-proxy][proxy] -- High-performance data plane, injected as a sidecar
-  with every service.
-* [linkerd2-proxy-api][proxy-api] -- gRPC API bindings for the proxy.
+* Join Linkerd's [user mailing list][linkerd-users],
+[developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Follow [@linkerd][twitter] on Twitter.
+* Join the [Linkerd Slack][slack].
 
 ## Code of conduct
 
@@ -102,15 +74,19 @@ specific language governing permissions and limitations under the License.
 [ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
-[linkerd-announce]: https://groups.google.com/forum/#!forum/linkerd-announce
-[linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
-[linkerd-dev]: https://groups.google.com/forum/#!forum/linkerd-dev
-[linkerd-inject]: https://linkerd.io/2/adding-your-service/
-[linkerd-docs]: https://linkerd.io/2/overview/
-[linkerd-users]: https://groups.google.com/forum/#!forum/linkerd-users
-[linkerd-website]: https://github.com/linkerd/website
+[getting-started]: https://linkerd.io/2/getting-started/
 [golang]: https://golang.org/
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
+[linkerd1]: https://github.com/linkerd/linkerd
+[linkerd2]: https://github.com/linkerd/linkerd2
+[linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce
+[linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
+[linkerd-dev]: https://lists.cncf.io/g/cncf-linkerd-dev
+[linkerd-docs]: https://linkerd.io/2/overview/
+[linkerd-examples]: https://linkerd.io/2/overview/
+[linkerd-inject]: https://linkerd.io/2/adding-your-service/
+[linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
+[linkerd-website]: https://github.com/linkerd/website
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
 [proxy]: https://github.com/linkerd/linkerd2-proxy
 [proxy-api]: https://github.com/linkerd/linkerd2-proxy-api

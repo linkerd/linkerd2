@@ -1,3 +1,39 @@
+## edge-18.9.3
+
+* Web UI
+  * **Improved** Resource Detail page
+    * Better rendering of the dependency graph at the top of the page
+    * Unmeshed sources are now populated in the Inbound traffic table
+    * Sources and destinations are aligned in the popover
+  * **Improved** Tap and Top pages
+    * Additional validation and polish for the form controls
+    * The top table clears older results when a new top call is started
+    * The top table now aggregates by HTTP method as well
+* CLI
+  * **New** The namespace in which Linkerd is installed is configurable via the
+    `LINKERD_NAMESPACE` env var, in addition to the `--linkerd-namespace` flag
+  * **New** The wait time for the `check` and `dashboard` commands is
+    configurable via the `--wait` flag
+  * **Improved** The `top` command now aggregates by HTTP method as well
+
+Special thanks to @rochacon, @fahrradflucht and @alenkacz for contributing to
+this release!
+
+## stable-2.0.0
+
+## edge-18.9.2
+
+* **New** _edge_ and _stable_ release channels
+* Web UI
+  * **Improved** Tap & Top UIs with better layout and linking
+* CLI
+  * **Improved** `check --pre` command verifies the caller has sufficient
+    permissions to install Linkerd
+  * **Improved** `check` command verifies that Prometheus has data for proxied
+    pods
+* Proxy
+  * **Fix** `hyper` crate dependency corrects HTTP/1.0 Keep-Alive behavior
+
 ## v18.9.1
 
 * Web UI

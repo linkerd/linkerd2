@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	net "github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -341,7 +342,13 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 
 func (sp *servicePort) updateAddresses(endpoints *v1.Endpoints, port intstr.IntOrString) {
 	newAddresses := sp.endpointsToAddresses(endpoints, port)
-	log.Debugf("Updating %s:%d to %v", sp.service, sp.port, newAddresses)
+	if log.GetLevel() >= log.DebugLevel {
+		var s []string
+		for _, v := range newAddresses {
+			s = append(s, fmt.Sprintf("%v", *v))
+		}
+		log.Debugf("Updating %s:%d to [%v]", sp.service, sp.port, strings.Join(s, ", "))
+	}
 
 	if len(newAddresses) == 0 {
 		for _, listener := range sp.listeners {

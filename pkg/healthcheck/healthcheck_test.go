@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -23,6 +24,7 @@ func TestHealthChecker(t *testing.T) {
 		check: func() error {
 			return nil
 		},
+		retryDeadline: time.Time{},
 	}
 
 	passingCheck2 := &checker{
@@ -31,6 +33,7 @@ func TestHealthChecker(t *testing.T) {
 		check: func() error {
 			return nil
 		},
+		retryDeadline: time.Time{},
 	}
 
 	failingCheck := &checker{
@@ -39,6 +42,7 @@ func TestHealthChecker(t *testing.T) {
 		check: func() error {
 			return fmt.Errorf("error")
 		},
+		retryDeadline: time.Time{},
 	}
 
 	passingRPCClient := public.MockApiClient{
@@ -60,6 +64,7 @@ func TestHealthChecker(t *testing.T) {
 			return passingRPCClient.SelfCheck(context.Background(),
 				&healthcheckPb.SelfCheckRequest{})
 		},
+		retryDeadline: time.Time{},
 	}
 
 	failingRPCClient := public.MockApiClient{
@@ -82,6 +87,7 @@ func TestHealthChecker(t *testing.T) {
 			return failingRPCClient.SelfCheck(context.Background(),
 				&healthcheckPb.SelfCheckRequest{})
 		},
+		retryDeadline: time.Time{},
 	}
 
 	fatalCheck := &checker{
@@ -91,6 +97,7 @@ func TestHealthChecker(t *testing.T) {
 		check: func() error {
 			return fmt.Errorf("fatal")
 		},
+		retryDeadline: time.Time{},
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
@@ -213,9 +220,9 @@ func TestHealthChecker(t *testing.T) {
 		returnError := true
 
 		retryCheck := &checker{
-			category:    "cat7",
-			description: "desc7",
-			retry:       true,
+			category:      "cat7",
+			description:   "desc7",
+			retryDeadline: time.Now().Add(100 * time.Second),
 			check: func() error {
 				if returnError {
 					returnError = false

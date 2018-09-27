@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -103,7 +104,7 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(false), req, wide)
+			return requestTapByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req, wide)
 		},
 	}
 

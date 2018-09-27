@@ -85,15 +85,20 @@ class Sidebar extends React.Component {
   }
 
   fetchVersion() {
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}`;
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
     fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
-      .then(versionRsp =>
+      .then(versionRsp => {
+        let latestVersion;
+        let parts = this.props.releaseVersion.split("-", 2);
+        if (parts.length === 2) {
+          latestVersion = versionRsp[parts[0]];
+        }
         this.setState({
-          latestVersion: versionRsp.version,
-          isLatest: versionRsp.version === this.props.releaseVersion
-        })
-      ).catch(this.handleApiError);
+          latestVersion,
+          isLatest: latestVersion === this.props.releaseVersion
+        });
+      }).catch(this.handleApiError);
   }
 
   loadFromServer() {
@@ -193,14 +198,14 @@ class Sidebar extends React.Component {
 
             <Menu.Item className="sidebar-menu-item" key="/tap">
               <PrefixedLink to="/tap">
-                <Icon type="filter" />
+                <Icon><i className="fas fa-microscope" /></Icon>
                 <span>Tap</span>
               </PrefixedLink>
             </Menu.Item>
 
             <Menu.Item className="sidebar-menu-item" key="/top">
               <PrefixedLink to="/top">
-                <Icon type="caret-up" />
+                <Icon><i className="fas fa-stream" /></Icon>
                 <span>Top</span>
               </PrefixedLink>
             </Menu.Item>
