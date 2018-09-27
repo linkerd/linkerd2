@@ -28,8 +28,7 @@
         "namespace": "kube-public",
         "creationTimestamp": null,
         "labels": {
-          "app": "nginx",
-          "linkerd.io/auto-inject": "disabled"
+          "app": "nginx"
         },
         "annotations": {
           "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"nginx\"},\"name\":\"nginx\",\"namespace\":\"kube-public\"},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"nginx\"}},\"template\":{\"metadata\":{\"annotations\":{\"created-by\":\"isim\"},\"labels\":{\"app\":\"nginx\"}},\"spec\":{\"containers\":[{\"image\":\"nginx\",\"name\":\"nginx\",\"ports\":[{\"containerPort\":80,\"name\":\"http\"}]}]}}}}\n"
@@ -46,7 +45,8 @@
           "metadata": {
             "creationTimestamp": null,
             "labels": {
-              "app": "nginx"
+              "app": "nginx",
+              "linkerd.io/auto-inject": "disabled"
             },
             "annotations": {
               "created-by": "isim"

@@ -158,9 +158,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch.addPodLabel(map[string]string{
 		k8sPkg.ControllerNSLabel:    w.controllerNamespace,
 		k8sPkg.ProxyDeploymentLabel: deployment.ObjectMeta.Name,
-	})
-
-	patch.addLabel(map[string]string{
 		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 	})
 
@@ -196,7 +193,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 }
 
 func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
-	labels := deployment.ObjectMeta.GetLabels()
+	labels := deployment.Spec.Template.ObjectMeta.GetLabels()
 	status, defined := labels[k8sPkg.ProxyAutoInjectLabel]
 	if !defined {
 		return false

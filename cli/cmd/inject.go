@@ -488,10 +488,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 		objectMeta = &deployment.Spec.Template.ObjectMeta
 
 		if options.enableTLS() {
-			if deployment.ObjectMeta.Labels == nil {
-				deployment.ObjectMeta.Labels = map[string]string{}
-			}
-			deployment.ObjectMeta.Labels[k8s.ProxyAutoInjectLabel] = k8s.ProxyAutoInjectDisabled
+			k8sLabels[k8s.ProxyAutoInjectLabel] = k8s.ProxyAutoInjectDisabled
 		}
 
 	case "ReplicationController":

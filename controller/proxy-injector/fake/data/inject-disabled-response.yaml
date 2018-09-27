@@ -14,7 +14,6 @@ request:
       creationTimestamp: null
       labels:
         app: nginx
-        linkerd.io/auto-inject: disabled
       name: nginx
       namespace: kube-public
     spec:
@@ -36,6 +35,7 @@ request:
           creationTimestamp: null
           labels:
             app: nginx
+            linkerd.io/auto-inject: disabled
         spec:
           containers:
           - image: nginx

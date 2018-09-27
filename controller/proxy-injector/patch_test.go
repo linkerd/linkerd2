@@ -45,11 +45,9 @@ func TestPatch(t *testing.T) {
 	patch.addVolumeRoot()
 	patch.addVolume(trustAnchors)
 	patch.addVolume(secrets)
-	patch.addLabel(map[string]string{
-		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
-	})
 	patch.addPodLabel(map[string]string{
-		k8sPkg.ControllerNSLabel: controllerNamespace,
+		k8sPkg.ControllerNSLabel:    controllerNamespace,
+		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 	})
 	patch.addPodAnnotation(map[string]string{
 		k8sPkg.CreatedByAnnotation: createdBy,
@@ -67,8 +65,10 @@ func TestPatch(t *testing.T) {
 		&patchOp{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: trustAnchors},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: secrets},
-		&patchOp{Op: "add", Path: patchPathLabel, Value: map[string]string{k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted}},
-		&patchOp{Op: "add", Path: patchPathPodLabel, Value: map[string]string{k8sPkg.ControllerNSLabel: controllerNamespace}},
+		&patchOp{Op: "add", Path: patchPathPodLabel, Value: map[string]string{
+			k8sPkg.ControllerNSLabel:    controllerNamespace,
+			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
+		}},
 		&patchOp{Op: "add", Path: patchPathPodAnnotation, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
 	}
 	expected, err := json.Marshal(expectedOps)

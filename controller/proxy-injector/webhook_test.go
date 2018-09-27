@@ -28,10 +28,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	webhook.logger.SetLevel(log.DebugLevel)
-
-	// comment out the next line to see debugging output
 	webhook.logger.Out = ioutil.Discard
+	log.SetOutput(ioutil.Discard)
 
 	// create fake namespaces.
 	// the sidecar config map ues the controller namespace.

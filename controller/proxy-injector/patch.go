@@ -12,7 +12,6 @@ const (
 	patchPathVolume            = "/spec/template/spec/volumes/0"
 	patchPathPodLabel          = "/spec/template/metadata/labels"
 	patchPathPodAnnotation     = "/spec/template/metadata/annotations"
-	patchPathLabel             = "/metadata/labels"
 )
 
 // Patch represents a RFC 6902 patch document.
@@ -64,14 +63,6 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 		Op:    "add",
 		Path:  patchPathVolume,
 		Value: volume,
-	})
-}
-
-func (p *Patch) addLabel(label map[string]string) {
-	p.patchOps = append(p.patchOps, &patchOp{
-		Op:    "add",
-		Path:  patchPathLabel,
-		Value: label,
 	})
 }
 
