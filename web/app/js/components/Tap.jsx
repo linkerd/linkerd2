@@ -288,7 +288,6 @@ class Tap extends React.Component {
   }
 
   updateQuery = query => {
-    this.resetTapResults();
     this.setState({
       query
     });
