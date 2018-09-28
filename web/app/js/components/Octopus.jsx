@@ -113,7 +113,7 @@ export default class Octopus extends React.Component {
         {
           _.map(neighbors, r => {
             let display = displayName(r);
-            return <div className="octopus-title neighbor-title">{this.linkedResourceTitle(r, display)}</div>;
+            return <div className="octopus-title neighbor-title" key={display}>{this.linkedResourceTitle(r, display)}</div>;
           })
         }
       </div>
