@@ -204,71 +204,28 @@ a.button.primary:active {
   background-color: #2469C7;
 }
 
-/*
-  Ant overrides
-*/
-.ant-menu, .ant-table, .ant-tabs {
-  font-family: var(--font-stack);
-}
-
 .metric-table {
-  & .ant-table-content {
-    font-size: 12px;
-  }
-
-  & thead > tr > th {
-    background: var(--white);
-    text-transform: uppercase;
-    font-weight: var(--font-weight-bold);
-    border-bottom: 1px solid;
-    border-color: var(--silver);
-    word-break: keep-all;
-
-    &.ant-table-column-sort {
-      background: none;
-    }
-  }
-
-  & .ant-table table {
-    font-weight: bold;
-    font-size: .8rem;
-  }
-
-  & tr > th, & tr > td {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  & .ant-table-tbody > tr:hover > td {
-    background: rgba(47, 128, 237, .1);
-  }
-
-  & tr .numeric {
-    text-align: right;
-  }
-
   & .metric-table-sr {
-    margin-right: 6px;
-  }
-
-  & .metric-table-sr-chart.ant-progress-circle {
-    /* override ant progress circle height */
-    & div.ant-progress-inner {
-      max-height: 16px;
-    }
+    padding-right: 6px;
   }
 }
 
-/* ant Progress bar color orverrides */
+
+
 .success-rate-arc {
-  &.status-good .ant-progress-circle-path {
-    stroke: var(--green);
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  &.status-good {
+    background-color: var(--green);
   }
-  &.status-ok .ant-progress-circle-path {
-    stroke: var(--orange)
+  &.status-ok {
+    background-color: var(--orange)
   }
-  &.status-poor .ant-progress-circle-path {
-    stroke: var(--red);
+  &.status-poor {
+    background-color: var(--red);
   }
 }
 

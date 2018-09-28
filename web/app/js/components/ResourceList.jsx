@@ -44,9 +44,11 @@ export class ResourceListBase extends React.Component {
     }
 
     return (
-      <MetricsTable
-        resource={this.props.resource}
-        metrics={processedMetrics} />
+      <React.Fragment>
+        <MetricsTable
+          resource={this.props.resource}
+          metrics={processedMetrics} />
+      </React.Fragment>
     );
   }
 

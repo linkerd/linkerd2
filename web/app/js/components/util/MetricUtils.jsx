@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import { metricToFormatter } from './Utils.js';
 import Percentage from './Percentage.js';
-import { Progress } from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
 
@@ -38,17 +37,10 @@ export const srArcClassLabels = {
 };
 
 export const successRateWithMiniChart = sr => (
-  <div>
-    <span className="metric-table-sr">{metricToFormatter["SUCCESS_RATE"](sr)}</span>
-    <Progress
-      className={`success-rate-arc ${getSuccessRateClassification(sr, srArcClassLabels)} metric-table-sr-chart`}
-      type="dashboard"
-      showInfo={false}
-      width={32}
-      strokeWidth={12}
-      percent={sr === 0 ? 100 : sr * 100} // if success rate is 0, we want a red chart, not a gray chart
-      gapDegree={180} />
-  </div>
+  <React.Fragment>
+    <span className="table-sr metric-table-sr">{metricToFormatter["SUCCESS_RATE"](sr)}</span>
+    {_.isNil(sr) ? null : <span className={`table-sr success-rate-arc ${getSuccessRateClassification(sr, srArcClassLabels)}`} />}
+  </React.Fragment>
 );
 
 const getTotalRequests = row => {
@@ -150,6 +142,7 @@ const processStatTable = table => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     return {
+      key: `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`,
       name: row.resource.name,
       namespace: row.resource.namespace,
       type: row.resource.type,
@@ -210,6 +203,7 @@ export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) =>
 };
 
 export const emptyMetric = {
+  key: "",
   name: "",
   namespace: "",
   type: "",
