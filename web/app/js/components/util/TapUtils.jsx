@@ -1,10 +1,11 @@
 import _ from 'lodash';
 import PropTypes from 'prop-types';
+import Popover from '../Popover.jsx';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
-import { Popover, Table } from 'antd';
+import { Table } from 'antd';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -305,12 +306,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
 
   return (
     <Popover
-      content={popoverResourceTable(d, ResourceLink)}
-      trigger="hover">
-      <div className="src-dst-name">
+      popoverContent={popoverResourceTable(d, ResourceLink)}
+      baseContent={<div className="src-dst-name">
         { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
-      </div>
-    </Popover>
+      </div>} />
   );
 };
 
