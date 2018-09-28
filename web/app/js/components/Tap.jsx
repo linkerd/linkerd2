@@ -243,9 +243,6 @@ class Tap extends React.Component {
 
   handleTapClear = () => {
     this.resetTapResults();
-    this.setState({
-      query: emptyTapQuery()
-    });
   }
 
   resetTapResults = () => {
