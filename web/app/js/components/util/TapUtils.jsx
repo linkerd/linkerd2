@@ -2,8 +2,9 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
+import Tooltip from '@material-ui/core/Tooltip';
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
-import { Popover, Table, Tooltip } from 'antd';
+import { Popover, Table } from 'antd';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -285,10 +286,8 @@ export const extractPodOwner = labels => {
 };
 
 export const directionColumn = d => (
-  <Tooltip
-    title={d}
-    overlayStyle={{ fontSize: "12px" }}>
-    {d === "INBOUND" ? "FROM" : "TO"}
+  <Tooltip title={d} placement="right">
+    <span>{d === "INBOUND" ? "FROM" : "TO"}</span>
   </Tooltip>
 );
 

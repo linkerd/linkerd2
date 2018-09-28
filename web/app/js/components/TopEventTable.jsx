@@ -1,111 +1,137 @@
+import _ from 'lodash';
+import { formatLatencySec } from './util/Utils.js';
+import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { successRateWithMiniChart } from './util/MetricUtils.jsx';
-import { Table } from 'antd';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableHead from '@material-ui/core/TableHead';
+import TableRow from '@material-ui/core/TableRow';
 import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, numericSort } from './util/Utils.js';
+import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 
-const topMetricColWidth = "85px";
+const styles = theme => ({
+  root: {
+    width: '100%',
+    marginTop: theme.spacing.unit * 3,
+    overflowX: 'auto',
+  },
+  table: {
+    minWidth: 700,
+  },
+});
+
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: " ",
     key: "direction",
-    dataIndex: "direction",
-    width: "60px",
-    render: directionColumn
+    render: d => directionColumn(d.direction)
   },
   {
     title: "Name",
     key: "src-dst",
-    width: "180px",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Method",
-    dataIndex: "httpMethod",
-    width: "95px",
-    sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod),
+    key: "httpMethod",
+    render: d => d.httpMethod,
   },
   {
     title: "Path",
-    dataIndex: "path",
-    sorter: (a, b) => a.path.localeCompare(b.path),
+    key: "path",
+    render: d => d.path
   },
   {
     title: "Count",
-    dataIndex: "count",
-    className: "numeric",
-    width: topMetricColWidth,
-    defaultSortOrder: "descend",
-    sorter: (a, b) => numericSort(a.count, b.count),
+    key: "count",
+    isNumeric: true,
+    render: d => d.count
   },
   {
     title: "Best",
-    dataIndex: "best",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.best, b.best),
-    render: formatLatencySec
+    key: "best",
+    isNumeric: true,
+    render: d => formatLatencySec(d.best)
   },
   {
     title: "Worst",
-    dataIndex: "worst",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.worst, b.worst),
-    render: formatLatencySec
+    key: "worst",
+    isNumeric: true,
+    render: d => formatLatencySec(d.worst)
   },
   {
     title: "Last",
-    dataIndex: "last",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.last, b.last),
-    render: formatLatencySec
+    key: "last",
+    isNumeric: true,
+    render: d => formatLatencySec(d.last)
   },
   {
     title: "Success Rate",
-    dataIndex: "successRate",
-    className: "numeric",
-    width: "128px",
-    sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
-    render: d => successRateWithMiniChart(d.get())
+    key: "successRate",
+    isNumeric: true,
+    render: d => _.isNil(d) || !d.get ? "---" : successRateWithMiniChart(d.get())
   },
   {
     title: "Tap",
     key: "tap",
-    className: "numeric",
-    width: "30px",
+    isNumeric: true,
     render: d => tapLink(d, resourceType, PrefixedLink)
   }
 ];
 
-class TopEventTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-      ResourceLink: PropTypes.func.isRequired,
-    }).isRequired,
-    resourceType: PropTypes.string.isRequired,
-    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  }
+function TopEventTable(props) {
+  const { classes, tableRows, resourceType, api } = props;
+  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
 
-  static defaultProps = {
-    tableRows: []
-  }
-
-  render() {
-    return (
-      <Table
-        dataSource={this.props.tableRows}
-        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink, this.props.api.PrefixedLink)}
-        rowKey="key"
-        pagination={false}
-        className="top-event-table metric-table"
-        size="middle" />
-    );
-  }
+  return (
+    <Paper className={classes.root}>
+      <Table className={`${classes.table} metric-table`}>
+        <TableHead>
+          <TableRow>
+            { _.map(columns, c => (
+              <TableCell
+                key={c.key}
+                numeric={c.isNumeric}>{c.title}
+              </TableCell>
+            ))
+            }
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {
+            _.map(tableRows, d => {
+            return (
+              <TableRow key={d.key}>
+                { _.map(columns, c => (
+                  <TableCell
+                    key={`table-${d.key}-${c.key}`}
+                    numeric={c.isNumeric}>{c.render(d)}
+                  </TableCell>
+                  ))
+                }
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </Paper>
+  );
 }
 
-export default withContext(TopEventTable);
+TopEventTable.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  classes: PropTypes.shape({}).isRequired,
+  resourceType: PropTypes.string.isRequired,
+  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+};
+TopEventTable.defaultProps = {
+  tableRows: []
+};
+
+export default withContext(withStyles(styles)(TopEventTable));
