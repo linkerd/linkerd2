@@ -2,6 +2,10 @@
 
 .tap-form {
   & button.ant-btn-primary {
+    &.tap-ctrl {
+      margin-right: var(--base-width);
+    }
+
     &.tap-start {
       background-color: var(--green);
       border-color: var(--green);

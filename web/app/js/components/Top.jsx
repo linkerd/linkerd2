@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { emptyTapQuery } from './util/TapUtils.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -26,17 +27,7 @@ class Top extends React.Component {
       error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
-      query: {
-        resource: "",
-        namespace: "",
-        toResource: "",
-        toNamespace: "",
-        method: "",
-        path: "",
-        scheme: "",
-        authority: "",
-        maxRps: ""
-      },
+      query: emptyTapQuery(),
       pollingInterval: 10000,
       tapRequestInProgress: false,
       pendingRequests: false
@@ -146,6 +137,13 @@ class Top extends React.Component {
     });
   }
 
+  handleTapClear = () => {
+    this.setState({
+      error: null,
+      query: emptyTapQuery()
+    });
+  }
+
   updateTapClosingState(isTapClosing) {
     this.setState({
       tapIsClosing: isTapClosing
@@ -161,6 +159,7 @@ class Top extends React.Component {
           enableAdvancedForm={false}
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
+          handleTapClear={this.handleTapClear}
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           tapRequestInProgress={this.state.tapRequestInProgress}

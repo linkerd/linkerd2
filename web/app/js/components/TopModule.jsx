@@ -60,6 +60,9 @@ class TopModule extends React.Component {
     if (!this.props.startTap && prevProps.startTap) {
       this.stopTapStreaming();
     }
+    if (!_.isEqual(this.props.query, prevProps.query)) {
+      this.clearTopTable();
+    }
   }
 
   componentWillUnmount() {
@@ -294,9 +297,16 @@ class TopModule extends React.Component {
     delete resultIndex[oldestId];
   }
 
-  startTapStreaming() {
+  clearTopTable() {
     this.tapResultsById = {};
     this.topEventIndex = {};
+    this.setState({
+      topEventIndex: {}
+    });
+  }
+
+  startTapStreaming() {
+    this.clearTopTable();
 
     let protocol = window.location.protocol === "https:" ? "wss" : "ws";
     let tapWebSocket = `${protocol}://${window.location.host}${this.props.pathPrefix}/api/tap`;

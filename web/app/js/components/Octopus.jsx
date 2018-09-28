@@ -67,7 +67,12 @@ export default class Octopus extends React.Component {
     return (
       <div key="unmeshed-resources" className="octopus-body neighbor unmeshed">
         <div className="octopus-title neighbor-title">Unmeshed</div>
-        { _.map(unmeshedResources, r => <div key={r} title={displayName(r)}>{displayName(r)}</div>) }
+        {
+          _.map(unmeshedResources, r => {
+            let display = displayName(r);
+            return <div key={display} title={display}>{display}</div>;
+          })
+        }
       </div>
     );
   }
