@@ -132,11 +132,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
 
     render() {
-      let prefix = pathPrefix;
-      if (!_.isEmpty(this.props.deployment)) {
-        prefix = prefix.replace("/web:", "/"+this.props.deployment+":");
-      }
-      let url = `${prefix}${this.props.to}`;
+      let url = prefixLink(this.props.to, this.props.deployment);
 
       return (
         <Link
@@ -147,6 +143,15 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       );
     }
   }
+
+  const prefixLink = (to, controllerDeployment) => {
+    let prefix = pathPrefix;
+    if (!_.isEmpty(controllerDeployment)) { // add field for grafana deployment
+      prefix = prefix.replace("/web:", "/" + controllerDeployment + ":");
+    }
+
+    return `${prefix}${to}`;
+  };
 
   const generateResourceURL = r => {
     return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
@@ -183,6 +188,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getMetricsWindowDisplayText,
     urlsForResource,
     PrefixedLink,
+    prefixLink,
     ResourceLink,
     setCurrentRequests,
     getCurrentPromises,

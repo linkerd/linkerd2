@@ -55,7 +55,7 @@ h2, h3, h4, h5, h6 {
 .clearfix {
   clear: both;
 }
-
+/*
 .main {
   margin-left: auto;
   margin-right: auto;
@@ -78,7 +78,7 @@ h2, h3, h4, h5, h6 {
 
 .time-window-btns {
   float: right;
-}
+} */
 
 /* center the spinner */
 .page-content .ant-spin {
