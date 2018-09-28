@@ -22,6 +22,7 @@ RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -ldflags "${GO_L
 ## export without sources & dependencies
 FROM scratch
 COPY --from=golang /out /out
+COPY LICENSE /linkerd/LICENSE
 # `ENTRYPOINT` prevents `docker build` from otherwise failing with "Error
 # response from daemon: No command specified."
 ENTRYPOINT ["/out/linkerd-linux"]

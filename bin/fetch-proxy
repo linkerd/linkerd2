@@ -37,6 +37,7 @@ if [ -n "$latest_sha" ]; then
 fi
 
 tar -C "$builddir" -zxvf "$archive" >&2
+mv "$builddir/linkerd2-proxy-$version/LICENSE" "$builddir"
 mv "$builddir/linkerd2-proxy-$version/bin/linkerd2-proxy" "$builddir"
 rm -r "$archive" "$builddir/linkerd2-proxy-$version"
 mv "$builddir/linkerd2-proxy" "$builddir/linkerd2-proxy-$version"

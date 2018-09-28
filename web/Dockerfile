@@ -37,6 +37,7 @@ FROM gcr.io/linkerd-io/base:2017-10-30.01
 COPY --from=golang /go/src/github.com/linkerd/linkerd2/web .
 RUN mkdir -p ./dist
 COPY --from=webpack-bundle /go/src/github.com/linkerd/linkerd2/web/app/dist ./dist
+COPY LICENSE /linkerd/LICENSE
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}

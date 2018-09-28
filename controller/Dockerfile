@@ -13,6 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux go install ./controller/cmd/...
 FROM scratch
 ENV PATH=$PATH:/go/bin
 COPY --from=golang /go/bin /go/bin
+COPY LICENSE /linkerd/LICENSE
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
