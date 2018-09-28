@@ -1,28 +1,11 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import { formatLatencySec } from './util/Utils.js';
-import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import { withContext } from './util/AppContext.jsx';
-import { withStyles } from '@material-ui/core/styles';
-import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
-
-const styles = theme => ({
-  root: {
-    width: '100%',
-    marginTop: theme.spacing.unit * 3,
-    overflowX: 'auto',
-  },
-  table: {
-    minWidth: 700,
-  },
-});
+import { withContext } from './util/AppContext.jsx';
+import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
@@ -83,55 +66,23 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   }
 ];
 
-function TopEventTable(props) {
-  const { classes, tableRows, resourceType, api } = props;
-  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
-
-  return (
-    <Paper className={classes.root}>
-      <Table className={`${classes.table} metric-table`}>
-        <TableHead>
-          <TableRow>
-            { _.map(columns, c => (
-              <TableCell
-                key={c.key}
-                numeric={c.isNumeric}>{c.title}
-              </TableCell>
-            ))
-            }
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {
-            _.map(tableRows, d => {
-            return (
-              <TableRow key={d.key}>
-                { _.map(columns, c => (
-                  <TableCell
-                    key={`table-${d.key}-${c.key}`}
-                    numeric={c.isNumeric}>{c.render(d)}
-                  </TableCell>
-                  ))
-                }
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Paper>
-  );
-}
-
-TopEventTable.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
-  classes: PropTypes.shape({}).isRequired,
-  resourceType: PropTypes.string.isRequired,
-  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
-};
-TopEventTable.defaultProps = {
+class TopEventTable extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      PrefixedLink: PropTypes.func.isRequired,
+    }).isRequired,
+    resourceType: PropTypes.string.isRequired,
+    tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+  };
+static defaultProps = {
   tableRows: []
 };
 
-export default withContext(withStyles(styles)(TopEventTable));
+render() {
+  const { tableRows, resourceType, api } = this.props;
+  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+  return <BaseTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
+}
+}
+
+export default withContext(TopEventTable);

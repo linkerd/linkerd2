@@ -1,29 +1,12 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
-import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
 import { withContext } from './util/AppContext.jsx';
-import { withStyles } from '@material-ui/core/styles';
 import { friendlyTitle, metricToFormatter } from './util/Utils.js';
 import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
-
-const styles = theme => ({
-  root: {
-    width: '100%',
-    marginTop: theme.spacing.unit * 3,
-    overflowX: 'auto',
-  },
-  table: {
-    minWidth: 700,
-  },
-});
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let isAuthorityTable = resource === "authority";
@@ -149,61 +132,30 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-function MetricTable(props) {
-  const { classes, metrics, resource, showNamespaceColumn, api } = props;
+class MetricsTable extends React.Component {
+  static propTypes = {
+    api: PropTypes.shape({
+      PrefixedLink: PropTypes.func.isRequired,
+    }).isRequired,
+    metrics: PropTypes.arrayOf(processedMetricsPropType),
+    resource: PropTypes.string.isRequired,
+    showNamespaceColumn: PropTypes.bool
+  };
 
-  let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
+  static defaultProps = {
+    showNamespaceColumn: true,
+    metrics: []
+  };
 
-  let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink);
-  let rows = preprocessMetrics(metrics);
+  render() {
+    const {  metrics, resource, showNamespaceColumn, api } = this.props;
 
-  return (
-    <Paper className={classes.root}>
-      <Table className={`${classes.table} metric-table`}>
-        <TableHead>
-          <TableRow>
-            { _.map(columns, c => (
-              <TableCell
-                key={c.key}
-                numeric={c.isNumeric}>{c.title}
-              </TableCell>
-            ))
-            }
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {
-            _.map(rows, d => {
-            return (
-              <TableRow key={d.key}>
-                { _.map(columns, c => (
-                  <TableCell
-                    key={`table-${d.key}-${c.key}`}
-                    numeric={c.isNumeric}>{c.render(d)}
-                  </TableCell>
-                  ))
-                }
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Paper>
-  );
+    let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
+
+    let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink);
+    let rows = preprocessMetrics(metrics);
+    return <BaseTable tableRows={rows} tableColumns={columns} tableClassName="metric-table" />;
+  }
 }
 
-MetricTable.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
-  classes: PropTypes.shape({}).isRequired,
-  metrics: PropTypes.arrayOf(processedMetricsPropType),
-  resource: PropTypes.string.isRequired,
-  showNamespaceColumn: PropTypes.bool
-};
-MetricTable.defaultProps = {
-  showNamespaceColumn: true,
-  metrics: []
-};
-
-export default withContext(withStyles(styles)(MetricTable));
+export default withContext(MetricsTable);

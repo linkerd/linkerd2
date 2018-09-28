@@ -1,9 +1,7 @@
 /* eslint-disable jsx-a11y/mouse-events-have-key-events */
-
-import React from 'react';
-import PropTypes from 'prop-types';
 import Popover from '@material-ui/core/Popover';
-import Typography from '@material-ui/core/Typography';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -68,7 +66,9 @@ class MouseOverPopover extends React.Component {
 }
 
 MouseOverPopover.propTypes = {
-  classes: PropTypes.object.isRequired,
+  baseContent: PropTypes.node.isRequired,
+  classes: PropTypes.shape({}).isRequired,
+  popoverContent: PropTypes.node.isRequired
 };
 
 export default withStyles(styles)(MouseOverPopover);
