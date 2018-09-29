@@ -28,7 +28,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	webhook.logger.Out = ioutil.Discard
 	log.SetOutput(ioutil.Discard)
 
 	// create fake namespaces.
@@ -211,19 +210,6 @@ func TestVolumesSpec(t *testing.T) {
 
 	if !reflect.DeepEqual(expectedLinkerdSecrets, actualLinkerdSecrets) {
 		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedLinkerdSecrets, actualLinkerdSecrets)
-	}
-}
-
-func TestSetLogLevel(t *testing.T) {
-	webhook, err := NewWebhook(nil, fake.DefaultControllerNamespace)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expected := log.DebugLevel
-	webhook.SetLogLevel(expected)
-	if actual := webhook.logger.Level; actual != expected {
-		t.Errorf("Log level mismatch. Expected: %q. Actual: %q", expected, actual)
 	}
 }
 

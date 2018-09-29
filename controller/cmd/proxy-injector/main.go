@@ -8,52 +8,41 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/proxy-injector"
+	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-var (
-	port                 = ""
-	kubeconfig           = ""
-	controllerNamespace  = ""
-	certFile             = ""
-	keyFile              = ""
-	trustAnchorsPath     = ""
-	volumeMountsWaitTime = ""
-	webhookServiceName   = ""
-)
-
-func init() {
-	flag.StringVar(&port, "port", "443", "port that this webhook admission server listens on")
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig")
-	flag.StringVar(&controllerNamespace, "controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	flag.StringVar(&certFile, "tls-cert-file", "/var/linkerd-io/identity/certificate.crt", "location of the webhook server's TLS cert file")
-	flag.StringVar(&keyFile, "tls-key-file", "/var/linkerd-io/identity/private-key.p8", "location of the webhook server's TLS private key file")
-	flag.StringVar(&trustAnchorsPath, "trust-anchors-path", "/var/linkerd-io/trust-anchors/trust-anchors.pem", "path to the CA trust anchors PEM file used to create the mutating webhook configuration")
-	flag.StringVar(&volumeMountsWaitTime, "volume-mounts-wait", "3m", "maximum wait time for the secret volumes to mount before the timeout expires")
-	flag.StringVar(&webhookServiceName, "webhook-service", "proxy-injector.linkerd.io", "name of the admission webhook")
-	flags.ConfigureAndParse()
-}
-
 func main() {
+	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
+	port := flag.String("port", "443", "port that this webhook admission server listens on")
+	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
+	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	certFile := flag.String("tls-cert-file", "/var/linkerd-io/identity/certificate.crt", "location of the webhook server's TLS cert file")
+	keyFile := flag.String("tls-key-file", "/var/linkerd-io/identity/private-key.p8", "location of the webhook server's TLS private key file")
+	trustAnchorsPath := flag.String("trust-anchors-path", "/var/linkerd-io/trust-anchors/trust-anchors.pem", "path to the CA trust anchors PEM file used to create the mutating webhook configuration")
+	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
+	webhookServiceName := flag.String("webhook-service", "proxy-injector.linkerd.io", "name of the admission webhook")
+	flags.ConfigureAndParse()
+
 	stop := make(chan os.Signal, 1)
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, os.Kill)
 
-	k8sClient, err := injector.NewClientset(kubeconfig)
+	k8sClient, err := k8s.NewClientSet(*kubeconfig)
 	if err != nil {
 		log.Fatal("failed to initialize Kubernetes client: ", err)
 	}
 
 	log.Infof("waiting for the trust anchors volume to mount (default wait time: %s)", volumeMountsWaitTime)
-	if err := waitForMounts(trustAnchorsPath); err != context.Canceled {
+	if err := waitForMounts(*volumeMountsWaitTime, *trustAnchorsPath); err != context.Canceled {
 		log.Fatalf("failed to mount the ca bundle: %s", err)
 	}
 
-	webhookConfig := injector.NewWebhookConfig(k8sClient, controllerNamespace, webhookServiceName, trustAnchorsPath)
-	webhookConfig.SyncAPI(nil)
+	webhookConfig := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, *trustAnchorsPath)
 
 	exist, err := webhookConfig.Exist()
 	if err != nil {
@@ -70,20 +59,21 @@ func main() {
 	}
 
 	log.Infof("waiting for the tls secrets to mount (wait at most %s)", volumeMountsWaitTime)
-	if err := waitForMounts(certFile, keyFile); err != context.Canceled {
+	if err := waitForMounts(*volumeMountsWaitTime, *certFile, *keyFile); err != context.Canceled {
 		log.Fatalf("failed to mount the tls secrets: %s", err)
 	}
 
-	s, err := injector.NewWebhookServer(port, certFile, keyFile, controllerNamespace, k8sClient)
+	s, err := injector.NewWebhookServer(*port, *certFile, *keyFile, *controllerNamespace, k8sClient)
 	if err != nil {
 		log.Fatal("failed to initialize the webhook server: ", err)
 	}
-	s.SyncAPI(nil)
 
-	s.SetLogLevel(log.StandardLogger().Level)
+	ready := make(chan struct{})
+	go s.SyncAPI(ready)
+	go admin.StartServer(*metricsAddr, ready)
 
 	go func() {
-		log.Infof("listening at port %s (cert: %s, key: %s)", port, certFile, keyFile)
+		log.Infof("listening at port %s (cert: %s, key: %s)", *port, *certFile, *keyFile)
 		if err := s.ListenAndServeTLS("", ""); err != nil {
 			if err == http.ErrServerClosed {
 				return
@@ -99,12 +89,7 @@ func main() {
 	}
 }
 
-func waitForMounts(paths ...string) error {
-	timeout, err := time.ParseDuration(volumeMountsWaitTime)
-	if err != nil {
-		log.Fatalf("failed to parse volume timeout duration: %s", err)
-	}
-
+func waitForMounts(timeout time.Duration, paths ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

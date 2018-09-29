@@ -693,6 +693,7 @@ spec:
         args:
         - "ca"
         - "-controller-namespace={{.Namespace}}"
+        - "-proxy-auto-inject={{ .ProxyAutoInjectEnabled }}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:

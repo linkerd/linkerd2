@@ -8,7 +8,7 @@ import (
 	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +29,6 @@ var errNilAdmissionReviewInput = fmt.Errorf("AdmissionReview input object can't 
 
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission requests by injecting sidecar container spec into the pod spec during pod creation.
 type Webhook struct {
-	logger              *logrus.Logger
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	k8sAPI              *k8s.API
@@ -40,11 +39,9 @@ func NewWebhook(client kubernetes.Interface, controllerNamespace string) (*Webho
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
-		logger = logrus.New()
 	)
 
 	return &Webhook{
-		logger:              logger,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		k8sAPI:              k8s.NewAPI(client, k8s.NS, k8s.CM, k8s.RS),
@@ -55,7 +52,7 @@ func NewWebhook(client kubernetes.Interface, controllerNamespace string) (*Webho
 func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 	admissionReview, err := w.decode(data)
 	if err != nil {
-		w.logger.Error("failed to decode data. Reason: ", err)
+		log.Error("failed to decode data. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
 			UID:     admissionReview.Request.UID,
 			Allowed: false,
@@ -65,12 +62,12 @@ func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 		}
 		return admissionReview
 	}
-	w.logger.Infof("received admission review request %s", admissionReview.Request.UID)
-	w.logger.Debugf("admission request: %+v", admissionReview.Request)
+	log.Infof("received admission review request %s", admissionReview.Request.UID)
+	log.Debugf("admission request: %+v", admissionReview.Request)
 
 	admissionResponse, err := w.inject(admissionReview.Request)
 	if err != nil {
-		w.logger.Error("failed to inject sidecar. Reason: ", err)
+		log.Error("failed to inject sidecar. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
 			UID:     admissionReview.Request.UID,
 			Allowed: false,
@@ -81,8 +78,8 @@ func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 		return admissionReview
 	}
 	admissionReview.Response = admissionResponse
-	w.logger.Infof("patch generated: %s", admissionResponse.Patch)
-	w.logger.Infof("completed pod mutation")
+	log.Infof("patch generated: %s", admissionResponse.Patch)
+	log.Infof("completed pod mutation")
 
 	return admissionReview
 }
@@ -98,13 +95,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err := yaml.Unmarshal(request.Object.Raw, &deployment); err != nil {
 		return nil, err
 	}
-	w.logger.Infof("working on %s/%s %s..", request.Kind.Version, strings.ToLower(request.Kind.Kind), deployment.ObjectMeta.Name)
+	log.Infof("working on %s/%s %s..", request.Kind.Version, strings.ToLower(request.Kind.Kind), deployment.ObjectMeta.Name)
 
 	ns := request.Namespace
 	if ns == "" {
 		ns = defaultNamespace
 	}
-	w.logger.Infof("resource namespace: %s", ns)
+	log.Infof("resource namespace: %s", ns)
 
 	namespace, err := w.k8sAPI.NS().Lister().Get(ns)
 	if err != nil {
@@ -112,7 +109,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	if w.ignore(&deployment) {
-		w.logger.Infof("ignoring deployment %s...", deployment.ObjectMeta.Name)
+		log.Infof("ignoring deployment %s...", deployment.ObjectMeta.Name)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,
@@ -129,17 +126,17 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	w.logger.Infof("proxy image: %s", proxy.Image)
-	w.logger.Infof("proxy-init image: %s", proxyInit.Image)
-	w.logger.Debugf("proxy container: %+v", proxy)
-	w.logger.Debugf("init container: %+v", proxyInit)
+	log.Infof("proxy image: %s", proxy.Image)
+	log.Infof("proxy-init image: %s", proxyInit.Image)
+	log.Debugf("proxy container: %+v", proxy)
+	log.Debugf("init container: %+v", proxyInit)
 
 	caBundle, tlsSecrets, err := w.volumesSpec(identity)
 	if err != nil {
 		return nil, err
 	}
-	w.logger.Debugf("ca bundle volume: %+v", caBundle)
-	w.logger.Debugf("tls secrets volume: %+v", tlsSecrets)
+	log.Debugf("ca bundle volume: %+v", caBundle)
+	log.Debugf("tls secrets volume: %+v", tlsSecrets)
 
 	patch := NewPatch()
 	patch.addContainer(proxy)
@@ -261,9 +258,4 @@ func (w *Webhook) volumesSpec(identity *k8sPkg.TLSIdentity) (*corev1.Volume, *co
 // SyncAPI waits for the informers to sync.
 func (w *Webhook) SyncAPI(ready chan struct{}) {
 	w.k8sAPI.Sync(ready)
-}
-
-// SetLogLevel sets the log level of the webhook.
-func (w *Webhook) SetLogLevel(level logrus.Level) {
-	w.logger.SetLevel(level)
 }

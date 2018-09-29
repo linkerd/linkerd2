@@ -197,8 +197,6 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getRCs(namespace, name)
 	case k8s.Service:
 		return api.getServices(namespace, name)
-	case k8s.MutatingWebhookConfiguration:
-		return api.getMutatingWebhookConfigurations(name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -417,29 +415,6 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	}
 
 	return objects, nil
-}
-
-func (api *API) getMutatingWebhookConfigurations(name string) ([]runtime.Object, error) {
-	log.Infof(">>>>> calling getmuttingwebhookconfigurations with s%", name)
-	list := []runtime.Object{}
-	if name != "" {
-		mwc, err := api.MWC().Lister().Get(name)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, mwc)
-	} else {
-		mwcs, err := api.MWC().Lister().List(labels.Everything())
-		if err != nil {
-			return nil, err
-		}
-
-		for _, mwc := range mwcs {
-			list = append(list, mwc)
-		}
-	}
-
-	return list, nil
 }
 
 func isPendingOrRunning(pod *apiv1.Pod) bool {

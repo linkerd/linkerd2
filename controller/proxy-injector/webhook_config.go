@@ -7,12 +7,12 @@ import (
 	"text/template"
 
 	yaml "github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -24,7 +24,7 @@ type WebhookConfig struct {
 	webhookServiceName  string
 	trustAnchorsPath    string
 	configTemplate      *template.Template
-	k8sAPI              *k8s.API
+	k8sAPI              kubernetes.Interface
 }
 
 // NewWebhookConfig returns a new instance of initiator.
@@ -35,7 +35,7 @@ func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookS
 		webhookServiceName:  webhookServiceName,
 		trustAnchorsPath:    trustAnchorsPath,
 		configTemplate:      template.Must(t.Parse(tmpl.MutatingWebhookConfigurationSpec)),
-		k8sAPI:              k8s.NewAPI(client, k8s.MWC),
+		k8sAPI:              client,
 	}
 }
 
@@ -56,7 +56,7 @@ func (w *WebhookConfig) Create() (*admissionregistrationv1beta1.MutatingWebhookC
 
 // Exist returns true if the mutating webhook configuration exists. Otherwise, it returns false.
 func (w *WebhookConfig) Exist() (bool, error) {
-	_, err := w.k8sAPI.MWC().Lister().Get(k8sPkg.ProxyInjectorWebhookConfig)
+	_, err := w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8sPkg.ProxyInjectorWebhookConfig, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -66,11 +66,6 @@ func (w *WebhookConfig) Exist() (bool, error) {
 	}
 
 	return true, nil
-}
-
-// SyncAPI waits for the informers to sync.
-func (w *WebhookConfig) SyncAPI(ready chan struct{}) {
-	w.k8sAPI.Sync(ready)
 }
 
 func (w *WebhookConfig) createMutatingWebhookConfiguration(caTrust []byte) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
@@ -100,7 +95,7 @@ func (w *WebhookConfig) createMutatingWebhookConfiguration(caTrust []byte) (*adm
 		return nil, err
 	}
 
-	created, err := w.k8sAPI.Client.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
+	created, err := w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
 	if err != nil {
 		log.Infof("failed to create mutating webhook configuration: %s\n", err)
 		return nil, err

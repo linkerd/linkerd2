@@ -964,6 +964,7 @@ spec:
       - args:
         - ca
         - -controller-namespace=Namespace
+        - -proxy-auto-inject=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy

@@ -16,7 +16,6 @@ import (
 type WebhookServer struct {
 	*http.Server
 	*Webhook
-	*log.Logger
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
@@ -36,7 +35,7 @@ func NewWebhookServer(port, certFile, keyFile, controllerNamespace string, clien
 		return nil, err
 	}
 
-	ws := &WebhookServer{server, webhook, log.New()}
+	ws := &WebhookServer{server, webhook}
 	ws.Handler = http.HandlerFunc(ws.serve)
 	return ws, nil
 }
@@ -49,7 +48,7 @@ func (w *WebhookServer) serve(res http.ResponseWriter, req *http.Request) {
 	if req.Body != nil {
 		data, err = ioutil.ReadAll(req.Body)
 		if err != nil {
-			w.handleRequestError(res, err, http.StatusBadRequest)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -61,32 +60,19 @@ func (w *WebhookServer) serve(res http.ResponseWriter, req *http.Request) {
 	response := w.Mutate(data)
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
-		w.handleRequestError(res, err, http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if _, err := res.Write(responseJSON); err != nil {
-		w.handleRequestError(res, err, http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func (w *WebhookServer) handleRequestError(res http.ResponseWriter, err error, code int) {
-	w.WithFields(log.Fields{
-		"code": code,
-	}).Error(err)
-	http.Error(res, err.Error(), code)
 }
 
 // Shutdown initiates a graceful shutdown of the underlying HTTP server.
 func (w *WebhookServer) Shutdown() error {
 	return w.Server.Shutdown(context.Background())
-}
-
-// SetLogLevel sets the log level of the webhook server and its underlying webhook.
-func (w *WebhookServer) SetLogLevel(level log.Level) {
-	w.Logger.SetLevel(level)
-	w.Webhook.SetLogLevel(level)
 }
 
 func tlsConfig(certFile, keyFile string) (*tls.Config, error) {

@@ -44,9 +44,6 @@ func TestCreateAndExist(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	// wait for informer to sync
-	webhookConfig.SyncAPI(nil)
-
 	// expect mutating webhook configuration to exist
 	exist, err = webhookConfig.Exist()
 	if err != nil {

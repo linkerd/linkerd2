@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
@@ -28,7 +27,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	webhook.logger.Out = ioutil.Discard
+	log.SetOutput(ioutil.Discard)
 	factory = fake.NewFactory()
 
 	// create a fake namespace
@@ -50,10 +49,7 @@ func init() {
 	}
 
 	factory = fake.NewFactory()
-
-	logger := log.New()
-	logger.Out = ioutil.Discard
-	testServer = &WebhookServer{nil, webhook, logger}
+	testServer = &WebhookServer{nil, webhook}
 }
 
 func TestServe(t *testing.T) {
@@ -74,27 +70,9 @@ func TestServe(t *testing.T) {
 	})
 }
 
-func TestHandleRequestError(t *testing.T) {
-	var (
-		errMsg   = "Some test error"
-		recorder = httptest.NewRecorder()
-		err      = fmt.Errorf(errMsg)
-	)
-
-	testServer.handleRequestError(recorder, err, http.StatusInternalServerError)
-
-	if recorder.Code != http.StatusInternalServerError {
-		t.Errorf("HTTP response status mismatch. Expected: %d. Actual: %d", http.StatusInternalServerError, recorder.Code)
-	}
-
-	if strings.TrimSpace(recorder.Body.String()) != errMsg {
-		t.Errorf("HTTP response body mismatch. Expected: %q. Actual: %q", errMsg, recorder.Body.String())
-	}
-}
-
 func TestShutdown(t *testing.T) {
 	server := &http.Server{Addr: ":0"}
-	testServer := WebhookServer{server, nil, nil}
+	testServer := WebhookServer{server, nil}
 
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {
@@ -139,18 +117,4 @@ func TestNewWebhookServer(t *testing.T) {
 	if server.Addr != fmt.Sprintf(":%s", port) {
 		t.Errorf("Expected server address to be :%q", port)
 	}
-}
-
-func TestServerSetLogLevel(t *testing.T) {
-	testServer.SetLogLevel(log.DebugLevel)
-	expected := log.DebugLevel
-
-	if actual := testServer.Logger.Level; actual != expected {
-		t.Errorf("Server log level mismatch. Expected: %q. Actual: %q", expected, actual)
-	}
-
-	if actual := testServer.logger.Level; actual != expected {
-		t.Errorf("Webhook log level mismatch. Expected: %q. Actual: %q", expected, actual)
-	}
-
 }

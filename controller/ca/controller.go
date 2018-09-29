@@ -32,7 +32,7 @@ type CertificateController struct {
 	queue workqueue.RateLimitingInterface
 }
 
-func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
+func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxyAutoInject bool) (*CertificateController, error) {
 	ca, err := NewCA()
 	if err != nil {
 		return nil, err
@@ -53,12 +53,14 @@ func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*Cer
 		},
 	)
 
-	k8sAPI.MWC().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.handleMWCAdd,
-			UpdateFunc: c.handleMWCUpdate,
-		},
-	)
+	if proxyAutoInject {
+		k8sAPI.MWC().Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				AddFunc:    c.handleMWCAdd,
+				UpdateFunc: c.handleMWCUpdate,
+			},
+		)
+	}
 
 	c.syncHandler = c.syncObject
 
