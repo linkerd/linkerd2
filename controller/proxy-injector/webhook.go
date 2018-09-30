@@ -44,7 +44,7 @@ func NewWebhook(client kubernetes.Interface, controllerNamespace string) (*Webho
 	return &Webhook{
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
-		k8sAPI:              k8s.NewAPI(client, k8s.NS, k8s.CM, k8s.RS),
+		k8sAPI:              k8s.NewAPI(client, k8s.NS, k8s.CM),
 	}, nil
 }
 

@@ -487,10 +487,6 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 		podSpec = &deployment.Spec.Template.Spec
 		objectMeta = &deployment.Spec.Template.ObjectMeta
 
-		if options.enableTLS() {
-			k8sLabels[k8s.ProxyAutoInjectLabel] = k8s.ProxyAutoInjectDisabled
-		}
-
 	case "ReplicationController":
 		var rc v1.ReplicationController
 		if err := yaml.Unmarshal(bytes, &rc); err != nil {

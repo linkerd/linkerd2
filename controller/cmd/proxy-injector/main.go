@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
+	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	port := flag.String("port", "443", "port that this webhook admission server listens on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -70,7 +70,6 @@ func main() {
 
 	ready := make(chan struct{})
 	go s.SyncAPI(ready)
-	go admin.StartServer(*metricsAddr, ready)
 
 	go func() {
 		log.Infof("listening at port %s (cert: %s, key: %s)", *port, *certFile, *keyFile)
@@ -81,6 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+	go admin.StartServer(*metricsAddr, ready)
 
 	<-stop
 	log.Info("shutting down webhook server")

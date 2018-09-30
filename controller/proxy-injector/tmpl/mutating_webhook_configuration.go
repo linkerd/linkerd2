@@ -16,7 +16,7 @@ webhooks:
   rules:
   - operations: [ "CREATE" ]
     apiGroups: ["apps", "extensions"]
-    apiVersions: ["v1", "v1beta1", "v1beta1", "v1beta2"]
+    apiVersions: ["v1", "v1beta1", "v1beta2"]
     resources: ["deployments"]
   namespaceSelector:
     matchExpressions:

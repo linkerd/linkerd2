@@ -18,7 +18,6 @@ spec:
       creationTimestamp: null
       labels:
         app: web-svc
-        linkerd.io/auto-inject: disabled
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web
     spec:
