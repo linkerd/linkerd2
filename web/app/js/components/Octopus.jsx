@@ -7,6 +7,8 @@ import { displayName, metricToFormatter } from './util/Utils.js';
 import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
 import './../../css/octopus.css';
 
+const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
+
 const Metric = ({title, value, className}) => {
   return (
     <Row type="flex" justify="center" className={`octopus-metric ${className}`}>
@@ -35,16 +37,49 @@ export default class Octopus extends React.Component {
     unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
+  getNeighborDisplayData = neighbors => {
+    // only display maxNumNeighbors neighboring nodes in the octopus graph,
+    // otherwise it will be really tall
+    let upstreams = _.sortBy(neighbors.upstream, "resource.successRate");
+    let downstreams = _.sortBy(neighbors.downstream, "resource.successRate");
+
+    let display = {
+      upstreams: {
+        displayed: upstreams,
+        collapsed: []
+      },
+      downstreams: {
+        displayed: downstreams,
+        collapsed: []
+      }
+    };
+
+    if (_.size(upstreams) > maxNumNeighbors) {
+      display.upstreams.displayed = _.take(upstreams, maxNumNeighbors);
+      display.upstreams.collapsed = _.slice(upstreams, maxNumNeighbors, _.size(upstreams));
+    }
+
+    if (_.size(downstreams) > maxNumNeighbors) {
+      display.downstreams.displayed = _.take(downstreams, maxNumNeighbors);
+      display.downstreams.collapsed = _.slice(downstreams, maxNumNeighbors, _.size(downstreams));
+    }
+
+    return display;
+  }
+
+  linkedResourceTitle = (resource, display) => {
+    return _.isNil(resource.namespace) ? display :
+    <this.props.api.ResourceLink
+      resource={resource}
+      linkText={display} />;
+  }
+
   renderResourceSummary(resource, type) {
     let display = displayName(resource);
     return (
       <div key={resource.name} className={`octopus-body ${type}`} title={display}>
         <div className={`octopus-title ${type}-title`}>
-          { _.isNil(resource.namespace) ? display :
-          <this.props.api.ResourceLink
-            resource={resource}
-            linkText={display} />
-          }
+          { this.linkedResourceTitle(resource, display) }
         </div>
         <div>
           <div className="octopus-sr-gauge">
@@ -71,6 +106,19 @@ export default class Octopus extends React.Component {
           _.map(unmeshedResources, r => {
             let display = displayName(r);
             return <div key={display} title={display}>{display}</div>;
+          })
+        }
+      </div>
+    );
+  }
+
+  renderCollapsedNeighbors = neighbors => {
+    return (
+      <div key="unmeshed-resources" className="octopus-body neighbor collapsed">
+        {
+          _.map(neighbors, r => {
+            let display = displayName(r);
+            return <div className="octopus-title neighbor-title" key={display}>{this.linkedResourceTitle(r, display)}</div>;
           })
         }
       </div>
@@ -119,19 +167,21 @@ export default class Octopus extends React.Component {
       return null;
     }
 
-    let upstreams = _.sortBy(neighbors.upstream, "resource.name");
-    let downstreams = _.sortBy(neighbors.downstream, "resource.name");
+    let display = this.getNeighborDisplayData(neighbors);
 
-    let numUpstreams = _.size(upstreams) + (_.isEmpty(unmeshedSources) ? 0 : 1);
+    let numUpstreams = _.size(display.upstreams.displayed) + (_.isEmpty(unmeshedSources) ? 0 : 1) +
+      (_.isEmpty(display.upstreams.collapsed) ? 0 : 1);
     let hasUpstreams = numUpstreams > 0;
-    let hasDownstreams = _.size(neighbors.downstream) > 0;
+    let numDownstreams = _.size(display.downstreams.displayed) + (_.isEmpty(display.downstreams.collapsed) ? 0 : 1);
+    let hasDownstreams = numDownstreams > 0;
 
     return (
       <div className="octopus-graph">
         <Row type="flex" justify="center" align="middle">
           <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
-            {_.map(upstreams, n => this.renderResourceSummary(n, "neighbor"))}
+            {_.map(display.upstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
             {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
+            {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
           </Col>
 
           <Col span={2} className="octopus-col">
@@ -143,11 +193,12 @@ export default class Octopus extends React.Component {
           </Col>
 
           <Col span={2} className="octopus-col">
-            {this.renderArrowCol(_.size(downstreams), true)}
+            {this.renderArrowCol(numDownstreams, true)}
           </Col>
 
           <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
-            {_.map(downstreams, n => this.renderResourceSummary(n, "neighbor"))}
+            {_.map(display.downstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
+            {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
           </Col>
         </Row>
       </div>
