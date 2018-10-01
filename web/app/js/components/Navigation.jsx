@@ -35,7 +35,7 @@ import GroupWorkIcon from  '@material-ui/icons/GroupWork';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
 
-const drawerWidth = 240;
+const drawerWidth = 250;
 const styles = theme => ({
   root: {
     flexGrow: 1,
@@ -142,7 +142,7 @@ class NavigationBase extends React.Component {
             </Typography>
             <div className={classes.grow} />
             <IconButton color="inherit">
-              <Badge className={classes.margin} badgeContent={11} color="secondary">
+              <Badge className={classes.margin} badgeContent="1" color="secondary">
                 <NotificationsIcon />
               </Badge>
             </IconButton>
@@ -228,7 +228,7 @@ class NavigationBase extends React.Component {
           <List>
             <ListItem component={Link} to="https://linkerd.io/2/overview/" target="_blank">
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
-              <ListItemText primary="Resources" />
+              <ListItemText primary="Documentation" />
             </ListItem>
           </List>
         </Drawer>
