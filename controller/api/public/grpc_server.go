@@ -122,11 +122,15 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 
 		proxyReady := false
-		proxyVersion := ""
 		for _, container := range pod.Status.ContainerStatuses {
 			if container.Name == pkgK8s.ProxyContainerName {
 				proxyReady = container.Ready
+			}
+		}
 
+		proxyVersion := ""
+		for _, container := range pod.Spec.Containers {
+			if container.Name == pkgK8s.ProxyContainerName {
 				parts := strings.Split(container.Image, ":")
 				proxyVersion = parts[1]
 			}
