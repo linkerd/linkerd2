@@ -1,7 +1,5 @@
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
-import BreadcrumbHeader from './components/BreadcrumbHeader.jsx';
-import { Layout } from 'antd';
 import Namespace from './components/Namespace.jsx';
 import NamespaceLanding from './components/NamespaceLanding.jsx';
 import Navigation from './components/Navigation.jsx';
@@ -12,7 +10,6 @@ import ResourceDetail from './components/ResourceDetail.jsx';
 import ResourceList from './components/ResourceList.jsx';
 import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
-import Sidebar from './components/Sidebar.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
@@ -62,7 +59,7 @@ let applicationHtml = (
             render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
           <Route
             path={`${pathPrefix}/tap`}
-            render={props => <Navigation {...props} ChildComponent={Top} />} />
+            render={props => <Navigation {...props} ChildComponent={Tap} />} />
           <Route
             path={`${pathPrefix}/top`}
             render={props => <Navigation {...props} ChildComponent={Top} />} />
