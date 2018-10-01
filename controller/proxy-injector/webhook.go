@@ -78,8 +78,11 @@ func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 		return admissionReview
 	}
 	admissionReview.Response = admissionResponse
-	log.Infof("patch generated: %s", admissionResponse.Patch)
-	log.Infof("completed pod mutation")
+
+	if len(admissionResponse.Patch) > 0 {
+		log.Infof("patch generated: %s", admissionResponse.Patch)
+	}
+	log.Info("done")
 
 	return admissionReview
 }
@@ -109,7 +112,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	if w.ignore(&deployment) {
-		log.Infof("ignoring deployment %s...", deployment.ObjectMeta.Name)
+		log.Infof("ignoring deployment %s", deployment.ObjectMeta.Name)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,
@@ -192,20 +195,42 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
 	labels := deployment.Spec.Template.ObjectMeta.GetLabels()
 	status, defined := labels[k8sPkg.ProxyAutoInjectLabel]
-	if !defined {
-		return false
+	if defined {
+		switch status {
+		case k8sPkg.ProxyAutoInjectDisabled:
+			fallthrough
+		case k8sPkg.ProxyAutoInjectCompleted:
+			return true
+		}
 	}
 
-	switch status {
-	case k8sPkg.ProxyAutoInjectEnabled:
-		return false
-	case k8sPkg.ProxyAutoInjectDisabled:
-		fallthrough
-	case k8sPkg.ProxyAutoInjectCompleted:
-		fallthrough
-	default:
-		return true
+	// check for known proxies and initContainers
+	// same logic as the checkSidecars() function in cli/cmd/inject.go
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||
+			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
+			strings.HasPrefix(container.Image, "gcr.io/heptio-images/contour:") ||
+			strings.HasPrefix(container.Image, "docker.io/envoyproxy/envoy-alpine:") ||
+			container.Name == "linkerd-proxy" ||
+			container.Name == "istio-proxy" ||
+			container.Name == "contour" ||
+			container.Name == "envoy" {
+			return true
+		}
 	}
+
+	for _, ic := range deployment.Spec.Template.Spec.InitContainers {
+		if strings.HasPrefix(ic.Image, "gcr.io/linkerd-io/proxy-init:") ||
+			strings.HasPrefix(ic.Image, "gcr.io/istio-release/proxy_init:") ||
+			strings.HasPrefix(ic.Image, "gcr.io/heptio-images/contour:") ||
+			ic.Name == "linkerd-init" ||
+			ic.Name == "istio-init" ||
+			ic.Name == "envoy-initconfig" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {

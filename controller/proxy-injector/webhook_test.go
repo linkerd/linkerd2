@@ -127,28 +127,41 @@ func TestMutate(t *testing.T) {
 }
 
 func TestIgnore(t *testing.T) {
-	var testCases = []struct {
-		filename string
-		expected bool
-	}{
-		{filename: "deployment-inject-status-empty.yaml", expected: false},
-		{filename: "deployment-inject-status-enabled.yaml", expected: false},
-		{filename: "deployment-inject-status-disabled.yaml", expected: true},
-		{filename: "deployment-inject-status-completed.yaml", expected: true},
-	}
+	t.Run("by checking labels", func(t *testing.T) {
+		var testCases = []struct {
+			filename string
+			expected bool
+		}{
+			{filename: "deployment-inject-status-empty.yaml", expected: false},
+			{filename: "deployment-inject-status-enabled.yaml", expected: false},
+			{filename: "deployment-inject-status-disabled.yaml", expected: true},
+			{filename: "deployment-inject-status-completed.yaml", expected: true},
+		}
 
-	for id, testCase := range testCases {
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			deployment, err := factory.Deployment(testCase.filename)
-			if err != nil {
-				t.Fatal("Unexpected error: ", err)
-			}
+		for id, testCase := range testCases {
+			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+				deployment, err := factory.Deployment(testCase.filename)
+				if err != nil {
+					t.Fatal("Unexpected error: ", err)
+				}
 
-			if actual := webhook.ignore(deployment); actual != testCase.expected {
-				t.Errorf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, actual)
-			}
-		})
-	}
+				if actual := webhook.ignore(deployment); actual != testCase.expected {
+					t.Errorf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, actual)
+				}
+			})
+		}
+	})
+
+	t.Run("by checking container spec", func(t *testing.T) {
+		deployment, err := factory.Deployment("deployment-with-injected-proxy.yaml")
+		if err != nil {
+			t.Fatal("Unexpected error: ", err)
+		}
+
+		if !webhook.ignore(deployment) {
+			t.Errorf("Expected deployment with injected proxy to be ignored")
+		}
+	})
 }
 
 func TestContainersSpec(t *testing.T) {
