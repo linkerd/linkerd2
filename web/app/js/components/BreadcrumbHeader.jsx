@@ -3,10 +3,8 @@ import PropTypes from "prop-types";
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import { withContext } from './util/AppContext.jsx';
-import { Breadcrumb, Layout } from 'antd';
 import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
 import './../../css/breadcrumb-header.css';
-
 
 const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",
@@ -73,11 +71,11 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  renderBreadcrumbSegment(segment, index) {
+  renderBreadcrumbSegment(segment, shouldPluralizeFirstSegment) {
     let isMeshResource = isResource(segment);
 
     if (isMeshResource) {
-      if (index === 0) {
+      if (!shouldPluralizeFirstSegment) {
         return friendlyTitle(segment).singular;
       }
       return this.segmentToFriendlyTitle(segment, true);
@@ -85,46 +83,23 @@ class BreadcrumbHeader extends React.Component {
     return this.segmentToFriendlyTitle(segment, false);
   }
 
-  renderBreadcrumbs(breadcrumbs) {
-    let PrefixedLink = this.api.PrefixedLink;
-
-    if (breadcrumbs.length === 1) {
-      // Check for a single segment so that we can pluralize it.
-      let singleBreadcrumb = breadcrumbs[0];
-
-      return (
-        <Breadcrumb.Item key={singleBreadcrumb.segment}>
-          <PrefixedLink
-            to={singleBreadcrumb.link}>
-            {this.renderBreadcrumbSegment(singleBreadcrumb.segment)}
-          </PrefixedLink>
-        </Breadcrumb.Item>
-      );
-    } else {
-      return _.map(breadcrumbs, (pathSegment, index) => {
-        return (
-          <Breadcrumb.Item key={pathSegment.segment}>
-            <PrefixedLink
-              to={pathSegment.link}>
-              {this.renderBreadcrumbSegment(pathSegment.segment, index)}
-            </PrefixedLink>
-          </Breadcrumb.Item>
-        );
-      });
-    }
-  }
-
   render() {
     let prefix = this.props.pathPrefix;
+    let PrefixedLink = this.api.PrefixedLink;
     let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
+    let shouldPluralizeFirstSegment = breadcrumbs.length === 1;
 
-    return (
-      <Layout.Header>
-        <Breadcrumb separator=">">
-          { this.renderBreadcrumbs(breadcrumbs) }
-        </Breadcrumb>
-      </Layout.Header>
-    );
+    return _.map(breadcrumbs, (pathSegment, index) => {
+      return (
+        <span key={pathSegment.segment}>
+          <PrefixedLink
+            to={pathSegment.link}>
+            {this.renderBreadcrumbSegment(pathSegment.segment, shouldPluralizeFirstSegment && index === 0)}
+          </PrefixedLink>
+          { index < _.size(breadcrumbs) - 1 ? " > " : null}
+        </span>
+      );
+    });
   }
 }
 

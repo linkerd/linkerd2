@@ -7,7 +7,10 @@ import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
 import {Link} from 'react-router-dom';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
+import Badge from '@material-ui/core/Badge';
 import Collapse from '@material-ui/core/Collapse';
+import MenuItem from '@material-ui/core/MenuItem';
+import Menu from '@material-ui/core/Menu';
 import Toolbar from '@material-ui/core/Toolbar';
 import List from '@material-ui/core/List';
 import Typography from '@material-ui/core/Typography';
@@ -26,6 +29,8 @@ import HomeIcon from '@material-ui/icons/Home';
 import CompareArrowsIcon from '@material-ui/icons/CompareArrows';
 import WavesIcon from '@material-ui/icons/Waves';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
+import NotificationsIcon from '@material-ui/icons/Notifications';
+
 import GroupWorkIcon from  '@material-ui/icons/GroupWork';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
@@ -135,6 +140,12 @@ class NavigationBase extends React.Component {
             <Typography variant="title" color="inherit" noWrap>
               <BreadcrumbHeader {...this.props} />
             </Typography>
+            <div className={classes.grow} />
+            <IconButton color="inherit">
+              <Badge className={classes.margin} badgeContent={11} color="secondary">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
           </Toolbar>
         </AppBar>
         <Drawer
