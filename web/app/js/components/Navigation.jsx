@@ -1,39 +1,35 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import classNames from 'classnames';
-import { withStyles } from '@material-ui/core/styles';
-import Drawer from '@material-ui/core/Drawer';
 import AppBar from '@material-ui/core/AppBar';
-import Button from '@material-ui/core/Button';
-import {Link} from 'react-router-dom';
-import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import Badge from '@material-ui/core/Badge';
-import Collapse from '@material-ui/core/Collapse';
-import MenuItem from '@material-ui/core/MenuItem';
-import Menu from '@material-ui/core/Menu';
-import Toolbar from '@material-ui/core/Toolbar';
-import List from '@material-ui/core/List';
-import Typography from '@material-ui/core/Typography';
-import Divider from '@material-ui/core/Divider';
-import IconButton from '@material-ui/core/IconButton';
-import MenuIcon from '@material-ui/icons/Menu';
+import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
-import { withContext } from './util/AppContext.jsx';
-import ListSubheader from '@material-ui/core/ListSubheader';
-import { linkerdWordLogo} from './util/SvgWrappers.jsx';
+import classNames from 'classnames';
+import Collapse from '@material-ui/core/Collapse';
+import CompareArrowsIcon from '@material-ui/icons/CompareArrows';
+import Divider from '@material-ui/core/Divider';
+import Drawer from '@material-ui/core/Drawer';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
+import GroupWorkIcon from  '@material-ui/icons/GroupWork';
+import HomeIcon from '@material-ui/icons/Home';
+import IconButton from '@material-ui/core/IconButton';
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
+import {Link} from 'react-router-dom';
+import { linkerdWordLogo } from './util/SvgWrappers.jsx';
+import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
-import HomeIcon from '@material-ui/icons/Home';
-import CompareArrowsIcon from '@material-ui/icons/CompareArrows';
-import WavesIcon from '@material-ui/icons/Waves';
-import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
+import ListSubheader from '@material-ui/core/ListSubheader';
+import MenuIcon from '@material-ui/icons/Menu';
 import NotificationsIcon from '@material-ui/icons/Notifications';
-
-import GroupWorkIcon from  '@material-ui/icons/GroupWork';
-import ExpandLess from '@material-ui/icons/ExpandLess';
-import ExpandMore from '@material-ui/icons/ExpandMore';
+import PropTypes from 'prop-types';
+import React from 'react';
+import Toolbar from '@material-ui/core/Toolbar';
+import Typography from '@material-ui/core/Typography';
+import WavesIcon from '@material-ui/icons/Waves';
+import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 
 const drawerWidth = 250;
 const styles = theme => ({
@@ -242,8 +238,12 @@ class NavigationBase extends React.Component {
 }
 
 NavigationBase.propTypes = {
-  classes: PropTypes.object.isRequired,
-  theme: PropTypes.object.isRequired,
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  ChildComponent: PropTypes.func.isRequired,
+  classes: PropTypes.shape({}).isRequired,
+  theme: PropTypes.shape({}).isRequired,
 };
 
 export default withContext(withStyles(styles, { withTheme: true })(NavigationBase));

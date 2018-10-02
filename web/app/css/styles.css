@@ -55,42 +55,7 @@ h2, h3, h4, h5, h6 {
 .clearfix {
   clear: both;
 }
-/*
-.main {
-  margin-left: auto;
-  margin-right: auto;
-}
 
-.main-content {
-  max-width: 100%;
-  width: 100%;
-  padding: 40px;
-  float: left;
-}
-
-.page-header {
-  margin-bottom: 30px;
-}
-
-.page-header .subsection-header {
-  margin-bottom: 0px;
-}
-
-.time-window-btns {
-  float: right;
-} */
-
-/* center the spinner */
-.page-content .ant-spin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 75vh;
-
-  &.short-spin-section {
-    height: 100px;
-  }
-}
 
 .page-section {
   margin-bottom: calc(var(--base-width) * 3);
@@ -248,13 +213,4 @@ div.status-dot {
   &.status-dot-ok {
     background-color: var(--orange);
   }
-}
-
-.anticon-check-circle.status-ok {
-  color: var(--green);
-}
-
-div.ant-layout-has-sider {
-  height: 100vh;
-  overflow: hidden;
 }

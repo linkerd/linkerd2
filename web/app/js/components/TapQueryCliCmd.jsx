@@ -45,26 +45,23 @@ export default class TapQueryCliCmd extends React.Component {
     } = this.props.query;
 
     return (
+      _.isEmpty(resource) ? null :
       <div className="tap-query">
-        {
-          _.isEmpty(resource) ? null :
-          <React.Fragment>
-            <div>Current {_.startCase(this.props.cmdName)} query:</div>
-            <code>
+        <div>Current {_.startCase(this.props.cmdName)} query:</div>
+        <code>
               linkerd {this.props.cmdName} {resource}
-              { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
-              { this.renderCliItem("--to", toResource) }
-              { _.isEmpty(toResource) || toResource.indexOf("namespace") === 0 ? null :
+          { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
+          { this.renderCliItem("--to", toResource) }
+          {
+            _.isEmpty(toResource) || toResource.indexOf("namespace") === 0 ? null :
                 this.renderCliItem("--to-namespace", toNamespace)
-              }
-              { this.renderCliItem("--method", method) }
-              { this.renderCliItem("--scheme", scheme) }
-              { this.renderCliItem("--authority", authority) }
-              { this.renderCliItem("--path", path) }
-              { this.renderCliItem("--max-rps", maxRps) }
-            </code>
-          </React.Fragment>
-        }
+          }
+          { this.renderCliItem("--method", method) }
+          { this.renderCliItem("--scheme", scheme) }
+          { this.renderCliItem("--authority", authority) }
+          { this.renderCliItem("--path", path) }
+          { this.renderCliItem("--max-rps", maxRps) }
+        </code>
       </div>
     );
   }
