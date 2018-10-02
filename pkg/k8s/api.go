@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -74,22 +73,6 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 	return nil
 }
 
-func (kubeAPI *KubernetesAPI) CheckProxyVersion(pods []v1.Pod, version string) error {
-	for _, pod := range pods {
-		for _, container := range pod.Spec.Containers {
-			if container.Name == ProxyContainerName {
-				parts := strings.Split(container.Image, ":")
-				if len(parts) == 2 && parts[1] != version {
-					return fmt.Errorf("%s is running version %s but the latest version is %s",
-						pod.Name, parts[1], version)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
 func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -110,21 +93,6 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace str
 // GetPodsByNamespace returns all pods in a given namespace
 func (kubeAPI *KubernetesAPI) GetPodsByNamespace(client *http.Client, namespace string) ([]v1.Pod, error) {
 	return kubeAPI.getPods(client, "/api/v1/namespaces/"+namespace+"/pods")
-}
-
-// GetPodsByControllerNamespace returns all pods that have been injected to
-// interface with a given controllerNamespace. If targetNamespace is provided,
-// only pods from that namespace are returned.
-func (kubeAPI *KubernetesAPI) GetPodsByControllerNamespace(client *http.Client, controllerNamespace, targetNamespace string) ([]v1.Pod, error) {
-	selector := url.QueryEscape(fmt.Sprintf("%s=%s", ControllerNSLabel, controllerNamespace))
-	var path string
-	if targetNamespace == "" {
-		path = "/api/v1/pods"
-	} else {
-		path = "/api/v1/namespaces/" + targetNamespace + "/pods"
-	}
-
-	return kubeAPI.getPods(client, fmt.Sprintf("%s?labelSelector=%s", path, selector))
 }
 
 func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Pod, error) {

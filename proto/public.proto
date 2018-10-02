@@ -40,6 +40,8 @@ message Pod {
   string controllerNamespace = 7; // namespace of controller this pod reports to
   bool controlPlane = 8; // true if this pod is part of the control plane
   google.protobuf.Duration uptime = 9; // uptime of this pod
+  bool proxyReady = 15; // true if this pod has proxy container and that one is in ready state
+  string proxyVersion = 16; // version of the proxy if present
 }
 
 message TapRequest {
