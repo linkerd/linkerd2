@@ -12,6 +12,7 @@ RUN (proxy=$(bin/fetch-proxy $PROXY_VERSION); \
 
 FROM $RUNTIME_IMAGE as runtime
 WORKDIR /linkerd
+COPY --from=fetch /build/target/proxy/LICENSE ./LICENSE
 COPY --from=fetch /build/linkerd2-proxy ./linkerd2-proxy
 COPY --from=fetch /build/version.txt ./linkerd2-proxy-version.txt
 ENV LINKERD2_PROXY_LOG=warn,linkerd2_proxy=info
