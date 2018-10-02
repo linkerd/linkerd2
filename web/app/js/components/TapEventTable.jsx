@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
@@ -27,59 +28,58 @@ const grpcStatusCodes = {
   16: "Unauthenticated"
 };
 
-const smallMetricColWidth = "120px";
-
 const httpStatusCol = {
   title: "HTTP status",
   key: "http-status",
-  width: smallMetricColWidth,
-  dataIndex: "responseInit.http.responseInit",
-  render: d => !d ? <Icon type="loading" /> : d.httpStatus
+  render: datum => {
+    let d = _.get(datum, "responseInit.http.responseInit");
+    return !d ? <Icon type="loading" /> : d.httpStatus;
+  }
 };
 
 const responseInitLatencyCol = {
   title: "Latency",
   key: "rsp-latency",
-  width: smallMetricColWidth,
-  dataIndex: "responseInit.http.responseInit",
-  render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
+  isNumeric: true,
+  render: datum => {
+    let d = _.get(datum, "responseInit.http.responseInit");
+    return !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit);
+  }
 };
 
 const grpcStatusCol = {
   title: "GRPC status",
   key: "grpc-status",
-  width: smallMetricColWidth,
-  dataIndex: "responseEnd.http.responseEnd",
-  render: d => !d ? <Icon type="loading" /> :
-    _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")]
+  render: datum => {
+    let d = _.get(datum, "responseEnd.http.responseEnd");
+    return !d ? <Icon type="loading" /> :
+      _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")];
+  }
 };
 
 const pathCol = {
   title: "Path",
   key: "path",
-  dataIndex: "requestInit.http.requestInit",
-  render: d => !d ? <Icon type="loading" /> : d.path
+  render: datum => {
+    let d = _.get(datum, "requestInit.http.requestInit");
+    return !d ? <Icon type="loading" /> : d.path;
+  }
 };
 
 const methodCol = {
   title: "Method",
   key: "method",
-  dataIndex: "requestInit.http.requestInit",
-  render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
+  render: datum => {
+    let d = _.get(datum, "requestInit.http.requestInit");
+    return !d ? <Icon type="loading" /> : _.get(d, "method.registered");
+  }
 };
 
 const topLevelColumns = (resourceType, ResourceLink) => [
   {
     title: "Direction",
     key: "direction",
-    dataIndex: "base.proxyDirection",
-    width: "98px",
-    filters: [
-      { text: "FROM", value: "INBOUND" },
-      { text: "TO", value: "OUTBOUND" }
-    ],
-    render: directionColumn,
-    onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
+    render: d => directionColumn(d.base.proxyDirection)
   },
   {
     title: "Name",
@@ -192,18 +192,11 @@ class TapEventTable extends React.Component {
   }
 
   render() {
-    let resourceType = this.props.resource.split("/")[0];
-    return (
-      <Table
-        dataSource={this.props.tableRows}
-        columns={tapColumns(resourceType, this.props.api.ResourceLink)}
-        expandedRowRender={expandedRowRender} // hide extra info in expandable row
-        expandRowByClick={true} // click anywhere on row to expand
-        rowKey={r => r.base.id}
-        pagination={false}
-        className="tap-event-table"
-        size="middle" />
-    );
+    const { tableRows, resource, api } = this.props;
+    let resourceType = resource.split("/")[0];
+    let columns = tapColumns(resourceType, api.ResourceLink);
+
+    return <BaseTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
   }
 }
 

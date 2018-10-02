@@ -169,6 +169,7 @@ class Tap extends React.Component {
     resultIndex[d.id][d.eventType] = d;
     // assumption: requests of a given id all share the same high level metadata
     resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].key = d.id;
     resultIndex[d.id].lastUpdated = Date.now();
   }
 
