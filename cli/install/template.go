@@ -759,11 +759,11 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-controller-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "get", "watch"]
+  verbs: ["create", "update", "get", "watch"]
 - apiGroups: [""]
   resources: ["configmaps", "namespaces"]
   verbs: ["get", "list", "watch"]
@@ -772,7 +772,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-controller-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -780,7 +780,7 @@ subjects:
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-controller-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 
 ---

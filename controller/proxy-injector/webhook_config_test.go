@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 )
 
-func TestCreateAndExist(t *testing.T) {
+func TestCreateOrUpdate(t *testing.T) {
 	var (
 		factory            = fake.NewFactory()
 		namespace          = fake.DefaultControllerNamespace
@@ -31,7 +31,7 @@ func TestCreateAndExist(t *testing.T) {
 	webhookConfig := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath)
 
 	// expect mutating webhook configuration to not exist
-	exist, err := webhookConfig.Exist()
+	_, exist, err := webhookConfig.exist()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -40,12 +40,12 @@ func TestCreateAndExist(t *testing.T) {
 	}
 
 	// create the mutating webhook configuration
-	if _, err := webhookConfig.Create(); err != nil {
+	if _, err := webhookConfig.CreateOrUpdate(); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
 	// expect mutating webhook configuration to exist
-	exist, err = webhookConfig.Exist()
+	_, exist, err = webhookConfig.exist()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -53,12 +53,17 @@ func TestCreateAndExist(t *testing.T) {
 		t.Error("Expected mutating webhook configuration to exist")
 	}
 
+	// update the mutating webhook configuration using the same trust anchors
+	if _, err := webhookConfig.CreateOrUpdate(); err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
 	// remove the trust anchors file and expect an error
 	if err := os.Remove(trustAnchorsPath); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	if _, err := webhookConfig.Create(); err == nil {
+	if _, err := webhookConfig.CreateOrUpdate(); err == nil {
 		t.Error("Expected test to fail with 'no such file or directory' error")
 	}
 }

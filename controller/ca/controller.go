@@ -188,7 +188,9 @@ func (c *CertificateController) handleMWCAdd(obj interface{}) {
 	mwc := obj.(*v1beta1.MutatingWebhookConfiguration)
 	log.Debugf("enqueuing secret write for mutating webhook configuration %q", mwc.ObjectMeta.Name)
 	for _, webhook := range mwc.Webhooks {
-		c.queue.Add(fmt.Sprintf("%s.%s.%s", webhook.ClientConfig.Service.Name, pkgK8s.Service, webhook.ClientConfig.Service.Namespace))
+		if mwc.Name == pkgK8s.ProxyInjectorWebhookConfig {
+			c.queue.Add(fmt.Sprintf("%s.%s.%s", webhook.ClientConfig.Service.Name, pkgK8s.Service, webhook.ClientConfig.Service.Namespace))
+		}
 	}
 }
 

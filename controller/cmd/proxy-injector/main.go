@@ -44,19 +44,11 @@ func main() {
 
 	webhookConfig := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, *trustAnchorsPath)
 
-	exist, err := webhookConfig.Exist()
+	mwc, err := webhookConfig.CreateOrUpdate()
 	if err != nil {
-		log.Fatalf("failed to access the mutating webhook configurations resource: ", err)
+		log.Fatalf("failed to create the mutating webhook configurations resource: ", err)
 	}
-
-	if !exist {
-		log.Info("creating mutating webhook configuration")
-		webhookConfig, err := webhookConfig.Create()
-		if err != nil {
-			log.Fatal("faild to create the mutating webhook configuration: ", err)
-		}
-		log.Info("created mutating webhook configuration: ", webhookConfig.ObjectMeta.SelfLink)
-	}
+	log.Info("created or updated mutating webhook configuration: ", mwc.ObjectMeta.SelfLink)
 
 	log.Infof("waiting for the tls secrets to mount (wait at most %s)", volumeMountsWaitTime)
 	if err := waitForMounts(*volumeMountsWaitTime, *certFile, *keyFile); err != context.Canceled {
