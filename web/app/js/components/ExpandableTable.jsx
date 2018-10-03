@@ -11,6 +11,10 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
+import Typography from '@material-ui/core/Typography';
+import Collapse from '@material-ui/core/Collapse';
+import IconButton from '@material-ui/core/IconButton';
+
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -24,50 +28,121 @@ const styles = theme => ({
   },
 });
 
-class BaseTable extends React.Component {
-  handleRowExpand() {
-    console.log("expanded");
+// const TelemetryMonitorTableBody = pure(props => (
+//   <Table.TableBody>
+//     { props.items.map((x, i) => {
+//           const { timestamp, ...etc } = JSON.parse(x.payload); // eslint-disable-line no-unused-vars
+
+//           return (
+//             <Table.TableRow key={i}>
+//               <Table.TableCell padding="none" style={{verticalAlign: Object.keys(etc).length == 0 ? 'inherit' : 'top'}}>
+//                 <IconButton disabled={Object.keys(etc).length == 0} style={{transform: x.expanded ? 'rotate(0)' : 'rotate(270deg)'}} onClick={() => props.onExpandCellClick(i)}><ExpandMore /></IconButton>
+//               </Table.TableCell>
+
+//               <Table.TableCell padding="none">
+//                 { Object.keys(etc).length == 0 ?
+//                       READINGS_PL200[x.reading] :
+
+//                       <div>
+//                         <Typography style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>{ READINGS_PL200[x.reading] }</Typography>
+
+//                         <Collapse in={x.expanded} transitionDuration="auto" unmountOnExit>
+//                           <ul style={{margin: 0, paddingLeft: 16, paddingBottom: 16}}>
+//                             { Object.entries(etc).map(([key, val], j) => {
+//                                       return <li key={j}><strong>{ key }</strong>: { val === true ? 'yes' : val === false ? 'no' : val }</li>;
+//                                   }) }
+//                           </ul>
+//                         </Collapse>
+//                       </div>
+//                   }
+//               </Table.TableCell>
+
+//               <Table.TableCell>{ SHORT_DATETIME_FORMATTER.format(x.date) }</Table.TableCell>
+//             </Table.TableRow>
+// );
+//       }) }
+//   </Table.TableBody>
+// ));
+
+class ExpandableTable extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      expanded: {}
+    };
+  }
+
+  onExpandCellClick = key => {
+    return () => {
+      let expanded = this.state.expanded;
+      expanded[key] = !expanded[key];
+      this.setState({ expanded });
+    };
   }
 
   render() {
     const { classes, tableRows, tableColumns, tableClassName } = this.props;
+    let columns = _.concat([{
+      title: " ",
+      key: "expansion",
+      render: d => {
+        return (
+          <IconButton style={{transform: this.state.expanded[d.key] ? 'rotate(0)' : 'rotate(270deg)'}} onClick={this.onExpandCellClick(d.key)}><ExpandMoreIcon /></IconButton>
+        );
+      }
+    }], tableColumns);
+
     return (
       <Paper className={classes.root}>
         <Table className={`${classes.table} ${tableClassName}`}>
           <TableHead>
             <TableRow>
-              { _.map(tableColumns, c => (
-                <TableCell
-                  key={c.key}
-                  numeric={c.isNumeric}>{c.title}
-                </TableCell>
-            ))
-            }
+              {
+                _.map(columns, c => (
+                  <TableCell
+                    key={c.key}
+                    numeric={c.isNumeric}>{c.title}
+                  </TableCell>
+                  )
+                )
+              }
             </TableRow>
           </TableHead>
           <TableBody>
             {
             _.map(tableRows, d => {
             return (
-              <ExpansionPanel expanded={true} onChange={this.handleRowExpand('panel1')}>
-                <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-                  <TableRow key={d.key}>
-                    { _.map(tableColumns, c => (
-                      <TableCell
-                        key={`table-${d.key}-${c.key}`}
-                        numeric={c.isNumeric}>{c.render(d)}
+              <React.Fragment key={"frag-" + d.key}>
+                <TableRow key={d.key}>
+                  { _.map(columns, c => (
+                    <TableCell
+                      key={`table-${d.key}-${c.key}`}
+                      numeric={c.isNumeric}>
+                      {c.render(d)}
+                    </TableCell>
+                    ))
+                  }
+                </TableRow>
+                {
+                  !this.state.expanded[d.key] ? null : (
+                    <TableRow>
+                      <TableCell width="100%">
+                        <Collapse in={this.state.expanded[d.key]} unmountOnExit>
+                          <Typography>An expanded stuff: expand row for {d.key}</Typography>
+                        </Collapse>
                       </TableCell>
-                  ))
+                      <TableCell width="100%">
+                        <Collapse in={this.state.expanded[d.key]} unmountOnExit>
+                          <Typography>An expanded stuff: expand row for {d.key}</Typography>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  )
                 }
-                  </TableRow>
-                </ExpansionPanelSummary>
-                <ExpansionPanelDetails>
-                  <div>
-                  Nulla facilisi. Phasellus sollicitudin nulla et quam mattis feugiat. Aliquam eget
-                  maximus est, id dignissim quam.
-                  </div>
-                </ExpansionPanelDetails>
-              </ExpansionPanel>
+
+              </React.Fragment>
+
             );
           })}
           </TableBody>
@@ -77,7 +152,7 @@ class BaseTable extends React.Component {
   }
 }
 
-BaseTable.propTypes = {
+ExpandableTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
@@ -88,9 +163,9 @@ BaseTable.propTypes = {
   tableRows: PropTypes.arrayOf(PropTypes.shape({}))
 };
 
-BaseTable.defaultProps = {
+ExpandableTable.defaultProps = {
   tableClassName: "",
   tableRows: []
 };
 
-export default withStyles(styles)(BaseTable);
+export default withStyles(styles)(ExpandableTable);

@@ -1,9 +1,9 @@
 import _ from 'lodash';
-import BaseTable from './BaseTable.jsx';
+import ExpandableTable from './ExpandableTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Icon, Row, Table } from 'antd';
+import { Col, Icon, Row } from 'antd';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
@@ -196,7 +196,7 @@ class TapEventTable extends React.Component {
     let resourceType = resource.split("/")[0];
     let columns = tapColumns(resourceType, api.ResourceLink);
 
-    return <BaseTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
+    return <ExpandableTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
   }
 }
 
