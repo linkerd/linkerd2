@@ -1,3 +1,18 @@
+## edge-18.10.1
+
+* Web UI
+  * **Improved** Tap and Top pages
+    * Added clear button to query form
+  * **Improved** Resource Detail pages
+    * Limit number of resources shown in the graph
+* Proxy
+  * Updated proxy config environment variables
+* Controller
+  * CLI health check now uses unified endpoint for pod checking
+  * Include Licence files in all Docker images
+
+Special thanks to @alenkacz for contributing to this release!
+
 ## edge-18.9.3
 
 * Web UI
