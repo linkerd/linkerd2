@@ -5,10 +5,8 @@
     * Added clear button to query form
   * **Improved** Resource Detail pages
     * Limit number of resources shown in the graph
-* Proxy
-  * Updated proxy config environment variables
 * Controller
-  * CLI health check now uses unified endpoint for pod checking
+  * CLI health check now uses unified endpoint for data plane checks
   * Include Licence files in all Docker images
 
 Special thanks to @alenkacz for contributing to this release!
