@@ -1,19 +1,21 @@
 import _ from 'lodash';
+import Accordion from './util/Accordion.jsx';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { withContext } from './util/AppContext.jsx';
-import { Collapse, Icon, Tooltip } from 'antd';
 import Spinner from './util/Spinner.jsx';
+import Tooltip from '@material-ui/core/Tooltip';
+import { withContext } from './util/AppContext.jsx';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
 
 const isMeshedTooltip = (
-  <Tooltip placement="right" title="Namespace is meshed" overlayStyle={{ fontSize: "12px" }}>
-    <Icon className="status-ok" type="check-circle" />
+  <Tooltip title="Namespace is meshed" placement="right-start">
+    <CheckCircleIcon />
   </Tooltip>
 );
 class NamespaceLanding extends React.Component {
@@ -58,7 +60,7 @@ class NamespaceLanding extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
-  onNsSelect = ns => {
+  onNamespaceChange = ns => {
     this.setState({
       selectedNs: ns
     });
@@ -151,31 +153,22 @@ class NamespaceLanding extends React.Component {
   }
 
   renderAccordion() {
+    let panelData = _.map(this.state.namespaces, ns => {
+      return {
+        id: ns.name,
+        header: <React.Fragment>{ns.name} {!ns.added ? null : isMeshedTooltip}</React.Fragment>,
+        body: ns.name === this.state.selectedNs || ns.name === this.state.defaultOpenNs.name ?
+          this.renderNamespaceSection(ns.name) : null
+      };
+    });
+
     return (
       <React.Fragment>
         <PageHeader header="Namespaces" />
-        <Collapse
-          accordion={true}
-          defaultActiveKey={_.get(this.state.defaultOpenNs, 'name', null)}
-          onChange={this.onNsSelect}>
-          {
-            _.map(this.state.namespaces, ns => {
-              let header = (
-                <React.Fragment>{ns.name} {!ns.added ? null : isMeshedTooltip}</React.Fragment>
-              );
-
-              return (
-                <Collapse.Panel
-                  showArrow={false}
-                  header={header}
-                  key={ns.name}>
-                  {ns.name === this.state.selectedNs || ns.name === this.state.defaultOpenNs.name ?
-                  this.renderNamespaceSection(ns.name) : null}
-                </Collapse.Panel>
-              );
-            })
-          }
-        </Collapse>
+        <Accordion
+          onChange={this.onNamespaceChange}
+          panels={panelData}
+          defaultOpenPanel={_.get(this.state.defaultOpenNs, 'name', null)} />
       </React.Fragment>
     );
   }
