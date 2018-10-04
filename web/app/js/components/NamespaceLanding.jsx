@@ -4,7 +4,6 @@ import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorBanner from './ErrorBanner.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
-import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
@@ -164,7 +163,6 @@ class NamespaceLanding extends React.Component {
 
     return (
       <React.Fragment>
-        <PageHeader header="Namespaces" />
         <Accordion
           onChange={this.onNamespaceChange}
           panels={panelData}
