@@ -1,43 +1,33 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
-import ErrorModal from './ErrorModal.jsx';
+import Grid from '@material-ui/core/Grid';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import Metric from './Metric.jsx';
+import MeshedStatusTable from './MeshedStatusTable.jsx';
 import moment from 'moment';
-import { numericSort } from './util/Utils.js';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Row, Table, Tooltip } from 'antd';
 import Spinner from './util/Spinner.jsx';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
   {
     title: "Name",
-    dataIndex: "name",
-    key: "name"
+    key: "name",
+    render: d => d.name
   },
   {
     title: "Value",
-    dataIndex: "value",
     key: "value",
-    className: "numeric"
+    isNumeric: true,
+    render: d => d.value
   }
 ];
-
-const getClassification = (meshedPodCount, failedPodCount) => {
-  if (failedPodCount > 0) {
-    return "poor";
-  } else if (meshedPodCount === 0) {
-    return "neutral";
-  } else {
-    return "good";
-  }
-};
 
 const getPodClassification = pod => {
   if (pod.status === "Running") {
@@ -48,66 +38,6 @@ const getPodClassification = pod => {
     return "poor";
   }
 };
-
-const namespacesColumns = PrefixedLink => [
-  {
-    title: "Namespace",
-    key: "namespace",
-    defaultSortOrder: "ascend",
-    sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-    render: d => {
-      return  (
-        <React.Fragment>
-          <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
-          { _.isEmpty(d.errors) ? null :
-          <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
-          }
-        </React.Fragment>
-      );
-    }
-  },
-  {
-    title: "Meshed pods",
-    dataIndex: "meshedPodsStr",
-    key: "meshedPodsStr",
-    className: "numeric",
-    sorter: (a, b) => numericSort(a.totalPods, b.totalPods),
-  },
-  {
-    title: "Meshed Status",
-    key: "meshification",
-    sorter: (a, b) => numericSort(a.meshedPercent.get(), b.meshedPercent.get()),
-    render: row => {
-      let containerWidth = 132;
-      let percent = row.meshedPercent.get();
-      let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
-      let barType = _.isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "poor";
-
-
-      let percentMeshedMsg = "";
-      if (row.meshedPercent.get() >= 0) {
-        percentMeshedMsg = `(${row.meshedPercent.prettyRate()})`;
-      }
-      return (
-        <Tooltip
-          overlayStyle={{ fontSize: "12px" }}
-          title={(
-            <div>
-              <div>
-                {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh ${percentMeshedMsg}`}
-              </div>
-              {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
-            </div>
-            )}>
-          <div className={"container-bar " + barType} style={{width: containerWidth}}>
-            <div className={"inner-bar " + barType} style={{width: barWidth}}>&nbsp;</div>
-          </div>
-        </Tooltip>
-      );
-    }
-  }
-];
 
 const componentsToDeployNames = {
   "Destination": "controller",
@@ -289,13 +219,12 @@ class ServiceMesh extends React.Component {
           <div className="subsection-header">Service mesh details</div>
         </div>
 
-        <div className="service-mesh-table">
-          <Table
-            className="metric-table"
-            dataSource={this.getServiceMeshDetails()}
-            columns={serviceMeshDetailsColumns}
-            pagination={false}
-            size="middle" />
+        <div className="mesh-details-section">
+          <BaseTable
+            tableClassName="metric-table"
+            tableRows={this.getServiceMeshDetails()}
+            tableColumns={serviceMeshDetailsColumns}
+            rowKey={d => d.key} />
         </div>
       </div>
     );
@@ -327,30 +256,6 @@ class ServiceMesh extends React.Component {
     }
   }
 
-  renderNamespaceStatusTable() {
-    let rowCn = row => {
-      return row.meshedPercent.get() > 0.9 ? "good" : "neutral";
-    };
-
-    return (
-      <div className="mesh-section">
-        <Row gutter={16}>
-          <Col span={16}>
-            <Table
-              className="metric-table service-mesh-table mesh-completion-table"
-              dataSource={this.state.nsStatuses}
-              columns={namespacesColumns(this.api.PrefixedLink)}
-              rowKey="namespace"
-              rowClassName={rowCn}
-              pagination={false}
-              size="middle" />
-          </Col>
-          <Col span={8}>{this.renderAddResourcesMessage()}</Col>
-        </Row>
-      </div>
-    );
-  }
-
   render() {
     return (
       <div className="page-content">
@@ -362,12 +267,14 @@ class ServiceMesh extends React.Component {
                 numResources={_.size(this.state.nsStatuses)}
                 resource="namespace" /> : null}
 
-            <Row gutter={16}>
-              <Col span={16}>{this.renderControlPlaneDetails()}</Col>
-              <Col span={8}>{this.renderServiceMeshDetails()}</Col>
-            </Row>
+            <Grid container spacing={24}>
+              <Grid item xs={8}>{this.renderControlPlaneDetails()}</Grid>
+              <Grid item xs={4}>{this.renderServiceMeshDetails()}</Grid>
+            </Grid>
 
-            {this.renderNamespaceStatusTable()}
+            <Grid container spacing={24}>
+              <Grid item xs={8}><MeshedStatusTable tableRows={this.state.nsStatuses} /></Grid>
+            </Grid>
           </div>
         )}
       </div>

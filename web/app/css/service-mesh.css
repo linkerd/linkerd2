@@ -32,35 +32,36 @@
   }
 }
 
-.service-mesh-table {
-  margin-top: 18px;
+.mesh-details-section {
+  margin-top: 41px;
 }
 
 .metric-table.mesh-completion-table {
-  & .ant-table-row {
-    & td {
-      & .container-bar {
-        &.neutral {
-          background-color: rgb(130,130,130, 0.1);;
-        }
-        &.poor{
-          background-color: rgb(235, 87, 87, 0.1);
-        }
-        &.good{
-          background-color: rgb(39, 174, 96, 0.1);
-        }
+  & td {
+    & .container-bar {
+      &.neutral {
+        background-color: rgb(130,130,130, 0.1);;
       }
+      &.poor{
+        background-color: rgb(235, 87, 87, 0.1);
+      }
+      &.good{
+        background-color: yellow;
+        background-color: rgb(39, 174, 96, 0.1);
+      }
+    }
 
-      & .inner-bar {
-        &.neutral {
-          background-color: rgb(130,130,130, 0.8);;
-        }
-        &.poor{
-          background-color: rgba(255, 77, 43, 0.8);
-        }
-        &.good{
-          background-color: rgba(38, 233, 157, 0.8);
-        }
+    & .inner-bar {
+      background-color: green;
+      &.neutral {
+        background-color: rgb(130,130,130, 0.8);;
+      }
+      &.poor{
+        background-color: rgba(255, 77, 43, 0.8);
+      }
+      &.good{
+        background-color: yellow;
+        background-color: rgba(38, 233, 157, 0.8);
       }
     }
   }
