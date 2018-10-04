@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
+import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
 import { withContext } from './util/AppContext.jsx';
@@ -81,5 +82,16 @@ class MeshedStatusTable extends React.Component {
     );
   }
 }
+
+MeshedStatusTable.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired
+  }).isRequired,
+  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+};
+
+MeshedStatusTable.defaultProps = {
+  tableRows: []
+};
 
 export default withContext(MeshedStatusTable);

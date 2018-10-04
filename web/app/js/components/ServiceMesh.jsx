@@ -4,15 +4,15 @@ import CallToAction from './CallToAction.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
-import Metric from './Metric.jsx';
 import MeshedStatusTable from './MeshedStatusTable.jsx';
+import Metric from './Metric.jsx';
 import moment from 'moment';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import Spinner from './util/Spinner.jsx';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [

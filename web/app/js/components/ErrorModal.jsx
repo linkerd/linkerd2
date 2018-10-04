@@ -1,41 +1,37 @@
 import _ from 'lodash';
+import Button from '@material-ui/core/Button';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import ErrorIcon from '@material-ui/icons/Error';
 import { friendlyTitle } from './util/Utils.js';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, Icon, Modal, Switch, Tooltip } from 'antd';
+import Switch from '@material-ui/core/Switch';
+import Tooltip from '@material-ui/core/Tooltip';
+import Typography from '@material-ui/core/Typography';
+
 
 // max characters we display for error messages before truncating them
-const maxErrorLength = 500;
+const maxErrorLength = 50;
 
-export default class ErrorModal extends React.Component {
-  static propTypes = {
-    errors: PropTypes.shape({}).isRequired,
-    resourceName: PropTypes.string.isRequired,
-    resourceType: PropTypes.string.isRequired
-  }
-
+class ErrorModal extends React.Component {
   state = {
-    visible: false,
-    truncateErrors: true
-  }
+    truncateErrors: true,
+    open: false,
+    scroll: 'paper',
+  };
 
-  showModal = () => {
-    this.setState({
-      visible: true,
-    });
-  }
+  handleClickOpen = () => {
+    this.setState({ open: true });
+  };
 
-  handleOk = () => {
-    this.setState({
-      visible: false,
-    });
-  }
-
-  handleCancel = () => {
-    this.setState({
-      visible: false,
-    });
-  }
+  handleClose = () => {
+    this.setState({ open: false });
+  };
 
   toggleTruncateErrors = () => {
     this.setState({
@@ -85,10 +81,20 @@ export default class ErrorModal extends React.Component {
 
     return _.map(errorsByContainer, (errors, container) => (
       <div key={`error-${container}`} className="container-error">
-        <div className="clearfix">
-          <span className="pull-left" title="container name">{container}</span>
-          <span className="pull-right" title="docker image">{_.get(errors, [0, "image"])}</span>
-        </div>
+        <Grid
+          container
+          direction="row"
+          justify="space-between"
+          alignItems="center">
+          <Grid item>
+            <Typography variant="subheading" gutterBottom>{container}</Typography>
+          </Grid>
+          <Grid item>
+            <Typography variant="subheading" gutterBottom align="right">
+              {_.get(errors, [0, "image"])}
+            </Typography>
+          </Grid>
+        </Grid>
 
         <div className="error-text">
           {
@@ -117,14 +123,14 @@ export default class ErrorModal extends React.Component {
     return _.map(errors, err => {
       return (
         <div className="controller-pod-error" key={err.pod}>
-          <h3 title="pod name">{err.pod}</h3>
+          <Typography variant="title" gutterBottom>{err.pod}</Typography>
           {this.renderContainerErrors(err.pod, err.byContainer)}
         </div>
       );
     });
   }
 
-  renderIconStatus = errors => {
+  renderStatusIcon = errors => {
     let showInit = true;
 
     _.each(errors.byPodAndContainer, container => {
@@ -137,41 +143,60 @@ export default class ErrorModal extends React.Component {
 
     if (showInit) {
       return (
-        <Tooltip
-          title="Pods are initializing"
-          overlayStyle={{ fontSize: "12px" }}>
-          <Icon type="loading" theme="outlined" className="controller-init-icon" />
-        </Tooltip>
+        <Tooltip title="Pods are initializing"><CircularProgress size={20} thickness={4} /></Tooltip>
       );
     } else {
-      return <Icon type="warning" className="controller-error-icon" onClick={this.showModal} />;
+      return <ErrorIcon onClick={this.handleClickOpen} />;
     }
   }
 
   render() {
     let errors = this.processErrorData(this.props.errors);
+
     return (
-      <React.Fragment>
-        {this.renderIconStatus(errors)}
-        <Modal
-          className="controller-pod-error-modal"
-          title={`Errors in ${friendlyTitle(this.props.resourceType).singular} ${this.props.resourceName}`}
-          visible={this.state.visible}
-          onOk={this.handleOk}
-          onCancel={this.handleCancel}
-          footer={<Button key="modal-ok" type="primary" onClick={this.handleOk}>OK</Button>}
-          width="800px">
-          <React.Fragment>
+      <div>
+        {this.renderStatusIcon(errors)}
+        <Dialog
+          open={this.state.open}
+          onClose={this.handleClose}
+          scroll={this.state.scroll}
+          aria-labelledby="scroll-dialog-title">
+
+          <DialogTitle id="scroll-dialog-title">Errors in {friendlyTitle(this.props.resourceType).singular} {this.props.resourceName}</DialogTitle>
+
+          <DialogContent>
             {
-              errors.shouldTruncate ?
-                <React.Fragment>
-                  Some of these error messages are very long. Show full error text? <Switch onChange={this.toggleTruncateErrors} />
-                </React.Fragment> : null
+              !errors.shouldTruncate ? null :
+              <React.Fragment>
+                Some of these error messages are very long. Show full error text?
+                <Switch
+                  checked={!this.state.truncateErrors}
+                  onChange={this.toggleTruncateErrors}
+                  color="primary" />
+              </React.Fragment>
             }
             {this.renderPodErrors(errors.byPodAndContainer)}
-          </React.Fragment>
-        </Modal>
-      </React.Fragment>
+
+
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={this.handleClose} color="primary">Close</Button>
+          </DialogActions>
+        </Dialog>
+      </div>
     );
   }
 }
+
+ErrorModal.propTypes = {
+  errors: PropTypes.shape({}),
+  resourceName: PropTypes.string.isRequired,
+  resourceType: PropTypes.string.isRequired
+};
+
+ErrorModal.defaultProps = {
+  errors: {}
+};
+
+export default ErrorModal;
