@@ -116,25 +116,6 @@ h2, h3, h4, h5, h6 {
   padding: 8px 0;
 }
 
-.error-message-container {
-  overflow: auto;
-  width: 100%;
-  padding: var(--base-width);
-  margin-bottom: calc(3 * var(--base-width));
-  border-radius: 5px;
-  background: var(--red);
-  color: white;
-  font-size: 12px;
-  font-weight: var(--font-weight-bold);
-
-  & .dismiss {
-    float: right;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-  }
-}
-
 a.button {
   color: var(--royalblue);
   background: #fff;
