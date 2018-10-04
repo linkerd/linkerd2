@@ -11,7 +11,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Row, Spin, Table, Tooltip } from 'antd';
+import { Col, Row, Table, Tooltip } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
@@ -354,7 +355,7 @@ class ServiceMesh extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spin size="large" /> : (
+        { !this.state.loaded ? <Spinner /> : (
           <div>
             {this.proxyCount() === 0 ?
               <CallToAction

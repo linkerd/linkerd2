@@ -6,7 +6,7 @@ import NetworkGraph from './NetworkGraph.jsx';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Spin } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import { withContext } from './util/AppContext.jsx';
 import 'whatwg-fetch';
 
@@ -127,7 +127,7 @@ class Namespaces extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spin size="large" /> : (
+        { !this.state.loaded ? <Spinner /> : (
           <div>
             { noMetrics ? <div>No resources detected.</div> : null}
             {

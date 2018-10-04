@@ -6,7 +6,8 @@ import PageHeader from './PageHeader.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
-import { Collapse, Icon, Spin, Tooltip } from 'antd';
+import { Collapse, Icon, Tooltip } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
 
@@ -131,7 +132,7 @@ class NamespaceLanding extends React.Component {
 
   renderNamespaceSection(namespace) {
     if (!_.has(this.state.metricsByNs, namespace)) {
-      return <Spin size="large" className="short-spin-section" />;
+      return <Spinner />;
     }
 
     let metrics = this.state.metricsByNs[namespace] || {};
@@ -183,7 +184,7 @@ class NamespaceLanding extends React.Component {
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spin size="large" /> : this.renderAccordion() }
+        { !this.state.loaded ? <Spinner /> : this.renderAccordion() }
       </div>);
   }
 }

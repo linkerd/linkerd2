@@ -6,7 +6,7 @@ import Octopus from './Octopus.jsx';
 import { processNeighborData } from './util/TapUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Spin } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import TopModule from './TopModule.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
@@ -185,7 +185,7 @@ export class ResourceDetailBase extends React.Component {
 
   content = () => {
     if (!this.state.loaded && !this.state.error) {
-      return <Spin size="large" />;
+      return <Spinner />;
     }
 
     let topQuery = {

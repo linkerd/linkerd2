@@ -4,7 +4,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Spin } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import withREST from './util/withREST.jsx';
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
@@ -35,7 +35,7 @@ export class ResourceListBase extends React.Component {
     const {data, loading, error} = this.props;
 
     if (loading && !error) {
-      return <Spin size="large" />;
+      return <Spinner />;
     }
 
     let processedMetrics = [];
