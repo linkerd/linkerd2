@@ -8,7 +8,6 @@ import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
-import './../../css/tap.css';
 
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }

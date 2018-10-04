@@ -1,7 +1,6 @@
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import './../../css/cta.css';
 
 const CallToAction = ({resource, numResources}) => (
   <div className="call-to-action">

@@ -7,7 +7,6 @@ import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
 import { withContext } from './util/AppContext.jsx';
-import './../../css/tap.css';
 
 class Top extends React.Component {
   static propTypes = {

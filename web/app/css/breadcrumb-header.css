@@ -1,21 +1,3 @@
-@import 'styles.css';
-
-.ant-layout-header {
-  background-color: var(--green);
-  height: 64px;
-  z-index: 100;
-  position: fixed;
-  width: 100vw;
-  padding:16px 40px;
-
-  & span.ant-breadcrumb-link, & span.ant-breadcrumb-separator, & :first-child {
-     color: rgb(0, 0, 0, 0.85);
-     font-size: 21px;
-     font-weight: var(--font-weight-bold);
-     line-height: 32px;
-  }
-}
-
-.ant-layout-header:last-child {
-  color: var(--white);
+.breadcrumb-link a {
+  color: white;
 }
