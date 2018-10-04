@@ -21,7 +21,7 @@ const styles = theme => ({
 });
 
 function BaseTable(props) {
-  const { classes, tableRows, tableColumns, tableClassName } = props;
+  const { classes, tableRows, tableColumns, tableClassName, rowKey} = props;
 
   return (
     <Paper className={classes.root}>
@@ -40,11 +40,12 @@ function BaseTable(props) {
         <TableBody>
           {
             _.map(tableRows, d => {
+            let key = !rowKey ? d.key : rowKey(d);
             return (
-              <TableRow key={d.key}>
+              <TableRow key={key}>
                 { _.map(tableColumns, c => (
                   <TableCell
-                    key={`table-${d.key}-${c.key}`}
+                    key={`table-${key}-${c.key}`}
                     numeric={c.isNumeric}>{c.render(d)}
                   </TableCell>
                   ))
@@ -60,6 +61,7 @@ function BaseTable(props) {
 
 BaseTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
+  rowKey: PropTypes.func,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     title: PropTypes.string,
@@ -70,6 +72,7 @@ BaseTable.propTypes = {
 };
 
 BaseTable.defaultProps = {
+  rowKey: null,
   tableClassName: "",
   tableRows: []
 };

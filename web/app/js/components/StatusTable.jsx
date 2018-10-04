@@ -1,7 +1,8 @@
 import _ from 'lodash';
+import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Table, Tooltip } from 'antd';
+import Tooltip from '@material-ui/core/Tooltip';
 
 const columnConfig = {
   "Pod Status": {
@@ -36,8 +37,7 @@ const StatusDot = ({status, multilineDots, columnName}) => (
         <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
         <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
       </div>
-    )}
-    overlayStyle={{ fontSize: "12px" }}>
+    )}>
     <div
       className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
       key={status.name}>&nbsp;
@@ -57,22 +57,23 @@ StatusDot.propTypes = {
 const columns = {
   resourceName: {
     title: "Deployment",
-    dataIndex: "name",
-    key: "name"
+    key: "name",
+    render: d => d.name
   },
   pods: {
     title: "Pods",
-    dataIndex: "numEntities"
+    key: "pods",
+    isNumeric: true,
+    render: d => d.numEntities
   },
   status: name => {
     return {
       title: name,
-      dataIndex: "pods",
-      width: columnConfig[name].width,
-      render: statuses => {
-        let multilineDots = _.size(statuses) > columnConfig[name].wrapDotsAt;
+      key: "status",
+      render: d => {
+        let multilineDots = _.size(d.pods) > columnConfig[name].wrapDotsAt;
 
-        return _.map(statuses, (status, i) => {
+        return _.map(d.pods, (status, i) => {
           return (
             <StatusDot
               status={status}
@@ -114,13 +115,11 @@ class StatusTable extends React.Component {
     let tableData = this.getTableData();
 
     return (
-      <Table
-        dataSource={tableData}
-        columns={tableCols}
-        pagination={false}
-        className="metric-table"
-        rowKey={r => r.name}
-        size="middle" />
+      <BaseTable
+        tableRows={tableData}
+        tableColumns={tableCols}
+        tableClassName="metric-table"
+        rowKey={r => r.name} />
     );
   }
 }
