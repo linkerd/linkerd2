@@ -1,9 +1,11 @@
 import _ from 'lodash';
+import CircularProgress from '@material-ui/core/CircularProgress';
 import ExpandableTable from './ExpandableTable.jsx';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
-import { Col, Icon, Row } from 'antd';
+import { withStyles } from '@material-ui/core/styles';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
@@ -28,12 +30,20 @@ const grpcStatusCodes = {
   16: "Unauthenticated"
 };
 
+const spinnerStyles = theme => ({
+  progress: {
+    margin: theme.spacing.unit * 2,
+  },
+});
+const SpinnerBase = () => <CircularProgress size={20} />;
+const Spinner = withStyles(spinnerStyles)(SpinnerBase);
+
 const httpStatusCol = {
   title: "HTTP status",
   key: "http-status",
   render: datum => {
     let d = _.get(datum, "responseInit.http.responseInit");
-    return !d ? <Icon type="loading" /> : d.httpStatus;
+    return !d ? <Spinner /> : d.httpStatus;
   }
 };
 
@@ -43,7 +53,7 @@ const responseInitLatencyCol = {
   isNumeric: true,
   render: datum => {
     let d = _.get(datum, "responseInit.http.responseInit");
-    return !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit);
+    return !d ? <Spinner /> : formatTapLatency(d.sinceRequestInit);
   }
 };
 
@@ -52,7 +62,7 @@ const grpcStatusCol = {
   key: "grpc-status",
   render: datum => {
     let d = _.get(datum, "responseEnd.http.responseEnd");
-    return !d ? <Icon type="loading" /> :
+    return !d ? <Spinner /> :
       _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")];
   }
 };
@@ -62,7 +72,7 @@ const pathCol = {
   key: "path",
   render: datum => {
     let d = _.get(datum, "requestInit.http.requestInit");
-    return !d ? <Icon type="loading" /> : d.path;
+    return !d ? <Spinner /> : d.path;
   }
 };
 
@@ -71,7 +81,7 @@ const methodCol = {
   key: "method",
   render: datum => {
     let d = _.get(datum, "requestInit.http.requestInit");
-    return !d ? <Icon type="loading" /> : _.get(d, "method.registered");
+    return !d ? <Spinner /> : _.get(d, "method.registered");
   }
 };
 
@@ -110,59 +120,59 @@ const formatTapLatency = str => {
 
 const requestInitSection = d => (
   <React.Fragment>
-    <Row gutter={8} className="tap-info-section">
+    <Grid container spacing={8} className="tap-info-section">
       <h3>Request Init</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={8}>Authority</Col>
-        <Col span={9}>Path</Col>
-        <Col span={2}>Scheme</Col>
-        <Col span={2}>Method</Col>
-        <Col span={3}>TLS</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
-        <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
-        <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
-        <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
-        <Col span={3}>{_.get(d, "base.tls")}</Col>
-      </Row>
-    </Row>
+      <Grid item className="expand-section-header">
+        <Grid item xs={3}>Authority</Grid>
+        <Grid item xs={3}>Path</Grid>
+        <Grid item xs={3}>Scheme</Grid>
+        <Grid item xs={3}>Method</Grid>
+        <Grid item xs={3}>TLS</Grid>
+      </Grid>
+      <Grid gutter={8}>
+        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.authority")}</Grid>
+        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.path")}</Grid>
+        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Grid>
+        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Grid>
+        <Grid item xs={3}>{_.get(d, "base.tls")}</Grid>
+      </Grid>
+    </Grid>
   </React.Fragment>
 );
 
 const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
   <React.Fragment>
     <hr />
-    <Row gutter={8} className="tap-info-section">
+    <Grid container spacing={8} className="tap-info-section">
       <h3>Response Init</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={4}>HTTP Status</Col>
-        <Col span={4}>Latency</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={4}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Col>
-        <Col span={4}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Col>
-      </Row>
-    </Row>
+      <Grid container spacing={8} className="expand-section-header">
+        <Grid item xs={3}>HTTP Status</Grid>
+        <Grid item xs={3}>Latency</Grid>
+      </Grid>
+      <Grid container spacing={8}>
+        <Grid item xs={3}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Grid>
+        <Grid item xs={3}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Grid>
+      </Grid>
+    </Grid>
   </React.Fragment>
 );
 
 const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
     <hr />
-    <Row gutter={8} className="tap-info-section">
+    <Grid spacing={8} className="tap-info-section">
       <h3>Response End</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={4}>GRPC Status</Col>
-        <Col span={4}>Latency</Col>
-        <Col span={4}>Response Length (B)</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={4}>{_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
-        <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
-        <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
-      </Row>
-    </Row>
+      <Grid spacing={8} className="expand-section-header">
+        <Grid item xs={3}>GRPC Status</Grid>
+        <Grid item xs={3}>Latency</Grid>
+        <Grid item xs={3}>Response Length (B)</Grid>
+      </Grid>
+      <Grid spacing={8}>
+        <Grid item xs={3}>{_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Grid>
+        <Grid item xs={3}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Grid>
+        <Grid item xs={3}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Grid>
+      </Grid>
+    </Grid>
   </React.Fragment>
 );
 
