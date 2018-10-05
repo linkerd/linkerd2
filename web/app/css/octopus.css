@@ -5,16 +5,14 @@
   padding: calc(var(--base-width) * 2);
   margin-left: auto;
   margin-right: auto;
-  background-color: #FAFAFA;
+
 
   & .octopus-body {
     background-color: white;
-    border: 1px solid #F2F2F2;
-    padding: var(--base-width);
   }
 
   & .octopus-col {
-    text-align: center;
+    /* text-align: center; */
 
     & .neighbor {
       height: 200px;
@@ -24,8 +22,6 @@
   }
 
   & .octopus-title {
-    padding: 8px 0;
-
     &.main-title {
       font-size: 24px;
       font-weight: var(--font-weight-extra-bold);

@@ -1,28 +1,22 @@
 import _ from 'lodash';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import Grid from '@material-ui/core/Grid';
 import OctopusArms from './util/OctopusArms.jsx';
+import Progress from './util/Progress.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Progress, Row } from 'antd';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableRow from '@material-ui/core/TableRow';
+import Typography from '@material-ui/core/Typography';
 import { displayName, metricToFormatter } from './util/Utils.js';
 import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
 import './../../css/octopus.css';
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 
-const Metric = ({title, value, className}) => {
-  return (
-    <Row type="flex" justify="center" className={`octopus-metric ${className}`}>
-      <Col span={12} className="octopus-metric-title"><div>{title}</div></Col>
-      <Col span={12} className="octopus-metric-value"><div>{value}</div></Col>
-    </Row>
-  );
-};
-Metric.defaultProps = { className: "" };
-Metric.propTypes = {
-  className: PropTypes.string,
-  title: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired
-};
 
 export default class Octopus extends React.Component {
   static defaultProps = {
@@ -74,6 +68,38 @@ export default class Octopus extends React.Component {
       linkText={display} />;
   }
 
+  renderResourceCard(resource, type) {
+    let display = displayName(resource);
+
+    return (
+      <Card key={resource.name} className={`octopus-body ${type}`} title={display}>
+        <CardContent>
+
+          <Typography variant="headline" component="h3" align="center">
+            { this.linkedResourceTitle(resource, display) }
+          </Typography>
+
+          <Progress
+            value={resource.successRate * 100}
+            classification={getSuccessRateClassification(resource.successRate, srArcClassLabels)} />
+
+          <Table>
+            <TableBody>
+              <TableRow>
+                <TableCell><Typography>RPS</Typography></TableCell>
+                <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><Typography>P99</Typography></TableCell>
+                <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  }
+
   renderResourceSummary(resource, type) {
     let display = displayName(resource);
     return (
@@ -88,11 +114,22 @@ export default class Octopus extends React.Component {
               type="dashboard"
               format={() => metricToFormatter["SUCCESS_RATE"](resource.successRate)}
               width={type === "main" ? 132 : 64}
-              percent={resource.successRate * 100}
+              value={resource.successRate * 100}
               gapDegree={180} />
           </div>
-          <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
-          <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
+
+          <Table>
+            <TableBody>
+              <TableRow>
+                <TableCell><Typography>RPS</Typography></TableCell>
+                <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell><Typography>P99</Typography></TableCell>
+                <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </div>
     );
@@ -177,30 +214,34 @@ export default class Octopus extends React.Component {
 
     return (
       <div className="octopus-graph">
-        <Row type="flex" justify="center" align="middle">
-          <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
+        <Grid
+          container
+          direction="row"
+          justify="center"
+          alignItems="center">
+          <Grid item xs={3} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
             {_.map(display.upstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
             {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
             {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
-          </Col>
+          </Grid>
 
-          <Col span={2} className="octopus-col">
+          <Grid item xs={1} className="octopus-col">
             {this.renderArrowCol(numUpstreams, false)}
-          </Col>
+          </Grid>
 
-          <Col span={8} className="octopus-col resource-col">
+          <Grid item xs={4} className="octopus-col resource-col">
             {this.renderResourceSummary(resource, "main")}
-          </Col>
+          </Grid>
 
-          <Col span={2} className="octopus-col">
+          <Grid item xs={1} className="octopus-col">
             {this.renderArrowCol(numDownstreams, true)}
-          </Col>
+          </Grid>
 
-          <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
-            {_.map(display.downstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
+          <Grid item xs={3} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
+            {_.map(display.downstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
-          </Col>
-        </Row>
+          </Grid>
+        </Grid>
       </div>
     );
   }
