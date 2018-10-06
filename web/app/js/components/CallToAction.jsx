@@ -1,48 +1,73 @@
+import _ from 'lodash';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Step from '@material-ui/core/Step';
+import StepContent from '@material-ui/core/StepContent';
+import StepLabel from '@material-ui/core/StepLabel';
+import Stepper from '@material-ui/core/Stepper';
+import Typography from '@material-ui/core/Typography';
+import { withStyles } from '@material-ui/core/styles';
 
-const CallToAction = ({resource, numResources}) => (
-  <div className="call-to-action">
-    <div className="action summary">The service mesh was successfully installed!</div>
+const styles = theme => ({
+  root: {
+    width: '90%',
+  },
+  button: {
+    marginRight: theme.spacing.unit,
+  },
+  instructions: {
+    marginTop: theme.spacing.unit,
+    marginBottom: theme.spacing.unit,
+  },
+});
 
-    <div className="action-steps">
-      <div className="step-container complete">
-        <div className="icon-container">
-          <i className="fa fa-check-circle" aria-hidden="true" />
-        </div>
-        <div className="message"><p>Controller successfully installed</p></div>
-      </div>
+function getSteps(numResources, resource) {
+  return [
+    { label: 'Controller successfully installed' },
+    { label: `${numResources ? numResources : 'No'} ${resource}s detected` },
+    { label: `Connect your first ${resource}`, content: incompleteMeshMessage() }
+  ];
+}
 
-      <div className="step-container complete">
-        <div className="icon-container">
-          <i className="fa fa-check-circle" aria-hidden="true" />
-        </div>
-        <div className="message">{numResources ? numResources : 'No'} {resource}s detected</div>
-      </div>
+class CallToAction extends React.Component {
+  render() {
+    const { resource, numResources } = this.props;
+    const steps = getSteps(numResources, resource);
+    const activeStep = _.size(steps) - 1; // hardcode the last step as the active step
 
-      <div className="step-container incomplete">
-        <div className="icon-container">
-          <i className="fa fa-circle-o" aria-hidden="true" />
-        </div>
-        <div className="message">Connect your first {resource}</div>
-      </div>
-    </div>
+    return (
+      <React.Fragment>
+        <Typography>The service mesh was successfully installed!</Typography>
+        <Stepper
+          activeStep={activeStep}
+          orientation="vertical">
+          {
+            steps.map((step, i) => {
+              const props = {};
+              props.completed = i < steps.length - 1; // select the last step as the currently active one
 
-    <div className="clearfix">
-      {incompleteMeshMessage()}
-    </div>
-  </div>
-);
-
-CallToAction.defaultProps = {
-  numResources: 0,
-  resource: 'resource',
-};
+              return (
+                <Step key={step.label} {...props}>
+                  <StepLabel>{step.label}</StepLabel>
+                  <StepContent>{step.content}</StepContent>
+                </Step>
+              );
+            })
+          }
+        </Stepper>
+      </React.Fragment>
+    );
+  }
+}
 
 CallToAction.propTypes = {
   numResources: PropTypes.number,
-  resource: PropTypes.string,
+  resource: PropTypes.string.isRequired,
 };
 
-export default CallToAction;
+CallToAction.defaultProps = {
+  numResources: null
+};
+
+export default withStyles(styles)(CallToAction);
