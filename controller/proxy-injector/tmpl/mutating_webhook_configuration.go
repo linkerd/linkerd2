@@ -23,5 +23,4 @@ webhooks:
     - key: {{.ProxyAutoInjectLabel}}
       operator: NotIn
       values:
-      - "disabled"
-      - "completed"`
+      - "disabled"`

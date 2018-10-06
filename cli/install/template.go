@@ -849,9 +849,9 @@ data:
       value: tcp://0.0.0.0:{{.ProxyControlPort}}
     - name: LINKERD2_PROXY_METRICS_LISTENER
       value: tcp://0.0.0.0:{{.ProxyMetricsPort}}
-    - name: LINKERD2_PROXY_PRIVATE_LISTENER
+    - name: LINKERD2_PROXY_OUTBOUND_LISTENER
       value: tcp://127.0.0.1:{{.OutboundPort}}
-    - name: LINKERD2_PROXY_PUBLIC_LISTENER
+    - name: LINKERD2_PROXY_INBOUND_LISTENER
       value: tcp://0.0.0.0:{{.InboundPort}}
     - name: LINKERD2_PROXY_POD_NAMESPACE
       valueFrom:
