@@ -3,10 +3,11 @@ package injector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	yaml "github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -22,20 +23,19 @@ const (
 	defaultNamespace                    = "default"
 	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
 	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
-	volumeSecretNameLinkerdSecrets      = "linkerd-secrets"
 )
 
-var errNilAdmissionReviewInput = fmt.Errorf("AdmissionReview input object can't be nil")
-
-// Webhook is a Kubernetes mutating admission webhook that mutates pods admission requests by injecting sidecar container spec into the pod spec during pod creation.
+// Webhook is a Kubernetes mutating admission webhook that mutates pods admission
+// requests by injecting sidecar container spec into the pod spec during pod
+// creation.
 type Webhook struct {
 	deserializer        runtime.Decoder
 	controllerNamespace string
-	k8sAPI              *k8s.API
+	resources           *WebhookResources
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, controllerNamespace string) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -44,11 +44,13 @@ func NewWebhook(client kubernetes.Interface, controllerNamespace string) (*Webho
 	return &Webhook{
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
-		k8sAPI:              k8s.NewAPI(client, k8s.NS, k8s.CM),
+		resources:           resources,
 	}, nil
 }
 
-// Mutate changes the given pod spec by injecting the proxy sidecar container into the spec. The admission review object returns contains the original request and the response with the mutated pod spec.
+// Mutate changes the given pod spec by injecting the proxy sidecar container
+// into the spec. The admission review object returns contains the original
+// request and the response with the mutated pod spec.
 func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 	admissionReview, err := w.decode(data)
 	if err != nil {
@@ -106,11 +108,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 	log.Infof("resource namespace: %s", ns)
 
-	namespace, err := w.k8sAPI.NS().Lister().Get(ns)
-	if err != nil {
-		return nil, err
-	}
-
 	if w.ignore(&deployment) {
 		log.Infof("ignoring deployment %s", deployment.ObjectMeta.Name)
 		return &admissionv1beta1.AdmissionResponse{
@@ -122,7 +119,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	identity := &k8sPkg.TLSIdentity{
 		Name:                deployment.ObjectMeta.Name,
 		Kind:                strings.ToLower(request.Kind.Kind),
-		Namespace:           namespace.ObjectMeta.GetName(),
+		Namespace:           ns,
 		ControllerNamespace: w.controllerNamespace,
 	}
 	proxy, proxyInit, err := w.containersSpec(identity)
@@ -197,50 +194,22 @@ func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
 	status, defined := labels[k8sPkg.ProxyAutoInjectLabel]
 	if defined {
 		switch status {
-		case k8sPkg.ProxyAutoInjectDisabled:
-			fallthrough
-		case k8sPkg.ProxyAutoInjectCompleted:
+		case k8sPkg.ProxyAutoInjectDisabled, k8sPkg.ProxyAutoInjectCompleted:
 			return true
 		}
 	}
 
-	// check for known proxies and initContainers
-	// same logic as the checkSidecars() function in cli/cmd/inject.go
-	for _, container := range deployment.Spec.Template.Spec.Containers {
-		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||
-			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
-			strings.HasPrefix(container.Image, "gcr.io/heptio-images/contour:") ||
-			strings.HasPrefix(container.Image, "docker.io/envoyproxy/envoy-alpine:") ||
-			container.Name == "linkerd-proxy" ||
-			container.Name == "istio-proxy" ||
-			container.Name == "contour" ||
-			container.Name == "envoy" {
-			return true
-		}
-	}
-
-	for _, ic := range deployment.Spec.Template.Spec.InitContainers {
-		if strings.HasPrefix(ic.Image, "gcr.io/linkerd-io/proxy-init:") ||
-			strings.HasPrefix(ic.Image, "gcr.io/istio-release/proxy_init:") ||
-			strings.HasPrefix(ic.Image, "gcr.io/heptio-images/contour:") ||
-			ic.Name == "linkerd-init" ||
-			ic.Name == "istio-init" ||
-			ic.Name == "envoy-initconfig" {
-			return true
-		}
-	}
-
-	return false
+	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec)
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {
-	configMap, err := w.k8sAPI.CM().Lister().ConfigMaps(identity.ControllerNamespace).Get(k8sPkg.ProxyInjectorSidecarConfig)
+	proxySpec, err := ioutil.ReadFile(w.resources.FileProxySpec)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var proxy corev1.Container
-	if err := yaml.Unmarshal([]byte(configMap.Data["proxy.yaml"]), &proxy); err != nil {
+	if err := yaml.Unmarshal(proxySpec, &proxy); err != nil {
 		return nil, nil, err
 	}
 
@@ -252,8 +221,13 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 		}
 	}
 
+	proxyInitSpec, err := ioutil.ReadFile(w.resources.FileProxyInitSpec)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var proxyInit corev1.Container
-	if err := yaml.Unmarshal([]byte(configMap.Data["proxy-init.yaml"]), &proxyInit); err != nil {
+	if err := yaml.Unmarshal(proxyInitSpec, &proxyInit); err != nil {
 		return nil, nil, err
 	}
 
@@ -261,18 +235,23 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 }
 
 func (w *Webhook) volumesSpec(identity *k8sPkg.TLSIdentity) (*corev1.Volume, *corev1.Volume, error) {
-	configMap, err := w.k8sAPI.CM().Lister().ConfigMaps(identity.ControllerNamespace).Get(k8sPkg.ProxyInjectorSidecarConfig)
+	trustAnchorVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSTrustAnchorVolumeSpec)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var trustAnchors corev1.Volume
-	if err := yaml.Unmarshal([]byte(configMap.Data["linkerd-trust-anchors"]), &trustAnchors); err != nil {
+	if err := yaml.Unmarshal(trustAnchorVolumeSpec, &trustAnchors); err != nil {
+		return nil, nil, err
+	}
+
+	tlsVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSIdentityVolumeSpec)
+	if err != nil {
 		return nil, nil, err
 	}
 
 	var linkerdSecrets corev1.Volume
-	if err := yaml.Unmarshal([]byte(configMap.Data["linkerd-secrets"]), &linkerdSecrets); err != nil {
+	if err := yaml.Unmarshal(tlsVolumeSpec, &linkerdSecrets); err != nil {
 		return nil, nil, err
 	}
 	linkerdSecrets.VolumeSource.Secret.SecretName = identity.ToSecretName()
@@ -280,7 +259,17 @@ func (w *Webhook) volumesSpec(identity *k8sPkg.TLSIdentity) (*corev1.Volume, *co
 	return &trustAnchors, &linkerdSecrets, nil
 }
 
-// SyncAPI waits for the informers to sync.
-func (w *Webhook) SyncAPI(ready chan struct{}) {
-	w.k8sAPI.Sync(ready)
+// WebhookResources contain paths to all the needed file resources.
+type WebhookResources struct {
+	// FileProxySpec is the path to the proxy spec.
+	FileProxySpec string
+
+	// FileProxyInitSpec is the path to the proxy-init spec.
+	FileProxyInitSpec string
+
+	// FileTLSTrustAnchorVolumeSpec is the path to the trust anchor volume spec.
+	FileTLSTrustAnchorVolumeSpec string
+
+	// FileTLSIdentityVolumeSpec is the path to the TLS identity volume spec.
+	FileTLSIdentityVolumeSpec string
 }

@@ -16,40 +16,44 @@ import (
 )
 
 type installConfig struct {
-	Namespace                   string
-	ControllerImage             string
-	WebImage                    string
-	PrometheusImage             string
-	GrafanaImage                string
-	ControllerReplicas          uint
-	WebReplicas                 uint
-	PrometheusReplicas          uint
-	ImagePullPolicy             string
-	UUID                        string
-	CliVersion                  string
-	ControllerLogLevel          string
-	ControllerComponentLabel    string
-	CreatedByAnnotation         string
-	ProxyAPIPort                uint
-	EnableTLS                   bool
-	TLSTrustAnchorConfigMapName string
-	ProxyContainerName          string
-	TLSTrustAnchorFileName      string
-	TLSCertFileName             string
-	TLSPrivateKeyFileName       string
-	InboundPort                 uint
-	OutboundPort                uint
-	IgnoreInboundPorts          []uint
-	IgnoreOutboundPorts         []uint
-	ProxyAutoInjectEnabled      bool
-	ProxyAutoInjectLabel        string
-	ProxyUID                    int64
-	ProxyMetricsPort            uint
-	ProxyControlPort            uint
-	ProxyInjectorTLSSecret      string
-	ProxyInjectorSidecarConfig  string
-	ProxyInitImage              string
-	ProxyImage                  string
+	Namespace                        string
+	ControllerImage                  string
+	WebImage                         string
+	PrometheusImage                  string
+	GrafanaImage                     string
+	ControllerReplicas               uint
+	WebReplicas                      uint
+	PrometheusReplicas               uint
+	ImagePullPolicy                  string
+	UUID                             string
+	CliVersion                       string
+	ControllerLogLevel               string
+	ControllerComponentLabel         string
+	CreatedByAnnotation              string
+	ProxyAPIPort                     uint
+	EnableTLS                        bool
+	TLSTrustAnchorConfigMapName      string
+	ProxyContainerName               string
+	TLSTrustAnchorFileName           string
+	TLSCertFileName                  string
+	TLSPrivateKeyFileName            string
+	TLSTrustAnchorVolumeSpecFileName string
+	TLSIdentityVolumeSpecFileName    string
+	InboundPort                      uint
+	OutboundPort                     uint
+	IgnoreInboundPorts               []uint
+	IgnoreOutboundPorts              []uint
+	ProxyAutoInjectEnabled           bool
+	ProxyAutoInjectLabel             string
+	ProxyUID                         int64
+	ProxyMetricsPort                 uint
+	ProxyControlPort                 uint
+	ProxyInjectorTLSSecret           string
+	ProxyInjectorSidecarConfig       string
+	ProxySpecFileName                string
+	ProxyInitSpecFileName            string
+	ProxyInitImage                   string
+	ProxyImage                       string
 }
 
 type installOptions struct {
@@ -106,40 +110,44 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		return nil, err
 	}
 	return &installConfig{
-		Namespace:                   controlPlaneNamespace,
-		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
-		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:             "prom/prometheus:v2.4.0",
-		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
-		ControllerReplicas:          options.controllerReplicas,
-		WebReplicas:                 options.webReplicas,
-		PrometheusReplicas:          options.prometheusReplicas,
-		ImagePullPolicy:             options.imagePullPolicy,
-		UUID:                        uuid.NewV4().String(),
-		CliVersion:                  k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:          options.controllerLogLevel,
-		ControllerComponentLabel:    k8s.ControllerComponentLabel,
-		CreatedByAnnotation:         k8s.CreatedByAnnotation,
-		ProxyAPIPort:                options.proxyAPIPort,
-		EnableTLS:                   options.enableTLS(),
-		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
-		ProxyContainerName:          k8s.ProxyContainerName,
-		TLSTrustAnchorFileName:      k8s.TLSTrustAnchorFileName,
-		TLSCertFileName:             k8s.TLSCertFileName,
-		TLSPrivateKeyFileName:       k8s.TLSPrivateKeyFileName,
-		InboundPort:                 options.inboundPort,
-		OutboundPort:                options.outboundPort,
-		IgnoreInboundPorts:          options.ignoreInboundPorts,
-		IgnoreOutboundPorts:         options.ignoreOutboundPorts,
-		ProxyAutoInjectEnabled:      options.proxyAutoInject,
-		ProxyAutoInjectLabel:        k8s.ProxyAutoInjectLabel,
-		ProxyUID:                    options.proxyUID,
-		ProxyMetricsPort:            options.proxyMetricsPort,
-		ProxyControlPort:            options.proxyControlPort,
-		ProxyInjectorTLSSecret:      k8s.ProxyInjectorTLSSecret,
-		ProxyInjectorSidecarConfig:  k8s.ProxyInjectorSidecarConfig,
-		ProxyInitImage:              options.taggedProxyInitImage(),
-		ProxyImage:                  options.taggedProxyImage(),
+		Namespace:                        controlPlaneNamespace,
+		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
+		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
+		PrometheusImage:                  "prom/prometheus:v2.4.0",
+		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		ControllerReplicas:               options.controllerReplicas,
+		WebReplicas:                      options.webReplicas,
+		PrometheusReplicas:               options.prometheusReplicas,
+		ImagePullPolicy:                  options.imagePullPolicy,
+		UUID:                             uuid.NewV4().String(),
+		CliVersion:                       k8s.CreatedByAnnotationValue(),
+		ControllerLogLevel:               options.controllerLogLevel,
+		ControllerComponentLabel:         k8s.ControllerComponentLabel,
+		CreatedByAnnotation:              k8s.CreatedByAnnotation,
+		ProxyAPIPort:                     options.proxyAPIPort,
+		EnableTLS:                        options.enableTLS(),
+		TLSTrustAnchorConfigMapName:      k8s.TLSTrustAnchorConfigMapName,
+		ProxyContainerName:               k8s.ProxyContainerName,
+		TLSTrustAnchorFileName:           k8s.TLSTrustAnchorFileName,
+		TLSCertFileName:                  k8s.TLSCertFileName,
+		TLSPrivateKeyFileName:            k8s.TLSPrivateKeyFileName,
+		TLSTrustAnchorVolumeSpecFileName: k8s.TLSTrustAnchorVolumeSpecFileName,
+		TLSIdentityVolumeSpecFileName:    k8s.TLSIdentityVolumeSpecFileName,
+		InboundPort:                      options.inboundPort,
+		OutboundPort:                     options.outboundPort,
+		IgnoreInboundPorts:               options.ignoreInboundPorts,
+		IgnoreOutboundPorts:              options.ignoreOutboundPorts,
+		ProxyAutoInjectEnabled:           options.proxyAutoInject,
+		ProxyAutoInjectLabel:             k8s.ProxyAutoInjectLabel,
+		ProxyUID:                         options.proxyUID,
+		ProxyMetricsPort:                 options.proxyMetricsPort,
+		ProxyControlPort:                 options.proxyControlPort,
+		ProxyInjectorTLSSecret:           k8s.ProxyInjectorTLSSecret,
+		ProxyInjectorSidecarConfig:       k8s.ProxyInjectorSidecarConfig,
+		ProxySpecFileName:                k8s.ProxySpecFileName,
+		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
+		ProxyInitImage:                   options.taggedProxyInitImage(),
+		ProxyImage:                       options.taggedProxyImage(),
 	}, nil
 }
 

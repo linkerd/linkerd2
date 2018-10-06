@@ -27,12 +27,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		k8s.Pod,
-		k8s.RS,
-		k8s.MWC,
-	)
+
+	var k8sAPI *k8s.API
+	if *proxyAutoInject {
+		k8sAPI = k8s.NewAPI(k8sClient, k8s.Pod, k8s.RS, k8s.MWC)
+	} else {
+		k8sAPI = k8s.NewAPI(k8sClient, k8s.Pod, k8s.RS)
+	}
 
 	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI, *proxyAutoInject)
 	if err != nil {

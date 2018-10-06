@@ -7,17 +7,21 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	DefaultControllerNamespace = "linkerd"
-	DefaultNamespace           = "default"
+	DefaultControllerNamespace   = "linkerd"
+	DefaultNamespace             = "default"
+	FileProxySpec                = "fake/data/config-proxy.yaml"
+	FileProxyInitSpec            = "fake/data/config-proxy-init.yaml"
+	FileTLSTrustAnchorVolumeSpec = "fake/data/config-linkerd-trust-anchors.yaml"
+	FileTLSIdentityVolumeSpec    = "fake/data/config-linkerd-secrets.yaml"
 )
 
-// Factory is a factory that can convert in-file YAML content into Kubernetes API objects.
+// Factory is a factory that can convert in-file YAML content into Kubernetes
+// API objects.
 type Factory struct {
 	rootDir string
 }
@@ -27,15 +31,18 @@ func NewFactory() *Factory {
 	return &Factory{rootDir: filepath.Join("fake", "data")}
 }
 
-// HTTPRequestBody returns the content of the specified file as a slice of bytes.
-// If the file doesn't exist in the 'test/data' folder, an error will be returned.
+// HTTPRequestBody returns the content of the specified file as a slice of
+// bytes. If the file doesn't exist in the 'test/data' folder, an error will be
+// returned.
 func (f *Factory) HTTPRequestBody(filename string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 }
 
-// AdmissionReview returns the content of the specified file as an AdmissionReview type. An error will be returned if:
+// AdmissionReview returns the content of the specified file as an
+// AdmissionReview type. An error will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or,
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into AdmissionReview type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into AdmissionReview type
 func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionReview, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -49,25 +56,11 @@ func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionR
 	return &admissionReview, nil
 }
 
-// AdmissionResponse returns the content of the specified file as an AdmissionResponse type. An error will be returned if:
+// Deployment returns the content of the specified file as a Deployment type. An
+// error will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into AdmissionResponse type
-func (f *Factory) AdmissionResponse(filename string) (*admissionv1beta1.AdmissionResponse, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
-	if err != nil {
-		return nil, err
-	}
-	var admissionResponse admissionv1beta1.AdmissionResponse
-	if err := yaml.Unmarshal(b, &admissionResponse); err != nil {
-		return nil, err
-	}
-
-	return &admissionResponse, nil
-}
-
-// Deployment returns the content of the specified file as a Deployment type. An error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into Deployment type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into Deployment type
 func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -82,9 +75,11 @@ func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 	return &deployment, nil
 }
 
-// Container returns the content of the specified file as a Container type. An error will be returned if:
+// Container returns the content of the specified file as a Container type. An
+// error will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into Container type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into Container type
 func (f *Factory) Container(filename string) (*corev1.Container, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -99,9 +94,11 @@ func (f *Factory) Container(filename string) (*corev1.Container, error) {
 	return &container, nil
 }
 
-// ConfigMap returns the content of the specified file as a ConfigMap type. An error will be returned if:
+// ConfigMap returns the content of the specified file as a ConfigMap type. An
+// error will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into ConfigMap type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into ConfigMap type
 func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -116,43 +113,11 @@ func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 	return &configMap, nil
 }
 
-// Secret returns the content of the specified file as a Secret type. An error will be returned if:
+// Namespace returns the content of the specified file as a Namespace type. An
+// error will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into Secret type
-func (f *Factory) Secret(filename string) (*corev1.Secret, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
-	if err != nil {
-		return nil, err
-	}
-
-	var secret corev1.Secret
-	if err := yaml.Unmarshal(b, &secret); err != nil {
-		return nil, err
-	}
-
-	return &secret, nil
-}
-
-// MutatingWebhookConfiguration returns the content of the specified file as a MutatingWebhookConfiguration type. An error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into MutatingWebhookConfiguration type
-func (f *Factory) MutatingWebhookConfiguration(filename string) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
-	if err != nil {
-		return nil, err
-	}
-
-	var webhookConfig admissionregistrationv1beta1.MutatingWebhookConfiguration
-	if err := yaml.Unmarshal(b, &webhookConfig); err != nil {
-		return nil, err
-	}
-
-	return &webhookConfig, nil
-}
-
-// Namespace returns the content of the specified file as a Namespace type. An error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into Namespace type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into Namespace type
 func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -167,9 +132,11 @@ func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 	return &namespace, nil
 }
 
-// Volume returns the content of the specified file as a Volume type. An error will be returned if:
+// Volume returns the content of the specified file as a Volume type. An error
+// will be returned if:
 // i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled into Volume type
+// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// into Volume type
 func (f *Factory) Volume(filename string) (*corev1.Volume, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
@@ -184,7 +151,8 @@ func (f *Factory) Volume(filename string) (*corev1.Volume, error) {
 	return &volume, nil
 }
 
-// CATrustAnchors creates a fake CA trust anchors and returns the name of the tempory file. Caller is responsible for deleting the file once it's done.
+// CATrustAnchors creates a fake CA trust anchors and returns the name of the
+// temporary file. Caller is responsible for deleting the file once it's done.
 func (f *Factory) CATrustAnchors() (string, error) {
 	file, err := ioutil.TempFile("", "linkerd-fake-trust-anchors.pem")
 	if err != nil {
@@ -208,7 +176,9 @@ gvKX
 	return file.Name(), nil
 }
 
-// CertFile returns a dummy base64-encoded PEM certificate file path. Caller is responsible for deleting the certificate after use by calling os.Remove(cert). This certificate matches the key generated by the Key() method.
+// CertFile returns a dummy base64-encoded PEM certificate file path. Caller is
+// responsible for deleting the certificate after use by calling os.Remove(cert).
+// This certificate matches the key generated by the Key() method.
 func (f *Factory) CertFile() (string, error) {
 	cert := "MIIBcDCCARWgAwIBAgIBHDAKBggqhkjOPQQDAjAnMSUwIwYDVQQDExxDbHVzdGVyLWxvY2FsIE1hbmFnZWQgUG9kIENBMB4XDTE4MDkxNDE2NDg1NFoXDTE5MDkxNTE2NDg1NFowADBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABDTSUF/5+Co7z4NbV5Ui7XbhiFixQccyTKOYHbk4sKyMqwE9UNRBB5ILh3nEQxhaSswd+Yxxs1M393nHb4xkZW+jWTBXMFUGA1UdEQEB/wRLMEmCR2NvbnRyb2xsZXIuZGVwbG95bWVudC5saW5rZXJkLmxpbmtlcmQtbWFuYWdlZC5saW5rZXJkLnN2Yy5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYCIQDU6UtUxLQJ/TmWqzVFspXvD0e78xe80koj0ib9wARxIQIhAPVyv+1GaT472qgDXb+HglDK7ZeacEjCh9rEenefJd2w"
 	decodedCert, err := base64.StdEncoding.DecodeString(cert)
@@ -228,7 +198,9 @@ func (f *Factory) CertFile() (string, error) {
 	return certFile.Name(), nil
 }
 
-// KeyFile returns a dummy base64-encoded private key file path. Caller is responsible for deleting the certificate after use by calling os.Remove(cert). This private key matches the certificate generated by the CertFile() method.
+// KeyFile returns a dummy base64-encoded private key file path. Caller is
+// responsible for deleting the certificate after use by calling os.Remove(cert).
+// This private key matches the certificate generated by the CertFile() method.
 func (f *Factory) PrivateKey() (string, error) {
 	key := "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgDxCVpEGPQML6jJUczzrbTWxzbT+/fMxDGyPejdR3KVihRANCAAQ00lBf+fgqO8+DW1eVIu124YhYsUHHMkyjmB25OLCsjKsBPVDUQQeSC4d5xEMYWkrMHfmMcbNTN/d5x2+MZGVv"
 	decodedKey, err := base64.StdEncoding.DecodeString(key)

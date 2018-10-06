@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
@@ -170,7 +171,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
 	report.hostNetwork = t.HostNetwork
-	report.sidecar = checkSidecars(t)
+	report.sidecar = healthcheck.HasExistingSidecars(t)
 	report.udp = checkUDPPorts(t)
 
 	// Skip injection if:
@@ -737,33 +738,5 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 			}
 		}
 	}
-	return false
-}
-
-func checkSidecars(t *v1.PodSpec) bool {
-	// check for known proxies and initContainers
-	for _, container := range t.Containers {
-		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||
-			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
-			strings.HasPrefix(container.Image, "gcr.io/heptio-images/contour:") ||
-			strings.HasPrefix(container.Image, "docker.io/envoyproxy/envoy-alpine:") ||
-			container.Name == "linkerd-proxy" ||
-			container.Name == "istio-proxy" ||
-			container.Name == "contour" ||
-			container.Name == "envoy" {
-			return true
-		}
-	}
-	for _, ic := range t.InitContainers {
-		if strings.HasPrefix(ic.Image, "gcr.io/linkerd-io/proxy-init:") ||
-			strings.HasPrefix(ic.Image, "gcr.io/istio-release/proxy_init:") ||
-			strings.HasPrefix(ic.Image, "gcr.io/heptio-images/contour:") ||
-			ic.Name == "linkerd-init" ||
-			ic.Name == "istio-init" ||
-			ic.Name == "envoy-initconfig" {
-			return true
-		}
-	}
-
 	return false
 }

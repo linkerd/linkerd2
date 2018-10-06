@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -21,9 +22,6 @@ func main() {
 	port := flag.String("port", "443", "port that this webhook admission server listens on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	certFile := flag.String("tls-cert-file", "/var/linkerd-io/identity/certificate.crt", "location of the webhook server's TLS cert file")
-	keyFile := flag.String("tls-key-file", "/var/linkerd-io/identity/private-key.p8", "location of the webhook server's TLS private key file")
-	trustAnchorsPath := flag.String("trust-anchors-path", "/var/linkerd-io/trust-anchors/trust-anchors.pem", "path to the CA trust anchors PEM file used to create the mutating webhook configuration")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
 	webhookServiceName := flag.String("webhook-service", "proxy-injector.linkerd.io", "name of the admission webhook")
 	flags.ConfigureAndParse()
@@ -37,12 +35,15 @@ func main() {
 		log.Fatal("failed to initialize Kubernetes client: ", err)
 	}
 
-	log.Infof("waiting for the trust anchors volume to mount (default wait time: %s)", volumeMountsWaitTime)
-	if err := waitForMounts(*volumeMountsWaitTime, *trustAnchorsPath); err != context.Canceled {
+	log.Infof("waiting for the trust anchors volume to mount at %s", k8sPkg.MountPathTLSTrustAnchor)
+	if err := waitForMounts(*volumeMountsWaitTime, k8sPkg.MountPathTLSTrustAnchor); err != context.Canceled {
 		log.Fatalf("failed to mount the ca bundle: %s", err)
 	}
 
-	webhookConfig := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, *trustAnchorsPath)
+	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, k8sPkg.MountPathTLSTrustAnchor)
+	if err != nil {
+		log.Fatalf("failed to read the trust anchor file: %s", err)
+	}
 
 	mwc, err := webhookConfig.CreateOrUpdate()
 	if err != nil {
@@ -50,21 +51,28 @@ func main() {
 	}
 	log.Info("created or updated mutating webhook configuration: ", mwc.ObjectMeta.SelfLink)
 
-	log.Infof("waiting for the tls secrets to mount (wait at most %s)", volumeMountsWaitTime)
-	if err := waitForMounts(*volumeMountsWaitTime, *certFile, *keyFile); err != context.Canceled {
+	var (
+		certFile = k8sPkg.MountPathTLSIdentityCert
+		keyFile  = k8sPkg.MountPathTLSIdentityKey
+	)
+	log.Infof("waiting for the tls secrets to mount at %s and %s", certFile, keyFile)
+	if err := waitForMounts(*volumeMountsWaitTime, certFile, keyFile); err != context.Canceled {
 		log.Fatalf("failed to mount the tls secrets: %s", err)
 	}
 
-	s, err := injector.NewWebhookServer(*port, *certFile, *keyFile, *controllerNamespace, k8sClient)
+	resources := &injector.WebhookResources{
+		FileProxySpec:                k8sPkg.MountPathConfigProxySpec,
+		FileProxyInitSpec:            k8sPkg.MountPathConfigProxyInitSpec,
+		FileTLSTrustAnchorVolumeSpec: k8sPkg.MountPathTLSTrustAnchorVolumeSpec,
+		FileTLSIdentityVolumeSpec:    k8sPkg.MountPathTLSIdentityVolumeSpec,
+	}
+	s, err := injector.NewWebhookServer(k8sClient, resources, *port, *controllerNamespace, certFile, keyFile)
 	if err != nil {
 		log.Fatal("failed to initialize the webhook server: ", err)
 	}
 
-	ready := make(chan struct{})
-	go s.SyncAPI(ready)
-
 	go func() {
-		log.Infof("listening at port %s (cert: %s, key: %s)", *port, *certFile, *keyFile)
+		log.Infof("listening at port %s", *port)
 		if err := s.ListenAndServeTLS("", ""); err != nil {
 			if err == http.ErrServerClosed {
 				return
@@ -72,7 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr, nil)
 
 	<-stop
 	log.Info("shutting down webhook server")

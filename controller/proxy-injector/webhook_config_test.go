@@ -15,6 +15,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		namespace          = fake.DefaultControllerNamespace
 		webhookServiceName = "test.linkerd.io"
 	)
+	log.SetOutput(ioutil.Discard)
 
 	client, err := fake.NewClient("")
 	if err != nil {
@@ -25,10 +26,12 @@ func TestCreateOrUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
+	defer os.Remove(trustAnchorsPath)
 
-	log.SetOutput(ioutil.Discard)
-
-	webhookConfig := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath)
+	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
 
 	// expect mutating webhook configuration to not exist
 	_, exist, err := webhookConfig.exist()
@@ -56,14 +59,5 @@ func TestCreateOrUpdate(t *testing.T) {
 	// update the mutating webhook configuration using the same trust anchors
 	if _, err := webhookConfig.CreateOrUpdate(); err != nil {
 		t.Fatal("Unexpected error: ", err)
-	}
-
-	// remove the trust anchors file and expect an error
-	if err := os.Remove(trustAnchorsPath); err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	if _, err := webhookConfig.CreateOrUpdate(); err == nil {
-		t.Error("Expected test to fail with 'no such file or directory' error")
 	}
 }

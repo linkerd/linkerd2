@@ -24,44 +24,11 @@ func init() {
 		panic(err)
 	}
 
-	webhook, err = NewWebhook(fakeClient, fake.DefaultControllerNamespace)
+	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace)
 	if err != nil {
 		panic(err)
 	}
 	log.SetOutput(ioutil.Discard)
-
-	// create fake namespaces.
-	// the sidecar config map ues the controller namespace.
-	// the test pod uses the kube-public namespace.
-	factory = fake.NewFactory()
-	defaultNS, err := factory.Namespace("namespace-kube-public.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if _, err := webhook.k8sAPI.Client.CoreV1().Namespaces().Create(defaultNS); err != nil {
-		panic(err)
-	}
-
-	controllerNS, err := factory.Namespace("namespace-linkerd.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if _, err := webhook.k8sAPI.Client.CoreV1().Namespaces().Create(controllerNS); err != nil {
-		panic(err)
-	}
-
-	// create a fake sidecar spec config map.
-	// the inject method reads the sidecar spec from this config map.
-	configMap, err := factory.ConfigMap("config-map-sidecar.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if _, err := webhook.k8sAPI.Client.CoreV1().ConfigMaps(controllerNS.ObjectMeta.GetName()).Create(configMap); err != nil {
-		panic(err)
-	}
-
-	// wait for informer to sync
-	webhook.SyncAPI(nil)
 }
 
 func TestMutate(t *testing.T) {
@@ -181,6 +148,7 @@ func TestContainersSpec(t *testing.T) {
 		Namespace:           fake.DefaultNamespace,
 		ControllerNamespace: fake.DefaultControllerNamespace,
 	}
+
 	actualSidecar, actualInit, err := webhook.containersSpec(identity)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -212,6 +180,7 @@ func TestVolumesSpec(t *testing.T) {
 		Namespace:           fake.DefaultNamespace,
 		ControllerNamespace: fake.DefaultControllerNamespace,
 	}
+
 	actualTrustAnchors, actualLinkerdSecrets, err := webhook.volumesSpec(identity)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)

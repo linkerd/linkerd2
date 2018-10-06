@@ -14,7 +14,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var testServer *WebhookServer
+var (
+	testServer           *WebhookServer
+	testWebhookResources *WebhookResources
+)
 
 func init() {
 	// create a webhook which uses its fake client to seed the sidecar configmap
@@ -23,30 +26,18 @@ func init() {
 		panic(err)
 	}
 
-	webhook, err = NewWebhook(fakeClient, fake.DefaultControllerNamespace)
+	testWebhookResources = &WebhookResources{
+		FileProxySpec:                fake.FileProxySpec,
+		FileProxyInitSpec:            fake.FileProxyInitSpec,
+		FileTLSTrustAnchorVolumeSpec: fake.FileTLSTrustAnchorVolumeSpec,
+		FileTLSIdentityVolumeSpec:    fake.FileTLSIdentityVolumeSpec,
+	}
+	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace)
 	if err != nil {
 		panic(err)
 	}
 	log.SetOutput(ioutil.Discard)
 	factory = fake.NewFactory()
-
-	// create a fake namespace
-	namespace, err := factory.Namespace("namespace-linkerd.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if _, err := webhook.k8sAPI.Client.CoreV1().Namespaces().Create(namespace); err != nil {
-		panic(err)
-	}
-
-	// create a fake sidecar spec config map
-	configMap, err := factory.ConfigMap("config-map-sidecar.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if _, err := webhook.k8sAPI.Client.CoreV1().ConfigMaps(namespace.ObjectMeta.GetName()).Create(configMap); err != nil {
-		panic(err)
-	}
 
 	factory = fake.NewFactory()
 	testServer = &WebhookServer{nil, webhook}
@@ -109,7 +100,7 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	server, err := NewWebhookServer(port, certFile, keyFile, fake.DefaultControllerNamespace, fakeClient)
+	server, err := NewWebhookServer(fakeClient, testWebhookResources, port, fake.DefaultControllerNamespace, certFile, keyFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

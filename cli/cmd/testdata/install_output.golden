@@ -1054,9 +1054,6 @@ spec:
         - proxy-injector
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
-        - -tls-cert-file=/var/linkerd-io/identity/TLSCertFileName
-        - -tls-key-file=/var/linkerd-io/identity/TLSPrivateKeyFileName
-        - -trust-anchors-path=/var/linkerd-io/trust-anchors/TLSTrustAnchorFileName
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1081,6 +1078,8 @@ spec:
         - mountPath: /var/linkerd-io/identity
           name: webhook-secrets
           readOnly: true
+        - mountPath: /var/linkerd-io/config
+          name: proxy-spec
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1148,6 +1147,9 @@ spec:
         secret:
           optional: true
           secretName: ProxyInjectorTLSSecret
+      - configMap:
+          name: ProxyInjectorSidecarConfig
+        name: proxy-spec
 status: {}
 ---
 ### Proxy Injector Service Account ###
@@ -1167,9 +1169,6 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["create", "update", "get", "watch"]
-- apiGroups: [""]
-  resources: ["configmaps", "namespaces"]
-  verbs: ["get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -1218,7 +1217,7 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
 data:
-  proxy-init.yaml: |
+  ProxyInitSpecFileName: |
     args:
     - --incoming-proxy-port
     - 4143
@@ -1239,7 +1238,7 @@ data:
         - NET_ADMIN
       privileged: false
     terminationMessagePolicy: FallbackToLogsOnError
-  proxy.yaml: |
+  ProxySpecFileName: |
     env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
@@ -1299,12 +1298,12 @@ data:
     - mountPath: /var/linkerd-io/identity
       name: linkerd-secrets
       readOnly: true
-  linkerd-trust-anchors: |
+  TLSTrustAnchorVolumeSpecFileName: |
     name: linkerd-trust-anchors
     configMap:
-      name: linkerd-ca-bundle
+      name: TLSTrustAnchorConfigMapName
       optional: true
-  linkerd-secrets: |
+  TLSIdentityVolumeSpecFileName: |
     name: linkerd-secrets
     secret:
       secretName: "" # this value will be computed by the webhook

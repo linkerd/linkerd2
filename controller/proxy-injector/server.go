@@ -12,14 +12,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// WebhookServer is the webhook's HTTP server. It has an embedded webhook which mutate all the requests.
+// WebhookServer is the webhook's HTTP server. It has an embedded webhook which
+// mutate all the requests.
 type WebhookServer struct {
 	*http.Server
 	*Webhook
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(port, certFile, keyFile, controllerNamespace string, client kubernetes.Interface) (*WebhookServer, error) {
+func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, port, controllerNamespace, certFile, keyFile string) (*WebhookServer, error) {
 	c, err := tlsConfig(certFile, keyFile)
 	if err != nil {
 		return nil, err
@@ -30,7 +31,7 @@ func NewWebhookServer(port, certFile, keyFile, controllerNamespace string, clien
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(client, controllerNamespace)
+	webhook, err := NewWebhook(client, resources, controllerNamespace)
 	if err != nil {
 		return nil, err
 	}
