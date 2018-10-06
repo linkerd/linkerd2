@@ -13,7 +13,6 @@ import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import './../../css/service-mesh.css';
 
 const serviceMeshDetailsColumns = [
   {

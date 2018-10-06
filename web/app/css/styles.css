@@ -195,3 +195,7 @@ div.status-dot {
     background-color: var(--orange);
   }
 }
+
+.breadcrumb-link a {
+  color: white;
+}

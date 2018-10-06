@@ -3,7 +3,6 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
 import OctopusArms from './util/OctopusArms.jsx';
-import LinearDeterminate from './util/LinearDeterminate.jsx';
 import {Progress} from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -14,7 +13,6 @@ import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
 import { displayName, metricToFormatter } from './util/Utils.js';
 import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
-import './../../css/octopus.css';
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 

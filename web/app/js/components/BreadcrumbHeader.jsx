@@ -4,7 +4,6 @@ import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import { withContext } from './util/AppContext.jsx';
 import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
-import './../../css/breadcrumb-header.css';
 
 const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",
