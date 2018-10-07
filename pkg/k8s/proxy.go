@@ -19,8 +19,8 @@ type KubernetesProxy struct {
 
 // NewProxy returns a new KubernetesProxy object and starts listening on a
 // network address.
-func NewProxy(configPath string, proxyPort int) (*KubernetesProxy, error) {
-	config, err := getConfig(configPath)
+func NewProxy(configPath, kubeContext string, proxyPort int) (*KubernetesProxy, error) {
+	config, err := getConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}

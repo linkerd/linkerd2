@@ -78,7 +78,7 @@ func newVersionClient() (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
 	}

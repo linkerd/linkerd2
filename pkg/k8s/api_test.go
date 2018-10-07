@@ -11,7 +11,7 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 
 	t.Run("Returns base config containing k8s endpoint listed in config.test", func(t *testing.T) {
 		expected := fmt.Sprintf("https://55.197.171.239/api/v1/namespaces/%s%s", namespace, extraPath)
-		api, err := NewAPI("testdata/config.test")
+		api, err := NewAPI("testdata/config.test", "")
 		if err != nil {
 			t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 		}
