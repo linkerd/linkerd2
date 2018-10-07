@@ -8,7 +8,7 @@ import (
 
 func TestInitK8sProxy(t *testing.T) {
 	t.Run("Returns an initialized Kubernetes Proxy object", func(t *testing.T) {
-		kp, err := NewProxy( "testdata/config.test", 0)
+		kp, err := NewProxy("testdata/config.test", "", 0)
 		if err != nil {
 			t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 		}
@@ -24,7 +24,7 @@ func TestKubernetesProxyUrlFor(t *testing.T) {
 	const extraPath = "/some/extra/path"
 
 	t.Run("Returns proxy URL based on the initialized KubernetesProxy", func(t *testing.T) {
-		kp, err := NewProxy( "testdata/config.test", 0)
+		kp, err := NewProxy("testdata/config.test", "", 0)
 		if err != nil {
 			t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 		}
