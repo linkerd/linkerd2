@@ -18,6 +18,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
+	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -110,7 +111,6 @@ sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
-
 	return cmd
 }
 
@@ -243,6 +243,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	metricsPort := intstr.IntOrString{
 		IntVal: int32(options.proxyMetricsPort),
 	}
+
 	proxyProbe := v1.Probe{
 		Handler: v1.Handler{
 			HTTPGet: &v1.HTTPGetAction{
@@ -251,6 +252,18 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		},
 		InitialDelaySeconds: 10,
+	}
+
+	resources := v1.ResourceRequirements{
+		Requests: v1.ResourceList{},
+	}
+
+	if options.proxyCpuRequest != "" {
+		resources.Requests["cpu"] = k8sResource.MustParse(options.proxyCpuRequest)
+	}
+
+	if options.proxyMemoryRequest != "" {
+		resources.Requests["memory"] = k8sResource.MustParse(options.proxyMemoryRequest)
 	}
 
 	sidecar := v1.Container{
@@ -271,6 +284,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				ContainerPort: int32(options.proxyMetricsPort),
 			},
 		},
+		Resources: resources,
 		Env: []v1.EnvVar{
 			{Name: "LINKERD2_PROXY_LOG", Value: options.proxyLogLevel},
 			{Name: "LINKERD2_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
