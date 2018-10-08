@@ -19,6 +19,11 @@ func TestInjectYAML(t *testing.T) {
 	tlsOptions.linkerdVersion = "testinjectversion"
 	tlsOptions.tls = "optional"
 
+	proxyRequestOptions := newInjectOptions()
+	proxyRequestOptions.linkerdVersion = "testinjectversion"
+	proxyRequestOptions.proxyCpuRequest = "110m"
+	proxyRequestOptions.proxyMemoryRequest = "100Mi"
+
 	testCases := []struct {
 		inputFileName     string
 		goldenFileName    string
@@ -66,6 +71,12 @@ func TestInjectYAML(t *testing.T) {
 			goldenFileName:    "inject_emojivoto_pod.golden.yml",
 			reportFileName:    "inject_emojivoto_pod.report",
 			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_pod_with_requests.input.yml",
+			goldenFileName:    "inject_emojivoto_pod_with_requests.golden.yml",
+			reportFileName:    "inject_emojivoto_pod_with_requests.report",
+			testInjectOptions: proxyRequestOptions,
 		},
 		{
 			inputFileName:     "inject_emojivoto_deployment.input.yml",
