@@ -65,7 +65,7 @@ var RootCmd = &cobra.Command{
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "l", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Context to use")
+	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 
