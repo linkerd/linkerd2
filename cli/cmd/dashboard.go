@@ -52,7 +52,7 @@ func newCmdDashboard() *cobra.Command {
 					options.dashboardShow, showLinkerd, showGrafana, showURL)
 			}
 
-			kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, options.dashboardProxyPort)
+			kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, kubeContext, options.dashboardProxyPort)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
 				os.Exit(1)

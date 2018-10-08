@@ -203,7 +203,7 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 // tests can use for access to the given service. Note that the proxy remains
 // running for the duration of the test.
 func (h *KubernetesHelper) ProxyURLFor(namespace, service, port string) (string, error) {
-	proxy, err := k8s.NewProxy("", 0)
+	proxy, err := k8s.NewProxy("", "", 0)
 	if err != nil {
 		return "", err
 	}

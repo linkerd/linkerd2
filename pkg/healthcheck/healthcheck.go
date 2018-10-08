@@ -87,6 +87,7 @@ type HealthCheckOptions struct {
 	ControlPlaneNamespace          string
 	DataPlaneNamespace             string
 	KubeConfig                     string
+	KubeContext                    string
 	APIAddr                        string
 	VersionOverride                string
 	RetryDeadline                  time.Time
@@ -139,7 +140,7 @@ func (hc *HealthChecker) addKubernetesAPIChecks() {
 		description: "can initialize the client",
 		fatal:       true,
 		check: func() (err error) {
-			hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig)
+			hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
 			return
 		},
 	})

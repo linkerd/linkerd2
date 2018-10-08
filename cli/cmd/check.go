@@ -87,6 +87,7 @@ func configureAndRunChecks(options *checkOptions) {
 		ControlPlaneNamespace:          controlPlaneNamespace,
 		DataPlaneNamespace:             options.namespace,
 		KubeConfig:                     kubeconfigPath,
+		KubeContext:                    kubeContext,
 		APIAddr:                        apiAddr,
 		VersionOverride:                options.versionOverride,
 		RetryDeadline:                  time.Now().Add(options.wait),
