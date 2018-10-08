@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -140,6 +141,8 @@ type proxyConfigOptions struct {
 	proxyAPIPort          uint
 	proxyControlPort      uint
 	proxyMetricsPort      uint
+	proxyCpuRequest       string
+	proxyMemoryRequest    string
 	proxyOutboundCapacity map[string]uint
 	tls                   string
 }
@@ -163,7 +166,9 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyControlPort:      4190,
 		proxyMetricsPort:      4191,
 		proxyOutboundCapacity: map[string]uint{},
-		tls: "",
+		proxyCpuRequest:       "",
+		proxyMemoryRequest:    "",
+		tls:                   "",
 	}
 }
 
@@ -171,18 +176,35 @@ func (options *proxyConfigOptions) validate() error {
 	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
 	}
+
 	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
 	}
+
 	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
+
 	if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
 		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 	}
+
+	if options.proxyCpuRequest != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyCpuRequest); err != nil {
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCpuRequest)
+		}
+	}
+
+	if options.proxyMemoryRequest != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyMemoryRequest); err != nil {
+			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory flag", options.proxyMemoryRequest)
+		}
+	}
+
 	if options.tls != "" && options.tls != optionalTLS {
 		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
 	}
+
 	return nil
 }
 
@@ -213,4 +235,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
+
+	cmd.PersistentFlags().StringVar(&options.proxyCpuRequest, "proxy-cpu", options.proxyCpuRequest, "Amount of CPU units that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 }
