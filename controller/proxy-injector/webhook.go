@@ -155,7 +155,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch.addPodLabel(map[string]string{
 		k8sPkg.ControllerNSLabel:    w.controllerNamespace,
 		k8sPkg.ProxyDeploymentLabel: deployment.ObjectMeta.Name,
-		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 	})
 
 	var (
