@@ -59,6 +59,8 @@ func TestRender(t *testing.T) {
 		ProxyInitSpecFileName:            "ProxyInitSpecFileName",
 		IgnoreInboundPorts:               []uint{1, 2, 3},
 		IgnoreOutboundPorts:              []uint{2, 3, 4},
+		ProxyResourceRequestCPU:          "RequestCPU",
+		ProxyResourceRequestMemory:       "RequestMemory",
 	}
 
 	testCases := []struct {

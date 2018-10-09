@@ -1288,6 +1288,10 @@ data:
         path: /metrics
         port: 4191
       initialDelaySeconds: 10
+    resources:
+      requests:
+        cpu: RequestCPU
+        memory: RequestMemory
     securityContext:
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError

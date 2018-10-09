@@ -887,6 +887,16 @@ data:
         path: /metrics
         port: {{.ProxyMetricsPort}}
       initialDelaySeconds: 10
+    {{- if or .ProxyResourceRequestCPU .ProxyResourceRequestMemory }}
+    resources:
+      requests:
+        {{- if .ProxyResourceRequestCPU }}
+        cpu: {{.ProxyResourceRequestCPU}}
+        {{- end }}
+        {{- if .ProxyResourceRequestMemory}}
+        memory: {{.ProxyResourceRequestMemory}}
+        {{- end }}
+    {{- end }}
     securityContext:
       runAsUser: {{.ProxyUID}}
     terminationMessagePolicy: FallbackToLogsOnError

@@ -54,6 +54,8 @@ type installConfig struct {
 	ProxyInitSpecFileName            string
 	ProxyInitImage                   string
 	ProxyImage                       string
+	ProxyResourceRequestCPU          string
+	ProxyResourceRequestMemory       string
 }
 
 type installOptions struct {
@@ -148,6 +150,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),
 		ProxyImage:                       options.taggedProxyImage(),
+		ProxyResourceRequestCPU:          options.proxyCpuRequest,
+		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
 	}, nil
 }
 
