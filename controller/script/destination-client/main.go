@@ -20,6 +20,7 @@ func main() {
 
 	addr := flag.String("addr", ":8089", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
+	method := flag.String("method", "get", "which gRPC method to invoke")
 	flag.Parse()
 
 	client, conn, err := destination.NewClient(*addr)
@@ -33,6 +34,17 @@ func main() {
 		Path:   *path,
 	}
 
+	switch *method {
+	case "get":
+		get(client, req)
+	case "getProfile":
+		getProfile(client, req)
+	default:
+		log.Fatalf("Unknown method: %s; supported methods: get, getProfile", *method)
+	}
+}
+
+func get(client pb.DestinationClient, req *pb.GetDestination) {
 	rsp, err := client.Get(context.Background(), req)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -78,5 +90,24 @@ func main() {
 			log.Printf("- exists:%t", updateType.NoEndpoints.Exists)
 			log.Println()
 		}
+	}
+}
+
+func getProfile(client pb.DestinationClient, req *pb.GetDestination) {
+	rsp, err := client.GetProfile(context.Background(), req)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	for {
+		update, err := rsp.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		log.Printf("%+v", update)
+		log.Println()
 	}
 }

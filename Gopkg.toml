@@ -1,12 +1,15 @@
-required = ["github.com/golang/protobuf/protoc-gen-go"]
-
-[prune]
-  unused-packages = true
-  go-tests = true
+required = [
+  "github.com/golang/protobuf/protoc-gen-go",
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+  "k8s.io/code-generator/cmd/defaulter-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
+  "k8s.io/code-generator/cmd/informer-gen",
+]
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  version = "v0.1.2"
+  revision = "0196017993a73f0ee28a9f52f30d2b6f5702198e" # TODO: switch back to stable
 
 [[constraint]]
   name = "google.golang.org/grpc"
