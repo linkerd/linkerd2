@@ -1,7 +1,6 @@
 package injector
 
 import (
-	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -38,27 +37,23 @@ func TestPatch(t *testing.T) {
 		createdBy           = "linkerd/cli v18.8.4"
 	)
 
-	patch := NewPatch()
-	patch.addContainer(sidecar)
-	patch.addInitContainerRoot()
-	patch.addInitContainer(init)
-	patch.addVolumeRoot()
-	patch.addVolume(trustAnchors)
-	patch.addVolume(secrets)
-	patch.addPodLabel(map[string]string{
+	actual := NewPatch()
+	actual.addContainer(sidecar)
+	actual.addInitContainerRoot()
+	actual.addInitContainer(init)
+	actual.addVolumeRoot()
+	actual.addVolume(trustAnchors)
+	actual.addVolume(secrets)
+	actual.addPodLabel(map[string]string{
 		k8sPkg.ControllerNSLabel:    controllerNamespace,
 		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 	})
-	patch.addPodAnnotation(map[string]string{
+	actual.addPodAnnotation(map[string]string{
 		k8sPkg.CreatedByAnnotation: createdBy,
 	})
 
-	actual, err := json.Marshal(patch.patchOps)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedOps := []*patchOp{
+	expected := NewPatch()
+	expected.patchOps = []*patchOp{
 		&patchOp{Op: "add", Path: patchPathContainer, Value: sidecar},
 		&patchOp{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
 		&patchOp{Op: "add", Path: patchPathInitContainer, Value: init},
@@ -70,10 +65,6 @@ func TestPatch(t *testing.T) {
 			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 		}},
 		&patchOp{Op: "add", Path: patchPathPodAnnotation, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
-	}
-	expected, err := json.Marshal(expectedOps)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
 	}
 
 	if !reflect.DeepEqual(actual, expected) {

@@ -10,7 +10,7 @@ type Client struct {
 	kubernetes.Interface
 }
 
-// NewFakeClient returns a fake Kubernetes clientset.
+// NewClient returns a fake Kubernetes clientset.
 func NewClient(kubeconfig string) (kubernetes.Interface, error) {
 	client := fake.NewSimpleClientset()
 	return &Client{client}, nil

@@ -32,7 +32,7 @@ func NewFactory() *Factory {
 }
 
 // HTTPRequestBody returns the content of the specified file as a slice of
-// bytes. If the file doesn't exist in the 'test/data' folder, an error will be
+// bytes. If the file doesn't exist in the 'fake/data' folder, an error will be
 // returned.
 func (f *Factory) HTTPRequestBody(filename string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -40,8 +40,8 @@ func (f *Factory) HTTPRequestBody(filename string) ([]byte, error) {
 
 // AdmissionReview returns the content of the specified file as an
 // AdmissionReview type. An error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or,
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or,
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into AdmissionReview type
 func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionReview, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -58,8 +58,8 @@ func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionR
 
 // Deployment returns the content of the specified file as a Deployment type. An
 // error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Deployment type
 func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -77,8 +77,8 @@ func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 
 // Container returns the content of the specified file as a Container type. An
 // error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Container type
 func (f *Factory) Container(filename string) (*corev1.Container, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -96,8 +96,8 @@ func (f *Factory) Container(filename string) (*corev1.Container, error) {
 
 // ConfigMap returns the content of the specified file as a ConfigMap type. An
 // error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into ConfigMap type
 func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -115,8 +115,8 @@ func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 
 // Namespace returns the content of the specified file as a Namespace type. An
 // error will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Namespace type
 func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
@@ -134,8 +134,8 @@ func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 
 // Volume returns the content of the specified file as a Volume type. An error
 // will be returned if:
-// i. the file doesn't exist in the 'test/data' folder or
-// ii. the file content isn't a valid JSON structure that can be unmarshalled
+// i. the file doesn't exist in the 'fake/data' folder or
+// ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Volume type
 func (f *Factory) Volume(filename string) (*corev1.Volume, error) {
 	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))

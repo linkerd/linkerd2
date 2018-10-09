@@ -19,7 +19,7 @@ import (
 
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	port := flag.String("port", "443", "port that this webhook admission server listens on")
+	addr := flag.String("addr", ":443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
@@ -66,13 +66,13 @@ func main() {
 		FileTLSTrustAnchorVolumeSpec: k8sPkg.MountPathTLSTrustAnchorVolumeSpec,
 		FileTLSIdentityVolumeSpec:    k8sPkg.MountPathTLSIdentityVolumeSpec,
 	}
-	s, err := injector.NewWebhookServer(k8sClient, resources, *port, *controllerNamespace, certFile, keyFile)
+	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile)
 	if err != nil {
 		log.Fatal("failed to initialize the webhook server: ", err)
 	}
 
 	go func() {
-		log.Infof("listening at port %s", *port)
+		log.Infof("listening at %s", *addr)
 		if err := s.ListenAndServeTLS("", ""); err != nil {
 			if err == http.ErrServerClosed {
 				return

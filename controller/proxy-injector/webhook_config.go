@@ -16,8 +16,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const yamlIndent = 6
-
 // WebhookConfig creates the MutatingWebhookConfiguration of the webhook.
 type WebhookConfig struct {
 	controllerNamespace string

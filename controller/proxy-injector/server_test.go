@@ -92,7 +92,7 @@ func TestNewWebhookServer(t *testing.T) {
 	defer os.Remove(keyFile)
 
 	var (
-		port       = "7070"
+		addr       = ":7070"
 		kubeconfig = ""
 	)
 	fakeClient, err := fake.NewClient(kubeconfig)
@@ -100,12 +100,12 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	server, err := NewWebhookServer(fakeClient, testWebhookResources, port, fake.DefaultControllerNamespace, certFile, keyFile)
+	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, certFile, keyFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	if server.Addr != fmt.Sprintf(":%s", port) {
-		t.Errorf("Expected server address to be :%q", port)
+	if server.Addr != fmt.Sprintf("%s", addr) {
+		t.Errorf("Expected server address to be :%q", addr)
 	}
 }

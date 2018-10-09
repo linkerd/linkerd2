@@ -32,65 +32,33 @@ func init() {
 }
 
 func TestMutate(t *testing.T) {
-	t.Run("no labels", func(t *testing.T) {
-		data, err := factory.HTTPRequestBody("inject-no-labels-request.json")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
+	var testCases = []struct {
+		title        string
+		requestFile  string
+		responseFile string
+	}{
+		{title: "no labels", requestFile: "inject-no-labels-request.json", responseFile: "inject-no-labels-response.yaml"},
+		{title: "inject enabled", requestFile: "inject-enabled-request.json", responseFile: "inject-enabled-response.yaml"},
+		{title: "inject disabled", requestFile: "inject-disabled-request.json", responseFile: "inject-disabled-response.yaml"},
+		{title: "inject completed", requestFile: "inject-completed-request.json", responseFile: "inject-completed-response.yaml"},
+	}
 
-		expected, err := factory.AdmissionReview("inject-no-labels-response.yaml")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
+	for _, testCase := range testCases {
+		t.Run(fmt.Sprintf("%s", testCase.title), func(t *testing.T) {
+			data, err := factory.HTTPRequestBody(testCase.requestFile)
+			if err != nil {
+				t.Fatal("Unexpected error: ", err)
+			}
 
-		actual := webhook.Mutate(data)
-		assertEqualAdmissionReview(t, expected, actual)
-	})
+			expected, err := factory.AdmissionReview(testCase.responseFile)
+			if err != nil {
+				t.Fatal("Unexpected error: ", err)
+			}
 
-	t.Run("inject enabled", func(t *testing.T) {
-		data, err := factory.HTTPRequestBody("inject-enabled-request.json")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		expected, err := factory.AdmissionReview("inject-enabled-response.yaml")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		actual := webhook.Mutate(data)
-		assertEqualAdmissionReview(t, expected, actual)
-	})
-
-	t.Run("inject disabled", func(t *testing.T) {
-		data, err := factory.HTTPRequestBody("inject-disabled-request.json")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		expected, err := factory.AdmissionReview("inject-disabled-response.yaml")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		actual := webhook.Mutate(data)
-		assertEqualAdmissionReview(t, expected, actual)
-	})
-
-	t.Run("inject completed", func(t *testing.T) {
-		data, err := factory.HTTPRequestBody("inject-completed-request.json")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		expected, err := factory.AdmissionReview("inject-completed-response.yaml")
-		if err != nil {
-			t.Fatal("Unexpected error: ", err)
-		}
-
-		actual := webhook.Mutate(data)
-		assertEqualAdmissionReview(t, expected, actual)
-	})
+			actual := webhook.Mutate(data)
+			assertEqualAdmissionReview(t, expected, actual)
+		})
+	}
 }
 
 func TestIgnore(t *testing.T) {
