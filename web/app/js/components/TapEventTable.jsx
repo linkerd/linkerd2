@@ -5,7 +5,11 @@ import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withContext } from './util/AppContext.jsx';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
 import { withStyles } from '@material-ui/core/styles';
+import Typography from '@material-ui/core/Typography';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
@@ -120,70 +124,78 @@ const formatTapLatency = str => {
 
 const requestInitSection = d => (
   <React.Fragment>
-    <Grid container spacing={8} className="tap-info-section">
-      <h3>Request Init</h3>
-      <Grid item className="expand-section-header">
-        <Grid item xs={3}>Authority</Grid>
-        <Grid item xs={3}>Path</Grid>
-        <Grid item xs={3}>Scheme</Grid>
-        <Grid item xs={3}>Method</Grid>
-        <Grid item xs={3}>TLS</Grid>
-      </Grid>
-      <Grid gutter={8}>
-        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.authority")}</Grid>
-        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.path")}</Grid>
-        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Grid>
-        <Grid item xs={3}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Grid>
-        <Grid item xs={3}>{_.get(d, "base.tls")}</Grid>
-      </Grid>
-    </Grid>
+
+    <Typography variant="h6">Request Init</Typography>
+    <br />
+    <List>
+      <ListItem>
+        <ListItemText primary="Authority" secondary={_.get(d, "requestInit.http.requestInit.authority")} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Path" secondary={_.get(d, "requestInit.http.requestInit.path")} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Scheme" secondary={_.get(d, "requestInit.http.requestInit.scheme.registered")} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Method" secondary={_.get(d, "requestInit.http.requestInit.method.registered")} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="TLS" secondary={_.get(d, "base.tls")} />
+      </ListItem>
+    </List>
+
   </React.Fragment>
 );
 
 const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <hr />
-    <Grid container spacing={8} className="tap-info-section">
-      <h3>Response Init</h3>
-      <Grid container spacing={8} className="expand-section-header">
-        <Grid item xs={3}>HTTP Status</Grid>
-        <Grid item xs={3}>Latency</Grid>
-      </Grid>
-      <Grid container spacing={8}>
-        <Grid item xs={3}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Grid>
-        <Grid item xs={3}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Grid>
-      </Grid>
-    </Grid>
+    <Typography variant="h6">Response Init</Typography>
+    <br />
+    <List>
+      <ListItem>
+        <ListItemText primary="HTTP Status" secondary={_.get(d, "responseInit.http.responseInit.httpStatus")} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Latency" secondary={formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))} />
+      </ListItem>
+    </List>
   </React.Fragment>
 );
 
 const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
-    <hr />
-    <Grid spacing={8} className="tap-info-section">
-      <h3>Response End</h3>
-      <Grid spacing={8} className="expand-section-header">
-        <Grid item xs={3}>GRPC Status</Grid>
-        <Grid item xs={3}>Latency</Grid>
-        <Grid item xs={3}>Response Length (B)</Grid>
-      </Grid>
-      <Grid spacing={8}>
-        <Grid item xs={3}>{_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Grid>
-        <Grid item xs={3}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Grid>
-        <Grid item xs={3}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Grid>
-      </Grid>
-    </Grid>
+    <Typography variant="h6">Response End</Typography>
+    <br />
+
+    <List>
+      <ListItem>
+        <ListItemText primary="GRPC Status" secondary={_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Latency" secondary={formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))} />
+      </ListItem>
+      <ListItem>
+        <ListItemText primary="Response Length (B)" secondary={formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))} />
+      </ListItem>
+    </List>
   </React.Fragment>
 );
 
 // hide verbose information
 const expandedRowRender = d => {
   return (
-    <div className="tap-more-info">
-      {requestInitSection(d)}
-      {responseInitSection(d)}
-      {responseEndSection(d)}
-    </div>
+    <Grid container className="tap-more-info">
+      <Grid item xs={4}>
+        {requestInitSection(d)}
+      </Grid>
+      <Grid item xs={4}>
+        {responseInitSection(d)}
+      </Grid>
+      <Grid item xs={4}>
+        {responseEndSection(d)}
+      </Grid>
+    </Grid>
   );
 };
 
@@ -206,7 +218,13 @@ class TapEventTable extends React.Component {
     let resourceType = resource.split("/")[0];
     let columns = tapColumns(resourceType, api.ResourceLink);
 
-    return <ExpandableTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
+    return (
+      <ExpandableTable
+        tableRows={tableRows}
+        tableColumns={columns}
+        expandedRowRender={expandedRowRender}
+        tableClassName="metric-table" />
+    );
   }
 }
 

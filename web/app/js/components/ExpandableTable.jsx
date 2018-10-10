@@ -1,21 +1,27 @@
 import _ from 'lodash';
+import Collapse from '@material-ui/core/Collapse';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
+import IconButton from '@material-ui/core/IconButton';
+import Modal from '@material-ui/core/Modal';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
+import Portal from '@material-ui/core/Portal';
+
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
-import Collapse from '@material-ui/core/Collapse';
-import IconButton from '@material-ui/core/IconButton';
-
 import { withStyles } from '@material-ui/core/styles';
+import Button from '@material-ui/core/Button';
+import TextField from '@material-ui/core/TextField';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
 
 const styles = theme => ({
   root: {
@@ -28,67 +34,38 @@ const styles = theme => ({
   },
 });
 
-// const TelemetryMonitorTableBody = pure(props => (
-//   <Table.TableBody>
-//     { props.items.map((x, i) => {
-//           const { timestamp, ...etc } = JSON.parse(x.payload); // eslint-disable-line no-unused-vars
-
-//           return (
-//             <Table.TableRow key={i}>
-//               <Table.TableCell padding="none" style={{verticalAlign: Object.keys(etc).length == 0 ? 'inherit' : 'top'}}>
-//                 <IconButton disabled={Object.keys(etc).length == 0} style={{transform: x.expanded ? 'rotate(0)' : 'rotate(270deg)'}} onClick={() => props.onExpandCellClick(i)}><ExpandMore /></IconButton>
-//               </Table.TableCell>
-
-//               <Table.TableCell padding="none">
-//                 { Object.keys(etc).length == 0 ?
-//                       READINGS_PL200[x.reading] :
-
-//                       <div>
-//                         <Typography style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>{ READINGS_PL200[x.reading] }</Typography>
-
-//                         <Collapse in={x.expanded} transitionDuration="auto" unmountOnExit>
-//                           <ul style={{margin: 0, paddingLeft: 16, paddingBottom: 16}}>
-//                             { Object.entries(etc).map(([key, val], j) => {
-//                                       return <li key={j}><strong>{ key }</strong>: { val === true ? 'yes' : val === false ? 'no' : val }</li>;
-//                                   }) }
-//                           </ul>
-//                         </Collapse>
-//                       </div>
-//                   }
-//               </Table.TableCell>
-
-//               <Table.TableCell>{ SHORT_DATETIME_FORMATTER.format(x.date) }</Table.TableCell>
-//             </Table.TableRow>
-// );
-//       }) }
-//   </Table.TableBody>
-// ));
-
 class ExpandableTable extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      expanded: {}
+      open: false,
+      show: false,
+      datum: {}
     };
   }
 
-  onExpandCellClick = key => {
-    return () => {
-      let expanded = this.state.expanded;
-      expanded[key] = !expanded[key];
-      this.setState({ expanded });
-    };
+  handleDialogOpen = d => event => {
+    console.log("modal", event, d);
+    this.setState({ open: true, datum: d });
   }
+
+  handleDialogClose = () => {
+    this.setState({ open: false, datum: {} });
+  };
+
+  handleClick = () => {
+    this.setState(state => ({ show: !state.show }));
+  };
 
   render() {
-    const { classes, tableRows, tableColumns, tableClassName } = this.props;
+    const { expandedRowRender, classes, tableRows, tableColumns, tableClassName } = this.props;
     let columns = _.concat([{
       title: " ",
       key: "expansion",
       render: d => {
         return (
-          <IconButton style={{transform: this.state.expanded[d.key] ? 'rotate(0)' : 'rotate(270deg)'}} onClick={this.onExpandCellClick(d.key)}><ExpandMoreIcon /></IconButton>
+          <IconButton onClick={this.handleDialogOpen(d)}><ExpandMoreIcon /></IconButton>
         );
       }
     }], tableColumns);
@@ -114,39 +91,41 @@ class ExpandableTable extends React.Component {
             _.map(tableRows, d => {
             return (
               <React.Fragment key={"frag-" + d.key}>
-                <TableRow key={d.key}>
-                  { _.map(columns, c => (
-                    <TableCell
-                      key={`table-${d.key}-${c.key}`}
-                      numeric={c.isNumeric}>
-                      {c.render(d)}
-                    </TableCell>
+                <TableRow
+                  key={d.key}
+                  onClick={this.handleClick}
+                  ref={ref => {
+                    this.container = ref;
+                  }}>
+                  {
+                    _.map(columns, c => (
+                      <TableCell
+                        key={`table-${d.key}-${c.key}`}
+                        numeric={c.isNumeric}>
+                        {c.render(d)}
+                      </TableCell>
                     ))
                   }
                 </TableRow>
-                {
-                  !this.state.expanded[d.key] ? null : (
-                    <TableRow>
-                      <TableCell width="100%">
-                        <Collapse in={this.state.expanded[d.key]} unmountOnExit>
-                          <Typography>An expanded stuff: expand row for {d.key}</Typography>
-                        </Collapse>
-                      </TableCell>
-                      <TableCell width="100%">
-                        <Collapse in={this.state.expanded[d.key]} unmountOnExit>
-                          <Typography>An expanded stuff: expand row for {d.key}</Typography>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  )
-                }
-
               </React.Fragment>
 
             );
           })}
           </TableBody>
         </Table>
+        <Dialog
+          maxWidth="md"
+          open={this.state.open}
+          onClose={this.handleDialogClose}
+          aria-labelledby="form-dialog-title">
+          <DialogTitle id="form-dialog-title">Request Details</DialogTitle>
+          <DialogContent>
+            {expandedRowRender(this.state.datum)}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={this.handleDialogClose} color="primary">Close</Button>
+          </DialogActions>
+        </Dialog>
       </Paper>
     );
   }
