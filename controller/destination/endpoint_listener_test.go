@@ -117,7 +117,12 @@ func TestEndpointListener(t *testing.T) {
 
 	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}, contextToReturn: context}
+		mockGetServer := &mockDestination_GetServer{
+			updatesReceived: []*pb.Update{},
+			mockDestination_Server: mockDestination_Server{
+				contextToReturn: context,
+			},
+		}
 		listener := &endpointListener{
 			stream:           mockGetServer,
 			ownerKindAndName: defaultOwnerKindAndName,

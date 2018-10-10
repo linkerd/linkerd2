@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -8,7 +9,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {
+func NewClientSet(kubeConfig string) (*kubernetes.Clientset, *spclient.Clientset, error) {
 	var config *rest.Config
 	var err error
 
@@ -21,8 +22,16 @@ func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {
 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfig)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	spclientset, err := spclient.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	return clientset, spclientset, nil
 }

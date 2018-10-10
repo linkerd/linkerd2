@@ -3,8 +3,9 @@
 set -eu
 
 gen() {
-    rm -rf controller/gen
-    mkdir controller/gen
+
+    rm -rf controller/gen/common controller/gen/controller controller/gen/public
+    mkdir -p controller/gen
 
     for f in $@; do
         bin/protoc -I proto --go_out="plugins=grpc:$GOPATH/src" "$f"

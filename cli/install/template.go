@@ -226,6 +226,26 @@ spec:
             port: 9998
           failureThreshold: 7
 
+### Service Profile CRD ###
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  namespace: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+
 ### Web ###
 ---
 kind: Service

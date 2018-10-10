@@ -24,16 +24,18 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sClient, spClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
+		spClient,
 		k8s.Endpoint,
 		k8s.Pod,
 		k8s.RS,
 		k8s.Svc,
+		k8s.SP,
 	)
 
 	done := make(chan struct{})

@@ -18,6 +18,7 @@ const (
 	ReplicationController = "replicationcontroller"
 	ReplicaSet            = "replicaset"
 	Service               = "service"
+	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
 )
 

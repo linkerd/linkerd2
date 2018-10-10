@@ -18,12 +18,14 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 type k8sResolver struct {
 	k8sDNSZoneLabels []string
 	endpointsWatcher *endpointsWatcher
+	profileWatcher   *profileWatcher
 }
 
 func newK8sResolver(k8sDNSZoneLabels []string, k8sAPI *k8s.API) *k8sResolver {
 	return &k8sResolver{
 		k8sDNSZoneLabels: k8sDNSZoneLabels,
 		endpointsWatcher: newEndpointsWatcher(k8sAPI),
+		profileWatcher:   newProfileWatcher(k8sAPI),
 	}
 }
 
@@ -45,7 +47,7 @@ func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
 	return id != nil, nil
 }
 
-func (k *k8sResolver) streamResolution(host string, port int, listener updateListener) error {
+func (k *k8sResolver) streamResolution(host string, port int, listener endpointUpdateListener) error {
 	id, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		log.Error(err)
@@ -63,11 +65,39 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 	return k.resolveKubernetesService(id, port, listener)
 }
 
-func (k *k8sResolver) stop() {
-	k.endpointsWatcher.stop()
+func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener) error {
+	id, err := k.localKubernetesServiceIdFromDNSName(host)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if id == nil {
+		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
+		log.Error(err)
+		return err
+	}
+
+	err = k.profileWatcher.subscribeToSvc(*id, listener)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	select {
+	case <-listener.ClientClose():
+		return k.profileWatcher.unsubscribeToSvc(*id, listener)
+	case <-listener.ServerClose():
+		return nil
+	}
 }
 
-func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener updateListener) error {
+func (k *k8sResolver) stop() {
+	k.endpointsWatcher.stop()
+	k.profileWatcher.stop()
+}
+
+func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener endpointUpdateListener) error {
 	k.endpointsWatcher.subscribe(id, uint32(port), listener)
 
 	select {
