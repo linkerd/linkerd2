@@ -3,7 +3,6 @@ import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
-import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
@@ -312,8 +311,6 @@ class Tap extends React.Component {
           authoritiesByNs={this.state.authoritiesByNs}
           updateQuery={this.updateQuery}
           query={this.state.query} />
-
-        <TapQueryCliCmd cmdName="tap" query={this.state.query} />
 
         <TapEventTable
           resource={this.state.query.resource}

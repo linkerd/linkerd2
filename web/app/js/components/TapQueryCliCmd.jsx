@@ -2,6 +2,10 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { tapQueryPropType } from './util/TapUtils.jsx';
+import {
+  CardContent,
+  Typography
+} from '@material-ui/core';
 
 /*
  prints a given tap query in an equivalent CLI format, such that it
@@ -46,8 +50,11 @@ export default class TapQueryCliCmd extends React.Component {
 
     return (
       _.isEmpty(resource) ? null :
-      <div className="tap-query">
-        <div>Current {_.startCase(this.props.cmdName)} query:</div>
+      <CardContent className="tap-query">
+        <Typography variant="caption" gutterBottom>
+          Current {_.startCase(this.props.cmdName)} query
+        </Typography>
+
         <code>
               linkerd {this.props.cmdName} {resource}
           { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
@@ -62,7 +69,7 @@ export default class TapQueryCliCmd extends React.Component {
           { this.renderCliItem("--path", path) }
           { this.renderCliItem("--max-rps", maxRps) }
         </code>
-      </div>
+      </CardContent>
     );
   }
 }
