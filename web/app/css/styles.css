@@ -199,3 +199,7 @@ div.status-dot {
 .breadcrumb-link a {
   color: white;
 }
+
+.linkerd-nav-logo {
+  min-width: 180px;
+}

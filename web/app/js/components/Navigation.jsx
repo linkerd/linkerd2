@@ -106,7 +106,7 @@ const styles = theme => ({
 
 class NavigationBase extends React.Component {
   state = {
-    drawerOpen: false,
+    drawerOpen: true,
     resourceMenuOpen: false
   };
 
@@ -162,8 +162,6 @@ class NavigationBase extends React.Component {
                 </Typography>
               </Grid>
             </Grid>
-
-
           </Toolbar>
         </AppBar>
         <Drawer
@@ -173,7 +171,9 @@ class NavigationBase extends React.Component {
           }}
           open={this.state.drawerOpen}>
           <div className={classes.toolbar}>
-            {linkerdWordLogo}
+            <div className="linkerd-nav-logo">
+              {linkerdWordLogo}
+            </div>
             <IconButton onClick={this.handleDrawerClose}>
               {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
             </IconButton>
