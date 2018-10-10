@@ -392,7 +392,7 @@ func printStatJson(statTables map[string]map[string]*row, resourceTypes []string
 			}
 		}
 	}
-	b, err := json.Marshal(entries)
+	b, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
 		log.Error(err.Error())
 		return
