@@ -369,14 +369,14 @@ func renderTableBody(table *[]tableRow, withSource bool) {
 	for i, row := range *table {
 		x := 0
 		if withSource {
-			tbprint(x, i+headerHeight, runewidth.Truncate(row.source, adjustedColumnWidths[0], ""))
+			tbprint(x, i+headerHeight, row.source)
 			x += adjustedColumnWidths[0] + 1
 		}
-		tbprint(x, i+headerHeight, runewidth.Truncate(row.destination, adjustedColumnWidths[1], ""))
+		tbprint(x, i+headerHeight, row.destination)
 		x += adjustedColumnWidths[1] + 1
 		tbprint(x, i+headerHeight, row.method)
 		x += adjustedColumnWidths[2] + 1
-		tbprint(x, i+headerHeight, runewidth.Truncate(row.by, adjustedColumnWidths[3], ""))
+		tbprint(x, i+headerHeight, row.by)
 		x += adjustedColumnWidths[3] + 1
 		tbprint(x, i+headerHeight, strconv.Itoa(row.count))
 		x += adjustedColumnWidths[4] + 1
