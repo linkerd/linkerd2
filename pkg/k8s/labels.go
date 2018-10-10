@@ -94,7 +94,7 @@ const (
 
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
-	ProxyInjectorWebhookConfig = "proxy-injector-webhook-config"
+	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
 	// ProxyInjectorSidecarConfig is the name of the config map resource that
 	// contains the specs of the proxy init container and sidecar container to be

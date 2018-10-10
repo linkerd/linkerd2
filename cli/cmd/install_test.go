@@ -57,10 +57,11 @@ func TestRender(t *testing.T) {
 		ProxyInjectorSidecarConfig:       "ProxyInjectorSidecarConfig",
 		ProxySpecFileName:                "ProxySpecFileName",
 		ProxyInitSpecFileName:            "ProxyInitSpecFileName",
-		IgnoreInboundPorts:               []uint{1, 2, 3},
-		IgnoreOutboundPorts:              []uint{2, 3, 4},
+		IgnoreInboundPorts:               "4190,4191,1,2,3",
+		IgnoreOutboundPorts:              "2,3,4",
 		ProxyResourceRequestCPU:          "RequestCPU",
 		ProxyResourceRequestMemory:       "RequestMemory",
+		ProxyBindTimeout:                 "1m",
 	}
 
 	testCases := []struct {

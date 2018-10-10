@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/linkerd/linkerd2/cli/install"
@@ -41,8 +42,8 @@ type installConfig struct {
 	TLSIdentityVolumeSpecFileName    string
 	InboundPort                      uint
 	OutboundPort                     uint
-	IgnoreInboundPorts               []uint
-	IgnoreOutboundPorts              []uint
+	IgnoreInboundPorts               string
+	IgnoreOutboundPorts              string
 	ProxyAutoInjectEnabled           bool
 	ProxyAutoInjectLabel             string
 	ProxyUID                         int64
@@ -56,6 +57,7 @@ type installConfig struct {
 	ProxyImage                       string
 	ProxyResourceRequestCPU          string
 	ProxyResourceRequestMemory       string
+	ProxyBindTimeout                 string
 }
 
 type installOptions struct {
@@ -111,6 +113,19 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	if err := validate(options); err != nil {
 		return nil, err
 	}
+
+	ignoreInboundPorts := []string{
+		fmt.Sprintf("%d", options.proxyControlPort),
+		fmt.Sprintf("%d", options.proxyMetricsPort),
+	}
+	for _, p := range options.ignoreInboundPorts {
+		ignoreInboundPorts = append(ignoreInboundPorts, fmt.Sprintf("%d", p))
+	}
+	ignoreOutboundPorts := []string{}
+	for _, p := range options.ignoreOutboundPorts {
+		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
+	}
+
 	return &installConfig{
 		Namespace:                        controlPlaneNamespace,
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
@@ -137,8 +152,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		TLSIdentityVolumeSpecFileName:    k8s.TLSIdentityVolumeSpecFileName,
 		InboundPort:                      options.inboundPort,
 		OutboundPort:                     options.outboundPort,
-		IgnoreInboundPorts:               options.ignoreInboundPorts,
-		IgnoreOutboundPorts:              options.ignoreOutboundPorts,
+		IgnoreInboundPorts:               strings.Join(ignoreInboundPorts, ","),
+		IgnoreOutboundPorts:              strings.Join(ignoreOutboundPorts, ","),
 		ProxyAutoInjectEnabled:           options.proxyAutoInject,
 		ProxyAutoInjectLabel:             k8s.ProxyAutoInjectLabel,
 		ProxyUID:                         options.proxyUID,
@@ -152,6 +167,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyImage:                       options.taggedProxyImage(),
 		ProxyResourceRequestCPU:          options.proxyCpuRequest,
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
+		ProxyBindTimeout:                 "1m",
 	}, nil
 }
 

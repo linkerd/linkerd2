@@ -822,9 +822,11 @@ data:
     - {{.OutboundPort}}
     - --proxy-uid
     - {{.ProxyUID}}
+    {{- if ne (len .IgnoreInboundPorts) 0}}
     - --inbound-ports-to-ignore
-    - {{.ProxyControlPort}},{{.ProxyMetricsPort}}{{ if .IgnoreInboundPorts }},{{.IgnoreInboundPorts}}{{end}}
-    {{- if .IgnoreOutboundPorts}}
+    - {{.IgnoreInboundPorts}}
+    {{- end }}
+    {{- if ne (len .IgnoreOutboundPorts) 0}}
     - --outbound-ports-to-ignore
     - {{.IgnoreOutboundPorts}}
     {{- end}}
@@ -842,7 +844,7 @@ data:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
     - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: 10s
+      value: {{.ProxyBindTimeout}}
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
