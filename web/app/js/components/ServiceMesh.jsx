@@ -272,7 +272,7 @@ class ServiceMesh extends React.Component {
             </Grid>
 
             <Grid container spacing={24}>
-              <Grid item xs={8}><MeshedStatusTable tableRows={this.state.nsStatuses} /></Grid>
+              <Grid item xs={8}><MeshedStatusTable tableRows={_.sortBy(this.state.nsStatuses, "namespace")} /></Grid>
             </Grid>
           </div>
         )}
