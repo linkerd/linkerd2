@@ -24,7 +24,6 @@ import {
 import {
   Business as BusinessIcon,
   ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   Dashboard as DashboardIcon,
   ExpandLess,
   ExpandMore,
@@ -123,7 +122,7 @@ class NavigationBase extends React.Component {
   };
 
   render() {
-    const { classes, theme, ChildComponent, api } = this.props;
+    const { classes, ChildComponent, api } = this.props;
     const prefixLink = api.prefixLink;
 
     return (
@@ -147,13 +146,13 @@ class NavigationBase extends React.Component {
                 </IconButton>
               </Grid>
               <Grid item xs={10}>
-                <Typography variant="title" color="inherit" noWrap>
+                <Typography variant="h6" color="inherit" noWrap>
                   <BreadcrumbHeader {...this.props} />
                 </Typography>
               </Grid>
 
               <Grid item xs={1}>
-                <Typography variant="subheading" align="center">
+                <Typography variant="subtitle1" align="center">
                   <IconButton color="inherit">
                     <Badge className={classes.margin} badgeContent="1" color="secondary">
                       <NotificationsIcon />
@@ -175,7 +174,7 @@ class NavigationBase extends React.Component {
               {linkerdWordLogo}
             </div>
             <IconButton onClick={this.handleDrawerClose}>
-              {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+              <ChevronLeftIcon />
             </IconButton>
           </div>
           <Divider />
@@ -226,7 +225,9 @@ class NavigationBase extends React.Component {
               </List>
             </Collapse>
           </List>
+
           <Divider />
+
           <List
             component="nav"
             subheader={!this.state.drawerOpen ? null : <ListSubheader component="div">Nested List Items</ListSubheader>}>
@@ -243,6 +244,7 @@ class NavigationBase extends React.Component {
               <ListItemText inset primary="Drafts" />
             </ListItem>
           </List>
+
           <List>
             <ListItem component={Link} to="https://linkerd.io/2/overview/" target="_blank">
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>

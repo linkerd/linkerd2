@@ -87,10 +87,10 @@ class ErrorModal extends React.Component {
           justify="space-between"
           alignItems="center">
           <Grid item>
-            <Typography variant="subheading" gutterBottom>{container}</Typography>
+            <Typography variant="subtitle1" gutterBottom>{container}</Typography>
           </Grid>
           <Grid item>
-            <Typography variant="subheading" gutterBottom align="right">
+            <Typography variant="subtitle1" gutterBottom align="right">
               {_.get(errors, [0, "image"])}
             </Typography>
           </Grid>
