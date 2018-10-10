@@ -17,6 +17,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
+	proxyAutoInject := flag.Bool("proxy-auto-inject", false, "if true, watch for the add and update events of mutating webhook configurations")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -26,13 +27,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		k8s.Pod,
-		k8s.RS,
-	)
 
-	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)
+	var k8sAPI *k8s.API
+	if *proxyAutoInject {
+		k8sAPI = k8s.NewAPI(k8sClient, k8s.Pod, k8s.RS, k8s.MWC)
+	} else {
+		k8sAPI = k8s.NewAPI(k8sClient, k8s.Pod, k8s.RS)
+	}
+
+	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI, *proxyAutoInject)
 	if err != nil {
 		log.Fatalf("Failed to create CertificateController: %v", err)
 	}

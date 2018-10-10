@@ -533,9 +533,10 @@
   revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [[projects]]
-  digest = "1:34ffbf9ed5e63a11e4e0aaab597dc36c552da8b5b6bd49d8f73dadd4afd7e677"
+  digest = "1:728c0c37966b7a6c8980fab69a3d690cc0996e206804a55052318858d00f1e17"
   name = "k8s.io/api"
   packages = [
+    "admission/v1beta1",
     "admissionregistration/v1alpha1",
     "admissionregistration/v1beta1",
     "apps/v1",
@@ -848,6 +849,8 @@
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/status",
+    "k8s.io/api/admission/v1beta1",
+    "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
     "k8s.io/api/apps/v1beta2",
     "k8s.io/api/authorization/v1beta1",
@@ -861,12 +864,14 @@
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
+    "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/version",
     "k8s.io/client-go/informers",
+    "k8s.io/client-go/informers/admissionregistration/v1beta1",
     "k8s.io/client-go/informers/apps/v1beta2",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
