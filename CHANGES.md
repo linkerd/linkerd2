@@ -1,5 +1,10 @@
 ## edge-18.10.2
 
+This release brings major improvements to the CLI as described below, including
+support for auto-injecting deployments via a Kubernetes Admission Controller.
+Proxy auto-injection is **experimental**, and the implementation may change
+going forward.
+
 * CLI
   * **New** Added a `--proxy-auto-inject` flag to the `install` command,
     allowing for auto-injection of sidecar containers (Thanks @ihcsim!)
