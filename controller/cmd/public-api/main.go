@@ -36,12 +36,13 @@ func main() {
 	}
 	defer tapConn.Close()
 
-	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sClient, spClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
+		spClient,
 		k8s.Deploy,
 		k8s.NS,
 		k8s.Pod,
