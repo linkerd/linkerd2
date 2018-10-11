@@ -198,43 +198,30 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 		},
 	})
 
+	roleType := "ClusterRole"
+	roleBindingType := "ClusterRoleBinding"
 	if hc.SingleNamespace {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create Roles",
-			fatal:       true,
-			check: func() error {
-				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
-			},
-		})
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create RoleBindings",
-			fatal:       true,
-			check: func() error {
-				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
-			},
-		})
-	} else {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create ClusterRoles",
-			fatal:       true,
-			check: func() error {
-				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
-			},
-		})
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create ClusterRoleBindings",
-			fatal:       true,
-			check: func() error {
-				return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
-			},
-		})
+		roleType = "Role"
+		roleBindingType = "RoleBinding"
 	}
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: fmt.Sprintf("can create %ss", roleType),
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleType)
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallCategory,
+		description: fmt.Sprintf("can create %ss", roleBindingType),
+		fatal:       true,
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleBindingType)
+		},
+	})
 
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdPreInstallCategory,
