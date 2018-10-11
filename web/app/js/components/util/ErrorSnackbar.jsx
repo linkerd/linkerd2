@@ -54,11 +54,21 @@ function CustomSnackbarContent(props) {
     <SnackbarContent
       className={classNames(classes[variant], className)}
       aria-describedby="client-snackbar"
+      ContentProps={{
+        headlineMapping: {
+          body1: "div",
+          body2: "div",
+          variant: `body1`,
+        },
+        variant: `body1`,
+        body1: "div",
+        body2: "div",
+      }}
       message={(
-        <span id="client-snackbar" className={classes.message}>
+        <div id="client-snackbar" className={classes.message}>
           <Icon className={classNames(classes.icon, classes.iconVariant)} />
           {message}
-        </span>
+        </div>
         )}
       action={[
         <IconButton
@@ -131,6 +141,16 @@ class ErrorSnackbar extends React.Component {
           vertical: 'bottom',
           horizontal: 'left',
         }}
+        ContentProps={{
+          headlineMapping: {
+            body1: "div",
+            body2: "div",
+            variant: `body1`,
+          },
+          "body1": "div",
+          "body2": "div",
+          variant: `body1`,
+        }}
         open={this.state.open}
         autoHideDuration={6000}
         onClose={this.handleClose}>
@@ -138,7 +158,17 @@ class ErrorSnackbar extends React.Component {
         <SnackbarContentWrapper
           onClose={this.handleClose}
           variant={bannerType}
-          message={message} />
+          message={message}
+          ContentProps={{
+            headlineMapping: {
+              "body1": "div",
+              "body2": "div"
+            },
+
+              "body1": "div",
+              "body2": "div"
+
+          }} />
 
       </Snackbar>
     );

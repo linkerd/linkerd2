@@ -25,10 +25,15 @@ export class ResourceListBase extends React.Component {
     const {error} = this.props;
 
     if (!error) {
-      return;
+      // return;
     }
-
-    return <ErrorBanner message={error} />;
+    let msg = {
+      status: null,
+      statusText: "An error occured",
+      url: "",
+      error: ""
+    };
+    return <ErrorBanner message={msg} />;
   }
 
   content = () => {
