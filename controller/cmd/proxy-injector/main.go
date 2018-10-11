@@ -32,7 +32,7 @@ func main() {
 
 	k8sClient, err := k8s.NewClientSet(*kubeconfig)
 	if err != nil {
-		log.Fatal("failed to initialize Kubernetes client: ", err)
+		log.Fatalf("failed to initialize Kubernetes client: %s", err)
 	}
 
 	log.Infof("waiting for the trust anchors volume to mount at %s", k8sPkg.MountPathTLSTrustAnchor)
@@ -47,9 +47,9 @@ func main() {
 
 	mwc, err := webhookConfig.CreateOrUpdate()
 	if err != nil {
-		log.Fatalf("failed to create the mutating webhook configurations resource: ", err)
+		log.Fatalf("failed to create the mutating webhook configurations resource: %s", err)
 	}
-	log.Info("created or updated mutating webhook configuration: ", mwc.ObjectMeta.SelfLink)
+	log.Infof("created or updated mutating webhook configuration: %s", mwc.ObjectMeta.SelfLink)
 
 	var (
 		certFile = k8sPkg.MountPathTLSIdentityCert
@@ -68,7 +68,7 @@ func main() {
 	}
 	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile)
 	if err != nil {
-		log.Fatal("failed to initialize the webhook server: ", err)
+		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
 
 	go func() {
