@@ -30,7 +30,7 @@ func main() {
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, os.Kill)
 
-	k8sClient, _, err := k8s.NewClientSet(*kubeconfig)
+	k8sClient, err := k8s.NewClientSet(*kubeconfig)
 	if err != nil {
 		log.Fatalf("failed to initialize Kubernetes client: %s", err)
 	}

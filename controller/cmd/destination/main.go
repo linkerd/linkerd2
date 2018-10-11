@@ -26,10 +26,15 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sClient, spClient, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	restrictToNamespace := ""
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace

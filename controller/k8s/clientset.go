@@ -9,7 +9,33 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-func NewClientSet(kubeConfig string) (*kubernetes.Clientset, *spclient.Clientset, error) {
+func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {
+	config, err := parseConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
+}
+
+func NewSpClientSet(kubeConfig string) (*spclient.Clientset, error) {
+	config, err := parseConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	spclientset, err := spclient.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return spclientset, nil
+}
+
+func parseConfig(kubeConfig string) (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 
@@ -22,16 +48,7 @@ func NewClientSet(kubeConfig string) (*kubernetes.Clientset, *spclient.Clientset
 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfig)
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, err
-	}
-	spclientset, err := spclient.NewForConfig(config)
-	if err != nil {
-		return nil, nil, err
-	}
-	return clientset, spclientset, nil
+	return config, nil
 }
