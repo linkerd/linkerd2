@@ -1,15 +1,18 @@
+
 import _ from 'lodash';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import ExpandableTable from './ExpandableTable.jsx';
 import Grid from '@material-ui/core/Grid';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { withContext } from './util/AppContext.jsx';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
-import { withStyles } from '@material-ui/core/styles';
+import PropTypes from 'prop-types';
+import React from 'react';
 import Typography from '@material-ui/core/Typography';
+import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
 
@@ -122,78 +125,71 @@ const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
+const itemDisplay = (title, value) => {
+  return (
+    <ListItem disableGutters>
+      <ListItemText primary={title} secondary={value} />
+    </ListItem>
+  );
+};
+
 const requestInitSection = d => (
   <React.Fragment>
-
-    <Typography variant="h6">Request Init</Typography>
+    <Typography variant="subtitle2">Request Init</Typography>
     <br />
-    <List>
-      <ListItem>
-        <ListItemText primary="Authority" secondary={_.get(d, "requestInit.http.requestInit.authority")} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Path" secondary={_.get(d, "requestInit.http.requestInit.path")} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Scheme" secondary={_.get(d, "requestInit.http.requestInit.scheme.registered")} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Method" secondary={_.get(d, "requestInit.http.requestInit.method.registered")} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="TLS" secondary={_.get(d, "base.tls")} />
-      </ListItem>
+    <List dense>
+      {itemDisplay("Authority", _.get(d, "requestInit.http.requestInit.authority"))}
+      {itemDisplay("Path", _.get(d, "requestInit.http.requestInit.path"))}
+      {itemDisplay("Scheme", _.get(d, "requestInit.http.requestInit.scheme.registered"))}
+      {itemDisplay("Method", _.get(d, "requestInit.http.requestInit.method.registered"))}
+      {itemDisplay("TLS", _.get(d, "base.tls"))}
     </List>
-
   </React.Fragment>
 );
 
 const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <Typography variant="h6">Response Init</Typography>
+    <Typography variant="subtitle2">Response Init</Typography>
     <br />
-    <List>
-      <ListItem>
-        <ListItemText primary="HTTP Status" secondary={_.get(d, "responseInit.http.responseInit.httpStatus")} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Latency" secondary={formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))} />
-      </ListItem>
+    <List dense>
+      {itemDisplay("HTTP Status", _.get(d, "responseInit.http.responseInit.httpStatus"))}
+      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit")))}
     </List>
   </React.Fragment>
 );
 
 const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
-    <Typography variant="h6">Response End</Typography>
+    <Typography variant="subtitle2">Response End</Typography>
     <br />
 
-    <List>
-      <ListItem>
-        <ListItemText primary="GRPC Status" secondary={_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Latency" secondary={formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))} />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="Response Length (B)" secondary={formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))} />
-      </ListItem>
+    <List dense>
+      {itemDisplay("GRPC Status", _.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
+      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
+      {itemDisplay("Response Length (B)", formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes")))}
     </List>
   </React.Fragment>
 );
 
+
 // hide verbose information
 const expandedRowRender = d => {
   return (
-    <Grid container className="tap-more-info">
+    <Grid container spacing={16} className="tap-more-info">
       <Grid item xs={4}>
-        {requestInitSection(d)}
+        <Card>
+          <CardContent>{requestInitSection(d)}</CardContent>
+        </Card>
       </Grid>
       <Grid item xs={4}>
-        {responseInitSection(d)}
+        <Card>
+          <CardContent>{responseInitSection(d)}</CardContent>
+        </Card>
       </Grid>
       <Grid item xs={4}>
-        {responseEndSection(d)}
+        <Card>
+          <CardContent>{responseEndSection(d)}</CardContent>
+        </Card>
       </Grid>
     </Grid>
   );

@@ -1,27 +1,20 @@
 import _ from 'lodash';
-import Collapse from '@material-ui/core/Collapse';
+import Button from '@material-ui/core/Button';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogTitle from '@material-ui/core/DialogTitle';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import IconButton from '@material-ui/core/IconButton';
-import Modal from '@material-ui/core/Modal';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
-import Portal from '@material-ui/core/Portal';
-
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
-import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
-import Button from '@material-ui/core/Button';
-import TextField from '@material-ui/core/TextField';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
 
 const styles = theme => ({
   root: {
@@ -40,22 +33,16 @@ class ExpandableTable extends React.Component {
 
     this.state = {
       open: false,
-      show: false,
       datum: {}
     };
   }
 
-  handleDialogOpen = d => event => {
-    console.log("modal", event, d);
+  handleDialogOpen = d => () => {
     this.setState({ open: true, datum: d });
   }
 
   handleDialogClose = () => {
     this.setState({ open: false, datum: {} });
-  };
-
-  handleClick = () => {
-    this.setState(state => ({ show: !state.show }));
   };
 
   render() {
@@ -133,6 +120,7 @@ class ExpandableTable extends React.Component {
 
 ExpandableTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
+  expandedRowRender: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     title: PropTypes.string,
