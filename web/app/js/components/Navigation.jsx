@@ -3,15 +3,14 @@ import classNames from 'classnames';
 import {Link} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Version from './Version.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import {
   AppBar,
-  Badge,
   Collapse,
   Divider,
   Drawer,
-  Grid,
   IconButton,
   List,
   ListItem,
@@ -30,7 +29,6 @@ import {
   Home as HomeIcon,
   LibraryBooks as LibraryBooksIcon,
   Menu as MenuIcon,
-  Notifications as NotificationsIcon,
   Pageview as PageviewIcon
 } from '@material-ui/icons';
 import { linkerdWordLogo, navIconTop } from './util/SvgWrappers.jsx';
@@ -104,10 +102,51 @@ const styles = theme => ({
 });
 
 class NavigationBase extends React.Component {
-  state = {
-    drawerOpen: true,
-    resourceMenuOpen: false
-  };
+  constructor(props) {
+    super(props);
+    this.api = this.props.api;
+    // this.loadFromServer = this.loadFromServer.bind(this);
+    this.handleApiError = this.handleApiError.bind(this);
+
+    this.state = this.getInitialState();
+  }
+
+  getInitialState() {
+    return {
+      drawerOpen: true,
+      resourceMenuOpen: false,
+      latestVersion: '',
+      isLatest: true,
+      namespaceFilter: "all"
+    };
+  }
+
+  componentDidMount() {
+    this.fetchVersion();
+  }
+
+  fetchVersion() {
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
+    fetch(versionUrl, { credentials: 'include' })
+      .then(rsp => rsp.json())
+      .then(versionRsp => {
+        let latestVersion;
+        let parts = this.props.releaseVersion.split("-", 2);
+        if (parts.length === 2) {
+          latestVersion = versionRsp[parts[0]];
+        }
+        this.setState({
+          latestVersion,
+          isLatest: latestVersion === this.props.releaseVersion
+        });
+      }).catch(this.handleApiError);
+  }
+
+  handleApiError(e) {
+    this.setState({
+      error: e
+    });
+  }
 
   handleDrawerOpen = () => {
     this.setState({ drawerOpen: true });
@@ -131,38 +170,20 @@ class NavigationBase extends React.Component {
           position="absolute"
           className={classNames(classes.appBar, this.state.drawerOpen && classes.appBarShift)}>
           <Toolbar disableGutters={!this.state.drawerOpen}>
-            <Grid
-              container
-              direction="row"
-              justify="space-between"
-              alignItems="center">
-              <Grid item xs={1}>
-                <IconButton
-                  color="inherit"
-                  aria-label="Open drawer"
-                  onClick={this.handleDrawerOpen}
-                  className={classNames(classes.menuButton, this.state.drawerOpen && classes.hide)}>
-                  <MenuIcon />
-                </IconButton>
-              </Grid>
-              <Grid item xs={10}>
-                <Typography variant="h6" color="inherit" noWrap>
-                  <BreadcrumbHeader {...this.props} />
-                </Typography>
-              </Grid>
+            <IconButton
+              color="inherit"
+              aria-label="Open drawer"
+              onClick={this.handleDrawerOpen}
+              className={classNames(classes.menuButton, this.state.drawerOpen && classes.hide)}>
+              <MenuIcon />
+            </IconButton>
 
-              <Grid item xs={1}>
-                <Typography variant="subtitle1" align="center">
-                  <IconButton color="inherit">
-                    <Badge className={classes.margin} badgeContent="1" color="secondary">
-                      <NotificationsIcon />
-                    </Badge>
-                  </IconButton>
-                </Typography>
-              </Grid>
-            </Grid>
+            <Typography variant="h6" color="inherit" noWrap>
+              <BreadcrumbHeader {...this.props} />
+            </Typography>
           </Toolbar>
         </AppBar>
+
         <Drawer
           variant="permanent"
           classes={{
@@ -177,7 +198,9 @@ class NavigationBase extends React.Component {
               <ChevronLeftIcon />
             </IconButton>
           </div>
+
           <Divider />
+
           <List>
             <ListItem component={Link} to={prefixLink("/overview")}>
               <ListItemIcon><HomeIcon /></ListItemIcon>
@@ -251,6 +274,15 @@ class NavigationBase extends React.Component {
               <ListItemText primary="Documentation" />
             </ListItem>
           </List>
+
+          {
+            !this.state.drawerOpen ? null : <Version
+              isLatest={this.state.isLatest}
+              latestVersion={this.state.latestVersion}
+              releaseVersion={this.props.releaseVersion}
+              error={this.state.error}
+              uuid={this.props.uuid} />
+          }
         </Drawer>
         <main className={classes.content}>
           <div className={classes.toolbar} />
@@ -267,7 +299,9 @@ NavigationBase.propTypes = {
   }).isRequired,
   ChildComponent: PropTypes.func.isRequired,
   classes: PropTypes.shape({}).isRequired,
+  releaseVersion: PropTypes.string.isRequired,
   theme: PropTypes.shape({}).isRequired,
+  uuid: PropTypes.string.isRequired,
 };
 
 export default withContext(withStyles(styles, { withTheme: true })(NavigationBase));
