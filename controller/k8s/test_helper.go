@@ -38,14 +38,15 @@ func NewFakeAPI(configs ...string) (*API, error) {
 	return NewAPI(
 		clientSet,
 		spClientSet,
+		"",
 		CM,
 		Deploy,
 		Endpoint,
-		NS,
 		Pod,
 		RC,
 		RS,
 		Svc,
 		SP,
+		MWC,
 	), nil
 }

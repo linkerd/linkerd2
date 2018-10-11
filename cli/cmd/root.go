@@ -135,6 +135,10 @@ type proxyConfigOptions struct {
 	initImage             string
 	dockerRegistry        string
 	imagePullPolicy       string
+	inboundPort           uint
+	outboundPort          uint
+	ignoreInboundPorts    []uint
+	ignoreOutboundPorts   []uint
 	proxyUID              int64
 	proxyLogLevel         string
 	proxyBindTimeout      string
@@ -159,6 +163,10 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		initImage:             defaultDockerRegistry + "/proxy-init",
 		dockerRegistry:        defaultDockerRegistry,
 		imagePullPolicy:       "IfNotPresent",
+		inboundPort:           4143,
+		outboundPort:          4140,
+		ignoreInboundPorts:    nil,
+		ignoreOutboundPorts:   nil,
 		proxyUID:              2102,
 		proxyLogLevel:         "warn,linkerd2_proxy=info",
 		proxyBindTimeout:      "10s",
@@ -231,11 +239,14 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
 	cmd.PersistentFlags().StringVar(&options.proxyBindTimeout, "proxy-bind-timeout", options.proxyBindTimeout, "Timeout the proxy will use")
+	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
+	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
-
 	cmd.PersistentFlags().StringVar(&options.proxyCpuRequest, "proxy-cpu", options.proxyCpuRequest, "Amount of CPU units that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
+	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 }

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	spclientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -16,9 +16,11 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
+	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appinformers "k8s.io/client-go/informers/apps/v1beta2"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -31,12 +33,12 @@ const (
 	CM ApiResource = iota
 	Deploy
 	Endpoint
-	NS
+	MWC // mutating webhook configuration
 	Pod
 	RC
 	RS
-	Svc
 	SP
+	Svc
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -46,29 +48,47 @@ type API struct {
 	cm       coreinformers.ConfigMapInformer
 	deploy   appinformers.DeploymentInformer
 	endpoint coreinformers.EndpointsInformer
-	ns       coreinformers.NamespaceInformer
+	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appinformers.ReplicaSetInformer
-	svc      coreinformers.ServiceInformer
 	sp       spinformers.ServiceProfileInformer
+	svc      coreinformers.ServiceInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
 	spSharedInformers sp.SharedInformerFactory
+	namespace         string
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API
-func NewAPI(k8sClient kubernetes.Interface, spClient spclientset.Interface, resources ...ApiResource) *API {
-
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
-	spSharedInformers := sp.NewSharedInformerFactory(spClient, 10*time.Minute)
+func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...ApiResource) *API {
+	var sharedInformers informers.SharedInformerFactory
+	var spSharedInformers sp.SharedInformerFactory
+	if namespace == "" {
+		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
+	} else {
+		sharedInformers = informers.NewFilteredSharedInformerFactory(
+			k8sClient,
+			10*time.Minute,
+			namespace,
+			nil,
+		)
+		spSharedInformers = sp.NewFilteredSharedInformerFactory(
+			spClient,
+			10*time.Minute,
+			namespace,
+			nil,
+		)
+	}
 
 	api := &API{
 		Client:            k8sClient,
 		syncChecks:        make([]cache.InformerSynced, 0),
 		sharedInformers:   sharedInformers,
 		spSharedInformers: spSharedInformers,
+		namespace:         namespace,
 	}
 
 	for _, resource := range resources {
@@ -82,9 +102,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclientset.Interface, reso
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
-		case NS:
-			api.ns = sharedInformers.Core().V1().Namespaces()
-			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
+		case MWC:
+			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
+			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
@@ -94,12 +114,12 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclientset.Interface, reso
 		case RS:
 			api.rs = sharedInformers.Apps().V1beta2().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
-		case Svc:
-			api.svc = sharedInformers.Core().V1().Services()
-			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case SP:
 			api.sp = spSharedInformers.Linkerd().V1alpha1().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+		case Svc:
+			api.svc = sharedInformers.Core().V1().Services()
+			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		}
 	}
 
@@ -125,13 +145,6 @@ func (api *API) Sync(readyCh chan<- struct{}) {
 	if readyCh != nil {
 		close(readyCh)
 	}
-}
-
-func (api *API) NS() coreinformers.NamespaceInformer {
-	if api.ns == nil {
-		panic("NS informer not configured")
-	}
-	return api.ns
 }
 
 func (api *API) Deploy() appinformers.DeploymentInformer {
@@ -188,6 +201,13 @@ func (api *API) SP() spinformers.ServiceProfileInformer {
 		panic("SP informer not configured")
 	}
 	return api.sp
+}
+
+func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
+	if api.mwc == nil {
+		panic("MWC informer not configured")
+	}
+	return api.mwc
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
@@ -296,20 +316,32 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 	return allPods, nil
 }
 
+// getNamespaces returns the namespace matching the specified name. If no name
+// is given, it returns all namespaces, unless the API was configured to only
+// work with a single namespace, in which case it returns that namespace. Note
+// that namespace reads are not cached.
 func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
-	var err error
-	var namespaces []*apiv1.Namespace
+	namespaces := make([]*apiv1.Namespace, 0)
 
-	if name == "" {
-		namespaces, err = api.NS().Lister().List(labels.Everything())
-	} else {
-		var namespace *apiv1.Namespace
-		namespace, err = api.NS().Lister().Get(name)
-		namespaces = []*apiv1.Namespace{namespace}
+	if name == "" && api.namespace != "" {
+		name = api.namespace
 	}
 
-	if err != nil {
-		return nil, err
+	if name == "" {
+		namespaceList, err := api.Client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range namespaceList.Items {
+			ns := item // must create separate var in order to get unique pointers
+			namespaces = append(namespaces, &ns)
+		}
+	} else {
+		namespace, err := api.Client.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		namespaces = []*apiv1.Namespace{namespace}
 	}
 
 	objects := []runtime.Object{}

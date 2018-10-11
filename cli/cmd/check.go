@@ -21,6 +21,7 @@ type checkOptions struct {
 	dataPlaneOnly   bool
 	wait            time.Duration
 	namespace       string
+	singleNamespace bool
 }
 
 func newCheckOptions() *checkOptions {
@@ -30,6 +31,7 @@ func newCheckOptions() *checkOptions {
 		dataPlaneOnly:   false,
 		wait:            300 * time.Second,
 		namespace:       "",
+		singleNamespace: false,
 	}
 }
 
@@ -65,6 +67,7 @@ non-zero exit code.`,
 	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Retry and wait for some checks to succeed if they don't pass the first time")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
 
 	return cmd
 }
@@ -94,6 +97,7 @@ func configureAndRunChecks(options *checkOptions) {
 		ShouldCheckKubeVersion:         true,
 		ShouldCheckControlPlaneVersion: !(options.preInstallOnly || options.dataPlaneOnly),
 		ShouldCheckDataPlaneVersion:    options.dataPlaneOnly,
+		SingleNamespace:                options.singleNamespace,
 	})
 
 	success := runChecks(os.Stdout, hc)
