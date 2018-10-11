@@ -27,6 +27,9 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -301,6 +304,26 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-controller
 status: {}
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  namespace: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+
+### Web ###
 ---
 kind: Service
 apiVersion: v1
