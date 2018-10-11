@@ -336,16 +336,16 @@ func namespaceName(resourceType string, key string) (string, string) {
 
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonStats struct {
-	Namespace      string   `json:"namespace"`
-	Kind           string   `json:"kind"`
-	Name           string   `json:"name"`
-	Meshed         string   `json:"meshed"`
-	Success        *float64 `json:"success"`
-	Rps            *float64 `json:"rps"`
-	Latency_ms_p50 *uint64  `json:"latency_ms_p50"`
-	Latency_ms_p95 *uint64  `json:"latency_ms_p95"`
-	Latency_ms_p99 *uint64  `json:"latency_ms_p99"`
-	Tls            *float64 `json:"tls"`
+	Namespace    string   `json:"namespace"`
+	Kind         string   `json:"kind"`
+	Name         string   `json:"name"`
+	Meshed       string   `json:"meshed"`
+	Success      *float64 `json:"success"`
+	Rps          *float64 `json:"rps"`
+	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
+	Tls          *float64 `json:"tls"`
 }
 
 func printStatJson(statTables map[string]map[string]*row, resourceTypes []string, w *tabwriter.Writer) {
@@ -365,9 +365,9 @@ func printStatJson(statTables map[string]map[string]*row, resourceTypes []string
 				if stats[key].rowStats != nil {
 					entry.Success = &stats[key].successRate
 					entry.Rps = &stats[key].requestRate
-					entry.Latency_ms_p50 = &stats[key].latencyP50
-					entry.Latency_ms_p95 = &stats[key].latencyP95
-					entry.Latency_ms_p99 = &stats[key].latencyP99
+					entry.LatencyMSp50 = &stats[key].latencyP50
+					entry.LatencyMSp95 = &stats[key].latencyP95
+					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.Tls = &stats[key].tlsPercent
 				}
 
