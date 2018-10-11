@@ -126,7 +126,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format (currently only \"json\" is supported)")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
 
 	return cmd
 }
@@ -151,7 +151,7 @@ func renderStats(resp *pb.StatSummaryResponse, resourceType string, options *sta
 
 	var out string
 	switch options.outputFormat {
-	case "":
+	case "table", "":
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
 		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
@@ -235,11 +235,6 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 		}
 	}
 
-	if len(statTables) == 0 {
-		fmt.Fprintln(os.Stderr, "No traffic found.")
-		os.Exit(0)
-	}
-
 	var resourceTypes []string
 	switch reqResourceType {
 	case k8s.All:
@@ -249,7 +244,11 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 	}
 
 	switch options.outputFormat {
-	case "":
+	case "table", "":
+		if len(statTables) == 0 {
+			fmt.Fprintln(os.Stderr, "No traffic found.")
+			os.Exit(0)
+		}
 		printStatTables(statTables, resourceTypes, w, maxNameLength, maxNamespaceLength, options)
 	case "json":
 		printStatJson(statTables, resourceTypes, w)
@@ -337,29 +336,26 @@ func namespaceName(resourceType string, key string) (string, string) {
 
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonStats struct {
-	Namespace   string   `json:"namespace"`
-	Kind        string   `json:"kind"`
-	Name        string   `json:"name"`
-	Meshed      string   `json:"meshed"`
-	Success     *float64 `json:"success"`
-	Rps         *float64 `json:"rps"`
-	Latency_p50 *uint64  `json:"latency_p50"`
-	Latency_p95 *uint64  `json:"latency_p95"`
-	Latency_p99 *uint64  `json:"latency_p99"`
-	Tls         *float64 `json:"tls"`
+	Namespace      string   `json:"namespace"`
+	Kind           string   `json:"kind"`
+	Name           string   `json:"name"`
+	Meshed         string   `json:"meshed"`
+	Success        *float64 `json:"success"`
+	Rps            *float64 `json:"rps"`
+	Latency_ms_p50 *uint64  `json:"latency_ms_p50"`
+	Latency_ms_p95 *uint64  `json:"latency_ms_p95"`
+	Latency_ms_p99 *uint64  `json:"latency_ms_p99"`
+	Tls            *float64 `json:"tls"`
 }
 
 func printStatJson(statTables map[string]map[string]*row, resourceTypes []string, w *tabwriter.Writer) {
-	var entries []*jsonStats
+	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
+	entries := []*jsonStats{}
 	for _, resourceType := range resourceTypes {
 		if stats, ok := statTables[resourceType]; ok {
 			sortedKeys := sortStatsKeys(stats)
 			for _, key := range sortedKeys {
-				resourceTypePrefix := resourceType
-				if len(resourceTypes) == 1 {
-					resourceTypePrefix = ""
-				}
-				namespace, name := namespaceName(resourceTypePrefix, key)
+				namespace, name := namespaceName("", key)
 				entry := &jsonStats{
 					Namespace: namespace,
 					Kind:      resourceType,
@@ -369,9 +365,9 @@ func printStatJson(statTables map[string]map[string]*row, resourceTypes []string
 				if stats[key].rowStats != nil {
 					entry.Success = &stats[key].successRate
 					entry.Rps = &stats[key].requestRate
-					entry.Latency_p50 = &stats[key].latencyP50
-					entry.Latency_p95 = &stats[key].latencyP95
-					entry.Latency_p99 = &stats[key].latencyP99
+					entry.Latency_ms_p50 = &stats[key].latencyP50
+					entry.Latency_ms_p95 = &stats[key].latencyP95
+					entry.Latency_ms_p99 = &stats[key].latencyP99
 					entry.Tls = &stats[key].tlsPercent
 				}
 
@@ -384,7 +380,7 @@ func printStatJson(statTables map[string]map[string]*row, resourceTypes []string
 		log.Error(err.Error())
 		return
 	}
-	fmt.Fprint(w, string(b))
+	fmt.Fprintf(w, "%s\n", b)
 }
 
 func getNamePrefix(resourceType string) string {
@@ -533,9 +529,10 @@ func (o *statOptions) validateNamespaceFlags() error {
 }
 
 func (o *statOptions) validateOutputFormat() error {
-	if o.outputFormat != "" && o.outputFormat != "json" {
-		return fmt.Errorf("--output currently only supports json")
+	switch o.outputFormat {
+	case "table", "json", "":
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table and json")
 	}
-
-	return nil
 }
