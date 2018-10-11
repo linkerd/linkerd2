@@ -1,9 +1,22 @@
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import classNames from 'classnames';
-import {Link} from 'react-router-dom';
+import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
+import HomeIcon from '@material-ui/icons/Home';
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
+import { Link } from 'react-router-dom';
+import { linkerdWordLogo } from './util/SvgWrappers.jsx';
+import MenuIcon from '@material-ui/icons/Menu';
+import NavigateNextIcon from '@material-ui/icons/NavigateNext';
+import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
 import PropTypes from 'prop-types';
 import React from 'react';
+import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
+import ViewListIcon from '@material-ui/icons/ViewList';
+import VisibilityIcon from '@material-ui/icons/Visibility';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import {
@@ -16,22 +29,11 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListSubheader,
+  MenuItem,
+  MenuList,
   Toolbar,
   Typography
 } from '@material-ui/core';
-import {
-  Business as BusinessIcon,
-  ChevronLeft as ChevronLeftIcon,
-  Dashboard as DashboardIcon,
-  ExpandLess,
-  ExpandMore,
-  Home as HomeIcon,
-  LibraryBooks as LibraryBooksIcon,
-  Menu as MenuIcon,
-  Pageview as PageviewIcon
-} from '@material-ui/icons';
-import { linkerdWordLogo, navIconTop } from './util/SvgWrappers.jsx';
 
 const drawerWidth = 250;
 const styles = theme => ({
@@ -99,13 +101,22 @@ const styles = theme => ({
     backgroundColor: theme.palette.background.default,
     padding: theme.spacing.unit * 3,
   },
+  linkerdLogoContainer: {
+    backgroundColor: theme.palette.primary.dark,
+  },
+  linkerdNavLogo: {
+    minWidth: "180px",
+  },
+  navMenuItem: {
+    paddingLeft: "24px",
+    paddingRight: "24px",
+  },
 });
 
 class NavigationBase extends React.Component {
   constructor(props) {
     super(props);
     this.api = this.props.api;
-    // this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
 
     this.state = this.getInitialState();
@@ -160,9 +171,24 @@ class NavigationBase extends React.Component {
     this.setState(state => ({ resourceMenuOpen: !state.resourceMenuOpen }));
   };
 
+  menuItem(path, title, icon) {
+    const { classes, api } = this.props;
+    let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
+    let isCurrentPage = path => path === normalizedPath;
+
+    return (
+      <MenuItem
+        component={Link}
+        to={api.prefixLink(path)}
+        className={classes.navMenuItem}
+        selected={isCurrentPage(path)}>
+        <ListItemIcon>{icon}</ListItemIcon>
+        <ListItemText primary={title} />
+      </MenuItem>
+    );
+  }
   render() {
-    const { classes, ChildComponent, api } = this.props;
-    const prefixLink = api.prefixLink;
+    const { classes, ChildComponent } = this.props;
 
     return (
       <div className={classes.root}>
@@ -190,8 +216,8 @@ class NavigationBase extends React.Component {
             paper: classNames(classes.drawerPaper, !this.state.drawerOpen && classes.drawerPaperClose),
           }}
           open={this.state.drawerOpen}>
-          <div className={classes.toolbar}>
-            <div className="linkerd-nav-logo">
+          <div className={classNames(classes.linkerdLogoContainer, classes.toolbar)}>
+            <div className={classes.linkerdNavLogo}>
               {linkerdWordLogo}
             </div>
             <IconButton onClick={this.handleDrawerClose}>
@@ -201,72 +227,32 @@ class NavigationBase extends React.Component {
 
           <Divider />
 
-          <List>
-            <ListItem component={Link} to={prefixLink("/overview")}>
-              <ListItemIcon><HomeIcon /></ListItemIcon>
-              <ListItemText primary="Overview" />
-            </ListItem>
-            <ListItem component={Link} to={prefixLink("/tap")}>
-              <ListItemIcon>{navIconTop}</ListItemIcon>
-              <ListItemText primary="Tap" />
-            </ListItem>
-            <ListItem component={Link} to={prefixLink("/top")}>
-              <ListItemIcon><PageviewIcon /></ListItemIcon>
-              <ListItemText primary="Top" />
-            </ListItem>
-            <ListItem component={Link} to={prefixLink("/servicemesh")}>
-              <ListItemIcon><BusinessIcon /></ListItemIcon>
-              <ListItemText primary="ServiceMesh" />
-            </ListItem>
-            <ListItem button onClick={this.handleResourceMenuClick}>
-              <ListItemIcon><DashboardIcon /></ListItemIcon>
+          <MenuList>
+            { this.menuItem("/overview", "Overview", <HomeIcon />) }
+            { this.menuItem("/tap", "Tap", <VisibilityIcon />) }
+            { this.menuItem("/top", "Top", <NetworkCheckIcon />) }
+            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon />) }
+            <MenuItem
+              className={classes.navMenuItem}
+              button
+              onClick={this.handleResourceMenuClick}>
+              <ListItemIcon><ViewListIcon /></ListItemIcon>
               <ListItemText inset primary="Resources" />
               {this.state.resourceMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItem>
+            </MenuItem>
+
             <Collapse in={this.state.resourceMenuOpen} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItem component={Link} to={prefixLink("/authorities")} className={classes.nested}>
-                  <ListItemIcon><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Authorities" />
-                </ListItem>
-                <ListItem component={Link} to={prefixLink("/deployments")} className={classes.nested}>
-                  <ListItemIcon><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Deployments" />
-                </ListItem>
-                <ListItem component={Link} to={prefixLink("/namespaces")} className={classes.nested}>
-                  <ListItemIcon><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Namespaces" />
-                </ListItem>
-                <ListItem component={Link} to={prefixLink("/pods")} className={classes.nested}>
-                  <ListItemIcon><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Pods" />
-                </ListItem>
-                <ListItem component={Link} to={prefixLink("/replicationcontrollers")} className={classes.nested}>
-                  <ListItemIcon><DashboardIcon /></ListItemIcon>
-                  <ListItemText primary="Replication Controllers" />
-                </ListItem>
-              </List>
+              <MenuList dense component="div" disablePadding>
+                { this.menuItem("/authorities", "Authorities", <NavigateNextIcon />) }
+                { this.menuItem("/deployments", "Deployments", <NavigateNextIcon />) }
+                { this.menuItem("/namespaces", "Namespaces", <NavigateNextIcon />) }
+                { this.menuItem("/pods", "Pods", <NavigateNextIcon />) }
+                { this.menuItem("/replicationcontrollers", "Replication Controllers", <NavigateNextIcon />) }
+              </MenuList>
             </Collapse>
-          </List>
+          </MenuList>
 
           <Divider />
-
-          <List
-            component="nav"
-            subheader={!this.state.drawerOpen ? null : <ListSubheader component="div">Nested List Items</ListSubheader>}>
-            <ListItem button>
-              <ListItemIcon>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText inset primary="Sent mail" />
-            </ListItem>
-            <ListItem button>
-              <ListItemIcon>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText inset primary="Drafts" />
-            </ListItem>
-          </List>
 
           <List>
             <ListItem component={Link} to="https://linkerd.io/2/overview/" target="_blank">
@@ -299,6 +285,8 @@ NavigationBase.propTypes = {
   }).isRequired,
   ChildComponent: PropTypes.func.isRequired,
   classes: PropTypes.shape({}).isRequired,
+  location: ReactRouterPropTypes.location.isRequired,
+  pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
   theme: PropTypes.shape({}).isRequired,
   uuid: PropTypes.string.isRequired,

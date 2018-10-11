@@ -80,10 +80,6 @@ div.status-dot {
   color: white;
 }
 
-.linkerd-nav-logo {
-  min-width: 180px;
-}
-
 .version {
   max-width: 250px;
   padding: 24px;

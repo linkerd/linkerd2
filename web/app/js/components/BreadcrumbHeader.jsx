@@ -13,7 +13,6 @@ const routeToCrumbTitle = {
 };
 
 class BreadcrumbHeader extends React.Component {
-
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
