@@ -18,6 +18,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	tapPort := flag.Uint("tap-port", 4190, "proxy tap port to connect to")
 	flags.ConfigureAndParse()
 
@@ -28,10 +29,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client: %s", err)
 	}
+	restrictToNamespace := ""
+	if *singleNamespace {
+		restrictToNamespace = *controllerNamespace
+	}
 	k8sAPI := k8s.NewAPI(
 		clientSet,
+		restrictToNamespace,
 		k8s.Deploy,
-		k8s.NS,
 		k8s.Pod,
 		k8s.RC,
 		k8s.Svc,

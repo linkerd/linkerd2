@@ -19,6 +19,8 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
+	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -28,8 +30,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	restrictToNamespace := ""
+	if *singleNamespace {
+		restrictToNamespace = *controllerNamespace
+	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
+		restrictToNamespace,
 		k8s.Endpoint,
 		k8s.Pod,
 		k8s.RS,

@@ -94,6 +94,7 @@ type HealthCheckOptions struct {
 	ShouldCheckKubeVersion         bool
 	ShouldCheckControlPlaneVersion bool
 	ShouldCheckDataPlaneVersion    bool
+	SingleNamespace                bool
 }
 
 type HealthChecker struct {
@@ -197,21 +198,28 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 		},
 	})
 
+	roleType := "ClusterRole"
+	roleBindingType := "ClusterRoleBinding"
+	if hc.SingleNamespace {
+		roleType = "Role"
+		roleBindingType = "RoleBinding"
+	}
+
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdPreInstallCategory,
-		description: "can create ClusterRoles",
+		description: fmt.Sprintf("can create %ss", roleType),
 		fatal:       true,
 		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleType)
 		},
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdPreInstallCategory,
-		description: "can create ClusterRoleBindings",
+		description: fmt.Sprintf("can create %ss", roleBindingType),
 		fatal:       true,
 		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleBindingType)
 		},
 	})
 

@@ -13,3 +13,4 @@ web/app/yarn-error.log
 .protoc
 .gorun
 .dep*
+**/*.swp

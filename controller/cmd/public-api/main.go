@@ -24,6 +24,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
@@ -40,10 +41,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	restrictToNamespace := ""
+	if *singleNamespace {
+		restrictToNamespace = *controllerNamespace
+	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
+		restrictToNamespace,
 		k8s.Deploy,
-		k8s.NS,
 		k8s.Pod,
 		k8s.RC,
 		k8s.RS,

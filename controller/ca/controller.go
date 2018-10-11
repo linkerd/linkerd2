@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +32,7 @@ type CertificateController struct {
 	queue workqueue.RateLimitingInterface
 }
 
-func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
+func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxyAutoInject bool) (*CertificateController, error) {
 	ca, err := NewCA()
 	if err != nil {
 		return nil, err
@@ -51,6 +52,15 @@ func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*Cer
 			UpdateFunc: c.handlePodUpdate,
 		},
 	)
+
+	if proxyAutoInject {
+		k8sAPI.MWC().Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				AddFunc:    c.handleMWCAdd,
+				UpdateFunc: c.handleMWCUpdate,
+			},
+		)
+	}
 
 	c.syncHandler = c.syncObject
 
@@ -134,6 +144,7 @@ func (c *CertificateController) syncSecret(key string) error {
 		Namespace:           parts[2],
 		ControllerNamespace: c.namespace,
 	}
+
 	dnsName := identity.ToDNSName()
 	secretName := identity.ToSecretName()
 	certAndPrivateKey, err := c.ca.IssueEndEntityCertificate(dnsName)
@@ -171,4 +182,18 @@ func (c *CertificateController) handlePodAdd(obj interface{}) {
 
 func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
 	c.handlePodAdd(newObj)
+}
+
+func (c *CertificateController) handleMWCAdd(obj interface{}) {
+	mwc := obj.(*v1beta1.MutatingWebhookConfiguration)
+	log.Debugf("enqueuing secret write for mutating webhook configuration %q", mwc.ObjectMeta.Name)
+	for _, webhook := range mwc.Webhooks {
+		if mwc.Name == pkgK8s.ProxyInjectorWebhookConfig {
+			c.queue.Add(fmt.Sprintf("%s.%s.%s", webhook.ClientConfig.Service.Name, pkgK8s.Service, webhook.ClientConfig.Service.Namespace))
+		}
+	}
+}
+
+func (c *CertificateController) handleMWCUpdate(oldObj, newObj interface{}) {
+	c.handleMWCAdd(newObj)
 }

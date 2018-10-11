@@ -62,6 +62,22 @@ const (
 	// (e.g. v0.1.3).
 	ProxyVersionAnnotation = "linkerd.io/proxy-version"
 
+	// ProxyAutoInjectLabel indicates if sidecar auto-inject should be performed
+	// on the pod. Supported values are "enabled", "disabled" or "completed".
+	ProxyAutoInjectLabel = "linkerd.io/auto-inject"
+
+	// ProxyAutoInjectEnabled is assigned to the ProxyAutoInjectLabel label to
+	// indicate that the sidecar auto-inject is enabled for a particular resource.
+	ProxyAutoInjectEnabled = "enabled"
+
+	// ProxyAutoInjectDisabled is assigned to the ProxyAutoInjectLabel label to
+	// indicate that the sidecar auto-inject is disabled for a particular resource.
+	ProxyAutoInjectDisabled = "disabled"
+
+	// ProxyAutoInjectDisabled is assigned to the ProxyAutoInjectLabel label to
+	// indicate that the sidecar auto-inject is completed for a particular resource.
+	ProxyAutoInjectCompleted = "completed"
+
 	/*
 	 * Component Names
 	 */
@@ -71,6 +87,35 @@ const (
 
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
+
+	// ProxyInjectorTLSSecret is the name assigned to the secret containing the
+	// TLS cert and key used by the proxy-injector webhook.
+	ProxyInjectorTLSSecret = "proxy-injector-service-tls-linkerd-io"
+
+	// ProxyInjectorWebhookConfig is the name of the mutating webhook
+	// configuration resource of the proxy-injector webhook.
+	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
+
+	// ProxyInjectorSidecarConfig is the name of the config map resource that
+	// contains the specs of the proxy init container and sidecar container to be
+	// injected into a pod.
+	ProxyInjectorSidecarConfig = "proxy-injector-sidecar-config"
+
+	// ProxySpecFileName is the name (key) within the proxy-injector ConfigMap
+	// that contains the proxy container spec.
+	ProxySpecFileName = "proxy.yaml"
+
+	// ProxyInjectorInitContainerSpecFileName is the name (key) within the
+	// proxy-injector ConfigMap that contains the proxy-init container spec.
+	ProxyInitSpecFileName = "proxy-init.yaml"
+
+	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
+	// proxy-injector ConfigMap that contains the trust anchors volume spec.
+	TLSTrustAnchorVolumeSpecFileName = "linkerd-trust-anchors.yaml"
+
+	// TLSIdentityVolumeSpecFileName is the name (key) within the
+	// proxy-injector ConfigMap that contains the TLS identity secrets volume spec.
+	TLSIdentityVolumeSpecFileName = "linkerd-secrets.yaml"
 
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
@@ -82,6 +127,43 @@ const (
 
 	TLSCertFileName       = "certificate.crt"
 	TLSPrivateKeyFileName = "private-key.p8"
+
+	/*
+	 * Mount paths
+	 */
+
+	// MountPathBase is the base directory of the mount path
+	MountPathBase = "/var/linkerd-io"
+)
+
+var (
+	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
+	// mounted
+	MountPathTLSTrustAnchor = MountPathBase + "/trust-anchors/" + TLSTrustAnchorFileName
+
+	// MountPathTLSIdentityCert is the path at which the TLS identity cert file is
+	// mounted
+	MountPathTLSIdentityCert = MountPathBase + "/identity/" + TLSCertFileName
+
+	// MountPathTLSIdentityKey is the path at which the TLS identity key file is
+	// mounted
+	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
+
+	// MountPathConfigProxySpec is the path at which the proxy container spec is
+	// mounted to the proxy-injector
+	MountPathConfigProxySpec = MountPathBase + "/config/" + ProxySpecFileName
+
+	// MountPathConfigProxyInitSpec is the path at which the proxy-init container
+	// spec is mounted to the proxy-injector
+	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
+
+	// MountTLSPathTrustAnchorVolumeSpec is the path at which the trust anchor
+	// volume spec is mounted to the proxy-injector
+	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
+
+	// MountPathTLSIdentityVolumeSpec is the path at which the TLS identity
+	// secret volume spec is mounted to the proxy-injector
+	MountPathTLSIdentityVolumeSpec = MountPathBase + "/config/" + TLSIdentityVolumeSpecFileName
 )
 
 // CreatedByAnnotationValue returns the value associated with
@@ -133,6 +215,9 @@ type TLSIdentity struct {
 }
 
 func (i TLSIdentity) ToDNSName() string {
+	if i.Kind == Service {
+		return fmt.Sprintf("%s.%s.svc", i.Name, i.Namespace)
+	}
 	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }
