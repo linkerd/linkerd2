@@ -10,9 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
@@ -32,7 +30,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		k8sConfigs = append(k8sConfigs, config)
 	}
 
-	api, err := NewFakeAPI(k8sConfigs...)
+	api, err := NewFakeAPI("", k8sConfigs...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
@@ -172,19 +170,23 @@ metadata:
 
 	t.Run("In single-namespace mode", func(t *testing.T) {
 		t.Run("Returns only the configured namespace", func(t *testing.T) {
-			ns1 := &apiv1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "namespace1",
-				},
-			}
-			ns2 := &apiv1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "namespace2",
-				},
-			}
 
-			clientSet := fake.NewSimpleClientset(ns1, ns2)
-			api := NewAPI(clientSet, "namespace1")
+			ns1 := `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace1`
+
+			ns2 := `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace2`
+
+			api, err := NewFakeAPI("namespace1", ns1, ns2)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
 
 			namespaces, err := api.GetObjects("", k8s.Namespace, "")
 			if err != nil {

@@ -18,7 +18,7 @@ func toRuntimeObject(config string) (runtime.Object, error) {
 	return obj, err
 }
 
-func NewFakeAPI(configs ...string) (*API, error) {
+func NewFakeAPI(namespace string, configs ...string) (*API, error) {
 	objs := []runtime.Object{}
 	spObjs := []runtime.Object{}
 	for _, config := range configs {
@@ -38,7 +38,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 	return NewAPI(
 		clientSet,
 		spClientSet,
-		"",
+		namespace,
 		CM,
 		Deploy,
 		Endpoint,

@@ -29,7 +29,7 @@ func (m *mockDestination_GetServer) SendMsg(x interface{}) error  { return m.err
 func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestBuildResolversList(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI()
+	k8sAPI, err := k8s.NewFakeAPI("")
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
@@ -89,7 +89,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	stream := &mockDestination_GetServer{}
 	host := "something"
 	port := 666
-	k8sAPI, err := k8s.NewFakeAPI()
+	k8sAPI, err := k8s.NewFakeAPI("")
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
