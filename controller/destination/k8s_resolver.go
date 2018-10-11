@@ -16,14 +16,18 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 
 // implements the streamingDestinationResolver interface
 type k8sResolver struct {
-	k8sDNSZoneLabels []string
-	endpointsWatcher *endpointsWatcher
+	k8sDNSZoneLabels    []string
+	controllerNamespace string
+	endpointsWatcher    *endpointsWatcher
+	profileWatcher      *profileWatcher
 }
 
-func newK8sResolver(k8sDNSZoneLabels []string, k8sAPI *k8s.API) *k8sResolver {
+func newK8sResolver(k8sDNSZoneLabels []string, controllerNamespace string, k8sAPI *k8s.API) *k8sResolver {
 	return &k8sResolver{
-		k8sDNSZoneLabels: k8sDNSZoneLabels,
-		endpointsWatcher: newEndpointsWatcher(k8sAPI),
+		k8sDNSZoneLabels:    k8sDNSZoneLabels,
+		controllerNamespace: controllerNamespace,
+		endpointsWatcher:    newEndpointsWatcher(k8sAPI),
+		profileWatcher:      newProfileWatcher(k8sAPI),
 	}
 }
 
@@ -45,7 +49,7 @@ func (k *k8sResolver) canResolve(host string, port int) (bool, error) {
 	return id != nil, nil
 }
 
-func (k *k8sResolver) streamResolution(host string, port int, listener updateListener) error {
+func (k *k8sResolver) streamResolution(host string, port int, listener endpointUpdateListener) error {
 	id, err := k.localKubernetesServiceIdFromDNSName(host)
 	if err != nil {
 		log.Error(err)
@@ -63,11 +67,44 @@ func (k *k8sResolver) streamResolution(host string, port int, listener updateLis
 	return k.resolveKubernetesService(id, port, listener)
 }
 
-func (k *k8sResolver) stop() {
-	k.endpointsWatcher.stop()
+func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener) error {
+	svcId, err := k.localKubernetesServiceIdFromDNSName(host)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if svcId == nil {
+		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
+		log.Error(err)
+		return err
+	}
+
+	id := profileId{
+		namespace: k.controllerNamespace,
+		name:      fmt.Sprintf("%s.%s", svcId.name, svcId.namespace),
+	}
+
+	err = k.profileWatcher.subscribeToProfile(id, listener)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	select {
+	case <-listener.ClientClose():
+		return k.profileWatcher.unsubscribeToProfile(id, listener)
+	case <-listener.ServerClose():
+		return nil
+	}
 }
 
-func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener updateListener) error {
+func (k *k8sResolver) stop() {
+	k.endpointsWatcher.stop()
+	k.profileWatcher.stop()
+}
+
+func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener endpointUpdateListener) error {
 	k.endpointsWatcher.subscribe(id, uint32(port), listener)
 
 	select {

@@ -79,7 +79,7 @@ func (e *endpointsWatcher) stop() {
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
-func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener updateListener) error {
+func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener endpointUpdateListener) error {
 	log.Infof("Establishing watch on endpoint %s:%d", service, port)
 
 	svc, err := e.getService(service)
@@ -124,7 +124,7 @@ func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener u
 	return nil
 }
 
-func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener updateListener) error {
+func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener endpointUpdateListener) error {
 	log.Infof("Stopping watch on endpoint %s:%d", service, port)
 
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
@@ -254,7 +254,7 @@ type servicePort struct {
 	service serviceId
 	port    uint32 // service port
 	// these values hold the current state of the servicePort and are mutable
-	listeners  []updateListener
+	listeners  []endpointUpdateListener
 	endpoints  *v1.Endpoints
 	targetPort intstr.IntOrString
 	addresses  []*updateAddress
@@ -286,7 +286,7 @@ func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, p
 
 	sp := &servicePort{
 		service:    id,
-		listeners:  make([]updateListener, 0),
+		listeners:  make([]endpointUpdateListener, 0),
 		port:       port,
 		endpoints:  endpoints,
 		targetPort: targetPort,
@@ -363,7 +363,7 @@ func (sp *servicePort) updateAddresses(endpoints *v1.Endpoints, port intstr.IntO
 	sp.addresses = newAddresses
 }
 
-func (sp *servicePort) subscribe(exists bool, listener updateListener) {
+func (sp *servicePort) subscribe(exists bool, listener endpointUpdateListener) {
 	log.Debugf("Subscribing %s:%d exists=%t", sp.service, sp.port, exists)
 
 	sp.mutex.Lock()
@@ -381,7 +381,7 @@ func (sp *servicePort) subscribe(exists bool, listener updateListener) {
 
 // unsubscribe returns true iff the listener was found and removed.
 // it also returns the number of listeners remaining after unsubscribing.
-func (sp *servicePort) unsubscribe(listener updateListener) (bool, int) {
+func (sp *servicePort) unsubscribe(listener endpointUpdateListener) (bool, int) {
 	log.Debugf("Unsubscribing %s:%d", sp.service, sp.port)
 
 	sp.mutex.Lock()
