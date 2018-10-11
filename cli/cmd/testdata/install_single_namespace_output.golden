@@ -2,7 +2,7 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: linkerd
+  name: Namespace
 
 ### Service Account Controller ###
 ---
@@ -10,14 +10,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-controller
-  namespace: linkerd
+  namespace: Namespace
 
 ### Controller RBAC ###
 ---
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-linkerd-controller
+  name: linkerd-Namespace-controller
+  namespace: Namespace
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
@@ -27,18 +28,19 @@ rules:
   verbs: ["list", "get", "watch"]
 
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-linkerd-controller
+  name: linkerd-Namespace-controller
+  namespace: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-controller
+  kind: Role
+  name: linkerd-Namespace-controller
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: linkerd
+  namespace: Namespace
 
 ### Service Account Prometheus ###
 ---
@@ -46,32 +48,34 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: linkerd
+  namespace: Namespace
 
 ### Prometheus RBAC ###
 ---
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-linkerd-prometheus
+  name: linkerd-Namespace-prometheus
+  namespace: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
 
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-linkerd-prometheus
+  name: linkerd-Namespace-prometheus
+  namespace: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-prometheus
+  kind: Role
+  name: linkerd-Namespace-prometheus
 subjects:
 - kind: ServiceAccount
   name: linkerd-prometheus
-  namespace: linkerd
+  namespace: Namespace
 
 ### Controller ###
 ---
@@ -79,15 +83,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: api
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: controller
+    ControllerComponentLabel: controller
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/control-plane-component: controller
+    ControllerComponentLabel: controller
   ports:
   - name: http
     port: 8085
@@ -98,54 +102,55 @@ kind: Service
 apiVersion: v1
 metadata:
   name: proxy-api
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: controller
+    ControllerComponentLabel: controller
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/control-plane-component: controller
+    ControllerComponentLabel: controller
   ports:
   - name: grpc
-    port: 8086
-    targetPort: 8086
+    port: 123
+    targetPort: 123
 
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
   creationTimestamp: null
   labels:
-    linkerd.io/control-plane-component: controller
+    ControllerComponentLabel: controller
   name: controller
-  namespace: linkerd
+  namespace: Namespace
 spec:
   replicas: 1
   strategy: {}
   template:
     metadata:
       annotations:
+        CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        linkerd.io/control-plane-component: controller
-        linkerd.io/control-plane-ns: linkerd
+        ControllerComponentLabel: controller
+        linkerd.io/control-plane-ns: Namespace
         linkerd.io/proxy-deployment: controller
     spec:
       containers:
       - args:
         - public-api
-        - -prometheus-url=http://prometheus.linkerd.svc.cluster.local:9090
-        - -controller-namespace=linkerd
-        - -single-namespace=false
-        - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
-        imagePullPolicy: IfNotPresent
+        - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
+        - -controller-namespace=Namespace
+        - -single-namespace=true
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /ping
@@ -165,12 +170,12 @@ spec:
         resources: {}
       - args:
         - destination
-        - -controller-namespace=linkerd
-        - -single-namespace=false
-        - -enable-tls=false
-        - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
-        imagePullPolicy: IfNotPresent
+        - -controller-namespace=Namespace
+        - -single-namespace=true
+        - -enable-tls=true
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /ping
@@ -190,10 +195,10 @@ spec:
         resources: {}
       - args:
         - proxy-api
-        - -addr=:8086
-        - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
-        imagePullPolicy: IfNotPresent
+        - -addr=:123
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /ping
@@ -201,7 +206,7 @@ spec:
           initialDelaySeconds: 10
         name: proxy-api
         ports:
-        - containerPort: 8086
+        - containerPort: 123
           name: grpc
         - containerPort: 9996
           name: admin-http
@@ -213,11 +218,11 @@ spec:
         resources: {}
       - args:
         - tap
-        - -controller-namespace=linkerd
-        - -single-namespace=false
-        - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
-        imagePullPolicy: IfNotPresent
+        - -controller-namespace=Namespace
+        - -single-namespace=true
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /ping
@@ -303,15 +308,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: web
+    ControllerComponentLabel: web
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/control-plane-component: web
+    ControllerComponentLabel: web
   ports:
   - name: http
     port: 8084
@@ -325,36 +330,37 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
   creationTimestamp: null
   labels:
-    linkerd.io/control-plane-component: web
+    ControllerComponentLabel: web
   name: web
-  namespace: linkerd
+  namespace: Namespace
 spec:
-  replicas: 1
+  replicas: 2
   strategy: {}
   template:
     metadata:
       annotations:
+        CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        linkerd.io/control-plane-component: web
-        linkerd.io/control-plane-ns: linkerd
+        ControllerComponentLabel: web
+        linkerd.io/control-plane-ns: Namespace
         linkerd.io/proxy-deployment: web
     spec:
       containers:
       - args:
-        - -api-addr=api.linkerd.svc.cluster.local:8085
+        - -api-addr=api.Namespace.svc.cluster.local:8085
         - -static-dir=/dist
         - -template-dir=/templates
-        - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
-        - -controller-namespace=linkerd
-        - -log-level=info
-        image: gcr.io/linkerd-io/web:undefined
-        imagePullPolicy: IfNotPresent
+        - -uuid=UUID
+        - -controller-namespace=Namespace
+        - -log-level=ControllerLogLevel
+        image: WebImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /ping
@@ -378,7 +384,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -439,15 +445,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: prometheus
+    ControllerComponentLabel: prometheus
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/control-plane-component: prometheus
+    ControllerComponentLabel: prometheus
   ports:
   - name: admin-http
     port: 9090
@@ -458,32 +464,33 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
   creationTimestamp: null
   labels:
-    linkerd.io/control-plane-component: prometheus
+    ControllerComponentLabel: prometheus
   name: prometheus
-  namespace: linkerd
+  namespace: Namespace
 spec:
-  replicas: 1
+  replicas: 3
   strategy: {}
   template:
     metadata:
       annotations:
+        CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        linkerd.io/control-plane-component: prometheus
-        linkerd.io/control-plane-ns: linkerd
+        ControllerComponentLabel: prometheus
+        linkerd.io/control-plane-ns: Namespace
         linkerd.io/proxy-deployment: prometheus
     spec:
       containers:
       - args:
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: prom/prometheus:v2.4.0
-        imagePullPolicy: IfNotPresent
+        image: PrometheusImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -511,7 +518,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -579,11 +586,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: prometheus
+    ControllerComponentLabel: prometheus
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 data:
   prometheus.yml: |-
     global:
@@ -600,7 +607,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['linkerd']
+          names: ['Namespace']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -611,7 +618,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['linkerd']
+          names: ['Namespace']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -625,13 +632,15 @@ data:
     - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
+        namespaces:
+          names: ['Namespace']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^linkerd-proxy;linkerd-metrics;linkerd$
+        regex: ^ProxyContainerName;linkerd-metrics;Namespace$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -663,15 +672,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: grafana
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: grafana
+    ControllerComponentLabel: grafana
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    linkerd.io/control-plane-component: grafana
+    ControllerComponentLabel: grafana
   ports:
   - name: http
     port: 3000
@@ -682,29 +691,30 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
   creationTimestamp: null
   labels:
-    linkerd.io/control-plane-component: grafana
+    ControllerComponentLabel: grafana
   name: grafana
-  namespace: linkerd
+  namespace: Namespace
 spec:
   replicas: 1
   strategy: {}
   template:
     metadata:
       annotations:
+        CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
       creationTimestamp: null
       labels:
-        linkerd.io/control-plane-component: grafana
-        linkerd.io/control-plane-ns: linkerd
+        ControllerComponentLabel: grafana
+        linkerd.io/control-plane-ns: Namespace
         linkerd.io/proxy-deployment: grafana
     spec:
       containers:
-      - image: gcr.io/linkerd-io/grafana:undefined
-        imagePullPolicy: IfNotPresent
+      - image: GrafanaImage
+        imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
             path: /api/health
@@ -732,7 +742,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -804,17 +814,17 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: grafana-config
-  namespace: linkerd
+  namespace: Namespace
   labels:
-    linkerd.io/control-plane-component: grafana
+    ControllerComponentLabel: grafana
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    CreatedByAnnotation: CliVersion
 data:
   grafana.ini: |-
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/linkerd/services/grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -836,7 +846,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://prometheus.linkerd.svc.cluster.local:9090
+      url: http://prometheus.Namespace.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -855,4 +865,166 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: Namespace
+
+### CA RBAC ###
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-Namespace-ca
+  namespace: Namespace
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [TLSTrustAnchorConfigMapName]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-Namespace-ca
+  namespace: Namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-Namespace-ca
+subjects:
+- kind: ServiceAccount
+  name: linkerd-ca
+  namespace: Namespace
+
+### CA ###
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: ca
+  name: ca
+  namespace: Namespace
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        CreatedByAnnotation: CliVersion
+        linkerd.io/created-by: linkerd/cli undefined
+        linkerd.io/proxy-version: undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: ca
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: ca
+    spec:
+      containers:
+      - args:
+        - ca
+        - -controller-namespace=Namespace
+        - -single-namespace=true
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        name: ca
+        ports:
+        - containerPort: 9997
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
+        resources: {}
+      - env:
+        - name: LINKERD2_PROXY_LOG
+          value: warn,linkerd2_proxy=info
+        - name: LINKERD2_PROXY_BIND_TIMEOUT
+          value: 10s
+        - name: LINKERD2_PROXY_CONTROL_URL
+          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTENER
+          value: tcp://0.0.0.0:4190
+        - name: LINKERD2_PROXY_METRICS_LISTENER
+          value: tcp://0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
+          value: tcp://127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTENER
+          value: tcp://0.0.0.0:4143
+        - name: LINKERD2_PROXY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/linkerd-io/proxy:undefined
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
+        name: linkerd-proxy
+        ports:
+        - containerPort: 4143
+          name: linkerd-proxy
+        - containerPort: 4191
+          name: linkerd-metrics
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191
+        image: gcr.io/linkerd-io/proxy-init:undefined
+        imagePullPolicy: IfNotPresent
+        name: linkerd-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+        terminationMessagePolicy: FallbackToLogsOnError
+      serviceAccount: linkerd-ca
+status: {}
 ---
