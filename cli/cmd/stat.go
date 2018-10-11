@@ -360,34 +360,21 @@ func printStatJson(statTables map[string]map[string]*row, resourceTypes []string
 					resourceTypePrefix = ""
 				}
 				namespace, name := namespaceName(resourceTypePrefix, key)
-				var entry *jsonStats
-				if stats[key].rowStats != nil {
-					entry = &jsonStats{
-						namespace,
-						resourceType,
-						name,
-						stats[key].meshed,
-						&stats[key].successRate,
-						&stats[key].requestRate,
-						&stats[key].latencyP50,
-						&stats[key].latencyP95,
-						&stats[key].latencyP99,
-						&stats[key].tlsPercent,
-					}
-				} else {
-					entry = &jsonStats{
-						namespace,
-						resourceType,
-						name,
-						stats[key].meshed,
-						nil,
-						nil,
-						nil,
-						nil,
-						nil,
-						nil,
-					}
+				entry := &jsonStats{
+					Namespace: namespace,
+					Kind:      resourceType,
+					Name:      name,
+					Meshed:    stats[key].meshed,
 				}
+				if stats[key].rowStats != nil {
+					entry.Success = &stats[key].successRate
+					entry.Rps = &stats[key].requestRate
+					entry.Latency_p50 = &stats[key].latencyP50
+					entry.Latency_p95 = &stats[key].latencyP95
+					entry.Latency_p99 = &stats[key].latencyP99
+					entry.Tls = &stats[key].tlsPercent
+				}
+
 				entries = append(entries, entry)
 			}
 		}
