@@ -30,6 +30,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	restrictToNamespace := ""
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace

@@ -47,7 +47,7 @@ func main() {
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
-		spClient,
+		nil,
 		restrictToNamespace,
 		k8s.Deploy,
 		k8s.Pod,

@@ -36,9 +36,9 @@ func main() {
 
 	var k8sAPI *k8s.API
 	if *proxyAutoInject {
-		k8sAPI = k8s.NewAPI(k8sClient, spClient, restrictToNamespace, k8s.Pod, k8s.RS, k8s.MWC)
+		k8sAPI = k8s.NewAPI(k8sClient, nil, restrictToNamespace, k8s.Pod, k8s.RS, k8s.MWC)
 	} else {
-		k8sAPI = k8s.NewAPI(k8sClient, spClient, restrictToNamespace, k8s.Pod, k8s.RS)
+		k8sAPI = k8s.NewAPI(k8sClient, nil, restrictToNamespace, k8s.Pod, k8s.RS)
 	}
 
 	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI, *proxyAutoInject)
