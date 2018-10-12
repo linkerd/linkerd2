@@ -25,7 +25,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	clientSet, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client: %s", err)
 	}
@@ -34,7 +34,8 @@ func main() {
 		restrictToNamespace = *controllerNamespace
 	}
 	k8sAPI := k8s.NewAPI(
-		clientSet,
+		k8sClient,
+		nil,
 		restrictToNamespace,
 		k8s.Deploy,
 		k8s.Pod,

@@ -260,7 +260,7 @@ spec:
 		},
 	} {
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
-			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			k8sAPI, err := k8s.NewFakeAPI("", tt.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}

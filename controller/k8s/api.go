@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
+	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -29,11 +32,12 @@ const (
 	CM ApiResource = iota
 	Deploy
 	Endpoint
+	MWC // mutating webhook configuration
 	Pod
 	RC
 	RS
+	SP
 	Svc
-	MWC // mutating webhook configuration
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -43,22 +47,26 @@ type API struct {
 	cm       coreinformers.ConfigMapInformer
 	deploy   appinformers.DeploymentInformer
 	endpoint coreinformers.EndpointsInformer
+	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appinformers.ReplicaSetInformer
+	sp       spinformers.ServiceProfileInformer
 	svc      coreinformers.ServiceInformer
-	mwc      arinformers.MutatingWebhookConfigurationInformer
 
-	syncChecks      []cache.InformerSynced
-	sharedInformers informers.SharedInformerFactory
-	namespace       string
+	syncChecks        []cache.InformerSynced
+	sharedInformers   informers.SharedInformerFactory
+	spSharedInformers sp.SharedInformerFactory
+	namespace         string
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API
-func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiResource) *API {
+func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...ApiResource) *API {
 	var sharedInformers informers.SharedInformerFactory
+	var spSharedInformers sp.SharedInformerFactory
 	if namespace == "" {
 		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
 	} else {
 		sharedInformers = informers.NewFilteredSharedInformerFactory(
 			k8sClient,
@@ -66,13 +74,20 @@ func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiRe
 			namespace,
 			nil,
 		)
+		spSharedInformers = sp.NewFilteredSharedInformerFactory(
+			spClient,
+			10*time.Minute,
+			namespace,
+			nil,
+		)
 	}
 
 	api := &API{
-		Client:          k8sClient,
-		syncChecks:      make([]cache.InformerSynced, 0),
-		sharedInformers: sharedInformers,
-		namespace:       namespace,
+		Client:            k8sClient,
+		syncChecks:        make([]cache.InformerSynced, 0),
+		sharedInformers:   sharedInformers,
+		spSharedInformers: spSharedInformers,
+		namespace:         namespace,
 	}
 
 	for _, resource := range resources {
@@ -86,6 +101,9 @@ func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiRe
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case MWC:
+			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
+			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
@@ -95,12 +113,12 @@ func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiRe
 		case RS:
 			api.rs = sharedInformers.Apps().V1beta2().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
+		case SP:
+			api.sp = spSharedInformers.Linkerd().V1alpha1().ServiceProfiles()
+			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
-		case MWC:
-			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
-			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 		}
 	}
 
@@ -112,6 +130,7 @@ func NewAPI(k8sClient kubernetes.Interface, namespace string, resources ...ApiRe
 // For testing, call this synchronously.
 func (api *API) Sync(readyCh chan<- struct{}) {
 	api.sharedInformers.Start(nil)
+	api.spSharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -174,6 +193,13 @@ func (api *API) CM() coreinformers.ConfigMapInformer {
 		panic("CM informer not configured")
 	}
 	return api.cm
+}
+
+func (api *API) SP() spinformers.ServiceProfileInformer {
+	if api.sp == nil {
+		panic("SP informer not configured")
+	}
+	return api.sp
 }
 
 func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {

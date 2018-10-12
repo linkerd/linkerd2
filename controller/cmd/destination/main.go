@@ -30,17 +30,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	restrictToNamespace := ""
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
+		spClient,
 		restrictToNamespace,
 		k8s.Endpoint,
 		k8s.Pod,
 		k8s.RS,
 		k8s.Svc,
+		k8s.SP,
 	)
 
 	done := make(chan struct{})
