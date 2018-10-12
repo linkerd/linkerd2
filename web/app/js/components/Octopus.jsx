@@ -79,7 +79,7 @@ export default class Octopus extends React.Component {
           </Typography>
 
           <Progress
-            value={resource.successRate * 100}
+            percent={resource.successRate * 100}
             classification={getSuccessRateClassification(resource.successRate, srArcClassLabels)} />
 
           <Table>
@@ -219,7 +219,7 @@ export default class Octopus extends React.Component {
           justify="center"
           alignItems="center">
           <Grid item xs={3} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
-            {_.map(display.upstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
+            {_.map(display.upstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
             {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
           </Grid>
@@ -229,7 +229,7 @@ export default class Octopus extends React.Component {
           </Grid>
 
           <Grid item xs={4} className="octopus-col resource-col">
-            {this.renderResourceSummary(resource, "main")}
+            {this.renderResourceCard(resource, "main")}
           </Grid>
 
           <Grid item xs={1} className="octopus-col">
