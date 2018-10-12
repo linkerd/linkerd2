@@ -7,6 +7,7 @@
   --header-black: #1e2322;
   --sider-black: #343838;
   --royalblue: #2F80ED;
+  --linkblue: #2196f3;
   --darkblue: #071E3C;
   --curiousblue: #2D9CDB;
   --pictonblue: #56CCF2;
@@ -34,6 +35,7 @@ body {
 
 a {
   text-decoration: none;
+  color: var(--linkblue);
 
   &:focus, &:hover, &:visited, &:link, &:active {
     text-decoration: none;

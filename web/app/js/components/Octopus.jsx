@@ -102,25 +102,27 @@ export default class Octopus extends React.Component {
 
   renderUnmeshedResources = unmeshedResources => {
     return (
-      <div key="unmeshed-resources" className="octopus-body neighbor unmeshed">
-        <div className="octopus-title neighbor-title">Unmeshed</div>
-        {
+      <Card key="unmeshed-resources">
+        <CardContent>
+          <Typography variant="h6">Unmeshed</Typography>
+          {
           _.map(unmeshedResources, r => {
             let display = displayName(r);
-            return <div key={display} title={display}>{display}</div>;
+            return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
           })
         }
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   renderCollapsedNeighbors = neighbors => {
     return (
-      <div key="unmeshed-resources" className="octopus-body neighbor collapsed">
+      <div key="unmeshed-resources">
         {
           _.map(neighbors, r => {
             let display = displayName(r);
-            return <div className="octopus-title neighbor-title" key={display}>{this.linkedResourceTitle(r, display)}</div>;
+            return <div key={display}>{this.linkedResourceTitle(r, display)}</div>;
           })
         }
       </div>

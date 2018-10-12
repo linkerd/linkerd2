@@ -8,6 +8,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
+import Typography from '@material-ui/core/Typography';
 import { withContext } from './util/AppContext.jsx';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import 'whatwg-fetch';
@@ -122,7 +123,8 @@ class NamespaceLanding extends React.Component {
     }
     return (
       <div className="page-section">
-        <h3>{friendlyTitle(resource).plural}</h3>
+        <br />
+        <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
         <MetricsTable
           resource={resource}
           metrics={metrics}
@@ -141,7 +143,7 @@ class NamespaceLanding extends React.Component {
 
     return (
       <div>
-        <h2>Namespace: {namespace}</h2>
+        <Typography variant="h4">Namespace: {namespace}</Typography>
         { noMetrics ? <div>No resources detected.</div> : null}
         {this.renderResourceSection("deployment", metrics.deployment)}
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}

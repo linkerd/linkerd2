@@ -5,13 +5,13 @@ import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import MeshedStatusTable from './MeshedStatusTable.jsx';
-import Metric from './Metric.jsx';
 import moment from 'moment';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
+import Typography from '@material-ui/core/Typography';
 import { withContext } from './util/AppContext.jsx';
 
 const serviceMeshDetailsColumns = [
@@ -196,36 +196,38 @@ class ServiceMesh extends React.Component {
 
   renderControlPlaneDetails() {
     return (
-      <div className="mesh-section">
-        <div className="clearfix header-with-metric">
-          <div className="subsection-header">Control plane</div>
-          <Metric title="Components" value={this.componentCount()} className="metric-large" />
-        </div>
+      <React.Fragment>
+        <Grid container justify="space-between">
+          <Grid item xs={3}>
+            <Typography variant="h6">Control plane</Typography>
+          </Grid>
+          <Grid item xs={3}>
+            <Typography align="right">Components</Typography>
+            <Typography align="right">{this.componentCount()}</Typography>
+          </Grid>
+        </Grid>
 
         <StatusTable
           data={this.state.components}
           statusColumnTitle="Pod Status"
           shouldLink={false}
           api={this.api} />
-      </div>
+      </React.Fragment>
     );
   }
 
   renderServiceMeshDetails() {
     return (
-      <div className="mesh-section">
-        <div className="clearfix header-with-metric">
-          <div className="subsection-header">Service mesh details</div>
-        </div>
+      <React.Fragment>
+        <Typography variant="h6">Service mesh details</Typography>
 
-        <div className="mesh-details-section">
-          <BaseTable
-            tableClassName="metric-table"
-            tableRows={this.getServiceMeshDetails()}
-            tableColumns={serviceMeshDetailsColumns}
-            rowKey={d => d.key} />
-        </div>
-      </div>
+        <BaseTable
+          tableClassName="metric-table"
+          tableRows={this.getServiceMeshDetails()}
+          tableColumns={serviceMeshDetailsColumns}
+          rowKey={d => d.key} />
+
+      </React.Fragment>
     );
   }
 
