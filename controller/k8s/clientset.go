@@ -15,11 +15,7 @@ func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return clientset, nil
+	return kubernetes.NewForConfig(config)
 }
 
 func NewSpClientSet(kubeConfig string) (*spclient.Clientset, error) {
@@ -28,11 +24,7 @@ func NewSpClientSet(kubeConfig string) (*spclient.Clientset, error) {
 		return nil, err
 	}
 
-	spclientset, err := spclient.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return spclientset, nil
+	return spclient.NewForConfig(config)
 }
 
 func parseConfig(kubeConfig string) (*rest.Config, error) {
