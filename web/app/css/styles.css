@@ -32,6 +32,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+a {
+  text-decoration: none;
+
+  &:focus, &:hover, &:visited, &:link, &:active {
+    text-decoration: none;
+  }
+}
+
 .metric-table {
   & .metric-table-sr {
     padding-right: 6px;

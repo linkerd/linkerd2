@@ -2,8 +2,8 @@ import _ from 'lodash';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
+import LinearProgress from '@material-ui/core/LinearProgress';
 import OctopusArms from './util/OctopusArms.jsx';
-import {Progress} from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Table from '@material-ui/core/Table';
@@ -78,8 +78,9 @@ export default class Octopus extends React.Component {
             { this.linkedResourceTitle(resource, display) }
           </Typography>
 
-          <Progress
-            percent={resource.successRate * 100}
+          <LinearProgress
+            variant="determinate"
+            value={resource.successRate * 100}
             classification={getSuccessRateClassification(resource.successRate, srArcClassLabels)} />
 
           <Table>
@@ -96,41 +97,6 @@ export default class Octopus extends React.Component {
           </Table>
         </CardContent>
       </Card>
-    );
-  }
-
-  renderResourceSummary(resource, type) {
-    let display = displayName(resource);
-    return (
-      <div key={resource.name} className={`octopus-body ${type}`} title={display}>
-        <div className={`octopus-title ${type}-title`}>
-          { this.linkedResourceTitle(resource, display) }
-        </div>
-        <div>
-          <div className="octopus-sr-gauge">
-            <Progress
-              className={`success-rate-arc ${getSuccessRateClassification(resource.successRate, srArcClassLabels)}`}
-              type="dashboard"
-              format={() => metricToFormatter["SUCCESS_RATE"](resource.successRate)}
-              width={type === "main" ? 132 : 64}
-              value={resource.successRate * 100}
-              gapDegree={180} />
-          </div>
-
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell><Typography>RPS</Typography></TableCell>
-                <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><Typography>P99</Typography></TableCell>
-                <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </div>
     );
   }
 
