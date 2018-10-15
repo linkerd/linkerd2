@@ -56,7 +56,7 @@ yarn && NODE_ENV=test yarn webpack
 yarn jest "$*"
 ```
 
-For faster testing, run a subset of the tests by using flags to jest.
+For faster testing, run a subset of the tests by passing flags to jest.
 
 Run tests on files that have changed since the last commit:
 ```bash
