@@ -1,10 +1,10 @@
 import Adapter from 'enzyme-adapter-react-16';
-import deployRollup from './fixtures/deployRollup.json';
-import ErrorBanner from '../js/components/ErrorBanner.jsx';
+import deployRollup from '../../test/fixtures/deployRollup.json';
+import ErrorBanner from './ErrorBanner.jsx';
 import { expect } from 'chai';
-import MetricsTable from '../js/components/MetricsTable.jsx';
+import MetricsTable from './MetricsTable.jsx';
 import React from 'react';
-import { ResourceListBase } from '../js/components/ResourceList.jsx';
+import { ResourceListBase } from './ResourceList.jsx';
 import { Spin } from 'antd';
 import Enzyme, { shallow } from 'enzyme';
 
