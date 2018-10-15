@@ -1,13 +1,13 @@
 import _ from 'lodash';
-import deployRollupFixtures from './fixtures/deployRollup.json';
+import deployRollupFixtures from '../../../test/fixtures/deployRollup.json';
 import { expect } from 'chai';
-import multiDeployRollupFixtures from './fixtures/multiDeployRollup.json';
-import multiResourceRollupFixtures from './fixtures/allRollup.json';
-import Percentage from '../js/components/util/Percentage';
+import multiDeployRollupFixtures from '../../../test/fixtures/multiDeployRollup.json';
+import multiResourceRollupFixtures from '../../../test/fixtures/allRollup.json';
+import Percentage from './Percentage';
 import {
   processMultiResourceRollup,
   processSingleResourceRollup
-} from '../js/components/util/MetricUtils.jsx';
+} from './MetricUtils.jsx';
 
 describe('MetricUtils', () => {
   describe('processSingleResourceRollup', () => {
