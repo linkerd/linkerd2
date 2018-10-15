@@ -4,7 +4,7 @@ import {
   metricToFormatter,
   styleNum,
   toClassName
-} from '../js/components/util/Utils.js';
+} from './Utils.js';
 
 // introduce some binary floating point rounding errors, like ya do
 function float(num) {
