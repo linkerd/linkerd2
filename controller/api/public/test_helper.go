@@ -127,28 +127,33 @@ func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.
 	return nil, nil
 }
 
-func GenStatSummaryResponse(resName, resType, resNs string, counts *PodCounts) pb.StatSummaryResponse {
-	statTableRow := &pb.StatTable_PodGroup_Row{
-		Resource: &pb.Resource{
-			Namespace: resNs,
-			Type:      resType,
-			Name:      resName,
-		},
-		Stats: &pb.BasicStats{
-			SuccessCount:    123,
-			FailureCount:    0,
-			LatencyMsP50:    123,
-			LatencyMsP95:    123,
-			LatencyMsP99:    123,
-			TlsRequestCount: 123,
-		},
-		TimeWindow: "1m",
-	}
+func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts) pb.StatSummaryResponse {
+	rows := []*pb.StatTable_PodGroup_Row{}
+	for _, ns := range resNs {
+		statTableRow := &pb.StatTable_PodGroup_Row{
+			Resource: &pb.Resource{
+				Namespace: ns,
+				Type:      resType,
+				Name:      resName,
+			},
+			Stats: &pb.BasicStats{
+				SuccessCount:    123,
+				FailureCount:    0,
+				LatencyMsP50:    123,
+				LatencyMsP95:    123,
+				LatencyMsP99:    123,
+				TlsRequestCount: 123,
+			},
+			TimeWindow: "1m",
+		}
 
-	if counts != nil {
-		statTableRow.MeshedPodCount = counts.MeshedPods
-		statTableRow.RunningPodCount = counts.RunningPods
-		statTableRow.FailedPodCount = counts.FailedPods
+		if counts != nil {
+			statTableRow.MeshedPodCount = counts.MeshedPods
+			statTableRow.RunningPodCount = counts.RunningPods
+			statTableRow.FailedPodCount = counts.FailedPods
+		}
+
+		rows = append(rows, statTableRow)
 	}
 
 	resp := pb.StatSummaryResponse{
@@ -158,9 +163,7 @@ func GenStatSummaryResponse(resName, resType, resNs string, counts *PodCounts) p
 					&pb.StatTable{
 						Table: &pb.StatTable_PodGroup_{
 							PodGroup: &pb.StatTable_PodGroup{
-								Rows: []*pb.StatTable_PodGroup_Row{
-									statTableRow,
-								},
+								Rows: rows,
 							},
 						},
 					},
