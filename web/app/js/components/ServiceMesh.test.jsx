@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import Adapter from 'enzyme-adapter-react-16';
 import nsFixtures from '../../test/fixtures/namespaces.json';
 import podFixtures from '../../test/fixtures/podRollup.json';
 import { routerWrap } from '../../test/testHelpers.jsx';

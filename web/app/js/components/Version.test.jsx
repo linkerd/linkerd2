@@ -1,4 +1,3 @@
-import Adapter from 'enzyme-adapter-react-16';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
