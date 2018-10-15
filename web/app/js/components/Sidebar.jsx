@@ -299,6 +299,27 @@ class Sidebar extends React.Component {
               </Link>
             </Menu.Item>
 
+            <Menu.SubMenu
+              className="sidebar-menu-item"
+              key="help"
+              title={<span className="sidebar-title"><Icon type="question-circle" />{this.state.collapsed ? "" : "Help"}</span>}>
+              <Menu.Item>
+                <Link to="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
+                  Join the mailing list
+                </Link>
+              </Menu.Item>
+              <Menu.Item>
+                <Link to="https://slack.linkerd.io" target="_blank">
+                  Join the slack
+                </Link>
+              </Menu.Item>
+              <Menu.Item>
+                <Link to="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
+                  File an issue
+                </Link>
+              </Menu.Item>
+            </Menu.SubMenu>
+
             {
               this.state.isLatest ? null : (
                 <Menu.Item className="sidebar-menu-item" key="/update">
