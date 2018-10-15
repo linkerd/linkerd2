@@ -1,11 +1,11 @@
 import Adapter from "enzyme-adapter-react-16";
-import ApiHelpers from "../js/components/util/ApiHelpers.jsx";
+import ApiHelpers from "./util/ApiHelpers.jsx";
 import { BrowserRouter } from 'react-router-dom';
 import { expect } from 'chai';
-import namespaceFixtures from './fixtures/namespaces.json';
+import namespaceFixtures from '../../test/fixtures/namespaces.json';
 import React from "react";
 import { Select } from 'antd';
-import Sidebar from "../js/components/Sidebar.jsx";
+import Sidebar from "./Sidebar.jsx";
 import sinon from "sinon";
 import sinonStubPromise from "sinon-stub-promise";
 import Enzyme, { mount } from "enzyme";
