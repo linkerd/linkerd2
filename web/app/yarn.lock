@@ -5860,11 +5860,6 @@ just-extend@^1.1.26:
   resolved "https://registry.yarnpkg.com/just-extend/-/just-extend-1.1.27.tgz#ec6e79410ff914e472652abfa0e603c03d60e905"
   integrity sha512-mJVp13Ix6gFo3SBAy9U/kL+oeZqzlYYYLQBwXVBlVzIsZwBqGREnOro24oC/8s8aox+rJhtZ2DiQof++IrkA+g==
 
-karma-jsdom-launcher@^6.1.2:
-  version "6.1.2"
-  resolved "https://registry.yarnpkg.com/karma-jsdom-launcher/-/karma-jsdom-launcher-6.1.2.tgz#f44ad3986df096463e5bfb437dc9f35db9917a05"
-  integrity sha1-9ErTmG3wlkY+W/tDfcnzXbmRegU=
-
 killable@^1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/killable/-/killable-1.0.1.tgz#4c8ce441187a061c7474fb87ca08e2a638194892"

@@ -9,8 +9,6 @@
     "d3": "^4.11.0",
     "enzyme": "^3.6.0",
     "enzyme-adapter-react-16": "^1.5.0",
-    "jsdom": "^11.5.1",
-    "karma-jsdom-launcher": "^6.1.2",
     "lodash": "^4.17.10",
     "mocha": "^4.0.1",
     "moment": "^2.18.1",
