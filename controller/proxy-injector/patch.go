@@ -1,13 +1,15 @@
 package injector
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	patchPathContainer         = "/spec/template/spec/containers/0"
 	patchPathInitContainerRoot = "/spec/template/spec/initContainers"
-	patchPathInitContainer     = "/spec/template/spec/initContainers/0"
+	patchPathInitContainer     = "/spec/template/spec/initContainers/%d"
 	patchPathVolumeRoot        = "/spec/template/spec/volumes"
 	patchPathVolume            = "/spec/template/spec/volumes/0"
 	patchPathPodLabel          = "/spec/template/metadata/labels"
@@ -42,10 +44,10 @@ func (p *Patch) addInitContainerRoot() {
 	})
 }
 
-func (p *Patch) addInitContainer(container *corev1.Container) {
+func (p *Patch) addInitContainer(container *corev1.Container, index int) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathInitContainer,
+		Path:  fmt.Sprintf(patchPathInitContainer, index),
 		Value: container,
 	})
 }
