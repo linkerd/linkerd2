@@ -1,12 +1,8 @@
-import Adapter from 'enzyme-adapter-react-16';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import BaseTable from './BaseTable.jsx';
-import { expect } from 'chai';
 import { MetricsTableBase } from './MetricsTable.jsx';
 import React from 'react';
-import Enzyme, { shallow } from 'enzyme';
-
-Enzyme.configure({ adapter: new Adapter() });
+import { shallow } from 'enzyme';
 
 describe('Tests for <MetricsTableBase>', () => {
   const defaultProps = {
@@ -27,9 +23,9 @@ describe('Tests for <MetricsTableBase>', () => {
 
     const table = component.find(BaseTable);
 
-    expect(table).to.have.length(1);
-    expect(table.props().dataSource).to.have.length(1);
-    expect(table.props().columns).to.have.length(10);
+    expect(table).toHaveLength(1);
+    expect(table.props().dataSource).toHaveLength(1);
+    expect(table.props().columns).toHaveLength(10);
   });
 
   it('omits the namespace column for the namespace resource', () => {
@@ -42,8 +38,8 @@ describe('Tests for <MetricsTableBase>', () => {
 
     const table = component.find(BaseTable);
 
-    expect(table).to.have.length(1);
-    expect(table.props().columns).to.have.length(9);
+    expect(table).toHaveLength(1);
+    expect(table.props().columns).toHaveLength(9);
   });
 
   it('omits the namespace column when showNamespaceColumn is false', () => {
@@ -57,8 +53,8 @@ describe('Tests for <MetricsTableBase>', () => {
 
     const table = component.find(BaseTable);
 
-    expect(table).to.have.length(1);
-    expect(table.props().columns).to.have.length(9);
+    expect(table).toHaveLength(1);
+    expect(table.props().columns).toHaveLength(9);
   });
 
   it('omits meshed column and grafana column for authority resource', () => {
@@ -71,8 +67,8 @@ describe('Tests for <MetricsTableBase>', () => {
 
     const table = component.find(BaseTable);
 
-    expect(table).to.have.length(1);
-    expect(table.props().columns).to.have.length(8);
+    expect(table).toHaveLength(1);
+    expect(table.props().columns).toHaveLength(8);
   });
 
 });
