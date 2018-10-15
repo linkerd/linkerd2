@@ -1,13 +1,14 @@
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import classNames from 'classnames';
+import HelpIcon from '@material-ui/icons/HelpOutline';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
+import EmailIcon from '@material-ui/icons/Email';
 import HomeIcon from '@material-ui/icons/Home';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
-import { linkerdWordLogo } from './util/SvgWrappers.jsx';
 import MenuIcon from '@material-ui/icons/Menu';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
@@ -25,7 +26,6 @@ import {
   Divider,
   Drawer,
   IconButton,
-  List,
   ListItem,
   ListItemIcon,
   ListItemText,
@@ -34,6 +34,7 @@ import {
   Toolbar,
   Typography
 } from '@material-ui/core';
+import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 
 const drawerWidth = 250;
 const styles = theme => ({
@@ -126,6 +127,7 @@ class NavigationBase extends React.Component {
     return {
       drawerOpen: true,
       resourceMenuOpen: false,
+      helpMenuOpen: false,
       latestVersion: '',
       isLatest: true,
       namespaceFilter: "all"
@@ -170,6 +172,10 @@ class NavigationBase extends React.Component {
   handleResourceMenuClick = () => {
     this.setState(state => ({ resourceMenuOpen: !state.resourceMenuOpen }));
   };
+
+  handleHelpMenuClick = () => {
+    this.setState(state => ({ helpMenuOpen: !state.helpMenuOpen }));
+  }
 
   menuItem(path, title, icon) {
     const { classes, api } = this.props;
@@ -254,12 +260,39 @@ class NavigationBase extends React.Component {
 
           <Divider />
 
-          <List>
+          <MenuList>
             <ListItem component={Link} to="https://linkerd.io/2/overview/" target="_blank">
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
-          </List>
+
+            <MenuItem
+              className={classes.navMenuItem}
+              button
+              onClick={this.handleHelpMenuClick}>
+              <ListItemIcon><HelpIcon /></ListItemIcon>
+              <ListItemText inset primary="Help" />
+              {this.state.helpMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </MenuItem>
+            <Collapse in={this.state.helpMenuOpen} timeout="auto" unmountOnExit>
+              <MenuList dense component="div" disablePadding>
+                <ListItem component={Link} to="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
+                  <ListItemIcon><EmailIcon /></ListItemIcon>
+                  <ListItemText primary="Join the mailing list" />
+                </ListItem>
+
+                <ListItem component={Link} to="https://slack.linkerd.io" target="_blank">
+                  <ListItemIcon>{slackIcon}</ListItemIcon>
+                  <ListItemText primary="Join us on slack" />
+                </ListItem>
+
+                <ListItem component={Link} to="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
+                  <ListItemIcon>{githubIcon}</ListItemIcon>
+                  <ListItemText primary="File an issue" />
+                </ListItem>
+              </MenuList>
+            </Collapse>
+          </MenuList>
 
           {
             !this.state.drawerOpen ? null : <Version
