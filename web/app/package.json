@@ -66,5 +66,13 @@
     "style-loader": "^0.21.0",
     "url-loader": "^1.0.1",
     "webpack-cli": "^3.0.7"
+  },
+  "jest": {
+    "testEnvironment": "enzyme",
+    "setupTestFrameworkScriptFile": "./node_modules/jest-enzyme/lib/index.js",
+    "moduleNameMapper": {
+      "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
+      "\\.(css|less)$": "<rootDir>/__mocks__/styleMock.js"
+    }
   }
 }
