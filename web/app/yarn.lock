@@ -5963,13 +5963,6 @@ karma-jsdom-launcher@^6.1.2:
   resolved "https://registry.yarnpkg.com/karma-jsdom-launcher/-/karma-jsdom-launcher-6.1.2.tgz#f44ad3986df096463e5bfb437dc9f35db9917a05"
   integrity sha1-9ErTmG3wlkY+W/tDfcnzXbmRegU=
 
-karma-mocha@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/karma-mocha/-/karma-mocha-1.3.0.tgz#eeaac7ffc0e201eb63c467440d2b69c7cf3778bf"
-  integrity sha1-7qrH/8DiAetjxGdEDStpx883eL8=
-  dependencies:
-    minimist "1.2.0"
-
 karma-nyan-reporter@^0.2.5:
   version "0.2.5"
   resolved "https://registry.yarnpkg.com/karma-nyan-reporter/-/karma-nyan-reporter-0.2.5.tgz#aab7925f34166ebcef9308bbee11679f58ddaa31"
@@ -6601,7 +6594,7 @@ minimist@0.0.8:
   resolved "http://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz#857fcabfc3397d2625b8228262e86aa7a011b05d"
   integrity sha1-hX/Kv8M5fSYluCKCYuhqp6ARsF0=
 
-minimist@1.2.0, minimist@^1.1.1, minimist@^1.2.0:
+minimist@^1.1.1, minimist@^1.2.0:
   version "1.2.0"
   resolved "http://registry.npmjs.org/minimist/-/minimist-1.2.0.tgz#a35008b20f41383eec1fb914f4cd5df79a264284"
   integrity sha1-o1AIsg9BOD7sH7kU9M1d95omQoQ=
