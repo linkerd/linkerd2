@@ -1,16 +1,13 @@
-import Adapter from "enzyme-adapter-react-16";
 import ApiHelpers from "./util/ApiHelpers.jsx";
 import { BrowserRouter } from 'react-router-dom';
-import { expect } from 'chai';
 import namespaceFixtures from '../../test/fixtures/namespaces.json';
 import React from "react";
 import { Select } from 'antd';
 import Sidebar from "./Sidebar.jsx";
 import sinon from "sinon";
 import sinonStubPromise from "sinon-stub-promise";
-import Enzyme, { mount } from "enzyme";
+import { mount } from "enzyme";
 
-Enzyme.configure({adapter: new Adapter()});
 sinonStubPromise(sinon);
 
 const loc = {
@@ -64,10 +61,10 @@ describe('Sidebar', () => {
       openNamespaceSelector(component);
 
       // number of namespaces in api result
-      expect(namespaceFixtures.ok.statTables[0].podGroup.rows).to.have.length(5);
+      expect(namespaceFixtures.ok.statTables[0].podGroup.rows).toHaveLength(5);
 
       // plus "All namespaces" option
-      expect(component.find(".ant-select-dropdown-menu-item")).to.have.length(6);
+      expect(component.find(".ant-select-dropdown-menu-item")).toHaveLength(6);
     });
   });
 });
