@@ -1062,7 +1062,7 @@ status:
 		testStatSummary(t, expectations)
 	})
 
-	t.Run("Queries prometheus for authority stats when --from authority is used", func(t *testing.T) {
+	t.Run("Queries prometheus for authority stats when --from deployment is used", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
 				err: nil,
