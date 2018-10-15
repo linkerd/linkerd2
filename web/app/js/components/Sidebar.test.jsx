@@ -41,7 +41,7 @@ describe('Sidebar', () => {
   });
 
   it("namespace selector has options", () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve(namespaceFixtures)
     });

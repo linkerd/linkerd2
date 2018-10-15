@@ -17,7 +17,7 @@ describe('ServiceMesh', () => {
   }
 
   beforeEach(() => {
-    fetchStub = sinon.stub(window, 'fetch').returnsPromise();
+    fetchStub = sinon.stub(window, 'fetch');
   });
 
   afterEach(() => {
@@ -28,7 +28,7 @@ describe('ServiceMesh', () => {
   it("displays an error if the api call didn't go well", () => {
     let errorMsg = "Something went wrong!";
 
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: false,
       json: () => Promise.resolve({
         error: errorMsg

@@ -15,7 +15,7 @@ describe('ApiHelpers', () => {
 
   beforeEach(() => {
     fetchStub = sinon.stub(window, 'fetch');
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({})
     });
@@ -193,7 +193,7 @@ describe('ApiHelpers', () => {
 
     it('throws an error if response status is not "ok"', () => {
       let errorMessage = "do or do not. there is no try.";
-      fetchStub.returnsPromise().resolves({
+      fetchStub.resolves({
         ok: false,
         json: () => Promise.resolve({
           error: errorMessage
@@ -217,7 +217,7 @@ describe('ApiHelpers', () => {
 
     it('correctly passes through rejection messages', () => {
       let rejectionMessage = "hm, an error";
-      fetchStub.returnsPromise().rejects({
+      fetchStub.rejects({
         myReason: rejectionMessage
       });
 

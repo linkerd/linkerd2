@@ -41,7 +41,7 @@ describe('Version', () => {
   };
 
   it('is hidden when the sidebar is collapsed', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
     });
@@ -65,7 +65,7 @@ describe('Version', () => {
   });
 
   it('renders up to date message when versions match', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
     });
@@ -87,7 +87,7 @@ describe('Version', () => {
   });
 
   it('renders update message when versions do not match', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: newVer })
     });
@@ -111,7 +111,7 @@ describe('Version', () => {
   it('renders error when version check fails', () => {
     let errMsg = "Fake error";
 
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: false,
       json: () => Promise.resolve({
         error: errMsg
