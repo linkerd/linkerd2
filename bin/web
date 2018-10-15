@@ -19,7 +19,7 @@ USAGE: web <command>
   * setup - get the environment setup for development
       Note: any command line options are passed on to yarn
   * test - run the tests
-      Note: any command line options are passed on to jest
+      Note: any command line options are passed on to the test runner (jest)
 USAGE
 }; function --help { -h ;}
 
