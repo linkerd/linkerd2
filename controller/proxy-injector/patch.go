@@ -7,13 +7,14 @@ import (
 )
 
 const (
-	patchPathContainer         = "/spec/template/spec/containers/0"
-	patchPathInitContainerRoot = "/spec/template/spec/initContainers"
-	patchPathInitContainer     = "/spec/template/spec/initContainers/%d"
-	patchPathVolumeRoot        = "/spec/template/spec/volumes"
-	patchPathVolume            = "/spec/template/spec/volumes/0"
-	patchPathPodLabel          = "/spec/template/metadata/labels"
-	patchPathPodAnnotation     = "/spec/template/metadata/annotations"
+	patchPathContainer           = "/spec/template/spec/containers/0"
+	patchPathInitContainerRoot   = "/spec/template/spec/initContainers"
+	patchPathInitContainer       = "/spec/template/spec/initContainers/%d"
+	patchPathVolumeRoot          = "/spec/template/spec/volumes"
+	patchPathVolume              = "/spec/template/spec/volumes/0"
+	patchPathPodLabel            = "/spec/template/metadata/labels"
+	patchPathPodAnnotation       = "/spec/template/metadata/annotations"
+	patchPathSelectorMatchLabels = "/spec/selector/matchLabels"
 )
 
 // Patch represents a RFC 6902 patch document.
@@ -72,6 +73,12 @@ func (p *Patch) addPodLabel(label map[string]string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  patchPathPodLabel,
+		Value: label,
+	})
+
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "add",
+		Path:  patchPathSelectorMatchLabels,
 		Value: label,
 	})
 }

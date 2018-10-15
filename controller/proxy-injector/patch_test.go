@@ -66,6 +66,10 @@ func TestPatch(t *testing.T) {
 			k8sPkg.ControllerNSLabel:    controllerNamespace,
 			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 		}},
+		&patchOp{Op: "add", Path: patchPathSelectorMatchLabels, Value: map[string]string{
+			k8sPkg.ControllerNSLabel:    controllerNamespace,
+			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
+		}},
 		&patchOp{Op: "add", Path: patchPathPodAnnotation, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
 	}
 
