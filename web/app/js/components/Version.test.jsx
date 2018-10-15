@@ -1,7 +1,6 @@
 import Adapter from 'enzyme-adapter-react-16';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import { expect } from 'chai';
 import React from 'react';
 import Sidebar from './Sidebar.jsx';
 import sinon from 'sinon';
@@ -61,9 +60,9 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Linkerd is up to date");
+      expect(component).toIncludeText("Linkerd is up to date");
       expandSidebar(component);
-      expect(component.html()).not.to.include("Linkerd is up to date");
+      expect(component).not.toIncludeText("Linkerd is up to date");
     });
   });
 
@@ -85,7 +84,7 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Linkerd is up to date");
+      expect(component).toIncludeText("Linkerd is up to date");
     });
   });
 
@@ -107,7 +106,7 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("A new version (2.3.4) is available.");
+      expect(component).toIncludeText("A new version (2.3.4) is available.");
     });
   });
 
@@ -134,8 +133,8 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Version check failed: Fake error.");
-      expect(component.html()).to.include(errMsg);
+      expect(component).toIncludeText("Version check failed: Fake error.");
+      expect(component).toIncludeText(errMsg);
     });
   });
 });
