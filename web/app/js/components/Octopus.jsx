@@ -73,58 +73,62 @@ export default class Octopus extends React.Component {
     let Progress = StyledProgress(classification);
 
     return (
-      <Card key={resource.name} className={`octopus-body ${type}`} title={display}>
-        <CardContent>
+      <Grid item key={resource.name} >
+        <Card className={`octopus-body ${type}`} title={display}>
+          <CardContent>
 
-          <Typography variant={type === "neighbor" ? "h6" : "h4"} align="center">
-            { this.linkedResourceTitle(resource, display) }
-          </Typography>
+            <Typography variant={type === "neighbor" ? "h6" : "h4"} align="center">
+              { this.linkedResourceTitle(resource, display) }
+            </Typography>
 
-          <Progress variant="determinate" value={resource.successRate * 100} />
+            <Progress variant="determinate" value={resource.successRate * 100} />
 
-          <Table>
-            <TableBody>
-              <TableRow>
-                <TableCell><Typography>RPS</Typography></TableCell>
-                <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell><Typography>P99</Typography></TableCell>
-                <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableCell><Typography>RPS</Typography></TableCell>
+                  <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell><Typography>P99</Typography></TableCell>
+                  <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </Grid>
     );
   }
 
   renderUnmeshedResources = unmeshedResources => {
     return (
-      <Card key="unmeshed-resources">
-        <CardContent>
-          <Typography variant="h6">Unmeshed</Typography>
-          {
-          _.map(unmeshedResources, r => {
-            let display = displayName(r);
-            return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
-          })
-        }
-        </CardContent>
-      </Card>
+      <Grid item>
+        <Card key="unmeshed-resources">
+          <CardContent>
+            <Typography variant="h6">Unmeshed</Typography>
+            {
+            _.map(unmeshedResources, r => {
+              let display = displayName(r);
+              return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
+            })
+          }
+          </CardContent>
+        </Card>
+      </Grid>
     );
   }
 
   renderCollapsedNeighbors = neighbors => {
     return (
-      <div key="unmeshed-resources">
+      <Grid item key="unmeshed-resources">
         {
           _.map(neighbors, r => {
             let display = displayName(r);
             return <div key={display}>{this.linkedResourceTitle(r, display)}</div>;
           })
         }
-      </div>
+      </Grid>
     );
   }
 
@@ -185,7 +189,14 @@ export default class Octopus extends React.Component {
           direction="row"
           justify="center"
           alignItems="center">
-          <Grid item xs={3} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
+
+          <Grid
+            container
+            spacing={24}
+            direction="column"
+            justify="center"
+            alignItems="center"
+            item xs={3} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
             {_.map(display.upstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
             {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
@@ -203,7 +214,14 @@ export default class Octopus extends React.Component {
             {this.renderArrowCol(numDownstreams, true)}
           </Grid>
 
-          <Grid item xs={3} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
+          <Grid
+            container
+            spacing={24}
+            direction="column"
+            justify="center"
+            alignItems="center"
+            item xs={3}
+            className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
             {_.map(display.downstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
           </Grid>
