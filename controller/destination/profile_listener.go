@@ -289,7 +289,7 @@ func validateResponseMatch(rspMatch *sp.ResponseMatch) error {
 		if matchKindSet {
 			return tooManyKindsErr
 		}
-		if rspMatch.Status.Max < rspMatch.Status.Min {
+		if rspMatch.Status.Max != 0 && rspMatch.Status.Min != 0 && rspMatch.Status.Max < rspMatch.Status.Min {
 			return invalidRangeErr
 		}
 		matchKindSet = true

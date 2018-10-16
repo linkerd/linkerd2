@@ -213,6 +213,49 @@ var (
 		},
 	}
 
+	oneSidedStatusRange = &sp.ServiceProfile{
+		Spec: sp.ServiceProfileSpec{
+			Routes: []*sp.RouteSpec{
+				&sp.RouteSpec{
+					Condition: &sp.RequestMatch{
+						Method: "GET",
+					},
+					Responses: []*sp.ResponseClass{
+						&sp.ResponseClass{
+							Condition: &sp.ResponseMatch{
+								Status: &sp.Range{
+									Min: 200,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	invalidStatusRange = &sp.ServiceProfile{
+		Spec: sp.ServiceProfileSpec{
+			Routes: []*sp.RouteSpec{
+				&sp.RouteSpec{
+					Condition: &sp.RequestMatch{
+						Method: "GET",
+					},
+					Responses: []*sp.ResponseClass{
+						&sp.ResponseClass{
+							Condition: &sp.ResponseMatch{
+								Status: &sp.Range{
+									Min: 201,
+									Max: 200,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	notEnoughResponseMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
@@ -308,6 +351,36 @@ func TestProfileListener(t *testing.T) {
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 0 {
 			t.Fatalf("Expecting [0] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
+		}
+	})
+
+	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
+		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+
+		listener := &profileListener{
+			stream: mockGetProfileServer,
+		}
+
+		listener.Update(invalidStatusRange)
+
+		numProfiles := len(mockGetProfileServer.profilesReceived)
+		if numProfiles != 0 {
+			t.Fatalf("Expecting [0] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
+		}
+	})
+
+	t.Run("Sends update for one sided status range", func(t *testing.T) {
+		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+
+		listener := &profileListener{
+			stream: mockGetProfileServer,
+		}
+
+		listener.Update(oneSidedStatusRange)
+
+		numProfiles := len(mockGetProfileServer.profilesReceived)
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
