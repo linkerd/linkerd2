@@ -1,74 +1,64 @@
+import _ from 'lodash';
 import ApiHelpers from './util/ApiHelpers.jsx';
-import BaseTable from './BaseTable.jsx';
-import { MetricsTableBase } from './MetricsTable.jsx';
-import React from 'react';
-import { shallow } from 'enzyme';
+import MetricsTable from './MetricsTable.jsx';
+import { routerWrap } from '../../test/testHelpers.jsx';
+import { mount } from 'enzyme';
 
-describe('Tests for <MetricsTableBase>', () => {
+describe('Tests for <MetricsTable>', () => {
   const defaultProps = {
     api: ApiHelpers(''),
   };
 
   it('renders the table with all columns', () => {
-    const component = shallow(
-      <MetricsTableBase
-        {...defaultProps}
-        metrics={[{
-          name: 'web',
-          namespace: 'default',
-          totalRequests: 0,
-        }]}
-        resource="deployment" />
-    );
+    let extraProps = _.merge({}, defaultProps, {
+      metrics: [{
+        name: 'web',
+        namespace: 'default',
+        key: 'web-default-deploy',
+        totalRequests: 0,
+      }],
+      resource: "deployment"
+    });
+    const component = mount(routerWrap(MetricsTable, extraProps));
 
-    const table = component.find(BaseTable);
+    const table = component.find("BaseTable");
 
-    expect(table).toHaveLength(1);
-    expect(table.props().dataSource).toHaveLength(1);
-    expect(table.props().columns).toHaveLength(10);
+    expect(table).toBeDefined();
+    expect(table.props().tableRows).toHaveLength(1);
+    expect(table.props().tableColumns).toHaveLength(10);
   });
 
   it('omits the namespace column for the namespace resource', () => {
-    const component = shallow(
-      <MetricsTableBase
-        {...defaultProps}
-        metrics={[]}
-        resource="namespace" />
-    );
+    let extraProps = _.merge({}, defaultProps, { metrics: [], resource: "namespace"});
+    const component = mount(routerWrap(MetricsTable, extraProps));
 
-    const table = component.find(BaseTable);
+    const table = component.find("BaseTable");
 
-    expect(table).toHaveLength(1);
-    expect(table.props().columns).toHaveLength(9);
+    expect(table).toBeDefined();
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 
   it('omits the namespace column when showNamespaceColumn is false', () => {
-    const component = shallow(
-      <MetricsTableBase
-        {...defaultProps}
-        metrics={[]}
-        resource="deployment"
-        showNamespaceColumn={false} />
-    );
+    let extraProps = _.merge({}, defaultProps, {
+      metrics: [],
+      resource: "deployment",
+      showNamespaceColumn: false
+    });
+    const component = mount(routerWrap(MetricsTable, extraProps));
 
-    const table = component.find(BaseTable);
+    const table = component.find("BaseTable");
 
-    expect(table).toHaveLength(1);
-    expect(table.props().columns).toHaveLength(9);
+    expect(table).toBeDefined();
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 
   it('omits meshed column and grafana column for authority resource', () => {
-    const component = shallow(
-      <MetricsTableBase
-        {...defaultProps}
-        metrics={[]}
-        resource="authority" />
-    );
+    let extraProps = _.merge({}, defaultProps, { metrics: [], resource: "authority"});
+    const component = mount(routerWrap(MetricsTable, extraProps));
 
-    const table = component.find(BaseTable);
+    const table = component.find("BaseTable");
 
-    expect(table).toHaveLength(1);
-    expect(table.props().columns).toHaveLength(8);
+    expect(table).toBeDefined();
+    expect(table.props().tableColumns).toHaveLength(8);
   });
-
 });

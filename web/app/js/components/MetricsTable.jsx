@@ -39,7 +39,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
     title: "Meshed",
     key: "meshed",
     isNumeric: true,
-    render: d => d.pods.meshedPods + "/" + d.pods.totalPods
+    render: d => !d.pods ? null : d.pods.meshedPods + "/" + d.pods.totalPods
   };
 
   let columns = [

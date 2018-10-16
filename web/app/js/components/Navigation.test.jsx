@@ -2,7 +2,6 @@ import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import Navigation from './Navigation.jsx';
-import Version from './Version.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
