@@ -3,6 +3,7 @@ import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
 import { withContext } from './util/AppContext.jsx';
 
@@ -41,12 +42,10 @@ const namespacesColumns = PrefixedLink => [
     title: "Meshed Status",
     key: "meshification",
     render: row => {
-      let containerWidth = 132;
       let percent = row.meshedPercent.get();
-      let barWidth = percent < 0 ? 0 : Math.round(percent * containerWidth);
       let barType = _.isEmpty(row.errors) ?
         getClassification(row.meshedPods, row.failedPods) : "poor";
-
+      let Progress = StyledProgress(barType);
 
       let percentMeshedMsg = "";
       if (row.meshedPercent.get() >= 0) {
@@ -62,9 +61,7 @@ const namespacesColumns = PrefixedLink => [
               {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
             </div>
             )}>
-          <div className={"container-bar " + barType} style={{width: containerWidth}}>
-            <div className={"inner-bar " + barType} style={{width: barWidth}}>&nbsp;</div>
-          </div>
+          <Progress variant="determinate" value={Math.round(percent * 100)} />
         </Tooltip>
       );
     }
