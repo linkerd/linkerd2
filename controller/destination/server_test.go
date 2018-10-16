@@ -10,10 +10,19 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type mockDestination_GetServer struct {
+type mockDestination_Server struct {
 	errorToReturn   error
 	contextToReturn context.Context
+}
+
+type mockDestination_GetServer struct {
+	mockDestination_Server
 	updatesReceived []*pb.Update
+}
+
+type mockDestination_GetProfileServer struct {
+	mockDestination_Server
+	profilesReceived []*pb.DestinationProfile
 }
 
 func (m *mockDestination_GetServer) Send(update *pb.Update) error {
@@ -21,12 +30,17 @@ func (m *mockDestination_GetServer) Send(update *pb.Update) error {
 	return m.errorToReturn
 }
 
-func (m *mockDestination_GetServer) SetHeader(metadata.MD) error  { return m.errorToReturn }
-func (m *mockDestination_GetServer) SendHeader(metadata.MD) error { return m.errorToReturn }
-func (m *mockDestination_GetServer) SetTrailer(metadata.MD)       {}
-func (m *mockDestination_GetServer) Context() context.Context     { return m.contextToReturn }
-func (m *mockDestination_GetServer) SendMsg(x interface{}) error  { return m.errorToReturn }
-func (m *mockDestination_GetServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
+func (m *mockDestination_GetProfileServer) Send(profile *pb.DestinationProfile) error {
+	m.profilesReceived = append(m.profilesReceived, profile)
+	return m.errorToReturn
+}
+
+func (m *mockDestination_Server) SetHeader(metadata.MD) error  { return m.errorToReturn }
+func (m *mockDestination_Server) SendHeader(metadata.MD) error { return m.errorToReturn }
+func (m *mockDestination_Server) SetTrailer(metadata.MD)       {}
+func (m *mockDestination_Server) Context() context.Context     { return m.contextToReturn }
+func (m *mockDestination_Server) SendMsg(x interface{}) error  { return m.errorToReturn }
+func (m *mockDestination_Server) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestBuildResolversList(t *testing.T) {
 	k8sAPI, err := k8s.NewFakeAPI("")
@@ -37,7 +51,7 @@ func TestBuildResolversList(t *testing.T) {
 	t.Run("Doesn't build a list if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolvers, err := buildResolversList(dsnZone, k8sAPI)
+			resolvers, err := buildResolversList(dsnZone, "linkerd", k8sAPI)
 			if err == nil {
 				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolvers: %v", dsnZone, resolvers)
 			}
@@ -45,7 +59,7 @@ func TestBuildResolversList(t *testing.T) {
 	})
 
 	t.Run("Builds list with echo IP first, then K8s resolver", func(t *testing.T) {
-		resolvers, err := buildResolversList("some.zone", k8sAPI)
+		resolvers, err := buildResolversList("some.zone", "linkerd", k8sAPI)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -66,7 +80,7 @@ func TestBuildResolversList(t *testing.T) {
 type mockStreamingDestinationResolver struct {
 	hostReceived             string
 	portReceived             int
-	listenerReceived         updateListener
+	listenerReceived         endpointUpdateListener
 	canResolveToReturn       bool
 	errToReturnForCanResolve error
 	errToReturnForResolution error
@@ -76,11 +90,15 @@ func (m *mockStreamingDestinationResolver) canResolve(host string, port int) (bo
 	return m.canResolveToReturn, m.errToReturnForCanResolve
 }
 
-func (m *mockStreamingDestinationResolver) streamResolution(host string, port int, listener updateListener) error {
+func (m *mockStreamingDestinationResolver) streamResolution(host string, port int, listener endpointUpdateListener) error {
 	m.hostReceived = host
 	m.portReceived = port
 	m.listenerReceived = listener
 	return m.errToReturnForResolution
+}
+
+func (m *mockStreamingDestinationResolver) streamProfiles(host string, listener profileUpdateListener) error {
+	return nil
 }
 
 func (m *mockStreamingDestinationResolver) stop() {}

@@ -11,7 +11,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 )
 
-type updateListener interface {
+type endpointUpdateListener interface {
 	Update(add, remove []*updateAddress)
 	ClientClose() <-chan struct{}
 	ServerClose() <-chan struct{}
@@ -65,7 +65,7 @@ func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress,
 	return add, remove
 }
 
-// implements the updateListener interface
+// implements the endpointUpdateListener interface
 type endpointListener struct {
 	stream           pb.Destination_GetServer
 	ownerKindAndName ownerKindAndNameFn
