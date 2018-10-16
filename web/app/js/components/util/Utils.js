@@ -112,11 +112,6 @@ export const toClassName = name => {
 };
 
 /*
-  Definition of sort, for ant table sorting
-*/
-export const numericSort = (a, b) => (_.isNil(a) ? -1 : a) - (_.isNil(b) ? -1 : b);
-
-/*
   Nicely readable names for the stat resources
 */
 export const friendlyTitle = singularOrPluralResource => {
