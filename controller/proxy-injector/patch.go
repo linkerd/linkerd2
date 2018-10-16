@@ -12,8 +12,9 @@ const (
 	patchPathInitContainer     = "/spec/template/spec/initContainers/%d"
 	patchPathVolumeRoot        = "/spec/template/spec/volumes"
 	patchPathVolume            = "/spec/template/spec/volumes/0"
-	patchPathPodLabel          = "/spec/template/metadata/labels"
-	patchPathPodAnnotation     = "/spec/template/metadata/annotations"
+	patchPathDeploymentLabels  = "/metadata/labels"
+	patchPathPodLabels         = "/spec/template/metadata/labels"
+	patchPathPodAnnotations    = "/spec/template/metadata/annotations"
 )
 
 // Patch represents a RFC 6902 patch document.
@@ -68,19 +69,27 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
-func (p *Patch) addPodLabel(label map[string]string) {
+func (p *Patch) addPodLabels(label map[string]string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodLabel,
+		Path:  patchPathPodLabels,
 		Value: label,
 	})
 }
 
-func (p *Patch) addPodAnnotation(annotation map[string]string) {
+func (p *Patch) addPodAnnotations(annotation map[string]string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodAnnotation,
+		Path:  patchPathPodAnnotations,
 		Value: annotation,
+	})
+}
+
+func (p *Patch) addDeploymentLabels(label map[string]string) {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "add",
+		Path:  patchPathDeploymentLabels,
+		Value: label,
 	})
 }
 

@@ -152,10 +152,21 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch.addVolume(caBundle)
 	patch.addVolume(tlsSecrets)
 
-	patch.addPodLabel(map[string]string{
-		k8sPkg.ControllerNSLabel:    w.controllerNamespace,
-		k8sPkg.ProxyDeploymentLabel: deployment.ObjectMeta.Name,
-	})
+	if deployment.Spec.Template.Labels == nil {
+		deployment.Spec.Template.Labels = map[string]string{}
+	}
+
+	deployment.Spec.Template.Labels[k8sPkg.ControllerNSLabel] = w.controllerNamespace
+	deployment.Spec.Template.Labels[k8sPkg.ProxyDeploymentLabel] = deployment.ObjectMeta.Name
+	patch.addPodLabels(deployment.Spec.Template.Labels)
+
+	if deployment.Labels == nil {
+		deployment.Labels = map[string]string{}
+	}
+
+	deployment.Labels[k8sPkg.ControllerNSLabel] = w.controllerNamespace
+	deployment.Labels[k8sPkg.ProxyDeploymentLabel] = deployment.ObjectMeta.Name
+	patch.addDeploymentLabels(deployment.Labels)
 
 	var (
 		image    = strings.Split(proxy.Image, ":")
@@ -167,10 +178,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	} else {
 		imageTag = image[1]
 	}
-	patch.addPodAnnotation(map[string]string{
-		k8sPkg.CreatedByAnnotation:    fmt.Sprintf("linkerd/proxy-injector %s", imageTag),
-		k8sPkg.ProxyVersionAnnotation: imageTag,
-	})
+
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = map[string]string{}
+	}
+	deployment.Spec.Template.Annotations[k8sPkg.CreatedByAnnotation] = fmt.Sprintf("linkerd/proxy-injector %s", imageTag)
+	deployment.Spec.Template.Annotations[k8sPkg.ProxyVersionAnnotation] = imageTag
+	patch.addPodAnnotations(deployment.Spec.Template.Annotations)
 
 	patchJSON, err := json.Marshal(patch.patchOps)
 	if err != nil {
