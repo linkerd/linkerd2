@@ -348,8 +348,6 @@ spec:
       containers:
       - args:
         - -api-addr=api.linkerd.svc.cluster.local:8085
-        - -static-dir=/dist
-        - -template-dir=/templates
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
         - -controller-namespace=linkerd
         - -log-level=info
