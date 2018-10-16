@@ -5,12 +5,16 @@ import { routerWrap } from '../../test/testHelpers.jsx';
 import ServiceMesh from './ServiceMesh.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
+import Spinner from './util/Spinner.jsx';
 import { mount } from 'enzyme';
 
 sinonStubPromise(sinon);
 
 describe('ServiceMesh', () => {
   let component, fetchStub;
+
+  // https://material-ui.com/style/typography/#migration-to-typography-v2
+  window.__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__ = true;
 
   function withPromise(fn) {
     return component.find("ServiceMesh").instance().serverPromise.then(fn);
@@ -46,7 +50,7 @@ describe('ServiceMesh', () => {
   it("renders the spinner before metrics are loaded", () => {
     component = mount(routerWrap(ServiceMesh));
 
-    expect(component.find(".ant-spin")).toHaveLength(1);
+    expect(component.find(Spinner)).toHaveLength(1);
     expect(component.find("ServiceMesh")).toHaveLength(1);
     expect(component.find("CallToAction")).toHaveLength(0);
   });
@@ -60,9 +64,9 @@ describe('ServiceMesh', () => {
 
     return withPromise(() => {
       component.update();
-      // console.log(component.find("Spin").debug());
+
       expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(".ant-spin")).toHaveLength(0);
+      expect(component.find(Spinner)).toHaveLength(0);
       expect(component.find("CallToAction")).toHaveLength(1);
     });
   });
@@ -77,7 +81,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(".ant-spin")).toHaveLength(0);
+      expect(component.find(Spinner)).toHaveLength(0);
     });
   });
 
@@ -91,7 +95,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(".ant-spin")).toHaveLength(0);
+      expect(component.find(Spinner)).toHaveLength(0);
       expect(component).toIncludeText("Service mesh details");
       expect(component).toIncludeText("ShinyProductName version");
     });
@@ -107,7 +111,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(".ant-spin")).toHaveLength(0);
+      expect(component.find(Spinner)).toHaveLength(0);
       expect(component).toIncludeText("Control plane");
     });
   });
@@ -122,7 +126,7 @@ describe('ServiceMesh', () => {
     return withPromise(() => {
       component.update();
       expect(component.find("ServiceMesh")).toHaveLength(1);
-      expect(component.find(".ant-spin")).toHaveLength(0);
+      expect(component.find(Spinner)).toHaveLength(0);
       expect(component).toIncludeText("Data plane");
     });
   });
@@ -136,7 +140,7 @@ describe('ServiceMesh', () => {
       component = mount(routerWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component).toIncludeText("No resources detected");
+        expect(component).toIncludeText("No namespaces detected");
       });
     });
 

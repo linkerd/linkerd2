@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
@@ -232,29 +234,28 @@ class ServiceMesh extends React.Component {
   }
 
   renderAddResourcesMessage() {
+    let message = ""
+    let numUnadded = 0;
+
     if (_.isEmpty(this.state.nsStatuses)) {
-      return <div className="mesh-completion-message">No resources detected.</div>;
-    }
-
-    let meshedCount = _.countBy(this.state.nsStatuses, pod => {
-      return pod.meshedPercent.get() > 0;
-    });
-    let numUnadded = meshedCount["false"] || 0;
-
-    if (numUnadded === 0) {
-      return (
-        <div className="mesh-completion-message">
-          All namespaces have a {this.props.productName} install.
-        </div>
-      );
+      message = "No resources detected.";
     } else {
-      return (
-        <div className="mesh-completion-message">
-          {numUnadded} {numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.
-          {incompleteMeshMessage()}
-        </div>
-      );
+      let meshedCount = _.countBy(this.state.nsStatuses, pod => {
+        return pod.meshedPercent.get() > 0;
+      });
+      numUnadded = meshedCount["false"] || 0;
+      message = numUnadded === 0 ? `All namespaces have a ${this.props.productName} install.` :
+        `${numUnadded} ${numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.`
     }
+
+    return (
+      <Card>
+        <CardContent>
+          <Typography>{message}</Typography>
+          { numUnadded > 0 ? incompleteMeshMessage() : null }
+        </CardContent>
+      </Card>
+    );
   }
 
   render() {
@@ -269,12 +270,15 @@ class ServiceMesh extends React.Component {
                 resource="namespace" /> : null}
 
             <Grid container spacing={24}>
-              <Grid item xs={8}>{this.renderControlPlaneDetails()}</Grid>
-              <Grid item xs={4}>{this.renderServiceMeshDetails()}</Grid>
-            </Grid>
+              <Grid item xs={8} container direction="column" >
+                <Grid item>{this.renderControlPlaneDetails()}</Grid>
+                <Grid item><MeshedStatusTable tableRows={_.sortBy(this.state.nsStatuses, "namespace")} /></Grid>
+              </Grid>
 
-            <Grid container spacing={24}>
-              <Grid item xs={8}><MeshedStatusTable tableRows={_.sortBy(this.state.nsStatuses, "namespace")} /></Grid>
+              <Grid item xs={4} container direction="column" spacing={24}>
+                <Grid item>{this.renderServiceMeshDetails()}</Grid>
+                <Grid item>{this.renderAddResourcesMessage()}</Grid>
+              </Grid>
             </Grid>
           </div>
         )}
