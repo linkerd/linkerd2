@@ -12,8 +12,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-const profileAnnotation = "linkerd.io/service-profile"
-
 type profileId struct {
 	namespace string
 	name      string
