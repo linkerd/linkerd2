@@ -1,7 +1,8 @@
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
-import Sidebar from './Sidebar.jsx';
+import Navigation from './Navigation.jsx';
+import Version from './Version.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
@@ -15,15 +16,17 @@ const loc = {
   search: '',
 };
 
-describe('Version', () => {
+
+describe('Navigation', () => {
   let curVer = "edge-1.2.3";
   let newVer = "edge-2.3.4";
 
   let component, fetchStub;
   let apiHelpers = ApiHelpers("");
+  const childComponent = () => null;
 
   function withPromise(fn) {
-    return component.find("Sidebar").instance().serverPromise.then(fn);
+    return component.find("NavigationBase").instance().versionPromise.then(fn);
   }
 
   beforeEach(() => {
@@ -37,7 +40,7 @@ describe('Version', () => {
 
   const expandSidebar = component => {
     // click trigger to expand the sidebar
-    component.find(".ant-layout-sider-trigger").simulate('click');
+    component.find("button.drawer-toggle-btn").simulate('click', () => {});
   };
 
   it('is hidden when the sidebar is collapsed', () => {
@@ -48,7 +51,10 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Sidebar
+        <Navigation
+          ChildComponent={childComponent}
+          classes={{}}
+          theme={{}}
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
@@ -72,7 +78,10 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Sidebar
+        <Navigation
+          ChildComponent={childComponent}
+          classes={{}}
+          theme={{}}
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
@@ -94,7 +103,10 @@ describe('Version', () => {
 
     component = mount(
       <BrowserRouter>
-        <Sidebar
+        <Navigation
+          ChildComponent={childComponent}
+          classes={{}}
+          theme={{}}
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
@@ -111,17 +123,20 @@ describe('Version', () => {
   it('renders error when version check fails', () => {
     let errMsg = "Fake error";
 
-    fetchStub.resolves({
+    fetchStub.rejects({
       ok: false,
       json: () => Promise.resolve({
-        error: errMsg
+        error: {},
       }),
       statusText: errMsg,
     });
 
     component = mount(
       <BrowserRouter>
-        <Sidebar
+        <Navigation
+          ChildComponent={childComponent}
+          classes={{}}
+          theme={{}}
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}

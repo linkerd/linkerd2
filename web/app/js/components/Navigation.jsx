@@ -1,11 +1,11 @@
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import classNames from 'classnames';
-import HelpIcon from '@material-ui/icons/HelpOutline';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import EmailIcon from '@material-ui/icons/Email';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
-import EmailIcon from '@material-ui/icons/Email';
+import HelpIcon from '@material-ui/icons/HelpOutline';
 import HomeIcon from '@material-ui/icons/Home';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
@@ -140,7 +140,7 @@ class NavigationBase extends React.Component {
 
   fetchVersion() {
     let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
-    fetch(versionUrl, { credentials: 'include' })
+    this.versionPromise = fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp => {
         let latestVersion;
@@ -226,7 +226,7 @@ class NavigationBase extends React.Component {
             <div className={classes.linkerdNavLogo}>
               {linkerdWordLogo}
             </div>
-            <IconButton onClick={this.handleDrawerClose}>
+            <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClose}>
               <ChevronLeftIcon />
             </IconButton>
           </div>
