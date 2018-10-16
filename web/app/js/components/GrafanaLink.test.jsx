@@ -1,8 +1,8 @@
 import Adapter from 'enzyme-adapter-react-16';
-import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
+import ApiHelpers from './util/ApiHelpers.jsx';
 import { expect } from 'chai';
-import GrafanaLink from '../js/components/GrafanaLink.jsx';
-import { routerWrap } from './testHelpers.jsx';
+import GrafanaLink from './GrafanaLink.jsx';
+import { routerWrap } from '../../test/testHelpers.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import Enzyme, { mount } from 'enzyme';

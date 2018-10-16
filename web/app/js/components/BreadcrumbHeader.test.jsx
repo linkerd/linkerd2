@@ -1,7 +1,6 @@
 import Adapter from 'enzyme-adapter-react-16';
-import { Breadcrumb } from 'antd';
-import BreadcrumbHeader from '../js/components/BreadcrumbHeader.jsx';
 import { BrowserRouter } from 'react-router-dom';
+import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import { expect } from 'chai';
 import React from 'react';
 import Enzyme, { mount } from 'enzyme';
@@ -11,7 +10,7 @@ Enzyme.configure({ adapter: new Adapter() });
 const loc = {
   pathname: '',
   hash: '',
-  pathPrefix: '',
+  pathPrefix: '/path/prefix',
   search: '',
 };
 
@@ -28,7 +27,7 @@ describe('Tests for <BreadcrumbHeader>', () => {
       </BrowserRouter>
     );
 
-    const crumbs = component.find(Breadcrumb.Item);
+    const crumbs = component.find("a");
     expect(crumbs).to.have.length(3);
   });
 });

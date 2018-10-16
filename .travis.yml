@@ -49,7 +49,7 @@ jobs:
       install:
         - ./bin/web
       script:
-        - ./bin/web test --reporters dots
+        - ./bin/web test --reporters=jest-dot-reporter
 
     - language: generic
       script:

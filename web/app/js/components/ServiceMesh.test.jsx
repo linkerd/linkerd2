@@ -1,10 +1,10 @@
 import _ from 'lodash';
 import Adapter from 'enzyme-adapter-react-16';
 import { expect } from 'chai';
-import nsFixtures from './fixtures/namespaces.json';
-import podFixtures from './fixtures/podRollup.json';
-import { routerWrap } from './testHelpers.jsx';
-import ServiceMesh from '../js/components/ServiceMesh.jsx';
+import nsFixtures from '../../test/fixtures/namespaces.json';
+import podFixtures from '../../test/fixtures/podRollup.json';
+import { routerWrap } from '../../test/testHelpers.jsx';
+import ServiceMesh from './ServiceMesh.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import Enzyme, { mount } from 'enzyme';

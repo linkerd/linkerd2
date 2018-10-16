@@ -1,8 +1,8 @@
 import Adapter from 'enzyme-adapter-react-16';
-import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
-import BaseTable from '../js/components/BaseTable.jsx';
+import ApiHelpers from './util/ApiHelpers.jsx';
+import BaseTable from './BaseTable.jsx';
 import { expect } from 'chai';
-import { MetricsTableBase } from '../js/components/MetricsTable.jsx';
+import { MetricsTableBase } from './MetricsTable.jsx';
 import React from 'react';
 import Enzyme, { shallow } from 'enzyme';
 

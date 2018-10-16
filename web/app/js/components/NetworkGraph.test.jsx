@@ -1,7 +1,7 @@
 import Adapter from 'enzyme-adapter-react-16';
-import emojivotoPodFixtures from './fixtures/emojivotoPods.json';
+import emojivotoPodFixtures from '../../test/fixtures/emojivotoPods.json';
 import { expect } from 'chai';
-import { NetworkGraphBase } from '../js/components/NetworkGraph.jsx';
+import { NetworkGraphBase } from './NetworkGraph.jsx';
 import React from 'react';
 import Enzyme, { shallow } from 'enzyme';
 

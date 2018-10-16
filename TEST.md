@@ -40,16 +40,39 @@ go vet ./...
 ## Javascript
 
 Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
-[webpack](https://webpack.js.org/). To fetch dependencies and run tests, run:
+[webpack](https://webpack.js.org/). We use [jest](https://facebook.github.io/jest) as
+our test runner.
+
+To fetch dependencies and run tests, run:
 
 ```bash
+bin/web setup
 bin/web test
 
 # or alternatively:
 
 cd web/app
 yarn && NODE_ENV=test yarn webpack
-NODE_ENV=test yarn karma start --single-run
+yarn jest "$*"
+```
+
+For faster testing, run a subset of the tests by passing flags to jest.
+
+Run tests on files that have changed since the last commit:
+```bash
+bin/web test -o
+```
+
+Run tests that match a spec name (regex):
+```bash
+bin/web test -t name-of-spec
+```
+
+Run watch mode:
+
+```bash
+bin/web test --watch # runs -o by default (tests only files changed since last commit)
+bin/web test --watchAll # runs all tests after a change to a file
 ```
 
 # Integration tests
