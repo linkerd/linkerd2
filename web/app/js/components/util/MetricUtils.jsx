@@ -10,7 +10,7 @@ const getPodCategorization = pod => {
   } else if (pod.status === "Pending" || pod.status === "Running") {
     return "neutral";
   } else if (pod.status === "Failed") {
-    return "bad";
+    return "poor";
   }
   return ""; // Terminating | Succeeded | Unknown
 };
@@ -21,7 +21,7 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
   }
 
   if (rate < 0.9) {
-    return successRateLabels.bad;
+    return successRateLabels.poor;
   } else if (rate < 0.95) {
     return successRateLabels.neutral;
   } else {
@@ -30,10 +30,10 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
 };
 
 export const srArcClassLabels = {
-  good: "status-good",
-  neutral: "status-ok",
-  bad: "status-poor",
-  default: "status-ok"
+  good: "good",
+  neutral: "neutral",
+  poor: "poor",
+  default: "neutral"
 };
 
 export const successRateWithMiniChart = sr => (

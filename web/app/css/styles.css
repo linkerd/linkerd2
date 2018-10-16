@@ -48,23 +48,6 @@ a {
   }
 }
 
-.success-rate-arc {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-
-  &.status-good {
-    background-color: var(--green);
-  }
-  &.status-ok {
-    background-color: var(--orange)
-  }
-  &.status-poor {
-    background-color: var(--red);
-  }
-}
-
 /* Colored dot for indicating statuses */
 div.status-dot {
   width: calc(2 * var(--base-width));

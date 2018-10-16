@@ -2,10 +2,10 @@ import _ from 'lodash';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
-import LinearProgress from '@material-ui/core/LinearProgress';
 import OctopusArms from './util/OctopusArms.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { StyledProgress } from './util/Progress.jsx';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -69,19 +69,18 @@ export default class Octopus extends React.Component {
 
   renderResourceCard(resource, type) {
     let display = displayName(resource);
+    let classification = getSuccessRateClassification(resource.successRate, srArcClassLabels);
+    let Progress = StyledProgress(classification);
 
     return (
       <Card key={resource.name} className={`octopus-body ${type}`} title={display}>
         <CardContent>
 
-          <Typography variant="headline" component="h3" align="center">
+          <Typography variant={type === "neighbor" ? "h6" : "h4"} align="center">
             { this.linkedResourceTitle(resource, display) }
           </Typography>
 
-          <LinearProgress
-            variant="determinate"
-            value={resource.successRate * 100}
-            classification={getSuccessRateClassification(resource.successRate, srArcClassLabels)} />
+          <Progress variant="determinate" value={resource.successRate * 100} />
 
           <Table>
             <TableBody>
