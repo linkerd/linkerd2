@@ -1,10 +1,10 @@
-import _ from 'lodash';
-import { emptyTapQuery } from './util/TapUtils.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
+import _ from 'lodash';
+import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Top extends React.Component {

@@ -1,8 +1,9 @@
-import _ from 'lodash';
+import 'whatwg-fetch';
+
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
-import 'whatwg-fetch';
+import _ from 'lodash';
 
 const checkFetchOk = resp => {
   if (resp.ok) {

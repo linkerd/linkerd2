@@ -1,7 +1,7 @@
-import { friendlyTitle } from './util/Utils.js';
-import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { friendlyTitle } from './util/Utils.js';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 
 export default class AddResources extends React.Component {
   static propTypes = {

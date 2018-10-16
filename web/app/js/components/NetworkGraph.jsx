@@ -1,12 +1,13 @@
-import _ from 'lodash';
-import { metricsPropType } from './util/MetricUtils.jsx';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { withContext } from './util/AppContext.jsx';
-import withREST from './util/withREST.jsx';
-import * as d3 from 'd3';
 import 'whatwg-fetch';
 
+import * as d3 from 'd3';
+
+import PropTypes from 'prop-types';
+import React from 'react';
+import _ from 'lodash';
+import { metricsPropType } from './util/MetricUtils.jsx';
+import { withContext } from './util/AppContext.jsx';
+import withREST from './util/withREST.jsx';
 
 const defaultSvgWidth = 524;
 const defaultSvgHeight = 325;

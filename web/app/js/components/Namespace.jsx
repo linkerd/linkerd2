@@ -1,14 +1,15 @@
-import _ from 'lodash';
+import 'whatwg-fetch';
+
 import ErrorBanner from './ErrorBanner.jsx';
-import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import NetworkGraph from './NetworkGraph.jsx';
-import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import _ from 'lodash';
+import { friendlyTitle } from './util/Utils.js';
+import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
-import 'whatwg-fetch';
 
 class Namespaces extends React.Component {
   static defaultProps = {
@@ -58,12 +59,6 @@ class Namespaces extends React.Component {
   componentDidMount() {
     this.loadFromServer();
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
-  }
-
-  componentWillReceiveProps(newProps) {
-    // React won't unmount this component when switching resource pages so we need to clear state
-    this.api.cancelCurrentRequests();
-    this.setState(this.getInitialState(newProps.match.params));
   }
 
   componentWillUnmount() {

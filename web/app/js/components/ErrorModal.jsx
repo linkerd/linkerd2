@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Dialog from '@material-ui/core/Dialog';
@@ -6,14 +5,14 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import ErrorIcon from '@material-ui/icons/Error';
-import { friendlyTitle } from './util/Utils.js';
 import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Switch from '@material-ui/core/Switch';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
-
+import _ from 'lodash';
+import { friendlyTitle } from './util/Utils.js';
 
 // max characters we display for error messages before truncating them
 const maxErrorLength = 50;

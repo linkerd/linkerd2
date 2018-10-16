@@ -1,17 +1,19 @@
-import _ from 'lodash';
+import 'whatwg-fetch';
+
+import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
+
 import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
-import { processNeighborData } from './util/TapUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import TopModule from './TopModule.jsx';
+import _ from 'lodash';
+import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
-import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
-import 'whatwg-fetch';
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
@@ -34,7 +36,9 @@ export class ResourceDetailBase extends React.Component {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    match: PropTypes.shape({}).isRequired,
+    match: PropTypes.shape({
+      url: PropTypes.string.isRequired
+    }).isRequired,
     pathPrefix: PropTypes.string.isRequired
   }
 
@@ -74,11 +78,13 @@ export class ResourceDetailBase extends React.Component {
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
-  componentWillReceiveProps(newProps) {
-    // React won't unmount this component when switching resource pages so we need to clear state
-    this.api.cancelCurrentRequests();
-    this.unmeshedSources = {};
-    this.setState(this.getInitialState(newProps.match, newProps.pathPrefix));
+  componentDidUpdate(prevProps) {
+    if (!_.isEqual(prevProps.match.url, this.props.match.url)) {
+      // React won't unmount this component when switching resource pages so we need to clear state
+      this.api.cancelCurrentRequests();
+      this.unmeshedSources = {};
+      this.setState(this.getInitialState(this.props.match, this.props.pathPrefix));
+    }
   }
 
   componentWillUnmount() {

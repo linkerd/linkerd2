@@ -1,12 +1,13 @@
-import _ from 'lodash';
+import { friendlyTitle, metricToFormatter } from './util/Utils.js';
+import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
+
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
-import { friendlyTitle, metricToFormatter } from './util/Utils.js';
-import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let isAuthorityTable = resource === "authority";

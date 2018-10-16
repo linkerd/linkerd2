@@ -1,11 +1,12 @@
-import _ from 'lodash';
+import { podOwnerLookup, toShortResourceName } from './Utils.js';
+
 import BaseTable from '../BaseTable.jsx';
 import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
-import { podOwnerLookup, toShortResourceName } from './Utils.js';
+import _ from 'lodash';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 

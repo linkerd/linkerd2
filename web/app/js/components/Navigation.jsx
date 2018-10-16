@@ -1,6 +1,21 @@
+import {
+  AppBar,
+  Collapse,
+  Divider,
+  Drawer,
+  IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  MenuItem,
+  MenuList,
+  Toolbar,
+  Typography
+} from '@material-ui/core';
+import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
+
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import classNames from 'classnames';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
 import EmailIcon from '@material-ui/icons/Email';
 import ExpandLess from '@material-ui/icons/ExpandLess';
@@ -18,23 +33,9 @@ import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import VisibilityIcon from '@material-ui/icons/Visibility';
+import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
-import {
-  AppBar,
-  Collapse,
-  Divider,
-  Drawer,
-  IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  MenuList,
-  Toolbar,
-  Typography
-} from '@material-ui/core';
-import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 
 const drawerWidth = 250;
 const styles = theme => ({
@@ -261,7 +262,7 @@ class NavigationBase extends React.Component {
           <Divider />
 
           <MenuList>
-            <ListItem component={"a"} href="https://linkerd.io/2/overview/" target="_blank">
+            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank">
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
@@ -276,17 +277,17 @@ class NavigationBase extends React.Component {
             </MenuItem>
             <Collapse in={this.state.helpMenuOpen} timeout="auto" unmountOnExit>
               <MenuList dense component="div" disablePadding>
-                <ListItem component={"a"} href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
+                <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
                   <ListItemIcon><EmailIcon /></ListItemIcon>
                   <ListItemText primary="Join the mailing list" />
                 </ListItem>
 
-                <ListItem component={"a"} href="https://slack.linkerd.io" target="_blank">
+                <ListItem component="a" href="https://slack.linkerd.io" target="_blank">
                   <ListItemIcon>{slackIcon}</ListItemIcon>
                   <ListItemText primary="Join us on slack" />
                 </ListItem>
 
-                <ListItem component={"a"} href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
+                <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
                   <ListItemIcon>{githubIcon}</ListItemIcon>
                   <ListItemText primary="File an issue" />
                 </ListItem>

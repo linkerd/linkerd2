@@ -1,13 +1,15 @@
-import _ from 'lodash';
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
+import 'whatwg-fetch';
+
+import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
+
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import _ from 'lodash';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import withREST from './util/withREST.jsx';
-import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
-import 'whatwg-fetch';
 
 export class ResourceListBase extends React.Component {
   static defaultProps = {

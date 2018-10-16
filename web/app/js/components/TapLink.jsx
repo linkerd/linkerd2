@@ -1,6 +1,6 @@
-import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
 
 const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, path}) => {
   let params = {

@@ -1,5 +1,6 @@
-import React from 'react';
 import './../../../css/svg-wrappers.css';
+
+import React from 'react';
 
 export const slackIcon = (
   <svg style={{"width":"24px", "height":"24px"}} viewBox="0 0 24 24">

@@ -1,8 +1,8 @@
-import _ from 'lodash';
-import { metricToFormatter } from './Utils.js';
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
+import { metricToFormatter } from './Utils.js';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {

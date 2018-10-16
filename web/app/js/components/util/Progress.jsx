@@ -18,7 +18,7 @@ const colorLookup = {
     colorPrimary: '#e8eaf6',
     barColorPrimary: '#3f51b5',
   }
-}
+};
 
 export const StyledProgress = (classification = "default") => withStyles({
   root: {

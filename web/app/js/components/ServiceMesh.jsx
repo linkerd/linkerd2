@@ -1,19 +1,19 @@
-import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
-import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import MeshedStatusTable from './MeshedStatusTable.jsx';
-import moment from 'moment';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
 import Typography from '@material-ui/core/Typography';
+import _ from 'lodash';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
+import moment from 'moment';
 import { withContext } from './util/AppContext.jsx';
 
 const serviceMeshDetailsColumns = [
@@ -234,7 +234,7 @@ class ServiceMesh extends React.Component {
   }
 
   renderAddResourcesMessage() {
-    let message = ""
+    let message = "";
     let numUnadded = 0;
 
     if (_.isEmpty(this.state.nsStatuses)) {
@@ -245,7 +245,7 @@ class ServiceMesh extends React.Component {
       });
       numUnadded = meshedCount["false"] || 0;
       message = numUnadded === 0 ? `All namespaces have a ${this.props.productName} install.` :
-        `${numUnadded} ${numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.`
+        `${numUnadded} ${numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.`;
     }
 
     return (

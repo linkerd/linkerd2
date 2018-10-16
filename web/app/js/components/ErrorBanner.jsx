@@ -1,12 +1,12 @@
-import _ from 'lodash';
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
-import classNames from 'classnames';
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Snackbar from '@material-ui/core/Snackbar';
 import WarningIcon from '@material-ui/icons/Warning';
+import _ from 'lodash';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
+import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
 const defaultMessage = "An error has occurred.";

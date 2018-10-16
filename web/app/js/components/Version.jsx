@@ -1,7 +1,7 @@
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import Button from '@material-ui/core/Button';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Version extends React.Component {

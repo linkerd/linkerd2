@@ -1,10 +1,3 @@
-import _ from 'lodash';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import PropTypes from 'prop-types';
-import React from 'react';
-import TapQueryCliCmd from './TapQueryCliCmd.jsx';
-import { withStyles } from '@material-ui/core/styles';
-import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
 import {
   Button,
   Card,
@@ -21,13 +14,21 @@ import {
   TextField,
   Typography
 } from '@material-ui/core';
+import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
 import {
   defaultMaxRps,
   emptyTapQuery,
   httpMethods,
-  tapQueryProps,
-  tapQueryPropType
+  tapQueryPropType,
+  tapQueryProps
 } from './util/TapUtils.jsx';
+
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import PropTypes from 'prop-types';
+import React from 'react';
+import TapQueryCliCmd from './TapQueryCliCmd.jsx';
+import _ from 'lodash';
+import { withStyles } from '@material-ui/core/styles';
 
 // you can also tap resources to tap all pods in the resource
 const resourceTypes = [
@@ -100,31 +101,6 @@ class TapQueryForm extends React.Component {
     tapIsClosing: false
   }
 
-  constructor(props) {
-    super(props);
-
-    let query = _.merge({}, props.query, _.pick(this.props, _.keys(tapQueryProps)));
-    props.updateQuery(query);
-
-    let advancedFormExpanded = _.some(
-      _.omit(query, ['namespace', 'resource']),
-      v => !_.isEmpty(v));
-
-    this.state = {
-      query,
-      advancedFormExpanded,
-      authoritiesByNs: {},
-      resourcesByNs: {},
-      autocomplete: {
-        namespace: [],
-        resource: [],
-        toNamespace: [],
-        toResource: [],
-        authority: []
-      },
-    };
-  }
-
   static getDerivedStateFromProps(props, state) {
     if (!_.isEqual(props.resourcesByNs, state.resourcesByNs)) {
       let resourcesByNs = props.resourcesByNs;
@@ -148,6 +124,31 @@ class TapQueryForm extends React.Component {
     } else {
       return null;
     }
+  }
+
+  constructor(props) {
+    super(props);
+
+    let query = _.merge({}, props.query, _.pick(this.props, _.keys(tapQueryProps)));
+    props.updateQuery(query);
+
+    let advancedFormExpanded = _.some(
+      _.omit(query, ['namespace', 'resource']),
+      v => !_.isEmpty(v));
+
+    this.state = {
+      query,
+      advancedFormExpanded,
+      authoritiesByNs: {},
+      resourcesByNs: {},
+      autocomplete: {
+        namespace: [],
+        resource: [],
+        toNamespace: [],
+        toResource: [],
+        authority: []
+      },
+    };
   }
 
   handleFormChange = (name, scopeResource) => {

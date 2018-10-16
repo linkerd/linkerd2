@@ -62,7 +62,7 @@ module.exports = {
             loader: 'less-loader',
             options: {
               modifyVars: {
-                'font-family': '\'Roboto\', \'Lato\', helvetica, arial, sans-serif'
+                'font-family': '\'Lato\', helvetica, arial, sans-serif'
               },
               javascriptEnabled: true
             }

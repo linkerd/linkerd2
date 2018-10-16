@@ -1,11 +1,12 @@
-import _ from 'lodash';
+import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
+
 import BaseTable from './BaseTable.jsx';
-import { formatLatencySec } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
+import { formatLatencySec } from './util/Utils.js';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {

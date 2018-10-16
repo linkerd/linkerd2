@@ -1,6 +1,6 @@
-import { grafanaIcon } from './util/SvgWrappers.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { grafanaIcon } from './util/SvgWrappers.jsx';
 
 const GrafanaLink = ({PrefixedLink, name, namespace, resource}) => {
   return (

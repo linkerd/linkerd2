@@ -1,17 +1,19 @@
-import _ from 'lodash';
+import 'whatwg-fetch';
+
+import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
+
 import Accordion from './util/Accordion.jsx';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorBanner from './ErrorBanner.jsx';
-import { friendlyTitle } from './util/Utils.js';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
+import _ from 'lodash';
+import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
-import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
-import 'whatwg-fetch';
 
 const isMeshedTooltip = (
   <Tooltip title="Namespace is meshed" placement="right-start">

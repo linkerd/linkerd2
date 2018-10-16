@@ -1,9 +1,10 @@
-import _ from 'lodash';
+import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
+
 import PropTypes from "prop-types";
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
-import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
 
 const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",

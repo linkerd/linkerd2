@@ -1,10 +1,10 @@
-import _ from 'lodash';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
 
 const getClassification = (meshedPodCount, failedPodCount) => {

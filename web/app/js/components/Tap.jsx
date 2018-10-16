@@ -1,12 +1,13 @@
-import _ from 'lodash';
+import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
-import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
-import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }

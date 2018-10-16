@@ -1,11 +1,12 @@
-import _ from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { tapQueryPropType } from './util/TapUtils.jsx';
 import {
   CardContent,
   Typography
 } from '@material-ui/core';
+
+import PropTypes from 'prop-types';
+import React from 'react';
+import _ from 'lodash';
+import { tapQueryPropType } from './util/TapUtils.jsx';
 
 /*
  prints a given tap query in an equivalent CLI format, such that it

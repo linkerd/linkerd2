@@ -1,3 +1,9 @@
+import './../css/styles.css';
+import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
+
+import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
@@ -13,10 +19,6 @@ import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
-import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
-import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/styles';
-import './../css/styles.css';
-import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
