@@ -46,11 +46,15 @@ func TestPatch(t *testing.T) {
 	actual.addVolumeRoot()
 	actual.addVolume(trustAnchors)
 	actual.addVolume(secrets)
-	actual.addPodLabel(map[string]string{
+	actual.addPodLabels(map[string]string{
 		k8sPkg.ControllerNSLabel:    controllerNamespace,
 		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 	})
-	actual.addPodAnnotation(map[string]string{
+	actual.addDeploymentLabels(map[string]string{
+		k8sPkg.ControllerNSLabel:    controllerNamespace,
+		k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
+	})
+	actual.addPodAnnotations(map[string]string{
 		k8sPkg.CreatedByAnnotation: createdBy,
 	})
 
@@ -62,7 +66,7 @@ func TestPatch(t *testing.T) {
 		&patchOp{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: trustAnchors},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: secrets},
-		&patchOp{Op: "add", Path: patchPathPodLabel, Value: map[string]string{
+		&patchOp{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
 			k8sPkg.ControllerNSLabel:    controllerNamespace,
 			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 		}},
@@ -70,7 +74,11 @@ func TestPatch(t *testing.T) {
 			k8sPkg.ControllerNSLabel:    controllerNamespace,
 			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
 		}},
-		&patchOp{Op: "add", Path: patchPathPodAnnotation, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
+		&patchOp{Op: "add", Path: patchPathDeploymentLabels, Value: map[string]string{
+			k8sPkg.ControllerNSLabel:    controllerNamespace,
+			k8sPkg.ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectCompleted,
+		}},
+		&patchOp{Op: "add", Path: patchPathPodAnnotations, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
 	}
 
 	if !reflect.DeepEqual(actual, expected) {
