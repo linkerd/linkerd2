@@ -1,14 +1,10 @@
-import Adapter from 'enzyme-adapter-react-16';
 import deployRollup from '../../test/fixtures/deployRollup.json';
 import ErrorBanner from './ErrorBanner.jsx';
-import { expect } from 'chai';
 import MetricsTable from './MetricsTable.jsx';
 import React from 'react';
 import { ResourceListBase } from './ResourceList.jsx';
 import { Spin } from 'antd';
-import Enzyme, { shallow } from 'enzyme';
-
-Enzyme.configure({ adapter: new Adapter() });
+import { shallow } from 'enzyme';
 
 describe('Tests for <ResourceListBase>', () => {
   const defaultProps = {
@@ -27,10 +23,10 @@ describe('Tests for <ResourceListBase>', () => {
     );
 
     const err = component.find(ErrorBanner);
-    expect(err).to.have.length(1);
-    expect(component.find(Spin)).to.have.length(0);
-    expect(component.find(MetricsTable)).to.have.length(1);
-    expect(err.props().message.statusText).to.equal(msg);
+    expect(err).toHaveLength(1);
+    expect(component.find(Spin)).toHaveLength(0);
+    expect(component.find(MetricsTable)).toHaveLength(1);
+    expect(err.props().message.statusText).toEqual(msg);
   });
 
   it('shows a loading spinner', () => {
@@ -41,9 +37,9 @@ describe('Tests for <ResourceListBase>', () => {
         loading={true} />
     );
 
-    expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(Spin)).to.have.length(1);
-    expect(component.find(MetricsTable)).to.have.length(0);
+    expect(component.find(ErrorBanner)).toHaveLength(0);
+    expect(component.find(Spin)).toHaveLength(1);
+    expect(component.find(MetricsTable)).toHaveLength(0);
   });
 
   it('handles empty content', () => {
@@ -54,9 +50,9 @@ describe('Tests for <ResourceListBase>', () => {
         loading={false} />
     );
 
-    expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(Spin)).to.have.length(0);
-    expect(component.find(MetricsTable)).to.have.length(1);
+    expect(component.find(ErrorBanner)).toHaveLength(0);
+    expect(component.find(Spin)).toHaveLength(0);
+    expect(component.find(MetricsTable)).toHaveLength(1);
   });
 
   it('renders a metrics table', () => {
@@ -71,11 +67,11 @@ describe('Tests for <ResourceListBase>', () => {
 
     const metrics = component.find(MetricsTable);
 
-    expect(component.find(ErrorBanner)).to.have.length(0);
-    expect(component.find(Spin)).to.have.length(0);
-    expect(metrics).to.have.length(1);
+    expect(component.find(ErrorBanner)).toHaveLength(0);
+    expect(component.find(Spin)).toHaveLength(0);
+    expect(metrics).toHaveLength(1);
 
-    expect(metrics.props().resource).to.equal(resource);
-    expect(metrics.props().metrics).to.have.length(1);
+    expect(metrics.props().resource).toEqual(resource);
+    expect(metrics.props().metrics).toHaveLength(1);
   });
 });

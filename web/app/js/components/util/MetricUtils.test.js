@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import deployRollupFixtures from '../../../test/fixtures/deployRollup.json';
-import { expect } from 'chai';
 import multiDeployRollupFixtures from '../../../test/fixtures/multiDeployRollup.json';
 import multiResourceRollupFixtures from '../../../test/fixtures/allRollup.json';
 import Percentage from './Percentage';
@@ -32,33 +31,33 @@ describe('MetricUtils', () => {
           errors: {}
         }
       ];
-      expect(result).to.have.length(1);
-      expect(result[0].tlsRequestPercent.prettyRate()).to.equal("66.7%");
-      expect(result).to.deep.equal(expectedResult);
+      expect(result).toHaveLength(1);
+      expect(result[0].tlsRequestPercent.prettyRate()).toEqual("66.7%");
+      expect(result).toEqual(expectedResult);
     });
 
     it('Extracts and sorts multiple deploys from a single response', () => {
       let result = processSingleResourceRollup(multiDeployRollupFixtures);
-      expect(result).to.have.length(4);
-      expect(result[0].name).to.equal("emoji");
-      expect(result[0].namespace).to.equal("emojivoto");
-      expect(result[1].name).to.equal("vote-bot");
-      expect(result[1].namespace).to.equal("emojivoto");
-      expect(result[2].name).to.equal("voting");
-      expect(result[2].namespace).to.equal("emojivoto");
-      expect(result[3].name).to.equal("web");
-      expect(result[3].namespace).to.equal("emojivoto");
+      expect(result).toHaveLength(4);
+      expect(result[0].name).toEqual("emoji");
+      expect(result[0].namespace).toEqual("emojivoto");
+      expect(result[1].name).toEqual("vote-bot");
+      expect(result[1].namespace).toEqual("emojivoto");
+      expect(result[2].name).toEqual("voting");
+      expect(result[2].namespace).toEqual("emojivoto");
+      expect(result[3].name).toEqual("web");
+      expect(result[3].namespace).toEqual("emojivoto");
     });
   });
 
   describe('processMultiResourceRollup', () => {
     it('Extracts metrics and groups them by resource type', () => {
       let result = processMultiResourceRollup(multiResourceRollupFixtures);
-      expect(_.size(result)).to.equal(2);
+      expect(_.size(result)).toEqual(2);
 
-      expect(result["deployment"]).to.have.length(1);
-      expect(result["pod"]).to.have.length(4);
-      expect(result["replicationcontroller"]).to.be.undefined;
+      expect(result["deployment"]).toHaveLength(1);
+      expect(result["pod"]).toHaveLength(4);
+      expect(result["replicationcontroller"]).toBeUndefined;
     });
   });
 });

@@ -1,14 +1,11 @@
-import Adapter from 'enzyme-adapter-react-16';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
-import { expect } from 'chai';
 import React from 'react';
 import Sidebar from './Sidebar.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
-import Enzyme, { mount } from 'enzyme';
+import { mount } from 'enzyme';
 
-Enzyme.configure({ adapter: new Adapter() });
 sinonStubPromise(sinon);
 
 const loc = {
@@ -44,7 +41,7 @@ describe('Version', () => {
   };
 
   it('is hidden when the sidebar is collapsed', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
     });
@@ -61,14 +58,14 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Linkerd is up to date");
+      expect(component).toIncludeText("Linkerd is up to date");
       expandSidebar(component);
-      expect(component.html()).not.to.include("Linkerd is up to date");
+      expect(component).not.toIncludeText("Linkerd is up to date");
     });
   });
 
   it('renders up to date message when versions match', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
     });
@@ -85,12 +82,12 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Linkerd is up to date");
+      expect(component).toIncludeText("Linkerd is up to date");
     });
   });
 
   it('renders update message when versions do not match', () => {
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: newVer })
     });
@@ -107,14 +104,14 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("A new version (2.3.4) is available.");
+      expect(component).toIncludeText("A new version (2.3.4) is available.");
     });
   });
 
   it('renders error when version check fails', () => {
     let errMsg = "Fake error";
 
-    fetchStub.returnsPromise().resolves({
+    fetchStub.resolves({
       ok: false,
       json: () => Promise.resolve({
         error: errMsg
@@ -134,8 +131,8 @@ describe('Version', () => {
     );
 
     return withPromise(() => {
-      expect(component.html()).to.include("Version check failed: Fake error.");
-      expect(component.html()).to.include(errMsg);
+      expect(component).toIncludeText("Version check failed: Fake error.");
+      expect(component).toIncludeText(errMsg);
     });
   });
 });
