@@ -261,7 +261,7 @@ class NavigationBase extends React.Component {
           <Divider />
 
           <MenuList>
-            <ListItem component={Link} to="https://linkerd.io/2/overview/" target="_blank">
+            <ListItem component={"a"} href="https://linkerd.io/2/overview/" target="_blank">
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
@@ -276,17 +276,17 @@ class NavigationBase extends React.Component {
             </MenuItem>
             <Collapse in={this.state.helpMenuOpen} timeout="auto" unmountOnExit>
               <MenuList dense component="div" disablePadding>
-                <ListItem component={Link} to="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
+                <ListItem component={"a"} href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
                   <ListItemIcon><EmailIcon /></ListItemIcon>
                   <ListItemText primary="Join the mailing list" />
                 </ListItem>
 
-                <ListItem component={Link} to="https://slack.linkerd.io" target="_blank">
+                <ListItem component={"a"} href="https://slack.linkerd.io" target="_blank">
                   <ListItemIcon>{slackIcon}</ListItemIcon>
                   <ListItemText primary="Join us on slack" />
                 </ListItem>
 
-                <ListItem component={Link} to="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
+                <ListItem component={"a"} href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
                   <ListItemIcon>{githubIcon}</ListItemIcon>
                   <ListItemText primary="File an issue" />
                 </ListItem>
