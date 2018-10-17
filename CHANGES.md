@@ -1,7 +1,7 @@
 ## edge-18.10.3
 
 * CLI
-  * **New** Added a `--output` stat flag, for printing stats as JSON
+  * **New** Added an `--output` stat flag, for printing stats as JSON
   * **Improved** Updated the `top` table to set column widths dynamically
   * **Experimental** Added a `--single-namespace` install flag for installing
     the control plane with Role permissions instead of ClusterRole permissions
