@@ -19,6 +19,7 @@ import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
+import green from '@material-ui/core/colors/green';
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
@@ -37,6 +38,9 @@ const context = {
 };
 
 const theme = createMuiTheme({
+  palette: {
+    primary: green
+  },
   typography: {
     useNextVariants: true,
     suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
