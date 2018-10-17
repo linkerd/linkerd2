@@ -1,3 +1,18 @@
+## edge-18.10.3
+
+* CLI
+  * **New** Added a `--output` stat flag, for printing stats as JSON
+  * **Improved** Updated the `top` table to set column widths dynamically
+  * **Experimental** Added a `--single-namespace` install flag for installing
+    the control plane with Role permissions instead of ClusterRole permissions
+* Controller
+  * Fixed a few issues with auto injection via the proxy-injector webhook:
+    * Injected pods now execute the linkerd-init container last, to avoid
+      rerouting requests during pod init
+    * Original pod labels and annotations are preserved when auto-injecting
+* Web UI
+  * **New** Added a Help section in the sidebar containing useful links
+
 ## edge-18.10.2
 
 This release brings major improvements to the CLI as described below, including
