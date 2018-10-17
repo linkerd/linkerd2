@@ -41,7 +41,7 @@ spec:
 
     # A route may optionally define a list of response classes which describe
     # how responses from this route will be classified.
-    responseClasses:
+    responses:
 
     # Each response class must define a condition.  All responses from this
     # route that match the condition will be classified as this response class.
