@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": 10,
-  "iteration": 1539744617561,
+  "iteration": 1539806914987,
   "links": [],
   "panels": [
     {
@@ -630,10 +630,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (authority, deployment) / sum(irate(response_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (authority, deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (deployment) / sum(irate(response_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "au/{{authority}}",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "A"
         }
       ],
@@ -715,17 +715,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\", tls=\"true\"}[30s])) by (authority, deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\", tls=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒au/{{authority}}",
+          "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\", tls!=\"true\"}[30s])) by (authority, deployment)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\", tls!=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "au/{{authority}}",
+          "legendFormat": "deploy/{{deployment}}",
           "refId": "B"
         }
       ],
@@ -806,10 +806,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (le, authority, deployment))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (le, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 au/{{authority}}",
+          "legendFormat": "P95 deploy/{{deployment}}",
           "refId": "A"
         }
       ],
@@ -905,7 +905,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (authority, pod) / sum(irate(response_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (authority, pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (pod) / sum(irate(response_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -990,14 +990,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\", tls=\"true\"}[30s])) by (authority, pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\", tls=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\", tls!=\"true\"}[30s])) by (authority, pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\", tls!=\"true\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -1081,7 +1081,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", authority=\"$authority\", direction=\"inbound\"}[30s])) by (le, authority, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", authority=\"$authority\", direction=\"outbound\"}[30s])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 po/{{pod}}",
@@ -1155,10 +1155,7 @@
     "list": [
       {
         "allValue": null,
-        "current": {
-          "text": "default",
-          "value": "default"
-        },
+        "current": {},
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
@@ -1178,10 +1175,7 @@
       },
       {
         "allValue": null,
-        "current": {
-          "text": "forum.topmachina.com",
-          "value": "forum.topmachina.com"
-        },
+        "current": {},
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
