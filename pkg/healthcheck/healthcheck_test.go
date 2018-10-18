@@ -330,7 +330,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
-		err := validateDataPlanePods([]*pb.Pod{}, "emojivoto")
+		err := validateDataPlanePods([]*pb.Pod{}, "emojivoto", "")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -347,7 +347,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := validateDataPlanePods(pods, "emojivoto", "")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -364,7 +364,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := validateDataPlanePods(pods, "emojivoto", "")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -381,7 +381,21 @@ func TestValidateDataPlanePods(t *testing.T) {
 			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
-		err := validateDataPlanePods(pods, "emojivoto")
+		err := validateDataPlanePods(pods, "emojivoto", "")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Does not fail when proxy container is not ready but belongs to a different target", func(t *testing.T) {
+		pods := []*pb.Pod{
+			&pb.Pod{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
+			&pb.Pod{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: false, Owner: &pb.Pod_Deployment{Deployment: "yyy"}},
+			&pb.Pod{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
+			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto", "xxx")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -390,7 +404,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 
 func TestValidateDataPlanePodReporting(t *testing.T) {
 	t.Run("Returns success if no pods present", func(t *testing.T) {
-		err := validateDataPlanePodReporting([]*pb.Pod{})
+		err := validateDataPlanePodReporting([]*pb.Pod{}, "")
 		if err != nil {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
@@ -402,7 +416,7 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 			&pb.Pod{Name: "ns2/test2", Added: true},
 		}
 
-		err := validateDataPlanePodReporting(pods)
+		err := validateDataPlanePodReporting(pods, "")
 		if err != nil {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
@@ -414,11 +428,23 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 			&pb.Pod{Name: "ns2/test2", Added: false},
 		}
 
-		err := validateDataPlanePodReporting(pods)
+		err := validateDataPlanePodReporting(pods, "")
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
 		if err.Error() != "Data plane metrics not found for ns2/test2." {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
+
+	t.Run("Does not fail for pod from a different owner", func(t *testing.T) {
+		pods := []*pb.Pod{
+			&pb.Pod{Name: "ns1/test1", Added: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
+			&pb.Pod{Name: "ns2/test2", Added: false, Owner: &pb.Pod_Deployment{Deployment: "yyy"}},
+		}
+
+		err := validateDataPlanePodReporting(pods, "xxx")
+		if err != nil {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})

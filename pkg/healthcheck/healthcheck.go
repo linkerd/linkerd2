@@ -89,6 +89,7 @@ type checkObserver func(*CheckResult)
 type HealthCheckOptions struct {
 	ControlPlaneNamespace          string
 	DataPlaneNamespace             string
+	TargetProxyResource            string
 	KubeConfig                     string
 	KubeContext                    string
 	APIAddr                        string
@@ -347,7 +348,7 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 				return err
 			}
 
-			return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+			return validateDataPlanePods(pods, hc.DataPlaneNamespace, hc.HealthCheckOptions.TargetProxyResource)
 		},
 	})
 
@@ -362,7 +363,7 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 				return err
 			}
 
-			return validateDataPlanePodReporting(pods)
+			return validateDataPlanePodReporting(pods, hc.HealthCheckOptions.TargetProxyResource)
 		},
 	})
 }
@@ -700,11 +701,35 @@ func validateControlPlanePods(pods []v1.Pod) error {
 	return nil
 }
 
-func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
+func filterPodsByTarget(pods []*pb.Pod, targetProxyResource string) []*pb.Pod {
+	if targetProxyResource == "" {
+		return pods
+	}
+
+	podList := make([]*pb.Pod, 0)
+	for _, pod := range pods {
+		if pod.GetDeployment() == targetProxyResource ||
+			pod.GetReplicaSet() == targetProxyResource ||
+			pod.GetReplicationController() == targetProxyResource ||
+			pod.GetStatefulSet() == targetProxyResource ||
+			pod.GetDaemonSet() == targetProxyResource ||
+			pod.GetJob() == targetProxyResource {
+			podList = append(podList, pod)
+		}
+	}
+	return podList
+}
+
+func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget string) error {
+	pods = filterPodsByTarget(pods, proxyTarget)
+
 	if len(pods) == 0 {
 		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
 		if targetNamespace != "" {
 			msg += fmt.Sprintf(" in the \"%s\" namespace", targetNamespace)
+		}
+		if proxyTarget != "" {
+			msg += fmt.Sprintf(" with target \"%s\"", proxyTarget)
 		}
 		return fmt.Errorf(msg)
 	}
@@ -724,8 +749,10 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
 	return nil
 }
 
-func validateDataPlanePodReporting(pods []*pb.Pod) error {
+func validateDataPlanePodReporting(pods []*pb.Pod, proxyTarget string) error {
 	notInPrometheus := []string{}
+
+	pods = filterPodsByTarget(pods, proxyTarget)
 
 	for _, p := range pods {
 		// the `Added` field indicates the pod was found in Prometheus

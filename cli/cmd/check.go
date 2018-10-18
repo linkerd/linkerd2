@@ -16,22 +16,24 @@ const (
 )
 
 type checkOptions struct {
-	versionOverride string
-	preInstallOnly  bool
-	dataPlaneOnly   bool
-	wait            time.Duration
-	namespace       string
-	singleNamespace bool
+	versionOverride     string
+	preInstallOnly      bool
+	targetProxyResource string
+	dataPlaneOnly       bool
+	wait                time.Duration
+	namespace           string
+	singleNamespace     bool
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		versionOverride: "",
-		preInstallOnly:  false,
-		dataPlaneOnly:   false,
-		wait:            300 * time.Second,
-		namespace:       "",
-		singleNamespace: false,
+		versionOverride:     "",
+		preInstallOnly:      false,
+		targetProxyResource: "",
+		dataPlaneOnly:       false,
+		wait:                300 * time.Second,
+		namespace:           "",
+		singleNamespace:     false,
 	}
 }
 
@@ -64,10 +66,14 @@ non-zero exit code.`,
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
-	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
+	cmd.PersistentFlags().StringVar(&options.targetProxyResource, "proxy", options.targetProxyResource, "Only run data-plane checks on a given target, to determine if the data plane is healthy. If no target is provided, all resources will be used.")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Retry and wait for some checks to succeed if they don't pass the first time")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
+
+	if cmd.Flags().Changed("proxy") {
+		options.dataPlaneOnly = true
+	}
 
 	return cmd
 }
@@ -89,6 +95,7 @@ func configureAndRunChecks(options *checkOptions) {
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
 		ControlPlaneNamespace:          controlPlaneNamespace,
 		DataPlaneNamespace:             options.namespace,
+		TargetProxyResource:            options.targetProxyResource,
 		KubeConfig:                     kubeconfigPath,
 		KubeContext:                    kubeContext,
 		APIAddr:                        apiAddr,
