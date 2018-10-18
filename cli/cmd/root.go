@@ -32,9 +32,9 @@ var verbose bool
 var (
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
-	alphaNumDash         = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-	alphaNumDashDot      = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
-	alphaNumDashDotSlash = regexp.MustCompile("^[\\./a-zA-Z0-9-]+$")
+	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
+	alphaNumDashDot           = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
+	alphaNumDashDotSlashColon = regexp.MustCompile("^[\\./a-zA-Z0-9-:]+$")
 )
 
 var RootCmd = &cobra.Command{
@@ -185,8 +185,8 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
 	}
 
-	if !alphaNumDashDotSlash.MatchString(options.dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry", options.dockerRegistry)
+	if !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
+		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
 	}
 
 	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
