@@ -88,6 +88,9 @@ func toResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 }
 
 func toResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
+	if rspMatch == nil {
+		return nil, errors.New("missing response match")
+	}
 	err := ValidateResponseMatch(rspMatch)
 	if err != nil {
 		return nil, err
@@ -155,6 +158,9 @@ func toResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 }
 
 func toRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
+	if reqMatch == nil {
+		return nil, errors.New("missing request match")
+	}
 	err := ValidateRequestMatch(reqMatch)
 	if err != nil {
 		return nil, err
