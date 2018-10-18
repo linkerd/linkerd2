@@ -88,7 +88,10 @@ func toResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 }
 
 func toResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
-	err := validateResponseMatch(rspMatch)
+	if rspMatch == nil {
+		return nil, errors.New("missing response match")
+	}
+	err := ValidateResponseMatch(rspMatch)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +158,10 @@ func toResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 }
 
 func toRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
-	err := validateRequestMatch(reqMatch)
+	if reqMatch == nil {
+		return nil, errors.New("missing request match")
+	}
+	err := ValidateRequestMatch(reqMatch)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +234,7 @@ func toRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	return nil, errors.New("A request match must have a field set")
 }
 
-func validateRequestMatch(reqMatch *sp.RequestMatch) error {
+func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	tooManyKindsErr := errors.New("A request match may not have more than two fields set")
 	matchKindSet := false
 	if reqMatch.All != nil {
@@ -236,12 +242,24 @@ func validateRequestMatch(reqMatch *sp.RequestMatch) error {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		for _, child := range reqMatch.All {
+			err := ValidateRequestMatch(child)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if reqMatch.Any != nil {
 		if matchKindSet {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		for _, child := range reqMatch.Any {
+			err := ValidateRequestMatch(child)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if reqMatch.Method != "" {
 		if matchKindSet {
@@ -254,6 +272,10 @@ func validateRequestMatch(reqMatch *sp.RequestMatch) error {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		err := ValidateRequestMatch(reqMatch.Not)
+		if err != nil {
+			return err
+		}
 	}
 	if reqMatch.Path != "" {
 		if matchKindSet {
@@ -269,7 +291,7 @@ func validateRequestMatch(reqMatch *sp.RequestMatch) error {
 	return nil
 }
 
-func validateResponseMatch(rspMatch *sp.ResponseMatch) error {
+func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	tooManyKindsErr := errors.New("A response match may not have more than two fields set")
 	invalidRangeErr := errors.New("Range maximum cannot be smaller than minimum")
 	matchKindSet := false
@@ -278,12 +300,24 @@ func validateResponseMatch(rspMatch *sp.ResponseMatch) error {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		for _, child := range rspMatch.All {
+			err := ValidateResponseMatch(child)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if rspMatch.Any != nil {
 		if matchKindSet {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		for _, child := range rspMatch.Any {
+			err := ValidateResponseMatch(child)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if rspMatch.Status != nil {
 		if matchKindSet {
@@ -299,6 +333,10 @@ func validateResponseMatch(rspMatch *sp.ResponseMatch) error {
 			return tooManyKindsErr
 		}
 		matchKindSet = true
+		err := ValidateResponseMatch(rspMatch.Not)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !matchKindSet {

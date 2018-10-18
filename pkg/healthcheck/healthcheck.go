@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/controller/destination"
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 )
@@ -105,6 +108,7 @@ type HealthChecker struct {
 	kubeAPI          *k8s.KubernetesAPI
 	httpClient       *http.Client
 	clientset        *kubernetes.Clientset
+	spClientset      *spclient.Clientset
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []v1.Pod
 	apiClient        pb.ApiClient
@@ -307,6 +311,15 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdAPICategory,
+		description: "no invalid service profiles",
+		fatal:       true,
+		check: func() error {
+			return hc.validateServiceProfiles()
 		},
 	})
 }
@@ -591,6 +604,64 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 			return fmt.Errorf("Missing permissions to create %s: %v", resource, response.Status.Reason)
 		}
 		return fmt.Errorf("Missing permissions to create %s", resource)
+	}
+	return nil
+}
+
+func (hc *HealthChecker) validateServiceProfiles() error {
+	if hc.clientset == nil {
+		var err error
+		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	if hc.spClientset == nil {
+		var err error
+		hc.spClientset, err = spclient.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	profiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles(hc.ControlPlaneNamespace).List(meta_v1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, p := range profiles.Items {
+		nameParts := strings.Split(p.Name, ".")
+		if len(nameParts) != 2 {
+			return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>\")", p.Name)
+		}
+		service := nameParts[0]
+		namespace := nameParts[1]
+		_, err := hc.clientset.Core().Services(namespace).Get(service, meta_v1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
+		}
+		for _, route := range p.Spec.Routes {
+			if route.Name == "" {
+				return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", p.Name)
+			}
+			if route.Condition == nil {
+				return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", p.Name)
+			}
+			err = destination.ValidateRequestMatch(route.Condition)
+			if err != nil {
+				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", p.Name, err)
+			}
+			for _, rc := range route.Responses {
+				if rc.Condition == nil {
+					return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", p.Name)
+				}
+				err = destination.ValidateResponseMatch(rc.Condition)
+				if err != nil {
+					return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", p.Name, err)
+				}
+			}
+		}
 	}
 	return nil
 }
