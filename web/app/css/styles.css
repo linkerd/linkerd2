@@ -49,12 +49,21 @@ a {
 }
 
 /* Colored dot for indicating statuses */
-div.status-dot {
+div.status-table-dot {
   width: calc(2 * var(--base-width));
   height: calc(2 * var(--base-width));
   min-width: calc(2 * var(--base-width));
   border-radius: 50%;
+}
 
+div.success-rate-dot {
+  width: calc(1 * var(--base-width));
+  height: calc(1 * var(--base-width));
+  min-width: calc(1 * var(--base-width));
+  border-radius: 50%;
+}
+
+.status-dot {
   &.status-dot-good {
     background-color: var(--green);
   }
@@ -62,10 +71,10 @@ div.status-dot {
     background-color: var(--red);
   }
   &.status-dot-neutral {
-    background-color: #E0E0E0;
-  }
-  &.status-dot-ok {
     background-color: var(--orange);
+  }
+  &.status-dot-default {
+    background-color: #E0E0E0;
   }
 }
 

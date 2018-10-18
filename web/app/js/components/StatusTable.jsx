@@ -39,7 +39,7 @@ const StatusDot = ({status, multilineDots, columnName}) => (
       </div>
     )}>
     <div
-      className={`status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
+      className={`status-table-dot status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
       key={status.name}>&nbsp;
     </div>
   </Tooltip>

@@ -1,3 +1,4 @@
+import Grid from '@material-ui/core/Grid';
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -8,7 +9,7 @@ const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
     return "good";
   } else if (pod.status === "Pending" || pod.status === "Running") {
-    return "neutral";
+    return "default";
   } else if (pod.status === "Failed") {
     return "poor";
   }
@@ -33,14 +34,14 @@ export const srArcClassLabels = {
   good: "good",
   neutral: "neutral",
   poor: "poor",
-  default: "neutral"
+  default: "default"
 };
 
 export const successRateWithMiniChart = sr => (
-  <React.Fragment>
-    <span className="table-sr metric-table-sr">{metricToFormatter["SUCCESS_RATE"](sr)}</span>
-    {_.isNil(sr) ? null : <span className={`table-sr success-rate-arc ${getSuccessRateClassification(sr, srArcClassLabels)}`} />}
-  </React.Fragment>
+  <Grid container spacing={8}>
+    <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
+    <Grid item>{_.isNil(sr) ? null : <div className={`success-rate-dot status-dot status-dot-${getSuccessRateClassification(sr, srArcClassLabels)}`} />}</Grid>
+  </Grid>
 );
 
 const getTotalRequests = row => {
