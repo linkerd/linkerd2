@@ -46,23 +46,23 @@ spec:
     # Each response class must define a condition.  All responses from this
     # route that match the condition will be classified as this response class.
     - condition:
-      # The simplest condition is a HTTP status code range.
-      status:
-        min: 500
-        max: 599
+        # The simplest condition is a HTTP status code range.
+        status:
+          min: 500
+          max: 599
       
-      # Specifying only one of min or max matches just that one status code.
-      # status:
-      #   min: 404 # This matches 404s only.
+        # Specifying only one of min or max matches just that one status code.
+        # status:
+        #   min: 404 # This matches 404s only.
 
-      # Conditions can be combined using 'all', 'any', and 'not'.
-      # all:
-      # - status:
-      #     min: 500
-      #     max: 599
-      # - not:
-      #     status:
-      #       min: 503
+        # Conditions can be combined using 'all', 'any', and 'not'.
+        # all:
+        # - status:
+        #     min: 500
+        #     max: 599
+        # - not:
+        #     status:
+        #       min: 503
 
       # The response class defines whether responses should be counted as
       # successes or failures.
