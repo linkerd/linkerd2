@@ -155,7 +155,12 @@ class MetricsTable extends React.Component {
 
     let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink);
     let rows = preprocessMetrics(metrics);
-    return <BaseTable tableRows={rows} tableColumns={columns} tableClassName="metric-table" />;
+    return (
+      <BaseTable
+        tableRows={rows}
+        tableColumns={columns}
+        tableClassName="metric-table" />
+    );
   }
 }
 

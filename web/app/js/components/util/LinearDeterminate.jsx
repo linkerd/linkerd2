@@ -3,8 +3,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 
-// const red = "#ff0000";
-
 const styles = {
   root: {
     flexGrow: 1
@@ -13,8 +11,8 @@ const styles = {
 
 class LinearDeterminate extends React.Component {
   render() {
-    const { classes, value, classification } = this.props;
-    console.log(classification);
+    const { classes, value } = this.props;
+
     return (
       <div className={classes.root}>
         <LinearProgress
