@@ -1,4 +1,5 @@
 import LinearProgress from '@material-ui/core/LinearProgress';
+import grey from '@material-ui/core/colors/grey';
 import { withStyles } from '@material-ui/core/styles';
 
 const colorLookup = {
@@ -6,9 +7,13 @@ const colorLookup = {
     colorPrimary: '#c8e6c9', // background bar color (lighter)
     barColorPrimary: '#388e3c', // inner bar color (darker)
   },
-  neutral: {
+  warning: {
     colorPrimary: '#ffcc80',
     barColorPrimary: '#ef6c00',
+  },
+  neutral: {
+    colorPrimary: grey[200],
+    barColorPrimary: grey[500],
   },
   poor: {
     colorPrimary: '#ffebee',
