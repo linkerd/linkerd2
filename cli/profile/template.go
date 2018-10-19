@@ -1,7 +1,7 @@
 package profile
 
 // Template provides the base template for the `linkerd profile --template` command.
-const Template = `### Service Profile for {{.ServiceName}}.{{.ServiceNamespace}} ###
+const Template = `### ServiceProfile for {{.ServiceName}}.{{.ServiceNamespace}} ###
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
@@ -20,7 +20,7 @@ spec:
       # The simplest condition is a path regular expression.
       path: '/authors/\d+'
 
-      # This is a condition that checks that request method.
+      # This is a condition that checks the request method.
       # method: POST
 
       # To define a condition that requires both path and method, use the
