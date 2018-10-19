@@ -165,7 +165,7 @@ class NamespaceLanding extends React.Component {
     let panelData = _.map(this.state.namespaces, ns => {
       return {
         id: ns.name,
-        header: <React.Fragment>{ns.name} {!ns.added ? null : isMeshedTooltip}</React.Fragment>,
+        header: <React.Fragment><Typography variant="subtitle1">{ns.name}</Typography> {!ns.added ? null : isMeshedTooltip}</React.Fragment>,
         body: ns.name === this.state.selectedNs || ns.name === this.state.defaultOpenNs.name ?
           this.renderNamespaceSection(ns.name) : null
       };
