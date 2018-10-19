@@ -74,29 +74,29 @@ class ExpandableTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            {
-            _.map(tableRows, d => {
-            return (
-              <React.Fragment key={"frag-" + d.key}>
-                <TableRow
-                  key={d.key}
-                  onClick={this.handleClick}
-                  ref={ref => {
-                    this.container = ref;
-                  }}>
-                  {
-                    _.map(columns, c => (
-                      <TableCell
-                        key={`table-${d.key}-${c.key}`}
-                        numeric={c.isNumeric}>
-                        {c.render(d)}
-                      </TableCell>
-                    ))
-                  }
-                </TableRow>
-              </React.Fragment>
-            );
-          })}
+            { _.map(tableRows, d => {
+                return (
+                  <React.Fragment key={"frag-" + d.key}>
+                    <TableRow
+                      key={d.key}
+                      onClick={this.handleClick}
+                      ref={ref => {
+                        this.container = ref;
+                      }}>
+                      {
+                        _.map(columns, c => (
+                          <TableCell
+                            key={`table-${d.key}-${c.key}`}
+                            numeric={c.isNumeric}>
+                            {c.render(d)}
+                          </TableCell>
+                        ))
+                      }
+                    </TableRow>
+                  </React.Fragment>
+                );
+              }
+            )}
           </TableBody>
         </Table>
         <Dialog
