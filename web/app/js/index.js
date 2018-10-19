@@ -1,9 +1,15 @@
+import './../css/styles.css';
+import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
+
+import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
-import BreadcrumbHeader from './components/BreadcrumbHeader.jsx';
-import { Layout } from 'antd';
+import CssBaseline from '@material-ui/core/CssBaseline';
 import Namespace from './components/Namespace.jsx';
 import NamespaceLanding from './components/NamespaceLanding.jsx';
+import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -11,12 +17,9 @@ import ResourceDetail from './components/ResourceDetail.jsx';
 import ResourceList from './components/ResourceList.jsx';
 import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
-import Sidebar from './components/Sidebar.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
-import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
-import './../css/styles.css';
-import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
+import green from '@material-ui/core/colors/green';
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
@@ -34,50 +37,72 @@ const context = {
   productName: "Linkerd"
 };
 
+const theme = createMuiTheme({
+  palette: {
+    primary: green
+  },
+  typography: {
+    useNextVariants: true,
+    suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
+  }
+});
+
 let applicationHtml = (
-  <AppContext.Provider value={context}>
-    <BrowserRouter>
-      <RouterToUrlQuery>
-        <Layout>
-          <Route component={Sidebar} />
-          <Layout>
-            <Route component={BreadcrumbHeader}  />
-            <Layout.Content style={{ margin: '60px 0', padding: 0, background: '#fff' }}>
-              <div className="main-content">
-                <Switch>
-                  <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/overview`} />
-                  <Route path={`${pathPrefix}/overview`} component={NamespaceLanding} />
-                  <Route path={`${pathPrefix}/servicemesh`} component={ServiceMesh} />
-                  <Route exact path={`${pathPrefix}/namespaces/:namespace`} component={Namespace} />
-                  <Route path={`${pathPrefix}/namespaces/:namespace/pods/:pod`} component={ResourceDetail} />
-                  <Route path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`} component={ResourceDetail} />
-                  <Route path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`} component={ResourceDetail} />
-                  <Route path={`${pathPrefix}/tap`} component={Tap} />
-                  <Route path={`${pathPrefix}/top`} component={Top} />
-                  <Route
-                    path={`${pathPrefix}/namespaces`}
-                    render={() => <ResourceList resource="namespace" />} />
-                  <Route
-                    path={`${pathPrefix}/deployments`}
-                    render={() => <ResourceList resource="deployment" />} />
-                  <Route
-                    path={`${pathPrefix}/replicationcontrollers`}
-                    render={() => <ResourceList resource="replicationcontroller" />} />
-                  <Route
-                    path={`${pathPrefix}/pods`}
-                    render={() => <ResourceList resource="pod" />} />
-                  <Route
-                    path={`${pathPrefix}/authorities`}
-                    render={() => <ResourceList resource="authority" />} />
-                  <Route component={NoMatch} />
-                </Switch>
-              </div>
-            </Layout.Content>
-          </Layout>
-        </Layout>
-      </RouterToUrlQuery>
-    </BrowserRouter>
-  </AppContext.Provider>
+  <React.Fragment>
+    <CssBaseline />
+    <MuiThemeProvider theme={theme}>
+      <AppContext.Provider value={context}>
+        <BrowserRouter>
+          <RouterToUrlQuery>
+            <Switch>
+              <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/overview`} />
+              <Route
+                path={`${pathPrefix}/overview`}
+                render={props => <Navigation {...props} ChildComponent={NamespaceLanding} />} />
+              <Route
+                path={`${pathPrefix}/servicemesh`}
+                render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
+              <Route
+                exact
+                path={`${pathPrefix}/namespaces/:namespace`}
+                render={props => <Navigation {...props} ChildComponent={Namespace} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/pods/:pod`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/tap`}
+                render={props => <Navigation {...props} ChildComponent={Tap} />} />
+              <Route
+                path={`${pathPrefix}/top`}
+                render={props => <Navigation {...props} ChildComponent={Top} />} />
+              <Route
+                path={`${pathPrefix}/namespaces`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="namespace" />} />
+              <Route
+                path={`${pathPrefix}/deployments`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+              <Route
+                path={`${pathPrefix}/replicationcontrollers`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
+              <Route
+                path={`${pathPrefix}/pods`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="pod" />} />
+              <Route
+                path={`${pathPrefix}/authorities`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="authority" />} />
+              <Route component={NoMatch} />
+            </Switch>
+          </RouterToUrlQuery>
+        </BrowserRouter>
+      </AppContext.Provider>
+    </MuiThemeProvider>
+  </React.Fragment>
 );
 
 ReactDOM.render(applicationHtml, appMain);

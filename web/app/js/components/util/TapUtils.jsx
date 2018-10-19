@@ -1,9 +1,12 @@
-import _ from 'lodash';
+import { podOwnerLookup, toShortResourceName } from './Utils.js';
+
+import BaseTable from '../BaseTable.jsx';
+import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
-import { podOwnerLookup, toShortResourceName } from './Utils.js';
-import { Popover, Table, Tooltip } from 'antd';
+import Tooltip from '@material-ui/core/Tooltip';
+import _ from 'lodash';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -192,9 +195,9 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: "Source", dataIndex: "source", key: "source" },
-  { title: "", render: () => <i className="fas fa-long-arrow-alt-right" /> },
-  { title: "Destination", dataIndex: "destination", key: "destination" }
+  { title: "Source", key: "source", render: d => d.source },
+  { title: "", key: "arrow", render: () => <i className="fas fa-long-arrow-alt-right" /> },
+  { title: "Destination", key: "destination", render: d => d.destination }
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -266,11 +269,10 @@ const popoverResourceTable = (d, ResourceLink) => {
   ];
 
   return (
-    <Table
-      columns={popoverSrcDstColumns}
-      dataSource={tableData}
-      className="metric-table"
-      pagination={false} />
+    <BaseTable
+      tableColumns={popoverSrcDstColumns}
+      tableRows={tableData}
+      tableClassName="metric-table" />
   );
 };
 
@@ -285,10 +287,8 @@ export const extractPodOwner = labels => {
 };
 
 export const directionColumn = d => (
-  <Tooltip
-    title={d}
-    overlayStyle={{ fontSize: "12px" }}>
-    {d === "INBOUND" ? "FROM" : "TO"}
+  <Tooltip title={d} placement="right">
+    <span>{d === "INBOUND" ? "FROM" : "TO"}</span>
   </Tooltip>
 );
 
@@ -304,14 +304,16 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
+  let baseContent = (
+    <div className="src-dst-name">
+      { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
+    </div>
+  );
+
   return (
     <Popover
-      content={popoverResourceTable(d, ResourceLink)}
-      trigger="hover">
-      <div className="src-dst-name">
-        { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
-      </div>
-    </Popover>
+      popoverContent={popoverResourceTable(d, ResourceLink)}
+      baseContent={baseContent} />
   );
 };
 

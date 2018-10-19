@@ -1,11 +1,12 @@
-import _ from 'lodash';
+import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+
 import ErrorBanner from './ErrorBanner.jsx';
 import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
-import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 class TopModule extends React.Component {
   static propTypes = {

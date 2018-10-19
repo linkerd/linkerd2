@@ -3,7 +3,7 @@ import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import React from 'react';
 import { ResourceListBase } from './ResourceList.jsx';
-import { Spin } from 'antd';
+import Spinner from './util/Spinner.jsx';
 import { shallow } from 'enzyme';
 
 describe('Tests for <ResourceListBase>', () => {
@@ -24,7 +24,7 @@ describe('Tests for <ResourceListBase>', () => {
 
     const err = component.find(ErrorBanner);
     expect(err).toHaveLength(1);
-    expect(component.find(Spin)).toHaveLength(0);
+    expect(component.find(Spinner)).toHaveLength(0);
     expect(component.find(MetricsTable)).toHaveLength(1);
     expect(err.props().message.statusText).toEqual(msg);
   });
@@ -38,7 +38,7 @@ describe('Tests for <ResourceListBase>', () => {
     );
 
     expect(component.find(ErrorBanner)).toHaveLength(0);
-    expect(component.find(Spin)).toHaveLength(1);
+    expect(component.find(Spinner)).toHaveLength(1);
     expect(component.find(MetricsTable)).toHaveLength(0);
   });
 
@@ -51,7 +51,7 @@ describe('Tests for <ResourceListBase>', () => {
     );
 
     expect(component.find(ErrorBanner)).toHaveLength(0);
-    expect(component.find(Spin)).toHaveLength(0);
+    expect(component.find(Spinner)).toHaveLength(0);
     expect(component.find(MetricsTable)).toHaveLength(1);
   });
 
@@ -68,7 +68,7 @@ describe('Tests for <ResourceListBase>', () => {
     const metrics = component.find(MetricsTable);
 
     expect(component.find(ErrorBanner)).toHaveLength(0);
-    expect(component.find(Spin)).toHaveLength(0);
+    expect(component.find(Spinner)).toHaveLength(0);
     expect(metrics).toHaveLength(1);
 
     expect(metrics.props().resource).toEqual(resource);

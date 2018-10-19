@@ -1,63 +1,103 @@
-import _ from 'lodash';
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
+import CloseIcon from '@material-ui/icons/Close';
+import IconButton from '@material-ui/core/IconButton';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Row } from 'antd';
+import Snackbar from '@material-ui/core/Snackbar';
+import WarningIcon from '@material-ui/icons/Warning';
+import _ from 'lodash';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
+import classNames from 'classnames';
+import { withStyles } from '@material-ui/core/styles';
 
-class ErrorMessage extends React.Component {
-  static defaultProps = {
-    message: {
-      status: null,
-      statusText: "An error occured",
-      url: "",
-      error: ""
-    },
-    onHideMessage: _.noop
-  }
+const defaultMessage = "An error has occurred.";
 
-  static propTypes = {
-    message: apiErrorPropType,
-    onHideMessage: PropTypes.func
-  }
+const styles = theme => ({
+  close: {
+    padding: theme.spacing.unit / 2,
+  },
+  error: {
+    backgroundColor: theme.palette.error.dark,
+  },
+  backgroundColor: theme.palette.error.dark,
+  iconVariant: {
+    opacity: 0.9,
+    marginRight: theme.spacing.unit,
+  },
+  margin: {
+    margin: theme.spacing.unit,
+  },
+  message: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+});
 
-  constructor(props) {
-    super(props);
-    this.hideMessage = this.hideMessage.bind(this);
-    this.state = {
-      visible: true
-    };
-  }
+class ErrorSnackbar extends React.Component {
+  state = {
+    open: true,
+  };
 
-  componentWillReceiveProps(newProps) {
-    if (!_.isEmpty(newProps.message)) {
-      this.setState({ visible :true });
-    }
-  }
-
-  hideMessage() {
-    this.props.onHideMessage();
-    this.setState({
-      visible: false
-    });
-  }
+  handleClose = () => {
+    this.setState({ open: false });
+  };
 
   render() {
+    const { classes } = this.props;
     const { statusText, error, url, status } = this.props.message;
-    return !this.state.visible ? null : (
-      <Row gutter={0}>
-        <div className="error-message-container">
-          <Col span={20}>
-            { !status && !statusText ? null : <div>{status} {statusText}</div> }
+
+    return (
+      <Snackbar
+        anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+        open={this.state.open}
+        autoHideDuration={6000}
+        onClose={this.handleClose}
+        ContentProps={{
+            'aria-describedby': 'message-id',
+            headlineMapping: { // https://github.com/mui-org/material-ui/issues/13144
+              body1: "div",
+              body2: "div"
+            },
+            className: classNames(classes.error, classes.margin)
+          }}
+        message={(
+          <div id="message-id" >
+            <div className={classes.message}>
+              <WarningIcon className={classNames(classes.icon, classes.iconVariant)} />
+              { !status ? null : status + " " }{ _.isEmpty(statusText) ? defaultMessage : statusText }
+            </div>
             { !error ? null : <div>{error}</div> }
             { !url ? null : <div>{url}</div> }
-          </Col>
-          <Col span={4}>
-            <div className="dismiss" onClick={this.hideMessage} role="presentation">Dismiss X</div>
-          </Col>
-        </div>
-      </Row>
+          </div>
+          )}
+        action={[
+          <IconButton
+            key="close"
+            aria-label="Close"
+            color="inherit"
+            className={classes.close}
+            onClick={this.handleClose}>
+            <CloseIcon />
+          </IconButton>,
+          ]} />
     );
   }
 }
 
-export default ErrorMessage;
+ErrorSnackbar.propTypes = {
+  classes: PropTypes.shape({}).isRequired,
+  message: apiErrorPropType,
+};
+
+ErrorSnackbar.defaultProps = {
+  message: {
+    status: null,
+    statusText: defaultMessage,
+    url: "",
+    error: ""
+  }
+};
+
+export default withStyles(styles)(ErrorSnackbar);

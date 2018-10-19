@@ -1,13 +1,11 @@
-import _ from 'lodash';
-import { emptyTapQuery } from './util/TapUtils.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
+import _ from 'lodash';
+import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
-import './../../css/tap.css';
 
 class Top extends React.Component {
   static propTypes = {
@@ -167,7 +165,6 @@ class Top extends React.Component {
           updateQuery={this.updateQuery}
           query={this.state.query} />
 
-        <TapQueryCliCmd cmdName="top" query={this.state.query} />
         <TopModule
           pathPrefix={this.props.pathPrefix}
           query={this.state.query}

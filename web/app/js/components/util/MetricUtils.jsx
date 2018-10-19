@@ -1,17 +1,17 @@
-import _ from 'lodash';
-import { metricToFormatter } from './Utils.js';
+import Grid from '@material-ui/core/Grid';
 import Percentage from './Percentage.js';
-import { Progress } from 'antd';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
+import { metricToFormatter } from './Utils.js';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
     return "good";
   } else if (pod.status === "Pending" || pod.status === "Running") {
-    return "neutral";
+    return "default";
   } else if (pod.status === "Failed") {
-    return "bad";
+    return "poor";
   }
   return ""; // Terminating | Succeeded | Unknown
 };
@@ -22,7 +22,7 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
   }
 
   if (rate < 0.9) {
-    return successRateLabels.bad;
+    return successRateLabels.poor;
   } else if (rate < 0.95) {
     return successRateLabels.neutral;
   } else {
@@ -31,24 +31,17 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
 };
 
 export const srArcClassLabels = {
-  good: "status-good",
-  neutral: "status-ok",
-  bad: "status-poor",
-  default: "status-ok"
+  good: "good",
+  neutral: "neutral",
+  poor: "poor",
+  default: "default"
 };
 
 export const successRateWithMiniChart = sr => (
-  <div>
-    <span className="metric-table-sr">{metricToFormatter["SUCCESS_RATE"](sr)}</span>
-    <Progress
-      className={`success-rate-arc ${getSuccessRateClassification(sr, srArcClassLabels)} metric-table-sr-chart`}
-      type="dashboard"
-      showInfo={false}
-      width={32}
-      strokeWidth={12}
-      percent={sr === 0 ? 100 : sr * 100} // if success rate is 0, we want a red chart, not a gray chart
-      gapDegree={180} />
-  </div>
+  <Grid container spacing={8}>
+    <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
+    <Grid item>{_.isNil(sr) ? null : <div className={`success-rate-dot status-dot status-dot-${getSuccessRateClassification(sr, srArcClassLabels)}`} />}</Grid>
+  </Grid>
 );
 
 const getTotalRequests = row => {
@@ -150,6 +143,7 @@ const processStatTable = table => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     return {
+      key: `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`,
       name: row.resource.name,
       namespace: row.resource.namespace,
       type: row.resource.type,
@@ -210,6 +204,7 @@ export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) =>
 };
 
 export const emptyMetric = {
+  key: "",
   name: "",
   namespace: "",
   type: "",

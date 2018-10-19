@@ -1,10 +1,20 @@
-import _ from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { withContext } from './util/AppContext.jsx';
-import { Col, Icon, Row, Table } from 'antd';
 import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 import { formatLatencySec, formatWithComma } from './util/Utils.js';
+
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import ExpandableTable from './ExpandableTable.jsx';
+import Grid from '@material-ui/core/Grid';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
+import PropTypes from 'prop-types';
+import React from 'react';
+import Typography from '@material-ui/core/Typography';
+import _ from 'lodash';
+import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -27,59 +37,66 @@ const grpcStatusCodes = {
   16: "Unauthenticated"
 };
 
-const smallMetricColWidth = "120px";
+const spinnerStyles = theme => ({
+  progress: {
+    margin: theme.spacing.unit * 2,
+  },
+});
+const SpinnerBase = () => <CircularProgress size={20} />;
+const Spinner = withStyles(spinnerStyles)(SpinnerBase);
 
 const httpStatusCol = {
   title: "HTTP status",
   key: "http-status",
-  width: smallMetricColWidth,
-  dataIndex: "responseInit.http.responseInit",
-  render: d => !d ? <Icon type="loading" /> : d.httpStatus
+  render: datum => {
+    let d = _.get(datum, "responseInit.http.responseInit");
+    return !d ? <Spinner /> : d.httpStatus;
+  }
 };
 
 const responseInitLatencyCol = {
   title: "Latency",
   key: "rsp-latency",
-  width: smallMetricColWidth,
-  dataIndex: "responseInit.http.responseInit",
-  render: d => !d ? <Icon type="loading" /> : formatTapLatency(d.sinceRequestInit)
+  isNumeric: true,
+  render: datum => {
+    let d = _.get(datum, "responseInit.http.responseInit");
+    return !d ? <Spinner /> : formatTapLatency(d.sinceRequestInit);
+  }
 };
 
 const grpcStatusCol = {
   title: "GRPC status",
   key: "grpc-status",
-  width: smallMetricColWidth,
-  dataIndex: "responseEnd.http.responseEnd",
-  render: d => !d ? <Icon type="loading" /> :
-    _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")]
+  render: datum => {
+    let d = _.get(datum, "responseEnd.http.responseEnd");
+    return !d ? <Spinner /> :
+      _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")];
+  }
 };
 
 const pathCol = {
   title: "Path",
   key: "path",
-  dataIndex: "requestInit.http.requestInit",
-  render: d => !d ? <Icon type="loading" /> : d.path
+  render: datum => {
+    let d = _.get(datum, "requestInit.http.requestInit");
+    return !d ? <Spinner /> : d.path;
+  }
 };
 
 const methodCol = {
   title: "Method",
   key: "method",
-  dataIndex: "requestInit.http.requestInit",
-  render: d => !d ? <Icon type="loading" /> : _.get(d, "method.registered")
+  render: datum => {
+    let d = _.get(datum, "requestInit.http.requestInit");
+    return !d ? <Spinner /> : _.get(d, "method.registered");
+  }
 };
 
 const topLevelColumns = (resourceType, ResourceLink) => [
   {
     title: "Direction",
     key: "direction",
-    dataIndex: "base.proxyDirection",
-    width: "98px",
-    filters: [
-      { text: "FROM", value: "INBOUND" },
-      { text: "TO", value: "OUTBOUND" }
-    ],
-    render: directionColumn,
-    onFilter: (value, row) => _.get(row, "base.proxyDirection").includes(value)
+    render: d => directionColumn(d.base.proxyDirection)
   },
   {
     title: "Name",
@@ -108,72 +125,73 @@ const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
+const itemDisplay = (title, value) => {
+  return (
+    <ListItem disableGutters>
+      <ListItemText primary={title} secondary={value} />
+    </ListItem>
+  );
+};
+
 const requestInitSection = d => (
   <React.Fragment>
-    <Row gutter={8} className="tap-info-section">
-      <h3>Request Init</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={8}>Authority</Col>
-        <Col span={9}>Path</Col>
-        <Col span={2}>Scheme</Col>
-        <Col span={2}>Method</Col>
-        <Col span={3}>TLS</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={8}>{_.get(d, "requestInit.http.requestInit.authority")}</Col>
-        <Col span={9}>{_.get(d, "requestInit.http.requestInit.path")}</Col>
-        <Col span={2}>{_.get(d, "requestInit.http.requestInit.scheme.registered")}</Col>
-        <Col span={2}>{_.get(d, "requestInit.http.requestInit.method.registered")}</Col>
-        <Col span={3}>{_.get(d, "base.tls")}</Col>
-      </Row>
-    </Row>
+    <Typography variant="subtitle2">Request Init</Typography>
+    <br />
+    <List dense>
+      {itemDisplay("Authority", _.get(d, "requestInit.http.requestInit.authority"))}
+      {itemDisplay("Path", _.get(d, "requestInit.http.requestInit.path"))}
+      {itemDisplay("Scheme", _.get(d, "requestInit.http.requestInit.scheme.registered"))}
+      {itemDisplay("Method", _.get(d, "requestInit.http.requestInit.method.registered"))}
+      {itemDisplay("TLS", _.get(d, "base.tls"))}
+    </List>
   </React.Fragment>
 );
 
 const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <hr />
-    <Row gutter={8} className="tap-info-section">
-      <h3>Response Init</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={4}>HTTP Status</Col>
-        <Col span={4}>Latency</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={4}>{_.get(d, "responseInit.http.responseInit.httpStatus")}</Col>
-        <Col span={4}>{formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit"))}</Col>
-      </Row>
-    </Row>
+    <Typography variant="subtitle2">Response Init</Typography>
+    <br />
+    <List dense>
+      {itemDisplay("HTTP Status", _.get(d, "responseInit.http.responseInit.httpStatus"))}
+      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit")))}
+    </List>
   </React.Fragment>
 );
 
 const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
-    <hr />
-    <Row gutter={8} className="tap-info-section">
-      <h3>Response End</h3>
-      <Row gutter={8} className="expand-section-header">
-        <Col span={4}>GRPC Status</Col>
-        <Col span={4}>Latency</Col>
-        <Col span={4}>Response Length (B)</Col>
-      </Row>
-      <Row gutter={8}>
-        <Col span={4}>{_.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")]}</Col>
-        <Col span={4}>{formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit"))}</Col>
-        <Col span={4}>{formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes"))}</Col>
-      </Row>
-    </Row>
+    <Typography variant="subtitle2">Response End</Typography>
+    <br />
+
+    <List dense>
+      {itemDisplay("GRPC Status", _.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
+      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
+      {itemDisplay("Response Length (B)", formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes")))}
+    </List>
   </React.Fragment>
 );
+
 
 // hide verbose information
 const expandedRowRender = d => {
   return (
-    <div className="tap-more-info">
-      {requestInitSection(d)}
-      {responseInitSection(d)}
-      {responseEndSection(d)}
-    </div>
+    <Grid container spacing={16} className="tap-more-info">
+      <Grid item xs={4}>
+        <Card>
+          <CardContent>{requestInitSection(d)}</CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={4}>
+        <Card>
+          <CardContent>{responseInitSection(d)}</CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={4}>
+        <Card>
+          <CardContent>{responseEndSection(d)}</CardContent>
+        </Card>
+      </Grid>
+    </Grid>
   );
 };
 
@@ -192,17 +210,16 @@ class TapEventTable extends React.Component {
   }
 
   render() {
-    let resourceType = this.props.resource.split("/")[0];
+    const { tableRows, resource, api } = this.props;
+    let resourceType = resource.split("/")[0];
+    let columns = tapColumns(resourceType, api.ResourceLink);
+
     return (
-      <Table
-        dataSource={this.props.tableRows}
-        columns={tapColumns(resourceType, this.props.api.ResourceLink)}
-        expandedRowRender={expandedRowRender} // hide extra info in expandable row
-        expandRowByClick={true} // click anywhere on row to expand
-        rowKey={r => r.base.id}
-        pagination={false}
-        className="tap-event-table"
-        size="middle" />
+      <ExpandableTable
+        tableRows={tableRows}
+        tableColumns={columns}
+        expandedRowRender={expandedRowRender}
+        tableClassName="metric-table" />
     );
   }
 }

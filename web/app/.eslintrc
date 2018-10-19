@@ -54,10 +54,11 @@
         "arrow": "parens-new-line"
       }
     ],
+    "react/no-did-update-set-state": [0],
     "react/prefer-stateless-function": 0, // TODO: convert to stateless functions and enable
     "react/sort-prop-types": 2,
     "semi": [2, "always"],
-    "sort-imports": [2, { "ignoreCase": true, "memberSyntaxSortOrder": ["single", "multiple", "all", "none"] }],
+    "sort-imports": [2],
     "space-before-blocks": [2, "always"],
     "space-before-function-paren": [2, "never"],
     "strict": [2, "safe"]

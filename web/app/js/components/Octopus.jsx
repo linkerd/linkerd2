@@ -1,28 +1,22 @@
-import _ from 'lodash';
+import { displayName, metricToFormatter } from './util/Utils.js';
+import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
+
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import Grid from '@material-ui/core/Grid';
 import OctopusArms from './util/OctopusArms.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Progress, Row } from 'antd';
-import { displayName, metricToFormatter } from './util/Utils.js';
-import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
-import './../../css/octopus.css';
+import { StyledProgress } from './util/Progress.jsx';
+import Table from '@material-ui/core/Table';
+import TableBody from '@material-ui/core/TableBody';
+import TableCell from '@material-ui/core/TableCell';
+import TableRow from '@material-ui/core/TableRow';
+import Typography from '@material-ui/core/Typography';
+import _ from 'lodash';
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 
-const Metric = ({title, value, className}) => {
-  return (
-    <Row type="flex" justify="center" className={`octopus-metric ${className}`}>
-      <Col span={12} className="octopus-metric-title"><div>{title}</div></Col>
-      <Col span={12} className="octopus-metric-value"><div>{value}</div></Col>
-    </Row>
-  );
-};
-Metric.defaultProps = { className: "" };
-Metric.propTypes = {
-  className: PropTypes.string,
-  title: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired
-};
 
 export default class Octopus extends React.Component {
   static defaultProps = {
@@ -74,54 +68,68 @@ export default class Octopus extends React.Component {
       linkText={display} />;
   }
 
-  renderResourceSummary(resource, type) {
+  renderResourceCard(resource, type) {
     let display = displayName(resource);
+    let classification = getSuccessRateClassification(resource.successRate, srArcClassLabels);
+    let Progress = StyledProgress(classification);
+
     return (
-      <div key={resource.name} className={`octopus-body ${type}`} title={display}>
-        <div className={`octopus-title ${type}-title`}>
-          { this.linkedResourceTitle(resource, display) }
-        </div>
-        <div>
-          <div className="octopus-sr-gauge">
-            <Progress
-              className={`success-rate-arc ${getSuccessRateClassification(resource.successRate, srArcClassLabels)}`}
-              type="dashboard"
-              format={() => metricToFormatter["SUCCESS_RATE"](resource.successRate)}
-              width={type === "main" ? 132 : 64}
-              percent={resource.successRate * 100}
-              gapDegree={180} />
-          </div>
-          <Metric title="RPS" value={metricToFormatter["REQUEST_RATE"](resource.requestRate)} />
-          <Metric title="P99" value={metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))} />
-        </div>
-      </div>
+      <Grid item key={resource.name} >
+        <Card className={`octopus-body ${type}`} title={display}>
+          <CardContent>
+
+            <Typography variant={type === "neighbor" ? "h6" : "h4"} align="center">
+              { this.linkedResourceTitle(resource, display) }
+            </Typography>
+
+            <Progress variant="determinate" value={resource.successRate * 100} />
+
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableCell><Typography>RPS</Typography></TableCell>
+                  <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell><Typography>P99</Typography></TableCell>
+                  <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_.get(resource, "latency.P99"))}</Typography></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </Grid>
     );
   }
 
   renderUnmeshedResources = unmeshedResources => {
     return (
-      <div key="unmeshed-resources" className="octopus-body neighbor unmeshed">
-        <div className="octopus-title neighbor-title">Unmeshed</div>
-        {
-          _.map(unmeshedResources, r => {
-            let display = displayName(r);
-            return <div key={display} title={display}>{display}</div>;
-          })
-        }
-      </div>
+      <Grid item>
+        <Card key="unmeshed-resources">
+          <CardContent>
+            <Typography variant="h6">Unmeshed</Typography>
+            {
+            _.map(unmeshedResources, r => {
+              let display = displayName(r);
+              return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
+            })
+          }
+          </CardContent>
+        </Card>
+      </Grid>
     );
   }
 
   renderCollapsedNeighbors = neighbors => {
     return (
-      <div key="unmeshed-resources" className="octopus-body neighbor collapsed">
+      <Grid item key="unmeshed-resources">
         {
           _.map(neighbors, r => {
             let display = displayName(r);
-            return <div className="octopus-title neighbor-title" key={display}>{this.linkedResourceTitle(r, display)}</div>;
+            return <div key={display}>{this.linkedResourceTitle(r, display)}</div>;
           })
         }
-      </div>
+      </Grid>
     );
   }
 
@@ -177,30 +185,51 @@ export default class Octopus extends React.Component {
 
     return (
       <div className="octopus-graph">
-        <Row type="flex" justify="center" align="middle">
-          <Col span={6} className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
-            {_.map(display.upstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
+        <Grid
+          container
+          direction="row"
+          justify="center"
+          alignItems="center">
+
+          <Grid
+            container
+            spacing={24}
+            direction="column"
+            justify="center"
+            alignItems="center"
+            item
+            xs={3}
+            className={`octopus-col ${hasUpstreams ? "resource-col" : ""}`}>
+            {_.map(display.upstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
             {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
-          </Col>
+          </Grid>
 
-          <Col span={2} className="octopus-col">
+          <Grid item xs={1} className="octopus-col">
             {this.renderArrowCol(numUpstreams, false)}
-          </Col>
+          </Grid>
 
-          <Col span={8} className="octopus-col resource-col">
-            {this.renderResourceSummary(resource, "main")}
-          </Col>
+          <Grid item xs={4} className="octopus-col resource-col">
+            {this.renderResourceCard(resource, "main")}
+          </Grid>
 
-          <Col span={2} className="octopus-col">
+          <Grid item xs={1} className="octopus-col">
             {this.renderArrowCol(numDownstreams, true)}
-          </Col>
+          </Grid>
 
-          <Col span={6} className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
-            {_.map(display.downstreams.displayed, n => this.renderResourceSummary(n, "neighbor"))}
+          <Grid
+            container
+            spacing={24}
+            direction="column"
+            justify="center"
+            alignItems="center"
+            item
+            xs={3}
+            className={`octopus-col ${hasDownstreams ? "resource-col" : ""}`}>
+            {_.map(display.downstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
             {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
-          </Col>
-        </Row>
+          </Grid>
+        </Grid>
       </div>
     );
   }

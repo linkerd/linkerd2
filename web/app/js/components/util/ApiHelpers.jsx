@@ -1,8 +1,9 @@
-import _ from 'lodash';
+import 'whatwg-fetch';
+
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
-import 'whatwg-fetch';
+import _ from 'lodash';
 
 const checkFetchOk = resp => {
   if (resp.ok) {
@@ -132,11 +133,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
 
     render() {
-      let prefix = pathPrefix;
-      if (!_.isEmpty(this.props.deployment)) {
-        prefix = prefix.replace("/web:", "/"+this.props.deployment+":");
-      }
-      let url = `${prefix}${this.props.to}`;
+      let url = prefixLink(this.props.to, this.props.deployment);
 
       return (
         <Link
@@ -148,7 +145,20 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
   }
 
+  const prefixLink = (to, controllerDeployment) => {
+    let prefix = pathPrefix;
+    if (!_.isEmpty(controllerDeployment)) { // add field for grafana deployment
+      prefix = prefix.replace("/web:", "/" + controllerDeployment + ":");
+    }
+
+    return `${prefix}${to}`;
+  };
+
   const generateResourceURL = r => {
+    if (r.type === "namespace") {
+      return "/namespaces/" + (r.namespace || r.name);
+    }
+
     return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
   };
 
@@ -183,6 +193,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getMetricsWindowDisplayText,
     urlsForResource,
     PrefixedLink,
+    prefixLink,
     ResourceLink,
     setCurrentRequests,
     getCurrentPromises,

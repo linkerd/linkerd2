@@ -1,4 +1,5 @@
 import React from 'react';
+import Typography from '@material-ui/core/Typography';
 
 /*
 * Instructions for adding resources to service mesh
@@ -6,17 +7,17 @@ import React from 'react';
 export const incompleteMeshMessage = name => {
   if (name) {
     return (
-      <div className="action">
+      <Typography>
         Add {name} to the k8s.yml file<br /><br />
         Then run <code>linkerd inject k8s.yml | kubectl apply -f -</code> to add it to the service mesh
-      </div>
+      </Typography>
     );
   } else {
     return (
-      <div className="action">
+      <Typography>
         Add one or more resources to the k8s.yml file<br /><br />
         Then run <code>linkerd inject k8s.yml | kubectl apply -f -</code> to add them to the service mesh
-      </div>
+      </Typography>
     );
   }
 };

@@ -1,7 +1,7 @@
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
-import { Link } from 'react-router-dom';
+import Button from '@material-ui/core/Button';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Version extends React.Component {
@@ -52,13 +52,14 @@ class Version extends React.Component {
 
     return (
       <div>
-        A new version ({this.numericVersion(latestVersion)}) is available.<br />
-        <Link
-          to="https://versioncheck.linkerd.io/update"
-          className="button primary"
-          target="_blank">
+        <div className="new-version-text">A new version ({this.numericVersion(latestVersion)}) is available.</div>
+        <Button
+          variant="contained"
+          color="primary"
+          target="_blank"
+          href="https://versioncheck.linkerd.io/update">
           Update Now
-        </Link>
+        </Button>
       </div>
     );
   }

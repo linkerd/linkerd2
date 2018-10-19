@@ -1,82 +1,68 @@
+import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
+
+import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
+import { formatLatencySec } from './util/Utils.js';
 import { successRateWithMiniChart } from './util/MetricUtils.jsx';
-import { Table } from 'antd';
 import { withContext } from './util/AppContext.jsx';
-import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, numericSort } from './util/Utils.js';
 
-const topMetricColWidth = "85px";
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: " ",
     key: "direction",
-    dataIndex: "direction",
-    width: "60px",
-    render: directionColumn
+    render: d => directionColumn(d.direction)
   },
   {
     title: "Name",
     key: "src-dst",
-    width: "180px",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Method",
-    dataIndex: "httpMethod",
-    width: "95px",
-    sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod),
+    key: "httpMethod",
+    render: d => d.httpMethod,
   },
   {
     title: "Path",
-    dataIndex: "path",
-    sorter: (a, b) => a.path.localeCompare(b.path),
+    key: "path",
+    render: d => d.path
   },
   {
     title: "Count",
-    dataIndex: "count",
-    className: "numeric",
-    width: topMetricColWidth,
-    defaultSortOrder: "descend",
-    sorter: (a, b) => numericSort(a.count, b.count),
+    key: "count",
+    isNumeric: true,
+    render: d => d.count
   },
   {
     title: "Best",
-    dataIndex: "best",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.best, b.best),
-    render: formatLatencySec
+    key: "best",
+    isNumeric: true,
+    render: d => formatLatencySec(d.best)
   },
   {
     title: "Worst",
-    dataIndex: "worst",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.worst, b.worst),
-    render: formatLatencySec
+    key: "worst",
+    isNumeric: true,
+    render: d => formatLatencySec(d.worst)
   },
   {
     title: "Last",
-    dataIndex: "last",
-    className: "numeric",
-    width: topMetricColWidth,
-    sorter: (a, b) => numericSort(a.last, b.last),
-    render: formatLatencySec
+    key: "last",
+    isNumeric: true,
+    render: d => formatLatencySec(d.last)
   },
   {
     title: "Success Rate",
-    dataIndex: "successRate",
-    className: "numeric",
-    width: "128px",
-    sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
-    render: d => successRateWithMiniChart(d.get())
+    key: "successRate",
+    isNumeric: true,
+    render: d => _.isNil(d) || !d.get ? "---" : successRateWithMiniChart(d.get())
   },
   {
     title: "Tap",
     key: "tap",
-    className: "numeric",
-    width: "30px",
+    isNumeric: true,
     render: d => tapLink(d, resourceType, PrefixedLink)
   }
 ];
@@ -85,27 +71,19 @@ class TopEventTable extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
-      ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
     resourceType: PropTypes.string.isRequired,
-    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  }
+    tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+  };
+static defaultProps = {
+  tableRows: []
+};
 
-  static defaultProps = {
-    tableRows: []
-  }
-
-  render() {
-    return (
-      <Table
-        dataSource={this.props.tableRows}
-        columns={topColumns(this.props.resourceType, this.props.api.ResourceLink, this.props.api.PrefixedLink)}
-        rowKey="key"
-        pagination={false}
-        className="top-event-table metric-table"
-        size="middle" />
-    );
-  }
+render() {
+  const { tableRows, resourceType, api } = this.props;
+  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+  return <BaseTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
+}
 }
 
 export default withContext(TopEventTable);

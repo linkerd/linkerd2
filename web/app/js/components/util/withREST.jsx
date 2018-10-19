@@ -1,6 +1,6 @@
-import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
 import { withContext } from './AppContext.jsx';
 
 /**
@@ -44,10 +44,10 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       this.startServerPolling(this.props);
     }
 
-    componentWillReceiveProps(newProps) {
+    componentDidUpdate(prevProps) {
       const changed = _.filter(
         localOptions.resetProps,
-        prop => _.get(newProps, prop) !== _.get(this.props, prop),
+        prop => _.get(prevProps, prop) !== _.get(this.props, prop),
       );
 
       if (_.isEmpty(changed)) { return; }
@@ -55,7 +55,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.stopServerPolling();
       this.setState(this.getInitialState());
-      this.startServerPolling(newProps);
+      this.startServerPolling(this.props);
     }
 
     componentWillUnmount() {

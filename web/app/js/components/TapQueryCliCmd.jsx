@@ -1,6 +1,11 @@
-import _ from 'lodash';
+import {
+  CardContent,
+  Typography
+} from '@material-ui/core';
+
 import PropTypes from 'prop-types';
 import React from 'react';
+import _ from 'lodash';
 import { tapQueryPropType } from './util/TapUtils.jsx';
 
 /*
@@ -45,27 +50,27 @@ export default class TapQueryCliCmd extends React.Component {
     } = this.props.query;
 
     return (
-      <div className="tap-query">
-        {
-          _.isEmpty(resource) ? null :
-          <React.Fragment>
-            <div>Current {_.startCase(this.props.cmdName)} query:</div>
-            <code>
+      _.isEmpty(resource) ? null :
+      <CardContent className="tap-query">
+        <Typography variant="caption" gutterBottom>
+          Current {_.startCase(this.props.cmdName)} query
+        </Typography>
+
+        <code>
               linkerd {this.props.cmdName} {resource}
-              { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
-              { this.renderCliItem("--to", toResource) }
-              { _.isEmpty(toResource) || toResource.indexOf("namespace") === 0 ? null :
+          { resource.indexOf("namespace") === 0 ? null : this.renderCliItem("--namespace", namespace) }
+          { this.renderCliItem("--to", toResource) }
+          {
+            _.isEmpty(toResource) || toResource.indexOf("namespace") === 0 ? null :
                 this.renderCliItem("--to-namespace", toNamespace)
-              }
-              { this.renderCliItem("--method", method) }
-              { this.renderCliItem("--scheme", scheme) }
-              { this.renderCliItem("--authority", authority) }
-              { this.renderCliItem("--path", path) }
-              { this.renderCliItem("--max-rps", maxRps) }
-            </code>
-          </React.Fragment>
-        }
-      </div>
+          }
+          { this.renderCliItem("--method", method) }
+          { this.renderCliItem("--scheme", scheme) }
+          { this.renderCliItem("--authority", authority) }
+          { this.renderCliItem("--path", path) }
+          { this.renderCliItem("--max-rps", maxRps) }
+        </code>
+      </CardContent>
     );
   }
 }

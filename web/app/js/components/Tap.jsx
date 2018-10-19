@@ -1,14 +1,13 @@
-import _ from 'lodash';
+import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
-import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
+import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
-import { addUrlProps, UrlQueryParamTypes } from 'react-url-query';
-import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
-import './../../css/tap.css';
 
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }
@@ -169,6 +168,7 @@ class Tap extends React.Component {
     resultIndex[d.id][d.eventType] = d;
     // assumption: requests of a given id all share the same high level metadata
     resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].key = d.id;
     resultIndex[d.id].lastUpdated = Date.now();
   }
 
@@ -312,8 +312,6 @@ class Tap extends React.Component {
           authoritiesByNs={this.state.authoritiesByNs}
           updateQuery={this.updateQuery}
           query={this.state.query} />
-
-        <TapQueryCliCmd cmdName="tap" query={this.state.query} />
 
         <TapEventTable
           resource={this.state.query.resource}
