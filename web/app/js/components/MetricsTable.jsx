@@ -21,21 +21,6 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
     }
   ];
 
-  let grafanaLinkColumn = [
-    {
-      title: "Grafana Dashboard",
-      key: "grafanaDashboard",
-      isNumeric: true,
-      render: row => !row.added || _.get(row, "pods.totalPods") === "0" ? null : (
-        <GrafanaLink
-          name={row.name}
-          namespace={row.namespace}
-          resource={resource}
-          PrefixedLink={PrefixedLink} />
-      )
-    }
-  ];
-
   let meshedColumn = {
     title: "Meshed",
     key: "meshed",
@@ -104,13 +89,30 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       key: "has_tls",
       isNumeric: true,
       render: d => _.isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate()
+    },
+    {
+      title: "Grafana Dashboard",
+      key: "grafanaDashboard",
+      isNumeric: true,
+      render: row => {
+        if (!isAuthorityTable && (!row.added || _.get(row, "pods.totalPods") === "0") ) {
+          return null;
+        }
+
+        return (
+          <GrafanaLink
+            name={row.name}
+            namespace={row.namespace}
+            resource={resource}
+            PrefixedLink={PrefixedLink} />
+        );
+      }
     }
   ];
 
-    // don't add the meshed column on a Authority MetricsTable
+  // don't add the meshed column on a Authority MetricsTable
   if (!isAuthorityTable) {
     columns.splice(1, 0, meshedColumn);
-    columns = _.concat(columns, grafanaLinkColumn);
   }
 
   if (!showNamespaceColumn) {
