@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	"github.com/linkerd/linkerd2/controller/destination"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
@@ -625,12 +625,12 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		}
 	}
 
-	profiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles(hc.ControlPlaneNamespace).List(meta_v1.ListOptions{})
+	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles(hc.ControlPlaneNamespace).List(meta_v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
-	for _, p := range profiles.Items {
+	for _, p := range svcProfiles.Items {
 		nameParts := strings.Split(p.Name, ".")
 		if len(nameParts) != 2 {
 			return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>\")", p.Name)
@@ -648,7 +648,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 			if route.Condition == nil {
 				return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", p.Name)
 			}
-			err = destination.ValidateRequestMatch(route.Condition)
+			err = profiles.ValidateRequestMatch(route.Condition)
 			if err != nil {
 				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", p.Name, err)
 			}
@@ -656,7 +656,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 				if rc.Condition == nil {
 					return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", p.Name)
 				}
-				err = destination.ValidateResponseMatch(rc.Condition)
+				err = profiles.ValidateResponseMatch(rc.Condition)
 				if err != nil {
 					return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", p.Name, err)
 				}
