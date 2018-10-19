@@ -79,7 +79,7 @@ class ErrorModal extends React.Component {
     }
 
     return _.map(errorsByContainer, (errors, container) => (
-      <div key={`error-${container}`} className="container-error">
+      <div key={`error-${container}`}>
         <Grid
           container
           direction="row"
@@ -95,7 +95,7 @@ class ErrorModal extends React.Component {
           </Grid>
         </Grid>
 
-        <div className="error-text">
+        <div>
           {
             _.map(errors, (er, i) => {
                 if (_.size(er.message) === 0) {
@@ -121,8 +121,8 @@ class ErrorModal extends React.Component {
   renderPodErrors = errors => {
     return _.map(errors, err => {
       return (
-        <div className="controller-pod-error" key={err.pod}>
-          <Typography variant="title" gutterBottom>{err.pod}</Typography>
+        <div key={err.pod}>
+          <Typography variant="h6" gutterBottom>{err.pod}</Typography>
           {this.renderContainerErrors(err.pod, err.byContainer)}
         </div>
       );
@@ -145,7 +145,9 @@ class ErrorModal extends React.Component {
         <Tooltip title="Pods are initializing"><CircularProgress size={20} thickness={4} /></Tooltip>
       );
     } else {
-      return <ErrorIcon onClick={this.handleClickOpen} />;
+      return (
+        <ErrorIcon color="error" fontSize="small" onClick={this.handleClickOpen} />
+      );
     }
   }
 
@@ -153,7 +155,7 @@ class ErrorModal extends React.Component {
     let errors = this.processErrorData(this.props.errors);
 
     return (
-      <div>
+      <React.Fragment>
         {this.renderStatusIcon(errors)}
         <Dialog
           open={this.state.open}
@@ -183,7 +185,7 @@ class ErrorModal extends React.Component {
             <Button onClick={this.handleClose} color="primary">Close</Button>
           </DialogActions>
         </Dialog>
-      </div>
+      </React.Fragment>
     );
   }
 }

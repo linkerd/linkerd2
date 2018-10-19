@@ -18,7 +18,7 @@ import { withContext } from './util/AppContext.jsx';
 
 const isMeshedTooltip = (
   <Tooltip title="Namespace is meshed" placement="right-start">
-    <CheckCircleIcon />
+    <CheckCircleIcon color="primary" />
   </Tooltip>
 );
 class NamespaceLanding extends React.Component {

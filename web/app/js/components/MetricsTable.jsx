@@ -48,7 +48,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
         }
         return (
           <React.Fragment>
-            {nameContents}
+            {nameContents}&nbsp;&nbsp;
             { _.isEmpty(d.errors) ? null : <ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /> }
           </React.Fragment>
         );
