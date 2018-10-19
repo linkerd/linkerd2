@@ -95,7 +95,6 @@ class ExpandableTable extends React.Component {
                   }
                 </TableRow>
               </React.Fragment>
-
             );
           })}
           </TableBody>

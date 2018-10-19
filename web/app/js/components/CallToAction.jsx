@@ -34,18 +34,18 @@ class CallToAction extends React.Component {
   render() {
     const { resource, numResources } = this.props;
     const steps = getSteps(numResources, resource);
-    const activeStep = _.size(steps) - 1; // hardcode the last step as the active step
+    const lastStep = _.size(steps) - 1; // hardcode the last step as the active step
 
     return (
       <React.Fragment>
         <Typography>The service mesh was successfully installed!</Typography>
         <Stepper
-          activeStep={activeStep}
+          activeStep={lastStep}
           orientation="vertical">
           {
             steps.map((step, i) => {
               const props = {};
-              props.completed = i < steps.length - 1; // select the last step as the currently active one
+              props.completed = i < lastStep; // select the last step as the currently active one
 
               return (
                 <Step key={step.label} {...props}>
