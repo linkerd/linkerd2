@@ -75,6 +75,7 @@ func init() {
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
+	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
