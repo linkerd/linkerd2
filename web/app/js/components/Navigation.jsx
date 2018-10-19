@@ -201,13 +201,13 @@ class NavigationBase extends React.Component {
       <div className={classes.root}>
         <AppBar
           position="absolute"
-          className={classNames(classes.appBar, this.state.drawerOpen && classes.appBarShift)}>
+          className={classNames(classes.appBar, {[classes.appBarShift]: this.state.drawerOpen} )}>
           <Toolbar disableGutters={!this.state.drawerOpen}>
             <IconButton
               color="inherit"
               aria-label="Open drawer"
               onClick={this.handleDrawerOpen}
-              className={classNames(classes.menuButton, this.state.drawerOpen && classes.hide)}>
+              className={classNames(classes.menuButton, {[classes.hide]: this.state.drawerOpen} )}>
               <MenuIcon />
             </IconButton>
 
@@ -220,7 +220,7 @@ class NavigationBase extends React.Component {
         <Drawer
           variant="permanent"
           classes={{
-            paper: classNames(classes.drawerPaper, !this.state.drawerOpen && classes.drawerPaperClose),
+            paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !this.state.drawerOpen} ),
           }}
           open={this.state.drawerOpen}>
           <div className={classNames(classes.linkerdLogoContainer, classes.toolbar)}>
