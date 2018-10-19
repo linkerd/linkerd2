@@ -155,6 +155,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const generateResourceURL = r => {
+    if (r.type === "namespace") {
+      return "/namespaces/" + (r.namespace || r.name);
+    }
+
     return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
   };
 
