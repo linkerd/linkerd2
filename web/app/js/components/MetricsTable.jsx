@@ -161,7 +161,8 @@ class MetricsTable extends React.Component {
       <BaseTable
         tableRows={rows}
         tableColumns={columns}
-        tableClassName="metric-table" />
+        tableClassName="metric-table"
+        padding="dense" />
     );
   }
 }
