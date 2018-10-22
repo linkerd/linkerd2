@@ -257,6 +257,13 @@ DOCKER_TRACE=1 bin/docker-build-proxy
 
 # Dependencies
 
+## Updating protobuf dependencies	
+ If you make Protobuf changes, run:	
+ ```bash	
+bin/dep ensure	
+bin/protoc-go.sh	
+```
+
 ## Updating Docker dependencies
 
 The go Docker images rely on base dependency images with
