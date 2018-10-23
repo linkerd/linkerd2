@@ -22,7 +22,9 @@ jobs:
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.10.3"
+      go:
+          - "1.10.x"
+          - "1.11.x"
       go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
