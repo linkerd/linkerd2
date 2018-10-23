@@ -1,5 +1,4 @@
 import { displayName, metricToFormatter } from './util/Utils.js';
-import { getSuccessRateClassification, srArcClassLabels } from './util/MetricUtils.jsx' ;
 
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -14,6 +13,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
+import { getSuccessRateClassification } from './util/MetricUtils.jsx' ;
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 
@@ -70,7 +70,7 @@ export default class Octopus extends React.Component {
 
   renderResourceCard(resource, type) {
     let display = displayName(resource);
-    let classification = getSuccessRateClassification(resource.successRate, srArcClassLabels);
+    let classification = getSuccessRateClassification(resource.successRate);
     let Progress = StyledProgress(classification);
 
     return (

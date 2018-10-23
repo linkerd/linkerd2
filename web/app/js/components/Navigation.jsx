@@ -104,7 +104,7 @@ const styles = theme => ({
     padding: theme.spacing.unit * 3,
   },
   linkerdLogoContainer: {
-    backgroundColor: theme.palette.primary.dark,
+    backgroundColor: theme.palette.primary.main,
   },
   linkerdNavLogo: {
     minWidth: "180px",

@@ -1,12 +1,13 @@
 import { friendlyTitle, metricToFormatter } from './util/Utils.js';
-import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
 
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _ from 'lodash';
+import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
@@ -58,7 +59,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       title: "Success Rate",
       key: "success-rate",
       isNumeric: true,
-      render: d => successRateWithMiniChart(d.successRate)
+      render: d => <SuccessRateMiniChart sr={d.successRate} />
     },
     {
       title: "Request Rate",

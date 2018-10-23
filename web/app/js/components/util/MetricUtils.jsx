@@ -1,9 +1,6 @@
-import Grid from '@material-ui/core/Grid';
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
-import React from 'react';
 import _ from 'lodash';
-import { metricToFormatter } from './Utils.js';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
@@ -16,7 +13,7 @@ const getPodCategorization = pod => {
   return ""; // Terminating | Succeeded | Unknown
 };
 
-export const getSuccessRateClassification = (rate, successRateLabels) => {
+export const getSuccessRateClassification = (rate, successRateLabels = srArcClassLabels) => {
   if (_.isNull(rate)) {
     return successRateLabels.default;
   }
@@ -24,25 +21,18 @@ export const getSuccessRateClassification = (rate, successRateLabels) => {
   if (rate < 0.9) {
     return successRateLabels.poor;
   } else if (rate < 0.95) {
-    return successRateLabels.neutral;
+    return successRateLabels.warning;
   } else {
     return successRateLabels.good;
   }
 };
 
-export const srArcClassLabels = {
+const srArcClassLabels = {
   good: "good",
-  neutral: "neutral",
+  warning: "warning",
   poor: "poor",
   default: "default"
 };
-
-export const successRateWithMiniChart = sr => (
-  <Grid container spacing={8}>
-    <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
-    <Grid item>{_.isNil(sr) ? null : <div className={`success-rate-dot status-dot status-dot-${getSuccessRateClassification(sr, srArcClassLabels)}`} />}</Grid>
-  </Grid>
-);
 
 const getTotalRequests = row => {
   let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);

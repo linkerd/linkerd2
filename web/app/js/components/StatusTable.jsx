@@ -3,6 +3,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
 import _ from 'lodash';
+import classNames from 'classnames';
+import { statusClassNames } from './util/theme.js';
+import { withStyles } from '@material-ui/core/styles';
+
+const styles = theme => statusClassNames(theme);
 
 const columnConfig = {
   "Pod Status": {
@@ -28,7 +33,7 @@ const columnConfig = {
   }
 };
 
-const StatusDot = ({status, multilineDots, columnName}) => (
+const StatusDot = ({status, multilineDots, columnName, classes}) => (
   <Tooltip
     placement="top"
     title={(
@@ -39,13 +44,18 @@ const StatusDot = ({status, multilineDots, columnName}) => (
       </div>
     )}>
     <div
-      className={`status-table-dot status-dot status-dot-${status.value} ${multilineDots ? 'dot-multiline': ''}`}
+      className={classNames(
+        "status-table-dot",
+        classes[status.value],
+        { "dot-multiline": multilineDots }
+      )}
       key={status.name}>&nbsp;
     </div>
   </Tooltip>
 );
 
 StatusDot.propTypes = {
+  classes: PropTypes.shape({}).isRequired,
   columnName: PropTypes.string.isRequired,
   multilineDots: PropTypes.bool.isRequired,
   status: PropTypes.shape({
@@ -66,7 +76,7 @@ const columns = {
     isNumeric: true,
     render: d => d.numEntities
   },
-  status: name => {
+  status: (name, classes) => {
     return {
       title: name,
       key: "status",
@@ -79,6 +89,7 @@ const columns = {
               status={status}
               multilineDots={multilineDots}
               columnName={name}
+              classes={classes}
               key={`${name}-pod-status-${i}`} />
           );
         });
@@ -89,6 +100,7 @@ const columns = {
 
 class StatusTable extends React.Component {
   static propTypes = {
+    classes: PropTypes.shape({}).isRequired,
     data: PropTypes.arrayOf(PropTypes.shape({
       name: PropTypes.string.isRequired,
       pods: PropTypes.arrayOf(PropTypes.object).isRequired, // TODO: What's the real shape here.
@@ -107,10 +119,11 @@ class StatusTable extends React.Component {
   }
 
   render() {
+    const { classes } = this.props;
     let tableCols = [
       columns.resourceName,
       columns.pods,
-      columns.status(this.props.statusColumnTitle)
+      columns.status(this.props.statusColumnTitle, classes)
     ];
     let tableData = this.getTableData();
 
@@ -124,4 +137,4 @@ class StatusTable extends React.Component {
   }
 }
 
-export default StatusTable;
+export default withStyles(styles, { withTheme: true })(StatusTable);

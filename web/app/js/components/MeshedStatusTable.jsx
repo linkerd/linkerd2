@@ -47,7 +47,7 @@ const namespacesColumns = PrefixedLink => [
     render: row => {
       let percent = row.meshedPercent.get();
       let barType = _.isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "poor";
+        getClassification(row.meshedPods, row.failedPods) : "warning";
       let Progress = StyledProgress(barType);
 
       let percentMeshedMsg = "";

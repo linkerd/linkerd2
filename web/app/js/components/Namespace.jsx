@@ -6,6 +6,7 @@ import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
@@ -105,7 +106,7 @@ class Namespaces extends React.Component {
     }
     return (
       <div className="page-section">
-        <h1>{friendlyTitle(resource).plural}</h1>
+        <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
         <MetricsTable
           resource={resource}
           metrics={metrics}
