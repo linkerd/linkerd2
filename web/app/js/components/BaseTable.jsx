@@ -20,11 +20,11 @@ const styles = theme => ({
 });
 
 function BaseTable(props) {
-  const { classes, tableRows, tableColumns, tableClassName, rowKey} = props;
+  const { classes, tableRows, tableColumns, tableClassName, rowKey, padding} = props;
 
   return (
     <Paper className={classes.root}>
-      <Table className={`${classes.table} ${tableClassName}`}>
+      <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
         <TableHead>
           <TableRow>
             { _.map(tableColumns, c => (
@@ -60,6 +60,7 @@ function BaseTable(props) {
 
 BaseTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
+  padding: PropTypes.string,
   rowKey: PropTypes.func,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
@@ -71,9 +72,10 @@ BaseTable.propTypes = {
 };
 
 BaseTable.defaultProps = {
+  padding: "default",
   rowKey: null,
   tableClassName: "",
-  tableRows: []
+  tableRows: [],
 };
 
 export default withStyles(styles)(BaseTable);

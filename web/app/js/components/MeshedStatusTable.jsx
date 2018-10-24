@@ -1,5 +1,6 @@
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { StyledProgress } from './util/Progress.jsx';
@@ -24,10 +25,12 @@ const namespacesColumns = PrefixedLink => [
     render: d => {
       return  (
         <React.Fragment>
-          <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
-          { _.isEmpty(d.errors) ? null :
-          <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
+          <Grid container alignItems="center" spacing={8}>
+            <Grid item><PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink></Grid>
+            { _.isEmpty(d.errors) ? null :
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
+          </Grid>
         </React.Fragment>
       );
     }
