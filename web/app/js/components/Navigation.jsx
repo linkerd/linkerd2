@@ -25,13 +25,12 @@ import HomeIcon from '@material-ui/icons/Home';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
 import MenuIcon from '@material-ui/icons/Menu';
-import NavigateNextIcon from '@material-ui/icons/NavigateNext';
+import NavigationResources from './NavigationResources.jsx';
 import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
-import ViewListIcon from '@material-ui/icons/ViewList';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
@@ -127,7 +126,6 @@ class NavigationBase extends React.Component {
   getInitialState() {
     return {
       drawerOpen: true,
-      resourceMenuOpen: false,
       helpMenuOpen: false,
       latestVersion: '',
       isLatest: true,
@@ -168,10 +166,6 @@ class NavigationBase extends React.Component {
 
   handleDrawerClose = () => {
     this.setState({ drawerOpen: false });
-  };
-
-  handleResourceMenuClick = () => {
-    this.setState(state => ({ resourceMenuOpen: !state.resourceMenuOpen }));
   };
 
   handleHelpMenuClick = () => {
@@ -239,24 +233,7 @@ class NavigationBase extends React.Component {
             { this.menuItem("/tap", "Tap", <VisibilityIcon />) }
             { this.menuItem("/top", "Top", <NetworkCheckIcon />) }
             { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon />) }
-            <MenuItem
-              className={classes.navMenuItem}
-              button
-              onClick={this.handleResourceMenuClick}>
-              <ListItemIcon><ViewListIcon /></ListItemIcon>
-              <ListItemText inset primary="Resources" />
-              {this.state.resourceMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </MenuItem>
-
-            <Collapse in={this.state.resourceMenuOpen} timeout="auto" unmountOnExit>
-              <MenuList dense component="div" disablePadding>
-                { this.menuItem("/authorities", "Authorities", <NavigateNextIcon />) }
-                { this.menuItem("/deployments", "Deployments", <NavigateNextIcon />) }
-                { this.menuItem("/namespaces", "Namespaces", <NavigateNextIcon />) }
-                { this.menuItem("/pods", "Pods", <NavigateNextIcon />) }
-                { this.menuItem("/replicationcontrollers", "Replication Controllers", <NavigateNextIcon />) }
-              </MenuList>
-            </Collapse>
+            <NavigationResources />
           </MenuList>
 
           <Divider />
@@ -314,9 +291,7 @@ class NavigationBase extends React.Component {
 }
 
 NavigationBase.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
+  api: PropTypes.shape({}).isRequired,
   ChildComponent: PropTypes.func.isRequired,
   classes: PropTypes.shape({}).isRequired,
   location: ReactRouterPropTypes.location.isRequired,

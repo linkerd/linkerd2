@@ -24,6 +24,7 @@ const (
 
 // resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
+	// TODO: add Namespace here to decrease queries from the web process
 	Deployment,
 	ReplicationController,
 	Pod,
