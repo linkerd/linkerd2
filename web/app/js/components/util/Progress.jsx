@@ -11,10 +11,6 @@ const colorLookup = {
     colorPrimary: dashboardTheme.status.light.warning,
     barColorPrimary: dashboardTheme.status.dark.warning,
   },
-  neutral: {
-    colorPrimary: dashboardTheme.status.light.neutral,
-    barColorPrimary: dashboardTheme.status.dark.neutral,
-  },
   poor: {
     colorPrimary: dashboardTheme.status.light.danger,
     barColorPrimary: dashboardTheme.status.dark.danger,

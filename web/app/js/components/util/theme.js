@@ -17,8 +17,7 @@ export const dashboardTheme = {
       danger: red[500],
       warning: orange[500],
       good: green[500],
-      default: green[500],
-      neutral: grey[500],
+      default: grey[500],
     },
     // custom variables for progress bars, which need both the normal colors
     // as well as a lighter version of them for the bar background
@@ -26,8 +25,7 @@ export const dashboardTheme = {
       danger: red[200],
       warning: orange[200],
       good: green[200],
-      default: green[200],
-      neutral: grey[200],
+      default: grey[200],
     }
   },
 };

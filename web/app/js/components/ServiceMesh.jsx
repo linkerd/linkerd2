@@ -34,7 +34,7 @@ const getPodClassification = pod => {
   if (pod.status === "Running") {
     return "good";
   } else if (pod.status === "Waiting") {
-    return "neutral";
+    return "default";
   } else {
     return "poor";
   }

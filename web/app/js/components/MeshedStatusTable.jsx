@@ -12,7 +12,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
     return "poor";
   } else if (meshedPodCount === 0) {
-    return "neutral";
+    return "default";
   } else {
     return "good";
   }
