@@ -5,7 +5,7 @@ const Template = `### ServiceProfile for {{.ServiceName}}.{{.ServiceNamespace}} 
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: {{.ServiceName}}.{{.ServiceNamespace}}
+  name: {{.ServiceName}}.{{.ServiceNamespace}}.{{.ClusterZone}}
   namespace: {{.ControlPlaneNamespace}}
 spec:
   # A service profile defines a list of routes.  Linkerd can aggregate metrics
