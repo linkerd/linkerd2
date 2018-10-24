@@ -3,6 +3,7 @@ import { friendlyTitle, metricToFormatter } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
@@ -48,10 +49,11 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
           );
         }
         return (
-          <React.Fragment>
-            {nameContents}&nbsp;&nbsp;
-            { _.isEmpty(d.errors) ? null : <ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /> }
-          </React.Fragment>
+          <Grid container alignItems="center" spacing={8}>
+            <Grid item>{nameContents}</Grid>
+            { _.isEmpty(d.errors) ? null :
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /></Grid>}
+          </Grid>
         );
       }
     },
