@@ -3,24 +3,18 @@ import 'whatwg-fetch';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 
 import Accordion from './util/Accordion.jsx';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
-import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
-const isMeshedTooltip = (
-  <Tooltip title="Namespace is meshed" placement="right-start">
-    <CheckCircleIcon color="primary" />
-  </Tooltip>
-);
 class NamespaceLanding extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -163,9 +157,15 @@ class NamespaceLanding extends React.Component {
 
   renderAccordion() {
     let panelData = _.map(this.state.namespaces, ns => {
+      let hr = (
+        <Grid container justify="space-between" alignItems="center">
+          <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
+          {!ns.added ? null : <Grid item><SimpleChip /></Grid> }
+        </Grid>
+      );
       return {
         id: ns.name,
-        header: <React.Fragment><Typography variant="subtitle1">{ns.name}</Typography> {!ns.added ? null : isMeshedTooltip}</React.Fragment>,
+        header: hr,
         body: ns.name === this.state.selectedNs || ns.name === this.state.defaultOpenNs.name ?
           this.renderNamespaceSection(ns.name) : null
       };
