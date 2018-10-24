@@ -47,8 +47,34 @@ func (s *server) Get(dest *destination.GetDestination, stream destination.Destin
 	return nil
 }
 
-// TODO: unimplemented
 func (s *server) GetProfile(dest *destination.GetDestination, stream destination.Destination_GetProfileServer) error {
+	log := log.WithFields(
+		log.Fields{
+			"scheme": dest.Scheme,
+			"path":   dest.Path,
+		})
+	log.Debug("GetProfile")
+
+	rsp, err := s.destinationClient.GetProfile(stream.Context(), dest)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	for {
+		profile, err := rsp.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		log.Debugf("GetProfile update: %v", profile)
+		stream.Send(profile)
+	}
+
+	log.Debug("GetProfile complete")
 	return nil
 }
 
