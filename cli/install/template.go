@@ -182,7 +182,7 @@ spec:
       - name: destination
         ports:
         - name: grpc
-          containerPort: 8089
+          containerPort: {{.ProxyAPIPort}}
         - name: admin-http
           containerPort: 9999
         image: {{.ControllerImage}}
@@ -202,28 +202,6 @@ spec:
           httpGet:
             path: /ready
             port: 9999
-          failureThreshold: 7
-      - name: proxy-api
-        ports:
-        - name: grpc
-          containerPort: {{.ProxyAPIPort}}
-        - name: admin-http
-          containerPort: 9996
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "proxy-api"
-        - "-addr=:{{.ProxyAPIPort}}"
-        - "-log-level={{.ControllerLogLevel}}"
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 9996
           failureThreshold: 7
       - name: tap
         ports:
