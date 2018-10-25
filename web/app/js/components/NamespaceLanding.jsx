@@ -3,6 +3,7 @@ import 'whatwg-fetch';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 
 import Accordion from './util/Accordion.jsx';
+import Divider from '@material-ui/core/Divider';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import MetricsTable from './MetricsTable.jsx';
@@ -143,8 +144,9 @@ class NamespaceLanding extends React.Component {
     let noMetrics = _.isEmpty(metrics.pod);
 
     return (
-      <Grid container direction="column">
+      <Grid container direction="column" spacing={16}>
         <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
+        <Grid item><Divider /></Grid>
         <Grid item>{ noMetrics ? <div>No resources detected.</div> : null}</Grid>
 
         {this.renderResourceSection("deployment", metrics.deployment)}
