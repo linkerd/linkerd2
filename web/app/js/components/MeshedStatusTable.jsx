@@ -12,7 +12,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
     return "poor";
   } else if (meshedPodCount === 0) {
-    return "neutral";
+    return "default";
   } else {
     return "good";
   }
@@ -47,7 +47,7 @@ const namespacesColumns = PrefixedLink => [
     render: row => {
       let percent = row.meshedPercent.get();
       let barType = _.isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "poor";
+        getClassification(row.meshedPods, row.failedPods) : "warning";
       let Progress = StyledProgress(barType);
 
       let percentMeshedMsg = "";

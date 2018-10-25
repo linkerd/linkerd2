@@ -11,6 +11,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import TopModule from './TopModule.jsx';
+import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -245,7 +246,7 @@ export class ResourceDetailBase extends React.Component {
 
         { _.isEmpty(upstreams) ? null : (
           <div className="page-section">
-            <h2 className="subsection-header">Inbound</h2>
+            <Typography variant="h5">Inbound</Typography>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={upstreams} />
@@ -255,7 +256,7 @@ export class ResourceDetailBase extends React.Component {
 
         { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
           <div className="page-section">
-            <h2 className="subsection-header">Outbound</h2>
+            <Typography variant="h5">Outbound</Typography>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={this.state.neighborMetrics.downstream} />
@@ -266,7 +267,7 @@ export class ResourceDetailBase extends React.Component {
         {
           this.state.resource.type === "pod" ? null : (
             <div className="page-section">
-              <h2 className="subsection-header">Pods</h2>
+              <Typography variant="h5">Pods</Typography>
               <MetricsTable
                 resource="pod"
                 metrics={this.state.podMetrics} />
