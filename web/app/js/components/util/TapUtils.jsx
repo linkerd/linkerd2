@@ -195,9 +195,9 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: "Source", key: "source", render: d => d.source },
+  { title: "Source", dataIndex: "source" },
   { title: "", key: "arrow", render: () => <i className="fas fa-long-arrow-alt-right" /> },
-  { title: "Destination", key: "destination", render: d => d.destination }
+  { title: "Destination", dataIndex: "destination" }
 ];
 
 const getPodOwner = (labels, ResourceLink) => {

@@ -1,17 +1,17 @@
 import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
+import { formatLatencySec, numericSort } from './util/Utils.js';
 
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _ from 'lodash';
-import { formatLatencySec } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: " ",
-    key: "direction",
+    dataIndex: "direction",
     render: d => directionColumn(d.direction)
   },
   {
@@ -21,44 +21,48 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   },
   {
     title: "Method",
-    key: "httpMethod",
-    render: d => d.httpMethod,
+    dataIndex: "httpMethod",
+    sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod)
   },
   {
     title: "Path",
-    key: "path",
-    render: d => d.path
+    dataIndex: "path",
+    sorter: (a, b) => a.path.localeCompare(b.path)
   },
   {
     title: "Count",
-    key: "count",
+    dataIndex: "count",
     isNumeric: true,
-    render: d => d.count
+    sorter: (a, b) => numericSort(a.count, b.count)
   },
   {
     title: "Best",
-    key: "best",
+    dataIndex: "best",
     isNumeric: true,
-    render: d => formatLatencySec(d.best)
+    render: d => formatLatencySec(d.best),
+    sorter: (a, b) => numericSort(a.best, b.best)
   },
   {
     title: "Worst",
-    key: "worst",
+    dataIndex: "worst",
     isNumeric: true,
-    render: d => formatLatencySec(d.worst)
+    render: d => formatLatencySec(d.worst),
+    sorter: (a, b) => numericSort(a.worst, b.worst)
   },
   {
     title: "Last",
-    key: "last",
+    dataIndex: "last",
     isNumeric: true,
-    render: d => formatLatencySec(d.last)
+    render: d => formatLatencySec(d.last),
+    sorter: (a, b) => numericSort(a.last, b.last)
   },
   {
     title: "Success Rate",
-    key: "successRate",
+    dataIndex: "successRate",
     isNumeric: true,
     render: d => _.isNil(d) || _.isNil(d.successRate) ? "---" :
-    <SuccessRateMiniChart sr={d.successRate.get()} />
+    <SuccessRateMiniChart sr={d.successRate.get()} />,
+    sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
   },
   {
     title: "Tap",
@@ -83,7 +87,14 @@ static defaultProps = {
 render() {
   const { tableRows, resourceType, api } = this.props;
   let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
-  return <BaseTable tableRows={tableRows} tableColumns={columns} tableClassName="metric-table" />;
+  return (
+    <BaseTable
+      tableRows={tableRows}
+      tableColumns={columns}
+      tableClassName="metric-table"
+      defaultOrderBy="count"
+      defaultOrder="desc" />
+  );
 }
 }
 

@@ -67,14 +67,12 @@ StatusDot.propTypes = {
 const columns = {
   resourceName: {
     title: "Deployment",
-    key: "name",
-    render: d => d.name
+    dataIndex: "name"
   },
   pods: {
     title: "Pods",
-    key: "pods",
-    isNumeric: true,
-    render: d => d.numEntities
+    dataIndex: "numEntities",
+    isNumeric: true
   },
   status: (name, classes) => {
     return {
