@@ -189,6 +189,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "destination"
+        - "-addr=:{{.ProxyAPIPort}}"
         - "-controller-namespace={{.Namespace}}"
         - "-single-namespace={{.SingleNamespace}}"
         - "-enable-tls={{.EnableTLS}}"

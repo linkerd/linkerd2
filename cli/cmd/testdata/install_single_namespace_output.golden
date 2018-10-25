@@ -173,6 +173,7 @@ spec:
         resources: {}
       - args:
         - destination
+        - -addr=:123
         - -controller-namespace=Namespace
         - -single-namespace=true
         - -enable-tls=true
@@ -186,7 +187,7 @@ spec:
           initialDelaySeconds: 10
         name: destination
         ports:
-        - containerPort: 8086
+        - containerPort: 123
           name: grpc
         - containerPort: 9999
           name: admin-http
