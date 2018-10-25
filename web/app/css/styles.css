@@ -52,3 +52,11 @@ div.success-rate-dot {
     margin-bottom: 12px;
   }
 }
+
+div.octopus-graph {
+  max-width: 1180px;
+}
+
+.octopus-body.neighbor {
+  width: 256px;
+}
