@@ -3,9 +3,9 @@ import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _ from 'lodash';
 import { formatLatencySec } from './util/Utils.js';
-import { successRateWithMiniChart } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
@@ -57,7 +57,8 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Success Rate",
     key: "successRate",
     isNumeric: true,
-    render: d => _.isNil(d) || !d.get ? "---" : successRateWithMiniChart(d.get())
+    render: d => _.isNil(d) || _.isNil(d.successRate) ? "---" :
+    <SuccessRateMiniChart sr={d.successRate.get()} />
   },
   {
     title: "Tap",
