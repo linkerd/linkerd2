@@ -1,9 +1,8 @@
 ## edge-18.10.4
-* CLI
-  * **New** adds the concept of service profiles to the controller
+
 * Web UI
-  * **New** Revamped the look of the dashboard by switching component libraries
-  from antd to material-ui
+  * **New** Major look and feel update to the Linkerd dashboard by switching
+    component libraries from antd to material-ui
   * **New** Added Grafana dashboard for Authorities
   * **New** Switched UI testing from karma to jest
 
