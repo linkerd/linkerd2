@@ -7,7 +7,6 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
-import Tooltip from '@material-ui/core/Tooltip';
 import _ from 'lodash';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -19,6 +18,12 @@ const styles = theme => ({
     overflowX: 'auto',
   },
   table: {},
+  activeSortIcon: {
+    opacity: 1,
+  },
+  inactiveSortIcon: {
+    opacity: 0.4,
+  },
 });
 
 class BaseTable extends React.Component {
@@ -30,12 +35,12 @@ class BaseTable extends React.Component {
     };
   }
 
-  createSortHandler = dataIndex => () => {
-    let orderBy = dataIndex;
-    let order = 'asc';
+  createSortHandler = col => () => {
+    let orderBy = col.dataIndex;
+    let order = col.defaultSortOrder || 'asc';
 
     if (this.state.orderBy === orderBy && this.state.order === order) {
-      order = 'desc';
+      order = order === 'asc' ? 'desc' : 'asc';
     }
 
     this.setState({ order, orderBy });
@@ -51,24 +56,21 @@ class BaseTable extends React.Component {
     return order === 'desc' ? _.reverse(sorted) : sorted;
   }
 
-  renderHeaderCell = (col, order, orderBy) => {
+  renderHeaderCell = (col, order, orderBy, classes) => {
+    let active = orderBy === col.dataIndex;
     if (col.sorter) {
       return (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
           sortDirection={orderBy === col.dataIndex ? order : false}>
-          <Tooltip
-            title="Sort"
-            placement={col.isNumeric ? 'bottom-end' : 'bottom-start'}
-            enterDelay={300}>
-            <TableSortLabel
-              active={orderBy === col.dataIndex}
-              direction={order}
-              onClick={this.createSortHandler(col.dataIndex)}>
-              {col.title}
-            </TableSortLabel>
-          </Tooltip>
+          <TableSortLabel
+            active={active}
+            direction={active ? order : col.defaultSortOrder || 'asc'}
+            classes={{icon: active ? classes.activeSortIcon : classes.inactiveSortIcon}}
+            onClick={this.createSortHandler(col)}>
+            {col.title}
+          </TableSortLabel>
         </TableCell>
       );
     } else {
@@ -93,7 +95,7 @@ class BaseTable extends React.Component {
           <TableHead>
             <TableRow>
               { _.map(tableColumns, c => (
-                this.renderHeaderCell(c, order, orderBy)
+                this.renderHeaderCell(c, order, orderBy, classes)
               ))}
             </TableRow>
           </TableHead>
@@ -129,6 +131,7 @@ BaseTable.propTypes = {
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     dataIndex: PropTypes.string,
+    defaultSortOrder: PropTypes.string,
     isNumeric: PropTypes.bool,
     render: PropTypes.func,
     sorter: PropTypes.func,

@@ -176,6 +176,7 @@ class MetricsTable extends React.Component {
         tableRows={rows}
         tableColumns={columns}
         tableClassName="metric-table"
+        defaultOrderBy="name"
         padding="dense" />
     );
   }

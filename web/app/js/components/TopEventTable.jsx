@@ -33,6 +33,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Count",
     dataIndex: "count",
     isNumeric: true,
+    defaultSortOrder: "desc",
     sorter: (a, b) => numericSort(a.count, b.count)
   },
   {
@@ -46,6 +47,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Worst",
     dataIndex: "worst",
     isNumeric: true,
+    defaultSortOrder: "desc",
     render: d => formatLatencySec(d.worst),
     sorter: (a, b) => numericSort(a.worst, b.worst)
   },
@@ -80,22 +82,22 @@ class TopEventTable extends React.Component {
     resourceType: PropTypes.string.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({}))
   };
-static defaultProps = {
-  tableRows: []
-};
+  static defaultProps = {
+    tableRows: []
+  };
 
-render() {
-  const { tableRows, resourceType, api } = this.props;
-  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
-  return (
-    <BaseTable
-      tableRows={tableRows}
-      tableColumns={columns}
-      tableClassName="metric-table"
-      defaultOrderBy="count"
-      defaultOrder="desc" />
-  );
-}
+  render() {
+    const { tableRows, resourceType, api } = this.props;
+    let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+    return (
+      <BaseTable
+        tableRows={tableRows}
+        tableColumns={columns}
+        tableClassName="metric-table"
+        defaultOrderBy="count"
+        defaultOrder="desc" />
+    );
+  }
 }
 
 export default withContext(TopEventTable);
