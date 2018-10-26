@@ -1,12 +1,16 @@
 ## edge-18.10.4
 
-* Web UI
-  * **New** Major look and feel update to the Linkerd dashboard by switching
-    component libraries from antd to material-ui
-  * **New** Added Grafana dashboard for Authorities
-  * **New** Switched UI testing from karma to jest
+This release includes a major redesign of the web frontend to make use of the
+Material design system. Additional features that leverage the new design are
+coming soon! This release also includes the following changes:
 
-Special thanks to @alenkacz and @alpeb for contributing to this release!
+* CLI
+  * **Fixed** Fixed an issue with the `--registry` install flag not accepting
+    hosts with ports (thanks, @alenkacz!)
+* Web UI
+  * **New** Added a new Grafana dashboard for authorities (thanks, @alpeb!)
+  * **New** Revamped look and feel of the Linkerd dashboard by switching
+    component libraries from antd to material-ui
 
 ## edge-18.10.3
 
