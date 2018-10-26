@@ -21,7 +21,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
-    key: "namespace",
+    dataIndex: "namespace",
     render: d => {
       return  (
         <React.Fragment>
@@ -37,9 +37,8 @@ const namespacesColumns = PrefixedLink => [
   },
   {
     title: "Meshed pods",
-    key: "meshedPodsStr",
-    isNumeric: true,
-    render: d => d.meshedPodsStr
+    dataIndex: "meshedPodsStr",
+    isNumeric: true
   },
   {
     title: "Meshed Status",
