@@ -70,6 +70,7 @@ class NamespaceLanding extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
+    // TODO: make this one request
     let apiRequests = [
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ];
