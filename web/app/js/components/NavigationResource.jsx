@@ -1,5 +1,6 @@
 import {
   Collapse,
+  IconButton,
   ListItemIcon,
   ListItemText,
   MenuItem,
@@ -12,24 +13,41 @@ import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateDot from "./util/SuccessRateDot.jsx";
+import ViewListIcon from '@material-ui/icons/ViewList';
 import _ from 'lodash';
 import { friendlyTitle } from "./util/Utils.js";
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = () => ({
+const styles = theme => ({
   navMenuItem: {
     paddingLeft: "24px",
-    paddingRight: "24px",
+    "&:hover $navMenuButton": {
+      opacity: "1",
+    },
+  },
+  navMenuIcon: {
+    marginRight: "0",
+  },
+  navMenuButton: {
+    padding: "4px",
+    opacity: "0",
+    transition: theme.transitions.create('opacity', {
+      duration: theme.transitions.duration.complex,
+    }),
+  },
+  navMenuText: {
+    paddingLeft: "0",
   },
   navResourceItem: {
-    marginRight: "0",
-    paddingLeft: "9px",
+    marginRight: "16px",
+    paddingLeft: "33px",
   },
   navResourceText: {
-    textOverflow: "ellipsis",
     overflow: "hidden",
+    padding: "0",
+    textOverflow: "ellipsis",
   }
 });
 
@@ -71,8 +89,13 @@ class NavigationResource extends React.Component {
     }
   };
 
+  handleNavButtonClick = e => {
+    e.stopPropagation();
+  };
 
   listItemIcon() {
+    const { classes } = this.props;
+
     let icon = <NavigateNextIcon color="disabled" />;
     if (!_.isEmpty(this.resources)) {
       if (this.state.open) {
@@ -81,7 +104,7 @@ class NavigationResource extends React.Component {
         icon = <NavigateNextIcon />;
       }
     }
-    return (<ListItemIcon>{icon}</ListItemIcon>);
+    return (<ListItemIcon className={classes.navMenuIcon}>{icon}</ListItemIcon>);
   }
 
   menu() {
@@ -89,13 +112,20 @@ class NavigationResource extends React.Component {
 
     return (
       <MenuItem
-        component={Link}
-        to={this.to}
         className={classes.navMenuItem}
         onClick={this.handleOnClick}
         selected={this.to === window.location.pathname}>
         {this.listItemIcon(this.resources)}
-        <ListItemText primary={friendlyTitle(type).plural} />
+        <IconButton
+          component={Link}
+          to={this.to}
+          className={classes.navMenuButton}
+          onClick={this.handleNavButtonClick}>
+          <ViewListIcon />
+        </IconButton>
+        <ListItemText
+          className={classes.navMenuText}
+          primary={friendlyTitle(type).plural} />
       </MenuItem>
     );
   }
