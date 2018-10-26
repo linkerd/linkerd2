@@ -3,9 +3,9 @@ import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _ from 'lodash';
 import { formatLatencySec } from './util/Utils.js';
-import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
