@@ -1,6 +1,5 @@
 import {
   Collapse,
-  IconButton,
   ListItemIcon,
   ListItemText,
   MenuItem,
@@ -13,40 +12,24 @@ import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateDot from "./util/SuccessRateDot.jsx";
-import ViewListIcon from '@material-ui/icons/ViewList';
 import _ from 'lodash';
 import { friendlyTitle } from "./util/Utils.js";
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = theme => ({
+const styles = () => ({
   navMenuItem: {
     paddingLeft: "24px",
-    "&:hover $navMenuButton": {
-      opacity: "1",
-    },
-  },
-  navMenuIcon: {
-    marginRight: "0",
-  },
-  navMenuButton: {
-    padding: "4px",
-    opacity: "0",
-    transition: theme.transitions.create('opacity', {
-      duration: theme.transitions.duration.complex,
-    }),
-  },
-  navMenuText: {
-    paddingLeft: "0",
+    paddingRight: "12px",
   },
   navResourceItem: {
-    marginRight: "16px",
-    paddingLeft: "33px",
+    marginRight: "0",
+    paddingLeft: "38px",
   },
   navResourceText: {
     overflow: "hidden",
-    padding: "0",
+    padding: "0px 0px 0px 10px",
     textOverflow: "ellipsis",
   }
 });
@@ -83,28 +66,15 @@ class NavigationResource extends React.Component {
   }
 
   handleOnClick = () => {
-    if (!_.isEmpty(this.props.metrics)) {
-      // not expandable if no metrics
-      this.setState({ open: !this.state.open });
-    }
-  };
-
-  handleNavButtonClick = e => {
-    e.stopPropagation();
+    this.setState({ open: !this.state.open });
   };
 
   listItemIcon() {
-    const { classes } = this.props;
-
-    let icon = <NavigateNextIcon color="disabled" />;
-    if (!_.isEmpty(this.resources)) {
-      if (this.state.open) {
-        icon = <ExpandMore />;
-      } else {
-        icon = <NavigateNextIcon />;
-      }
+    let icon = <NavigateNextIcon />;
+    if (this.state.open) {
+      icon = <ExpandMore />;
     }
-    return (<ListItemIcon className={classes.navMenuIcon}>{icon}</ListItemIcon>);
+    return (<ListItemIcon>{icon}</ListItemIcon>);
   }
 
   menu() {
@@ -113,19 +83,9 @@ class NavigationResource extends React.Component {
     return (
       <MenuItem
         className={classes.navMenuItem}
-        onClick={this.handleOnClick}
-        selected={this.to === window.location.pathname}>
+        onClick={this.handleOnClick}>
         {this.listItemIcon(this.resources)}
-        <IconButton
-          component={Link}
-          to={this.to}
-          className={classes.navMenuButton}
-          onClick={this.handleNavButtonClick}>
-          <ViewListIcon />
-        </IconButton>
-        <ListItemText
-          className={classes.navMenuText}
-          primary={friendlyTitle(type).plural} />
+        <ListItemText primary={friendlyTitle(type).plural} />
       </MenuItem>
     );
   }
@@ -135,6 +95,19 @@ class NavigationResource extends React.Component {
 
     return (
       <MenuList dense component="div" disablePadding>
+        <MenuItem
+          component={Link}
+          to={this.to}
+          className={classes.navMenuItem}
+          selected={this.to === window.location.pathname}>
+          <ListItemIcon className={classes.navResourceItem}>
+            <SuccessRateDot />
+          </ListItemIcon>
+          <ListItemText
+            disableTypography
+            primary="All"
+            className={classes.navResourceText} />
+        </MenuItem>
         {
           _.map(this.resources, r => {
             let url = api.prefixLink(api.generateResourceURL(r));
