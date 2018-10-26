@@ -1,3 +1,14 @@
+## edge-18.10.4
+* CLI
+  * **New** adds the concept of service profiles to the controller
+* Web UI
+  * **New** Revamped the look of the dashboard by switching component libraries
+  from antd to material-ui
+  * **New** Added Grafana dashboard for Authorities
+  * **New** Switched UI testing from karma to jest
+
+Special thanks to @alenkacz and @alpeb for contributing to this release!
+
 ## edge-18.10.3
 
 * CLI
