@@ -178,19 +178,19 @@ spec:
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9999
+            port: 9996
           initialDelaySeconds: 10
         name: proxy-api
         ports:
         - containerPort: 8086
           name: grpc
-        - containerPort: 9999
+        - containerPort: 9996
           name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9999
+            port: 9996
         resources: {}
       - args:
         - tap

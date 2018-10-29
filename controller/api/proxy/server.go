@@ -19,8 +19,8 @@ type server struct {
 	enableTLS bool
 }
 
-// The Destination service serves service discovery information to the proxy.
-// This implementation supports the "k8s" destination scheme and expects
+// The proxy-api service serves service discovery and other information to the
+// proxy.  This implementation supports the "k8s" destination scheme and expects
 // destination paths to be of the form:
 // <service>.<namespace>.svc.cluster.local:<port>
 //

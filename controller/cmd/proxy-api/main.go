@@ -15,7 +15,7 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
-	metricsAddr := flag.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
+	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
