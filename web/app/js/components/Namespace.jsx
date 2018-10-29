@@ -6,6 +6,7 @@ import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
@@ -61,6 +62,14 @@ class Namespaces extends React.Component {
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
+  componentDidUpdate(prevProps) {
+    if (!_.isEqual(prevProps.match.params.namespace, this.props.match.params.namespace)) {
+      // React won't unmount this component when switching resource pages so we need to clear state
+      this.api.cancelCurrentRequests();
+      this.setState(this.getInitialState(this.props.match.params));
+    }
+  }
+
   componentWillUnmount() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
@@ -105,7 +114,7 @@ class Namespaces extends React.Component {
     }
     return (
       <div className="page-section">
-        <h1>{friendlyTitle(resource).plural}</h1>
+        <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
         <MetricsTable
           resource={resource}
           metrics={metrics}

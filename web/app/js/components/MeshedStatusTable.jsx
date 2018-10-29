@@ -12,7 +12,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
     return "poor";
   } else if (meshedPodCount === 0) {
-    return "neutral";
+    return "default";
   } else {
     return "good";
   }
@@ -21,7 +21,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
-    key: "namespace",
+    dataIndex: "namespace",
     render: d => {
       return  (
         <React.Fragment>
@@ -37,9 +37,8 @@ const namespacesColumns = PrefixedLink => [
   },
   {
     title: "Meshed pods",
-    key: "meshedPodsStr",
-    isNumeric: true,
-    render: d => d.meshedPodsStr
+    dataIndex: "meshedPodsStr",
+    isNumeric: true
   },
   {
     title: "Meshed Status",
@@ -47,7 +46,7 @@ const namespacesColumns = PrefixedLink => [
     render: row => {
       let percent = row.meshedPercent.get();
       let barType = _.isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "poor";
+        getClassification(row.meshedPods, row.failedPods) : "warning";
       let Progress = StyledProgress(barType);
 
       let percentMeshedMsg = "";

@@ -19,7 +19,7 @@ import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
-import green from '@material-ui/core/colors/green';
+import { dashboardTheme } from './components/util/theme.js';
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
@@ -37,15 +37,7 @@ const context = {
   productName: "Linkerd"
 };
 
-const theme = createMuiTheme({
-  palette: {
-    primary: green
-  },
-  typography: {
-    useNextVariants: true,
-    suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
-  }
-});
+const theme = createMuiTheme(dashboardTheme);
 
 let applicationHtml = (
   <React.Fragment>

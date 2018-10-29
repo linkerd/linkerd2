@@ -106,7 +106,7 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 			return
 		}
 
-		if result.Err != nil {
+		if result.Err != nil && !result.Warning {
 			var msg string
 			switch result.Category {
 			case healthcheck.KubernetesAPICategory:
