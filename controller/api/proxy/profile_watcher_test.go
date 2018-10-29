@@ -1,4 +1,4 @@
-package destination
+package proxy
 
 import (
 	"reflect"

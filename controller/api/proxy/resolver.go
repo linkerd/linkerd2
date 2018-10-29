@@ -1,4 +1,4 @@
-package destination
+package proxy
 
 type streamingDestinationResolver interface {
 	canResolve(host string, port int) (bool, error)
