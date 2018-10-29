@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/linkerd/linkerd2/controller/destination"
+	"github.com/linkerd/linkerd2/controller/api/proxy"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -53,7 +53,7 @@ func main() {
 	done := make(chan struct{})
 	ready := make(chan struct{})
 
-	server, lis, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, k8sAPI, done)
+	server, lis, err := proxy.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}

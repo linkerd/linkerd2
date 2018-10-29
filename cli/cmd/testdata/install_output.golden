@@ -170,7 +170,7 @@ spec:
             port: 9995
         resources: {}
       - args:
-        - destination
+        - proxy-api
         - -addr=:123
         - -controller-namespace=Namespace
         - -single-namespace=false
@@ -183,7 +183,7 @@ spec:
             path: /ping
             port: 9999
           initialDelaySeconds: 10
-        name: destination
+        name: proxy-api
         ports:
         - containerPort: 123
           name: grpc

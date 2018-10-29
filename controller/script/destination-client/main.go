@@ -8,7 +8,7 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/destination"
+	"github.com/linkerd/linkerd2/controller/api/proxy"
 	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +23,7 @@ func main() {
 	method := flag.String("method", "get", "which gRPC method to invoke")
 	flag.Parse()
 
-	client, conn, err := destination.NewClient(*addr)
+	client, conn, err := proxy.NewClient(*addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

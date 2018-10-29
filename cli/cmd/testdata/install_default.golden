@@ -167,7 +167,7 @@ spec:
             port: 9995
         resources: {}
       - args:
-        - destination
+        - proxy-api
         - -addr=:8086
         - -controller-namespace=linkerd
         - -single-namespace=false
@@ -180,7 +180,7 @@ spec:
             path: /ping
             port: 9999
           initialDelaySeconds: 10
-        name: destination
+        name: proxy-api
         ports:
         - containerPort: 8086
           name: grpc

@@ -179,7 +179,7 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-      - name: destination
+      - name: proxy-api
         ports:
         - name: grpc
           containerPort: {{.ProxyAPIPort}}
@@ -188,7 +188,7 @@ spec:
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "destination"
+        - "proxy-api"
         - "-addr=:{{.ProxyAPIPort}}"
         - "-controller-namespace={{.Namespace}}"
         - "-single-namespace={{.SingleNamespace}}"

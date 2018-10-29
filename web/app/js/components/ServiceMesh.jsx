@@ -41,7 +41,6 @@ const getPodClassification = pod => {
 };
 
 const componentsToDeployNames = {
-  "Destination": "controller",
   "Grafana" : "grafana",
   "Prometheus": "prometheus",
   "Proxy API": "controller",
