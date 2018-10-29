@@ -179,30 +179,6 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-      - name: destination
-        ports:
-        - name: grpc
-          containerPort: 8089
-        - name: admin-http
-          containerPort: 9999
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "destination"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        - "-enable-tls={{.EnableTLS}}"
-        - "-log-level={{.ControllerLogLevel}}"
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9999
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 9999
-          failureThreshold: 7
       - name: proxy-api
         ports:
         - name: grpc
@@ -214,6 +190,9 @@ spec:
         args:
         - "proxy-api"
         - "-addr=:{{.ProxyAPIPort}}"
+        - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
+        - "-enable-tls={{.EnableTLS}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:

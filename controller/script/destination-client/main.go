@@ -8,7 +8,7 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/destination"
+	"github.com/linkerd/linkerd2/controller/api/proxy"
 	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,12 +18,12 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	addr := flag.String("addr", ":8089", "address of destination service")
+	addr := flag.String("addr", ":8086", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	method := flag.String("method", "get", "which gRPC method to invoke")
 	flag.Parse()
 
-	client, conn, err := destination.NewClient(*addr)
+	client, conn, err := proxy.NewClient(*addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

@@ -1,4 +1,4 @@
-package destination
+package proxy
 
 import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"

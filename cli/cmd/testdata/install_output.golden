@@ -170,33 +170,11 @@ spec:
             port: 9995
         resources: {}
       - args:
-        - destination
+        - proxy-api
+        - -addr=:123
         - -controller-namespace=Namespace
         - -single-namespace=false
         - -enable-tls=true
-        - -log-level=ControllerLogLevel
-        image: ControllerImage
-        imagePullPolicy: ImagePullPolicy
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9999
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8089
-          name: grpc
-        - containerPort: 9999
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9999
-        resources: {}
-      - args:
-        - proxy-api
-        - -addr=:123
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy

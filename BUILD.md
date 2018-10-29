@@ -32,11 +32,8 @@ written in Go. The dashboard UI is a React application.
 - [`cli`](cli): Command-line `linkerd` utility, view and drive the control
   plane.
 - [`controller`](controller)
-  - [`destination`](controller/destination): Serves service discovery
-    information to the `proxy`.
   - [`proxy-api`](controller/api/proxy): Accepts requests from `proxy`
-    instances and forwards those requests to the appropriate controller
-    service.
+    instances and serves information such as service discovery.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
     Linkerd2 service mesh.
@@ -66,7 +63,6 @@ linkerd2_components
     node [style=filled, shape=rect];
 
     "cli" [color=lightblue];
-    "destination" [color=lightblue];
     "proxy-api" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
@@ -88,9 +84,7 @@ linkerd2_components
 
     "proxy" -> "proxy-api";
 
-    "proxy-api" -> "destination";
-
-    "destination" -> "kubernetes api";
+    "proxy-api" -> "kubernetes api";
 
     "grafana" -> "prometheus";
     "prometheus" -> "kubernetes api";
@@ -186,13 +180,13 @@ these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
-to run the destination service locally, run:
+to run the proxy-api service locally, run:
 
 ```bash
-bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+bin/go-run controller/cmd/proxy-api -kubeconfig ~/.kube/config -log-level debug
 ```
 
-You can send test requests to the destination service using the
+You can send test requests to the proxy-api service using the
 `destination-client` in the `controller/script` directory. For instance:
 
 ```bash
