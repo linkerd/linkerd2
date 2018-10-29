@@ -8,6 +8,7 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
 import _ from 'lodash';
+import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -24,6 +25,10 @@ const styles = theme => ({
   inactiveSortIcon: {
     opacity: 0.4,
   },
+  denseTable: {
+    paddingRight: "8px",
+    paddingLeft: "8px"
+  }
 });
 
 class BaseTable extends React.Component {
@@ -56,14 +61,17 @@ class BaseTable extends React.Component {
     return order === 'desc' ? _.reverse(sorted) : sorted;
   }
 
-  renderHeaderCell = (col, order, orderBy, classes) => {
+  renderHeaderCell = (col, order, orderBy) => {
     let active = orderBy === col.dataIndex;
+    const { classes, padding } = this.props;
+
     if (col.sorter) {
       return (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
-          sortDirection={orderBy === col.dataIndex ? order : false}>
+          sortDirection={orderBy === col.dataIndex ? order : false}
+          className={classNames({[classes.denseTable]: padding === 'dense'})}>
           <TableSortLabel
             active={active}
             direction={active ? order : col.defaultSortOrder || 'asc'}
@@ -77,7 +85,8 @@ class BaseTable extends React.Component {
       return (
         <TableCell
           key={col.key || col.dataIndex}
-          numeric={col.isNumeric}>
+          numeric={col.isNumeric}
+          className={classNames({[classes.denseTable]: padding === 'dense'})}>
           {col.title}
         </TableCell>
       );
@@ -95,7 +104,7 @@ class BaseTable extends React.Component {
           <TableHead>
             <TableRow>
               { _.map(tableColumns, c => (
-                this.renderHeaderCell(c, order, orderBy, classes)
+                this.renderHeaderCell(c, order, orderBy)
               ))}
             </TableRow>
           </TableHead>
@@ -107,6 +116,7 @@ class BaseTable extends React.Component {
                 <TableRow key={key}>
                   { _.map(tableColumns, c => (
                     <TableCell
+                      className={classNames({[classes.denseTable]: padding === 'dense'})}
                       key={`table-${key}-${c.key || c.dataIndex}`}
                       numeric={c.isNumeric}>
                       {c.render ? c.render(d) : _.get(d, c.dataIndex)}
