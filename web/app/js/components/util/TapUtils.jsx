@@ -1,6 +1,7 @@
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
 
 import BaseTable from '../BaseTable.jsx';
+import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
@@ -303,10 +304,16 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
-  return (
+  let baseContent = (
     <div className="src-dst-name">
       { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
     </div>
+  );
+
+  return (
+    <Popover
+      popoverContent={(popoverResourceTable(d, ResourceLink))}
+      baseContent={baseContent} />
   );
 };
 
