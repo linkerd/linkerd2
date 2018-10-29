@@ -64,8 +64,9 @@ const (
 )
 
 var (
-	maxRetries  = 60
-	retryWindow = 5 * time.Second
+	maxRetries        = 60
+	retryWindow       = 5 * time.Second
+	clusterZoneSuffix = []string{"svc", "cluster", "local"}
 )
 
 type checker struct {
@@ -643,8 +644,13 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 
 	for _, p := range svcProfiles.Items {
 		nameParts := strings.Split(p.Name, ".")
-		if len(nameParts) != 2 {
-			return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>\")", p.Name)
+		if len(nameParts) != 2+len(clusterZoneSuffix) {
+			return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", p.Name)
+		}
+		for i, part := range nameParts[2:] {
+			if part != clusterZoneSuffix[i] {
+				return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", p.Name)
+			}
 		}
 		service := nameParts[0]
 		namespace := nameParts[1]
