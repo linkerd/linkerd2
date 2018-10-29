@@ -112,6 +112,7 @@ var (
 	}
 
 	route1 = &sp.RouteSpec{
+		Name:      "route1",
 		Condition: getButNotPrivate,
 		Responses: []*sp.ResponseClass{
 			&sp.ResponseClass{
@@ -122,6 +123,9 @@ var (
 	}
 
 	pbRoute1 = &pb.Route{
+		MetricsLabels: map[string]string{
+			"route": "route1",
+		},
 		Condition: pbGetButNotPrivate,
 		ResponseClasses: []*pb.ResponseClass{
 			&pb.ResponseClass{
@@ -132,6 +136,7 @@ var (
 	}
 
 	route2 = &sp.RouteSpec{
+		Name:      "route2",
 		Condition: login,
 		Responses: []*sp.ResponseClass{
 			&sp.ResponseClass{
@@ -142,6 +147,9 @@ var (
 	}
 
 	pbRoute2 = &pb.Route{
+		MetricsLabels: map[string]string{
+			"route": "route2",
+		},
 		Condition: pbLogin,
 		ResponseClasses: []*pb.ResponseClass{
 			&pb.ResponseClass{
