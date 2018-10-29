@@ -3,23 +3,19 @@ import 'whatwg-fetch';
 import { processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 
 import Accordion from './util/Accordion.jsx';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import Divider from '@material-ui/core/Divider';
 import ErrorBanner from './ErrorBanner.jsx';
+import Grid from '@material-ui/core/Grid';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
-import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
-const isMeshedTooltip = (
-  <Tooltip title="Namespace is meshed" placement="right-start">
-    <CheckCircleIcon />
-  </Tooltip>
-);
 class NamespaceLanding extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
@@ -74,6 +70,7 @@ class NamespaceLanding extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
+    // TODO: make this one request
     let apiRequests = [
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ];
@@ -124,14 +121,18 @@ class NamespaceLanding extends React.Component {
       return null;
     }
     return (
-      <div className="page-section">
-        <br />
-        <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
-        <MetricsTable
-          resource={resource}
-          metrics={metrics}
-          showNamespaceColumn={false} />
-      </div>
+      <Grid container direction="column" justify="center">
+        <Grid item>
+          <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
+        </Grid>
+
+        <Grid item>
+          <MetricsTable
+            resource={resource}
+            metrics={metrics}
+            showNamespaceColumn={false} />
+        </Grid>
+      </Grid>
     );
   }
 
@@ -144,34 +145,43 @@ class NamespaceLanding extends React.Component {
     let noMetrics = _.isEmpty(metrics.pod);
 
     return (
-      <div>
-        <Typography variant="h4">Namespace: {namespace}</Typography>
-        { noMetrics ? <div>No resources detected.</div> : null}
+      <Grid container direction="column" spacing={16}>
+        <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
+        <Grid item><Divider /></Grid>
+        <Grid item>{ noMetrics ? <div>No resources detected.</div> : null}</Grid>
+
         {this.renderResourceSection("deployment", metrics.deployment)}
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("pod", metrics.pod)}
         {this.renderResourceSection("authority", metrics.authority)}
-      </div>
+      </Grid>
     );
   }
 
   renderAccordion() {
     let panelData = _.map(this.state.namespaces, ns => {
+      let hr = (
+        <Grid container justify="space-between" alignItems="center">
+          <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
+          {!ns.added ? null : <Grid item><SimpleChip /></Grid> }
+        </Grid>
+      );
       return {
         id: ns.name,
-        header: <React.Fragment>{ns.name} {!ns.added ? null : isMeshedTooltip}</React.Fragment>,
+        header: hr,
         body: ns.name === this.state.selectedNs || ns.name === this.state.defaultOpenNs.name ?
           this.renderNamespaceSection(ns.name) : null
       };
     });
 
     return (
-      <React.Fragment>
+      <Grid container>
+
         <Accordion
           onChange={this.onNamespaceChange}
           panels={panelData}
           defaultOpenPanel={_.get(this.state.defaultOpenNs, 'name', null)} />
-      </React.Fragment>
+      </Grid>
     );
   }
 

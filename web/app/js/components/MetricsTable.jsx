@@ -1,12 +1,14 @@
-import { friendlyTitle, metricToFormatter } from './util/Utils.js';
-import { processedMetricsPropType, successRateWithMiniChart } from './util/MetricUtils.jsx';
+import { friendlyTitle, metricToFormatter, numericSort } from './util/Utils.js';
 
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _ from 'lodash';
+import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
@@ -15,38 +17,25 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let nsColumn = [
     {
       title: "Namespace",
-      key: "namespace",
+      dataIndex: "namespace",
       isNumeric: false,
-      render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
-    }
-  ];
-
-  let grafanaLinkColumn = [
-    {
-      title: "Grafana Dashboard",
-      key: "grafanaDashboard",
-      isNumeric: true,
-      render: row => !row.added || _.get(row, "pods.totalPods") === "0" ? null : (
-        <GrafanaLink
-          name={row.name}
-          namespace={row.namespace}
-          resource={resource}
-          PrefixedLink={PrefixedLink} />
-      )
+      render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
+      sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace)
     }
   ];
 
   let meshedColumn = {
     title: "Meshed",
-    key: "meshed",
+    dataIndex: "pods.totalPods",
     isNumeric: true,
-    render: d => !d.pods ? null : d.pods.meshedPods + "/" + d.pods.totalPods
+    render: d => !d.pods ? null : d.pods.meshedPods + "/" + d.pods.totalPods,
+    sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods)
   };
 
   let columns = [
     {
       title: friendlyTitle(resource).singular,
-      key: "resource-title",
+      dataIndex: "name",
       isNumeric: false,
       render: d => {
         let nameContents;
@@ -62,55 +51,82 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
           );
         }
         return (
-          <React.Fragment>
-            {nameContents}
-            { _.isEmpty(d.errors) ? null : <ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /> }
-          </React.Fragment>
+          <Grid container alignItems="center" spacing={8}>
+            <Grid item>{nameContents}</Grid>
+            { _.isEmpty(d.errors) ? null :
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /></Grid>}
+          </Grid>
         );
-      }
+      },
+      sorter: (a, b) => (a.name || "").localeCompare(b.name)
     },
     {
       title: "Success Rate",
-      key: "success-rate",
+      dataIndex: "successRate",
       isNumeric: true,
-      render: d => successRateWithMiniChart(d.successRate)
+      render: d => <SuccessRateMiniChart sr={d.successRate} />,
+      sorter: (a, b) => numericSort(a.successRate, b.successRate)
     },
     {
       title: "Request Rate",
-      key: "request-rate",
+      dataIndex: "requestRate",
       isNumeric: true,
-      render: d => metricToFormatter["NO_UNIT"](d.requestRate)
+      render: d => metricToFormatter["NO_UNIT"](d.requestRate),
+      sorter: (a, b) => numericSort(a.requestRate, b.requestRate)
     },
     {
       title: "P50 Latency",
-      key: "p50_latency",
+      dataIndex: "P50",
       isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P50)
+      render: d => metricToFormatter["LATENCY"](d.P50),
+      sorter: (a, b) => numericSort(a.P50, b.P50)
     },
     {
       title: "P95 Latency",
-      key: "p95_latency",
+      dataIndex: "P95",
       isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P95)
+      render: d => metricToFormatter["LATENCY"](d.P95),
+      sorter: (a, b) => numericSort(a.P95, b.P95)
     },
     {
       title: "P99 Latency",
-      key: "p99_latency",
+      dataIndex: "P99",
       isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P99)
+      render: d => metricToFormatter["LATENCY"](d.P99),
+      sorter: (a, b) => numericSort(a.P99, b.P99)
     },
     {
       title: "TLS",
-      key: "has_tls",
+      dataIndex: "tlsRequestPercent",
       isNumeric: true,
-      render: d => _.isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate()
+      render: d => _.isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
+      sorter: (a, b) => numericSort(
+        a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
+        b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
+    },
+    {
+      title: "Grafana Dashboard",
+      key: "grafanaDashboard",
+      isNumeric: true,
+      render: row => {
+        if (!isAuthorityTable && (!row.added || _.get(row, "pods.totalPods") === "0") ) {
+          return null;
+        }
+
+        return (
+          <GrafanaLink
+            name={row.name}
+            namespace={row.namespace}
+            resource={resource}
+            PrefixedLink={PrefixedLink} />
+        );
+      }
     }
   ];
 
-    // don't add the meshed column on a Authority MetricsTable
+  // don't add the meshed column on a Authority MetricsTable
   if (!isAuthorityTable) {
     columns.splice(1, 0, meshedColumn);
-    columns = _.concat(columns, grafanaLinkColumn);
   }
 
   if (!showNamespaceColumn) {
@@ -159,7 +175,9 @@ class MetricsTable extends React.Component {
       <BaseTable
         tableRows={rows}
         tableColumns={columns}
-        tableClassName="metric-table" />
+        tableClassName="metric-table"
+        defaultOrderBy="name"
+        padding="dense" />
     );
   }
 }

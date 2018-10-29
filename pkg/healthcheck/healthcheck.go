@@ -72,6 +72,7 @@ type checker struct {
 	category      string
 	description   string
 	fatal         bool
+	warning       bool
 	retryDeadline time.Time
 	check         func() error
 	checkRPC      func() (*healthcheckPb.SelfCheckResponse, error)
@@ -81,6 +82,7 @@ type CheckResult struct {
 	Category    string
 	Description string
 	Retry       bool
+	Warning     bool
 	Err         error
 }
 
@@ -317,7 +319,8 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdAPICategory,
 		description: "no invalid service profiles",
-		fatal:       true,
+		fatal:       false,
+		warning:     true,
 		check: func() error {
 			return hc.validateServiceProfiles()
 		},
@@ -455,14 +458,17 @@ func (hc *HealthChecker) Add(category, description string, check func() error) {
 // RunChecks runs all configured checkers, and passes the results of each
 // check to the observer. If a check fails and is marked as fatal, then all
 // remaining checks are skipped. If at least one check fails, RunChecks returns
-// false; if all checks passed, RunChecks returns true.
+// false; if all checks passed, RunChecks returns true.  Checks which are
+// designated as warnings will not cause RunCheck to return false, however.
 func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	success := true
 
 	for _, checker := range hc.checkers {
 		if checker.check != nil {
 			if !hc.runCheck(checker, observer) {
-				success = false
+				if !checker.warning {
+					success = false
+				}
 				if checker.fatal {
 					break
 				}
@@ -471,7 +477,9 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 
 		if checker.checkRPC != nil {
 			if !hc.runCheckRPC(checker, observer) {
-				success = false
+				if !checker.warning {
+					success = false
+				}
 				if checker.fatal {
 					break
 				}
@@ -488,6 +496,7 @@ func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
 		checkResult := &CheckResult{
 			Category:    c.category,
 			Description: c.description,
+			Warning:     c.warning,
 			Err:         err,
 		}
 
@@ -508,6 +517,7 @@ func (hc *HealthChecker) runCheckRPC(c *checker, observer checkObserver) bool {
 	observer(&CheckResult{
 		Category:    c.category,
 		Description: c.description,
+		Warning:     c.warning,
 		Err:         err,
 	})
 	if err != nil {
@@ -522,6 +532,7 @@ func (hc *HealthChecker) runCheckRPC(c *checker, observer checkObserver) bool {
 		observer(&CheckResult{
 			Category:    fmt.Sprintf("%s[%s]", c.category, check.SubsystemName),
 			Description: check.CheckDescription,
+			Warning:     c.warning,
 			Err:         err,
 		})
 		if err != nil {

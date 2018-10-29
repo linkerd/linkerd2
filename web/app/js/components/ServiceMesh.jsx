@@ -19,14 +19,12 @@ import { withContext } from './util/AppContext.jsx';
 const serviceMeshDetailsColumns = [
   {
     title: "Name",
-    key: "name",
-    render: d => d.name
+    dataIndex: "name"
   },
   {
     title: "Value",
-    key: "value",
-    isNumeric: true,
-    render: d => d.value
+    dataIndex: "value",
+    isNumeric: true
   }
 ];
 
@@ -34,7 +32,7 @@ const getPodClassification = pod => {
   if (pod.status === "Running") {
     return "good";
   } else if (pod.status === "Waiting") {
-    return "neutral";
+    return "default";
   } else {
     return "poor";
   }

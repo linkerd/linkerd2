@@ -52,13 +52,13 @@ describe('Tests for <MetricsTable>', () => {
     expect(table.props().tableColumns).toHaveLength(9);
   });
 
-  it('omits meshed column and grafana column for authority resource', () => {
+  it('omits meshed column for an authority resource', () => {
     let extraProps = _.merge({}, defaultProps, { metrics: [], resource: "authority"});
     const component = mount(routerWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(8);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 });

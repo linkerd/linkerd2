@@ -1,22 +1,23 @@
 import LinearProgress from '@material-ui/core/LinearProgress';
+import { dashboardTheme } from './theme.js';
 import { withStyles } from '@material-ui/core/styles';
 
 const colorLookup = {
   good: {
-    colorPrimary: '#c8e6c9', // background bar color (lighter)
-    barColorPrimary: '#388e3c', // inner bar color (darker)
+    colorPrimary: dashboardTheme.status.light.good, // background bar color (lighter)
+    barColorPrimary: dashboardTheme.status.dark.good, // inner bar color (darker)
   },
-  neutral: {
-    colorPrimary: '#ffcc80',
-    barColorPrimary: '#ef6c00',
+  warning: {
+    colorPrimary: dashboardTheme.status.light.warning,
+    barColorPrimary: dashboardTheme.status.dark.warning,
   },
   poor: {
-    colorPrimary: '#ffebee',
-    barColorPrimary: '#d32f2f',
+    colorPrimary: dashboardTheme.status.light.danger,
+    barColorPrimary: dashboardTheme.status.dark.danger,
   },
   default: {
-    colorPrimary: '#e8eaf6',
-    barColorPrimary: '#3f51b5',
+    colorPrimary: dashboardTheme.status.light.default,
+    barColorPrimary: dashboardTheme.status.dark.default,
   }
 };
 

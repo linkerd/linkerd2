@@ -1,7 +1,6 @@
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
 
 import BaseTable from '../BaseTable.jsx';
-import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
@@ -195,9 +194,9 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: "Source", key: "source", render: d => d.source },
+  { title: "Source", dataIndex: "source" },
   { title: "", key: "arrow", render: () => <i className="fas fa-long-arrow-alt-right" /> },
-  { title: "Destination", key: "destination", render: d => d.destination }
+  { title: "Destination", dataIndex: "destination" }
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -249,7 +248,7 @@ const getIpList = (endpoint, display) => {
   return <div className="popover-td">{ipList}</div>;
 };
 
-const popoverResourceTable = (d, ResourceLink) => {
+const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-unused-vars
   let tableData = [
     {
       source: getPodOwner(d.sourceLabels, ResourceLink),
@@ -304,16 +303,10 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
-  let baseContent = (
+  return (
     <div className="src-dst-name">
       { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
     </div>
-  );
-
-  return (
-    <Popover
-      popoverContent={popoverResourceTable(d, ResourceLink)}
-      baseContent={baseContent} />
   );
 };
 
