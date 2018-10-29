@@ -68,24 +68,12 @@ func (k *k8sResolver) streamResolution(host string, port int, listener endpointU
 }
 
 func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener) error {
-	svcId, err := k.localKubernetesServiceIdFromDNSName(host)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	if svcId == nil {
-		err = fmt.Errorf("cannot resolve service that isn't a local Kubernetes service: %s", host)
-		log.Error(err)
-		return err
-	}
-
 	id := profileId{
 		namespace: k.controllerNamespace,
-		name:      fmt.Sprintf("%s.%s.svc.cluster.local", svcId.name, svcId.namespace),
+		name:      host,
 	}
 
-	err = k.profileWatcher.subscribeToProfile(id, listener)
+	err := k.profileWatcher.subscribeToProfile(id, listener)
 	if err != nil {
 		log.Error(err)
 		return err

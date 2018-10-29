@@ -15,6 +15,7 @@ type templateConfig struct {
 	ControlPlaneNamespace string
 	ServiceNamespace      string
 	ServiceName           string
+	ClusterZone           string
 }
 
 type profileOptions struct {
@@ -68,6 +69,7 @@ func buildConfig(namespace, service string) *templateConfig {
 		ControlPlaneNamespace: controlPlaneNamespace,
 		ServiceNamespace:      namespace,
 		ServiceName:           service,
+		ClusterZone:           "svc.cluster.local",
 	}
 }
 

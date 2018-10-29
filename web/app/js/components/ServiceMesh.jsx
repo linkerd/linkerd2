@@ -19,14 +19,12 @@ import { withContext } from './util/AppContext.jsx';
 const serviceMeshDetailsColumns = [
   {
     title: "Name",
-    key: "name",
-    render: d => d.name
+    dataIndex: "name"
   },
   {
     title: "Value",
-    key: "value",
-    isNumeric: true,
-    render: d => d.value
+    dataIndex: "value",
+    isNumeric: true
   }
 ];
 

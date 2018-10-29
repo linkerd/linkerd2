@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	retryStatus = "[retry]"
-	failStatus  = "[FAIL]"
+	retryStatus   = "[retry]"
+	failStatus    = "[FAIL]"
+	warningStatus = "[warning]"
 )
 
 type checkOptions struct {
@@ -128,7 +129,11 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		}
 
 		if result.Err != nil {
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, failStatus, result.Err, lineBreak)
+			status := failStatus
+			if result.Warning {
+				status = warningStatus
+			}
+			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, status, result.Err, lineBreak)
 			return
 		}
 
