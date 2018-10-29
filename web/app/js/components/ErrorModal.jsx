@@ -15,7 +15,7 @@ import _ from 'lodash';
 import { friendlyTitle } from './util/Utils.js';
 
 // max characters we display for error messages before truncating them
-const maxErrorLength = 50;
+const maxErrorLength = 500;
 
 class ErrorModal extends React.Component {
   state = {
