@@ -82,7 +82,7 @@ func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener
 
 	id := profileId{
 		namespace: k.controllerNamespace,
-		name:      fmt.Sprintf("%s.%s", svcId.name, svcId.namespace),
+		name:      fmt.Sprintf("%s.%s.svc.cluster.local", svcId.name, svcId.namespace),
 	}
 
 	err = k.profileWatcher.subscribeToProfile(id, listener)

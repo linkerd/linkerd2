@@ -21,19 +21,19 @@ func TestProfileWatcher(t *testing.T) {
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: foobar.ns
+  name: foobar.ns.svc.cluster.local
   namespace: linkerd
 spec:
   routes:
   - condition:
       path: "/x/y/z"
-    responses:
+    response_classes:
     - condition:
         status:
           min: 500
-        isSuccess: false`,
+      is_failure: true`,
 			},
-			service: profileId{namespace: "linkerd", name: "foobar.ns"},
+			service: profileId{namespace: "linkerd", name: "foobar.ns.svc.cluster.local"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
 				&sp.ServiceProfileSpec{
 					Routes: []*sp.RouteSpec{
@@ -41,13 +41,14 @@ spec:
 							Condition: &sp.RequestMatch{
 								Path: "/x/y/z",
 							},
-							Responses: []*sp.ResponseClass{
+							ResponseClasses: []*sp.ResponseClass{
 								&sp.ResponseClass{
 									Condition: &sp.ResponseMatch{
 										Status: &sp.Range{
 											Min: 500,
 										},
 									},
+									IsFailure: true,
 								},
 							},
 						},
