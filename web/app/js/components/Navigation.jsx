@@ -37,8 +37,10 @@ import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => {
-  const drawerWidth = 250;
-  const drawerWidthClosed = theme.spacing.unit * 7;
+  const drawerWidth = theme.spacing.unit * 31;
+  const drawerWidthClosed = theme.spacing.unit * 9;
+  const navLogoWidth = theme.spacing.unit * 22.5;
+  const contentPadding = theme.spacing.unit * 3;
 
   const enteringFn = prop => theme.transitions.create(prop, {
     easing: theme.transitions.easing.sharp,
@@ -84,14 +86,14 @@ const styles = theme => {
       transition: leaving,
       width: drawerWidthClosed,
       [theme.breakpoints.up('sm')]: {
-        width: theme.spacing.unit * 9,
+        width: drawerWidthClosed,
       },
     },
     toolbar: theme.mixins.toolbar,
     navToolbar: {
       display: 'flex',
       alignItems: 'center',
-      padding: '0 8px',
+      padding: `0 ${theme.spacing.unit}px`,
       boxShadow: theme.shadows[4], // to match elevation == 4 on main AppBar
       ...theme.mixins.toolbar,
       backgroundColor: theme.palette.primary.main,
@@ -100,7 +102,7 @@ const styles = theme => {
       flexGrow: 1,
       width: `calc(100% - ${drawerWidth}px)`,
       backgroundColor: theme.palette.background.default,
-      padding: theme.spacing.unit * 3,
+      padding: contentPadding,
       transition: entering,
     },
     contentDrawerClose: {
@@ -108,17 +110,17 @@ const styles = theme => {
       transition: leaving,
     },
     linkerdNavLogo: {
-      minWidth: "180px",
+      minWidth: `${navLogoWidth}px`,
       transition: enteringFn(['margin', 'opacity']),
     },
     linkerdNavLogoClose: {
       opacity: "0",
-      marginLeft: "-176px",
+      marginLeft: `-${navLogoWidth-theme.spacing.unit/2}px`,
       transition: leavingFn(['margin', 'opacity']),
     },
     navMenuItem: {
-      paddingLeft: "24px",
-      paddingRight: "24px",
+      paddingLeft: `${contentPadding}px`,
+      paddingRight: `${contentPadding}px`,
     },
   };
 };
