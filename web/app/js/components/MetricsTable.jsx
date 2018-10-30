@@ -105,7 +105,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
         b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
     },
     {
-      title: "Grafana Dashboard",
+      title: "Grafana",
       key: "grafanaDashboard",
       isNumeric: true,
       render: row => {

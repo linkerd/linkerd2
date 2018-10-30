@@ -95,7 +95,8 @@ class TopEventTable extends React.Component {
         tableColumns={columns}
         tableClassName="metric-table"
         defaultOrderBy="count"
-        defaultOrder="desc" />
+        defaultOrder="desc"
+        padding="dense" />
     );
   }
 }

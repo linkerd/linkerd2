@@ -59,7 +59,9 @@ class ExpandableTable extends React.Component {
 
     return (
       <Paper className={classes.root}>
-        <Table className={`${classes.table} ${tableClassName}`}>
+        <Table
+          className={`${classes.table} ${tableClassName}`}
+          padding="dense">
           <TableHead>
             <TableRow>
               {
