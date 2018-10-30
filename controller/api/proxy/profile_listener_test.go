@@ -179,6 +179,7 @@ var (
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
 				&sp.RouteSpec{
+					Name: "multipleRequestMatches",
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 						Path:   "/my/path",
@@ -215,6 +216,9 @@ var (
 						},
 					},
 				},
+				MetricsLabels: map[string]string{
+					"route": "multipleRequestMatches",
+				},
 				ResponseClasses: []*pb.ResponseClass{},
 			},
 		},
@@ -234,6 +238,7 @@ var (
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
 				&sp.RouteSpec{
+					Name: "multipleResponseMatches",
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 					},
@@ -268,6 +273,9 @@ var (
 							},
 						},
 					},
+				},
+				MetricsLabels: map[string]string{
+					"route": "multipleResponseMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{
 					&pb.ResponseClass{
