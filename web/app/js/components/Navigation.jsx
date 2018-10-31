@@ -22,16 +22,15 @@ import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
 import HelpIcon from '@material-ui/icons/HelpOutline';
 import HomeIcon from '@material-ui/icons/Home';
+import Icon from '@material-ui/core/Icon';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
 import MenuIcon from '@material-ui/icons/Menu';
 import NavigationResources from './NavigationResources.jsx';
-import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import Version from './Version.jsx';
-import VisibilityIcon from '@material-ui/icons/Visibility';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
@@ -93,7 +92,7 @@ const styles = theme => {
     navToolbar: {
       display: 'flex',
       alignItems: 'center',
-      padding: `0 ${theme.spacing.unit}px`,
+      padding: `0 0 0 ${theme.spacing.unit*2}px`,
       boxShadow: theme.shadows[4], // to match elevation == 4 on main AppBar
       ...theme.mixins.toolbar,
       backgroundColor: theme.palette.primary.main,
@@ -115,13 +114,17 @@ const styles = theme => {
     },
     linkerdNavLogoClose: {
       opacity: "0",
-      marginLeft: `-${navLogoWidth-theme.spacing.unit/2}px`,
+      marginLeft: `-${navLogoWidth+theme.spacing.unit/2}px`,
       transition: leavingFn(['margin', 'opacity']),
     },
     navMenuItem: {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
     },
+    shrinkIcon: {
+      fontSize: "18px",
+      paddingLeft: "3px",
+    }
   };
 };
 
@@ -229,9 +232,9 @@ class NavigationBase extends React.Component {
 
           <MenuList>
             { this.menuItem("/overview", "Overview", <HomeIcon />) }
-            { this.menuItem("/tap", "Tap", <VisibilityIcon />) }
-            { this.menuItem("/top", "Top", <NetworkCheckIcon />) }
-            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon />) }
+            { this.menuItem("/tap", "Tap", <Icon className={classNames("fas fa-microscope", classes.shrinkIcon)} />) }
+            { this.menuItem("/top", "Top", <Icon className={classNames("fas fa-stream", classes.shrinkIcon)} />) }
+            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
           </MenuList>
 
