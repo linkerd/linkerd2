@@ -55,7 +55,7 @@ const up = (width, svgHeight, arrowHeight, isOutbound, isEven) => {
   // up arrows start and the center of the middle node for outbound arms,
   // and at the noce position for inbound arms
   let y1 = isOutbound ? svgHeight / 2 : arrowHeight;
-  let arm = generateSvgComponents(y1, width, height, "up");
+  let arm = generateSvgComponents(y1, width, height);
 
   let translate = isOutbound ? null : `translate(0, ${svgHeight / 2 + (isEven ? 0 : halfBoxHeight) + inboundAlignment})`;
 
@@ -98,7 +98,7 @@ const down = (width, svgHeight, arrowHeight, isOutbound) => {
   // outbound arrows start in the center of the middle card, and end at the card's height
   let y1 = isOutbound ? svgHeight / 2 : halfBoxHeight;
 
-  let arm = generateSvgComponents(y1, width, height, "down");
+  let arm = generateSvgComponents(y1, width, height);
 
   let translate = `translate(0, ${isOutbound ? svgHeight : svgHeight / 2 - height + halfBoxHeight - inboundAlignment})`;
   let reflect = "scale(1, -1)";

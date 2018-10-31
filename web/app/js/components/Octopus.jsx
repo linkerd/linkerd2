@@ -193,7 +193,6 @@ export default class Octopus extends React.Component {
       <div className="octopus-graph">
         <Grid
           container
-          spacing={0}
           direction="row"
           justify="center"
           alignItems="center">
