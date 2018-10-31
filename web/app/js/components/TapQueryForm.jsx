@@ -298,7 +298,7 @@ class TapQueryForm extends React.Component {
       <TextField
         id={key}
         label={title}
-        className={classes.textField}
+        className={classes.formControl}
         value={this.state.query[key]}
         onChange={this.handleFormEvent(key)}
         helperText={helperText}
@@ -310,17 +310,19 @@ class TapQueryForm extends React.Component {
     const { classes } = this.props;
 
     return (
-      <Grid container spacing={24}>
-        <Grid item xs={6} md={3}>
-          <FormControl className={classes.formControl}>
-            {this.renderNamespaceSelect("To Namespace", "toNamespace", "toResource")}
-          </FormControl>
-        </Grid>
+      <Grid container>
 
-        <Grid item xs={6} md={3}>
-          <FormControl className={classes.formControl} disabled={_.isEmpty(this.state.query.toNamespace)}>
-            {this.renderResourceSelect("toResource", "toNamespace")}
-          </FormControl>
+        <Grid container spacing={24}>
+          <Grid item xs={6} md={3}>
+            <FormControl className={classes.formControl}>
+              {this.renderNamespaceSelect("To Namespace", "toNamespace", "toResource")}
+            </FormControl>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <FormControl className={classes.formControl} disabled={_.isEmpty(this.state.query.toNamespace)}>
+              {this.renderResourceSelect("toResource", "toNamespace")}
+            </FormControl>
+          </Grid>
         </Grid>
 
         <Grid container spacing={24}>
@@ -341,7 +343,6 @@ class TapQueryForm extends React.Component {
               <FormHelperText>Display requests with this :authority</FormHelperText>
             </FormControl>
           </Grid>
-
           <Grid item xs={6} md={3}>
             { this.renderTextInput("Path", "path", "Display requests with paths that start with this prefix") }
           </Grid>
@@ -354,7 +355,6 @@ class TapQueryForm extends React.Component {
           <Grid item xs={6} md={3}>
             { this.renderTextInput("Max RPS", "maxRps", `Maximum requests per second to tap. Default ${defaultMaxRps}`) }
           </Grid>
-
           <Grid item xs={6} md={3}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="method">HTTP method</InputLabel>
@@ -373,6 +373,7 @@ class TapQueryForm extends React.Component {
             </FormControl>
           </Grid>
         </Grid>
+
       </Grid>
     );
   }
