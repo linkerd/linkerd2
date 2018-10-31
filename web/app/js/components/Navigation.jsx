@@ -121,6 +121,10 @@ const styles = theme => {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
     },
+    shrinkIcon: {
+      fontSize: "20px",
+      paddingLeft: "2px",
+    }
   };
 };
 
@@ -228,9 +232,9 @@ class NavigationBase extends React.Component {
 
           <MenuList>
             { this.menuItem("/overview", "Overview", <HomeIcon />) }
-            { this.menuItem("/tap", "Tap", <Icon className="fas fa-microscope" />) }
-            { this.menuItem("/top", "Top", <Icon className="fas fa-stream" />) }
-            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon />) }
+            { this.menuItem("/tap", "Tap", <Icon className={classNames("fas fa-microscope", classes.shrinkIcon)} />) }
+            { this.menuItem("/top", "Top", <Icon className={classNames("fas fa-stream", classes.shrinkIcon)} />) }
+            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
           </MenuList>
 
