@@ -329,7 +329,7 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
       container
       direction="row"
       alignItems="center"
-      spacing="8">
+      spacing={8}>
       <Grid item>
         {link}
       </Grid>
