@@ -122,8 +122,8 @@ const styles = theme => {
       paddingRight: `${contentPadding}px`,
     },
     shrinkIcon: {
-      fontSize: "20px",
-      paddingLeft: "2px",
+      fontSize: "18px",
+      paddingLeft: "3px",
     }
   };
 };
