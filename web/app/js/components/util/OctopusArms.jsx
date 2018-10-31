@@ -49,6 +49,29 @@ const generateSvgComponents = (y1, width, height) => {
   };
 };
 
+const arrowG = (id, arm, transform) => {
+  return (
+    <g key={id} id={id} fill="none" strokeWidth="1">
+      <path
+        d={arm.arrowPath}
+        stroke={arrowColor}
+        transform={transform}
+        strokeOpacity={strokeOpacity} />
+      <circle
+        cx={arm.circle.cx}
+        cy={arm.circle.cy}
+        transform={transform}
+        fill={arrowColor}
+        r="4" />
+      <polyline
+        points={arm.arrowHead}
+        stroke={arrowColor}
+        strokeLinecap="round"
+        transform={transform} />
+    </g>
+  );
+};
+
 const up = (width, svgHeight, arrowHeight, isOutbound, isEven) => {
   let height = arrowHeight + (isEven ? 0 : halfBoxHeight);
 
@@ -59,17 +82,7 @@ const up = (width, svgHeight, arrowHeight, isOutbound, isEven) => {
 
   let translate = isOutbound ? null : `translate(0, ${svgHeight / 2 + (isEven ? 0 : halfBoxHeight) + inboundAlignment})`;
 
-  return (
-    <g key={`up-arrow-${height}`} id="downstream-up" fill="none" strokeWidth="1">
-      <path
-        d={arm.arrowPath}
-        stroke={arrowColor}
-        transform={translate}
-        strokeOpacity={strokeOpacity} />
-      <circle cx={arm.circle.cx} cy={arm.circle.cy} fill={arrowColor} r="4" transform={translate} />
-      <polyline points={arm.arrowHead} stroke={arrowColor} strokeLinecap="round" transform={translate} />
-    </g>
-  );
+  return arrowG(`up-arrow-${height}`, arm, translate);
 };
 
 const flat = (width, height) => {
@@ -102,28 +115,9 @@ const down = (width, svgHeight, arrowHeight, isOutbound) => {
 
   let translate = `translate(0, ${isOutbound ? svgHeight : svgHeight / 2 - height + halfBoxHeight - inboundAlignment})`;
   let reflect = "scale(1, -1)";
+  let transform = `${translate} ${reflect}`;
 
-  return (
-    <g key={`down-arrow-${height}`} id="downstream-down" fill="none" strokeWidth="1">
-      <path
-        d={arm.arrowPath}
-        stroke={arrowColor}
-        transform={`${translate} ${reflect}`}
-        strokeOpacity={strokeOpacity} />
-      <circle
-        cx={arm.circle.cx}
-        cy={arm.circle.cy}
-        transform={`${translate} ${reflect}`}
-        fill={arrowColor}
-        r="4" />
-      <polyline
-        points={arm.arrowHead}
-        stroke={arrowColor}
-        strokeLinecap="round"
-        transform={`${translate} ${reflect}`} />
-    </g>
-
-  );
+  return arrowG(`down-arrow-${height}`, arm, transform);
 };
 
 export const OctopusArms = {
