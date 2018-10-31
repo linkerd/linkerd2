@@ -1,6 +1,9 @@
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
 
 import BaseTable from '../BaseTable.jsx';
+import Grid from '@material-ui/core/Grid';
+import { Link } from 'react-router-dom';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -293,6 +296,7 @@ export const directionColumn = d => (
 );
 
 export const srcDstColumn = (d, resourceType, ResourceLink) => {
+
   let display = {};
   let labels = {};
 
@@ -304,16 +308,37 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
+  let link = (
+    !_.isEmpty(labels[resourceType]) ?
+      resourceShortLink(resourceType, labels, ResourceLink) :
+      display.str
+  );
+
+  const linkFn = e => {
+    e.preventDefault();
+  };
+
   let baseContent = (
-    <div className="src-dst-name">
-      { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
-    </div>
+    <Link to="#" onClick={linkFn}>
+      <OpenInNewIcon fontSize="small" />
+    </Link>
   );
 
   return (
-    <Popover
-      popoverContent={(popoverResourceTable(d, ResourceLink))}
-      baseContent={baseContent} />
+    <Grid
+      container
+      direction="row"
+      alignItems="center"
+      spacing={8}>
+      <Grid item>
+        {link}
+      </Grid>
+      <Grid item>
+        <Popover
+          popoverContent={(popoverResourceTable(d, ResourceLink))}
+          baseContent={baseContent} />
+      </Grid>
+    </Grid>
   );
 };
 
