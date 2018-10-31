@@ -160,8 +160,8 @@ func (in *RouteSpec) DeepCopyInto(out *RouteSpec) {
 		*out = new(RequestMatch)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Responses != nil {
-		in, out := &in.Responses, &out.Responses
+	if in.ResponseClasses != nil {
+		in, out := &in.ResponseClasses, &out.ResponseClasses
 		*out = make([]*ResponseClass, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {

@@ -669,7 +669,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 			if err != nil {
 				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", p.Name, err)
 			}
-			for _, rc := range route.Responses {
+			for _, rc := range route.ResponseClasses {
 				if rc.Condition == nil {
 					return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", p.Name)
 				}

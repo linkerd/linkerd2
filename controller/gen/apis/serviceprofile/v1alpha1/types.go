@@ -30,9 +30,9 @@ type ServiceProfileSpec struct {
 }
 
 type RouteSpec struct {
-	Name      string           `json:"name"`
-	Condition *RequestMatch    `json:"condition"`
-	Responses []*ResponseClass `json:"responses"`
+	Name            string           `json:"name"`
+	Condition       *RequestMatch    `json:"condition"`
+	ResponseClasses []*ResponseClass `json:"response_classes"`
 }
 
 type RequestMatch struct {
@@ -45,7 +45,7 @@ type RequestMatch struct {
 
 type ResponseClass struct {
 	Condition *ResponseMatch `json:"condition"`
-	IsSuccess bool           `json:"is_success"`
+	IsFailure bool           `json:"is_failure"`
 }
 
 type ResponseMatch struct {

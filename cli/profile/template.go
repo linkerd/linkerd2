@@ -21,13 +21,13 @@ spec:
       path: '/authors/\d+'
 
       # This is a condition that checks the request method.
-      # method: POST
+      method: POST
 
-      # To define a condition that requires both path and method, use the
-      # 'all' condition.
+      # If more than one condition field is set, all of them must be satisfied.
+      # This is equivalent to using the 'all' condition:
       # all:
-      # - method: POST
       # - path: '/authors/\d+'
+      # - method: POST
 
       # Conditions can be combined using 'all', 'any', and 'not'.
       # any:
@@ -41,7 +41,7 @@ spec:
 
     # A route may optionally define a list of response classes which describe
     # how responses from this route will be classified.
-    responses:
+    response_classes:
 
     # Each response class must define a condition.  All responses from this
     # route that match the condition will be classified as this response class.
@@ -66,5 +66,5 @@ spec:
 
       # The response class defines whether responses should be counted as
       # successes or failures.
-      isSuccess: false
+      is_failure: true
 `
