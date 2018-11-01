@@ -53,8 +53,13 @@ div.success-rate-dot {
   }
 }
 
+div.octopus-graph-container {
+  overflow-x: scroll;
+}
+
 div.octopus-graph {
-  max-width: 1180px;
+  max-width: 1126px;
+  min-width:1126px;
 }
 
 .octopus-body.neighbor {

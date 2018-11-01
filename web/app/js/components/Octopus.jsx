@@ -190,53 +190,54 @@ export default class Octopus extends React.Component {
 
 
     return (
-      <div className="octopus-graph">
-        <Grid
-          container
-          direction="row"
-          justify="center"
-          alignItems="center">
-
-
+      <div className="octopus-graph-container">
+        <div className="octopus-graph">
           <Grid
             container
-            spacing={24}
-            direction="column"
+            direction="row"
             justify="center"
-            alignItems="center"
-            item
-            xs={3}>
-            {_.map(display.upstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
-            {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
-            {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
+            alignItems="center">
+
+
+            <Grid
+              container
+              spacing={24}
+              direction="column"
+              justify="center"
+              alignItems="center"
+              item
+              xs={3}>
+              {_.map(display.upstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
+              {_.isEmpty(unmeshedSources) ? null : this.renderUnmeshedResources(unmeshedSources)}
+              {_.isEmpty(display.upstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.upstreams.collapsed)}
+            </Grid>
+
+            <Grid item xs={1}>
+              {this.renderArrowCol(numUpstreams, false)}
+            </Grid>
+
+
+            <Grid item xs={4}>
+              {this.renderResourceCard(resource, "main")}
+            </Grid>
+
+            <Grid item xs={1}>
+              {this.renderArrowCol(numDownstreams, true)}
+            </Grid>
+
+            <Grid
+              container
+              spacing={24}
+              direction="column"
+              justify="center"
+              alignItems="center"
+              item
+              xs={3}>
+              {_.map(display.downstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
+              {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
+            </Grid>
           </Grid>
-
-
-          <Grid item xs={1}>
-            {this.renderArrowCol(numUpstreams, false)}
-          </Grid>
-
-
-          <Grid item xs={4}>
-            {this.renderResourceCard(resource, "main")}
-          </Grid>
-
-          <Grid item xs={1}>
-            {this.renderArrowCol(numDownstreams, true)}
-          </Grid>
-
-          <Grid
-            container
-            spacing={24}
-            direction="column"
-            justify="center"
-            alignItems="center"
-            item
-            xs={3}>
-            {_.map(display.downstreams.displayed, n => this.renderResourceCard(n, "neighbor"))}
-            {_.isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
-          </Grid>
-        </Grid>
+        </div>
       </div>
     );
   }
