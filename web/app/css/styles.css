@@ -59,12 +59,15 @@ div.octopus-graph-container {
 }
 
 div.octopus-graph {
-  max-width: 1000px;
-  min-width:1000px;
+  max-width: 980px;
+  min-width: 980px;
   margin-left: auto;
   margin-right: auto;
 }
 
-.octopus-body-node {
-  width: 232px;
+.octopus-body-node.neighbor {
+  width: 220px;
+}
+.octopus-body-node.main {
+  width: 244px;
 }
