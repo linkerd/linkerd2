@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -121,7 +120,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		},
 	} {
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
-			err := TestHelper.RetryFor(20*time.Second, func() error {
+			err := TestHelper.RetryFor(func() error {
 				out, _, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					t.Fatalf("Unexpected stat error: %s\n%s", err, out)

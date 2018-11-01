@@ -80,7 +80,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper()
+	kubernetesHelper, err := NewKubernetesHelper(testHelper.RetryFor)
 	if err != nil {
 		exit(1, "error creating kubernetes helper: "+err.Error())
 	}
@@ -179,23 +179,27 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, _, err := h.LinkerdRun("version")
-	if err != nil {
-		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
-	}
-	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
-		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
-	}
-	if !strings.Contains(out, fmt.Sprintf("Server version: %s", serverVersion)) {
-		return fmt.Errorf("Expected server version [%s], got:\n%s", serverVersion, out)
-	}
-	return nil
+	err := h.RetryFor(func() error {
+		out, _, err := h.LinkerdRun("version")
+		if err != nil {
+			return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+		}
+		if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
+			return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
+		}
+		if !strings.Contains(out, fmt.Sprintf("Server version: %s", serverVersion)) {
+			return fmt.Errorf("Expected server version [%s], got:\n%s", serverVersion, out)
+		}
+		return nil
+	})
+	return err
 }
 
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
-func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
+func (h *TestHelper) RetryFor(fn func() error) error {
+	timeout := 2 * time.Minute
 	err := fn()
 	if err == nil {
 		return nil
@@ -223,7 +227,7 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(30*time.Second, func() error {
+	err := h.RetryFor(func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err
