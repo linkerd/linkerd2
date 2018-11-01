@@ -1,3 +1,8 @@
+## edge-18.11.1
+
+* Web UI
+  * **Improved** Fixed a smattering of small UI issues
+
 ## edge-18.10.4
 
 This release includes a major redesign of the web frontend to make use of the
