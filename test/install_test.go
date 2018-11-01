@@ -131,7 +131,12 @@ func TestCheckPostInstall(t *testing.T) {
 	var out string
 	var err error
 	overallErr := TestHelper.RetryFor(30*time.Second, func() error {
-		out, _, err = TestHelper.LinkerdRun("check", "--expected-version", TestHelper.GetVersion())
+		out, _, err = TestHelper.LinkerdRun(
+			"check",
+			"--expected-version",
+			TestHelper.GetVersion(),
+			"--wait=0",
+			)
 		return err
 	})
 	if overallErr != nil {
@@ -220,14 +225,21 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	out, _, err := TestHelper.LinkerdRun(
-		"check",
-		"--proxy",
-		"--expected-version",
-		TestHelper.GetVersion(),
-		"--namespace",
-		prefixedNs,
-	)
+	var out string
+	err := TestHelper.RetryFor(2*time.Minute, func() error {
+		var err error
+		out, _, err = TestHelper.LinkerdRun(
+			"check",
+			"--proxy",
+			"--expected-version",
+			TestHelper.GetVersion(),
+			"--namespace",
+			prefixedNs,
+			"--wait=0",
+		)
+		return err
+	})
+
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
