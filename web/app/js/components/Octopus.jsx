@@ -74,10 +74,10 @@ export default class Octopus extends React.Component {
 
     return (
       <Grid item key={resource.name} >
-        <Card className={`octopus-body ${type}`} title={display}>
+        <Card className={`octopus-body-node ${type}`} title={display}>
           <CardContent>
 
-            <Typography variant={type === "neighbor" ? "h6" : "h4"} align="center">
+            <Typography variant={type === "neighbor" ? "subtitle1" : "h6"} align="center">
               { this.linkedResourceTitle(resource, display) }
             </Typography>
 
@@ -108,15 +108,15 @@ export default class Octopus extends React.Component {
   renderUnmeshedResources = unmeshedResources => {
     return (
       <Grid item>
-        <Card key="unmeshed-resources" className="octopus-body neighbor">
+        <Card key="unmeshed-resources" className="octopus-body-node neighbor">
           <CardContent>
-            <Typography variant="h6">Unmeshed</Typography>
+            <Typography variant="subtitle1">Unmeshed</Typography>
             {
-            _.map(unmeshedResources, r => {
-              let display = displayName(r);
-              return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
-            })
-          }
+              _.map(unmeshedResources, r => {
+                let display = displayName(r);
+                return <Typography key={display} variant="body2" title={display}>{display}</Typography>;
+              })
+            }
           </CardContent>
         </Card>
       </Grid>
@@ -126,14 +126,14 @@ export default class Octopus extends React.Component {
   renderCollapsedNeighbors = neighbors => {
     return (
       <Grid item>
-        <Card className="octopus-body neighbor">
+        <Card className="octopus-body-node neighbor">
           <CardContent>
             {
-          _.map(neighbors, r => {
-            let display = displayName(r);
-            return <Typography key={display}>{this.linkedResourceTitle(r, display)}</Typography>;
-          })
-        }
+              _.map(neighbors, r => {
+                let display = displayName(r);
+                return <Typography key={display}>{this.linkedResourceTitle(r, display)}</Typography>;
+              })
+            }
           </CardContent>
         </Card>
       </Grid>
@@ -141,7 +141,7 @@ export default class Octopus extends React.Component {
   }
 
   renderArrowCol = (numNeighbors, isOutbound) => {
-    let width = 94;
+    let width = 80;
     let showArrow = numNeighbors > 0;
     let isEven = numNeighbors % 2 === 0;
     let middleElementIndex = isEven ? ((numNeighbors - 1) / 2) : _.floor(numNeighbors / 2);
@@ -217,7 +217,7 @@ export default class Octopus extends React.Component {
             </Grid>
 
 
-            <Grid item xs={4}>
+            <Grid item xs={3}>
               {this.renderResourceCard(resource, "main")}
             </Grid>
 
