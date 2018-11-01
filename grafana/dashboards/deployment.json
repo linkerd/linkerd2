@@ -706,10 +706,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\",classification=\"failure\"}",
+              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"inbound\",errno!=\"\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{peer}} {{classification}}",
+              "legendFormat": "{{peer}} {{errno}}",
               "refId": "A"
             }
           ],
@@ -1571,10 +1571,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\",classification=\"failure\"}",
+              "expr": "tcp_close_total{namespace=\"$namespace\", deployment=\"$deployment\", direction=\"outbound\",errno!=\"\"}",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "{{peer}} {{classification}}",
+              "legendFormat": "{{peer}} {{errno}}",
               "refId": "A"
             }
           ],
