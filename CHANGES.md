@@ -3,7 +3,6 @@
 * Proxy
   * **Fixed** Remove panic when failing to get remote address
   * **Improved** Better logging in TCP connect error messages
-
 * Web UI
   * **Improved** Fixed a smattering of small UI issues
 
