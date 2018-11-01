@@ -55,6 +55,7 @@ div.success-rate-dot {
 
 div.octopus-graph-container {
   overflow-x: scroll;
+  padding: 16px 0;
 }
 
 div.octopus-graph {
