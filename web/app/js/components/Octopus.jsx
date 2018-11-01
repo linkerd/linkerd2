@@ -141,7 +141,7 @@ export default class Octopus extends React.Component {
   }
 
   renderArrowCol = (numNeighbors, isOutbound) => {
-    let width = 82;
+    let width = 80;
     let showArrow = numNeighbors > 0;
     let isEven = numNeighbors % 2 === 0;
     let middleElementIndex = isEven ? ((numNeighbors - 1) / 2) : _.floor(numNeighbors / 2);
