@@ -694,9 +694,10 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "tcp_close_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\",classification=\"failure\"}",
+              "expr": "tcp_close_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\",errno!=\"\"}",
               "format": "time_series",
               "intervalFactor": 1,
+              "legendFormat": "{{peer}} {{errno}}",
               "refId": "A"
             }
           ],
