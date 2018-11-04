@@ -52,6 +52,8 @@ func newCmdStat() *cobra.Command {
 
   The RESOURCES argument specifies the target resource(s) to aggregate stats over:
   (TYPE [NAME] | TYPE/NAME)
+  or (TYPE [NAME1] [NAME2]...)
+  or (TYPE1/NAME1 TYPE2/NAME2...)
 
   Examples:
   * deploy
@@ -60,6 +62,8 @@ func newCmdStat() *cobra.Command {
   * ns/my-ns
   * authority
   * au/my-authority
+  * po/mypod1 rc/my-replication-controller
+  * po mypod1 mypod2
   * all
 
 Valid resource types include:
@@ -85,6 +89,12 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all inbound stats to the web deployment.
   linkerd stat deploy/web
+
+  # Getl all inbound stats to the pod1 and pod2 pods
+  linkerd stat po pod1 pod2
+
+  # Getl all inbound stats to the pod1 pod and the web deployment
+  linkerd stat po/pod1 deploy/web
 
   # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
   linkerd stat pods --to deploy/hello1 --to-namespace test --all-namespaces
