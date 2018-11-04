@@ -29,6 +29,12 @@ type statOptions struct {
 	outputFormat  string
 }
 
+type indexedResults struct {
+	ix     int
+	output string
+	err    error
+}
+
 func newStatOptions() *statOptions {
 	return &statOptions{
 		namespace:     "default",
@@ -113,17 +119,39 @@ If no resource name is specified, displays stats about all resources of the spec
 		Args:      cobra.MinimumNArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req, err := buildStatSummaryRequest(args, options)
+			reqs, err := buildStatSummaryRequests(args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %v", err)
 			}
 
-			output, err := requestStatsFromAPI(validatedPublicAPIClient(time.Time{}), req, options)
-			if err != nil {
-				return err
+			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
+			// https://github.com/grpc/grpc-go/issues/682
+			client := validatedPublicAPIClient(time.Time{})
+			c := make(chan indexedResults, len(reqs))
+			for num, req := range reqs {
+				go func(num int, req *pb.StatSummaryRequest) {
+					output, err := requestStatsFromAPI(client, req, options)
+					c <- indexedResults{num, output, err}
+				}(num, req)
 			}
 
-			_, err = fmt.Print(output)
+			results := make(map[int]string)
+			for res := range c {
+				if res.err != nil {
+					return res.err
+				}
+				results[res.ix] = res.output
+				if len(results) == len(reqs) {
+					close(c)
+				}
+			}
+
+			outputs := make([]string, 0)
+			for i := 0; i < len(reqs); i++ {
+				outputs = append(outputs, results[i])
+			}
+
+			_, err = fmt.Print(strings.Join(outputs, "\n"))
 
 			return err
 		},
@@ -402,13 +430,8 @@ func getNamePrefix(resourceType string) string {
 	}
 }
 
-func buildStatSummaryRequest(resources []string, options *statOptions) (*pb.StatSummaryRequest, error) {
+func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {
 	targets, err := util.BuildResources(options.namespace, resources)
-	if err != nil {
-		return nil, err
-	}
-
-	err = options.validate(targets[0].Type)
 	if err != nil {
 		return nil, err
 	}
@@ -427,21 +450,34 @@ func buildStatSummaryRequest(resources []string, options *statOptions) (*pb.Stat
 		}
 	}
 
-	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:    options.timeWindow,
-		ResourceName:  targets[0].Name,
-		ResourceType:  targets[0].Type,
-		Namespace:     options.namespace,
-		ToName:        toRes.Name,
-		ToType:        toRes.Type,
-		ToNamespace:   options.toNamespace,
-		FromName:      fromRes.Name,
-		FromType:      fromRes.Type,
-		FromNamespace: options.fromNamespace,
-		AllNamespaces: options.allNamespaces,
-	}
+	requests := make([]*pb.StatSummaryRequest, 0)
+	for _, target := range targets {
+		err = options.validate(target.Type)
+		if err != nil {
+			return nil, err
+		}
 
-	return util.BuildStatSummaryRequest(requestParams)
+		requestParams := util.StatSummaryRequestParams{
+			TimeWindow:    options.timeWindow,
+			ResourceName:  target.Name,
+			ResourceType:  target.Type,
+			Namespace:     options.namespace,
+			ToName:        toRes.Name,
+			ToType:        toRes.Type,
+			ToNamespace:   options.toNamespace,
+			FromName:      fromRes.Name,
+			FromType:      fromRes.Type,
+			FromNamespace: options.fromNamespace,
+			AllNamespaces: options.allNamespaces,
+		}
+
+		req, err := util.BuildStatSummaryRequest(requestParams)
+		if err != nil {
+			return nil, err
+		}
+		requests = append(requests, req)
+	}
+	return requests, nil
 }
 
 func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
