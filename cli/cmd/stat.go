@@ -46,11 +46,11 @@ func newCmdStat() *cobra.Command {
 	options := newStatOptions()
 
 	cmd := &cobra.Command{
-		Use:   "stat [flags] (RESOURCE)",
+		Use:   "stat [flags] (RESOURCES)",
 		Short: "Display traffic stats about one or many resources",
 		Long: `Display traffic stats about one or many resources.
 
-  The RESOURCE argument specifies the target resource(s) to aggregate stats over:
+  The RESOURCES argument specifies the target resource(s) to aggregate stats over:
   (TYPE [NAME] | TYPE/NAME)
 
   Examples:
@@ -100,7 +100,7 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all inbound stats to the test namespace.
   linkerd stat ns/test`,
-		Args:      cobra.RangeArgs(1, 2),
+		Args:      cobra.MinimumNArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req, err := buildStatSummaryRequest(args, options)
@@ -392,13 +392,13 @@ func getNamePrefix(resourceType string) string {
 	}
 }
 
-func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatSummaryRequest, error) {
-	target, err := util.BuildResource(options.namespace, resource...)
+func buildStatSummaryRequest(resources []string, options *statOptions) (*pb.StatSummaryRequest, error) {
+	targets, err := util.BuildResources(options.namespace, resources)
 	if err != nil {
 		return nil, err
 	}
 
-	err = options.validate(target.Type)
+	err = options.validate(targets[0].Type)
 	if err != nil {
 		return nil, err
 	}
@@ -419,8 +419,8 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 
 	requestParams := util.StatSummaryRequestParams{
 		TimeWindow:    options.timeWindow,
-		ResourceName:  target.Name,
-		ResourceType:  target.Type,
+		ResourceName:  targets[0].Name,
+		ResourceType:  targets[0].Type,
 		Namespace:     options.namespace,
 		ToName:        toRes.Name,
 		ToType:        toRes.Type,

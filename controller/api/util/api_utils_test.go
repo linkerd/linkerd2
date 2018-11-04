@@ -186,13 +186,13 @@ func TestBuildResource(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			res, err := BuildResource(exp.namespace, exp.args...)
+			res, err := BuildResources(exp.namespace, exp.args)
 			if err != nil {
-				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
+				t.Fatalf("Unexpected error from BuildResources(%+v) => %s", exp, err)
 			}
 
-			if !reflect.DeepEqual(exp.resource, res) {
-				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
+			if !reflect.DeepEqual(exp.resource, res[0]) {
+				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res[0])
 			}
 		}
 	})
