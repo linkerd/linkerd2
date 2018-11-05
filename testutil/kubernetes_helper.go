@@ -14,17 +14,18 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	// Loads the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"time"
 )
 
 // KubernetesHelper provides Kubernetes-related test helpers. It connects to the
 // Kubernetes API using the environment's configured kubeconfig file.
 type KubernetesHelper struct {
 	clientset *kubernetes.Clientset
-	retryFor  func(func() error) error
+	retryFor  func(time.Duration, func() error) error
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
-func NewKubernetesHelper(retryFor func(func() error) error) (*KubernetesHelper, error) {
+func NewKubernetesHelper(retryFor func(time.Duration, func() error) error) (*KubernetesHelper, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	overrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
@@ -103,7 +104,7 @@ func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, err
 // CheckDeployment checks that a deployment in a namespace contains the expected
 // number of replicas.
 func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName string, replicas int) error {
-	err := h.retryFor(func() error {
+	err := h.retryFor(60*time.Second, func() error {
 		deploys, err := h.getDeployments(namespace)
 		if err != nil {
 			return err
@@ -142,7 +143,7 @@ func (h *KubernetesHelper) getPods(namespace string) (map[string]coreV1.PodPhase
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
-	err := h.retryFor(func() error {
+	err := h.retryFor(60*time.Second, func() error {
 		podData, err := h.getPods(namespace)
 		if err != nil {
 			return err
@@ -169,7 +170,7 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 // CheckService checks that a service exists in a namespace.
 func (h *KubernetesHelper) CheckService(namespace string, serviceName string) error {
-	err := h.retryFor(func() error {
+	err := h.retryFor(60*time.Second, func() error {
 		_, err := h.clientset.CoreV1().Services(namespace).Get(serviceName, metav1.GetOptions{})
 		return err
 	})

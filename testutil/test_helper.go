@@ -179,7 +179,7 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	err := h.RetryFor(func() error {
+	err := h.RetryFor(30*time.Second, func() error {
 		out, _, err := h.LinkerdRun("version")
 		if err != nil {
 			return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
@@ -198,8 +198,7 @@ func (h *TestHelper) CheckVersion(serverVersion string) error {
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
-func (h *TestHelper) RetryFor(fn func() error) error {
-	timeout := 2 * time.Minute
+func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 	err := fn()
 	if err == nil {
 		return nil
@@ -227,7 +226,7 @@ func (h *TestHelper) RetryFor(fn func() error) error {
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(func() error {
+	err := h.RetryFor(30*time.Second, func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err

@@ -119,7 +119,7 @@ func TestInstall(t *testing.T) {
 }
 
 func TestVersionPostInstall(t *testing.T) {
-	err := TestHelper.RetryFor(30*time.Second, func() error {
+	err := TestHelper.RetryFor(60*time.Second, func() error {
 		return TestHelper.CheckVersion(TestHelper.GetVersion())
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func TestVersionPostInstall(t *testing.T) {
 func TestCheckPostInstall(t *testing.T) {
 	var out string
 	var err error
-	overallErr := TestHelper.RetryFor(30*time.Second, func() error {
+	overallErr := TestHelper.RetryFor(60*time.Second, func() error {
 		out, _, err = TestHelper.LinkerdRun(
 			"check",
 			"--expected-version",
@@ -226,7 +226,7 @@ func TestInject(t *testing.T) {
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
 	var out string
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
+	err := TestHelper.RetryFor(60*time.Second, func() error {
 		var err error
 		out, _, err = TestHelper.LinkerdRun(
 			"check",
