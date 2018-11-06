@@ -38,6 +38,12 @@ func (c *grpcOverHttpClient) StatSummary(ctx context.Context, req *pb.StatSummar
 	return &msg, err
 }
 
+func (c *grpcOverHttpClient) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest, _ ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
+	var msg pb.TopRoutesResponse
+	err := c.apiRequest(ctx, "TopRoutes", req, &msg)
+	return &msg, err
+}
+
 func (c *grpcOverHttpClient) Version(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.VersionInfo, error) {
 	var msg pb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)

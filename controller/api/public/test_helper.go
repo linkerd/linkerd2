@@ -18,6 +18,7 @@ type MockApiClient struct {
 	VersionInfoToReturn             *pb.VersionInfo
 	ListPodsResponseToReturn        *pb.ListPodsResponse
 	StatSummaryResponseToReturn     *pb.StatSummaryResponse
+	TopRoutesResponseToReturn       *pb.TopRoutesResponse
 	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
 	Api_TapClientToReturn           pb.Api_TapClient
 	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
@@ -25,6 +26,10 @@ type MockApiClient struct {
 
 func (c *MockApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
+}
+
+func (c *MockApiClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
+	return c.TopRoutesResponseToReturn, c.ErrorToReturn
 }
 
 func (c *MockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
