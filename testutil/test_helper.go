@@ -179,20 +179,17 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	err := h.RetryFor(30*time.Second, func() error {
-		out, _, err := h.LinkerdRun("version")
-		if err != nil {
-			return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
-		}
-		if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
-			return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
-		}
-		if !strings.Contains(out, fmt.Sprintf("Server version: %s", serverVersion)) {
-			return fmt.Errorf("Expected server version [%s], got:\n%s", serverVersion, out)
-		}
-		return nil
-	})
-	return err
+	out, _, err := h.LinkerdRun("version")
+	if err != nil {
+		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+	}
+	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
+		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
+	}
+	if !strings.Contains(out, fmt.Sprintf("Server version: %s", serverVersion)) {
+		return fmt.Errorf("Expected server version [%s], got:\n%s", serverVersion, out)
+	}
+	return nil
 }
 
 // RetryFor retries a given function every second until the function returns

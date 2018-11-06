@@ -86,6 +86,10 @@ func TestCliTap(t *testing.T) {
 
 	// wait for deployments to start
 	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
+		if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+			t.Error(err)
+		}
+
 		if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {
 			t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err))
 		}
