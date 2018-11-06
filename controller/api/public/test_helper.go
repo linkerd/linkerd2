@@ -2,12 +2,17 @@ package public
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
@@ -18,6 +23,7 @@ type MockApiClient struct {
 	VersionInfoToReturn             *pb.VersionInfo
 	ListPodsResponseToReturn        *pb.ListPodsResponse
 	StatSummaryResponseToReturn     *pb.StatSummaryResponse
+	TopRoutesResponseToReturn       *pb.TopRoutesResponse
 	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
 	Api_TapClientToReturn           pb.Api_TapClient
 	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
@@ -25,6 +31,10 @@ type MockApiClient struct {
 
 func (c *MockApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
+}
+
+func (c *MockApiClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
+	return c.TopRoutesResponseToReturn, c.ErrorToReturn
 }
 
 func (c *MockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
@@ -173,4 +183,73 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 	}
 
 	return resp
+}
+
+func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse {
+	rows := []*pb.RouteTable_Row{}
+	for i, route := range routes {
+		row := &pb.RouteTable_Row{
+			Route: route,
+			Stats: &pb.BasicStats{
+				SuccessCount:    counts[i],
+				FailureCount:    0,
+				LatencyMsP50:    123,
+				LatencyMsP95:    123,
+				LatencyMsP99:    123,
+				TlsRequestCount: counts[i],
+			},
+			TimeWindow: "1m",
+		}
+		rows = append(rows, row)
+	}
+
+	resp := pb.TopRoutesResponse{
+		Response: &pb.TopRoutesResponse_Routes{
+			Routes: &pb.RouteTable{
+				Rows: rows,
+			},
+		},
+	}
+
+	return resp
+}
+
+type expectedStatRpc struct {
+	err                       error
+	k8sConfigs                []string    // k8s objects to seed the API
+	mockPromResponse          model.Value // mock out a prometheus query response
+	expectedPrometheusQueries []string    // queries we expect public-api to issue to prometheus
+}
+
+func newMockGrpcServer(exp expectedStatRpc) (*MockProm, *grpcServer, error) {
+	k8sAPI, err := k8s.NewFakeAPI("", exp.k8sConfigs...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mockProm := &MockProm{Res: exp.mockPromResponse}
+	fakeGrpcServer := newGrpcServer(
+		mockProm,
+		tap.NewTapClient(nil),
+		k8sAPI,
+		"linkerd",
+		[]string{},
+	)
+
+	k8sAPI.Sync(nil)
+
+	return mockProm, fakeGrpcServer, nil
+}
+
+func (exp expectedStatRpc) verifyPromQueries(mockProm *MockProm) error {
+	if len(exp.expectedPrometheusQueries) > 0 {
+		sort.Strings(exp.expectedPrometheusQueries)
+		sort.Strings(mockProm.QueriesExecuted)
+
+		if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
+			return fmt.Errorf("Prometheus queries incorrect. \nExpected:\n%+v \nGot:\n%+v",
+				exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
+		}
+	}
+	return nil
 }

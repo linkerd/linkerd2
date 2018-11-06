@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"regexp"
@@ -76,6 +77,7 @@ func init() {
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdProfile())
+	RootCmd.AddCommand(newCmdRoutes())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
@@ -128,6 +130,43 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 
 	hc.RunChecks(exitOnError)
 	return hc.PublicAPIClient()
+}
+
+type statOptionsBase struct {
+	namespace    string
+	timeWindow   string
+	outputFormat string
+}
+
+func newStatOptionsBase() *statOptionsBase {
+	return &statOptionsBase{
+		namespace:    "default",
+		timeWindow:   "1m",
+		outputFormat: "",
+	}
+}
+
+func (o *statOptionsBase) validateOutputFormat() error {
+	switch o.outputFormat {
+	case "table", "json", "":
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table and json")
+	}
+}
+
+func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
+	var out string
+	switch options.outputFormat {
+	case "table", "":
+		// strip left padding on the first column
+		out = string(buffer.Bytes()[padding:])
+		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+	case "json":
+		out = string(buffer.Bytes())
+	}
+
+	return out
 }
 
 type proxyConfigOptions struct {

@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sort"
 	"testing"
 
@@ -16,12 +15,9 @@ import (
 )
 
 type statSumExpected struct {
-	err                       error
-	k8sConfigs                []string               // k8s objects to seed the API
-	mockPromResponse          model.Value            // mock out a prometheus query response
-	expectedPrometheusQueries []string               // queries we expect public-api to issue to prometheus
-	req                       pb.StatSummaryRequest  // the request we would like to test
-	expectedResponse          pb.StatSummaryResponse // the stat response we expect
+	expectedStatRpc
+	req              pb.StatSummaryRequest  // the request we would like to test
+	expectedResponse pb.StatSummaryResponse // the stat response we expect
 }
 
 func prometheusMetric(resName string, resType string, resNs string, classification string, isDst bool) model.Vector {
@@ -69,36 +65,17 @@ func genEmptyResponse() pb.StatSummaryResponse {
 
 func testStatSummary(t *testing.T, expectations []statSumExpected) {
 	for _, exp := range expectations {
-		k8sAPI, err := k8s.NewFakeAPI("", exp.k8sConfigs...)
+		mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRpc)
 		if err != nil {
-			t.Fatalf("NewFakeAPI returned an error: %s", err)
+			t.Fatalf("Error creating mock grpc server: %s", err)
 		}
-
-		mockProm := &MockProm{Res: exp.mockPromResponse}
-		fakeGrpcServer := newGrpcServer(
-			mockProm,
-			tap.NewTapClient(nil),
-			k8sAPI,
-			"linkerd",
-			[]string{},
-		)
-
-		k8sAPI.Sync(nil)
 
 		rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
 		if err != exp.err {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 
-		if len(exp.expectedPrometheusQueries) > 0 {
-			sort.Strings(exp.expectedPrometheusQueries)
-			sort.Strings(mockProm.QueriesExecuted)
-
-			if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
-				t.Fatalf("Prometheus queries incorrect. \nExpected:\n%+v \nGot:\n%+v",
-					exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
-			}
-		}
+		exp.verifyPromQueries(mockProm)
 
 		rspStatTables := rsp.GetOk().StatTables
 
@@ -156,8 +133,9 @@ func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -205,8 +183,9 @@ metadata:
 status:
   phase: Completed
 `,
+					},
+					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
 				},
-				mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -230,8 +209,9 @@ status:
 	t.Run("Queries prometheus for a specific resource if name is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -243,8 +223,15 @@ metadata:
 status:
   phase: Running
 `,
+					},
+					mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success", false),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+					},
 				},
-				mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -254,12 +241,6 @@ status:
 						},
 					},
 					TimeWindow: "1m",
-				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
@@ -275,8 +256,9 @@ status:
 	t.Run("Queries prometheus for outbound metrics if from resource is specified, ignores resource name", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -288,8 +270,15 @@ metadata:
 status:
   phase: Running
 `,
+					},
+					mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", "success", false),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+					},
 				},
-				mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -307,12 +296,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
-				},
 				expectedResponse: genEmptyResponse(),
 			},
 		}
@@ -323,8 +306,9 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -336,9 +320,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -357,12 +348,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
-				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
@@ -377,8 +362,9 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified and --to-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -390,9 +376,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -411,12 +404,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
-					`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
-				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
@@ -431,8 +418,9 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -455,9 +443,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`sum(increase(response_total{direction="outbound", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -476,12 +471,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`sum(increase(response_total{direction="outbound", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
-				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
@@ -496,8 +485,9 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified and --from-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -520,9 +510,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
+						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -541,12 +538,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
-					`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
-				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 1,
@@ -561,8 +552,9 @@ status:
 	t.Run("Successfully queries for resource type 'all'", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -610,8 +602,9 @@ metadata:
 status:
   phase: Running
 `,
+					},
+					mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success", false),
 				},
-				mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success", false),
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -621,6 +614,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
+
 				expectedResponse: pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 						Ok: &pb.StatSummaryResponse_Ok{
@@ -735,7 +729,9 @@ status:
 
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
+				expectedStatRpc: expectedStatRpc{
+					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -745,7 +741,9 @@ status:
 				},
 			},
 			statSumExpected{
-				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
+				expectedStatRpc: expectedStatRpc{
+					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -755,7 +753,9 @@ status:
 				},
 			},
 			statSumExpected{
-				err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
+				expectedStatRpc: expectedStatRpc{
+					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
+				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -894,8 +894,9 @@ status:
 		t.Run("when pod phase is succeeded or failed", func(t *testing.T) {
 			expectations := []statSumExpected{
 				statSumExpected{
-					err: nil,
-					k8sConfigs: []string{`
+					expectedStatRpc: expectedStatRpc{
+						err: nil,
+						k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -918,7 +919,9 @@ metadata:
 status:
   phase: Failed
 `},
-					mockPromResponse: model.Vector{},
+						mockPromResponse:          model.Vector{},
+						expectedPrometheusQueries: []string{},
+					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
@@ -927,8 +930,7 @@ status:
 							},
 						},
 					},
-					expectedPrometheusQueries: []string{},
-					expectedResponse:          genEmptyResponse(),
+					expectedResponse: genEmptyResponse(),
 				},
 			}
 
@@ -938,8 +940,9 @@ status:
 		t.Run("for succeeded or failed replicas of a deployment", func(t *testing.T) {
 			expectations := []statSumExpected{
 				statSumExpected{
-					err: nil,
-					k8sConfigs: []string{`
+					expectedStatRpc: expectedStatRpc{
+						err: nil,
+						k8sConfigs: []string{`
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -998,7 +1001,8 @@ metadata:
 status:
   phase: Succeeded
 `},
-					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
+						mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
+					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
@@ -1023,8 +1027,9 @@ status:
 	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1036,9 +1041,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -1048,12 +1060,6 @@ status:
 						},
 					},
 					TimeWindow: "1m",
-				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
 				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil),
 			},
@@ -1065,8 +1071,9 @@ status:
 	t.Run("Queries prometheus for authority stats when --from deployment is used", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1078,9 +1085,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
+						`sum(increase(response_total{deployment="emojivoto", direction="outbound"}[1m])) by (dst_namespace, authority, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -1098,12 +1112,6 @@ status:
 						},
 					},
 				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
-					`sum(increase(response_total{deployment="emojivoto", direction="outbound"}[1m])) by (dst_namespace, authority, classification, tls)`,
-				},
 				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil),
 			},
 		}
@@ -1114,8 +1122,9 @@ status:
 	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				err: nil,
-				k8sConfigs: []string{`
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1127,9 +1136,16 @@ metadata:
 status:
   phase: Running
 `,
-				},
-				mockPromResponse: model.Vector{
-					genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					mockPromResponse: model.Vector{
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+					},
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
+						`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
+					},
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -1140,12 +1156,6 @@ status:
 						},
 					},
 					TimeWindow: "1m",
-				},
-				expectedPrometheusQueries: []string{
-					`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
-					`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 				},
 				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil),
 			},
