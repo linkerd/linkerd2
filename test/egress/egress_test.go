@@ -16,6 +16,14 @@ import (
 
 var TestHelper *testutil.TestHelper
 
+var egressHttpDeployments = []string{
+	"egress-test-https-post",
+	"egress-test-http-post",
+	"egress-test-https-get",
+	"egress-test-http-get",
+	"egress-test-not-www-get",
+}
+
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	os.Exit(m.Run())
@@ -35,6 +43,13 @@ func TestEgressHttp(t *testing.T) {
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+	}
+
+	for _, deploy := range egressHttpDeployments {
+		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 	}
 
 	test_case := func(serviceName, dnsName, protocolToUse, methodToUse string) {

@@ -188,6 +188,13 @@ func TestInject(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
+	for _, deploy := range []string{"smoke-test-terminus","smoke-test-gateway"} {
+		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+	}
+
 	svcURL, err := TestHelper.ProxyURLFor(prefixedNs, "smoke-test-gateway-svc", "http")
 	if err != nil {
 		t.Fatalf("Failed to get proxy URL: %s", err)
@@ -196,13 +203,6 @@ func TestInject(t *testing.T) {
 	output, err := TestHelper.HTTPGetURL(svcURL)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v %s", err, output)
-	}
-
-	for _, deploy := range []string{"smoke-test-terminus","smoke-test-gateway"} {
-		err = TestHelper.CheckPods(TestHelper.GetTestNamespace("smoke-test"),deploy, 1)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
 	}
 
 	expectedStringInPayload := "\"payload\":\"BANANA\""
