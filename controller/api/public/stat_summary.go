@@ -71,7 +71,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// special case to check for services as outbound only
-	if isInvalidServiceRequest(req) {
+	if isInvalidServiceRequest(req.Selector, req.GetFromResource()) {
 		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
 	}
 
@@ -558,12 +558,11 @@ func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerNa
 	return errors
 }
 
-func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
-	fromResource := req.GetFromResource()
+func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
 	if fromResource != nil {
 		return fromResource.Type == k8s.Service
 	} else {
-		return req.Selector.Resource.Type == k8s.Service
+		return selector.Resource.Type == k8s.Service
 	}
 }
 
