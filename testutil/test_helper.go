@@ -80,7 +80,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper()
+	kubernetesHelper, err := NewKubernetesHelper(testHelper.RetryFor)
 	if err != nil {
 		exit(1, "error creating kubernetes helper: "+err.Error())
 	}

@@ -89,57 +89,39 @@ func TestInstall(t *testing.T) {
 	}
 
 	// Tests Services
-	err = TestHelper.RetryFor(10*time.Second, func() error {
-		for _, svc := range linkerdSvcs {
-			if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
-				return fmt.Errorf("Error validating service [%s]:\n%s", svc, err)
-			}
+	for _, svc := range linkerdSvcs {
+		if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
+			t.Error(fmt.Errorf("Error validating service [%s]:\n%s", svc, err))
 		}
-		return nil
-	})
-	if err != nil {
-		t.Error(err)
 	}
 
 	// Tests Pods and Deployments
-	err = TestHelper.RetryFor(2*time.Minute, func() error {
-		for deploy, replicas := range linkerdDeployReplicas {
-			if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
-				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
-			}
-			if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
-				return fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err)
-			}
+	for deploy, replicas := range linkerdDeployReplicas {
+		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
+			t.Fatal(fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
 		}
-		return nil
-	})
-	if err != nil {
-		t.Error(err)
+		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
+			t.Fatal(fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err))
+		}
 	}
 }
 
 func TestVersionPostInstall(t *testing.T) {
-	err := TestHelper.RetryFor(30*time.Second, func() error {
-		return TestHelper.CheckVersion(TestHelper.GetVersion())
-	})
+	err := TestHelper.CheckVersion(TestHelper.GetVersion())
 	if err != nil {
 		t.Fatalf("Version command failed\n%s", err.Error())
 	}
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	var out string
-	var err error
-	overallErr := TestHelper.RetryFor(30*time.Second, func() error {
-		out, _, err = TestHelper.LinkerdRun(
-			"check",
-			"--expected-version",
-			TestHelper.GetVersion(),
-			"--wait=0",
-			)
-		return err
-	})
-	if overallErr != nil {
+	out, _, err := TestHelper.LinkerdRun(
+		"check",
+		"--expected-version",
+		TestHelper.GetVersion(),
+		"--wait=0",
+	)
+
+	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
 
@@ -206,6 +188,13 @@ func TestInject(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
+	for _, deploy := range []string{"smoke-test-terminus","smoke-test-gateway"} {
+		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+	}
+
 	svcURL, err := TestHelper.ProxyURLFor(prefixedNs, "smoke-test-gateway-svc", "http")
 	if err != nil {
 		t.Fatalf("Failed to get proxy URL: %s", err)
@@ -225,20 +214,15 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	var out string
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		var err error
-		out, _, err = TestHelper.LinkerdRun(
-			"check",
-			"--proxy",
-			"--expected-version",
-			TestHelper.GetVersion(),
-			"--namespace",
-			prefixedNs,
-			"--wait=0",
-		)
-		return err
-	})
+	out, _, err := TestHelper.LinkerdRun(
+		"check",
+		"--proxy",
+		"--expected-version",
+		TestHelper.GetVersion(),
+		"--namespace",
+		prefixedNs,
+		"--wait=0",
+	)
 
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
