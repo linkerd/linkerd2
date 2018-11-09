@@ -191,6 +191,94 @@ func BuildStatSummaryRequest(p StatSummaryRequestParams) (*pb.StatSummaryRequest
 	return statRequest, nil
 }
 
+// Builds a TopRoutesRequest.  Uses the same params structure as used for
+// building StatSummaryRequests.
+func BuildTopRoutesRequest(p StatSummaryRequestParams) (*pb.TopRoutesRequest, error) {
+	window := defaultMetricTimeWindow
+	if p.TimeWindow != "" {
+		_, err := time.ParseDuration(p.TimeWindow)
+		if err != nil {
+			return nil, err
+		}
+		window = p.TimeWindow
+	}
+
+	if p.AllNamespaces && p.ResourceName != "" {
+		return nil, errors.New("stats for a resource cannot be retrieved by name across all namespaces")
+	}
+
+	targetNamespace := p.Namespace
+	if p.AllNamespaces {
+		targetNamespace = ""
+	} else if p.Namespace == "" {
+		targetNamespace = v1.NamespaceDefault
+	}
+
+	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	topRoutesRequest := &pb.TopRoutesRequest{
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: targetNamespace,
+				Name:      p.ResourceName,
+				Type:      resourceType,
+			},
+		},
+		TimeWindow: window,
+	}
+
+	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
+		if p.ToNamespace == "" {
+			p.ToNamespace = targetNamespace
+		}
+		if p.ToType == "" {
+			p.ToType = resourceType
+		}
+
+		toType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ToType)
+		if err != nil {
+			return nil, err
+		}
+
+		toResource := pb.TopRoutesRequest_ToResource{
+			ToResource: &pb.Resource{
+				Namespace: p.ToNamespace,
+				Type:      toType,
+				Name:      p.ToName,
+			},
+		}
+		topRoutesRequest.Outbound = &toResource
+	}
+
+	if p.FromName != "" || p.FromType != "" || p.FromNamespace != "" {
+		if p.FromNamespace == "" {
+			p.FromNamespace = targetNamespace
+		}
+		if p.FromType == "" {
+			p.FromType = resourceType
+		}
+
+		fromType, err := validateFromResourceType(p.FromType)
+		if err != nil {
+			return nil, err
+		}
+
+		fromResource := pb.TopRoutesRequest_FromResource{
+			FromResource: &pb.Resource{
+				Namespace: p.FromNamespace,
+				Type:      fromType,
+				Name:      p.FromName,
+			},
+		}
+		topRoutesRequest.Outbound = &fromResource
+	}
+
+	return topRoutesRequest, nil
+}
+
 // An authority can only receive traffic, not send it, so it can't be a --from
 func validateFromResourceType(resourceType string) (string, error) {
 	name, err := k8s.CanonicalResourceNameFromFriendlyName(resourceType)

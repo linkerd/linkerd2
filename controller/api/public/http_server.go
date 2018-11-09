@@ -18,6 +18,7 @@ import (
 
 var (
 	statSummaryPath   = fullUrlPathFor("StatSummary")
+	topRoutesPath     = fullUrlPathFor("TopRoutes")
 	versionPath       = fullUrlPathFor("Version")
 	listPodsPath      = fullUrlPathFor("ListPods")
 	tapByResourcePath = fullUrlPathFor("TapByResource")
@@ -42,6 +43,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.URL.Path {
 	case statSummaryPath:
 		h.handleStatSummary(w, req)
+	case topRoutesPath:
+		h.handleTopRoutes(w, req)
 	case versionPath:
 		h.handleVersion(w, req)
 	case listPodsPath:
@@ -66,6 +69,27 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rsp, err := h.grpcServer.StatSummary(req.Context(), &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+	err = writeProtoToHttpResponse(w, rsp)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+}
+
+func (h *handler) handleTopRoutes(w http.ResponseWriter, req *http.Request) {
+	var protoRequest pb.TopRoutesRequest
+
+	err := httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHttpResponse(w, err)
+		return
+	}
+
+	rsp, err := h.grpcServer.TopRoutes(req.Context(), &protoRequest)
 	if err != nil {
 		writeErrorToHttpResponse(w, err)
 		return
