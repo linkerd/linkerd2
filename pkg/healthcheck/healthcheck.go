@@ -406,6 +406,7 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 		category:    LinkerdVersionCategory,
 		description: "cli is up-to-date",
 		fatal:       false,
+		warning:     true,
 		check: func() error {
 			return version.CheckClientVersion(hc.latestVersion)
 		},
@@ -416,6 +417,7 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			category:    LinkerdVersionCategory,
 			description: "control plane is up-to-date",
 			fatal:       false,
+			warning:     true,
 			check: func() error {
 				return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
 			},
@@ -427,6 +429,7 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			category:    LinkerdVersionCategory,
 			description: "data plane is up-to-date",
 			fatal:       false,
+			warning:     true,
 			check: func() error {
 				pods, err := hc.getDataPlanePods()
 				if err != nil {
