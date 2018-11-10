@@ -30,9 +30,9 @@ type statOptions struct {
 }
 
 type indexedResults struct {
-	ix     int
-	output string
-	err    error
+	ix   int
+	rows []*pb.StatTable_PodGroup_Row
+	err  error
 }
 
 func newStatOptions() *statOptions {
@@ -130,28 +130,26 @@ If no resource name is specified, displays stats about all resources of the spec
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
-					output, err := requestStatsFromAPI(client, req, options)
-					c <- indexedResults{num, output, err}
+					resp, err := requestStatsFromAPI(client, req, options)
+					rows := respToRows(resp)
+					c <- indexedResults{num, rows, err}
 				}(num, req)
 			}
 
-			results := make(map[int]string)
+			totalRows := make([]*pb.StatTable_PodGroup_Row, 0)
+			i := 0
 			for res := range c {
 				if res.err != nil {
 					return res.err
 				}
-				results[res.ix] = res.output
-				if len(results) == len(reqs) {
+				totalRows = append(totalRows, res.rows...)
+				if i++; i == len(reqs) {
 					close(c)
 				}
 			}
 
-			outputs := make([]string, 0)
-			for i := 0; i < len(reqs); i++ {
-				outputs = append(outputs, results[i])
-			}
-
-			_, err = fmt.Print(strings.Join(outputs, "\n"))
+			output := renderStats(totalRows, options)
+			_, err = fmt.Print(output)
 
 			return err
 		},
@@ -169,22 +167,32 @@ If no resource name is specified, displays stats about all resources of the spec
 	return cmd
 }
 
-func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, options *statOptions) (string, error) {
-	resp, err := client.StatSummary(context.Background(), req)
-	if err != nil {
-		return "", fmt.Errorf("StatSummary API error: %v", err)
+func respToRows(resp *pb.StatSummaryResponse) []*pb.StatTable_PodGroup_Row {
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	if resp != nil {
+		for _, statTable := range resp.GetOk().StatTables {
+			rows = append(rows, statTable.GetPodGroup().Rows...)
+		}
 	}
-	if e := resp.GetError(); e != nil {
-		return "", fmt.Errorf("StatSummary API response error: %v", e.Error)
-	}
-
-	return renderStats(resp, req.Selector.Resource.Type, options), nil
+	return rows
 }
 
-func renderStats(resp *pb.StatSummaryResponse, resourceType string, options *statOptions) string {
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, options *statOptions) (*pb.StatSummaryResponse, error) {
+	resp, err := client.StatSummary(context.Background(), req)
+	if err != nil {
+		return nil, fmt.Errorf("StatSummary API error: %v", err)
+	}
+	if e := resp.GetError(); e != nil {
+		return nil, fmt.Errorf("StatSummary API response error: %v", e.Error)
+	}
+
+	return resp, nil
+}
+
+func renderStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	writeStatsToBuffer(resp, resourceType, w, options)
+	writeStatsToBuffer(rows, w, options)
 	w.Flush()
 
 	var out string
@@ -221,64 +229,61 @@ var (
 	namespaceHeader = "NAMESPACE"
 )
 
-func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w *tabwriter.Writer, options *statOptions) {
+func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
 	statTables := make(map[string]map[string]*row)
 
-	for _, statTable := range resp.GetOk().StatTables {
-		table := statTable.GetPodGroup()
-
-		for _, r := range table.Rows {
-			name := r.Resource.Name
-			nameWithPrefix := name
-			if reqResourceType == k8s.All {
-				nameWithPrefix = getNamePrefix(r.Resource.Type) + nameWithPrefix
-			}
-
-			namespace := r.Resource.Namespace
-			key := fmt.Sprintf("%s/%s", namespace, name)
-			resourceKey := r.Resource.Type
-
-			if _, ok := statTables[resourceKey]; !ok {
-				statTables[resourceKey] = make(map[string]*row)
-			}
-
-			if len(nameWithPrefix) > maxNameLength {
-				maxNameLength = len(nameWithPrefix)
-			}
-
-			if len(namespace) > maxNamespaceLength {
-				maxNamespaceLength = len(namespace)
-			}
-
-			meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
-			if resourceKey == k8s.Authority {
-				meshedCount = "-"
-			}
-			statTables[resourceKey][key] = &row{
-				meshed: meshedCount,
-			}
-
-			if r.Stats != nil {
-				statTables[resourceKey][key].rowStats = &rowStats{
-					requestRate: getRequestRate(*r),
-					successRate: getSuccessRate(*r),
-					tlsPercent:  getPercentTls(*r),
-					latencyP50:  r.Stats.LatencyMsP50,
-					latencyP95:  r.Stats.LatencyMsP95,
-					latencyP99:  r.Stats.LatencyMsP99,
-				}
-			}
-		}
+	prefixTypes := make(map[string]bool)
+	for _, r := range rows {
+		prefixTypes[r.Resource.Type] = true
+	}
+	usePrefix := false
+	if len(prefixTypes) > 1 {
+		usePrefix = true
 	}
 
-	var resourceTypes []string
-	switch reqResourceType {
-	case k8s.All:
-		resourceTypes = k8s.StatAllResourceTypes
-	default:
-		resourceTypes = []string{reqResourceType}
+	for _, r := range rows {
+		name := r.Resource.Name
+		nameWithPrefix := name
+		if usePrefix {
+			nameWithPrefix = getNamePrefix(r.Resource.Type) + nameWithPrefix
+		}
+
+		namespace := r.Resource.Namespace
+		key := fmt.Sprintf("%s/%s", namespace, name)
+		resourceKey := r.Resource.Type
+
+		if _, ok := statTables[resourceKey]; !ok {
+			statTables[resourceKey] = make(map[string]*row)
+		}
+
+		if len(nameWithPrefix) > maxNameLength {
+			maxNameLength = len(nameWithPrefix)
+		}
+
+		if len(namespace) > maxNamespaceLength {
+			maxNamespaceLength = len(namespace)
+		}
+
+		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
+		if resourceKey == k8s.Authority {
+			meshedCount = "-"
+		}
+		statTables[resourceKey][key] = &row{
+			meshed: meshedCount,
+		}
+
+		if r.Stats != nil {
+			statTables[resourceKey][key].rowStats = &rowStats{
+				requestRate: getRequestRate(*r),
+				successRate: getSuccessRate(*r),
+				tlsPercent:  getPercentTls(*r),
+				latencyP50:  r.Stats.LatencyMsP50,
+				latencyP95:  r.Stats.LatencyMsP95,
+				latencyP99:  r.Stats.LatencyMsP99,
+			}
+		}
 	}
 
 	switch options.outputFormat {
@@ -287,22 +292,27 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)
 		}
-		printStatTables(statTables, resourceTypes, w, maxNameLength, maxNamespaceLength, options)
+		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, options)
 	case "json":
-		printStatJson(statTables, resourceTypes, w)
+		printStatJson(statTables, w)
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, resourceTypes []string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+	usePrefix := false
+	if len(statTables) > 1 {
+		usePrefix = true
+	}
+
 	firstDisplayedStat := true // don't print a newline before the first stat
-	for _, resourceType := range resourceTypes {
+	for _, resourceType := range k8s.SortedRes {
 		if stats, ok := statTables[resourceType]; ok {
 			if !firstDisplayedStat {
 				fmt.Fprint(w, "\n")
 			}
 			firstDisplayedStat = false
 			resourceTypeLabel := resourceType
-			if len(resourceTypes) == 1 {
+			if !usePrefix {
 				resourceTypeLabel = ""
 			}
 			printSingleStatTable(stats, resourceTypeLabel, w, maxNameLength, maxNamespaceLength, options)
@@ -342,8 +352,12 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 			templateString = "%s\t" + templateString
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
+		padding := 0
+		if maxNameLength > len(name) {
+			padding = maxNameLength - len(name)
+		}
 		values = append(values, []interface{}{
-			name + strings.Repeat(" ", maxNameLength-len(name)),
+			name + strings.Repeat(" ", padding),
 			stats[key].meshed,
 		}...)
 
@@ -386,10 +400,10 @@ type jsonStats struct {
 	Tls          *float64 `json:"tls"`
 }
 
-func printStatJson(statTables map[string]map[string]*row, resourceTypes []string, w *tabwriter.Writer) {
+func printStatJson(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
-	for _, resourceType := range resourceTypes {
+	for _, resourceType := range k8s.SortedRes {
 		if stats, ok := statTables[resourceType]; ok {
 			sortedKeys := sortStatsKeys(stats)
 			for _, key := range sortedKeys {
