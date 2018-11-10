@@ -22,6 +22,8 @@ const (
 	StatefulSet           = "statefulset"
 )
 
+var SortedRes = []string{Authority, DaemonSet, Deployment, Namespace, Pod, ReplicationController, ReplicaSet, Service, ServiceProfile, StatefulSet}
+
 // resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
 	// TODO: add Namespace here to decrease queries from the web process
