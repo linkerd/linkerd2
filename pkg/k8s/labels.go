@@ -74,7 +74,7 @@ const (
 	// indicate that the sidecar auto-inject is disabled for a particular resource.
 	ProxyAutoInjectDisabled = "disabled"
 
-	// ProxyAutoInjectDisabled is assigned to the ProxyAutoInjectLabel label to
+	// ProxyAutoInjectCompleted is assigned to the ProxyAutoInjectLabel label to
 	// indicate that the sidecar auto-inject is completed for a particular resource.
 	ProxyAutoInjectCompleted = "completed"
 
@@ -105,7 +105,7 @@ const (
 	// that contains the proxy container spec.
 	ProxySpecFileName = "proxy.yaml"
 
-	// ProxyInjectorInitContainerSpecFileName is the name (key) within the
+	// ProxyInitSpecFileName is the name (key) within the
 	// proxy-injector ConfigMap that contains the proxy-init container spec.
 	ProxyInitSpecFileName = "proxy-init.yaml"
 
@@ -157,7 +157,7 @@ var (
 	// spec is mounted to the proxy-injector
 	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
 
-	// MountTLSPathTrustAnchorVolumeSpec is the path at which the trust anchor
+	// MountPathTLSTrustAnchorVolumeSpec is the path at which the trust anchor
 	// volume spec is mounted to the proxy-injector
 	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
 
