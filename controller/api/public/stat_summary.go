@@ -369,6 +369,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
 
 		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
