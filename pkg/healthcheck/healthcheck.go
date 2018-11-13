@@ -307,9 +307,10 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
-		description: "can query the control plane API",
-		fatal:       true,
+		category:      LinkerdAPICategory,
+		description:   "can query the control plane API",
+		fatal:         true,
+		retryDeadline: hc.RetryDeadline,
 		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
