@@ -39,14 +39,6 @@ func extractSampleValue(sample *model.Sample) uint64 {
 	return value
 }
 
-func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
-	if fromResource != nil {
-		return fromResource.Type == k8s.Service
-	} else {
-		return selector.Resource.Type == k8s.Service
-	}
-}
-
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request:\n\t%+v", query)
 

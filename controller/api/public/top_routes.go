@@ -22,9 +22,12 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 		return topRoutesError(req, "TopRoutes request missing Selector Resource"), nil
 	}
 
-	// special case to check for services as outbound only
-	if isInvalidServiceRequest(req.Selector, req.GetFromResource()) {
-		return topRoutesError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
+	if req.Selector.Resource.Type != k8s.Service {
+		return topRoutesError(req, "target resource must be a service"), nil
+	}
+
+	if req.GetFromResource() != nil && req.GetFromResource().Type == k8s.Service {
+		return topRoutesError(req, "'from' resource cannot be a service"), nil
 	}
 
 	switch req.Outbound.(type) {
@@ -134,14 +137,9 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 }
 
 func buildRouteLabels(req *pb.TopRoutesRequest) (labels model.LabelSet) {
-	// labelNames: the group by in the prometheus query
 	// labels: the labels for the resource we want to query for
 
 	switch out := req.Outbound.(type) {
-	case *pb.TopRoutesRequest_ToResource:
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.TopRoutesRequest_FromResource:
 		labels = labels.Merge(promQueryLabels(out.FromResource))
@@ -151,7 +149,6 @@ func buildRouteLabels(req *pb.TopRoutesRequest) (labels model.LabelSet) {
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
-
 	return
 }
 

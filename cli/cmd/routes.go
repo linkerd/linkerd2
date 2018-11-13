@@ -21,11 +21,8 @@ import (
 type routesOptions struct {
 	namespace     string
 	timeWindow    string
-	toNamespace   string
-	toResource    string
 	fromNamespace string
 	fromResource  string
-	allNamespaces bool
 	outputFormat  string
 }
 
@@ -33,11 +30,8 @@ func newRoutesOptions() *routesOptions {
 	return &routesOptions{
 		namespace:     "default",
 		timeWindow:    "1m",
-		toNamespace:   "",
-		toResource:    "",
 		fromNamespace: "",
 		fromResource:  "",
-		allNamespaces: false,
 		outputFormat:  "",
 	}
 }
@@ -46,64 +40,20 @@ func newCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
-		Use:   "routes [flags] (RESOURCE)",
-		Short: "Display route stats about one or many resources",
-		Long: `Display route stats about one or many resources.
+		Use:   "routes [flags] (SERVICE)",
+		Short: "Display route stats about a service",
+		Long: `Display route stats about a service.
 
-  The RESOURCE argument specifies the target resource(s) to aggregate stats over:
-  (TYPE [NAME] | TYPE/NAME)
+This command will only work for services that have a Service Profile defined.`,
+		Example: `  # Routes for the webapp service in the test namespace.
+  linkerd routes webapp -n test
 
-  Examples:
-  * deploy
-  * deploy/my-deploy
-  * rc/my-replication-controller
-  * ns/my-ns
-  * authority
-  * au/my-authority
-  * all
-
-Valid resource types include:
-
-  * deployments
-  * namespaces
-  * pods
-  * replicationcontrollers
-  * authorities (not supported in --from)
-  * services (only supported if a --from is also specified, or as a --to)
-  * all (all resource types, not supported in --from or --to)
-
-This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.
-If no resource name is specified, displays stats about all resources of the specified RESOURCETYPE`,
-		Example: `  # Get all deployments in the test namespace.
-  linkerd routes deployments -n test
-
-  # Get the hello1 replication controller in the test namespace.
-  linkerd routes replicationcontrollers hello1 -n test
-
-  # Get all namespaces.
-  linkerd routes namespaces
-
-  # Get all inbound stats to the web deployment.
-  linkerd routes deploy/web
-
-  # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
-  linkerd routes pods --to deploy/hello1 --to-namespace test --all-namespaces
-
-  # Get all pods in all namespaces that call the hello1 service in the test namesapce.
-  linkerd routes pods --to svc/hello1 --to-namespace test --all-namespaces
-
-  # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
-  linkerd routes services --from deploy/hello1 --from-namespace test --all-namespaces
-
-  # Get all namespaces that receive traffic from the default namespace.
-  linkerd routes namespaces --from ns/default
-
-  # Get all inbound stats to the test namespace.
-  linkerd routes ns/test`,
-		Args:      cobra.RangeArgs(1, 2),
+  # Routes for calls from from the traffic deployment to the webapp service in the test namespace.
+  linkerd routes webapp -n test --from deploy/traffic --from-namespace test`,
+		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req, err := buildTopRoutesRequest(args, options)
+			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
@@ -121,11 +71,8 @@ If no resource name is specified, displays stats about all resources of the spec
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, restricts outbound stats to the specified resource name")
-	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
 
 	return cmd
@@ -140,13 +87,13 @@ func requestRouteStatsFromAPI(client pb.ApiClient, req *pb.TopRoutesRequest, opt
 		return "", fmt.Errorf("TopRoutes API response error: %v", e.Error)
 	}
 
-	return renderRouteStats(resp, req.Selector.Resource.Type, options), nil
+	return renderRouteStats(resp, options), nil
 }
 
-func renderRouteStats(resp *pb.TopRoutesResponse, resourceType string, options *routesOptions) string {
+func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	writeRouteStatsToBuffer(resp, resourceType, w, options)
+	writeRouteStatsToBuffer(resp, w, options)
 	w.Flush()
 
 	var out string
@@ -171,15 +118,15 @@ type routeRow struct {
 	latencyP99  uint64
 }
 
-func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, reqResourceType string, w *tabwriter.Writer, options *routesOptions) {
+func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
 	table := make(map[string]*routeRow)
 
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
 			table[r.Route] = &routeRow{
-				requestRate: getRouteRequestRate(*r),
-				successRate: getRouteSuccessRate(*r),
-				tlsPercent:  getRoutePercentTls(*r),
+				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
+				successRate: util.GetSuccessRate(r.Stats),
+				tlsPercent:  util.GetPercentTls(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
@@ -190,7 +137,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, reqResourceType string,
 	switch options.outputFormat {
 	case "table", "":
 		if len(table) == 0 {
-			fmt.Fprintln(os.Stderr, "No traffic found.")
+			fmt.Fprintln(os.Stderr, "No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.")
 			os.Exit(0)
 		}
 		printRouteTable(table, w, options)
@@ -219,6 +166,9 @@ func printRouteTable(stats map[string]*routeRow, w *tabwriter.Writer, options *r
 	for _, route := range sortedRoutes {
 
 		if row, ok := stats[route]; ok {
+			if route == "" {
+				route = "[UNKNOWN]"
+			}
 			fmt.Fprintf(w, templateString, route,
 				row.successRate*100,
 				row.requestRate,
@@ -252,6 +202,9 @@ func printRouteJson(stats map[string]*routeRow, w *tabwriter.Writer) {
 		entry := &jsonRouteStats{
 			Route: route,
 		}
+		if route == "" {
+			entry.Route = "[UNKNOWN]"
+		}
 		if row, ok := stats[route]; ok {
 			entry.Success = &row.successRate
 			entry.Rps = &row.requestRate
@@ -270,24 +223,13 @@ func printRouteJson(stats map[string]*routeRow, w *tabwriter.Writer) {
 	fmt.Fprintf(w, "%s\n", b)
 }
 
-func buildTopRoutesRequest(resource []string, options *routesOptions) (*pb.TopRoutesRequest, error) {
-	target, err := util.BuildResource(options.namespace, resource...)
+func buildTopRoutesRequest(service string, options *routesOptions) (*pb.TopRoutesRequest, error) {
+	target, err := util.BuildResource(options.namespace, k8s.Service, service)
 	if err != nil {
 		return nil, err
 	}
 
-	err = options.validate(target.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	var toRes, fromRes pb.Resource
-	if options.toResource != "" {
-		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
-		if err != nil {
-			return nil, err
-		}
-	}
+	var fromRes pb.Resource
 	if options.fromResource != "" {
 		fromRes, err = util.BuildResource(options.fromNamespace, options.fromResource)
 		if err != nil {
@@ -295,50 +237,17 @@ func buildTopRoutesRequest(resource []string, options *routesOptions) (*pb.TopRo
 		}
 	}
 
-	requestParams := util.StatSummaryRequestParams{
+	requestParams := util.StatsRequestParams{
 		TimeWindow:    options.timeWindow,
 		ResourceName:  target.Name,
 		ResourceType:  target.Type,
 		Namespace:     options.namespace,
-		ToName:        toRes.Name,
-		ToType:        toRes.Type,
-		ToNamespace:   options.toNamespace,
 		FromName:      fromRes.Name,
 		FromType:      fromRes.Type,
 		FromNamespace: options.fromNamespace,
-		AllNamespaces: options.allNamespaces,
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)
-}
-
-func getRouteRequestRate(r pb.RouteTable_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-	windowLength, err := time.ParseDuration(r.TimeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-func getRouteSuccessRate(r pb.RouteTable_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
-}
-
-func getRoutePercentTls(r pb.RouteTable_Row) float64 {
-	reqTotal := r.Stats.SuccessCount + r.Stats.FailureCount
-	if reqTotal == 0 {
-		return 0.0
-	}
-	return float64(r.Stats.TlsRequestCount) / float64(reqTotal)
 }
 
 func sortRoutesByRps(stats map[string]*routeRow) []string {
@@ -352,57 +261,11 @@ func sortRoutesByRps(stats map[string]*routeRow) []string {
 	return sortedRoutes
 }
 
-// validate performs all validation on the command-line options.
-// It returns the first error encountered, or `nil` if the options are valid.
-func (o *routesOptions) validate(resourceType string) error {
-	err := o.validateConflictingFlags()
-	if err != nil {
-		return err
-	}
-
-	if resourceType == k8s.Namespace {
-		err := o.validateNamespaceFlags()
-		if err != nil {
-			return err
-		}
-	}
-
-	if err := o.validateOutputFormat(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateConflictingFlags validates that the options do not contain mutually
-// exclusive flags.
-func (o *routesOptions) validateConflictingFlags() error {
-	if o.toResource != "" && o.fromResource != "" {
-		return fmt.Errorf("--to and --from flags are mutually exclusive")
-	}
-
-	if o.toNamespace != "" && o.fromNamespace != "" {
-		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
-	}
-
-	return nil
-}
-
 // validateNamespaceFlags performs additional validation for options when the target
 // resource type is a namespace.
 func (o *routesOptions) validateNamespaceFlags() error {
-	if o.toNamespace != "" {
-		return fmt.Errorf("--to-namespace flag is incompatible with namespace resource type")
-	}
-
 	if o.fromNamespace != "" {
 		return fmt.Errorf("--from-namespace flag is incompatible with namespace resource type")
-	}
-
-	// Note: technically, this allows you to say `stat ns --namespace default`, but that
-	// seems like an edge case.
-	if o.namespace != "default" {
-		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 
 	return nil

@@ -224,9 +224,9 @@ func writeStatsToBuffer(resp *pb.StatSummaryResponse, reqResourceType string, w 
 
 			if r.Stats != nil {
 				statTables[resourceKey][key].rowStats = &rowStats{
-					requestRate: getRequestRate(*r),
-					successRate: getSuccessRate(*r),
-					tlsPercent:  getPercentTls(*r),
+					requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
+					successRate: util.GetSuccessRate(r.Stats),
+					tlsPercent:  util.GetPercentTls(r.Stats),
 					latencyP50:  r.Stats.LatencyMsP50,
 					latencyP95:  r.Stats.LatencyMsP95,
 					latencyP99:  r.Stats.LatencyMsP99,
@@ -417,7 +417,7 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 		}
 	}
 
-	requestParams := util.StatSummaryRequestParams{
+	requestParams := util.StatsRequestParams{
 		TimeWindow:    options.timeWindow,
 		ResourceName:  target.Name,
 		ResourceType:  target.Type,
@@ -432,35 +432,6 @@ func buildStatSummaryRequest(resource []string, options *statOptions) (*pb.StatS
 	}
 
 	return util.BuildStatSummaryRequest(requestParams)
-}
-
-func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-	windowLength, err := time.ParseDuration(r.TimeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
-}
-
-func getPercentTls(r pb.StatTable_PodGroup_Row) float64 {
-	reqTotal := r.Stats.SuccessCount + r.Stats.FailureCount
-	if reqTotal == 0 {
-		return 0.0
-	}
-	return float64(r.Stats.TlsRequestCount) / float64(reqTotal)
 }
 
 func sortStatsKeys(stats map[string]*row) []string {

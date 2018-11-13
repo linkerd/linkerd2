@@ -50,7 +50,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for friendly, canonical := range expectations {
 			statSummaryRequest, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					ResourceType: friendly,
 				},
 			)
@@ -72,7 +72,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for _, timeWindow := range expectations {
 			statSummaryRequest, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					TimeWindow:   timeWindow,
 					ResourceType: k8s.Deployment,
 				},
@@ -94,7 +94,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for timeWindow, msg := range expectations {
 			_, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					TimeWindow: timeWindow,
 				},
 			)
@@ -115,7 +115,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for input, msg := range expectations {
 			_, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					ResourceType: input,
 				},
 			)
