@@ -9,6 +9,7 @@ kubernetes-setup: can create ServiceAccounts...............................[ok]
 kubernetes-setup: can create Services......................................[ok]
 kubernetes-setup: can create Deployments...................................[ok]
 kubernetes-setup: can create ConfigMaps....................................[ok]
+kubernetes-setup: can create CustomResourceDefinitions.....................[ok]
 linkerd-version: can determine the latest version..........................[ok]
 linkerd-version: cli is up-to-date.........................................[ok]
 
