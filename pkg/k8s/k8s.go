@@ -60,7 +60,11 @@ func generateBaseKubernetesApiUrl(schemeHostAndPort string) (*url.URL, error) {
 	return url, nil
 }
 
-func getConfig(fpath, kubeContext string) (*rest.Config, error) {
+// GetConfig returns kubernetes config based on the current environment.
+// If fpath is provided, loads configuration from that file. Otherwise,
+// GetConfig uses default strategy to load configuration from $KUBECONFIG,
+// .kube/config, or just returns in-cluster config.
+func GetConfig(fpath, kubeContext string) (*rest.Config, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	if fpath != "" {
 		rules.ExplicitPath = fpath

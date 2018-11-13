@@ -60,7 +60,7 @@ func TestGenerateBaseKubernetesApiUrl(t *testing.T) {
 
 func TestGetConfig(t *testing.T) {
 	t.Run("Gets host correctly form existing file", func(t *testing.T) {
-		config, err := getConfig("testdata/config.test", "")
+		config, err := GetConfig("testdata/config.test", "")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -72,7 +72,7 @@ func TestGetConfig(t *testing.T) {
 	})
 
 	t.Run("Returns error if configuration cannot be found", func(t *testing.T) {
-		_, err := getConfig("/this/doest./not/exist.config", "")
+		_, err := GetConfig("/this/doest./not/exist.config", "")
 		if err == nil {
 			t.Fatalf("Expecting error when config file doesnt exist, got nothing")
 		}

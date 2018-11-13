@@ -145,7 +145,7 @@ func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Clien
 // NewAPI validates a Kubernetes config and returns a client for accessing the
 // configured cluster
 func NewAPI(configPath, kubeContext string) (*KubernetesAPI, error) {
-	config, err := getConfig(configPath, kubeContext)
+	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
