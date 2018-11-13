@@ -305,7 +305,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 	}
 
 	firstDisplayedStat := true // don't print a newline before the first stat
-	for _, resourceType := range k8s.SortedRes {
+	for _, resourceType := range k8s.AllResources {
 		if stats, ok := statTables[resourceType]; ok {
 			if !firstDisplayedStat {
 				fmt.Fprint(w, "\n")
@@ -403,7 +403,7 @@ type jsonStats struct {
 func printStatJson(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
-	for _, resourceType := range k8s.SortedRes {
+	for _, resourceType := range k8s.AllResources {
 		if stats, ok := statTables[resourceType]; ok {
 			sortedKeys := sortStatsKeys(stats)
 			for _, key := range sortedKeys {

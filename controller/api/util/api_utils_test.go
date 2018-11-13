@@ -137,7 +137,7 @@ func TestBuildResource(t *testing.T) {
 	}
 
 	t.Run("Rejects duped resources", func(t *testing.T) {
-		msg := "supplied duped resources"
+		msg := "cannot supply duplicate resources"
 		expectations := []resourceExp{
 			resourceExp{
 				namespace: "test-ns",

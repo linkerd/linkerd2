@@ -255,7 +255,7 @@ func validateResources(resType string, args []string) error {
 		}
 	}
 	if len(set) < len(args) {
-		return errors.New("supplied duped resources")
+		return errors.New("cannot supply duplicate resources")
 	}
 	if all && len(args) > 1 {
 		return errors.New("'all' can't be supplied alongside other resources")
