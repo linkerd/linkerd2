@@ -205,27 +205,78 @@ func validateFromResourceType(resourceType string) (string, error) {
 
 // BuildResource parses input strings, typically from CLI flags, to build a
 // Resource object for use in the protobuf API.
-func BuildResource(namespace string, args ...string) (pb.Resource, error) {
+// It's the same as BuildResources but only admits one arg and only returns one resource
+func BuildResource(namespace, arg string) (pb.Resource, error) {
+	res, err := BuildResources(namespace, []string{arg})
+	return res[0], err
+}
+
+// BuildResources parses input strings, typically from CLI flags, to build a
+// slice of Resource objects for use in the protobuf API.
+// It's the same as BuildResource but it admits any number of args and returns multiple resources
+func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
 	switch len(args) {
 	case 0:
-		return pb.Resource{}, errors.New("No resource arguments provided")
+		return nil, errors.New("No resource arguments provided")
 	case 1:
-		elems := strings.Split(args[0], "/")
-		switch len(elems) {
-		case 1:
-			// --namespace my-ns deploy
-			return buildResource(namespace, elems[0], "")
-		case 2:
-			// --namespace my-ns deploy/foo
-			return buildResource(namespace, elems[0], elems[1])
-		default:
-			return pb.Resource{}, errors.New("Invalid resource string: " + args[0])
-		}
-	case 2:
-		// --namespace my-ns deploy foo
-		return buildResource(namespace, args[0], args[1])
+		return parseResources(namespace, "", args)
 	default:
-		return pb.Resource{}, errors.New("Too many arguments provided for resource: " + strings.Join(args, "/"))
+		if res, err := k8s.CanonicalResourceNameFromFriendlyName(args[0]); err == nil && res != k8s.All {
+			// --namespace my-ns deploy foo1 foo2 ...
+			return parseResources(namespace, args[0], args[1:])
+		} else {
+			return parseResources(namespace, "", args)
+		}
+	}
+}
+
+func parseResources(namespace string, resType string, args []string) ([]pb.Resource, error) {
+	if err := validateResources(resType, args); err != nil {
+		return nil, err
+	}
+	resources := make([]pb.Resource, 0)
+	for _, arg := range args {
+		res, err := parseResource(namespace, resType, arg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, res)
+	}
+	return resources, nil
+}
+
+func validateResources(resType string, args []string) error {
+	set := make(map[string]bool)
+	all := false
+	for _, arg := range args {
+		set[arg] = true
+		if arg == k8s.All {
+			all = true
+		}
+	}
+	if len(set) < len(args) {
+		return errors.New("cannot supply duplicate resources")
+	}
+	if all && len(args) > 1 {
+		return errors.New("'all' can't be supplied alongside other resources")
+	}
+	return nil
+}
+
+func parseResource(namespace, resType string, arg string) (pb.Resource, error) {
+	if resType != "" {
+		return buildResource(namespace, resType, arg)
+	}
+	elems := strings.Split(arg, "/")
+	switch len(elems) {
+	case 1:
+		// --namespace my-ns deploy
+		return buildResource(namespace, elems[0], "")
+	case 2:
+		// --namespace my-ns deploy/foo
+		return buildResource(namespace, elems[0], elems[1])
+	default:
+		return pb.Resource{}, errors.New("Invalid resource string: " + arg)
 	}
 }
 

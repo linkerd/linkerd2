@@ -22,6 +22,20 @@ const (
 	StatefulSet           = "statefulset"
 )
 
+// AllResources is a sorted list of all resources defined as constants above.
+var AllResources = []string{
+	Authority,
+	DaemonSet,
+	Deployment,
+	Namespace,
+	Pod,
+	ReplicationController,
+	ReplicaSet,
+	Service,
+	ServiceProfile,
+	StatefulSet,
+}
+
 // resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
 	// TODO: add Namespace here to decrease queries from the web process

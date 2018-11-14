@@ -136,6 +136,58 @@ func TestBuildResource(t *testing.T) {
 		resource  pb.Resource
 	}
 
+	t.Run("Rejects duped resources", func(t *testing.T) {
+		msg := "cannot supply duplicate resources"
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"foo", "foo"},
+			},
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"all", "all"},
+			},
+		}
+
+		for _, exp := range expectations {
+			_, err := BuildResources(exp.namespace, exp.args)
+			if err == nil {
+				t.Fatalf("BuildResource called with duped resources unexpectedly succeeded, should have returned %s", msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildResource called with duped resources should have returned: %s but got unexpected message: %s", msg, err)
+			}
+		}
+	})
+
+	t.Run("Ensures 'all' can't be supplied alongside other resources", func(t *testing.T) {
+		msg := "'all' can't be supplied alongside other resources"
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"po", "foo", "all"},
+			},
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"foo", "all"},
+			},
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"all", "foo"},
+			},
+		}
+
+		for _, exp := range expectations {
+			_, err := BuildResources(exp.namespace, exp.args)
+			if err == nil {
+				t.Fatalf("BuildResource called with 'all' and another resource unexpectedly succeeded, should have returned %s", msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildResource called with 'all' and another resource should have returned: %s but got unexpected message: %s", msg, err)
+			}
+		}
+	})
+
 	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
 		expectations := []resourceExp{
 			resourceExp{
@@ -186,13 +238,13 @@ func TestBuildResource(t *testing.T) {
 		}
 
 		for _, exp := range expectations {
-			res, err := BuildResource(exp.namespace, exp.args...)
+			res, err := BuildResources(exp.namespace, exp.args)
 			if err != nil {
-				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
+				t.Fatalf("Unexpected error from BuildResources(%+v) => %s", exp, err)
 			}
 
-			if !reflect.DeepEqual(exp.resource, res) {
-				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
+			if !reflect.DeepEqual(exp.resource, res[0]) {
+				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res[0])
 			}
 		}
 	})
