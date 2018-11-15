@@ -1,3 +1,16 @@
+## edge-18.11.2
+
+* CLI
+  * **Improved** Update stat command to accept multiple stat targets
+  * **Fixed** Fix authority stat filtering when the `--from` flag is present
+  * Various improvements to check command, including:
+    * Emit warnings instead of errors when not running the latest version
+    * Add retries if control plane health check fails initially
+    * Run all pre-install RBAC checks, instead of stopping at first failure
+* Proxy / Proxy-Init
+  * **Fixed** Fix routing issue when a pod makes a request to itself (#1585)
+  * Only include `classification` label on `response_total` metric
+
 ## edge-18.11.1
 
 * Proxy
