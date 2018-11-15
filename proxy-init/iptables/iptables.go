@@ -79,11 +79,11 @@ func addOutgoingTrafficRules(commands []*exec.Cmd, firewallConfiguration Firewal
 
 	commands = append(commands, makeCreateNewChain(outputChainName, "redirect-common-chain"))
 
-	// Redirect calls originating from to the proxy
-	commands = append(commands, makeRedirectChainForOutgoingTraffic(outputChainName, redirectChainName, "redirect-non-loopback-local-traffic"))
 	// Ignore traffic from the proxy
 	if firewallConfiguration.ProxyUid > 0 {
 		log.Printf("Ignoring uid %d", firewallConfiguration.ProxyUid)
+		// Redirect calls originating from from the proxy destined for a app container e.g. app -> proxy(outbound) -> proxy(inbound) -> app
+		commands = append(commands, makeRedirectChainForOutgoingTraffic(outputChainName, redirectChainName, firewallConfiguration.ProxyUid,"redirect-non-loopback-local-traffic"))
 		commands = append(commands, makeIgnoreUserId(outputChainName, firewallConfiguration.ProxyUid, "ignore-proxy-user-id"))
 	} else {
 		log.Println("Not ignoring any uid")
@@ -244,19 +244,18 @@ func makeJumpFromChainToAnotherForAllProtocols(chainName string, targetChain str
 		"--comment", formatComment(comment))
 }
 
-func makeRedirectChainForOutgoingTraffic(chainName string, redirectChainName string, comment string) *exec.Cmd {
+func makeRedirectChainForOutgoingTraffic(chainName string, redirectChainName string, uid int, comment string) *exec.Cmd {
 	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-m", "owner",
-		"--uid-owner", "2102",
+		"--uid-owner",strconv.Itoa(uid),
 		"-o", "lo",
 		"!", "-d 127.0.0.1/32",
 		"-j", redirectChainName,
 		"-m", "comment",
 		"--comment", formatComment(comment))
 }
-
 
 func makeShowAllRules() *exec.Cmd {
 	return exec.Command("iptables", "-t", "nat", "-vnL")
