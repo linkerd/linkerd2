@@ -8,7 +8,7 @@
     * Add retries if control plane health check fails initially
     * Run all pre-install RBAC checks, instead of stopping at first failure
 * Proxy / Proxy-Init
-  * **Fixed** Fix routing issue when a pod makes a request to itself
+  * **Fixed** Fix routing issue when a pod makes a request to itself (#1585)
   * Only include `classification` label on `response_total` metric
 
 ## edge-18.11.1
