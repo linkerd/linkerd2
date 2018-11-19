@@ -343,8 +343,38 @@ message StatTable {
   }
 }
 
+message TopRoutesRequest {
+  ResourceSelection selector = 1;
+  string time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    Resource from_resource = 5;
+  }
+}
+
+message TopRoutesResponse {
+  oneof response {
+    RouteTable routes = 1;
+    ResourceError error = 2;
+  }
+}
+
+message RouteTable {
+  repeated Row rows = 1;
+
+  message Row {
+    string route = 1;
+    string time_window = 2;
+
+    BasicStats stats = 5;
+  }
+}
+
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
+
+  rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 
   rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
 

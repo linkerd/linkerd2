@@ -19,14 +19,12 @@ import (
 )
 
 type statOptions struct {
-	namespace     string
-	timeWindow    string
+	statOptionsBase
 	toNamespace   string
 	toResource    string
 	fromNamespace string
 	fromResource  string
 	allNamespaces bool
-	outputFormat  string
 }
 
 type indexedResults struct {
@@ -37,14 +35,12 @@ type indexedResults struct {
 
 func newStatOptions() *statOptions {
 	return &statOptions{
-		namespace:     "default",
-		timeWindow:    "1m",
-		toNamespace:   "",
-		toResource:    "",
-		fromNamespace: "",
-		fromResource:  "",
-		allNamespaces: false,
-		outputFormat:  "",
+		statOptionsBase: *newStatOptionsBase(),
+		toNamespace:     "",
+		toResource:      "",
+		fromNamespace:   "",
+		fromResource:    "",
+		allNamespaces:   false,
 	}
 }
 
@@ -148,7 +144,7 @@ If no resource name is specified, displays stats about all resources of the spec
 				}
 			}
 
-			output := renderStats(totalRows, options)
+			output := renderStatStats(totalRows, options)
 			_, err = fmt.Print(output)
 
 			return err
@@ -189,23 +185,13 @@ func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, option
 	return resp, nil
 }
 
-func renderStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) string {
+func renderStatStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeStatsToBuffer(rows, w, options)
 	w.Flush()
 
-	var out string
-	switch options.outputFormat {
-	case "table", "":
-		// strip left padding on the first column
-		out = string(buffer.Bytes()[padding:])
-		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
-	case "json":
-		out = string(buffer.Bytes())
-	}
-
-	return out
+	return renderStats(buffer, &options.statOptionsBase)
 }
 
 const padding = 3
@@ -276,9 +262,9 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		if r.Stats != nil {
 			statTables[resourceKey][key].rowStats = &rowStats{
-				requestRate: getRequestRate(*r),
-				successRate: getSuccessRate(*r),
-				tlsPercent:  getPercentTls(*r),
+				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
+				successRate: util.GetSuccessRate(r.Stats),
+				tlsPercent:  util.GetPercentTls(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
@@ -471,7 +457,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			return nil, err
 		}
 
-		requestParams := util.StatSummaryRequestParams{
+		requestParams := util.StatsRequestParams{
 			TimeWindow:    options.timeWindow,
 			ResourceName:  target.Name,
 			ResourceType:  target.Type,
@@ -492,35 +478,6 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		requests = append(requests, req)
 	}
 	return requests, nil
-}
-
-func getRequestRate(r pb.StatTable_PodGroup_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-	windowLength, err := time.ParseDuration(r.TimeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-func getSuccessRate(r pb.StatTable_PodGroup_Row) float64 {
-	success := r.Stats.SuccessCount
-	failure := r.Stats.FailureCount
-
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
-}
-
-func getPercentTls(r pb.StatTable_PodGroup_Row) float64 {
-	reqTotal := r.Stats.SuccessCount + r.Stats.FailureCount
-	if reqTotal == 0 {
-		return 0.0
-	}
-	return float64(r.Stats.TlsRequestCount) / float64(reqTotal)
 }
 
 func sortStatsKeys(stats map[string]*row) []string {
@@ -547,11 +504,7 @@ func (o *statOptions) validate(resourceType string) error {
 		}
 	}
 
-	if err := o.validateOutputFormat(); err != nil {
-		return err
-	}
-
-	return nil
+	return o.validateOutputFormat()
 }
 
 // validateConflictingFlags validates that the options do not contain mutually
@@ -586,13 +539,4 @@ func (o *statOptions) validateNamespaceFlags() error {
 	}
 
 	return nil
-}
-
-func (o *statOptions) validateOutputFormat() error {
-	switch o.outputFormat {
-	case "table", "json", "":
-		return nil
-	default:
-		return fmt.Errorf("--output currently only supports table and json")
-	}
 }

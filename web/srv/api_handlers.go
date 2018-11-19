@@ -87,7 +87,7 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	if req.FormValue("all_namespaces") == "true" {
 		allNs = true
 	}
-	requestParams := util.StatSummaryRequestParams{
+	requestParams := util.StatsRequestParams{
 		TimeWindow:    req.FormValue("window"),
 		ResourceName:  req.FormValue("resource_name"),
 		ResourceType:  req.FormValue("resource_type"),

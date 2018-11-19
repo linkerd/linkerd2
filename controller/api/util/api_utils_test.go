@@ -50,7 +50,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for friendly, canonical := range expectations {
 			statSummaryRequest, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					ResourceType: friendly,
 				},
 			)
@@ -72,7 +72,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for _, timeWindow := range expectations {
 			statSummaryRequest, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					TimeWindow:   timeWindow,
 					ResourceType: k8s.Deployment,
 				},
@@ -94,7 +94,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for timeWindow, msg := range expectations {
 			_, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					TimeWindow: timeWindow,
 				},
 			)
@@ -115,7 +115,7 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 
 		for input, msg := range expectations {
 			_, err := BuildStatSummaryRequest(
-				StatSummaryRequestParams{
+				StatsRequestParams{
 					ResourceType: input,
 				},
 			)
@@ -125,6 +125,94 @@ func TestBuildStatSummaryRequest(t *testing.T) {
 			if err.Error() != msg {
 				t.Fatalf("BuildStatSummaryRequest(%s) should have returned: %s but got unexpected message: %s", input, msg, err)
 			}
+		}
+	})
+}
+
+func TestBuildTopRoutesRequest(t *testing.T) {
+	t.Run("Parses valid time windows", func(t *testing.T) {
+		expectations := []string{
+			"1m",
+			"60s",
+			"1m",
+		}
+
+		for _, timeWindow := range expectations {
+			topRoutesRequest, err := BuildTopRoutesRequest(
+				StatsRequestParams{
+					TimeWindow:   timeWindow,
+					ResourceType: k8s.Service,
+				},
+			)
+			if err != nil {
+				t.Fatalf("Unexpected error from BuildTopRoutesRequest [%s => %s]", timeWindow, err)
+			}
+			if topRoutesRequest.TimeWindow != timeWindow {
+				t.Fatalf("Unexpected TimeWindow from BuildTopRoutesRequest [%s => %s]", timeWindow, topRoutesRequest.TimeWindow)
+			}
+		}
+	})
+
+	t.Run("Rejects invalid time windows", func(t *testing.T) {
+		expectations := map[string]string{
+			"1": "time: missing unit in duration 1",
+			"s": "time: invalid duration s",
+		}
+
+		for timeWindow, msg := range expectations {
+			_, err := BuildTopRoutesRequest(
+				StatsRequestParams{
+					TimeWindow:   timeWindow,
+					ResourceType: k8s.Service,
+				},
+			)
+			if err == nil {
+				t.Fatalf("BuildTopRoutesRequest(%s) unexpectedly succeeded, should have returned %s", timeWindow, msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildTopRoutesRequest(%s) should have returned: %s but got unexpected message: %s", timeWindow, msg, err)
+			}
+		}
+	})
+
+	t.Run("Rejects non-service Kubernetes resource types", func(t *testing.T) {
+		resourceTypes := []string{
+			"deployment",
+			"pod",
+			"namespace",
+		}
+
+		msg := "routes request must target a service"
+
+		for _, input := range resourceTypes {
+			_, err := BuildTopRoutesRequest(
+				StatsRequestParams{
+					ResourceType: input,
+				},
+			)
+			if err == nil {
+				t.Fatalf("BuildTopRoutesRequest(%s) unexpectedly succeeded, should have returned %s", input, msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildTopRoutesRequest(%s) should have returned: %s but got unexpected message: %s", input, msg, err)
+			}
+		}
+	})
+
+	t.Run("Rejects all-namespaces flag", func(t *testing.T) {
+		msg := "all namespaces is not supported for routes request"
+
+		_, err := BuildTopRoutesRequest(
+			StatsRequestParams{
+				ResourceType:  k8s.Service,
+				AllNamespaces: true,
+			},
+		)
+		if err == nil {
+			t.Fatalf("BuildTopRoutesRequest unexpectedly succeeded, should have returned %s", msg)
+		}
+		if err.Error() != msg {
+			t.Fatalf("BuildTopRoutesRequest should have returned: %s but got unexpected message: %s", msg, err)
 		}
 	})
 }
