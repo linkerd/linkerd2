@@ -338,7 +338,7 @@ metadata:
   name: web
   namespace: Namespace
 spec:
-  replicas: 2
+  replicas: 1
   strategy: {}
   template:
     metadata:
@@ -470,7 +470,7 @@ metadata:
   name: prometheus
   namespace: Namespace
 spec:
-  replicas: 3
+  replicas: 1
   strategy: {}
   template:
     metadata:

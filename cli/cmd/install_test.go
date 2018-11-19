@@ -16,6 +16,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
 	}
+
 	defaultConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
 	// A configuration that shows that all config setting strings are honored
@@ -28,8 +29,6 @@ func TestRender(t *testing.T) {
 		PrometheusImage:                  "PrometheusImage",
 		GrafanaImage:                     "GrafanaImage",
 		ControllerReplicas:               1,
-		WebReplicas:                      2,
-		PrometheusReplicas:               3,
 		ImagePullPolicy:                  "ImagePullPolicy",
 		UUID:                             "UUID",
 		CliVersion:                       "CliVersion",
@@ -72,8 +71,6 @@ func TestRender(t *testing.T) {
 		PrometheusImage:                  "PrometheusImage",
 		GrafanaImage:                     "GrafanaImage",
 		ControllerReplicas:               1,
-		WebReplicas:                      2,
-		PrometheusReplicas:               3,
 		ImagePullPolicy:                  "ImagePullPolicy",
 		UUID:                             "UUID",
 		CliVersion:                       "CliVersion",
@@ -92,14 +89,30 @@ func TestRender(t *testing.T) {
 		SingleNamespace:                  true,
 	}
 
+	haOptions := newInstallOptions()
+	haOptions.highAvailability = true
+	haConfig, _ := validateAndBuildConfig(haOptions)
+	haConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
+	haWithOverridesOptions := newInstallOptions()
+	haWithOverridesOptions.highAvailability = true
+	haWithOverridesOptions.controllerReplicas = 2
+	haWithOverridesOptions.proxyCpuRequest = "400m"
+	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
+	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
+	haWithOverridesConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
 	testCases := []struct {
 		config                installConfig
+		options               *installOptions
 		controlPlaneNamespace string
 		goldenFileName        string
 	}{
-		{*defaultConfig, defaultControlPlaneNamespace, "testdata/install_default.golden"},
-		{metaConfig, metaConfig.Namespace, "testdata/install_output.golden"},
-		{singleNamespaceConfig, singleNamespaceConfig.Namespace, "testdata/install_single_namespace_output.golden"},
+		{*defaultConfig, defaultOptions, defaultControlPlaneNamespace, "testdata/install_default.golden"},
+		{metaConfig, defaultOptions, metaConfig.Namespace, "testdata/install_output.golden"},
+		{singleNamespaceConfig, defaultOptions, singleNamespaceConfig.Namespace, "testdata/install_single_namespace_output.golden"},
+		{*haConfig, haOptions, haConfig.Namespace, "testdata/install_ha_output.golden"},
+		{*haWithOverridesConfig, haWithOverridesOptions, haWithOverridesConfig.Namespace, "testdata/install_ha_with_overrides_output.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -107,7 +120,7 @@ func TestRender(t *testing.T) {
 			controlPlaneNamespace = tc.controlPlaneNamespace
 
 			var buf bytes.Buffer
-			err := render(tc.config, &buf, defaultOptions)
+			err := render(tc.config, &buf, tc.options)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
