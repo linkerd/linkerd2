@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"text/template"
 
 	"github.com/ghodss/yaml"
@@ -74,15 +75,11 @@ func newCmdProfile() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
 
-			if !options.template && options.openAPI == "" {
-				return errors.New("You must specify exactly one of --template or --open-api")
-			}
-
 			if options.template {
 				if options.openAPI != "" {
 					return errors.New("You must specify exactly one of --template or --open-api")
 				}
-				return renderProfileTemplate(buildConfig(options.namespace, args[0]), os.Stdout)
+				return renderProfileTemplate(buildConfig(options.namespace, options.name), os.Stdout)
 			}
 
 			if options.openAPI != "" {
@@ -166,7 +163,15 @@ func renderOpenAPI(options *profileOptions, w io.Writer) error {
 	}
 
 	routes := make([]*sp.RouteSpec, 0)
-	for path, item := range swagger.Paths.Paths {
+
+	paths := make([]string, 0)
+	for path := range swagger.Paths.Paths {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+
+	for _, path := range paths {
+		item := swagger.Paths.Paths[path]
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
 			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses)
@@ -234,7 +239,14 @@ func toRspClasses(responses *spec.Responses) []*sp.ResponseClass {
 		return nil
 	}
 	classes := make([]*sp.ResponseClass, 0)
+
+	statuses := make([]int, 0)
 	for status := range responses.StatusCodeResponses {
+		statuses = append(statuses, status)
+	}
+	sort.Ints(statuses)
+
+	for _, status := range statuses {
 		cond := &sp.ResponseMatch{
 			Status: &sp.Range{
 				Min: uint32(status),
