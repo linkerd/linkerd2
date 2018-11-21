@@ -19,6 +19,7 @@ import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
+import TopRoutes from './components/TopRoutes.jsx';
 import { dashboardTheme } from './components/util/theme.js';
 
 let appMain = document.getElementById('main');
@@ -73,6 +74,9 @@ let applicationHtml = (
               <Route
                 path={`${pathPrefix}/top`}
                 render={props => <Navigation {...props} ChildComponent={Top} />} />
+              <Route
+                path={`${pathPrefix}/routes`}
+                render={props => <Navigation {...props} ChildComponent={TopRoutes} />} />
               <Route
                 path={`${pathPrefix}/namespaces`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="namespace" />} />
