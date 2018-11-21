@@ -179,6 +179,12 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
       - name: proxy-api
         ports:
         - name: grpc
@@ -204,6 +210,12 @@ spec:
             path: /ready
             port: 9996
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
       - name: tap
         ports:
         - name: grpc
@@ -227,6 +239,12 @@ spec:
             path: /ready
             port: 9998
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
 
 ### Service Profile CRD ###
 ---
@@ -282,7 +300,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.WebReplicas}}
+  replicas: 1
   template:
     metadata:
       labels:
@@ -314,6 +332,12 @@ spec:
             path: /ready
             port: 9994
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
 
 ### Prometheus ###
 ---
@@ -346,7 +370,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.PrometheusReplicas}}
+  replicas: 1
   template:
     metadata:
       labels:
@@ -385,6 +409,12 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 300m
+            memory: 300Mi
+        {{- end }}
 
 ---
 kind: ConfigMap
@@ -546,7 +576,12 @@ spec:
           timeoutSeconds: 30
           failureThreshold: 10
           periodSeconds: 10
-
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -675,7 +710,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.ControllerReplicas}}
+  replicas: 1
   template:
     metadata:
       labels:
@@ -709,6 +744,12 @@ spec:
             path: /ready
             port: 9997
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
 `
 
 const ProxyInjectorTemplate = `
@@ -724,7 +765,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.ControllerReplicas}}
+  replicas: 1
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: proxy-injector
@@ -774,6 +815,12 @@ spec:
       - name: proxy-spec
         configMap:
           name: {{.ProxyInjectorSidecarConfig}}
+      {{- if .EnableHA }}
+      resources:
+        requests:
+          cpu: 20m
+          memory: 50Mi
+      {{- end }}
 
 ---
 ### Proxy Injector Service Account ###

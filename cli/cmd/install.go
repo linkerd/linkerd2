@@ -23,8 +23,6 @@ type installConfig struct {
 	PrometheusImage                  string
 	GrafanaImage                     string
 	ControllerReplicas               uint
-	WebReplicas                      uint
-	PrometheusReplicas               uint
 	ImagePullPolicy                  string
 	UUID                             string
 	CliVersion                       string
@@ -59,28 +57,31 @@ type installConfig struct {
 	ProxyResourceRequestMemory       string
 	ProxyBindTimeout                 string
 	SingleNamespace                  bool
+	EnableHA                         bool
 }
 
 type installOptions struct {
 	controllerReplicas uint
-	webReplicas        uint
-	prometheusReplicas uint
 	controllerLogLevel string
 	proxyAutoInject    bool
 	singleNamespace    bool
+	highAvailability   bool
 	*proxyConfigOptions
 }
 
-const prometheusProxyOutboundCapacity = 10000
+const (
+	prometheusProxyOutboundCapacity = 10000
+	defaultControllerReplicas       = 1
+	defaultHAControllerReplicas     = 3
+)
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		controllerReplicas: 1,
-		webReplicas:        1,
-		prometheusReplicas: 1,
+		controllerReplicas: defaultControllerReplicas,
 		controllerLogLevel: "info",
 		proxyAutoInject:    false,
 		singleNamespace:    false,
+		highAvailability:   false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -104,12 +105,10 @@ func newCmdInstall() *cobra.Command {
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
-	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
-	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
 	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Experimental: Enable proxy sidecar auto-injection webhook (default false)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
-
+	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
 	return cmd
 }
 
@@ -130,6 +129,18 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
 	}
 
+	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
+		options.controllerReplicas = defaultHAControllerReplicas
+	}
+
+	if options.highAvailability && options.proxyCpuRequest == "" {
+		options.proxyCpuRequest = "10m"
+	}
+
+	if options.highAvailability && options.proxyMemoryRequest == "" {
+		options.proxyMemoryRequest = "20Mi"
+	}
+
 	return &installConfig{
 		Namespace:                        controlPlaneNamespace,
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
@@ -137,8 +148,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		PrometheusImage:                  "prom/prometheus:v2.4.0",
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		ControllerReplicas:               options.controllerReplicas,
-		WebReplicas:                      options.webReplicas,
-		PrometheusReplicas:               options.prometheusReplicas,
 		ImagePullPolicy:                  options.imagePullPolicy,
 		UUID:                             uuid.NewV4().String(),
 		CliVersion:                       k8s.CreatedByAnnotationValue(),
@@ -173,6 +182,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
 		ProxyBindTimeout:                 "1m",
 		SingleNamespace:                  options.singleNamespace,
+		EnableHA:                         options.highAvailability,
 	}, nil
 }
 
@@ -186,6 +196,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	if err != nil {
 		return err
 	}
+
 	if config.EnableTLS {
 		tlsTemplate, err := template.New("linkerd").Parse(install.TlsTemplate)
 		if err != nil {
