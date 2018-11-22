@@ -311,6 +311,8 @@ message StatSummaryRequest {
     Resource to_resource   = 4;
     Resource from_resource = 5;
   }
+
+  bool skip_stats = 6;  // true if we want to skip stats from Prometheus (used in the dashboard sidebar)
 }
 
 message StatSummaryResponse {

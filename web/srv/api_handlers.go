@@ -100,6 +100,10 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	if req.FormValue("all_namespaces") == "true" {
 		allNs = true
 	}
+	skipStats := false
+	if req.FormValue("skip_stats") == "true" {
+		skipStats = true
+	}
 	requestParams := util.StatsSummaryRequestParams{
 		StatsBaseRequestParams: util.StatsBaseRequestParams{
 			TimeWindow:    req.FormValue("window"),
@@ -114,6 +118,7 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
+		SkipStats:     skipStats,
 	}
 
 	// default to returning deployment stats
