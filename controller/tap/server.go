@@ -429,7 +429,7 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	if sourceLabels == nil {
 		sourceLabels = make(map[string]string)
 	}
-	destinationLabels := orig.GetSourceMeta().GetLabels()
+	destinationLabels := orig.GetDestinationMeta().GetLabels()
 	if destinationLabels == nil {
 		destinationLabels = make(map[string]string)
 	}
