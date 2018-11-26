@@ -482,25 +482,29 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
 func (s *server) hydrateEventLabels(ev *public.TapEvent) {
-	labels := ev.GetSourceMeta().GetLabels()
-	if labels == nil {
-		labels = make(map[string]string)
+	if ev.GetSourceMeta() == nil {
+		ev.SourceMeta = new(public.TapEvent_EndpointMeta)
 	}
-	err := s.hydrateIPLabels(ev.GetSource().GetIp(), labels)
+	if ev.SourceMeta.GetLabels() == nil {
+		ev.SourceMeta.Labels = make(map[string]string)
+	}
+	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.SourceMeta.Labels)
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
 	}
 
 	if ev.ProxyDirection == public.TapEvent_INBOUND {
-		labels := ev.GetDestinationMeta().GetLabels()
-		if labels == nil {
-			labels = make(map[string]string)
+		if ev.GetDestinationMeta() == nil {
+			ev.DestinationMeta = new(public.TapEvent_EndpointMeta)
+		}
+		if ev.DestinationMeta.GetLabels() == nil {
+			ev.DestinationMeta.Labels = make(map[string]string)
 		}
 
 		// Events emitted by an inbound proxies don't have destination labels,
 		// since the inbound proxy _is_ the destination, and proxies don't know
 		// their own labels.
-		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), labels)
+		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), ev.DestinationMeta.Labels)
 		if err != nil {
 			log.Warnf("error hydrating destination labels: %s", err)
 		}
