@@ -425,14 +425,23 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
+	sourceLabels := orig.GetSourceMeta().GetLabels()
+	if sourceLabels == nil {
+		sourceLabels = make(map[string]string)
+	}
+	destinationLabels := orig.GetSourceMeta().GetLabels()
+	if destinationLabels == nil {
+		destinationLabels = make(map[string]string)
+	}
+
 	ev := &public.TapEvent{
 		Source: tcp(orig.GetSource()),
 		SourceMeta: &public.TapEvent_EndpointMeta{
-			Labels: orig.GetSourceMeta().GetLabels(),
+			Labels: sourceLabels,
 		},
 		Destination: tcp(orig.GetDestination()),
 		DestinationMeta: &public.TapEvent_EndpointMeta{
-			Labels: orig.GetDestinationMeta().GetLabels(),
+			Labels: destinationLabels,
 		},
 		ProxyDirection: direction(orig.GetProxyDirection()),
 		Event:          event(orig.GetHttp()),
@@ -482,29 +491,16 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
 func (s *server) hydrateEventLabels(ev *public.TapEvent) {
-	if ev.GetSourceMeta() == nil {
-		ev.SourceMeta = new(public.TapEvent_EndpointMeta)
-	}
-	if ev.SourceMeta.GetLabels() == nil {
-		ev.SourceMeta.Labels = make(map[string]string)
-	}
-	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.SourceMeta.Labels)
+	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
 	}
 
 	if ev.ProxyDirection == public.TapEvent_INBOUND {
-		if ev.GetDestinationMeta() == nil {
-			ev.DestinationMeta = new(public.TapEvent_EndpointMeta)
-		}
-		if ev.DestinationMeta.GetLabels() == nil {
-			ev.DestinationMeta.Labels = make(map[string]string)
-		}
-
 		// Events emitted by an inbound proxies don't have destination labels,
 		// since the inbound proxy _is_ the destination, and proxies don't know
 		// their own labels.
-		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), ev.DestinationMeta.Labels)
+		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), ev.GetDestinationMeta().GetLabels())
 		if err != nil {
 			log.Warnf("error hydrating destination labels: %s", err)
 		}
