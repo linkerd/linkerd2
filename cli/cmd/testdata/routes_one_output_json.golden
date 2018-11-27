@@ -18,15 +18,6 @@
     "tls": 1
   },
   {
-    "route": "[UNKNOWN]",
-    "success": 1,
-    "rps": 0.5,
-    "latency_ms_p50": 123,
-    "latency_ms_p95": 123,
-    "latency_ms_p99": 123,
-    "tls": 1
-  },
-  {
     "route": "/c",
     "success": 0,
     "rps": 0,
@@ -34,5 +25,14 @@
     "latency_ms_p95": 123,
     "latency_ms_p99": 123,
     "tls": 0
+  },
+  {
+    "route": "[UNKNOWN]",
+    "success": 1,
+    "rps": 0.5,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "tls": 1
   }
 ]

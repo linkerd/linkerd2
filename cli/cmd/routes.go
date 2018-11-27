@@ -24,6 +24,8 @@ type routesOptions struct {
 	fromResource  string
 }
 
+const defaultRoute = "[UNKNOWN]"
+
 func newRoutesOptions() *routesOptions {
 	return &routesOptions{
 		statOptionsBase: *newStatOptionsBase(),
@@ -124,8 +126,12 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 }
 
 func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *routesOptions) {
+	sortedRoutes, routeWidth := sortRoutes(stats)
+	// template for left-aligning the route column
+	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth)
+
 	headers := []string{
-		"ROUTE",
+		fmt.Sprintf(routeTemplate, "ROUTE"),
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
@@ -136,15 +142,13 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := "%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
+	templateString := routeTemplate + "\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
 	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t\n"
 
-	sortedRoutes := sortRoutesByRps(stats)
 	for _, route := range sortedRoutes {
-
 		if row, ok := stats[route]; ok {
 			if route == "" {
-				route = "[UNKNOWN]"
+				route = defaultRoute
 			}
 			fmt.Fprintf(w, templateString, route,
 				row.successRate*100,
@@ -174,7 +178,7 @@ type jsonRouteStats struct {
 func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
-	sortedRoutes := sortRoutesByRps(stats)
+	sortedRoutes, _ := sortRoutes(stats)
 	for _, route := range sortedRoutes {
 		entry := &jsonRouteStats{
 			Route: route,
@@ -232,13 +236,24 @@ func buildTopRoutesRequest(service string, options *routesOptions) (*pb.TopRoute
 	return util.BuildTopRoutesRequest(requestParams)
 }
 
-func sortRoutesByRps(stats map[string]*rowStats) []string {
+// returns a sorted list of keys and the length of the longest key
+func sortRoutes(stats map[string]*rowStats) ([]string, int) {
 	var sortedRoutes []string
+	maxLength := len(defaultRoute)
+	hasDefaultRoute := false
 	for key := range stats {
+		if key == "" {
+			hasDefaultRoute = true
+			continue
+		}
 		sortedRoutes = append(sortedRoutes, key)
+		if len(key) > maxLength {
+			maxLength = len(key)
+		}
 	}
-	sort.Slice(sortedRoutes, func(i, j int) bool {
-		return stats[sortedRoutes[i]].requestRate > stats[sortedRoutes[j]].requestRate
-	})
-	return sortedRoutes
+	sort.Strings(sortedRoutes)
+	if hasDefaultRoute {
+		sortedRoutes = append(sortedRoutes, "")
+	}
+	return sortedRoutes, maxLength
 }
