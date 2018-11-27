@@ -19,12 +19,25 @@ type listPodsExpected struct {
 	res     pb.ListPodsResponse
 }
 
+type listServicesExpected struct {
+	err    error
+	k8sRes []string
+	res    pb.ListServicesResponse
+}
+
 // sort Pods in ListPodResponses for easier comparison
 type ByPod []*pb.Pod
 
 func (bp ByPod) Len() int           { return len(bp) }
 func (bp ByPod) Swap(i, j int)      { bp[i], bp[j] = bp[j], bp[i] }
 func (bp ByPod) Less(i, j int) bool { return bp[i].Name <= bp[j].Name }
+
+// sort Services in ListServiceResponses for easier comparison
+type ByService []*pb.Service
+
+func (bs ByService) Len() int           { return len(bs) }
+func (bs ByService) Swap(i, j int)      { bs[i], bs[j] = bs[j], bs[i] }
+func (bs ByService) Less(i, j int) bool { return bs[i].Name <= bs[j].Name }
 
 func listPodResponsesEqual(a pb.ListPodsResponse, b pb.ListPodsResponse) bool {
 	if len(a.Pods) != len(b.Pods) {
@@ -169,6 +182,87 @@ spec:
 			}
 
 			if !listPodResponsesEqual(exp.res, *rsp) {
+				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
+			}
+		}
+	})
+}
+
+func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesResponse) bool {
+	if len(a.Services) != len(b.Services) {
+		return false
+	}
+
+	sort.Sort(ByService(a.Services))
+	sort.Sort(ByService(b.Services))
+
+	for i := 0; i < len(a.Services); i++ {
+		aSvc := a.Services[i]
+		bSvc := b.Services[i]
+
+		if aSvc.Name != bSvc.Name || aSvc.Namespace != bSvc.Namespace {
+			return false
+		}
+	}
+
+	return true
+}
+func TestListServices(t *testing.T) {
+	t.Run("Successfully queryies for services", func(t *testing.T) {
+		expectations := []listServicesExpected{
+			listServicesExpected{
+				err: nil,
+				k8sRes: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-foo
+  namespace: emojivoto
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-bar
+  namespace: default
+`,
+				},
+				res: pb.ListServicesResponse{
+					Services: []*pb.Service{
+						&pb.Service{
+							Name:      "service-foo",
+							Namespace: "emojivoto",
+						},
+						&pb.Service{
+							Name:      "service-bar",
+							Namespace: "default",
+						},
+					},
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			k8sAPI, err := k8s.NewFakeAPI("", exp.k8sRes...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			fakeGrpcServer := newGrpcServer(
+				&MockProm{},
+				tap.NewTapClient(nil),
+				k8sAPI,
+				"linkerd",
+				[]string{},
+			)
+
+			k8sAPI.Sync(nil)
+
+			rsp, err := fakeGrpcServer.ListServices(context.TODO(), &pb.ListServicesRequest{})
+			if err != exp.err {
+				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
+			}
+
+			if !listServiceResponsesEqual(exp.res, *rsp) {
 				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
 			}
 		}

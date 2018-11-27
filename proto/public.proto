@@ -16,6 +16,17 @@ message VersionInfo {
   string releaseVersion = 3;
 }
 
+message ListServicesRequest {
+  string namespace = 1;
+}
+message ListServicesResponse {
+  repeated Service services = 1;
+}
+message Service {
+  string name = 1;
+  string namespace = 2;
+}
+
 message ListPodsRequest {
   string namespace = 1;
 }
@@ -377,6 +388,8 @@ service Api {
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 
   rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
+
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }

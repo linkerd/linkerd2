@@ -62,6 +62,12 @@ func (c *grpcOverHttpClient) ListPods(ctx context.Context, req *pb.ListPodsReque
 	return &msg, err
 }
 
+func (c *grpcOverHttpClient) ListServices(ctx context.Context, req *pb.ListServicesRequest, _ ...grpc.CallOption) (*pb.ListServicesResponse, error) {
+	var msg pb.ListServicesResponse
+	err := c.apiRequest(ctx, "ListServices", req, &msg)
+	return &msg, err
+}
+
 func (c *grpcOverHttpClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
 	return nil, status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }

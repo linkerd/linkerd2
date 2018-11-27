@@ -39,6 +39,11 @@ func (m *mockGrpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) 
 	return m.ResponseToReturn.(*pb.ListPodsResponse), m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) ListServices(ctx context.Context, req *pb.ListServicesRequest) (*pb.ListServicesResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.ListServicesResponse), m.ErrorToReturn
+}
+
 func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfCheckRequest) (*healcheckPb.SelfCheckResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*healcheckPb.SelfCheckResponse), m.ErrorToReturn
