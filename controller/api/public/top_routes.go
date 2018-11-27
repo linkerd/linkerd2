@@ -13,7 +13,7 @@ import (
 const (
 	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, classification, tls)"
 	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, %s))"
-	dstLabel                  = `dst=~"%s(:\\d+)?"`
+	dstLabel                  = `dst=~"%s.%s.svc.cluster.local(:\\d+)?"`
 )
 
 func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*pb.TopRoutesResponse, error) {
@@ -107,7 +107,6 @@ func buildRouteLabels(req *pb.TopRoutesRequest) string {
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
@@ -115,7 +114,7 @@ func buildRouteLabels(req *pb.TopRoutesRequest) string {
 	for k, v := range labels {
 		pairs = append(pairs, fmt.Sprintf("%s=%q", k, v))
 	}
-	pairs = append(pairs, fmt.Sprintf(dstLabel, req.Selector.Resource.Name))
+	pairs = append(pairs, fmt.Sprintf(dstLabel, req.Selector.Resource.Name, req.Selector.Resource.Namespace))
 
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
