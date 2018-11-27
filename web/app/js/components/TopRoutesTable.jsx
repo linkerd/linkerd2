@@ -3,16 +3,12 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
-import _ from 'lodash';
 
 const routesColumns = [
   {
     title: "Route",
     dataIndex: "route",
-    render: d => {
-      return _.isEmpty(d.route) ? "UNKNOWN" : d.route;
-    },
-    sorter: (a, b) => (a.route || "").localeCompare(b.route)
+    sorter: (a, b) => (a.route).localeCompare(b.route)
   },
   {
     title: "Success Rate",
