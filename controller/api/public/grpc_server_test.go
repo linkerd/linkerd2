@@ -208,7 +208,7 @@ func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesRespo
 	return true
 }
 func TestListServices(t *testing.T) {
-	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
+	t.Run("Successfully queryies for services", func(t *testing.T) {
 		expectations := []listServicesExpected{
 			listServicesExpected{
 				err: nil,
