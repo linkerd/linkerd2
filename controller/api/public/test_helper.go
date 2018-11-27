@@ -22,6 +22,7 @@ type MockApiClient struct {
 	ErrorToReturn                   error
 	VersionInfoToReturn             *pb.VersionInfo
 	ListPodsResponseToReturn        *pb.ListPodsResponse
+	ListServicesResponseToReturn    *pb.ListServicesResponse
 	StatSummaryResponseToReturn     *pb.StatSummaryResponse
 	TopRoutesResponseToReturn       *pb.TopRoutesResponse
 	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
@@ -43,6 +44,10 @@ func (c *MockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.
 
 func (c *MockApiClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return c.ListPodsResponseToReturn, c.ErrorToReturn
+}
+
+func (c *MockApiClient) ListServices(ctx context.Context, in *pb.ListServicesRequest, opts ...grpc.CallOption) (*pb.ListServicesResponse, error) {
+	return c.ListServicesResponseToReturn, c.ErrorToReturn
 }
 
 func (c *MockApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {

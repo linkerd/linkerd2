@@ -431,6 +431,21 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 }
 
 func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
+	services, err := api.GetServices(namespace, name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, svc := range services {
+		objects = append(objects, svc)
+	}
+
+	return objects, nil
+}
+
+func (api *API) GetServices(namespace, name string) ([]*apiv1.Service, error) {
 	var err error
 	var services []*apiv1.Service
 
@@ -444,16 +459,7 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 		services = []*apiv1.Service{svc}
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	objects := []runtime.Object{}
-	for _, svc := range services {
-		objects = append(objects, svc)
-	}
-
-	return objects, nil
+	return services, err
 }
 
 func isPendingOrRunning(pod *apiv1.Pod) bool {

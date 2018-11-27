@@ -254,3 +254,22 @@ func (s *grpcServer) shouldIgnore(pod *k8sV1.Pod) bool {
 	}
 	return false
 }
+
+func (s *grpcServer) ListServices(ctx context.Context, req *pb.ListServicesRequest) (*pb.ListServicesResponse, error) {
+	log.Debugf("ListServices request: %+v", req)
+
+	services, err := s.k8sAPI.GetServices(req.Namespace, "")
+	if err != nil {
+		return nil, err
+	}
+
+	svcs := make([]*pb.Service, 0)
+	for _, svc := range services {
+		svcs = append(svcs, &pb.Service{
+			Name:      svc.GetName(),
+			Namespace: svc.GetNamespace(),
+		})
+	}
+
+	return &pb.ListServicesResponse{Services: svcs}, nil
+}

@@ -82,6 +82,19 @@ func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p http
 	renderJsonPb(w, pods)
 }
 
+func (h *handler) handleApiServices(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	services, err := h.apiClient.ListServices(req.Context(), &pb.ListServicesRequest{
+		Namespace: req.FormValue("namespace"),
+	})
+
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	renderJsonPb(w, services)
+}
+
 func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	allNs := false
 	if req.FormValue("all_namespaces") == "true" {
