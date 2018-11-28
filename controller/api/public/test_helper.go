@@ -142,7 +142,7 @@ func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.
 	return nil, nil
 }
 
-func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts) pb.StatSummaryResponse {
+func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool) pb.StatSummaryResponse {
 	rows := []*pb.StatTable_PodGroup_Row{}
 	for _, ns := range resNs {
 		statTableRow := &pb.StatTable_PodGroup_Row{
@@ -151,15 +151,18 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 				Type:      resType,
 				Name:      resName,
 			},
-			Stats: &pb.BasicStats{
+			TimeWindow: "1m",
+		}
+
+		if basicStats {
+			statTableRow.Stats = &pb.BasicStats{
 				SuccessCount:    123,
 				FailureCount:    0,
 				LatencyMsP50:    123,
 				LatencyMsP95:    123,
 				LatencyMsP99:    123,
 				TlsRequestCount: 123,
-			},
-			TimeWindow: "1m",
+			}
 		}
 
 		if counts != nil {

@@ -138,7 +138,7 @@ func TestStat(t *testing.T) {
 func testStatCall(exp paramsExp, t *testing.T) {
 	mockClient := &public.MockApiClient{}
 
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts)
+	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true)
 
 	mockClient.StatSummaryResponseToReturn = &response
 
