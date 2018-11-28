@@ -75,7 +75,10 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 
-		exp.verifyPromQueries(mockProm)
+		err = exp.verifyPromQueries(mockProm)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		rspStatTables := rsp.GetOk().StatTables
 
