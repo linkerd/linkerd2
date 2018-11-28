@@ -1,3 +1,19 @@
+## edge-18.11.3
+
+* CLI
+  * **New** `linkerd routes` command displays per-route stats for services with
+    service profiles
+  * **Experimental** Add `--ha` flag to `linkerd install` command, for HA
+    deployment of the control plane (thanks @benjdlambert!)
+* Web UI
+  * **Experimental** Top Routes page, served at `/routes`
+* Controller
+  * **Fixed** Fix auto injection issue on Kubernetes `v1.9.11` that would
+    merge, rather than append, the proxy container into the application
+* Proxy
+  * **Improved** Add controller client metrics, scoped under `control_`
+  * **Improved** Canonicalize outbound names via DNS for inbound profiles
+
 ## edge-18.11.2
 
 * CLI
