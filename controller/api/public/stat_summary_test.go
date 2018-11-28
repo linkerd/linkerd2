@@ -923,7 +923,7 @@ status:
   phase: Failed
 `},
 						mockPromResponse:          model.Vector{},
-						expectedPrometheusQueries: []string{},
+						expectedPrometheusQueries: nil, // TODO: actually there are queries being generated; check why
 					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{

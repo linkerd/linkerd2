@@ -248,9 +248,15 @@ func newMockGrpcServer(exp expectedStatRpc) (*MockProm, *grpcServer, error) {
 }
 
 func (exp expectedStatRpc) verifyPromQueries(mockProm *MockProm) error {
-	if len(exp.expectedPrometheusQueries) > 0 {
+	// if exp.expectedPrometheusQueries is an empty slice we still wanna check no queries were executed.
+	if exp.expectedPrometheusQueries != nil {
 		sort.Strings(exp.expectedPrometheusQueries)
 		sort.Strings(mockProm.QueriesExecuted)
+
+		// because reflect.DeepEqual([]string{}, nil) is false
+		if len(exp.expectedPrometheusQueries) == 0 && len(mockProm.QueriesExecuted) == 0 {
+			return nil
+		}
 
 		if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
 			return fmt.Errorf("Prometheus queries incorrect. \nExpected:\n%+v \nGot:\n%+v",
