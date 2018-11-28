@@ -3,8 +3,6 @@
 * CLI
   * **New** `linkerd routes` command displays per-route stats for services with
     service profiles
-  * **Improved** Add `--open-api` flag to `linkerd profile` command, to read an
-    OpenAPI / Swagger specification file
   * **Experimental** Add `--ha` flag to `linkerd install` command, for HA
     deployment of the control plane (thanks @benjdlambert!)
 * Web UI
