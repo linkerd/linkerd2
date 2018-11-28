@@ -3,12 +3,12 @@
 * CLI
   * **New** `linkerd routes` command displays per-route stats for services with
     service profiles
-  * **Improved** Add `--open-api` to `linkerd profile` command, to read an
+  * **Improved** Add `--open-api` flag to `linkerd profile` command, to read an
     OpenAPI / Swagger specification file
-  * **Experimental** New `--ha` flag on `linkerd install`, for HA deployment of
-    the control plane (thanks @benjdlambert!)
+  * **Experimental** Add `--ha` flag to `linkerd install` command, for HA
+    deployment of the control plane (thanks @benjdlambert!)
 * Web UI
-  * **New** Top Routes page, served at `/routes`
+  * **Experimental** Top Routes page, served at `/routes`
 * Controller
   * **Fixed** Fix auto injection issue on Kubernetes `v1.9.11` that would
     merge, rather than append, the proxy container into the application
