@@ -144,7 +144,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
 		patch.addInitContainerRoot()
 	}
-	patch.addInitContainer(proxyInit, len(deployment.Spec.Template.Spec.InitContainers))
+	patch.addInitContainer(proxyInit)
 
 	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
 		patch.addVolumeRoot()
