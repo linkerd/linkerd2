@@ -29,6 +29,13 @@ var DefaultRetryBudget = pb.RetryBudget{
 	},
 }
 
+func toDuration(d time.Duration) *duration.Duration {
+	return &duration.Duration{
+		Seconds: int64(d / time.Second),
+		Nanos:   int32(d % time.Second),
+	}
+}
+
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
 func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, error) {
@@ -48,10 +55,7 @@ func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, e
 		if err != nil {
 			return nil, err
 		}
-		budget.Ttl = &duration.Duration{
-			Seconds: int64(ttl / time.Second),
-			Nanos:   int32(ttl % time.Second),
-		}
+		budget.Ttl = toDuration(ttl)
 	}
 	return &pb.DestinationProfile{
 		Routes:      routes,
@@ -73,11 +77,16 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 		}
 		rcs = append(rcs, pbRc)
 	}
+	timeout, err := time.ParseDuration(route.Timeout)
+	if err != nil {
+		timeout = 1 * time.Second
+	}
 	ret := pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
 		MetricsLabels:   map[string]string{"route": route.Name},
 		IsRetryable:     route.IsRetryable,
+		Timeout:         toDuration(timeout),
 	}
 	return &ret, nil
 }

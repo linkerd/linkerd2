@@ -37,6 +37,7 @@ type RouteSpec struct {
 	Condition       *RequestMatch    `json:"condition"`
 	ResponseClasses []*ResponseClass `json:"responseClasses,omitempty"`
 	IsRetryable     bool             `json:"isRetryable,omitempty"`
+	Timeout         string           `json:"timeout,omitempty"`
 }
 
 // RequestMatch describes the conditions under which to match a Route.
