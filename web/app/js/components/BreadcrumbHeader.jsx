@@ -10,7 +10,8 @@ const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",
   "overview": "Overview",
   "tap": "Tap",
-  "top": "Top"
+  "top": "Top",
+  "routes": "Top Routes"
 };
 
 class BreadcrumbHeader extends React.Component {

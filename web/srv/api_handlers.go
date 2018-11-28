@@ -133,6 +133,32 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	renderJsonPb(w, result)
 }
 
+func (h *handler) handleApiTopRoutes(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	requestParams := util.StatsRequestParams{
+		TimeWindow:    req.FormValue("window"),
+		ResourceName:  req.FormValue("resource_name"),
+		ResourceType:  k8s.Service,
+		Namespace:     req.FormValue("namespace"),
+		FromName:      req.FormValue("from_name"),
+		FromType:      req.FormValue("from_type"),
+		FromNamespace: req.FormValue("from_namespace"),
+	}
+
+	topReq, err := util.BuildTopRoutesRequest(requestParams)
+	if err != nil {
+		renderJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.apiClient.TopRoutes(req.Context(), topReq)
+	if err != nil {
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	renderJsonPb(w, result)
+}
+
 func websocketError(ws *websocket.Conn, wsError int, msg string) {
 	ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),

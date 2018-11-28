@@ -156,6 +156,18 @@ const processStatTable = table => {
     .value();
 };
 
+export const processTopRoutesResults = rows => {
+  return _.map(rows, row => ({
+    route: row.route || "UNKNOWN",
+    totalRequests: getTotalRequests(row),
+    requestRate: getRequestRate(row),
+    successRate: getSuccessRate(row),
+    latency: getLatency(row),
+    tlsRequestPercent: getTlsRequestPercentage(row),
+  }
+  ));
+};
+
 export const processSingleResourceRollup = rawMetrics => {
   let result = processMultiResourceRollup(rawMetrics);
   if (_.size(result) > 1) {
