@@ -111,6 +111,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 	server.router.GET("/api/services", handler.handleApiServices)
 	server.router.GET("/api/tap", handler.handleApiTap)
 	server.router.GET("/api/routes", handler.handleApiTopRoutes)
+	server.router.GET("/profiles/new", handler.handleProfileDownload)
 
 	return httpServer
 }

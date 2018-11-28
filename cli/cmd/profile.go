@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type templateConfig struct {
+type ProfileTemplateConfig struct {
 	ControlPlaneNamespace string
 	ServiceNamespace      string
 	ServiceName           string
@@ -38,7 +38,7 @@ func newCmdProfile() *cobra.Command {
 		Use:   "profile [flags] --template (SERVICE)",
 		Short: "Output template service profile config for Kubernetes",
 		Long: `Output template service profile config for Kubernetes.
-		
+
 		This outputs a service profile template for the given service.  Edit the
 		template and then apply it with kubectl to add a service profile to a
 		service.
@@ -54,7 +54,7 @@ func newCmdProfile() *cobra.Command {
 				return errors.New("only template mode is currently supported, please run with --template")
 			}
 
-			return renderProfileTemplate(buildConfig(options.namespace, args[0]), os.Stdout)
+			return renderProfileTemplate(BuildConfig(options.namespace, args[0]), os.Stdout)
 		},
 	}
 
@@ -64,8 +64,8 @@ func newCmdProfile() *cobra.Command {
 	return cmd
 }
 
-func buildConfig(namespace, service string) *templateConfig {
-	return &templateConfig{
+func BuildConfig(namespace, service string) *ProfileTemplateConfig {
+	return &ProfileTemplateConfig{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		ServiceNamespace:      namespace,
 		ServiceName:           service,
@@ -73,7 +73,7 @@ func buildConfig(namespace, service string) *templateConfig {
 	}
 }
 
-func renderProfileTemplate(config *templateConfig, w io.Writer) error {
+func renderProfileTemplate(config *ProfileTemplateConfig, w io.Writer) error {
 	template, err := template.New("profile").Parse(profile.Template)
 	if err != nil {
 		return err
