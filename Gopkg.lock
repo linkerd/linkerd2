@@ -266,7 +266,7 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:269d1fe034b09288b2328b197baceb4f23873fc09bb0e81a774620cdb020bfe9"
+  digest = "1:4e1a388c562b46c42eaeefcf35ae8858df7aa6f2bda261ca1d36aa40d10f62e4"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
@@ -275,8 +275,7 @@
     "go/tap",
   ]
   pruneopts = ""
-  revision = "bb4861389d504dfea7b616df8cf6329b1c6f5e50"
-  version = "v0.1.4"
+  revision = "1ad70188f9a6d94e2865413713a50390456fa6b6"
 
 [[projects]]
   branch = "master"

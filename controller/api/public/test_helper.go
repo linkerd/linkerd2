@@ -208,7 +208,7 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 }
 
 // GenTopRoutesResponse generates a mock Public API TopRoutesResponse object.
-func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse {
+func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool) pb.TopRoutesResponse {
 	rows := []*pb.RouteTable_Row{}
 	for i, route := range routes {
 		row := &pb.RouteTable_Row{
@@ -222,6 +222,9 @@ func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse
 				LatencyMsP99: 123,
 			},
 			TimeWindow: "1m",
+		}
+		if outbound {
+			row.Stats.ActualSuccessCount = counts[i]
 		}
 		rows = append(rows, row)
 	}

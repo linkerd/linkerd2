@@ -25,6 +25,12 @@ type routesOptions struct {
 	dstIsService bool
 }
 
+type routeRowStats struct {
+	rowStats
+	actualRequestRate float64
+	actualSuccessRate float64
+}
+
 const defaultRoute = "[UNKNOWN]"
 
 func newRoutesOptions() *routesOptions {
@@ -99,7 +105,7 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 }
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
-	table := make([]*rowStats, 0)
+	table := make([]*routeRowStats, 0)
 
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
@@ -107,14 +113,18 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 			if route == "" {
 				route = defaultRoute
 			}
-			table = append(table, &rowStats{
-				route:       route,
-				dst:         r.GetAuthority(),
-				requestRate: getRequestRate(r.Stats, r.TimeWindow),
-				successRate: getSuccessRate(r.Stats),
-				latencyP50:  r.Stats.LatencyMsP50,
-				latencyP95:  r.Stats.LatencyMsP95,
-				latencyP99:  r.Stats.LatencyMsP99,
+			table = append(table, &routeRowStats{
+				rowStats: rowStats{
+					route:       route,
+					dst:         r.GetAuthority(),
+					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+					successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
+					latencyP50:  r.Stats.LatencyMsP50,
+					latencyP95:  r.Stats.LatencyMsP95,
+					latencyP99:  r.Stats.LatencyMsP99,
+				},
+				actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
+				actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
 			})
 		}
 	}
@@ -135,7 +145,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	}
 }
 
-func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth(stats))
 
@@ -147,16 +157,37 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
-		"SUCCESS",
-		"RPS",
+	}
+	if options.toResource == "" {
+		headers = append(headers, []string{
+			"SUCCESS",
+			"RPS",
+		}...)
+	} else {
+		headers = append(headers, []string{
+			"EFFECTIVE_SUCCESS",
+			"EFFECTIVE_RPS",
+			"ACTUAL_SUCCESS",
+			"ACTUAL_RPS",
+		}...)
+	}
+
+	headers = append(headers, []string{
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99\t", // trailing \t is required to format last column
-	}
+	}...)
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+	// route, success rate, rps
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
+	if options.toResource != "" {
+		// actual success rate, actual rps
+		templateString = templateString + "%.2f%%\t%.1frps\t"
+	}
+	// p50, p95, p99
+	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
 	for _, row := range stats {
 
@@ -166,15 +197,25 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 			authorityValue = segments[0]
 		}
 
-		fmt.Fprintf(w, templateString,
+		values := []interface{}{
 			row.route,
 			authorityValue,
-			row.successRate*100,
+			row.successRate * 100,
 			row.requestRate,
+		}
+		if options.toResource != "" {
+			values = append(values, []interface{}{
+				row.actualSuccessRate * 100,
+				row.actualRequestRate,
+			}...)
+		}
+		values = append(values, []interface{}{
 			row.latencyP50,
 			row.latencyP95,
 			row.latencyP99,
-		)
+		}...)
+
+		fmt.Fprintf(w, templateString, values...)
 	}
 }
 
@@ -189,7 +230,7 @@ type jsonRouteStats struct {
 	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
+func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
 	for _, row := range stats {
@@ -277,7 +318,7 @@ func buildTopRoutesTo(toResource pb.Resource) (string, error) {
 }
 
 // returns the length of the longest route name
-func routeWidth(stats []*rowStats) int {
+func routeWidth(stats []*routeRowStats) int {
 	maxLength := len(defaultRoute)
 	for _, row := range stats {
 		if len(row.route) > maxLength {

@@ -20,16 +20,15 @@ type promResult struct {
 }
 
 const (
-	promRequests   = promType("QUERY_REQUESTS")
-	promLatencyP50 = promType("0.5")
-	promLatencyP95 = promType("0.95")
-	promLatencyP99 = promType("0.99")
+	promRequests       = promType("QUERY_REQUESTS")
+	promActualRequests = promType("QUERY_ACTUAL_REQUESTS")
+	promLatencyP50     = promType("0.5")
+	promLatencyP95     = promType("0.95")
+	promLatencyP99     = promType("0.99")
 
 	namespaceLabel    = model.LabelName("namespace")
 	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
-
-var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 func extractSampleValue(sample *model.Sample) uint64 {
 	value := uint64(0)
@@ -129,23 +128,27 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(l5dLabel)
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, volumeQueryTemplate, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
 	resultChan := make(chan promResult)
 
-	// kick off 4 asynchronous queries: 1 request volume + 3 latency
-	go func() {
-		// success/failure counts
-		requestsQuery := fmt.Sprintf(volumeQueryTemplate, labels, timeWindow, groupBy)
-		resultVector, err := s.queryProm(ctx, requestsQuery)
+	// kick off asynchronous queries: request count queries + 3 latency queries
+	for pt, requestQueryTemplate := range requestQueryTemplates {
+		go func(typ promType, template string) {
+			// success/failure counts
+			requestsQuery := fmt.Sprintf(template, labels, timeWindow, groupBy)
+			resultVector, err := s.queryProm(ctx, requestsQuery)
 
-		resultChan <- promResult{
-			prom: promRequests,
-			vec:  resultVector,
-			err:  err,
-		}
-	}()
+			resultChan <- promResult{
+				prom: typ,
+				vec:  resultVector,
+				err:  err,
+			}
+		}(pt, requestQueryTemplate)
+	}
 
-	for _, quantile := range []promType{promLatencyP50, promLatencyP95, promLatencyP99} {
+	quantiles := []promType{promLatencyP50, promLatencyP95, promLatencyP99}
+
+	for _, quantile := range quantiles {
 		go func(quantile promType) {
 			latencyQuery := fmt.Sprintf(latencyQueryTemplate, quantile, labels, timeWindow, groupBy)
 			latencyResult, err := s.queryProm(ctx, latencyQuery)
@@ -161,7 +164,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, volumeQueryTempla
 	// process results, receive one message per prometheus query type
 	var err error
 	results := []promResult{}
-	for i := 0; i < len(promTypes); i++ {
+	for i := 0; i < len(quantiles)+len(requestQueryTemplates); i++ {
 		result := <-resultChan
 		if result.err != nil {
 			log.Errorf("queryProm failed with: %s", result.err)

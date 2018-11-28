@@ -184,9 +184,7 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 }
 
 // getRequestRate calculates request rate from Public API BasicStats.
-func getRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
+func getRequestRate(success, failure uint64, timeWindow string) float64 {
 	windowLength, err := time.ParseDuration(timeWindow)
 	if err != nil {
 		log.Error(err.Error())
@@ -196,10 +194,7 @@ func getRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
 }
 
 // getSuccessRate calculates success rate from Public API BasicStats.
-func getSuccessRate(stats *pb.BasicStats) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
-
+func getSuccessRate(success, failure uint64) float64 {
 	if success+failure == 0 {
 		return 0.0
 	}
@@ -246,25 +241,25 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyBindTimeout:        "10s",
-		proxyAPIPort:            8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyOutboundCapacity:   map[string]uint{},
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		tls:                     "",
+		linkerdVersion:        version.Version,
+		proxyImage:            defaultDockerRegistry + "/proxy",
+		initImage:             defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:        defaultDockerRegistry,
+		imagePullPolicy:       "IfNotPresent",
+		inboundPort:           4143,
+		outboundPort:          4140,
+		ignoreInboundPorts:    nil,
+		ignoreOutboundPorts:   nil,
+		proxyUID:              2102,
+		proxyLogLevel:         "warn,linkerd2_proxy=info",
+		proxyBindTimeout:      "10s",
+		proxyAPIPort:          8086,
+		proxyControlPort:      4190,
+		proxyMetricsPort:      4191,
+		proxyOutboundCapacity: map[string]uint{},
+		proxyCPURequest:       "",
+		proxyMemoryRequest:    "",
+		tls:                   "",
 		disableExternalProfiles: false,
 	}
 }
