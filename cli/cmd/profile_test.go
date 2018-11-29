@@ -6,14 +6,15 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	profiles "github.com/linkerd/linkerd2/pkg/profiles"
 )
 
 func TestParseProfile(t *testing.T) {
-	templateConfig := BuildConfig("myns", "mysvc")
+	templateConfig := profiles.BuildConfig("myns", "mysvc", "linkerd")
 
 	var buf bytes.Buffer
 
-	err := RenderProfileTemplate(templateConfig, &buf)
+	err := profiles.RenderProfileTemplate(templateConfig, &buf)
 	if err != nil {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}
