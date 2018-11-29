@@ -3,18 +3,14 @@ package srv
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"text/template"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	profileCmd "github.com/linkerd/linkerd2/cli/cmd"
-	"github.com/linkerd/linkerd2/cli/profile"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -245,40 +241,4 @@ func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httpr
 			return
 		}
 	}
-}
-
-func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	service := req.FormValue("service")
-	namespace := req.FormValue("namespace")
-
-	if service == "" || namespace == "" {
-		err := fmt.Errorf("Service and namespace must be provided to create a new profile")
-		log.Error(err.Error())
-		renderJsonError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	tmplParams := profileCmd.BuildConfig(namespace, service)
-
-	template, err := template.New("profile").Parse(profile.Template)
-	if err != nil {
-		log.Error(err.Error())
-		renderJsonError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	profileYaml := &bytes.Buffer{}
-	err = template.Execute(profileYaml, tmplParams)
-	if err != nil {
-		log.Error(err.Error())
-		renderJsonError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	dispositionHeaderVal := fmt.Sprintf("attachment; filename='%s-profile.yml'", service)
-
-	w.Header().Set("Content-Type", "text/yaml")
-	w.Header().Set("Content-Disposition", dispositionHeaderVal)
-
-	w.Write(profileYaml.Bytes())
 }

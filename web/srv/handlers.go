@@ -1,10 +1,15 @@
 package srv
 
 import (
+	"bytes"
+	"fmt"
+	"html/template"
 	"net/http"
 	"regexp"
 
 	"github.com/julienschmidt/httprouter"
+	profileCmd "github.com/linkerd/linkerd2/cli/cmd"
+	"github.com/linkerd/linkerd2/cli/profile"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,4 +56,40 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	if err != nil {
 		log.Error(err.Error())
 	}
+}
+
+func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	service := req.FormValue("service")
+	namespace := req.FormValue("namespace")
+
+	if service == "" || namespace == "" {
+		err := fmt.Errorf("Service and namespace must be provided to create a new profile")
+		log.Error(err.Error())
+		renderJsonError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	tmplParams := profileCmd.BuildConfig(namespace, service)
+
+	template, err := template.New("profile").Parse(profile.Template)
+	if err != nil {
+		log.Error(err.Error())
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	profileYaml := &bytes.Buffer{}
+	err = template.Execute(profileYaml, tmplParams)
+	if err != nil {
+		log.Error(err.Error())
+		renderJsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	dispositionHeaderVal := fmt.Sprintf("attachment; filename='%s-profile.yml'", service)
+
+	w.Header().Set("Content-Type", "text/yaml")
+	w.Header().Set("Content-Disposition", dispositionHeaderVal)
+
+	w.Write(profileYaml.Bytes())
 }
