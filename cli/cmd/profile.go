@@ -54,7 +54,7 @@ func newCmdProfile() *cobra.Command {
 				return errors.New("only template mode is currently supported, please run with --template")
 			}
 
-			return renderProfileTemplate(BuildConfig(options.namespace, args[0]), os.Stdout)
+			return RenderProfileTemplate(BuildConfig(options.namespace, args[0]), os.Stdout)
 		},
 	}
 
@@ -73,7 +73,7 @@ func BuildConfig(namespace, service string) *ProfileTemplateConfig {
 	}
 }
 
-func renderProfileTemplate(config *ProfileTemplateConfig, w io.Writer) error {
+func RenderProfileTemplate(config *ProfileTemplateConfig, w io.Writer) error {
 	template, err := template.New("profile").Parse(profile.Template)
 	if err != nil {
 		return err

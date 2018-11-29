@@ -13,7 +13,7 @@ func TestParseProfile(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	err := renderProfileTemplate(templateConfig, &buf)
+	err := RenderProfileTemplate(templateConfig, &buf)
 	if err != nil {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}

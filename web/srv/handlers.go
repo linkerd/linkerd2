@@ -3,13 +3,11 @@ package srv
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"net/http"
 	"regexp"
 
 	"github.com/julienschmidt/httprouter"
 	profileCmd "github.com/linkerd/linkerd2/cli/cmd"
-	"github.com/linkerd/linkerd2/cli/profile"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 )
@@ -69,17 +67,10 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	tmplParams := profileCmd.BuildConfig(namespace, service)
-
-	template, err := template.New("profile").Parse(profile.Template)
-	if err != nil {
-		log.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	profileYaml := &bytes.Buffer{}
-	err = template.Execute(profileYaml, tmplParams)
+	tmplParams := profileCmd.BuildConfig(namespace, service)
+	err := profileCmd.RenderProfileTemplate(tmplParams, profileYaml)
+
 	if err != nil {
 		log.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
