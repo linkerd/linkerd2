@@ -54,23 +54,22 @@ func newCmdProfile() *cobra.Command {
 		Short: "Output template service profile config for Kubernetes",
 		Long: `Output template service profile config for Kubernetes.
 		
-		This outputs a service profile for the given service.
+This outputs a service profile for the given service.
 		
-		If the --template flag is specified, it outputs a service profile template.
-		Edit the template and then apply it with kubectl to add a service profile to
-		a service.
+If the --template flag is specified, it outputs a service profile template.
+Edit the template and then apply it with kubectl to add a service profile to
+a service.
 
-		Example:
-		linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
-		# (edit web-svc-profile.yaml manually)
-		kubectl apply -f web-svc-profile.yaml
+Example:
+  linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
+  # (edit web-svc-profile.yaml manually)
+  kubectl apply -f web-svc-profile.yaml
 
-		If the --open-api flag is specified, it reads the given OpenAPI
-		specification file and outputs a corresponding service profile.
+If the --open-api flag is specified, it reads the given OpenAPI
+specification file and outputs a corresponding service profile.
 
-		Example:
-		linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -
-		`,
+Example:
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
@@ -253,13 +252,9 @@ func toRspClasses(responses *spec.Responses) []*sp.ResponseClass {
 				Max: uint32(status),
 			},
 		}
-		failure := false
-		if status >= 500 {
-			failure = true
-		}
 		classes = append(classes, &sp.ResponseClass{
 			Condition: cond,
-			IsFailure: !failure,
+			IsFailure: status >= 500,
 		})
 	}
 	return classes
