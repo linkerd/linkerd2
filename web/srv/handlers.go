@@ -46,7 +46,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	if err != nil {
 		params.Error = true
 		params.ErrorMessage = err.Error()
-		log.Error(err.Error())
+		log.Error(err)
 	} else {
 		params.Data = *version
 	}
@@ -54,7 +54,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	err = h.render(w, "app.tmpl.html", "base", params)
 
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err)
 	}
 }
 
@@ -64,7 +64,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 
 	if service == "" || namespace == "" {
 		err := fmt.Errorf("Service and namespace must be provided to create a new profile")
-		log.Error(err.Error())
+		log.Error(err)
 		renderJsonError(w, err, http.StatusBadRequest)
 		return
 	}
@@ -73,7 +73,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 
 	template, err := template.New("profile").Parse(profile.Template)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err)
 		renderJsonError(w, err, http.StatusInternalServerError)
 		return
 	}
@@ -81,7 +81,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	profileYaml := &bytes.Buffer{}
 	err = template.Execute(profileYaml, tmplParams)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err)
 		renderJsonError(w, err, http.StatusInternalServerError)
 		return
 	}
