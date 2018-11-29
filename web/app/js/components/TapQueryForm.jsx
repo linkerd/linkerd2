@@ -25,8 +25,8 @@ import {
 
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import PropTypes from 'prop-types';
+import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
-import TapQueryCliCmd from './TapQueryCliCmd.jsx';
 import _ from 'lodash';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -396,7 +396,16 @@ class TapQueryForm extends React.Component {
 
   render() {
     const { classes } = this.props;
-
+    let cliQueryDisplayOrder = _.compact([
+      this.state.query.resource.indexOf("namespace") === 0 ? null : "namespace",
+      "toResource",
+      this.state.query.toResource.indexOf("namespace") === 0 ? null : "toNamespace",
+      "method",
+      "path",
+      "scheme",
+      "authority",
+      "maxRps"
+    ]);
     return (
       <Card className={classes.card}>
         <CardContent>
@@ -423,9 +432,9 @@ class TapQueryForm extends React.Component {
           </Grid>
         </CardContent>
 
-        <TapQueryCliCmd cmdName="tap" query={this.state.query} />
+        <QueryToCliCmd cmdName="tap" query={this.state.query} resource={this.state.query.resource} displayOrder={cliQueryDisplayOrder} />
 
-        { !this.props.enableAdvancedForm ? null :  this.renderAdvancedTapForm() }
+        { !this.props.enableAdvancedForm ? null : this.renderAdvancedTapForm() }
 
       </Card>
     );

@@ -55,6 +55,7 @@ export const apiErrorPropType = PropTypes.shape({
 const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
+  const servicesPath = `/api/services`;
 
   const validMetricsWindows = {
     "10s": "10 minutes",
@@ -87,6 +88,13 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       return apiFetch(podsPath + "?namespace=" + namespace);
     }
     return apiFetch(podsPath);
+  };
+
+  const fetchServices = namespace => {
+    if (!_.isNil(namespace)) {
+      return apiFetch(servicesPath + "?namespace=" + namespace);
+    }
+    return apiFetch(servicesPath);
   };
 
   const getMetricsWindow = () => metricsWindow;
@@ -187,6 +195,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     fetch: apiFetch,
     fetchMetrics,
     fetchPods,
+    fetchServices,
     getMetricsWindow,
     setMetricsWindow,
     getValidMetricsWindows: () => _.keys(validMetricsWindows),
