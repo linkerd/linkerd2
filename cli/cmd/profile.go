@@ -1,22 +1,12 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
-	"io"
 	"os"
-	"text/template"
 
-	"github.com/linkerd/linkerd2/cli/profile"
+	profiles "github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 )
-
-type ProfileTemplateConfig struct {
-	ControlPlaneNamespace string
-	ServiceNamespace      string
-	ServiceName           string
-	ClusterZone           string
-}
 
 type profileOptions struct {
 	namespace string
@@ -54,7 +44,7 @@ func newCmdProfile() *cobra.Command {
 				return errors.New("only template mode is currently supported, please run with --template")
 			}
 
-			return RenderProfileTemplate(BuildConfig(options.namespace, args[0]), os.Stdout)
+			return profiles.RenderProfileTemplate(profiles.BuildConfig(options.namespace, args[0], controlPlaneNamespace), os.Stdout)
 		},
 	}
 
@@ -62,28 +52,4 @@ func newCmdProfile() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 
 	return cmd
-}
-
-func BuildConfig(namespace, service string) *ProfileTemplateConfig {
-	return &ProfileTemplateConfig{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		ServiceNamespace:      namespace,
-		ServiceName:           service,
-		ClusterZone:           "svc.cluster.local",
-	}
-}
-
-func RenderProfileTemplate(config *ProfileTemplateConfig, w io.Writer) error {
-	template, err := template.New("profile").Parse(profile.Template)
-	if err != nil {
-		return err
-	}
-	buf := &bytes.Buffer{}
-	err = template.Execute(buf, config)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(buf.Bytes())
-	return err
 }

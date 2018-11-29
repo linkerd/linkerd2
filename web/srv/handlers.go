@@ -7,8 +7,8 @@ import (
 	"regexp"
 
 	"github.com/julienschmidt/httprouter"
-	profileCmd "github.com/linkerd/linkerd2/cli/cmd"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	profiles "github.com/linkerd/linkerd2/pkg/profiles"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -68,8 +68,8 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	}
 
 	profileYaml := &bytes.Buffer{}
-	tmplParams := profileCmd.BuildConfig(namespace, service)
-	err := profileCmd.RenderProfileTemplate(tmplParams, profileYaml)
+	tmplParams := profiles.BuildConfig(namespace, service, h.controllerNamespace)
+	err := profiles.RenderProfileTemplate(tmplParams, profileYaml)
 
 	if err != nil {
 		log.Error(err)
