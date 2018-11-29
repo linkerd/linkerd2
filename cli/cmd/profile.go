@@ -51,8 +51,8 @@ func newCmdProfile() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "profile [flags] (--template | --open-api file) (SERVICE)",
-		Short: "Output template service profile config for Kubernetes",
-		Long: `Output template service profile config for Kubernetes.
+		Short: "Output service profile config for Kubernetes",
+		Long: `Output service profile config for Kubernetes.
 		
 This outputs a service profile for the given service.
 		
