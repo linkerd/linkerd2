@@ -200,7 +200,7 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.Api
 }
 
 func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (pb.ApiClient, error) {
-	apiURL, err := kubeAPI.UrlFor(controlPlaneNamespace, "/services/http:api:http/proxy/")
+	apiURL, err := kubeAPI.UrlFor(controlPlaneNamespace, "/services/linkerd-controller-api:http/proxy/")
 	if err != nil {
 		return nil, err
 	}

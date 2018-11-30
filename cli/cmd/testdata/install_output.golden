@@ -83,7 +83,7 @@ subjects:
 kind: Service
 apiVersion: v1
 metadata:
-  name: api
+  name: linkerd-controller-api
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
@@ -102,7 +102,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: proxy-api
+  name: linkerd-proxy-api
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
@@ -126,7 +126,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
-  name: controller
+  name: linkerd-controller
   namespace: Namespace
 spec:
   replicas: 1
@@ -141,12 +141,12 @@ spec:
       labels:
         ControllerComponentLabel: controller
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: controller
+        linkerd.io/proxy-deployment: linkerd-controller
     spec:
       containers:
       - args:
         - public-api
-        - -prometheus-url=http://prometheus.Namespace.svc.cluster.local:9090
+        - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
         - -single-namespace=false
         - -log-level=ControllerLogLevel
@@ -306,7 +306,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: web
+  name: linkerd-web
   namespace: Namespace
   labels:
     ControllerComponentLabel: web
@@ -333,7 +333,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: web
-  name: web
+  name: linkerd-web
   namespace: Namespace
 spec:
   replicas: 1
@@ -348,11 +348,11 @@ spec:
       labels:
         ControllerComponentLabel: web
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: web
+        linkerd.io/proxy-deployment: linkerd-web
     spec:
       containers:
       - args:
-        - -api-addr=api.Namespace.svc.cluster.local:8085
+        - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
         - -uuid=UUID
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
@@ -381,7 +381,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -441,7 +441,7 @@ status: {}
 kind: Service
 apiVersion: v1
 metadata:
-  name: prometheus
+  name: linkerd-prometheus
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
@@ -465,7 +465,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
-  name: prometheus
+  name: linkerd-prometheus
   namespace: Namespace
 spec:
   replicas: 1
@@ -480,7 +480,7 @@ spec:
       labels:
         ControllerComponentLabel: prometheus
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: prometheus
+        linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       containers:
       - args:
@@ -515,7 +515,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -575,14 +575,14 @@ spec:
       serviceAccount: linkerd-prometheus
       volumes:
       - configMap:
-          name: prometheus-config
+          name: linkerd-prometheus-config
         name: prometheus-config
 status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: prometheus-config
+  name: linkerd-prometheus-config
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
@@ -669,7 +669,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: grafana
+  name: linkerd-grafana
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
@@ -693,7 +693,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
-  name: grafana
+  name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
@@ -708,7 +708,7 @@ spec:
       labels:
         ControllerComponentLabel: grafana
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: grafana
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       containers:
       - image: GrafanaImage
@@ -737,7 +737,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -801,14 +801,14 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: grafana-config
+          name: linkerd-grafana-config
         name: grafana-config
 status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: grafana-config
+  name: linkerd-grafana-config
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
@@ -819,7 +819,7 @@ data:
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/linkerd-grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -841,7 +841,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://prometheus.Namespace.svc.cluster.local:9090
+      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -920,7 +920,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: ca
-  name: ca
+  name: linkerd-ca
   namespace: Namespace
 spec:
   replicas: 1
@@ -935,7 +935,7 @@ spec:
       labels:
         ControllerComponentLabel: ca
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: ca
+        linkerd.io/proxy-deployment: linkerd-ca
     spec:
       containers:
       - args:
@@ -967,7 +967,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1033,7 +1033,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: proxy-injector
-  name: proxy-injector
+  name: linkerd-proxy-injector
   namespace: Namespace
 spec:
   replicas: 1
@@ -1051,7 +1051,7 @@ spec:
       labels:
         ControllerComponentLabel: proxy-injector
         linkerd.io/control-plane-ns: Namespace
-        linkerd.io/proxy-deployment: proxy-injector
+        linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       containers:
       - args:
@@ -1090,7 +1090,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1152,7 +1152,7 @@ spec:
           optional: true
           secretName: ProxyInjectorTLSSecret
       - configMap:
-          name: ProxyInjectorSidecarConfig
+          name: linkerd-proxy-injector-sidecar-config
         name: proxy-spec
 status: {}
 ---
@@ -1194,7 +1194,7 @@ roleRef:
 kind: Service
 apiVersion: v1
 metadata:
-  name: proxy-injector
+  name: linkerd-proxy-injector
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
@@ -1214,7 +1214,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: ProxyInjectorSidecarConfig
+  name: linkerd-proxy-injector-sidecar-config
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
@@ -1249,7 +1249,7 @@ data:
     - name: LINKERD2_PROXY_BIND_TIMEOUT
       value: 1m
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://proxy-api.Namespace.svc.cluster.local:123
+      value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:123
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:4190
     - name: LINKERD2_PROXY_METRICS_LISTENER

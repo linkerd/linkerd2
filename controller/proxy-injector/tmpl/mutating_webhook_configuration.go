@@ -9,7 +9,7 @@ webhooks:
 - name: {{ .WebhookServiceName }}
   clientConfig:
     service:
-      name: proxy-injector
+      name: linkerd-proxy-injector
       namespace: {{ .ControllerNamespace }}
       path: "/"
     caBundle: {{ .CABundle }}

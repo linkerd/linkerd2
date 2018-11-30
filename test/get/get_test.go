@@ -33,10 +33,10 @@ var (
 	}
 
 	linkerdPods = map[string]int{
-		"grafana":    1,
-		"web":        1,
-		"prometheus": 1,
-		"controller": 1,
+		"linkerd-grafana":    1,
+		"linkerd-web":        1,
+		"linkerd-prometheus": 1,
+		"linkerd-controller": 1,
 	}
 )
 

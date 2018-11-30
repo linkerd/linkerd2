@@ -707,7 +707,8 @@ func validateControlPlanePods(pods []v1.Pod) error {
 
 	for _, pod := range pods {
 		if pod.Status.Phase == v1.PodRunning {
-			name := strings.Split(pod.Name, "-")[0]
+			parts := strings.Split(pod.Name, "-")
+			name := strings.Join(parts[1:len(parts)-2], "-")
 			if _, found := statuses[name]; !found {
 				statuses[name] = make([]v1.ContainerStatus, 0)
 			}
@@ -719,15 +720,18 @@ func validateControlPlanePods(pods []v1.Pod) error {
 	if _, found := statuses["ca"]; found {
 		names = append(names, "ca")
 	}
+	if _, found := statuses["proxy-injector"]; found {
+		names = append(names, "proxy-injector")
+	}
 
 	for _, name := range names {
 		containers, found := statuses[name]
 		if !found {
-			return fmt.Errorf("No running pods for \"%s\"", name)
+			return fmt.Errorf("No running pods for \"linkerd-%s\"", name)
 		}
 		for _, container := range containers {
 			if !container.Ready {
-				return fmt.Errorf("The \"%s\" pod's \"%s\" container is not ready", name,
+				return fmt.Errorf("The \"linkerd-%s\" pod's \"%s\" container is not ready", name,
 					container.Name)
 			}
 		}

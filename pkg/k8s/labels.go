@@ -90,16 +90,11 @@ const (
 
 	// ProxyInjectorTLSSecret is the name assigned to the secret containing the
 	// TLS cert and key used by the proxy-injector webhook.
-	ProxyInjectorTLSSecret = "proxy-injector-service-tls-linkerd-io"
+	ProxyInjectorTLSSecret = "linkerd-proxy-injector-service-tls-linkerd-io"
 
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
-
-	// ProxyInjectorSidecarConfig is the name of the config map resource that
-	// contains the specs of the proxy init container and sidecar container to be
-	// injected into a pod.
-	ProxyInjectorSidecarConfig = "proxy-injector-sidecar-config"
 
 	// ProxySpecFileName is the name (key) within the proxy-injector ConfigMap
 	// that contains the proxy container spec.

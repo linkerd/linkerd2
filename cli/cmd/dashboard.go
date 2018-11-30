@@ -58,13 +58,13 @@ func newCmdDashboard() *cobra.Command {
 				os.Exit(1)
 			}
 
-			url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/web:http/proxy/")
+			url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/linkerd-web:http/proxy/")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s\n", err)
 				os.Exit(1)
 			}
 
-			grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/grafana:http/proxy/")
+			grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/linkerd-grafana:http/proxy/")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to generate URL for Grafana: %s\n", err)
 				os.Exit(1)

@@ -100,7 +100,7 @@ subjects:
 kind: Service
 apiVersion: v1
 metadata:
-  name: api
+  name: linkerd-controller-api
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
@@ -119,7 +119,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: proxy-api
+  name: linkerd-proxy-api
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
@@ -138,7 +138,7 @@ spec:
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: controller
+  name: linkerd-controller
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
@@ -165,7 +165,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
-        - "-prometheus-url=http://prometheus.{{.Namespace}}.svc.cluster.local:9090"
+        - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Namespace}}"
         - "-single-namespace={{.SingleNamespace}}"
         - "-log-level={{.ControllerLogLevel}}"
@@ -271,7 +271,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: web
+  name: linkerd-web
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: web
@@ -293,7 +293,7 @@ spec:
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: web
+  name: linkerd-web
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: web
@@ -318,7 +318,7 @@ spec:
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-api-addr=api.{{.Namespace}}.svc.cluster.local:8085"
+        - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
@@ -344,7 +344,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: prometheus
+  name: linkerd-prometheus
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: prometheus
@@ -363,7 +363,7 @@ spec:
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: prometheus
+  name: linkerd-prometheus
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: prometheus
@@ -382,7 +382,7 @@ spec:
       volumes:
       - name: prometheus-config
         configMap:
-          name: prometheus-config
+          name: linkerd-prometheus-config
       containers:
       - name: prometheus
         ports:
@@ -420,7 +420,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: prometheus-config
+  name: linkerd-prometheus-config
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: prometheus
@@ -511,7 +511,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: grafana
+  name: linkerd-grafana
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: grafana
@@ -530,7 +530,7 @@ spec:
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: grafana
+  name: linkerd-grafana
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: grafana
@@ -548,7 +548,7 @@ spec:
       volumes:
       - name: grafana-config
         configMap:
-          name: grafana-config
+          name: linkerd-grafana-config
           items:
           - key: grafana.ini
             path: grafana.ini
@@ -586,7 +586,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: grafana-config
+  name: linkerd-grafana-config
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: grafana
@@ -597,7 +597,7 @@ data:
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/linkerd-grafana:http/proxy/
 
     [auth]
     disable_login_form = true
@@ -619,7 +619,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://prometheus.{{.Namespace}}.svc.cluster.local:9090
+      url: http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -703,7 +703,7 @@ subjects:
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: ca
+  name: linkerd-ca
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: ca
@@ -758,7 +758,7 @@ const ProxyInjectorTemplate = `
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: proxy-injector
+  name: linkerd-proxy-injector
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
@@ -814,7 +814,7 @@ spec:
           optional: true
       - name: proxy-spec
         configMap:
-          name: {{.ProxyInjectorSidecarConfig}}
+          name: linkerd-proxy-injector-sidecar-config
       {{- if .EnableHA }}
       resources:
         requests:
@@ -861,7 +861,7 @@ roleRef:
 kind: Service
 apiVersion: v1
 metadata:
-  name: proxy-injector
+  name: linkerd-proxy-injector
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
@@ -881,7 +881,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.ProxyInjectorSidecarConfig}}
+  name: linkerd-proxy-injector-sidecar-config
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
@@ -920,7 +920,7 @@ data:
     - name: LINKERD2_PROXY_BIND_TIMEOUT
       value: {{.ProxyBindTimeout}}
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
+      value: tcp://linkerd-proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:{{.ProxyControlPort}}
     - name: LINKERD2_PROXY_METRICS_LISTENER

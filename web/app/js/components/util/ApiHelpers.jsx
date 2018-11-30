@@ -156,7 +156,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const prefixLink = (to, controllerDeployment) => {
     let prefix = pathPrefix;
     if (!_.isEmpty(controllerDeployment)) { // add field for grafana deployment
-      prefix = prefix.replace("/web:", "/" + controllerDeployment + ":");
+      prefix = prefix.replace("/linkerd-web:", "/" + controllerDeployment + ":");
     }
 
     return `${prefix}${to}`;
