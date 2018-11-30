@@ -216,7 +216,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: initArgs,
+		Args:                     initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -233,7 +233,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		IntVal: int32(options.proxyMetricsPort),
 	}
 
-	proxyProbe := v1.Probe{
+	livenessProbe := v1.Probe{
 		Handler: v1.Handler{
 			HTTPGet: &v1.HTTPGetAction{
 				Path: "/metrics",
@@ -241,6 +241,14 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		},
 		InitialDelaySeconds: 10,
+	}
+	readinessProbe := v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/metrics",
+				Port: metricsPort,
+			},
+		},
 	}
 
 	resources := v1.ResourceRequirements{
@@ -290,8 +298,8 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 		},
-		ReadinessProbe: &proxyProbe,
-		LivenessProbe:  &proxyProbe,
+		LivenessProbe:  &livenessProbe,
+		ReadinessProbe: &readinessProbe,
 	}
 
 	// Special case if the caller specifies that
