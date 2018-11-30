@@ -40,7 +40,7 @@ func TestParseProfile(t *testing.T) {
 				&v1alpha1.RouteSpec{
 					Name: "/authors/{id}",
 					Condition: &v1alpha1.RequestMatch{
-						Path:   "/authors/\\d+",
+						Path:   "^/authors/\\d+$",
 						Method: "POST",
 					},
 					ResponseClasses: []*v1alpha1.ResponseClass{
