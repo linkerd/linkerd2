@@ -29,18 +29,18 @@ var (
 	// target resource on an outbound 'to' query
 	// destination resource on an outbound 'from' query
 	ValidTargets = []string{
+		k8s.Authority,
 		k8s.Deployment,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,
-		k8s.Authority,
 	}
 
-	// ValidDestinations specifies resource types allowed as a destination:
+	// ValidTapDestinations specifies resource types allowed as a tap destination:
 	// destination resource on an outbound 'to' query
-	// target resource on an outbound 'from' query
-	ValidDestinations = []string{
+	ValidTapDestinations = []string{
 		k8s.Deployment,
+		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,
@@ -281,6 +281,10 @@ func validateFromResourceType(resourceType string) (string, error) {
 // It's the same as BuildResources but only admits one arg and only returns one resource
 func BuildResource(namespace, arg string) (pb.Resource, error) {
 	res, err := BuildResources(namespace, []string{arg})
+	if err != nil {
+		return pb.Resource{}, err
+	}
+
 	return res[0], err
 }
 
@@ -386,8 +390,8 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
 		}
-		if !contains(ValidDestinations, destination.Type) {
-			return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
+		if !contains(ValidTapDestinations, destination.Type) {
+			return nil, fmt.Errorf("unsupported resource type [%s]", destination.Type)
 		}
 
 		match := pb.TapByResourceRequest_Match{

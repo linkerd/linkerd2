@@ -16,8 +16,8 @@ import (
 func TestGRPCError(t *testing.T) {
 	t.Run("Maps errors to gRPC errors", func(t *testing.T) {
 		expectations := map[error]error{
-			nil: nil,
-			errors.New("normal erro"):                                                                   errors.New("rpc error: code = Unknown desc = normal erro"),
+			nil:                       nil,
+			errors.New("normal erro"): errors.New("rpc error: code = Unknown desc = normal erro"),
 			status.Error(codes.NotFound, "grpc not found"):                                              errors.New("rpc error: code = NotFound desc = grpc not found"),
 			k8sError.NewNotFound(schema.GroupResource{Group: "foo", Resource: "bar"}, "http not found"): errors.New("rpc error: code = NotFound desc = bar.foo \"http not found\" not found"),
 			k8sError.NewServiceUnavailable("unavailable"):                                               errors.New("rpc error: code = Unavailable desc = unavailable"),
@@ -224,6 +224,95 @@ func TestBuildResource(t *testing.T) {
 		resource  pb.Resource
 	}
 
+	t.Run("Returns expected errors on invalid input", func(t *testing.T) {
+		msg := "cannot find Kubernetes canonical name from friendly name [invalid]"
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "",
+				args:      []string{"invalid"},
+			},
+		}
+
+		for _, exp := range expectations {
+			_, err := BuildResource(exp.namespace, exp.args[0])
+			if err == nil {
+				t.Fatalf("BuildResource called with invalid resources unexpectedly succeeded, should have returned %s", msg)
+			}
+			if err.Error() != msg {
+				t.Fatalf("BuildResource called with invalid resources should have returned: %s but got unexpected message: %s", msg, err)
+			}
+		}
+	})
+
+	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
+		expectations := []resourceExp{
+			resourceExp{
+				namespace: "test-ns",
+				args:      []string{"deployments"},
+				resource: pb.Resource{
+					Namespace: "test-ns",
+					Type:      k8s.Deployment,
+					Name:      "",
+				},
+			},
+			resourceExp{
+				namespace: "",
+				args:      []string{"deploy/foo"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.Deployment,
+					Name:      "foo",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"po"},
+				resource: pb.Resource{
+					Namespace: "foo-ns",
+					Type:      k8s.Pod,
+					Name:      "",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.Namespace,
+					Name:      "",
+				},
+			},
+			resourceExp{
+				namespace: "foo-ns",
+				args:      []string{"ns/foo-ns2"},
+				resource: pb.Resource{
+					Namespace: "",
+					Type:      k8s.Namespace,
+					Name:      "foo-ns2",
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			res, err := BuildResource(exp.namespace, exp.args[0])
+			if err != nil {
+				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
+			}
+
+			if !reflect.DeepEqual(exp.resource, res) {
+				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res)
+			}
+		}
+	})
+}
+
+func TestBuildResources(t *testing.T) {
+	type resourceExp struct {
+		namespace string
+		args      []string
+		resource  pb.Resource
+	}
+
 	t.Run("Rejects duped resources", func(t *testing.T) {
 		msg := "cannot supply duplicate resources"
 		expectations := []resourceExp{
@@ -240,10 +329,10 @@ func TestBuildResource(t *testing.T) {
 		for _, exp := range expectations {
 			_, err := BuildResources(exp.namespace, exp.args)
 			if err == nil {
-				t.Fatalf("BuildResource called with duped resources unexpectedly succeeded, should have returned %s", msg)
+				t.Fatalf("BuildResources called with duped resources unexpectedly succeeded, should have returned %s", msg)
 			}
 			if err.Error() != msg {
-				t.Fatalf("BuildResource called with duped resources should have returned: %s but got unexpected message: %s", msg, err)
+				t.Fatalf("BuildResources called with duped resources should have returned: %s but got unexpected message: %s", msg, err)
 			}
 		}
 	})
@@ -268,10 +357,10 @@ func TestBuildResource(t *testing.T) {
 		for _, exp := range expectations {
 			_, err := BuildResources(exp.namespace, exp.args)
 			if err == nil {
-				t.Fatalf("BuildResource called with 'all' and another resource unexpectedly succeeded, should have returned %s", msg)
+				t.Fatalf("BuildResources called with 'all' and another resource unexpectedly succeeded, should have returned %s", msg)
 			}
 			if err.Error() != msg {
-				t.Fatalf("BuildResource called with 'all' and another resource should have returned: %s but got unexpected message: %s", msg, err)
+				t.Fatalf("BuildResources called with 'all' and another resource should have returned: %s but got unexpected message: %s", msg, err)
 			}
 		}
 	})

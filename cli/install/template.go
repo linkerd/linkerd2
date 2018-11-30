@@ -491,6 +491,9 @@ data:
       - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
         action: replace
         target_label: k8s_job
+      # drop __meta_kubernetes_pod_label_linkerd_io_proxy_job
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_job
       # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
       # deployment=foo
       - action: labelmap

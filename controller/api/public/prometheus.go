@@ -125,7 +125,8 @@ func promDirectionLabels(direction string) model.LabelSet {
 }
 
 func promResourceType(resource *pb.Resource) model.LabelName {
-	return model.LabelName(resource.Type)
+	l5dLabel := k8s.KindToL5DLabel(resource.Type)
+	return model.LabelName(l5dLabel)
 }
 
 func (s *grpcServer) getPrometheusMetrics(ctx context.Context, volumeQueryTemplate, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {

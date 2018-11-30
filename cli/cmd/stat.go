@@ -66,16 +66,17 @@ func newCmdStat() *cobra.Command {
   * au/my-authority
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2
+  * deploy/ po/
   * all
 
-Valid resource types include:
-
+  Valid resource types include:
   * deployments
   * namespaces
   * pods
   * replicationcontrollers
   * authorities (not supported in --from)
   * services (only supported if a --from is also specified, or as a --to)
+  * jobs (only supported as a --from or --to)
   * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.

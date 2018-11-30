@@ -13,6 +13,7 @@ const (
 	Authority             = "authority"
 	DaemonSet             = "daemonset"
 	Deployment            = "deployment"
+	Job                   = "job"
 	Namespace             = "namespace"
 	Pod                   = "pod"
 	ReplicationController = "replicationcontroller"
@@ -20,6 +21,9 @@ const (
 	Service               = "service"
 	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
+
+	// special case k8s job label, to not conflict with Prometheus' job label
+	l5dJob = "k8s_job"
 )
 
 // AllResources is a sorted list of all resources defined as constants above.
@@ -27,6 +31,7 @@ var AllResources = []string{
 	Authority,
 	DaemonSet,
 	Deployment,
+	Job,
 	Namespace,
 	Pod,
 	ReplicationController,
@@ -94,22 +99,28 @@ func GetConfig(fpath, kubeContext string) (*rest.Config, error) {
 // This also works for non-k8s resources, e.g. authorities
 func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) {
 	switch friendlyName {
-	case "deploy", "deployment", "deployments":
-		return Deployment, nil
+	case "au", "authority", "authorities":
+		return Authority, nil
 	case "ds", "daemonset", "daemonsets":
 		return DaemonSet, nil
+	case "deploy", "deployment", "deployments":
+		return Deployment, nil
+	case "job", "jobs":
+		return Job, nil
 	case "ns", "namespace", "namespaces":
 		return Namespace, nil
 	case "po", "pod", "pods":
 		return Pod, nil
 	case "rc", "replicationcontroller", "replicationcontrollers":
 		return ReplicationController, nil
+	case "rs", "replicaset", "replicasets":
+		return ReplicaSet, nil
 	case "svc", "service", "services":
 		return Service, nil
+	case "sp", "serviceprofile", "serviceprofiles":
+		return ServiceProfile, nil
 	case "sts", "statefulset", "statefulsets":
 		return StatefulSet, nil
-	case "au", "authority", "authorities":
-		return Authority, nil
 	case "all":
 		return All, nil
 	}
@@ -121,10 +132,14 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 // Essentially the reverse of CanonicalResourceNameFromFriendlyName
 func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
-	case Deployment:
-		return "deploy"
+	case Authority:
+		return "au"
 	case DaemonSet:
 		return "ds"
+	case Deployment:
+		return "deploy"
+	case Job:
+		return "job"
 	case Namespace:
 		return "ns"
 	case Pod:
@@ -135,11 +150,18 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "rs"
 	case Service:
 		return "svc"
+	case ServiceProfile:
+		return "sp"
 	case StatefulSet:
 		return "sts"
-	case Authority:
-		return "au"
 	default:
 		return ""
 	}
+}
+
+func KindToL5DLabel(k8sKind string) string {
+	if k8sKind == Job {
+		return l5dJob
+	}
+	return k8sKind
 }

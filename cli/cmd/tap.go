@@ -59,12 +59,12 @@ func newCmdTap() *cobra.Command {
   * ns/my-ns
 
   Valid resource types include:
-
   * deployments
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported as a "--to" resource)`,
+  * services (only supported as a --to resource)
+  * jobs (only supported as a --from or --to)`,
 		Example: `  # tap the web deployment in the default namespace
   linkerd tap deploy/web
 
