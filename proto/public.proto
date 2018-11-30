@@ -180,6 +180,8 @@ message TapEvent {
   TcpAddress   destination      = 2;
   EndpointMeta destination_meta = 4;
 
+  RouteMeta route_meta = 7;
+
   ProxyDirection proxy_direction = 6;
   enum ProxyDirection {
     UNKNOWN = 0;
@@ -192,6 +194,10 @@ message TapEvent {
   }
 
   message EndpointMeta {
+    map<string, string> labels = 1;
+  }
+
+  message RouteMeta {
     map<string, string> labels = 1;
   }
 

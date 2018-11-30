@@ -524,6 +524,15 @@ func (p *peer) tlsStatus() string {
 	return p.labels["tls"]
 }
 
+func routeLabels(event *pb.TapEvent) string {
+	out := ""
+	for key, val := range event.GetRouteMeta().GetLabels() {
+		out = fmt.Sprintf("%s rt_%s=%s", out, key, val)
+	}
+
+	return out
+}
+
 func RenderTapEvent(event *pb.TapEvent, resource string) string {
 	dst := dst(event)
 	src := src(event)
@@ -548,12 +557,14 @@ func RenderTapEvent(event *pb.TapEvent, resource string) string {
 		tls,
 	)
 
+	// If `resource` is non-empty, then
 	resources := ""
 	if resource != "" {
 		resources = fmt.Sprintf(
-			"%s%s",
+			"%s%s%s",
 			src.formatResource(resource),
 			dst.formatResource(resource),
+			routeLabels(event),
 		)
 	}
 

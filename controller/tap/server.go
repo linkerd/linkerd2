@@ -443,6 +443,9 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		DestinationMeta: &public.TapEvent_EndpointMeta{
 			Labels: destinationLabels,
 		},
+		RouteMeta: &public.TapEvent_RouteMeta{
+			Labels: orig.GetRouteMeta().GetLabels(),
+		},
 		ProxyDirection: direction(orig.GetProxyDirection()),
 		Event:          event(orig.GetHttp()),
 	}
