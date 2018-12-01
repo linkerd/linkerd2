@@ -565,6 +565,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+          initialDelaySeconds: 30
         readinessProbe:
           httpGet:
             path: /api/health

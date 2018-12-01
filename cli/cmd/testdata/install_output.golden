@@ -708,6 +708,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+          initialDelaySeconds: 30
         name: grafana
         ports:
         - containerPort: 3000
