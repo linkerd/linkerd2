@@ -401,11 +401,14 @@ spec:
           httpGet:
             path: /-/ready
             port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         livenessProbe:
           httpGet:
             path: /-/healthy
             port: 9090
           initialDelaySeconds: 30
+          timeoutSeconds: 30
         {{- if .EnableHA }}
         resources:
           requests:
@@ -959,6 +962,7 @@ data:
       httpGet:
         path: /metrics
         port: {{.ProxyMetricsPort}}
+      initialDelaySeconds: 10
     {{- if or .ProxyResourceRequestCPU .ProxyResourceRequestMemory }}
     resources:
       requests:

@@ -66,7 +66,11 @@ func TestCheckPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	cmd := []string{"install", "--controller-log-level", "debug", "--linkerd-version", TestHelper.GetVersion()}
+	cmd := []string{"install",
+		"--controller-log-level", "debug",
+		"--proxy-log-level", "warn,linkerd2_proxy=debug",
+		"--linkerd-version", TestHelper.GetVersion(),
+	}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["ca"] = 1
@@ -114,13 +118,24 @@ func TestVersionPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
+	// Wait for everything to fully come up
 	out, _, err := TestHelper.LinkerdRun(
+		"check",
+		"--proxy",
+		"--expected-version",
+		TestHelper.GetVersion(),
+		"--wait=60s",
+	)
+	if err != nil {
+		t.Fatalf("Check command failed\n%s", out)
+	}
+
+	out, _, err = TestHelper.LinkerdRun(
 		"check",
 		"--expected-version",
 		TestHelper.GetVersion(),
 		"--wait=0",
 	)
-
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
@@ -221,9 +236,21 @@ func TestCheckProxy(t *testing.T) {
 		TestHelper.GetVersion(),
 		"--namespace",
 		prefixedNs,
+		"--wait=60s",
+	)
+	if err != nil {
+		t.Fatalf("Check command failed\n%s", out)
+	}
+
+	out, _, err = TestHelper.LinkerdRun(
+		"check",
+		"--proxy",
+		"--expected-version",
+		TestHelper.GetVersion(),
+		"--namespace",
+		prefixedNs,
 		"--wait=0",
 	)
-
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}

@@ -255,6 +255,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -410,6 +411,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -491,6 +493,7 @@ spec:
             path: /-/healthy
             port: 9090
           initialDelaySeconds: 30
+          timeoutSeconds: 30
         name: prometheus
         ports:
         - containerPort: 9090
@@ -499,6 +502,8 @@ spec:
           httpGet:
             path: /-/ready
             port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         resources: {}
         volumeMounts:
         - mountPath: /etc/prometheus
@@ -542,6 +547,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -761,6 +767,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -990,6 +997,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -1112,6 +1120,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -1282,6 +1291,7 @@ data:
       httpGet:
         path: /metrics
         port: 4191
+      initialDelaySeconds: 10
     resources:
       requests:
         cpu: RequestCPU
