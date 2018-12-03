@@ -106,7 +106,7 @@ func newCmdTop() *cobra.Command {
   * pods
   * replicationcontrollers
   * services (only supported as a --to resource)
-  * jobs (only supported as a --from or --to)`,
+  * jobs (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
   linkerd top deploy/web
 
