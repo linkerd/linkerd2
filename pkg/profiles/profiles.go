@@ -11,7 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/util"
 )
 
-type ProfileTemplateConfig struct {
+type profileTemplateConfig struct {
 	ControlPlaneNamespace string
 	ServiceNamespace      string
 	ServiceName           string
@@ -309,8 +309,8 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	return nil
 }
 
-func buildConfig(namespace, service, controlPlaneNamespace string) *ProfileTemplateConfig {
-	return &ProfileTemplateConfig{
+func buildConfig(namespace, service, controlPlaneNamespace string) *profileTemplateConfig {
+	return &profileTemplateConfig{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		ServiceNamespace:      namespace,
 		ServiceName:           service,
