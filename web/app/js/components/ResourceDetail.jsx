@@ -10,7 +10,7 @@ import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
-import TopModule from './TopModule.jsx';
+import TopRoutesTabs from './TopRoutesTabs.jsx';
 import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { processNeighborData } from './util/TapUtils.jsx';
@@ -195,9 +195,11 @@ export class ResourceDetailBase extends React.Component {
       return <Spinner />;
     }
 
-    let topQuery = {
-      resource: this.state.resourceType + "/" + this.state.resourceName,
-      namespace: this.state.namespace
+    let { resourceName, resourceType, namespace } = this.state;
+    let query = {
+      resourceName,
+      resourceType,
+      namespace
     };
 
     let unmeshed = _.chain(this.state.unmeshedSources)
@@ -217,61 +219,55 @@ export class ResourceDetailBase extends React.Component {
       <div>
         {
           this.state.resourceIsMeshed ? null :
-          <div className="page-section">
+          <React.Fragment>
             <AddResources
               resourceName={this.state.resourceName}
               resourceType={this.state.resourceType} />
-          </div>
+          </React.Fragment>
         }
 
-        <div className="page-section">
+        <React.Fragment>
           <Octopus
             resource={this.state.resourceMetrics[0]}
             neighbors={this.state.neighborMetrics}
             unmeshedSources={_.values(this.state.unmeshedSources)}
             api={this.api} />
-        </div>
+        </React.Fragment>
 
-        {
-          !this.state.resourceIsMeshed ? null :
-          <div className="page-section">
-            <TopModule
-              pathPrefix={this.props.pathPrefix}
-              query={topQuery}
-              startTap={true}
-              updateNeighbors={this.updateNeighborsFromTapData}
-              maxRowsToDisplay={10} />
-          </div>
-        }
+        <TopRoutesTabs
+          query={query}
+          pathPrefix={this.props.pathPrefix}
+          updateNeighbors={this.updateNeighborsFromTapData}
+          disableTop={!this.state.resourceIsMeshed} />
 
         { _.isEmpty(upstreams) ? null : (
-          <div className="page-section">
+          <React.Fragment>
             <Typography variant="h5">Inbound</Typography>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={upstreams} />
-          </div>
+          </React.Fragment>
           )
         }
 
         { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
-          <div className="page-section">
+          <React.Fragment>
             <Typography variant="h5">Outbound</Typography>
             <MetricsTable
               resource={this.state.resource.type}
               metrics={this.state.neighborMetrics.downstream} />
-          </div>
+          </React.Fragment>
           )
         }
 
         {
           this.state.resource.type === "pod" ? null : (
-            <div className="page-section">
+            <React.Fragment>
               <Typography variant="h5">Pods</Typography>
               <MetricsTable
                 resource="pod"
                 metrics={this.state.podMetrics} />
-            </div>
+            </React.Fragment>
           )
         }
       </div>
@@ -279,7 +275,6 @@ export class ResourceDetailBase extends React.Component {
   }
 
   render() {
-
     return (
       <div className="page-content">
         <div>
