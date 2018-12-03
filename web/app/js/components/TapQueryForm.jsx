@@ -85,6 +85,7 @@ const styles = theme => ({
 class TapQueryForm extends React.Component {
   static propTypes = {
     classes: PropTypes.shape({}).isRequired,
+    cmdName: PropTypes.string.isRequired,
     enableAdvancedForm: PropTypes.bool,
     handleTapClear: PropTypes.func,
     handleTapStart: PropTypes.func.isRequired,
@@ -432,7 +433,7 @@ class TapQueryForm extends React.Component {
           </Grid>
         </CardContent>
 
-        <QueryToCliCmd cmdName="tap" query={this.state.query} resource={this.state.query.resource} displayOrder={cliQueryDisplayOrder} />
+        <QueryToCliCmd cmdName={this.props.cmdName} query={this.state.query} resource={this.state.query.resource} displayOrder={cliQueryDisplayOrder} />
 
         { !this.props.enableAdvancedForm ? null : this.renderAdvancedTapForm() }
 

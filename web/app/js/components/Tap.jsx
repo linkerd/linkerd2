@@ -303,6 +303,7 @@ class Tap extends React.Component {
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
         <TapQueryForm
+          cmdName="tap"
           tapRequestInProgress={this.state.tapRequestInProgress}
           tapIsClosing={this.state.tapIsClosing}
           handleTapStart={this.handleTapStart}
