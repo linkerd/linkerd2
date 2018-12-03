@@ -9,7 +9,7 @@ required = [
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  version = "v0.1.3"
+  version = "v0.1.4"
 
 [[constraint]]
   name = "google.golang.org/grpc"
