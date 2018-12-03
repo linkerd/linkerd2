@@ -48,19 +48,26 @@ func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] --template (SERVICE)",
-		Short: "Output template service profile config for Kubernetes",
-		Long: `Output template service profile config for Kubernetes.
+		Use:   "profile [flags] (--template | --open-api file) (SERVICE)",
+		Short: "Output service profile config for Kubernetes",
+		Long: `Output service profile config for Kubernetes.
 
-		This outputs a service profile template for the given service.  Edit the
-		template and then apply it with kubectl to add a service profile to a
-		service.
+This outputs a service profile for the given service.
 
-		Example:
-		linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
-		# (edit web-svc-profile.yaml manually)
-		kubectl apply -f web-svc-profile.yaml
-		`,
+If the --template flag is specified, it outputs a service profile template.
+Edit the template and then apply it with kubectl to add a service profile to
+a service.
+
+Example:
+  linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
+  # (edit web-svc-profile.yaml manually)
+  kubectl apply -f web-svc-profile.yaml
+
+If the --open-api flag is specified, it reads the given OpenAPI
+specification file and outputs a corresponding service profile.
+
+Example:
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]

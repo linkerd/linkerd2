@@ -24,7 +24,7 @@ func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
 				&v1alpha1.RouteSpec{
 					Name: "/authors/{id}",
 					Condition: &v1alpha1.RequestMatch{
-						Path:   "/authors/\\d+",
+						Path:   "^/authors/\\d+$",
 						Method: "POST",
 					},
 					ResponseClasses: []*v1alpha1.ResponseClass{
