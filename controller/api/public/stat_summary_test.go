@@ -922,8 +922,13 @@ metadata:
 status:
   phase: Failed
 `},
-						mockPromResponse:          model.Vector{},
-						expectedPrometheusQueries: nil, // TODO: actually there are queries being generated; check why
+						mockPromResponse: model.Vector{},
+						expectedPrometheusQueries: []string{
+							`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`sum(increase(response_total{direction="inbound", namespace="emojivoto"}[])) by (namespace, pod, classification, tls)`,
+						},
 					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
