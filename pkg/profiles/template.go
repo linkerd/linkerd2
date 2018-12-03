@@ -49,7 +49,7 @@ spec:
         # The simplest condition is a HTTP status code range.
         status:
           min: 500
-					max: 599
+          max: 599
 
         # Specifying only one of min or max matches just that one status code.
         # status:
