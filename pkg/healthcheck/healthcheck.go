@@ -715,7 +715,7 @@ func validateControlPlanePods(pods []v1.Pod) error {
 		}
 	}
 
-	names := []string{"controller", "grafana", "prometheus", "web"}
+	names := []string{"controller", "prometheus", "web", "grafana"}
 	if _, found := statuses["ca"]; found {
 		names = append(names, "ca")
 	}

@@ -257,7 +257,6 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
-          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -413,7 +412,6 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
-          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -495,7 +493,6 @@ spec:
             path: /-/healthy
             port: 9090
           initialDelaySeconds: 30
-          timeoutSeconds: 30
         name: prometheus
         ports:
         - containerPort: 9090
@@ -504,8 +501,6 @@ spec:
           httpGet:
             path: /-/ready
             port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
         resources: {}
         volumeMounts:
         - mountPath: /etc/prometheus
@@ -549,7 +544,6 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
-          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -718,18 +712,15 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+          initialDelaySeconds: 30
         name: grafana
         ports:
         - containerPort: 3000
           name: http
         readinessProbe:
-          failureThreshold: 10
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 30
         resources: {}
         volumeMounts:
         - mountPath: /etc/grafana
@@ -771,7 +762,6 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
-          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -999,7 +989,6 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
-          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
