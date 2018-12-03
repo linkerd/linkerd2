@@ -18,7 +18,7 @@ spec:
     # matches more than one route, the first match wins.
     condition:
       # The simplest condition is a path regular expression.
-      path: '/authors/\d+'
+      path: '^/authors/\d+$'
 
       # This is a condition that checks the request method.
       method: POST
@@ -26,18 +26,18 @@ spec:
       # If more than one condition field is set, all of them must be satisfied.
       # This is equivalent to using the 'all' condition:
       # all:
-      # - path: '/authors/\d+'
+      # - path: '^/authors/\d+$'
       # - method: POST
 
       # Conditions can be combined using 'all', 'any', and 'not'.
       # any:
       # - all:
       #   - method: POST
-      #   - path: '/authors/\d+'
+      #   - path: '^/authors/\d+$'
       # - all:
       #   - not:
       #       method: DELETE
-      #   - path: /info.txt
+      #   - path: ^/info.txt$
 
     # A route may optionally define a list of response classes which describe
     # how responses from this route will be classified.

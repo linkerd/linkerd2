@@ -54,6 +54,10 @@ required = [
 [[constraint]]
   name = "github.com/gorilla/websocket"
   version = "1.2.0"
+
+[[constraint]]
+  name = "github.com/go-openapi/spec"
+  version = "v0.17.2"
 #
 # k8s.io/kubernetes dependency fixes
 # taken from https://github.com/kubernetes/kubernetes/blob/master/Godeps/Godeps.json

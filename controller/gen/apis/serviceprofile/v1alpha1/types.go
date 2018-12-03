@@ -32,32 +32,32 @@ type ServiceProfileSpec struct {
 type RouteSpec struct {
 	Name            string           `json:"name"`
 	Condition       *RequestMatch    `json:"condition"`
-	ResponseClasses []*ResponseClass `json:"response_classes"`
+	ResponseClasses []*ResponseClass `json:"response_classes,omitempty"`
 }
 
 type RequestMatch struct {
-	All    []*RequestMatch `json:"all"`
-	Not    *RequestMatch   `json:"not"`
-	Any    []*RequestMatch `json:"any"`
-	Path   string          `json:"path"`
-	Method string          `json:"method"`
+	All    []*RequestMatch `json:"all,omitempty"`
+	Not    *RequestMatch   `json:"not,omitempty"`
+	Any    []*RequestMatch `json:"any,omitempty"`
+	Path   string          `json:"path,omitempty"`
+	Method string          `json:"method,omitempty"`
 }
 
 type ResponseClass struct {
 	Condition *ResponseMatch `json:"condition"`
-	IsFailure bool           `json:"is_failure"`
+	IsFailure bool           `json:"is_failure,omitempty"`
 }
 
 type ResponseMatch struct {
-	All    []*ResponseMatch `json:"all"`
-	Not    *ResponseMatch   `json:"not"`
-	Any    []*ResponseMatch `json:"any"`
-	Status *Range           `json:"status"`
+	All    []*ResponseMatch `json:"all,omitempty"`
+	Not    *ResponseMatch   `json:"not,omitempty"`
+	Any    []*ResponseMatch `json:"any,omitempty"`
+	Status *Range           `json:"status,omitempty"`
 }
 
 type Range struct {
-	Min uint32 `json:"min"`
-	Max uint32 `json:"max"`
+	Min uint32 `json:"min,omitempty"`
+	Max uint32 `json:"max,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
