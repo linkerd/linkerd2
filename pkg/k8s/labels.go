@@ -175,11 +175,9 @@ func CreatedByAnnotationValue() string {
 // GetPodLabels returns the set of prometheus owner labels for a given pod
 func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]string {
 	labels := map[string]string{"pod": pod.Name}
-	if ownerKind == "job" {
-		labels["k8s_job"] = ownerName
-	} else {
-		labels[ownerKind] = ownerName
-	}
+
+	l5dLabel := KindToL5DLabel(ownerKind)
+	labels[l5dLabel] = ownerName
 
 	if controllerNS := pod.Labels[ControllerNSLabel]; controllerNS != "" {
 		labels["control_plane_ns"] = controllerNS

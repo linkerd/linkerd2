@@ -101,12 +101,12 @@ func newCmdTop() *cobra.Command {
   * ns/my-ns
 
   Valid resource types include:
-
   * deployments
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported as a "--to" resource)`,
+  * services (only supported as a --to resource)
+  * jobs (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
   linkerd top deploy/web
 

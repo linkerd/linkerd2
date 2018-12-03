@@ -203,7 +203,8 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 func destinationLabels(resource *public.Resource) map[string]string {
 	dstLabels := map[string]string{}
 	if resource.Name != "" {
-		dstLabels[resource.Type] = resource.Name
+		l5dLabel := pkgK8s.KindToL5DLabel(resource.Type)
+		dstLabels[l5dLabel] = resource.Name
 	}
 	if resource.Type != pkgK8s.Namespace && resource.Namespace != "" {
 		dstLabels["namespace"] = resource.Namespace

@@ -66,7 +66,7 @@ func TestCheckPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	cmd := []string{"install", "--linkerd-version", TestHelper.GetVersion()}
+	cmd := []string{"install", "--controller-log-level", "debug", "--linkerd-version", TestHelper.GetVersion()}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["ca"] = 1
@@ -188,7 +188,7 @@ func TestInject(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
-	for _, deploy := range []string{"smoke-test-terminus","smoke-test-gateway"} {
+	for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
 		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
