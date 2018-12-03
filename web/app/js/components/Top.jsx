@@ -155,6 +155,7 @@ class Top extends React.Component {
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
         <TapQueryForm
           enableAdvancedForm={false}
+          cmdName="top"
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           handleTapClear={this.handleTapClear}
