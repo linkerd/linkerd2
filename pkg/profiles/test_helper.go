@@ -1,4 +1,4 @@
-package cmd
+package profiles
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
+func GenServiceProfile(service, namespace, controlPlaneNamespace string) v1alpha1.ServiceProfile {
 	return v1alpha1.ServiceProfile{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "linkerd.io/v1alpha1",

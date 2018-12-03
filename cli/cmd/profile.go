@@ -76,7 +76,7 @@ Example:
 				if options.openAPI != "" {
 					return errors.New("You must specify exactly one of --template or --open-api")
 				}
-				return profiles.RenderProfileTemplate(options.namespace, args[0], controlPlaneNamespace, os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
 
 			if options.openAPI != "" {

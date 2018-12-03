@@ -23,9 +23,9 @@ func TestParseProfile(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := GenServiceProfile("mysvc", "myns")
+	expectedServiceProfile := profiles.GenServiceProfile("mysvc", "myns", "linkerd")
 
-	err = ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
+	err = profiles.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {
 		t.Fatalf("ServiceProfiles are not equal: %v", err)
 	}
