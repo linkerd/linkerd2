@@ -6,7 +6,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	profiles "github.com/linkerd/linkerd2/pkg/profiles"
+	"github.com/linkerd/linkerd2/pkg/profiles"
 )
 
 func TestParseProfile(t *testing.T) {
