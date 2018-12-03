@@ -68,8 +68,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	}
 
 	profileYaml := &bytes.Buffer{}
-	tmplParams := profiles.BuildConfig(namespace, service, h.controllerNamespace)
-	err := profiles.RenderProfileTemplate(tmplParams, profileYaml)
+	err := profiles.RenderProfileTemplate(namespace, service, h.controllerNamespace, profileYaml)
 
 	if err != nil {
 		log.Error(err)

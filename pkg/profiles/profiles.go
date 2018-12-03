@@ -309,7 +309,7 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	return nil
 }
 
-func BuildConfig(namespace, service, controlPlaneNamespace string) *ProfileTemplateConfig {
+func buildConfig(namespace, service, controlPlaneNamespace string) *ProfileTemplateConfig {
 	return &ProfileTemplateConfig{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		ServiceNamespace:      namespace,
@@ -318,7 +318,8 @@ func BuildConfig(namespace, service, controlPlaneNamespace string) *ProfileTempl
 	}
 }
 
-func RenderProfileTemplate(config *ProfileTemplateConfig, w io.Writer) error {
+func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
+	config := buildConfig(namespace, service, controlPlaneNamespace)
 	template, err := template.New("profile").Parse(Template)
 	if err != nil {
 		return err
