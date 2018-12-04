@@ -1,4 +1,5 @@
 import AppBar from '@material-ui/core/AppBar';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import QueryToCliCmd from './QueryToCliCmd.jsx';
@@ -66,7 +67,7 @@ class TopRoutesTabs extends React.Component {
     let serviceToQuery = _.find(servicesInThisNs, s => query.resourceName.indexOf(s.name) !== -1);
 
     if (_.isNil(serviceToQuery)) {
-      return null;
+      return <ConfigureProfilesMsg />;
     }
 
     let routesQueryWithFrom = {

@@ -1,10 +1,9 @@
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+// import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TopRoutesTable from './TopRoutesTable.jsx';
-import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
@@ -29,18 +28,6 @@ class TopRoutesBase extends React.Component {
     return <ErrorBanner message={error} />;
   }
 
-  configureProfileMsg() {
-    return (
-      <Card>
-        <CardContent>
-          <Typography>
-            No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-
   render() {
     const {data} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
@@ -48,7 +35,7 @@ class TopRoutesBase extends React.Component {
     return (
       <React.Fragment>
         {this.banner()}
-        {_.isEmpty(metrics) ? this.configureProfileMsg() : null}
+        {_.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
         <TopRoutesTable rows={metrics} />
       </React.Fragment>
     );
