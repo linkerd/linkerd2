@@ -6,6 +6,7 @@ import {
 import PropTypes from 'prop-types';
 import React from 'react';
 import _ from 'lodash';
+import { displayOrder } from './util/CliQueryUtils.js';
 
 const toCliParam = {
   "namespace": "--namespace",
@@ -27,7 +28,6 @@ const toCliParam = {
 export default class QueryToCliCmd extends React.Component {
   static propTypes = {
     cmdName: PropTypes.string.isRequired,
-    displayOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
     query: PropTypes.shape({}).isRequired,
     resource: PropTypes.string.isRequired
   }
@@ -37,7 +37,7 @@ export default class QueryToCliCmd extends React.Component {
   }
 
   render = () => {
-    let { cmdName, query, resource, displayOrder } = this.props;
+    let { cmdName, query, resource } = this.props;
 
     return (
       _.isEmpty(resource) ? null :
@@ -48,7 +48,7 @@ export default class QueryToCliCmd extends React.Component {
 
         <code>
           linkerd {this.props.cmdName} {resource}
-          { _.map(displayOrder, item => {
+          { _.map(displayOrder(cmdName, query), item => {
             return !toCliParam[item] ? null : this.renderCliItem(toCliParam[item], query[item]);
           })}
         </code>
