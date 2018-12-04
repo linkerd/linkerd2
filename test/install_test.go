@@ -118,24 +118,13 @@ func TestVersionPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	// Wait for everything to fully come up
 	out, _, err := TestHelper.LinkerdRun(
-		"check",
-		"--proxy",
-		"--expected-version",
-		TestHelper.GetVersion(),
-		"--wait=60s",
-	)
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
-
-	out, _, err = TestHelper.LinkerdRun(
 		"check",
 		"--expected-version",
 		TestHelper.GetVersion(),
 		"--wait=0",
 	)
+
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
@@ -236,21 +225,9 @@ func TestCheckProxy(t *testing.T) {
 		TestHelper.GetVersion(),
 		"--namespace",
 		prefixedNs,
-		"--wait=60s",
-	)
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
-
-	out, _, err = TestHelper.LinkerdRun(
-		"check",
-		"--proxy",
-		"--expected-version",
-		TestHelper.GetVersion(),
-		"--namespace",
-		prefixedNs,
 		"--wait=0",
 	)
+
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
