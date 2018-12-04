@@ -196,14 +196,13 @@ func mkRouteSpec(path, pathRegex string, method string, responses *spec.Response
 
 func pathToRegex(path string) string {
 	escaped := regexp.QuoteMeta(path)
-	replaced := pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
-	return fmt.Sprintf("^%s$", replaced)
+	return pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
 }
 
 func toReqMatch(path string, method string) *sp.RequestMatch {
 	return &sp.RequestMatch{
-		Path:   path,
-		Method: method,
+		PathRegex: path,
+		Method:    method,
 	}
 }
 
