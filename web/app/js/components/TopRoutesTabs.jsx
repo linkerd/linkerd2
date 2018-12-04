@@ -86,8 +86,8 @@ class TopRoutesTabs extends React.Component {
             onChange={this.handleChange}
             indicatorColor="primary"
             textColor="primary">
-            <Tab label="Sampled Route Data" />
-            <Tab label="Live Route Data" />
+            <Tab label="Live Calls" />
+            <Tab label="Route Metrics" />
           </Tabs>
         </AppBar>
         {value === 0 && this.renderTopComponent()}
