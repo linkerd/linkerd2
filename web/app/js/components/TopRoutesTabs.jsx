@@ -32,7 +32,11 @@ class TopRoutesTabs extends React.Component {
   };
 
   renderTopComponent() {
-    let { query, pathPrefix, updateNeighborsFromTapData } = this.props;
+    let { disableTop, query, pathPrefix, updateNeighborsFromTapData } = this.props;
+    if (disableTop) {
+      return null;
+    }
+
     let topQuery = {
       resource: query.resourceType + "/" + query.resourceName,
       namespace: query.namespace
@@ -108,6 +112,7 @@ class TopRoutesTabs extends React.Component {
 TopRoutesTabs.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   data: PropTypes.arrayOf(PropTypes.shape({})),
+  disableTop: PropTypes.bool,
   pathPrefix: PropTypes.string.isRequired,
   query: PropTypes.shape({}),
   theme: PropTypes.shape({}).isRequired,
@@ -116,6 +121,7 @@ TopRoutesTabs.propTypes = {
 
 TopRoutesTabs.defaultProps = {
   data: [],
+  disableTop: false,
   query: {},
   updateNeighborsFromTapData: _.noop
 };
