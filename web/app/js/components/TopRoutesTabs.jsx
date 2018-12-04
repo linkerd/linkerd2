@@ -9,7 +9,6 @@ import Tabs from '@material-ui/core/Tabs';
 import TopModule from './TopModule.jsx';
 import TopRoutesModule from './TopRoutesModule.jsx';
 import _ from 'lodash';
-import withREST from './util/withREST.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({

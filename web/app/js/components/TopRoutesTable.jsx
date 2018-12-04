@@ -11,6 +11,11 @@ const routesColumns = [
     sorter: (a, b) => (a.route).localeCompare(b.route)
   },
   {
+    title: "Service",
+    dataIndex: "dst",
+    sorter: (a, b) => (a.dst).localeCompare(b.dst)
+  },
+  {
     title: "Success Rate",
     dataIndex: "successRate",
     isNumeric: true,
@@ -57,7 +62,7 @@ export default class TopRoutesTable extends React.Component {
   };
 
   render() {
-    const {  rows } = this.props;
+    const { rows } = this.props;
     return (
       <BaseTable
         tableRows={rows}
