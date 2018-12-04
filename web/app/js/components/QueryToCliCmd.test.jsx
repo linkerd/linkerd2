@@ -9,17 +9,13 @@ describe('QueryToCliCmd', () => {
       "namespace": "linkerd",
       "scheme": ""
     }
-    let cliQueryDisplayOrder = [
-      "namespace",
-      "scheme"
-    ]
 
     let component = mount(
       <QueryToCliCmd
         cmdName="routes"
         query={query}
         resource={query.resource}
-        displayOrder={cliQueryDisplayOrder} />
+        />
     );
 
     expect(component).toIncludeText("Current Routes query");
@@ -34,75 +30,75 @@ describe('QueryToCliCmd', () => {
       "maxRps": "",
       "authority": "foo.bar:8080"
     }
-    let cliQueryDisplayOrder = [
-      "namespace",
-      "scheme",
-      "maxRps",
-      "authority"
-    ]
 
     let component = mount(
       <QueryToCliCmd
         cmdName="tap"
         query={query}
-        resource={query.resource}
-        displayOrder={cliQueryDisplayOrder} />
+        resource={query.resource} />
     );
 
     expect(component).toIncludeText("Current Tap query");
     expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --authority foo.bar:8080");
   });
 
-  it('displays the flags in the specified displayOrder', () => {
+  it('displays the flags in the specified order per cli command', () => {
     let query = {
-      "resource_name": "deploy/controller",
+      "resource": "deploy/controller",
       "namespace": "linkerd",
       "scheme": "HTTPS",
       "maxRps": "",
       "toResource": "deploy/prometheus",
       "authority": "foo.bar:8080"
     }
-    let cliQueryDisplayOrder = [
-      "namespace",
-      "toResource",
-      "scheme",
-      "maxRps",
-      "authority"
-    ]
 
     let component = mount(
       <QueryToCliCmd
         cmdName="tap"
         query={query}
-        resource={query.resource_name}
-        displayOrder={cliQueryDisplayOrder} />
+        resource={query.resource}
+        />
     );
 
     expect(component).toIncludeText("Current Tap query");
     expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --to deploy/prometheus --scheme HTTPS --authority foo.bar:8080");
   });
 
-  it("doesn't render commands for which a flag is not specified", () => {
+  it("doesn't render a namespace flag when the resource is a namespace", () => {
+    let query = {
+      "resource": "namespace/linkerd",
+      "namespace": "linkerd"
+    }
+
+    let component = mount(
+      <QueryToCliCmd
+        cmdName="top"
+        query={query}
+        resource={query.resource}
+        />
+    );
+
+    expect(component).toIncludeText("Current Top query");
+    expect(component).toIncludeText("linkerd top namespace/linkerd");
+  });
+
+  it("doesn't render commands for which a flag is not defined", () => {
       let query = {
         "resource": "deploy/controller",
         "namespace": "linkerd",
-        "scheme": "HTTPS"
+        "scheme": "HTTPS",
+        "theLimitDoesNotExist": 999
       }
-      let cliQueryDisplayOrder = [
-        "namespace",
-        "theLimitDoesNotExist",
-        "scheme"
-      ]
 
       let component = mount(
         <QueryToCliCmd
-          cmdName="routes"
+          cmdName="tap"
           query={query}
           resource={query.resource}
-          displayOrder={cliQueryDisplayOrder} />
+          />
       );
 
-      expect(component).toIncludeText("Current Routes query");
-      expect(component).toIncludeText("linkerd routes deploy/controller --namespace linkerd --scheme HTTPS");
+      expect(component).toIncludeText("Current Tap query");
+      expect(component).toIncludeText("linkerd tap deploy/controller --namespace linkerd --scheme HTTPS");
   });
 });

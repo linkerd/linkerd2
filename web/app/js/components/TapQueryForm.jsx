@@ -397,16 +397,7 @@ class TapQueryForm extends React.Component {
 
   render() {
     const { classes } = this.props;
-    let cliQueryDisplayOrder = _.compact([
-      this.state.query.resource.indexOf("namespace") === 0 ? null : "namespace",
-      "toResource",
-      this.state.query.toResource.indexOf("namespace") === 0 ? null : "toNamespace",
-      "method",
-      "path",
-      "scheme",
-      "authority",
-      "maxRps"
-    ]);
+
     return (
       <Card className={classes.card}>
         <CardContent>
@@ -433,7 +424,7 @@ class TapQueryForm extends React.Component {
           </Grid>
         </CardContent>
 
-        <QueryToCliCmd cmdName={this.props.cmdName} query={this.state.query} resource={this.state.query.resource} displayOrder={cliQueryDisplayOrder} />
+        <QueryToCliCmd cmdName={this.props.cmdName} query={this.state.query} resource={this.state.query.resource} />
 
         { !this.props.enableAdvancedForm ? null : this.renderAdvancedTapForm() }
 

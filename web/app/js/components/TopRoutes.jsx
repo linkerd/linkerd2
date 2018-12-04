@@ -224,11 +224,6 @@ class TopRoutes extends React.Component {
   }
 
   render() {
-    let cliQueryDisplayOrder = [
-      "namespace",
-      "from",
-      "from_namespace"
-    ];
     let query = this.state.query;
     let from = '';
     if (_.isEmpty(query.from_type)) {
@@ -246,7 +241,7 @@ class TopRoutes extends React.Component {
         }
         <Card>
           { this.renderRoutesQueryForm() }
-          <QueryToCliCmd cmdName="routes" query={query} resource={this.state.query.resource_name} displayOrder={cliQueryDisplayOrder} />
+          <QueryToCliCmd cmdName="routes" query={query} resource={this.state.query.resource_name} />
         </Card>
         { !this.state.requestInProgress ? null : <TopRoutesModule query={this.state.query} /> }
       </div>
