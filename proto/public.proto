@@ -384,6 +384,7 @@ message RouteTable {
   message Row {
     string route = 1;
     string time_window = 2;
+    string dst = 6;
 
     BasicStats stats = 5;
   }

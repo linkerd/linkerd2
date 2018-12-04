@@ -195,6 +195,7 @@ func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse
 	for i, route := range routes {
 		row := &pb.RouteTable_Row{
 			Route: route,
+			Dst:   "foo.default.svc.cluster.local",
 			Stats: &pb.BasicStats{
 				SuccessCount:    counts[i],
 				FailureCount:    0,

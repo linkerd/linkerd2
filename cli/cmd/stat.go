@@ -198,6 +198,7 @@ func renderStatStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) st
 const padding = 3
 
 type rowStats struct {
+	dst         string
 	requestRate float64
 	successRate float64
 	tlsPercent  float64

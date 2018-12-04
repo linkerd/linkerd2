@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, classification, tls)"
-	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, %s))"
+	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, dst, classification, tls)"
+	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, dst, %s))"
 	dstLabel                  = `dst=~"%s(:\\d+)?"`
 )
 
@@ -48,29 +48,10 @@ func topRoutesError(req *pb.TopRoutesRequest, message string) *pb.TopRoutesRespo
 }
 
 func (s *grpcServer) routeResourceQuery(ctx context.Context, req *pb.TopRoutesRequest) (*pb.RouteTable, error) {
-	routeMetrics, err := s.getRouteMetrics(ctx, req, req.TimeWindow)
-	if err != nil {
-		return nil, err
-	}
-	rows := make([]*pb.RouteTable_Row, 0)
-
-	for route, metrics := range routeMetrics {
-
-		row := pb.RouteTable_Row{
-			Route:      route,
-			TimeWindow: req.TimeWindow,
-			Stats:      metrics,
-		}
-		rows = append(rows, &row)
-	}
-
-	rsp := &pb.RouteTable{
-		Rows: rows,
-	}
-	return rsp, nil
+	return s.getRouteMetrics(ctx, req, req.TimeWindow)
 }
 
-func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest, timeWindow string) (map[string]*pb.BasicStats, error) {
+func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest, timeWindow string) (*pb.RouteTable, error) {
 	reqLabels := buildRouteLabels(req)
 	groupBy := "rt_route"
 
@@ -79,7 +60,7 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 		return nil, err
 	}
 
-	return processRouteMetrics(results), nil
+	return processRouteMetrics(results, timeWindow), nil
 }
 
 func buildRouteLabels(req *pb.TopRoutesRequest) string {
@@ -123,16 +104,29 @@ func renderLabels(labels model.LabelSet, service string) string {
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
 
-func processRouteMetrics(results []promResult) map[string]*pb.BasicStats {
-	routeStats := make(map[string]*pb.BasicStats)
+type dstAndRoute struct {
+	dst   string
+	route string
+}
+
+func processRouteMetrics(results []promResult, timeWindow string) *pb.RouteTable {
+	routeStats := make(map[dstAndRoute]*pb.RouteTable_Row)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
 
 			route := string(sample.Metric[model.LabelName("rt_route")])
+			dst := string(sample.Metric[model.LabelName("dst")])
 
-			if routeStats[route] == nil {
-				routeStats[route] = &pb.BasicStats{}
+			key := dstAndRoute{dst, route}
+
+			if routeStats[key] == nil {
+				routeStats[key] = &pb.RouteTable_Row{
+					Dst:        dst,
+					Route:      route,
+					TimeWindow: timeWindow,
+					Stats:      &pb.BasicStats{},
+				}
 			}
 
 			value := extractSampleValue(sample)
@@ -141,23 +135,30 @@ func processRouteMetrics(results []promResult) map[string]*pb.BasicStats {
 			case promRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
-					routeStats[route].SuccessCount += value
+					routeStats[key].Stats.SuccessCount += value
 				case "failure":
-					routeStats[route].FailureCount += value
+					routeStats[key].Stats.FailureCount += value
 				}
 				switch string(sample.Metric[model.LabelName("tls")]) {
 				case "true":
-					routeStats[route].TlsRequestCount += value
+					routeStats[key].Stats.TlsRequestCount += value
 				}
 			case promLatencyP50:
-				routeStats[route].LatencyMsP50 = value
+				routeStats[key].Stats.LatencyMsP50 = value
 			case promLatencyP95:
-				routeStats[route].LatencyMsP95 = value
+				routeStats[key].Stats.LatencyMsP95 = value
 			case promLatencyP99:
-				routeStats[route].LatencyMsP99 = value
+				routeStats[key].Stats.LatencyMsP99 = value
 			}
 		}
 	}
 
-	return routeStats
+	rows := make([]*pb.RouteTable_Row, 0)
+	for _, row := range routeStats {
+		rows = append(rows, row)
+	}
+
+	return &pb.RouteTable{
+		Rows: rows,
+	}
 }

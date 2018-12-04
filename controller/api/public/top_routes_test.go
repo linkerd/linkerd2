@@ -38,6 +38,7 @@ func genRouteSample(route string) *model.Sample {
 	return &model.Sample{
 		Metric: model.Metric{
 			"rt_route":       model.LabelValue(route),
+			"dst":            "foo.default.svc.cluster.local",
 			"classification": "success",
 			"tls":            "true",
 		},
@@ -95,10 +96,10 @@ func TestTopRoutes(t *testing.T) {
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
 					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (rt_route, dst, classification, tls)`,
 					},
 				},
 				req: pb.TopRoutesRequest{
@@ -127,10 +128,10 @@ func TestTopRoutes(t *testing.T) {
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
 					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (rt_route, classification, tls)`,
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (rt_route, dst, classification, tls)`,
 					},
 				},
 				req: pb.TopRoutesRequest{
@@ -159,10 +160,10 @@ func TestTopRoutes(t *testing.T) {
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
 					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (rt_route, dst, classification, tls)`,
 					},
 				},
 				req: pb.TopRoutesRequest{
@@ -194,10 +195,10 @@ func TestTopRoutes(t *testing.T) {
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
 					expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (rt_route, dst, classification, tls)`,
 					},
 				},
 				req: pb.TopRoutesRequest{

@@ -42,16 +42,16 @@ func newCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
-		Use:   "routes [flags] (SERVICE)",
-		Short: "Display route stats about a service",
-		Long: `Display route stats about a service.
+		Use:   "routes [flags] (RESOURCES)",
+		Short: "Display route stats",
+		Long: `Display route stats.
 
-This command will only work for services that have a Service Profile defined.`,
+This command will only display traffic which is sent to a service that has a Service Profile defined.`,
 		Example: `  # Routes for the webapp service in the test namespace.
-  linkerd routes webapp -n test
+  linkerd routes service/webapp -n test
 
   # Routes for calls from from the traffic deployment to the webapp service in the test namespace.
-  linkerd routes webapp -n test --from deploy/traffic --from-namespace test`,
+  linkerd routes deploy/traffic -n test --to-service webapp`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -109,6 +109,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
 			table[r.Route] = &rowStats{
+				dst:         r.GetDst(),
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
 				tlsPercent:  util.GetPercentTls(r.Stats),
@@ -138,6 +139,7 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
+		"SERVICE",
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
@@ -148,8 +150,8 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
-	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t\n"
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
+	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
 	for _, route := range sortedRoutes {
 		if row, ok := stats[route]; ok {
@@ -157,6 +159,7 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 				route = defaultRoute
 			}
 			fmt.Fprintf(w, templateString, route,
+				row.dst,
 				row.successRate*100,
 				row.requestRate,
 				row.latencyP50,
@@ -173,6 +176,7 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
 	Route        string   `json:"route"`
+	Service      string   `json:"service"`
 	Success      *float64 `json:"success"`
 	Rps          *float64 `json:"rps"`
 	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
@@ -193,6 +197,7 @@ func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 			entry.Route = "[UNKNOWN]"
 		}
 		if row, ok := stats[route]; ok {
+			entry.Service = row.dst
 			entry.Success = &row.successRate
 			entry.Rps = &row.requestRate
 			entry.LatencyMSp50 = &row.latencyP50
