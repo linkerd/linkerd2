@@ -458,18 +458,20 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			return nil, err
 		}
 
-		requestParams := util.StatsRequestParams{
-			TimeWindow:    options.timeWindow,
-			ResourceName:  target.Name,
-			ResourceType:  target.Type,
-			Namespace:     options.namespace,
+		requestParams := util.StatsSummaryRequestParams{
+			StatsBaseRequestParams: util.StatsBaseRequestParams{
+				TimeWindow:    options.timeWindow,
+				ResourceName:  target.Name,
+				ResourceType:  target.Type,
+				Namespace:     options.namespace,
+				AllNamespaces: options.allNamespaces,
+			},
 			ToName:        toRes.Name,
 			ToType:        toRes.Type,
 			ToNamespace:   options.toNamespace,
 			FromName:      fromRes.Name,
 			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
-			AllNamespaces: options.allNamespaces,
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)

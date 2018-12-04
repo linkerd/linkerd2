@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -13,24 +14,27 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type routesOptions struct {
 	statOptionsBase
-	fromNamespace string
-	fromResource  string
+	toService          string
+	toServiceNamespace string
+	toAll              bool
+	toExternal         string
 }
 
 const defaultRoute = "[UNKNOWN]"
 
 func newRoutesOptions() *routesOptions {
 	return &routesOptions{
-		statOptionsBase: *newStatOptionsBase(),
-		fromNamespace:   "",
-		fromResource:    "",
+		statOptionsBase:    *newStatOptionsBase(),
+		toService:          "",
+		toServiceNamespace: "",
+		toAll:              false,
+		toExternal:         "",
 	}
 }
 
@@ -69,8 +73,10 @@ This command will only work for services that have a Service Profile defined.`,
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
-	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	cmd.PersistentFlags().StringVar(&options.toService, "to-service", options.toService, "If present, shows outbound stats to the specified service name")
+	cmd.PersistentFlags().StringVar(&options.toServiceNamespace, "to-service-namespace", options.toServiceNamespace, "Sets the namespace used to lookup the \"--to-service\" resource; by default the current \"--namespace\" is used")
+	cmd.PersistentFlags().BoolVar(&options.toAll, "to-all", options.toAll, "If present, shows outbound stats to all services")
+	cmd.PersistentFlags().StringVar(&options.toExternal, "to-external", options.toExternal, "If present, shows outbound stats to the specified external DNS name")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
 
 	return cmd
@@ -204,33 +210,51 @@ func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 	fmt.Fprintf(w, "%s\n", b)
 }
 
-func buildTopRoutesRequest(service string, options *routesOptions) (*pb.TopRoutesRequest, error) {
+func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
 	err := options.validateOutputFormat()
 	if err != nil {
 		return nil, err
 	}
 
-	target, err := util.BuildResource(options.namespace, fmt.Sprintf("%s/%s", k8s.Service, service))
+	target, err := util.BuildResource(options.namespace, resource)
 	if err != nil {
 		return nil, err
 	}
 
-	var fromRes pb.Resource
-	if options.fromResource != "" {
-		fromRes, err = util.BuildResource(options.fromNamespace, options.fromResource)
-		if err != nil {
-			return nil, err
-		}
+	requestParams := util.TopRoutesRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:   options.timeWindow,
+			ResourceName: target.Name,
+			ResourceType: target.Type,
+			Namespace:    options.namespace,
+		},
 	}
 
-	requestParams := util.StatsRequestParams{
-		TimeWindow:    options.timeWindow,
-		ResourceName:  target.Name,
-		ResourceType:  target.Type,
-		Namespace:     options.namespace,
-		FromName:      fromRes.Name,
-		FromType:      fromRes.Type,
-		FromNamespace: options.fromNamespace,
+	var toService string
+	if options.toService != "" {
+		toNamespace := options.toServiceNamespace
+		if toNamespace == "" {
+			toNamespace = options.namespace
+		}
+		toService = fmt.Sprintf("%s.%s.svc.cluster.local", options.toService, toNamespace)
+	}
+
+	if options.toExternal != "" {
+		if toService != "" {
+			return nil, errors.New("\"--to-external\" and \"--to-service\" are mutually exclusive")
+		}
+		toService = options.toExternal
+	}
+
+	if toService != "" && options.toAll {
+		return nil, errors.New("\"--to-all\" cannot be used with \"--to-service\" or \"--to-external\"")
+	}
+
+	if toService != "" {
+		requestParams.ToService = toService
+	}
+	if options.toAll {
+		requestParams.ToAll = true
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)

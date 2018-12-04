@@ -94,14 +94,44 @@ func TestTopRoutes(t *testing.T) {
 				expectedStatRpc: expectedStatRpc{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
-					// Comparing Prometheus queries is flakey because label order is
-					// non-deterministic.
-					/*expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace="books", service="webapp", direction="inbound", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace="books", service="webapp", direction="inbound", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace="books", service="webapp", direction="inbound", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{namespace="books", service="webapp", direction="inbound", dst=~"webapp(:\\d+)?"}[1m])) by (rt_route, classification, tls)`,
-					},*/
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`sum(increase(route_response_total{deployment="webapp", direction="inbound", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+					},
+				},
+				req: pb.TopRoutesRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "books",
+							Type:      pkgK8s.Deployment,
+							Name:      "webapp",
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenTopRoutesResponse(routes, counts),
+			},
+		}
+
+		testTopRoutes(t, expectations)
+	})
+
+	t.Run("Successfully performs a routes query for a service", func(t *testing.T) {
+		routes := []string{"/a"}
+		counts := []uint64{123}
+		expectations := []topRoutesExpected{
+			topRoutesExpected{
+				expectedStatRpc: expectedStatRpc{
+					err:              nil,
+					mockPromResponse: routesMetric([]string{"/a"}),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (le, rt_route))`,
+						`sum(increase(route_response_total{direction="inbound", dst=~"webapp.books.svc.cluster.local(:\\d+)?"}[1m])) by (rt_route, classification, tls)`,
+					},
 				},
 				req: pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
@@ -128,29 +158,58 @@ func TestTopRoutes(t *testing.T) {
 				expectedStatRpc: expectedStatRpc{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
-					// Comparing Prometheus queries is flakey because label order is
-					// non-deterministic.
-					/*expectedPrometheusQueries: []string{
-						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{direction="outbound", namespace="books", deployment="traffic", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{direction="outbound", namespace="books", deployment="traffic", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{direction="outbound", namespace="books", deployment="traffic", dst=~"webapp(:\\d+)?"}[1m])) by (le, rt_route))`,
-						`sum(increase(route_response_total{direction="outbound", namespace="books", deployment="traffic", dst=~"webapp(:\\d+)?"}[1m])) by (rt_route, classification, tls)`,
-					},*/
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, rt_route))`,
+						`sum(increase(route_response_total{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+					},
 				},
 				req: pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "books",
-							Type:      pkgK8s.Service,
-							Name:      "webapp",
+							Type:      pkgK8s.Deployment,
+							Name:      "traffic",
 						},
 					},
-					Outbound: &pb.TopRoutesRequest_FromResource{
-						FromResource: &pb.Resource{
+					Outbound: &pb.TopRoutesRequest_ToAll{
+						ToAll: &pb.Empty{},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenTopRoutesResponse(routes, counts),
+			},
+		}
+
+		testTopRoutes(t, expectations)
+	})
+
+	t.Run("Successfully performs an outbound service query", func(t *testing.T) {
+		routes := []string{"/a"}
+		counts := []uint64{123}
+		expectations := []topRoutesExpected{
+			topRoutesExpected{
+				expectedStatRpc: expectedStatRpc{
+					err:              nil,
+					mockPromResponse: routesMetric([]string{"/a"}),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, rt_route))`,
+						`sum(increase(route_response_total{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (rt_route, classification, tls)`,
+					},
+				},
+				req: pb.TopRoutesRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
 							Namespace: "books",
 							Type:      pkgK8s.Deployment,
 							Name:      "traffic",
 						},
+					},
+					Outbound: &pb.TopRoutesRequest_ToService{
+						ToService: "books.default.svc.cluster.local",
 					},
 					TimeWindow: "1m",
 				},

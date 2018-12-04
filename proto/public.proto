@@ -366,7 +366,8 @@ message TopRoutesRequest {
 
   oneof outbound {
     Empty none = 3;
-    Resource from_resource = 5;
+    string to_service = 5;
+    Empty to_all = 6;
   }
 }
 

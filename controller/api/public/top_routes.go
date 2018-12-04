@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -13,7 +14,7 @@ import (
 const (
 	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, classification, tls)"
 	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, %s))"
-	dstLabel                  = `dst=~"%s.%s.svc.cluster.local(:\\d+)?"`
+	dstLabel                  = `dst=~"%s(:\\d+)?"`
 )
 
 func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*pb.TopRoutesResponse, error) {
@@ -21,21 +22,6 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 	// check for well-formed request
 	if req.GetSelector().GetResource() == nil {
 		return topRoutesError(req, "TopRoutes request missing Selector Resource"), nil
-	}
-
-	if req.Selector.Resource.Type != k8s.Service {
-		return topRoutesError(req, "target resource must be a service"), nil
-	}
-
-	if req.GetFromResource() != nil && req.GetFromResource().Type == k8s.Service {
-		return topRoutesError(req, "'from' resource cannot be a service"), nil
-	}
-
-	switch req.Outbound.(type) {
-	case *pb.TopRoutesRequest_FromResource:
-		if req.Outbound.(*pb.TopRoutesRequest_FromResource).FromResource.Type == k8s.All {
-			return topRoutesError(req, "resource type 'all' is not supported as a filter"), nil
-		}
 	}
 
 	table, err := s.routeResourceQuery(ctx, req)
@@ -102,20 +88,38 @@ func buildRouteLabels(req *pb.TopRoutesRequest) string {
 
 	switch out := req.Outbound.(type) {
 
-	case *pb.TopRoutesRequest_FromResource:
-		labels = labels.Merge(promQueryLabels(out.FromResource))
+	case *pb.TopRoutesRequest_ToService:
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
+		return renderLabels(labels, out.ToService)
+
+	case *pb.TopRoutesRequest_ToAll:
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
+		return renderLabels(labels, "")
 
 	default:
 		labels = labels.Merge(promDirectionLabels("inbound"))
-	}
 
+		if req.Selector.Resource.GetType() == k8s.Service {
+			service := fmt.Sprintf("%s.%s.svc.cluster.local", req.Selector.Resource.GetName(), req.Selector.Resource.GetNamespace())
+			return renderLabels(labels, service)
+		}
+
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		return renderLabels(labels, "")
+	}
+}
+
+func renderLabels(labels model.LabelSet, service string) string {
 	pairs := make([]string, 0)
 	for k, v := range labels {
 		pairs = append(pairs, fmt.Sprintf("%s=%q", k, v))
 	}
-	pairs = append(pairs, fmt.Sprintf(dstLabel, req.Selector.Resource.Name, req.Selector.Resource.Namespace))
-
+	if service != "" {
+		pairs = append(pairs, fmt.Sprintf(dstLabel, service))
+	}
+	sort.Strings(pairs)
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
 
