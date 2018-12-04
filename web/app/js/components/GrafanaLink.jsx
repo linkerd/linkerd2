@@ -6,7 +6,7 @@ const GrafanaLink = ({PrefixedLink, name, namespace, resource}) => {
   return (
     <PrefixedLink
       to={`/dashboard/db/linkerd-${resource}?var-namespace=${namespace}&var-${resource}=${name}`}
-      deployment="grafana"
+      deployment="linkerd-grafana"
       targetBlank={true}>
       &nbsp;&nbsp;
       {grafanaIcon}

@@ -31,7 +31,7 @@ const (
 	// must be in absolute form for the proxy to special-case it.
 	LocalhostDNSNameOverride = "localhost."
 	// ControlPlanePodName default control plane pod name.
-	ControlPlanePodName = "controller"
+	ControlPlanePodName = "linkerd-controller"
 	// The name of the variable used to pass the pod's namespace.
 	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 
@@ -224,7 +224,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Privileged: &f,
 		},
 	}
-	controlPlaneDNS := fmt.Sprintf("proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	controlPlaneDNS := fmt.Sprintf("linkerd-proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
 	}

@@ -23,7 +23,7 @@ func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
-	webhookServiceName := flag.String("webhook-service", "proxy-injector.linkerd.io", "name of the admission webhook")
+	webhookServiceName := flag.String("webhook-service", "linkerd-proxy-injector.linkerd.io", "name of the admission webhook")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)

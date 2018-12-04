@@ -24,18 +24,18 @@ func TestMain(m *testing.M) {
 
 var (
 	linkerdSvcs = []string{
-		"api",
-		"grafana",
-		"prometheus",
-		"proxy-api",
-		"web",
+		"linkerd-controller-api",
+		"linkerd-grafana",
+		"linkerd-prometheus",
+		"linkerd-proxy-api",
+		"linkerd-web",
 	}
 
 	linkerdDeployReplicas = map[string]int{
-		"controller": 1,
-		"grafana":    1,
-		"prometheus": 1,
-		"web":        1,
+		"linkerd-controller": 1,
+		"linkerd-grafana":    1,
+		"linkerd-prometheus": 1,
+		"linkerd-web":        1,
 	}
 )
 
@@ -73,7 +73,7 @@ func TestInstall(t *testing.T) {
 	}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
-		linkerdDeployReplicas["ca"] = 1
+		linkerdDeployReplicas["linkerd-ca"] = 1
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -138,7 +138,7 @@ func TestCheckPostInstall(t *testing.T) {
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf(
-		"http://127.0.0.1:%d/api/v1/namespaces/%s/services/web:http/proxy",
+		"http://127.0.0.1:%d/api/v1/namespaces/%s/services/linkerd-web:http/proxy",
 		dashboardPort, TestHelper.GetLinkerdNamespace(),
 	)
 

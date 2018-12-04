@@ -44,7 +44,7 @@ spec:
         - name: LINKERD2_PROXY_BIND_TIMEOUT
           value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
