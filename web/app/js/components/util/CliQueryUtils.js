@@ -2,10 +2,6 @@ import _ from 'lodash';
 
 const topRoutesDisplayOrder = [
   "namespace",
-  "from",
-  "from_name",
-  "from_type",
-  "from_namespace"
 ];
 
 

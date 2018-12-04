@@ -53,31 +53,23 @@ class TopRoutesTabs extends React.Component {
   }
 
   renderRoutesComponent() {
-    const { data, query } = this.props;
+    const { query } = this.props;
 
     if (_.isEmpty(query)) {
-      return null;
-    }
-
-    let servicesInThisNs = _.get(data, "[0].services", []);
-    let serviceToQuery = _.find(servicesInThisNs, s => query.resourceName.indexOf(s.name) !== -1);
-
-    if (_.isNil(serviceToQuery)) {
       return <ConfigureProfilesMsg />;
     }
 
-    let routesQueryWithFrom = {
-      resource_name: serviceToQuery.name,
-      namespace: query.namespace,
-      from_type: query.resourceType,
-      from_namespace: query.namespace,
-      from: query.resourceType
+    let routesQuery = {
+      resource_name: query.resourceName,
+      resource_type: query.resourceType,
+      namespace: query.namespace
     };
+    let resource = query.resourceType + "/" + query.resourceName;
 
     return (
       <React.Fragment>
-        <QueryToCliCmd cmdName="routes" query={routesQueryWithFrom} resource={routesQueryWithFrom.resource_name} />
-        <TopRoutesModule query={routesQueryWithFrom} />
+        <QueryToCliCmd cmdName="routes" query={routesQuery} resource={resource} />
+        <TopRoutesModule query={routesQuery} />
       </React.Fragment>
     );
   }
@@ -108,7 +100,6 @@ class TopRoutesTabs extends React.Component {
 
 TopRoutesTabs.propTypes = {
   classes: PropTypes.shape({}).isRequired,
-  data: PropTypes.arrayOf(PropTypes.shape({})),
   disableTop: PropTypes.bool,
   pathPrefix: PropTypes.string.isRequired,
   query: PropTypes.shape({}),
@@ -117,18 +108,9 @@ TopRoutesTabs.propTypes = {
 };
 
 TopRoutesTabs.defaultProps = {
-  data: [],
   disableTop: false,
   query: {},
   updateNeighborsFromTapData: _.noop
 };
 
-export default withREST(
-  withStyles(styles, { withTheme: true })(TopRoutesTabs),
-  ({api, query}) => {
-    return [api.fetchServices(query.namespace)];
-  },
-  {
-    resetProps: ["query.resourceName"],
-  },
-);
+export default withStyles(styles, { withTheme: true })(TopRoutesTabs);
