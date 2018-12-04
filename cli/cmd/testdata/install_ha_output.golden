@@ -261,6 +261,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources:
           requests:
             cpu: 10m
@@ -421,6 +422,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources:
           requests:
             cpu: 10m
@@ -504,6 +506,7 @@ spec:
             path: /-/healthy
             port: 9090
           initialDelaySeconds: 30
+          timeoutSeconds: 30
         name: prometheus
         ports:
         - containerPort: 9090
@@ -512,6 +515,8 @@ spec:
           httpGet:
             path: /-/ready
             port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         resources:
           requests:
             cpu: 300m
@@ -558,6 +563,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources:
           requests:
             cpu: 10m
@@ -782,6 +788,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources:
           requests:
             cpu: 10m

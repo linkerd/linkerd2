@@ -233,7 +233,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		IntVal: int32(options.proxyMetricsPort),
 	}
 
-	livenessProbe := v1.Probe{
+	proxyProbe := v1.Probe{
 		Handler: v1.Handler{
 			HTTPGet: &v1.HTTPGetAction{
 				Path: "/metrics",
@@ -241,14 +241,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		},
 		InitialDelaySeconds: 10,
-	}
-	readinessProbe := v1.Probe{
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
-				Path: "/metrics",
-				Port: metricsPort,
-			},
-		},
 	}
 
 	resources := v1.ResourceRequirements{
@@ -298,8 +290,8 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 		},
-		LivenessProbe:  &livenessProbe,
-		ReadinessProbe: &readinessProbe,
+		LivenessProbe:  &proxyProbe,
+		ReadinessProbe: &proxyProbe,
 	}
 
 	// Special case if the caller specifies that

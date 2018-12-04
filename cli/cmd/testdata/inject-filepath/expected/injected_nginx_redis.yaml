@@ -62,6 +62,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102
@@ -152,6 +153,7 @@ spec:
           httpGet:
             path: /metrics
             port: 4191
+          initialDelaySeconds: 10
         resources: {}
         securityContext:
           runAsUser: 2102

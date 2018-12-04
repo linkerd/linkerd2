@@ -66,7 +66,11 @@ func TestCheckPreInstall(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	cmd := []string{"install", "--controller-log-level", "debug", "--linkerd-version", TestHelper.GetVersion()}
+	cmd := []string{"install",
+		"--controller-log-level", "debug",
+		"--proxy-log-level", "warn,linkerd2_proxy=debug",
+		"--linkerd-version", TestHelper.GetVersion(),
+	}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["ca"] = 1
