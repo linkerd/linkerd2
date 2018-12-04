@@ -1,4 +1,4 @@
-package profile
+package profiles
 
 // Template provides the base template for the `linkerd profile --template` command.
 const Template = `### ServiceProfile for {{.ServiceName}}.{{.ServiceNamespace}} ###
@@ -50,7 +50,7 @@ spec:
         status:
           min: 500
           max: 599
-      
+
         # Specifying only one of min or max matches just that one status code.
         # status:
         #   min: 404 # This matches 404s only.

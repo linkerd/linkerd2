@@ -1,12 +1,22 @@
 package profiles
 
 import (
+	"bytes"
 	"errors"
+	"io"
+	"text/template"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
 )
+
+type profileTemplateConfig struct {
+	ControlPlaneNamespace string
+	ServiceNamespace      string
+	ServiceName           string
+	ClusterZone           string
+}
 
 func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	cond, err := ToRequestMatch(route.Condition)
@@ -297,4 +307,29 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	}
 
 	return nil
+}
+
+func buildConfig(namespace, service, controlPlaneNamespace string) *profileTemplateConfig {
+	return &profileTemplateConfig{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		ServiceNamespace:      namespace,
+		ServiceName:           service,
+		ClusterZone:           "svc.cluster.local",
+	}
+}
+
+func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
+	config := buildConfig(namespace, service, controlPlaneNamespace)
+	template, err := template.New("profile").Parse(Template)
+	if err != nil {
+		return err
+	}
+	buf := &bytes.Buffer{}
+	err = template.Execute(buf, config)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buf.Bytes())
+	return err
 }

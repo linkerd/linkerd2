@@ -97,6 +97,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
+	server.router.GET("/profiles/new", handler.handleProfileDownload)
 	server.router.ServeFiles(
 		"/dist/*filepath", // add catch-all parameter to match all files in dir
 		filesonly.FileSystem(server.staticDir))

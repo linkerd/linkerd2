@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -10,12 +9,11 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"text/template"
 
 	"github.com/ghodss/yaml"
 	"github.com/go-openapi/spec"
-	"github.com/linkerd/linkerd2/cli/profile"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,9 +51,9 @@ func newCmdProfile() *cobra.Command {
 		Use:   "profile [flags] (--template | --open-api file) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long: `Output service profile config for Kubernetes.
-		
+
 This outputs a service profile for the given service.
-		
+
 If the --template flag is specified, it outputs a service profile template.
 Edit the template and then apply it with kubectl to add a service profile to
 a service.
@@ -78,7 +76,7 @@ Example:
 				if options.openAPI != "" {
 					return errors.New("You must specify exactly one of --template or --open-api")
 				}
-				return renderProfileTemplate(buildConfig(options.namespace, options.name), os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
 
 			if options.openAPI != "" {
@@ -97,30 +95,6 @@ Example:
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 
 	return cmd
-}
-
-func buildConfig(namespace, service string) *templateConfig {
-	return &templateConfig{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		ServiceNamespace:      namespace,
-		ServiceName:           service,
-		ClusterZone:           "svc.cluster.local",
-	}
-}
-
-func renderProfileTemplate(config *templateConfig, w io.Writer) error {
-	template, err := template.New("profile").Parse(profile.Template)
-	if err != nil {
-		return err
-	}
-	buf := &bytes.Buffer{}
-	err = template.Execute(buf, config)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(buf.Bytes())
-	return err
 }
 
 func renderOpenAPI(options *profileOptions, w io.Writer) error {
