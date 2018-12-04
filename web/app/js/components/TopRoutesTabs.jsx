@@ -28,10 +28,6 @@ class TopRoutesTabs extends React.Component {
     this.setState({ value });
   };
 
-  handleChangeIndex = index => {
-    this.setState({ value: index });
-  };
-
   renderTopComponent() {
     let { disableTop, query, pathPrefix, updateNeighborsFromTapData } = this.props;
     if (disableTop) {
