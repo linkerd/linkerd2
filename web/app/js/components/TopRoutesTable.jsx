@@ -18,7 +18,7 @@ const routesColumns = [
     sorter: (a, b) => numericSort(a.successRate, b.successRate)
   },
   {
-    title: "Request Rate",
+    title: "RPS",
     dataIndex: "requestRate",
     isNumeric: true,
     render: d => metricToFormatter["NO_UNIT"](d.requestRate),
