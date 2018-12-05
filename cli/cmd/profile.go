@@ -15,6 +15,7 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/validation/path"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,13 +35,36 @@ type profileOptions struct {
 	openAPI   string
 }
 
-func newProfileOptions() *profileOptions {
-	return &profileOptions{
+func newProfileOptions() profileOptions {
+	return profileOptions{
 		name:      "",
 		namespace: "default",
 		template:  false,
 		openAPI:   "",
 	}
+}
+
+func validateOptions(options profileOptions) error {
+	outputs := 0
+	if options.template {
+		outputs++
+	}
+	if options.openAPI != "" {
+		outputs++
+	}
+	if outputs != 1 {
+		return errors.New("You must specify exactly one of --template or --open-api")
+	}
+
+	if msgs := path.IsValidPathSegmentName(options.name); len(msgs) != 0 {
+		return fmt.Errorf("invalid service %q: %v", options.name, msgs)
+	}
+
+	if msgs := path.IsValidPathSegmentName(options.namespace); len(msgs) != 0 {
+		return fmt.Errorf("invalid namespace %q: %v", options.namespace, msgs)
+	}
+
+	return nil
 }
 
 func newCmdProfile() *cobra.Command {
@@ -72,21 +96,19 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
 
-			if options.template {
-				if options.openAPI != "" {
-					return errors.New("You must specify exactly one of --template or --open-api")
-				}
-				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+			err := validateOptions(options)
+			if err != nil {
+				return err
 			}
 
-			if options.openAPI != "" {
-				if options.template {
-					return errors.New("You must specify exactly one of --template or --open-api")
-				}
+			if options.template {
+				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+			} else if options.openAPI != "" {
 				return renderOpenAPI(options, os.Stdout)
 			}
 
-			return errors.New("You must specify exactly one of --template or --open-api")
+			// we should never get here
+			return errors.New("Unexpected error")
 		},
 	}
 
@@ -97,7 +119,7 @@ Example:
 	return cmd
 }
 
-func renderOpenAPI(options *profileOptions, w io.Writer) error {
+func renderOpenAPI(options profileOptions, w io.Writer) error {
 	var input io.Reader
 	if options.openAPI == "-" {
 		input = os.Stdin
