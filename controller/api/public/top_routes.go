@@ -24,7 +24,7 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 		return topRoutesError(req, "TopRoutes request missing Selector Resource"), nil
 	}
 
-	table, err := s.routeResourceQuery(ctx, req)
+	table, err := s.getRouteMetrics(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -47,11 +47,8 @@ func topRoutesError(req *pb.TopRoutesRequest, message string) *pb.TopRoutesRespo
 	}
 }
 
-func (s *grpcServer) routeResourceQuery(ctx context.Context, req *pb.TopRoutesRequest) (*pb.RouteTable, error) {
-	return s.getRouteMetrics(ctx, req, req.TimeWindow)
-}
-
-func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest, timeWindow string) (*pb.RouteTable, error) {
+func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesRequest) (*pb.RouteTable, error) {
+	timeWindow := req.TimeWindow
 	reqLabels := buildRouteLabels(req)
 	groupBy := "rt_route"
 
