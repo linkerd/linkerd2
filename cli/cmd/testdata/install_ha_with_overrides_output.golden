@@ -169,6 +169,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2102
       - args:
         - proxy-api
         - -addr=:8086
@@ -198,6 +200,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2102
       - args:
         - tap
         - -controller-namespace=linkerd
@@ -225,6 +229,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -386,6 +392,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -521,6 +529,8 @@ spec:
           requests:
             cpu: 300m
             memory: 300Mi
+        securityContext:
+          runAsUser: 2102
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -748,6 +758,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2102
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config

@@ -169,6 +169,8 @@ spec:
             path: /ready
             port: 9995
         resources: {}
+        securityContext:
+          runAsUser: 2102
       - args:
         - proxy-api
         - -addr=:123
@@ -195,6 +197,8 @@ spec:
             path: /ready
             port: 9996
         resources: {}
+        securityContext:
+          runAsUser: 2102
       - args:
         - tap
         - -controller-namespace=Namespace
@@ -219,6 +223,8 @@ spec:
             path: /ready
             port: 9998
         resources: {}
+        securityContext:
+          runAsUser: 2102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -375,6 +381,8 @@ spec:
             path: /ready
             port: 9994
         resources: {}
+        securityContext:
+          runAsUser: 2102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -505,6 +513,8 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources: {}
+        securityContext:
+          runAsUser: 2102
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -727,6 +737,8 @@ spec:
             path: /api/health
             port: 3000
         resources: {}
+        securityContext:
+          runAsUser: 2102
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
@@ -961,6 +973,8 @@ spec:
             path: /ready
             port: 9997
         resources: {}
+        securityContext:
+          runAsUser: 2102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1075,6 +1089,8 @@ spec:
             path: /ready
             port: 9995
         resources: {}
+        securityContext:
+          runAsUser: 2102
         volumeMounts:
         - mountPath: /var/linkerd-io/trust-anchors
           name: linkerd-trust-anchors
