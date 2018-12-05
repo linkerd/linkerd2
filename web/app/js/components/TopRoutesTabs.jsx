@@ -15,6 +15,7 @@ const styles = theme => ({
   root: {
     flexGrow: 1,
     backgroundColor: theme.palette.background.paper,
+    marginBottom: theme.spacing.unit * 3,
   },
 });
 
@@ -40,13 +41,13 @@ class TopRoutesTabs extends React.Component {
 
     return (
       <React.Fragment>
-        <QueryToCliCmd cmdName="top" query={topQuery} resource={topQuery.resource} />
         <TopModule
           pathPrefix={pathPrefix}
           query={topQuery}
           startTap={true}
           updateNeighbors={updateNeighborsFromTapData}
           maxRowsToDisplay={10} />
+        <QueryToCliCmd cmdName="top" query={topQuery} resource={topQuery.resource} />
       </React.Fragment>
     );
   }
@@ -67,8 +68,8 @@ class TopRoutesTabs extends React.Component {
 
     return (
       <React.Fragment>
-        <QueryToCliCmd cmdName="routes" query={routesQuery} resource={resource} />
         <TopRoutesModule query={routesQuery} />
+        <QueryToCliCmd cmdName="routes" query={routesQuery} resource={resource} />
       </React.Fragment>
     );
   }

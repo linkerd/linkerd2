@@ -226,19 +226,18 @@ export class ResourceDetailBase extends React.Component {
           </React.Fragment>
         }
 
-        <React.Fragment>
-          <Octopus
-            resource={this.state.resourceMetrics[0]}
-            neighbors={this.state.neighborMetrics}
-            unmeshedSources={_.values(this.state.unmeshedSources)}
-            api={this.api} />
-        </React.Fragment>
+        <Octopus
+          resource={this.state.resourceMetrics[0]}
+          neighbors={this.state.neighborMetrics}
+          unmeshedSources={_.values(this.state.unmeshedSources)}
+          api={this.api} />
 
         <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
           updateNeighbors={this.updateNeighborsFromTapData}
           disableTop={!this.state.resourceIsMeshed} />
+
 
         { _.isEmpty(upstreams) ? null : (
           <React.Fragment>
