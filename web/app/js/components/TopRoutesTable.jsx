@@ -12,8 +12,8 @@ const routesColumns = [
   },
   {
     title: "Authority",
-    dataIndex: "dst",
-    sorter: (a, b) => (a.dst).localeCompare(b.dst)
+    dataIndex: "authority",
+    sorter: (a, b) => (a.authority).localeCompare(b.authority)
   },
   {
     title: "Success Rate",

@@ -159,7 +159,7 @@ const processStatTable = table => {
 export const processTopRoutesResults = rows => {
   return _.map(rows, row => ({
     route: row.route || "UNKNOWN",
-    dst: row.authority,
+    authority: row.authority,
     totalRequests: getTotalRequests(row),
     requestRate: getRequestRate(row),
     successRate: getSuccessRate(row),
