@@ -167,7 +167,7 @@ spec:
             port: 9995
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
       - args:
         - proxy-api
         - -addr=:8086
@@ -195,7 +195,7 @@ spec:
             port: 9996
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
       - args:
         - tap
         - -controller-namespace=linkerd
@@ -221,7 +221,7 @@ spec:
             port: 9998
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -378,7 +378,7 @@ spec:
             port: 9994
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -509,7 +509,7 @@ spec:
           timeoutSeconds: 30
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -732,7 +732,7 @@ spec:
             port: 3000
         resources: {}
         securityContext:
-          runAsUser: 2102
+          runAsUser: 12102
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config

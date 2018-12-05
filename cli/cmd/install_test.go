@@ -77,6 +77,7 @@ func TestRender(t *testing.T) {
 		ControllerComponentLabel:         "ControllerComponentLabel",
 		CreatedByAnnotation:              "CreatedByAnnotation",
 		ProxyAPIPort:                     123,
+		ProxyUID:                         2102,
 		EnableTLS:                        true,
 		TLSTrustAnchorConfigMapName:      "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:               "ProxyContainerName",
