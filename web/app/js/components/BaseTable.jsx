@@ -6,6 +6,7 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
+import Tooltip from '@material-ui/core/Tooltip';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
 import _ from 'lodash';
 import classNames from 'classnames';
@@ -64,9 +65,10 @@ class BaseTable extends React.Component {
   renderHeaderCell = (col, order, orderBy) => {
     let active = orderBy === col.dataIndex;
     const { classes, padding } = this.props;
+    let tableCell;
 
     if (col.sorter) {
-      return (
+      tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
@@ -77,12 +79,13 @@ class BaseTable extends React.Component {
             direction={active ? order : col.defaultSortOrder || 'asc'}
             classes={{icon: active ? classes.activeSortIcon : classes.inactiveSortIcon}}
             onClick={this.createSortHandler(col)}>
-            {col.title}
+            {_.isEmpty(col.tooltip) ? col.title : <Tooltip title={col.tooltip} placement="top"><React.Fragment>{col.title}</React.Fragment></Tooltip>}
+            {/* <Tooltip title={col.tooltip} placement="top"><React.Fragment>{col.title}</React.Fragment></Tooltip> */}
           </TableSortLabel>
         </TableCell>
       );
     } else {
-      return (
+      tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
@@ -91,6 +94,8 @@ class BaseTable extends React.Component {
         </TableCell>
       );
     }
+
+    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title="FOOBAR">{tableCell}</Tooltip>;
   }
 
   render() {

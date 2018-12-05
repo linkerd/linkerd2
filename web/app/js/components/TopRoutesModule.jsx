@@ -17,6 +17,7 @@ class TopRoutesBase extends React.Component {
   static propTypes = {
     data: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
     error:  apiErrorPropType,
+    loading: PropTypes.bool.isRequired,
     query: PropTypes.shape({}).isRequired,
   }
 

@@ -12,6 +12,7 @@ const routesColumns = [
   },
   {
     title: "Authority",
+    tooltip: "",
     dataIndex: "authority",
     sorter: (a, b) => (a.authority).localeCompare(b.authority)
   },
@@ -69,7 +70,7 @@ export default class TopRoutesTable extends React.Component {
         tableColumns={routesColumns}
         tableClassName="metric-table"
         defaultOrderBy="route"
-        rowKey={r => r.route}
+        rowKey={r => r.route + r.authority}
         padding="dense" />
     );
   }
