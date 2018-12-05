@@ -70,6 +70,7 @@ type endpointListener struct {
 	stream           pb.Destination_GetServer
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
+	enableH2Upgrade  bool
 	enableTLS        bool
 	stopCh           chan struct{}
 }
@@ -77,12 +78,13 @@ type endpointListener struct {
 func newEndpointListener(
 	stream pb.Destination_GetServer,
 	ownerKindAndName ownerKindAndNameFn,
-	enableTLS bool,
+	enableTLS, enableH2Upgrade bool,
 ) *endpointListener {
 	return &endpointListener{
 		stream:           stream,
 		ownerKindAndName: ownerKindAndName,
 		labels:           make(map[string]string),
+		enableH2Upgrade:  enableH2Upgrade,
 		enableTLS:        enableTLS,
 		stopCh:           make(chan struct{}),
 	}
@@ -189,7 +191,7 @@ func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, 
 	// does not verify that the pod's control plane matches the control plane
 	// where the destination service is running; all pods injected for all control
 	// planes are considered valid for providing the H2 hint.
-	if controllerNs != "" {
+	if l.enableH2Upgrade && controllerNs != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},

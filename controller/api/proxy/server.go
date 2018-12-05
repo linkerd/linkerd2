@@ -14,9 +14,10 @@ import (
 )
 
 type server struct {
-	k8sAPI    *k8s.API
-	resolvers []streamingDestinationResolver
-	enableTLS bool
+	k8sAPI          *k8s.API
+	resolvers       []streamingDestinationResolver
+	enableH2Upgrade bool
+	enableTLS       bool
 }
 
 // The proxy-api service serves service discovery and other information to the
@@ -29,16 +30,17 @@ type server struct {
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
+func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS, enableH2Upgrade bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
 	resolvers, err := buildResolversList(k8sDNSZone, controllerNamespace, k8sAPI)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	srv := server{
-		k8sAPI:    k8sAPI,
-		resolvers: resolvers,
-		enableTLS: enableTLS,
+		k8sAPI:          k8sAPI,
+		resolvers:       resolvers,
+		enableH2Upgrade: enableH2Upgrade,
+		enableTLS:       enableTLS,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -91,7 +93,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 }
 
 func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade)
 
 	for _, resolver := range s.resolvers {
 		resolverCanResolve, err := resolver.canResolve(host, port)
