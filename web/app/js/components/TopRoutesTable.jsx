@@ -11,7 +11,7 @@ const routesColumns = [
     sorter: (a, b) => (a.route).localeCompare(b.route)
   },
   {
-    title: "Service",
+    title: "Authority",
     dataIndex: "dst",
     sorter: (a, b) => (a.dst).localeCompare(b.dst)
   },
