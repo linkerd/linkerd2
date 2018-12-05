@@ -929,6 +929,8 @@ data:
       value: tcp://127.0.0.1:{{.OutboundPort}}
     - name: LINKERD2_PROXY_INBOUND_LISTENER
       value: tcp://0.0.0.0:{{.InboundPort}}
+    - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+      value: {{.ProfileSuffixes}}
     - name: LINKERD2_PROXY_POD_NAMESPACE
       valueFrom:
         fieldRef:
