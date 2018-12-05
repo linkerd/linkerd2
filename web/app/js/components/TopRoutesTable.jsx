@@ -11,6 +11,12 @@ const routesColumns = [
     sorter: (a, b) => (a.route).localeCompare(b.route)
   },
   {
+    title: "Authority",
+    tooltip: "hostname:port used when communicating with this target",
+    dataIndex: "authority",
+    sorter: (a, b) => (a.authority).localeCompare(b.authority)
+  },
+  {
     title: "Success Rate",
     dataIndex: "successRate",
     isNumeric: true,
@@ -57,14 +63,14 @@ export default class TopRoutesTable extends React.Component {
   };
 
   render() {
-    const {  rows } = this.props;
+    const { rows } = this.props;
     return (
       <BaseTable
         tableRows={rows}
         tableColumns={routesColumns}
         tableClassName="metric-table"
         defaultOrderBy="route"
-        rowKey={r => r.route}
+        rowKey={r => r.route + r.authority}
         padding="dense" />
     );
   }
