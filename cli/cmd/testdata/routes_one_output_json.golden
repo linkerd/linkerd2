@@ -1,7 +1,7 @@
 [
   {
     "route": "/a",
-    "service": "foo.default.svc.cluster.local",
+    "authority": "foo.default.svc.cluster.local",
     "success": 1,
     "rps": 1.5,
     "latency_ms_p50": 123,
@@ -11,7 +11,7 @@
   },
   {
     "route": "/b",
-    "service": "foo.default.svc.cluster.local",
+    "authority": "foo.default.svc.cluster.local",
     "success": 1,
     "rps": 1,
     "latency_ms_p50": 123,
@@ -21,7 +21,7 @@
   },
   {
     "route": "/c",
-    "service": "foo.default.svc.cluster.local",
+    "authority": "foo.default.svc.cluster.local",
     "success": 0,
     "rps": 0,
     "latency_ms_p50": 123,
@@ -31,7 +31,7 @@
   },
   {
     "route": "[UNKNOWN]",
-    "service": "foo.default.svc.cluster.local",
+    "authority": "foo.default.svc.cluster.local",
     "success": 1,
     "rps": 0.5,
     "latency_ms_p50": 123,

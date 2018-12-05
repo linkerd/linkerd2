@@ -69,10 +69,10 @@ func buildRouteLabels(req *pb.TopRoutesRequest) string {
 
 	switch out := req.Outbound.(type) {
 
-	case *pb.TopRoutesRequest_ToService:
+	case *pb.TopRoutesRequest_ToAuthority:
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
-		return renderLabels(labels, out.ToService)
+		return renderLabels(labels, out.ToAuthority)
 
 	case *pb.TopRoutesRequest_ToAll:
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
@@ -122,7 +122,7 @@ func processRouteMetrics(results []promResult, timeWindow string) *pb.RouteTable
 
 			if routeStats[key] == nil {
 				routeStats[key] = &pb.RouteTable_Row{
-					Dst:        dst,
+					Authority:  dst,
 					Route:      route,
 					TimeWindow: timeWindow,
 					Stats:      &pb.BasicStats{},

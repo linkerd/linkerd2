@@ -70,8 +70,8 @@ type StatsSummaryRequestParams struct {
 
 type TopRoutesRequestParams struct {
 	StatsBaseRequestParams
-	ToService string
-	ToAll     bool
+	To    string
+	ToAll bool
 }
 
 type TapRequestParams struct {
@@ -241,23 +241,17 @@ func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, erro
 		TimeWindow: window,
 	}
 
-	if p.ToService != "" && p.ToAll {
+	if p.To != "" && p.ToAll {
 		return nil, errors.New("ToService and ToAll are mutually exclusive")
 	}
 
-	if p.ToService != "" {
-		if resourceType == k8s.Service {
-			return nil, errors.New("Cannot query from a service to a service")
-		}
-		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToService{
-			ToService: p.ToService,
+	if p.To != "" {
+		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAuthority{
+			ToAuthority: p.To,
 		}
 	}
 
 	if p.ToAll {
-		if resourceType == k8s.Service {
-			return nil, errors.New("Cannot query from a service to all")
-		}
 		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAll{
 			ToAll: &pb.Empty{},
 		}

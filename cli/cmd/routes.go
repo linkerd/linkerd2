@@ -14,27 +14,25 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type routesOptions struct {
 	statOptionsBase
-	toService          string
-	toServiceNamespace string
-	toAll              bool
-	toExternal         string
+	toResource   string
+	toNamespace  string
+	dstIsService bool
 }
 
 const defaultRoute = "[UNKNOWN]"
 
 func newRoutesOptions() *routesOptions {
 	return &routesOptions{
-		statOptionsBase:    *newStatOptionsBase(),
-		toService:          "",
-		toServiceNamespace: "",
-		toAll:              false,
-		toExternal:         "",
+		statOptionsBase: *newStatOptionsBase(),
+		toResource:      "",
+		toNamespace:     "",
 	}
 }
 
@@ -51,7 +49,7 @@ This command will only display traffic which is sent to a service that has a Ser
   linkerd routes service/webapp -n test
 
   # Routes for calls from from the traffic deployment to the webapp service in the test namespace.
-  linkerd routes deploy/traffic -n test --to-service webapp`,
+  linkerd routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,10 +71,8 @@ This command will only display traffic which is sent to a service that has a Ser
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	cmd.PersistentFlags().StringVar(&options.toService, "to-service", options.toService, "If present, shows outbound stats to the specified service name")
-	cmd.PersistentFlags().StringVar(&options.toServiceNamespace, "to-service-namespace", options.toServiceNamespace, "Sets the namespace used to lookup the \"--to-service\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().BoolVar(&options.toAll, "to-all", options.toAll, "If present, shows outbound stats to all services")
-	cmd.PersistentFlags().StringVar(&options.toExternal, "to-external", options.toExternal, "If present, shows outbound stats to the specified external DNS name")
+	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
+	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
 
 	return cmd
@@ -109,7 +105,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
 			table[r.Route] = &rowStats{
-				dst:         r.GetDst(),
+				dst:         r.GetAuthority(),
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
 				tlsPercent:  util.GetPercentTls(r.Stats),
@@ -137,9 +133,14 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth)
 
+	authorityColumn := "AUTHORITY"
+	if options.dstIsService {
+		authorityColumn = "SERVICE"
+	}
+
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
-		"SERVICE",
+		authorityColumn,
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
@@ -158,8 +159,15 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 			if route == "" {
 				route = defaultRoute
 			}
+
+			authorityValue := row.dst
+			if options.dstIsService {
+				segments := strings.Split(row.dst, ".")
+				authorityValue = segments[0]
+			}
+
 			fmt.Fprintf(w, templateString, route,
-				row.dst,
+				authorityValue,
 				row.successRate*100,
 				row.requestRate,
 				row.latencyP50,
@@ -176,7 +184,7 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
 	Route        string   `json:"route"`
-	Service      string   `json:"service"`
+	Authority    string   `json:"authority"`
 	Success      *float64 `json:"success"`
 	Rps          *float64 `json:"rps"`
 	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
@@ -197,7 +205,7 @@ func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 			entry.Route = "[UNKNOWN]"
 		}
 		if row, ok := stats[route]; ok {
-			entry.Service = row.dst
+			entry.Authority = row.dst
 			entry.Success = &row.successRate
 			entry.Rps = &row.requestRate
 			entry.LatencyMSp50 = &row.latencyP50
@@ -235,34 +243,45 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		},
 	}
 
-	var toService string
-	if options.toService != "" {
-		toNamespace := options.toServiceNamespace
-		if toNamespace == "" {
-			toNamespace = options.namespace
+	options.dstIsService = target.GetType() == k8s.Service
+
+	if options.toResource != "" {
+		if target.GetType() == k8s.Service {
+			return nil, errors.New("Cannot use \"--to\" when the target resource is a service")
 		}
-		toService = fmt.Sprintf("%s.%s.svc.cluster.local", options.toService, toNamespace)
-	}
-
-	if options.toExternal != "" {
-		if toService != "" {
-			return nil, errors.New("\"--to-external\" and \"--to-service\" are mutually exclusive")
+		if options.toNamespace == "" {
+			options.toNamespace = options.namespace
 		}
-		toService = options.toExternal
-	}
+		toRes, err := util.BuildResource(options.toNamespace, options.toResource)
+		if err != nil {
+			return nil, err
+		}
 
-	if toService != "" && options.toAll {
-		return nil, errors.New("\"--to-all\" cannot be used with \"--to-service\" or \"--to-external\"")
-	}
+		options.dstIsService = toRes.GetType() == k8s.Service
 
-	if toService != "" {
-		requestParams.ToService = toService
-	}
-	if options.toAll {
-		requestParams.ToAll = true
+		toDNS, err := buildTopRoutesTo(toRes)
+		if err != nil {
+			return nil, err
+		}
+
+		if toDNS == "" && toRes.GetType() == k8s.Authority {
+			requestParams.ToAll = true
+		} else {
+			requestParams.To = toDNS
+		}
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)
+}
+
+func buildTopRoutesTo(toResource pb.Resource) (string, error) {
+	if toResource.GetType() == k8s.Service {
+		return fmt.Sprintf("%s.%s.svc.cluster.local", toResource.GetName(), toResource.GetNamespace()), nil
+	}
+	if toResource.GetType() == k8s.Authority {
+		return toResource.GetName(), nil
+	}
+	return "", errors.New("The \"--to\" resource must be an authority or service")
 }
 
 // returns a sorted list of keys and the length of the longest key

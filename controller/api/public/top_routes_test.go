@@ -209,8 +209,8 @@ func TestTopRoutes(t *testing.T) {
 							Name:      "traffic",
 						},
 					},
-					Outbound: &pb.TopRoutesRequest_ToService{
-						ToService: "books.default.svc.cluster.local",
+					Outbound: &pb.TopRoutesRequest_ToAuthority{
+						ToAuthority: "books.default.svc.cluster.local",
 					},
 					TimeWindow: "1m",
 				},
