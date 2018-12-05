@@ -35,8 +35,8 @@ type profileOptions struct {
 	openAPI   string
 }
 
-func newProfileOptions() profileOptions {
-	return profileOptions{
+func newProfileOptions() *profileOptions {
+	return &profileOptions{
 		name:      "",
 		namespace: "default",
 		template:  false,
@@ -123,7 +123,7 @@ Example:
 	return cmd
 }
 
-func renderOpenAPI(options profileOptions, w io.Writer) error {
+func renderOpenAPI(options *profileOptions, w io.Writer) error {
 	var input io.Reader
 	if options.openAPI == "-" {
 		input = os.Stdin
