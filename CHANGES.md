@@ -5,11 +5,11 @@ reduce possible naming collisions. To upgrade an existing installation:
 
 * Install new CLI: `curl https://run.linkerd.io/install-edge | sh`
 * Install new control plane: `linkerd install | kubectl apply -f -`
-* Remove old deploys/cms: `kubectl -n linkerd get deploy,cm -oname | grep -v
-  linkerd | xargs kubectl -n linkerd delete`
+* Remove old deploys/cms:
+  `kubectl -n linkerd get deploy,cm -oname | grep -v linkerd | xargs kubectl -n linkerd delete`
 * Re-inject your applications: `linkerd inject my-app.yml | kubectl apply -f -`
-* Remove old services: `kubectl -n linkerd get svc -oname | grep -v linkerd |
-  xargs kubectl -n linkerd delete`
+* Remove old services:
+  `kubectl -n linkerd get svc -oname | grep -v linkerd | xargs kubectl -n linkerd delete`
 
 For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 
@@ -30,9 +30,9 @@ For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
     control automatic HTTP/2 upgrading
 * Proxy
   * **Improved** The proxy's `tap` subsystem has been reimplemented to be more
-    efficient and and reliable.
-    * The proxy now supports route metadata in tap queries and events.
-  * **Fixed** A potential HTTP/2 window starvation bug has been fixed.
+    efficient and and reliable
+    * The proxy now supports route metadata in tap queries and events
+  * **Fixed** A potential HTTP/2 window starvation bug has been fixed
   * **Fixed** Prometheus counters now wrap properly for values greater than
     2^53 (thanks, @lucab!)
 
