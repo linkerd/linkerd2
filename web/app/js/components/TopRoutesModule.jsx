@@ -38,14 +38,14 @@ class TopRoutesBase extends React.Component {
   }
 
   render() {
-    const {data} = this.props;
+    const {data, loading} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
 
     return (
       <React.Fragment>
         {this.loading()}
         {this.banner()}
-        {_.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
+        { !loading && _.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
         <TopRoutesTable rows={metrics} />
       </React.Fragment>
     );
