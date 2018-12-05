@@ -12,9 +12,13 @@
   * **New** You can now create and download a service profile from the Web UI
 * Controller
   * **Improved** Controller components are now prefixed with `linkerd-` to prevent name collisions with existing resources
-  * **Improved** Expose a flag to control automatic HTTP/2 upgrading
+  * **New** The `-disable-h2-upgrade` flag has been added to control automatic HTTP/2 upgrading
 * Proxy
-  * **Improved** Improve discovery logging in the outbound proxy
+  * **Improved** The proxy's `tap` subsystem has been reimplemented to be more efficient and
+    and reliabile.
+    * The proxy now supports Route metadata in Tap queries and events.
+  * **Fixed** A potential HTTP/2 window starvation bug has been fixed.
+  * **Fixed** Prometheus counters now wrap properly for values greater than 2^53.
 
 ## edge-18.11.3
 
