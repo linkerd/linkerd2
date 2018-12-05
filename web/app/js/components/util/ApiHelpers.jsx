@@ -64,12 +64,22 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     "1h": "1 hour"
   };
 
+  // for getting json api results
   const apiFetch = path => {
     if (!_.isEmpty(pathPrefix)) {
       path = `${pathPrefix}${path}`;
     }
 
     return makeCancelable(fetch(path), r => r.json());
+  };
+
+  // for getting non-json results
+  const prefixedUrl = path => {
+    if (!_.isEmpty(pathPrefix)) {
+      path = `${pathPrefix}${path}`;
+    }
+
+    return path;
   };
 
   const fetchMetrics = path => {
@@ -193,6 +203,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   return {
     fetch: apiFetch,
+    prefixedUrl,
     fetchMetrics,
     fetchPods,
     fetchServices,
