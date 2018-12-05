@@ -15,8 +15,8 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/api/validation/path"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type templateConfig struct {
@@ -44,7 +44,7 @@ func newProfileOptions() profileOptions {
 	}
 }
 
-func validateOptions(options profileOptions) error {
+func (options *profileOptions) validate() error {
 	outputs := 0
 	if options.template {
 		outputs++
@@ -56,11 +56,15 @@ func validateOptions(options profileOptions) error {
 		return errors.New("You must specify exactly one of --template or --open-api")
 	}
 
-	if errs := path.IsValidPathSegmentName(options.name); len(errs) != 0 {
+	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
+	// start with an alphabetic character, and end with an alphanumeric character
+	if errs := validation.IsDNS1035Label(options.name); len(errs) != 0 {
 		return fmt.Errorf("invalid service %q: %v", options.name, errs)
 	}
 
-	if errs := path.IsValidPathSegmentName(options.namespace); len(errs) != 0 {
+	// a DNS-1123 label must consist of lower case alphanumeric characters or '-',
+	// and must start and end with an alphanumeric character
+	if errs := validation.IsDNS1123Label(options.namespace); len(errs) != 0 {
 		return fmt.Errorf("invalid namespace %q: %v", options.namespace, errs)
 	}
 
@@ -96,7 +100,7 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
 
-			err := validateOptions(options)
+			err := options.validate()
 			if err != nil {
 				return err
 			}
