@@ -366,7 +366,8 @@ message TopRoutesRequest {
 
   oneof outbound {
     Empty none = 3;
-    Resource from_resource = 5;
+    string to_authority = 5;
+    Empty to_all = 6;
   }
 }
 
@@ -383,6 +384,7 @@ message RouteTable {
   message Row {
     string route = 1;
     string time_window = 2;
+    string authority = 6;
 
     BasicStats stats = 5;
   }

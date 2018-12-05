@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -20,8 +21,9 @@ import (
 
 type routesOptions struct {
 	statOptionsBase
-	fromNamespace string
-	fromResource  string
+	toResource   string
+	toNamespace  string
+	dstIsService bool
 }
 
 const defaultRoute = "[UNKNOWN]"
@@ -29,8 +31,8 @@ const defaultRoute = "[UNKNOWN]"
 func newRoutesOptions() *routesOptions {
 	return &routesOptions{
 		statOptionsBase: *newStatOptionsBase(),
-		fromNamespace:   "",
-		fromResource:    "",
+		toResource:      "",
+		toNamespace:     "",
 	}
 }
 
@@ -38,16 +40,16 @@ func newCmdRoutes() *cobra.Command {
 	options := newRoutesOptions()
 
 	cmd := &cobra.Command{
-		Use:   "routes [flags] (SERVICE)",
-		Short: "Display route stats about a service",
-		Long: `Display route stats about a service.
+		Use:   "routes [flags] (RESOURCES)",
+		Short: "Display route stats",
+		Long: `Display route stats.
 
-This command will only work for services that have a Service Profile defined.`,
+This command will only display traffic which is sent to a service that has a Service Profile defined.`,
 		Example: `  # Routes for the webapp service in the test namespace.
-  linkerd routes webapp -n test
+  linkerd routes service/webapp -n test
 
   # Routes for calls from from the traffic deployment to the webapp service in the test namespace.
-  linkerd routes webapp -n test --from deploy/traffic --from-namespace test`,
+  linkerd routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -69,8 +71,8 @@ This command will only work for services that have a Service Profile defined.`,
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
-	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
-	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
+	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
+	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
 
 	return cmd
@@ -103,6 +105,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
 			table[r.Route] = &rowStats{
+				dst:         r.GetAuthority(),
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
 				tlsPercent:  util.GetPercentTls(r.Stats),
@@ -130,8 +133,14 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth)
 
+	authorityColumn := "AUTHORITY"
+	if options.dstIsService {
+		authorityColumn = "SERVICE"
+	}
+
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
+		authorityColumn,
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
@@ -142,15 +151,23 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
-	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t\n"
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
+	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
 	for _, route := range sortedRoutes {
 		if row, ok := stats[route]; ok {
 			if route == "" {
 				route = defaultRoute
 			}
+
+			authorityValue := row.dst
+			if options.dstIsService {
+				segments := strings.Split(row.dst, ".")
+				authorityValue = segments[0]
+			}
+
 			fmt.Fprintf(w, templateString, route,
+				authorityValue,
 				row.successRate*100,
 				row.requestRate,
 				row.latencyP50,
@@ -167,6 +184,7 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
 	Route        string   `json:"route"`
+	Authority    string   `json:"authority"`
 	Success      *float64 `json:"success"`
 	Rps          *float64 `json:"rps"`
 	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
@@ -187,6 +205,7 @@ func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 			entry.Route = "[UNKNOWN]"
 		}
 		if row, ok := stats[route]; ok {
+			entry.Authority = row.dst
 			entry.Success = &row.successRate
 			entry.Rps = &row.requestRate
 			entry.LatencyMSp50 = &row.latencyP50
@@ -204,36 +223,65 @@ func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
 	fmt.Fprintf(w, "%s\n", b)
 }
 
-func buildTopRoutesRequest(service string, options *routesOptions) (*pb.TopRoutesRequest, error) {
+func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
 	err := options.validateOutputFormat()
 	if err != nil {
 		return nil, err
 	}
 
-	target, err := util.BuildResource(options.namespace, fmt.Sprintf("%s/%s", k8s.Service, service))
+	target, err := util.BuildResource(options.namespace, resource)
 	if err != nil {
 		return nil, err
 	}
 
-	var fromRes pb.Resource
-	if options.fromResource != "" {
-		fromRes, err = util.BuildResource(options.fromNamespace, options.fromResource)
+	requestParams := util.TopRoutesRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:   options.timeWindow,
+			ResourceName: target.Name,
+			ResourceType: target.Type,
+			Namespace:    options.namespace,
+		},
+	}
+
+	options.dstIsService = target.GetType() == k8s.Service
+
+	if options.toResource != "" {
+		if target.GetType() == k8s.Service {
+			return nil, errors.New("Cannot use \"--to\" when the target resource is a service")
+		}
+		if options.toNamespace == "" {
+			options.toNamespace = options.namespace
+		}
+		toRes, err := util.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	requestParams := util.StatsRequestParams{
-		TimeWindow:    options.timeWindow,
-		ResourceName:  target.Name,
-		ResourceType:  target.Type,
-		Namespace:     options.namespace,
-		FromName:      fromRes.Name,
-		FromType:      fromRes.Type,
-		FromNamespace: options.fromNamespace,
+		options.dstIsService = toRes.GetType() == k8s.Service
+
+		toDNS, err := buildTopRoutesTo(toRes)
+		if err != nil {
+			return nil, err
+		}
+
+		if toDNS == "" && toRes.GetType() == k8s.Authority {
+			requestParams.ToAll = true
+		} else {
+			requestParams.To = toDNS
+		}
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)
+}
+
+func buildTopRoutesTo(toResource pb.Resource) (string, error) {
+	if toResource.GetType() == k8s.Service {
+		return fmt.Sprintf("%s.%s.svc.cluster.local", toResource.GetName(), toResource.GetNamespace()), nil
+	}
+	if toResource.GetType() == k8s.Authority {
+		return toResource.GetName(), nil
+	}
+	return "", errors.New("The \"--to\" resource must be an authority or service")
 }
 
 // returns a sorted list of keys and the length of the longest key

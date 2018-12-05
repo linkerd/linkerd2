@@ -42,7 +42,7 @@ func testRoutesCall(exp routesParamsExp, t *testing.T) {
 
 	mockClient.TopRoutesResponseToReturn = &response
 
-	req, err := buildTopRoutesRequest("foobar", exp.options)
+	req, err := buildTopRoutesRequest("deploy/foobar", exp.options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
