@@ -1,7 +1,7 @@
 ## edge-18.12.1
 
 * CLI
-  * **New** `linkerd routes` command displays per-route stats for *any resource*!
+  * **Improved** `linkerd routes` command displays per-route stats for *any resource*!
   * **New** Service profiles are now supported for external authorities!
   * **New** `linkerd routes --open-api` flag generates a service profile
     based on an OpenAPI specification (swagger) file
@@ -9,7 +9,7 @@
   * **New** Top routes page, served at `/routes`
   * **New** Route metrics are now available in the resource detail pages for
     services with configured profiles
-  * **New** You can now create and download a service profile from the Web UI
+  * **New** Service profiles can be created and downloaded from the Web UI
 * Controller
   * **Improved** Controller components are now prefixed with `linkerd-` to
     prevent name collisions with existing resources
