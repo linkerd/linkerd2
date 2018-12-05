@@ -100,11 +100,16 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 }
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
-	table := make(map[string]*rowStats)
+	table := make([]*rowStats, 0)
 
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
-			table[r.Route] = &rowStats{
+			route := r.GetRoute()
+			if route == "" {
+				route = defaultRoute
+			}
+			table = append(table, &rowStats{
+				route:       route,
 				dst:         r.GetAuthority(),
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
@@ -112,9 +117,13 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
-			}
+			})
 		}
 	}
+
+	sort.Slice(table, func(i, j int) bool {
+		return table[i].route+table[i].dst < table[j].route+table[j].dst
+	})
 
 	switch options.outputFormat {
 	case "table", "":
@@ -128,10 +137,9 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	}
 }
 
-func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *routesOptions) {
-	sortedRoutes, routeWidth := sortRoutes(stats)
+func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOptions) {
 	// template for left-aligning the route column
-	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth)
+	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth(stats))
 
 	authorityColumn := "AUTHORITY"
 	if options.dstIsService {
@@ -152,32 +160,25 @@ func printRouteTable(stats map[string]*rowStats, w *tabwriter.Writer, options *r
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
 	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
-	templateStringEmpty := "%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
-	for _, route := range sortedRoutes {
-		if row, ok := stats[route]; ok {
-			if route == "" {
-				route = defaultRoute
-			}
+	for _, row := range stats {
 
-			authorityValue := row.dst
-			if options.dstIsService {
-				segments := strings.Split(row.dst, ".")
-				authorityValue = segments[0]
-			}
-
-			fmt.Fprintf(w, templateString, route,
-				authorityValue,
-				row.successRate*100,
-				row.requestRate,
-				row.latencyP50,
-				row.latencyP95,
-				row.latencyP99,
-				row.tlsPercent*100,
-			)
-		} else {
-			fmt.Fprintf(w, templateStringEmpty, route)
+		authorityValue := row.dst
+		if options.dstIsService {
+			segments := strings.Split(row.dst, ".")
+			authorityValue = segments[0]
 		}
+
+		fmt.Fprintf(w, templateString,
+			row.route,
+			authorityValue,
+			row.successRate*100,
+			row.requestRate,
+			row.latencyP50,
+			row.latencyP95,
+			row.latencyP99,
+			row.tlsPercent*100,
+		)
 	}
 }
 
@@ -193,26 +194,23 @@ type jsonRouteStats struct {
 	Tls          *float64 `json:"tls"`
 }
 
-func printRouteJson(stats map[string]*rowStats, w *tabwriter.Writer) {
+func printRouteJson(stats []*rowStats, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
-	sortedRoutes, _ := sortRoutes(stats)
-	for _, route := range sortedRoutes {
+	for _, row := range stats {
+		route := row.route
 		entry := &jsonRouteStats{
 			Route: route,
 		}
-		if route == "" {
-			entry.Route = "[UNKNOWN]"
-		}
-		if row, ok := stats[route]; ok {
-			entry.Authority = row.dst
-			entry.Success = &row.successRate
-			entry.Rps = &row.requestRate
-			entry.LatencyMSp50 = &row.latencyP50
-			entry.LatencyMSp95 = &row.latencyP95
-			entry.LatencyMSp99 = &row.latencyP99
-			entry.Tls = &stats[route].tlsPercent
-		}
+
+		entry.Authority = row.dst
+		entry.Success = &row.successRate
+		entry.Rps = &row.requestRate
+		entry.LatencyMSp50 = &row.latencyP50
+		entry.LatencyMSp95 = &row.latencyP95
+		entry.LatencyMSp99 = &row.latencyP99
+		entry.Tls = &row.tlsPercent
+
 		entries = append(entries, entry)
 	}
 	b, err := json.MarshalIndent(entries, "", "  ")
@@ -284,24 +282,13 @@ func buildTopRoutesTo(toResource pb.Resource) (string, error) {
 	return "", errors.New("The \"--to\" resource must be an authority or service")
 }
 
-// returns a sorted list of keys and the length of the longest key
-func sortRoutes(stats map[string]*rowStats) ([]string, int) {
-	var sortedRoutes []string
+// returns the length of the longest route name
+func routeWidth(stats []*rowStats) int {
 	maxLength := len(defaultRoute)
-	hasDefaultRoute := false
-	for key := range stats {
-		if key == "" {
-			hasDefaultRoute = true
-			continue
-		}
-		sortedRoutes = append(sortedRoutes, key)
-		if len(key) > maxLength {
-			maxLength = len(key)
+	for _, row := range stats {
+		if len(row.route) > maxLength {
+			maxLength = len(row.route)
 		}
 	}
-	sort.Strings(sortedRoutes)
-	if hasDefaultRoute {
-		sortedRoutes = append(sortedRoutes, "")
-	}
-	return sortedRoutes, maxLength
+	return maxLength
 }
