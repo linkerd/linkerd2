@@ -7,6 +7,7 @@ import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
 import _ from 'lodash';
+import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const urlPropsQueryConfig = {
@@ -114,40 +115,6 @@ class Tap extends React.Component {
     });
 
     this.stopTapStreaming();
-  }
-
-  getResourcesByNs(rsp) {
-    let statTables = _.get(rsp, [0, "ok", "statTables"]);
-    let authoritiesByNs = {};
-    let resourcesByNs = _.reduce(statTables, (mem, table) => {
-      _.each(table.podGroup.rows, row => {
-        // filter out resources that aren't meshed. note that authorities don't
-        // have pod counts and therefore can't be filtered out here
-        if (row.meshedPodCount === "0" && row.resource.type !== "authority") {
-          return;
-        }
-
-        if (!mem[row.resource.namespace]) {
-          mem[row.resource.namespace] = [];
-          authoritiesByNs[row.resource.namespace] = [];
-        }
-
-        switch (row.resource.type.toLowerCase()) {
-          case "service":
-            break;
-          case "authority":
-            authoritiesByNs[row.resource.namespace].push(row.resource.name);
-            break;
-          default:
-            mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
-        }
-      });
-      return mem;
-    }, {});
-    return {
-      authoritiesByNs,
-      resourcesByNs
-    };
   }
 
   indexTapResult = data => {
@@ -264,8 +231,8 @@ class Tap extends React.Component {
     let url = this.api.urlsForResource("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(rsp => {
-        let { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
+      .then(([rsp]) => {
+        let { resourcesByNs, authoritiesByNs } = groupResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
