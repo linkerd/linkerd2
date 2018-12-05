@@ -185,6 +185,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
       - name: proxy-api
         ports:
         - name: grpc
@@ -216,6 +218,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
       - name: tap
         ports:
         - name: grpc
@@ -245,6 +249,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
 
 ### Service Profile CRD ###
 ---
@@ -338,6 +344,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
 
 ### Prometheus ###
 ---
@@ -415,6 +423,8 @@ spec:
             cpu: 300m
             memory: 300Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
 
 ---
 kind: ConfigMap
@@ -582,6 +592,9 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
+
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -750,6 +763,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ProxyUID}}
 `
 
 const ProxyInjectorTemplate = `
@@ -807,6 +822,8 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
+        securityContext:
+          runAsUser: {{.ProxyUID}}
       volumes:
       - name: webhook-secrets
         secret:
