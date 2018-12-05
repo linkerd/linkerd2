@@ -1,24 +1,27 @@
 ## edge-18.12.1
 
 * CLI
-  * **New** `linkerd routes` command displays per-route stats for any resource
+  * **New** `linkerd routes` command displays per-route stats for *any resource*!
   * **New** Service profiles are now supported for external authorities!
-  * **New** `linkerd routes --open-api` flag that generates a service profile
-  based on an OpenAPI specification (swagger) file
+  * **New** `linkerd routes --open-api` flag generates a service profile
+    based on an OpenAPI specification (swagger) file
 * Web UI
-  * **New** Top Routes page, served at `/routes`
+  * **New** Top routes page, served at `/routes`
   * **New** Route metrics are now available in the resource detail pages for
-  services with configured profiles
+    services with configured profiles
   * **New** You can now create and download a service profile from the Web UI
 * Controller
-  * **Improved** Controller components are now prefixed with `linkerd-` to prevent name collisions with existing resources
-  * **New** The `-disable-h2-upgrade` flag has been added to control automatic HTTP/2 upgrading
+  * **Improved** Controller components are now prefixed with `linkerd-` to
+    prevent name collisions with existing resources
+  * **New** `linkerd install --disable-h2-upgrade` flag has been added to
+    control automatic HTTP/2 upgrading
 * Proxy
-  * **Improved** The proxy's `tap` subsystem has been reimplemented to be more efficient and
-    and reliabile.
-    * The proxy now supports Route metadata in Tap queries and events.
+  * **Improved** The proxy's `tap` subsystem has been reimplemented to be more
+    efficient and and reliable.
+    * The proxy now supports route metadata in tap queries and events.
   * **Fixed** A potential HTTP/2 window starvation bug has been fixed.
-  * **Fixed** Prometheus counters now wrap properly for values greater than 2^53.
+  * **Fixed** Prometheus counters now wrap properly for values greater than
+    2^53 (thanks, @lucab!)
 
 ## edge-18.11.3
 
