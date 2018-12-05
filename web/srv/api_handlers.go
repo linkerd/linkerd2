@@ -140,7 +140,7 @@ func (h *handler) handleApiTopRoutes(w http.ResponseWriter, req *http.Request, p
 		StatsBaseRequestParams: util.StatsBaseRequestParams{
 			TimeWindow:   req.FormValue("window"),
 			ResourceName: req.FormValue("resource_name"),
-			ResourceType: k8s.Service,
+			ResourceType: req.FormValue("resource_type"),
 			Namespace:    req.FormValue("namespace"),
 		},
 	}
