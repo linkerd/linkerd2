@@ -199,6 +199,7 @@ spec:
         - "-controller-namespace={{.Namespace}}"
         - "-single-namespace={{.SingleNamespace}}"
         - "-enable-tls={{.EnableTLS}}"
+        - "-enable-h2-upgrade={{.EnableH2Upgrade}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
