@@ -56,12 +56,12 @@ func validateOptions(options profileOptions) error {
 		return errors.New("You must specify exactly one of --template or --open-api")
 	}
 
-	if msgs := path.IsValidPathSegmentName(options.name); len(msgs) != 0 {
-		return fmt.Errorf("invalid service %q: %v", options.name, msgs)
+	if errs := path.IsValidPathSegmentName(options.name); len(errs) != 0 {
+		return fmt.Errorf("invalid service %q: %v", options.name, errs)
 	}
 
-	if msgs := path.IsValidPathSegmentName(options.namespace); len(msgs) != 0 {
-		return fmt.Errorf("invalid namespace %q: %v", options.namespace, msgs)
+	if errs := path.IsValidPathSegmentName(options.namespace); len(errs) != 0 {
+		return fmt.Errorf("invalid namespace %q: %v", options.namespace, errs)
 	}
 
 	return nil
