@@ -170,25 +170,26 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 }
 
 type proxyConfigOptions struct {
-	linkerdVersion        string
-	proxyImage            string
-	initImage             string
-	dockerRegistry        string
-	imagePullPolicy       string
-	inboundPort           uint
-	outboundPort          uint
-	ignoreInboundPorts    []uint
-	ignoreOutboundPorts   []uint
-	proxyUID              int64
-	proxyLogLevel         string
-	proxyBindTimeout      string
-	proxyAPIPort          uint
-	proxyControlPort      uint
-	proxyMetricsPort      uint
-	proxyCpuRequest       string
-	proxyMemoryRequest    string
-	proxyOutboundCapacity map[string]uint
-	tls                   string
+	linkerdVersion          string
+	proxyImage              string
+	initImage               string
+	dockerRegistry          string
+	imagePullPolicy         string
+	inboundPort             uint
+	outboundPort            uint
+	ignoreInboundPorts      []uint
+	ignoreOutboundPorts     []uint
+	proxyUID                int64
+	proxyLogLevel           string
+	proxyBindTimeout        string
+	proxyAPIPort            uint
+	proxyControlPort        uint
+	proxyMetricsPort        uint
+	proxyCpuRequest         string
+	proxyMemoryRequest      string
+	proxyOutboundCapacity   map[string]uint
+	tls                     string
+	disableExternalProfiles bool
 }
 
 const (
@@ -217,6 +218,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyCpuRequest:       "",
 		proxyMemoryRequest:    "",
 		tls:                   "",
+		disableExternalProfiles: false,
 	}
 }
 
@@ -289,4 +291,5 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
+	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 }

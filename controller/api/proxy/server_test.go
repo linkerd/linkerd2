@@ -42,36 +42,19 @@ func (m *mockDestination_Server) Context() context.Context     { return m.contex
 func (m *mockDestination_Server) SendMsg(x interface{}) error  { return m.errorToReturn }
 func (m *mockDestination_Server) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
-func TestBuildResolversList(t *testing.T) {
+func TestBuildResolver(t *testing.T) {
 	k8sAPI, err := k8s.NewFakeAPI("")
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 
-	t.Run("Doesn't build a list if Kubernetes DNS zone isnt valid", func(t *testing.T) {
+	t.Run("Doesn't build a resolver if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolvers, err := buildResolversList(dsnZone, "linkerd", k8sAPI)
+			resolver, err := buildResolver(dsnZone, "linkerd", k8sAPI)
 			if err == nil {
-				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolvers: %v", dsnZone, resolvers)
+				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolver: %v", dsnZone, resolver)
 			}
-		}
-	})
-
-	t.Run("Builds list with echo IP first, then K8s resolver", func(t *testing.T) {
-		resolvers, err := buildResolversList("some.zone", "linkerd", k8sAPI)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		actualNumResolvers := len(resolvers)
-		expectedNumResolvers := 1
-		if actualNumResolvers != expectedNumResolvers {
-			t.Fatalf("Expecting [%d] resolvers, got [%d]: %v", expectedNumResolvers, actualNumResolvers, resolvers)
-		}
-
-		if _, ok := resolvers[0].(*k8sResolver); !ok {
-			t.Fatalf("Expecting second resolver to be k8s, got [%+v]. List: %v", resolvers[0], resolvers)
 		}
 	})
 }
@@ -112,43 +95,15 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 
-	t.Run("Uses first resolver that is able to resolve the host and port", func(t *testing.T) {
-		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
-		yes := &mockStreamingDestinationResolver{canResolveToReturn: true}
-		otherYes := &mockStreamingDestinationResolver{canResolveToReturn: true}
-
-		server := server{
-			k8sAPI:    k8sAPI,
-			resolvers: []streamingDestinationResolver{no, no, yes, no, no, otherYes},
-		}
-
-		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		if no.listenerReceived != nil {
-			t.Fatalf("Expected handler [%+v] to not be called, but it was", no)
-		}
-
-		if otherYes.listenerReceived != nil {
-			t.Fatalf("Expected handler [%+v] to not be called, but it was", otherYes)
-		}
-
-		if yes.listenerReceived == nil || yes.portReceived != port || yes.hostReceived != host {
-			t.Fatalf("Expected resolved [%+v] to have been called with stream [%v] host [%s] and port [%d]", yes, stream, host, port)
-		}
-	})
-
 	t.Run("Returns error if no resolver can resolve", func(t *testing.T) {
 		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
 
 		server := server{
-			k8sAPI:    k8sAPI,
-			resolvers: []streamingDestinationResolver{no, no, no, no},
+			k8sAPI:   k8sAPI,
+			resolver: no,
 		}
 
-		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
+		err := server.streamResolution(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
@@ -158,11 +113,11 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
 
 		server := server{
-			k8sAPI:    k8sAPI,
-			resolvers: []streamingDestinationResolver{resolver},
+			k8sAPI:   k8sAPI,
+			resolver: resolver,
 		}
 
-		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
+		err := server.streamResolution(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
@@ -172,11 +127,11 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
 
 		server := server{
-			k8sAPI:    k8sAPI,
-			resolvers: []streamingDestinationResolver{resolver},
+			k8sAPI:   k8sAPI,
+			resolver: resolver,
 		}
 
-		err := server.streamResolutionUsingCorrectResolverFor(host, port, stream)
+		err := server.streamResolution(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}

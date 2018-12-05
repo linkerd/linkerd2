@@ -57,6 +57,7 @@ type installConfig struct {
 	ProxyBindTimeout                 string
 	SingleNamespace                  bool
 	EnableHA                         bool
+	ProfileSuffixes                  string
 	EnableH2Upgrade                  bool
 }
 
@@ -144,6 +145,11 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		options.proxyMemoryRequest = "20Mi"
 	}
 
+	profileSuffixes := "."
+	if options.proxyConfigOptions.disableExternalProfiles {
+		profileSuffixes = "svc.cluster.local."
+	}
+
 	return &installConfig{
 		Namespace:                        controlPlaneNamespace,
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
@@ -185,6 +191,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyBindTimeout:                 "1m",
 		SingleNamespace:                  options.singleNamespace,
 		EnableHA:                         options.highAvailability,
+		ProfileSuffixes:                  profileSuffixes,
 		EnableH2Upgrade:                  !options.disableH2Upgrade,
 	}, nil
 }

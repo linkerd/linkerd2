@@ -61,6 +61,7 @@ func TestRender(t *testing.T) {
 		ProxyResourceRequestCPU:          "RequestCPU",
 		ProxyResourceRequestMemory:       "RequestMemory",
 		ProxyBindTimeout:                 "1m",
+		ProfileSuffixes:                  "suffix.",
 		EnableH2Upgrade:                  true,
 	}
 
