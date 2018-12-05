@@ -79,8 +79,7 @@ class BaseTable extends React.Component {
             direction={active ? order : col.defaultSortOrder || 'asc'}
             classes={{icon: active ? classes.activeSortIcon : classes.inactiveSortIcon}}
             onClick={this.createSortHandler(col)}>
-            {_.isEmpty(col.tooltip) ? col.title : <Tooltip title={col.tooltip} placement="top"><React.Fragment>{col.title}</React.Fragment></Tooltip>}
-            {/* <Tooltip title={col.tooltip} placement="top"><React.Fragment>{col.title}</React.Fragment></Tooltip> */}
+            {col.title}
           </TableSortLabel>
         </TableCell>
       );
@@ -95,7 +94,7 @@ class BaseTable extends React.Component {
       );
     }
 
-    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title="FOOBAR">{tableCell}</Tooltip>;
+    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
   render() {
