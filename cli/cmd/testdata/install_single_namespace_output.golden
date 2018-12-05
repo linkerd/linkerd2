@@ -177,6 +177,7 @@ spec:
         - -controller-namespace=Namespace
         - -single-namespace=true
         - -enable-tls=true
+        - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
