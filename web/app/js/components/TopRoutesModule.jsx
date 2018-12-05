@@ -1,8 +1,8 @@
 import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
-// import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Spinner from './util/Spinner.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
 import _ from 'lodash';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
@@ -28,12 +28,22 @@ class TopRoutesBase extends React.Component {
     return <ErrorBanner message={error} />;
   }
 
+  loading = () => {
+    const {loading} = this.props;
+    if (!loading) {
+      return;
+    }
+
+    return <Spinner />;
+  }
+
   render() {
     const {data} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
 
     return (
       <React.Fragment>
+        {this.loading()}
         {this.banner()}
         {_.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
         <TopRoutesTable rows={metrics} />
