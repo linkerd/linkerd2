@@ -24,8 +24,8 @@ func GenServiceProfile(service, namespace, controlPlaneNamespace string) v1alpha
 				&v1alpha1.RouteSpec{
 					Name: "/authors/{id}",
 					Condition: &v1alpha1.RequestMatch{
-						Path:   "^/authors/\\d+$",
-						Method: "POST",
+						PathRegex: "/authors/\\d+",
+						Method:    "POST",
 					},
 					ResponseClasses: []*v1alpha1.ResponseClass{
 						&v1alpha1.ResponseClass{

@@ -201,11 +201,11 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 		})
 	}
 
-	if reqMatch.Path != "" {
+	if reqMatch.PathRegex != "" {
 		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_Path{
 				Path: &pb.PathMatch{
-					Regex: reqMatch.Path,
+					Regex: reqMatch.PathRegex,
 				},
 			},
 		})
@@ -256,7 +256,7 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 			return err
 		}
 	}
-	if reqMatch.Path != "" {
+	if reqMatch.PathRegex != "" {
 		matchKindSet = true
 	}
 

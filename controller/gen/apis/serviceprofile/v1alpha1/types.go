@@ -36,11 +36,11 @@ type RouteSpec struct {
 }
 
 type RequestMatch struct {
-	All    []*RequestMatch `json:"all,omitempty"`
-	Not    *RequestMatch   `json:"not,omitempty"`
-	Any    []*RequestMatch `json:"any,omitempty"`
-	Path   string          `json:"path,omitempty"`
-	Method string          `json:"method,omitempty"`
+	All       []*RequestMatch `json:"all,omitempty"`
+	Not       *RequestMatch   `json:"not,omitempty"`
+	Any       []*RequestMatch `json:"any,omitempty"`
+	PathRegex string          `json:"path_regex,omitempty"`
+	Method    string          `json:"method,omitempty"`
 }
 
 type ResponseClass struct {
