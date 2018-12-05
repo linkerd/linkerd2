@@ -1,5 +1,18 @@
 ## edge-18.12.1
 
+Upgrade notes: The control plane components have been renamed in this release to
+reduce possible naming collisions. To upgrade an existing installation:
+
+* Install new CLI: `curl https://run.linkerd.io/install-edge | sh`
+* Install new control plane: `linkerd install | kubectl apply -f -`
+* Remove old deploys/cms: `kubectl -n linkerd get deploy,cm -oname | grep -v
+  linkerd | xargs kubectl -n linkerd delete`
+* Re-inject your applications: `linkerd inject my-app.yml | kubectl apply -f -`
+* Remove old services: `kubectl -n linkerd get svc -oname | grep -v linkerd |
+  xargs kubectl -n linkerd delete`
+
+For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
 * CLI
   * **Improved** `linkerd routes` command displays per-route stats for *any resource*!
   * **New** Service profiles are now supported for external authorities!
