@@ -100,18 +100,20 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 	if req.FormValue("all_namespaces") == "true" {
 		allNs = true
 	}
-	requestParams := util.StatsRequestParams{
-		TimeWindow:    req.FormValue("window"),
-		ResourceName:  req.FormValue("resource_name"),
-		ResourceType:  req.FormValue("resource_type"),
-		Namespace:     req.FormValue("namespace"),
+	requestParams := util.StatsSummaryRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:    req.FormValue("window"),
+			ResourceName:  req.FormValue("resource_name"),
+			ResourceType:  req.FormValue("resource_type"),
+			Namespace:     req.FormValue("namespace"),
+			AllNamespaces: allNs,
+		},
 		ToName:        req.FormValue("to_name"),
 		ToType:        req.FormValue("to_type"),
 		ToNamespace:   req.FormValue("to_namespace"),
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
-		AllNamespaces: allNs,
 	}
 
 	// default to returning deployment stats
@@ -134,14 +136,13 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 }
 
 func (h *handler) handleApiTopRoutes(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	requestParams := util.StatsRequestParams{
-		TimeWindow:    req.FormValue("window"),
-		ResourceName:  req.FormValue("resource_name"),
-		ResourceType:  k8s.Service,
-		Namespace:     req.FormValue("namespace"),
-		FromName:      req.FormValue("from_name"),
-		FromType:      req.FormValue("from_type"),
-		FromNamespace: req.FormValue("from_namespace"),
+	requestParams := util.TopRoutesRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:   req.FormValue("window"),
+			ResourceName: req.FormValue("resource_name"),
+			ResourceType: req.FormValue("resource_type"),
+			Namespace:    req.FormValue("namespace"),
+		},
 	}
 
 	topReq, err := util.BuildTopRoutesRequest(requestParams)

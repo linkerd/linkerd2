@@ -18,7 +18,7 @@ var (
 			},
 			&sp.RequestMatch{
 				Not: &sp.RequestMatch{
-					Path: "/private/.*",
+					PathRegex: "/private/.*",
 				},
 			},
 		},
@@ -54,7 +54,7 @@ var (
 	}
 
 	login = &sp.RequestMatch{
-		Path: "/login",
+		PathRegex: "/login",
 	}
 
 	pbLogin = &pb.RequestMatch{
@@ -181,8 +181,8 @@ var (
 				&sp.RouteSpec{
 					Name: "multipleRequestMatches",
 					Condition: &sp.RequestMatch{
-						Method: "GET",
-						Path:   "/my/path",
+						Method:    "GET",
+						PathRegex: "/my/path",
 					},
 				},
 			},

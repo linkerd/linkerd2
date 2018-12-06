@@ -62,6 +62,8 @@ func TestRender(t *testing.T) {
 		ProxyResourceRequestCPU:          "RequestCPU",
 		ProxyResourceRequestMemory:       "RequestMemory",
 		ProxyBindTimeout:                 "1m",
+		ProfileSuffixes:                  "suffix.",
+		EnableH2Upgrade:                  true,
 	}
 
 	singleNamespaceConfig := installConfig{
@@ -89,6 +91,7 @@ func TestRender(t *testing.T) {
 		TLSTrustAnchorVolumeSpecFileName: "TLSTrustAnchorVolumeSpecFileName",
 		TLSIdentityVolumeSpecFileName:    "TLSIdentityVolumeSpecFileName",
 		SingleNamespace:                  true,
+		EnableH2Upgrade:                  true,
 	}
 
 	haOptions := newInstallOptions()

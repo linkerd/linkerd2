@@ -7,6 +7,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
+import Tooltip from '@material-ui/core/Tooltip';
 import _ from 'lodash';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
@@ -64,9 +65,10 @@ class BaseTable extends React.Component {
   renderHeaderCell = (col, order, orderBy) => {
     let active = orderBy === col.dataIndex;
     const { classes, padding } = this.props;
+    let tableCell;
 
     if (col.sorter) {
-      return (
+      tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
@@ -82,7 +84,7 @@ class BaseTable extends React.Component {
         </TableCell>
       );
     } else {
-      return (
+      tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
@@ -91,6 +93,8 @@ class BaseTable extends React.Component {
         </TableCell>
       );
     }
+
+    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
   render() {

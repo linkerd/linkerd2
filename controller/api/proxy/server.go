@@ -14,9 +14,10 @@ import (
 )
 
 type server struct {
-	k8sAPI    *k8s.API
-	resolvers []streamingDestinationResolver
-	enableTLS bool
+	k8sAPI          *k8s.API
+	resolver        streamingDestinationResolver
+	enableH2Upgrade bool
+	enableTLS       bool
 }
 
 // The proxy-api service serves service discovery and other information to the
@@ -29,16 +30,17 @@ type server struct {
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
-	resolvers, err := buildResolversList(k8sDNSZone, controllerNamespace, k8sAPI)
+func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS, enableH2Upgrade bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
+	resolver, err := buildResolver(k8sDNSZone, controllerNamespace, k8sAPI)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	srv := server{
-		k8sAPI:    k8sAPI,
-		resolvers: resolvers,
-		enableTLS: enableTLS,
+		k8sAPI:          k8sAPI,
+		resolver:        resolver,
+		enableH2Upgrade: enableH2Upgrade,
+		enableTLS:       enableTLS,
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -51,9 +53,7 @@ func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS bo
 
 	go func() {
 		<-done
-		for _, resolver := range resolvers {
-			resolver.stop()
-		}
+		resolver.stop()
 	}()
 
 	return s, lis, nil
@@ -66,43 +66,36 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return err
 	}
 
-	return s.streamResolutionUsingCorrectResolverFor(host, port, stream)
+	return s.streamResolution(host, port, stream)
 }
 
 func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
 	log.Debugf("GetProfile %v", dest)
-	host, port, err := getHostAndPort(dest)
+	host, _, err := getHostAndPort(dest)
 	if err != nil {
 		return err
 	}
 
 	listener := newProfileListener(stream)
 
-	for _, resolver := range s.resolvers {
-		resolverCanResolve, err := resolver.canResolve(host, port)
-		if err != nil {
-			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port [%d]: %v", resolver, host, port, err)
-		}
-		if resolverCanResolve {
-			return resolver.streamProfiles(host, listener)
-		}
+	err = s.resolver.streamProfiles(host, listener)
+	if err != nil {
+		log.Errorf("Error streaming profile for %s: %v", dest.Path, err)
 	}
-	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
+	return err
 }
 
-func (s *server) streamResolutionUsingCorrectResolverFor(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS)
+func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade)
 
-	for _, resolver := range s.resolvers {
-		resolverCanResolve, err := resolver.canResolve(host, port)
-		if err != nil {
-			return fmt.Errorf("resolver [%+v] found error resolving host [%s] port [%d]: %v", resolver, host, port, err)
-		}
-		if resolverCanResolve {
-			return resolver.streamResolution(host, port, listener)
-		}
+	resolverCanResolve, err := s.resolver.canResolve(host, port)
+	if err != nil {
+		return fmt.Errorf("resolver [%+v] found error resolving host [%s] port [%d]: %v", s.resolver, host, port, err)
 	}
-	return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
+	if !resolverCanResolve {
+		return fmt.Errorf("cannot find resolver for host [%s] port [%d]", host, port)
+	}
+	return s.resolver.streamResolution(host, port, listener)
 }
 
 func getHostAndPort(dest *pb.GetDestination) (string, int, error) {
@@ -131,7 +124,7 @@ func getHostAndPort(dest *pb.GetDestination) (string, int, error) {
 	return host, port, nil
 }
 
-func buildResolversList(k8sDNSZone string, controllerNamespace string, k8sAPI *k8s.API) ([]streamingDestinationResolver, error) {
+func buildResolver(k8sDNSZone string, controllerNamespace string, k8sAPI *k8s.API) (streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -145,7 +138,7 @@ func buildResolversList(k8sDNSZone string, controllerNamespace string, k8sAPI *k
 
 	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNamespace, k8sAPI)
 
-	log.Infof("Adding k8s name resolver")
+	log.Infof("Built k8s name resolver")
 
-	return []streamingDestinationResolver{k8sResolver}, nil
+	return k8sResolver, nil
 }

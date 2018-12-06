@@ -26,7 +26,7 @@ metadata:
 spec:
   routes:
   - condition:
-      path: "/x/y/z"
+      path_regex: "/x/y/z"
     response_classes:
     - condition:
         status:
@@ -39,7 +39,7 @@ spec:
 					Routes: []*sp.RouteSpec{
 						&sp.RouteSpec{
 							Condition: &sp.RequestMatch{
-								Path: "/x/y/z",
+								PathRegex: "/x/y/z",
 							},
 							ResponseClasses: []*sp.ResponseClass{
 								&sp.ResponseClass{

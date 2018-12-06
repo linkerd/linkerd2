@@ -1,10 +1,9 @@
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Spinner from './util/Spinner.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
-import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
@@ -18,6 +17,7 @@ class TopRoutesBase extends React.Component {
   static propTypes = {
     data: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
     error:  apiErrorPropType,
+    loading: PropTypes.bool.isRequired,
     query: PropTypes.shape({}).isRequired,
   }
 
@@ -29,26 +29,24 @@ class TopRoutesBase extends React.Component {
     return <ErrorBanner message={error} />;
   }
 
-  configureProfileMsg() {
-    return (
-      <Card>
-        <CardContent>
-          <Typography>
-            No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.
-          </Typography>
-        </CardContent>
-      </Card>
-    );
+  loading = () => {
+    const {loading} = this.props;
+    if (!loading) {
+      return;
+    }
+
+    return <Spinner />;
   }
 
   render() {
-    const {data} = this.props;
+    const {data, loading} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
 
     return (
       <React.Fragment>
+        {this.loading()}
         {this.banner()}
-        {_.isEmpty(metrics) ? this.configureProfileMsg() : null}
+        { !loading && _.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
         <TopRoutesTable rows={metrics} />
       </React.Fragment>
     );

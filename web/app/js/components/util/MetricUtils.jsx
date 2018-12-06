@@ -159,6 +159,7 @@ const processStatTable = table => {
 export const processTopRoutesResults = rows => {
   return _.map(rows, row => ({
     route: row.route || "UNKNOWN",
+    authority: row.authority,
     totalRequests: getTotalRequests(row),
     requestRate: getRequestRate(row),
     successRate: getSuccessRate(row),
@@ -196,6 +197,40 @@ export const processMultiResourceRollup = rawMetrics => {
     metricsByResource[resource] = processStatTable(table);
   });
   return metricsByResource;
+};
+
+export const groupResourcesByNs = apiRsp => {
+  let statTables = _.get(apiRsp, ["ok", "statTables"]);
+  let authoritiesByNs = {};
+  let resourcesByNs = _.reduce(statTables, (mem, table) => {
+    _.each(table.podGroup.rows, row => {
+      // filter out resources that aren't meshed. note that authorities don't
+      // have pod counts and therefore can't be filtered out here
+      if (row.meshedPodCount === "0" && row.resource.type !== "authority") {
+        return;
+      }
+
+      if (!mem[row.resource.namespace]) {
+        mem[row.resource.namespace] = [];
+        authoritiesByNs[row.resource.namespace] = [];
+      }
+
+      switch (row.resource.type.toLowerCase()) {
+        case "service":
+          break;
+        case "authority":
+          authoritiesByNs[row.resource.namespace].push(row.resource.name);
+          break;
+        default:
+          mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+      }
+    });
+    return mem;
+  }, {});
+  return {
+    authoritiesByNs,
+    resourcesByNs
+  };
 };
 
 export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) => {

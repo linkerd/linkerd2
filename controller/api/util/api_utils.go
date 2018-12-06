@@ -50,18 +50,28 @@ var (
 
 // Parameters that are used to build requests for metrics data.  This includes
 // requests to StatSummary and TopRoutes
-type StatsRequestParams struct {
+type StatsBaseRequestParams struct {
 	TimeWindow    string
 	Namespace     string
 	ResourceType  string
 	ResourceName  string
+	AllNamespaces bool
+}
+
+type StatsSummaryRequestParams struct {
+	StatsBaseRequestParams
 	ToNamespace   string
 	ToType        string
 	ToName        string
 	FromNamespace string
 	FromType      string
 	FromName      string
-	AllNamespaces bool
+}
+
+type TopRoutesRequestParams struct {
+	StatsBaseRequestParams
+	To    string
+	ToAll bool
 }
 
 type TapRequestParams struct {
@@ -108,7 +118,7 @@ func GRPCError(err error) error {
 	return err
 }
 
-func BuildStatSummaryRequest(p StatsRequestParams) (*pb.StatSummaryRequest, error) {
+func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
 		_, err := time.ParseDuration(p.TimeWindow)
@@ -194,7 +204,7 @@ func BuildStatSummaryRequest(p StatsRequestParams) (*pb.StatSummaryRequest, erro
 	return statRequest, nil
 }
 
-func BuildTopRoutesRequest(p StatsRequestParams) (*pb.TopRoutesRequest, error) {
+func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
 		_, err := time.ParseDuration(p.TimeWindow)
@@ -204,8 +214,8 @@ func BuildTopRoutesRequest(p StatsRequestParams) (*pb.TopRoutesRequest, error) {
 		window = p.TimeWindow
 	}
 
-	if p.AllNamespaces {
-		return nil, errors.New("all namespaces is not supported for routes request")
+	if p.AllNamespaces && p.ResourceName != "" {
+		return nil, errors.New("routes for a resource cannot be retrieved by name across all namespaces")
 	}
 
 	targetNamespace := p.Namespace
@@ -219,9 +229,6 @@ func BuildTopRoutesRequest(p StatsRequestParams) (*pb.TopRoutesRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resourceType != k8s.Service {
-		return nil, errors.New("routes request must target a service")
-	}
 
 	topRoutesRequest := &pb.TopRoutesRequest{
 		Selector: &pb.ResourceSelection{
@@ -234,31 +241,20 @@ func BuildTopRoutesRequest(p StatsRequestParams) (*pb.TopRoutesRequest, error) {
 		TimeWindow: window,
 	}
 
-	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
-		return nil, errors.New("to options are not supported for routes request")
+	if p.To != "" && p.ToAll {
+		return nil, errors.New("ToService and ToAll are mutually exclusive")
 	}
 
-	if p.FromName != "" || p.FromType != "" || p.FromNamespace != "" {
-		if p.FromNamespace == "" {
-			p.FromNamespace = targetNamespace
+	if p.To != "" {
+		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAuthority{
+			ToAuthority: p.To,
 		}
-		if p.FromType == "" {
-			p.FromType = resourceType
-		}
+	}
 
-		fromType, err := validateFromResourceType(p.FromType)
-		if err != nil {
-			return nil, err
+	if p.ToAll {
+		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAll{
+			ToAll: &pb.Empty{},
 		}
-
-		fromResource := pb.TopRoutesRequest_FromResource{
-			FromResource: &pb.Resource{
-				Namespace: p.FromNamespace,
-				Type:      fromType,
-				Name:      p.FromName,
-			},
-		}
-		topRoutesRequest.Outbound = &fromResource
 	}
 
 	return topRoutesRequest, nil

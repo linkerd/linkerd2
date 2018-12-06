@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 type templateConfig struct {
@@ -41,6 +42,33 @@ func newProfileOptions() *profileOptions {
 		template:  false,
 		openAPI:   "",
 	}
+}
+
+func (options *profileOptions) validate() error {
+	outputs := 0
+	if options.template {
+		outputs++
+	}
+	if options.openAPI != "" {
+		outputs++
+	}
+	if outputs != 1 {
+		return errors.New("You must specify exactly one of --template or --open-api")
+	}
+
+	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
+	// start with an alphabetic character, and end with an alphanumeric character
+	if errs := validation.IsDNS1035Label(options.name); len(errs) != 0 {
+		return fmt.Errorf("invalid service %q: %v", options.name, errs)
+	}
+
+	// a DNS-1123 label must consist of lower case alphanumeric characters or '-',
+	// and must start and end with an alphanumeric character
+	if errs := validation.IsDNS1123Label(options.namespace); len(errs) != 0 {
+		return fmt.Errorf("invalid namespace %q: %v", options.namespace, errs)
+	}
+
+	return nil
 }
 
 func newCmdProfile() *cobra.Command {
@@ -72,21 +100,19 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
 
-			if options.template {
-				if options.openAPI != "" {
-					return errors.New("You must specify exactly one of --template or --open-api")
-				}
-				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+			err := options.validate()
+			if err != nil {
+				return err
 			}
 
-			if options.openAPI != "" {
-				if options.template {
-					return errors.New("You must specify exactly one of --template or --open-api")
-				}
+			if options.template {
+				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+			} else if options.openAPI != "" {
 				return renderOpenAPI(options, os.Stdout)
 			}
 
-			return errors.New("You must specify exactly one of --template or --open-api")
+			// we should never get here
+			return errors.New("Unexpected error")
 		},
 	}
 
@@ -196,14 +222,13 @@ func mkRouteSpec(path, pathRegex string, method string, responses *spec.Response
 
 func pathToRegex(path string) string {
 	escaped := regexp.QuoteMeta(path)
-	replaced := pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
-	return fmt.Sprintf("^%s$", replaced)
+	return pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
 }
 
 func toReqMatch(path string, method string) *sp.RequestMatch {
 	return &sp.RequestMatch{
-		Path:   path,
-		Method: method,
+		PathRegex: path,
+		Method:    method,
 	}
 }
 
