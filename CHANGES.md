@@ -1,3 +1,41 @@
+## edge-18.12.1
+
+Upgrade notes: The control plane components have been renamed in this release to
+reduce possible naming collisions. To upgrade an existing installation:
+
+* Install new CLI: `curl https://run.linkerd.io/install-edge | sh`
+* Install new control plane: `linkerd install | kubectl apply -f -`
+* Remove old deploys/cms:
+  `kubectl -n linkerd get deploy,cm -oname | grep -v linkerd | xargs kubectl -n linkerd delete`
+* Re-inject your applications: `linkerd inject my-app.yml | kubectl apply -f -`
+* Remove old services:
+  `kubectl -n linkerd get svc -oname | grep -v linkerd | xargs kubectl -n linkerd delete`
+
+For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
+* CLI
+  * **Improved** `linkerd routes` command displays per-route stats for *any resource*!
+  * **New** Service profiles are now supported for external authorities!
+  * **New** `linkerd routes --open-api` flag generates a service profile
+    based on an OpenAPI specification (swagger) file
+* Web UI
+  * **New** Top routes page, served at `/routes`
+  * **New** Route metrics are now available in the resource detail pages for
+    services with configured profiles
+  * **New** Service profiles can be created and downloaded from the Web UI
+* Controller
+  * **Improved** Controller components are now prefixed with `linkerd-` to
+    prevent name collisions with existing resources
+  * **New** `linkerd install --disable-h2-upgrade` flag has been added to
+    control automatic HTTP/2 upgrading
+* Proxy
+  * **Improved** The proxy's `tap` subsystem has been reimplemented to be more
+    efficient and and reliable
+    * The proxy now supports route metadata in tap queries and events
+  * **Fixed** A potential HTTP/2 window starvation bug has been fixed
+  * **Fixed** Prometheus counters now wrap properly for values greater than
+    2^53 (thanks, @lucab!)
+
 ## edge-18.11.3
 
 * CLI
