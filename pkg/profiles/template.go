@@ -41,7 +41,7 @@ spec:
 
     # A route may optionally define a list of response classes which describe
     # how responses from this route will be classified.
-    response_classes:
+    responseClasses:
 
     # Each response class must define a condition.  All responses from this
     # route that match the condition will be classified as this response class.
@@ -66,5 +66,5 @@ spec:
 
       # The response class defines whether responses should be counted as
       # successes or failures.
-      is_failure: true
+      isFailure: true
 `
