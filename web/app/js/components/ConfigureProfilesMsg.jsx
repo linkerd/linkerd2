@@ -1,13 +1,12 @@
-import AddIcon from '@material-ui/icons/Add';
 import Button from '@material-ui/core/Button';
-import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import Fab from '@material-ui/core/Fab';
+import IconButton from '@material-ui/core/IconButton';
+import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TextField from '@material-ui/core/TextField';
@@ -75,14 +74,13 @@ class ConfigureProfilesMsg extends React.Component {
 
     if (showAsIcon) {
       button = (
-        <Fab
-          className={classes.margin}
-          size="small"
-          color="primary"
+        <IconButton
+          onClick={this.handleClickOpen}
           aria-label="Add"
-          onClick={this.handleClickOpen}>
-          <AddIcon />
-        </Fab>
+          className={classes.margin}
+          variant="outlined">
+          <NoteAddIcon fontSize="small" />
+        </IconButton>
       );
     } else {
       button = (
@@ -90,6 +88,7 @@ class ConfigureProfilesMsg extends React.Component {
           className={classes.button}
           variant="outlined"
           color="primary"
+          size="small"
           onClick={this.handleClickOpen}>Create Service Profile
         </Button>
       );
@@ -139,20 +138,19 @@ class ConfigureProfilesMsg extends React.Component {
   }
 
   render() {
-    const { classes, showAsIcon } = this.props;
+    const { showAsIcon } = this.props;
 
     if (showAsIcon) {
       return this.renderDownloadProfileForm();
     } else {
       return (
-        <Card className={classes.root}>
-          <CardContent>
-            <Typography component="div">
-              No route traffic found.  Does the service have a service profile?
-              {this.renderDownloadProfileForm()}
-            </Typography>
-          </CardContent>
-        </Card>
+        <CardContent>
+          <Typography component="div">
+            No named route traffic found. This could be because the service is not receiving any traffic,
+            or because there is no service profile configured. Does the service have a service profile?
+            {this.renderDownloadProfileForm()}
+          </Typography>
+        </CardContent>
       );
     }
   }

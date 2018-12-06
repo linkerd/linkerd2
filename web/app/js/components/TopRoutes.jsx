@@ -2,6 +2,7 @@ import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
+import Divider from '@material-ui/core/Divider';
 import ErrorBanner from './ErrorBanner.jsx';
 import FormControl from '@material-ui/core/FormControl';
 import FormHelperText from '@material-ui/core/FormHelperText';
@@ -13,15 +14,28 @@ import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Select from '@material-ui/core/Select';
 import TopRoutesModule from './TopRoutesModule.jsx';
+import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 
+
+const styles = theme => ({
+  root: {
+    marginTop: 3 * theme.spacing.unit,
+    marginBottom:theme.spacing.unit,
+  },
+  formControl: {
+    minWidth: 200,
+  },
+});
 class TopRoutes extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired
+    }).isRequired,
+    classes: PropTypes.shape({}).isRequired
   }
 
   constructor(props) {
@@ -126,20 +140,20 @@ class TopRoutes extends React.Component {
   }
 
   renderRoutesQueryForm = () => {
+    const { classes } = this.props;
+
     return (
       <CardContent>
         <Grid container direction="column" spacing={16}>
-          <Grid item container spacing={8} alignItems="center">
-            <Grid item xs={8} md={4}>
+          <Grid item container spacing={32} alignItems="center" justify="flex-start">
+            <Grid item>
               { this.renderNamespaceDropdown("Namespace", "namespace", "Namespace to query") }
             </Grid>
 
-            <Grid item xs={8} md={4}>
+            <Grid item>
               { this.renderServiceDropdown() }
             </Grid>
-          </Grid>
 
-          <Grid item container spacing={8} alignItems="center">
             <Grid item>
               <Button
                 color="primary"
@@ -149,6 +163,7 @@ class TopRoutes extends React.Component {
               Start
               </Button>
             </Grid>
+
             <Grid item>
               <Button
                 color="default"
@@ -159,18 +174,18 @@ class TopRoutes extends React.Component {
               </Button>
             </Grid>
           </Grid>
-
-          <Grid item>
-            <ConfigureProfilesMsg showAsIcon={true} />Add new profile
-          </Grid>
         </Grid>
+        <Divider light className={classes.root} />
+        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon={true} /></Typography>
       </CardContent>
     );
   }
 
   renderNamespaceDropdown = (title, key, helperText) => {
+    const { classes } = this.props;
+
     return (
-      <FormControl>
+      <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${key}-dropdown`}>{title}</InputLabel>
         <Select
           value={this.state.query[key]}
@@ -191,25 +206,27 @@ class TopRoutes extends React.Component {
   }
 
   renderServiceDropdown = () => {
-    let key = "resource_name";
-    let services = _.chain(this.state.services)
-      .filter(['namespace', this.state.query.namespace])
-      .map(svc => `service/${svc.name}`).value();
-    let otherResources = this.state.resourcesByNs[this.state.query.namespace] || [];
+    const { classes } = this.props;
+    let { query, services, resourcesByNs } = this.state;
 
-    let { query } = this.state;
-    let dropdownOptions = _.sortBy(_.concat(services, otherResources));
+    let key = "resource_name";
+    let servicesWithPrefix = _.chain(services)
+      .filter(['namespace', query.namespace])
+      .map(svc => `service/${svc.name}`).value();
+    let otherResources = resourcesByNs[query.namespace] || [];
+
+
+    let dropdownOptions = _.sortBy(_.concat(servicesWithPrefix, otherResources));
     let dropdownVal = _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type) ? "" :
       query.resource_type + "/" + query.resource_name;
 
     return (
-      <FormControl>
+      <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${key}-dropdown`}>Resource</InputLabel>
         <Select
           value={dropdownVal}
           onChange={this.handleResourceSelect}
           disabled={_.isEmpty(query.namespace)}
-          autoWidth
           inputProps={{
             name: key,
             id: `${key}-dropdown`,
@@ -245,4 +262,4 @@ class TopRoutes extends React.Component {
   }
 }
 
-export default withContext(TopRoutes);
+export default withContext(withStyles(styles, { withTheme: true })(TopRoutes));
