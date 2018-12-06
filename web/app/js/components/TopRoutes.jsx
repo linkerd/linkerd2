@@ -1,6 +1,7 @@
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import FormControl from '@material-ui/core/FormControl';
 import FormHelperText from '@material-ui/core/FormHelperText';
@@ -129,11 +130,11 @@ class TopRoutes extends React.Component {
       <CardContent>
         <Grid container direction="column" spacing={16}>
           <Grid item container spacing={8} alignItems="center">
-            <Grid item xs={6} md={3}>
+            <Grid item xs={8} md={4}>
               { this.renderNamespaceDropdown("Namespace", "namespace", "Namespace to query") }
             </Grid>
 
-            <Grid item xs={6} md={3}>
+            <Grid item xs={8} md={4}>
               { this.renderServiceDropdown() }
             </Grid>
           </Grid>
@@ -157,6 +158,10 @@ class TopRoutes extends React.Component {
               Stop
               </Button>
             </Grid>
+          </Grid>
+
+          <Grid item>
+            <ConfigureProfilesMsg showAsIcon={true} />Add new profile
           </Grid>
         </Grid>
       </CardContent>
@@ -221,13 +226,7 @@ class TopRoutes extends React.Component {
 
   render() {
     let query = this.state.query;
-    let from = '';
-    if (_.isEmpty(query.from_type)) {
-      from = query.from_name;
-    } else {
-      from = `${query.from_type}${_.isEmpty(query.from_name) ? "" : "/"}${query.from_name}`;
-    }
-    query.from = from;
+    let emptyQuery = _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type);
 
     return (
       <div>
@@ -237,7 +236,7 @@ class TopRoutes extends React.Component {
         }
         <Card>
           { this.renderRoutesQueryForm() }
-          { _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type) ? null :
+          {  emptyQuery ? null :
           <QueryToCliCmd cmdName="routes" query={query} resource={query.resource_type + "/" + query.resource_name} /> }
           { !this.state.requestInProgress ? null : <TopRoutesModule query={this.state.query} /> }
         </Card>
