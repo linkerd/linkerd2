@@ -26,7 +26,7 @@ metadata:
 spec:
   routes:
   - condition:
-      path_regex: "/x/y/z"
+      pathRegex: "/x/y/z"
     response_classes:
     - condition:
         status:
