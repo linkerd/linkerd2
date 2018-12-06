@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, dst, classification, tls)"
+	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, dst, classification)"
 	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, dst, %s))"
 	dstLabel                  = `dst=~"%s(:\\d+)?"`
 )
@@ -135,10 +135,6 @@ func processRouteMetrics(results []promResult, timeWindow string) *pb.RouteTable
 					routeStats[key].Stats.SuccessCount += value
 				case "failure":
 					routeStats[key].Stats.FailureCount += value
-				}
-				switch string(sample.Metric[model.LabelName("tls")]) {
-				case "true":
-					routeStats[key].Stats.TlsRequestCount += value
 				}
 			case promLatencyP50:
 				routeStats[key].Stats.LatencyMsP50 = value
