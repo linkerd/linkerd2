@@ -1,3 +1,12 @@
+## edge-18.12.2
+
+Upgrade notes: The control plane components have been renamed as of the
+edge-18.12.1 release to reduce possible naming collisions. To upgrade an
+older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
+* Controller
+  * Rename snake case fields to camel case in service profile spec
+
 ## edge-18.12.1
 
 Upgrade notes: The control plane components have been renamed in this release to
