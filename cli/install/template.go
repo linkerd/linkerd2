@@ -154,6 +154,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: linkerd-controller
+      securityContext:
+        runAsUser: {{.ControllerUID}}
       containers:
       - name: public-api
         ports:
@@ -185,8 +187,6 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
       - name: proxy-api
         ports:
         - name: grpc
@@ -218,8 +218,6 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
       - name: tap
         ports:
         - name: grpc
@@ -249,8 +247,6 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
 
 ### Service Profile CRD ###
 ---
@@ -314,6 +310,8 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
+      securityContext:
+        runAsUser: {{.ControllerUID}}
       containers:
       - name: web
         ports:
@@ -344,8 +342,6 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
 
 ### Prometheus ###
 ---
@@ -387,6 +383,9 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: linkerd-prometheus
+      securityContext:
+        runAsGroup: 65534
+        runAsUser: 65534
       volumes:
       - name: prometheus-config
         configMap:
@@ -423,8 +422,6 @@ spec:
             cpu: 300m
             memory: 300Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
 
 ---
 kind: ConfigMap
@@ -592,8 +589,9 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
+      securityContext:
+        runAsGroup: 472
+        runAsUser: 472
 
 ---
 kind: ConfigMap
@@ -732,6 +730,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: linkerd-ca
+      securityContext:
+        runAsUser: {{.ControllerUID}}
       containers:
       - name: ca
         ports:
@@ -763,8 +763,6 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
-        securityContext:
-          runAsUser: 12102
 `
 
 const ProxyInjectorTemplate = `
@@ -792,6 +790,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccount: linkerd-proxy-injector
+      securityContext:
+        runAsUser: {{.ControllerUID}}
       containers:
       - name: proxy-injector
         image: {{.ControllerImage}}
@@ -822,8 +822,6 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        securityContext:
-          runAsUser: 12102
       volumes:
       - name: webhook-secrets
         secret:
