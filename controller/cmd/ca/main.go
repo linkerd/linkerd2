@@ -47,16 +47,15 @@ func main() {
 	}
 
 	stopCh := make(chan struct{})
-	ready := make(chan struct{})
 
-	go k8sAPI.Sync(ready)
+	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
 		log.Info("starting CA")
-		controller.Run(ready, stopCh)
+		controller.Run(stopCh)
 	}()
 
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 

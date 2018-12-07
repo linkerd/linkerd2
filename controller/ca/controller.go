@@ -67,11 +67,9 @@ func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxy
 	return c, nil
 }
 
-func (c *CertificateController) Run(readyCh <-chan struct{}, stopCh <-chan struct{}) {
+func (c *CertificateController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	defer c.queue.ShutDown()
-
-	<-readyCh
 
 	log.Info("starting certificate controller")
 	defer log.Info("shutting down certificate controller")

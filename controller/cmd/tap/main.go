@@ -49,16 +49,14 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	ready := make(chan struct{})
-
-	go k8sAPI.Sync(ready)
+	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
 		log.Println("starting gRPC server on", *addr)
 		server.Serve(lis)
 	}()
 
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 

@@ -73,7 +73,7 @@ spec:
 
 			watcher := newProfileWatcher(k8sAPI)
 
-			k8sAPI.Sync(nil)
+			k8sAPI.Sync()
 
 			listener, cancelFn := newCollectProfileListener()
 			defer cancelFn()

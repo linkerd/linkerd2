@@ -47,7 +47,7 @@ func main() {
 		server.ListenAndServe()
 	}()
 
-	go admin.StartServer(*metricsAddr, nil)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 
