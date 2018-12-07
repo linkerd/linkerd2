@@ -82,10 +82,12 @@ class TopRoutes extends React.Component {
   }
 
   componentDidMount() {
+    this._isMounted = true; // https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
     this.startServerPolling();
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     this.stopServerPolling();
   }
 
@@ -290,7 +292,7 @@ class TopRoutes extends React.Component {
           { this.renderRoutesQueryForm() }
           {  emptyQuery ? null :
           <QueryToCliCmd cmdName="routes" query={query} resource={query.resource_type + "/" + query.resource_name} /> }
-          { !this.state.requestInProgress ? null : <TopRoutesModule query={this.state.query} /> }
+          { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={this.state.query} /> }
         </Card>
       </div>
     );
