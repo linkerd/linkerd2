@@ -126,9 +126,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 }
 
 // Sync waits for all informers to be synced.
-// For servers, call this asynchronously.
-// For testing, call this synchronously.
-func (api *API) Sync(readyCh chan<- struct{}) {
+func (api *API) Sync() {
 	api.sharedInformers.Start(nil)
 	api.spSharedInformers.Start(nil)
 
@@ -140,10 +138,6 @@ func (api *API) Sync(readyCh chan<- struct{}) {
 		log.Fatal("failed to sync caches")
 	}
 	log.Infof("caches synced")
-
-	if readyCh != nil {
-		close(readyCh)
-	}
 }
 
 func (api *API) Deploy() appinformers.DeploymentInformer {

@@ -52,21 +52,20 @@ func main() {
 	)
 
 	done := make(chan struct{})
-	ready := make(chan struct{})
 
 	server, lis, err := proxy.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go k8sAPI.Sync(ready)
+	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
 		server.Serve(lis)
 	}()
 
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 

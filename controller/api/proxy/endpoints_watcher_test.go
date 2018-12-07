@@ -267,7 +267,7 @@ spec:
 
 			watcher := newEndpointsWatcher(k8sAPI)
 
-			k8sAPI.Sync(nil)
+			k8sAPI.Sync()
 
 			listener, cancelFn := newCollectUpdateListener()
 			defer cancelFn()
