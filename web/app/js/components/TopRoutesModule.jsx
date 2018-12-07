@@ -41,13 +41,15 @@ class TopRoutesBase extends React.Component {
   render() {
     const {data, loading} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
+    let allRoutesUnknown = _.every(metrics, m => m.route === "UNKNOWN");
+    let showCallToAction = !loading &&  (_.isEmpty(metrics) || allRoutesUnknown);
 
     return (
       <React.Fragment>
         {this.loading()}
         {this.banner()}
-        { !loading && _.isEmpty(metrics) ? <ConfigureProfilesMsg /> : null}
         <TopRoutesTable rows={metrics} />
+        { showCallToAction ? <ConfigureProfilesMsg /> : null}
       </React.Fragment>
     );
   }

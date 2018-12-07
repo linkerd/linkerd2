@@ -1,3 +1,115 @@
+## stable-2.1.0
+
+This stable release introduces several major improvements, including per-route
+metrics, service profiles, and a vastly improved dashboard UI. It also adds
+several significant experimental features, including proxy auto-injection,
+single namespace installs, and a high-availability mode for the control plane.
+
+For more details, see the announcement blog post:
+https://blog.linkerd.io/2018/12/06/announcing-linkerd-2-1/
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: The control plane components have been renamed in this
+release to reduce possible naming collisions. Please make sure to read the
+[upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-1-0)
+if you are upgrading from the `stable-2.0.0` release.
+
+**Special thanks to**: @alenkacz, @alpeb, @benjdlambert, @fahrradflucht,
+@ffd2subroutine, @hypnoglow, @ihcsim, @lucab, and @rochacon
+
+**Full release notes**:
+* CLI
+  * `linkerd routes` command displays per-route stats for *any resource*
+  * Service profiles are now supported for external authorities
+  * `linkerd routes --open-api` flag generates a service profile
+    based on an OpenAPI specification (swagger) file
+  * `linkerd routes` command displays per-route stats for services with
+    service profiles
+  * Add `--ha` flag to `linkerd install` command, for HA
+    deployment of the control plane
+  * Update stat command to accept multiple stat targets
+  * Fix authority stat filtering when the `--from` flag is present
+  * Various improvements to check command, including:
+    * Emit warnings instead of errors when not running the latest version
+    * Add retries if control plane health check fails initially
+    * Run all pre-install RBAC checks, instead of stopping at first failure
+  * Fixed an issue with the `--registry` install flag not accepting
+    hosts with ports
+  * Added an `--output` stat flag, for printing stats as JSON
+  * Updated the `top` table to set column widths dynamically
+  * Added a `--single-namespace` install flag for installing
+    the control plane with Role permissions instead of ClusterRole permissions
+  * Added a `--proxy-auto-inject` flag to the `install` command,
+    allowing for auto-injection of sidecar containers
+  * Added `--proxy-cpu` and `--proxy-memory` flags to the `install`
+    and `inject` commands, giving the ability to configure CPU + Memory requests
+  * Added a `--context` flag to specify the context to use to talk
+    to the Kubernetes apiserver
+  * The namespace in which Linkerd is installed is configurable via the
+    `LINKERD_NAMESPACE` env var, in addition to the `--linkerd-namespace` flag
+  * The wait time for the `check` and `dashboard` commands is
+    configurable via the `--wait` flag
+  * The `top` command now aggregates by HTTP method as well
+* Controller
+  * Rename snake case fields to camel case in service profile spec
+  * Controller components are now prefixed with `linkerd-` to
+    prevent name collisions with existing resources
+  * `linkerd install --disable-h2-upgrade` flag has been added to
+    control automatic HTTP/2 upgrading
+  * Fix auto injection issue on Kubernetes `v1.9.11` that would
+    merge, rather than append, the proxy container into the application
+  * Fixed a few issues with auto injection via the proxy-injector webhook:
+    * Injected pods now execute the linkerd-init container last, to avoid
+      rerouting requests during pod init
+    * Original pod labels and annotations are preserved when auto-injecting
+  * CLI health check now uses unified endpoint for data plane checks
+  * Include Licence files in all Docker images
+* Proxy
+  * The proxy's `tap` subsystem has been reimplemented to be more
+    efficient and and reliable
+    * The proxy now supports route metadata in tap queries and events
+  * A potential HTTP/2 window starvation bug has been fixed
+  * Prometheus counters now wrap properly for values greater than 2^53
+  * Add controller client metrics, scoped under `control_`
+  * Canonicalize outbound names via DNS for inbound profiles
+  * Fix routing issue when a pod makes a request to itself
+  * Only include `classification` label on `response_total` metric
+  * Remove panic when failing to get remote address
+  * Better logging in TCP connect error messages
+* Web UI
+  * Top routes page, served at `/routes`
+  * Route metrics are now available in the resource detail pages for
+    services with configured profiles
+  * Service profiles can be created and downloaded from the Web UI
+  * Top Routes page, served at `/routes`
+  * Fixed a smattering of small UI issues
+  * Added a new Grafana dashboard for authorities
+  * Revamped look and feel of the Linkerd dashboard by switching
+    component libraries from antd to material-ui
+  * Added a Help section in the sidebar containing useful links
+  * Tap and Top pages
+    * Added clear button to query form
+  * Resource Detail pages
+    * Limit number of resources shown in the graph
+  * Resource Detail page
+    * Better rendering of the dependency graph at the top of the page
+    * Unmeshed sources are now populated in the Inbound traffic table
+    * Sources and destinations are aligned in the popover
+  * Tap and Top pages
+    * Additional validation and polish for the form controls
+    * The top table clears older results when a new top call is started
+    * The top table now aggregates by HTTP method as well
+
+## edge-18.12.2
+
+Upgrade notes: The control plane components have been renamed as of the
+edge-18.12.1 release to reduce possible naming collisions. To upgrade an
+older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
+* Controller
+  * Rename snake case fields to camel case in service profile spec
+
 ## edge-18.12.1
 
 Upgrade notes: The control plane components have been renamed in this release to

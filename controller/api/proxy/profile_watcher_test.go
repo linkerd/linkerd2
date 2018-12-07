@@ -26,12 +26,12 @@ metadata:
 spec:
   routes:
   - condition:
-      path_regex: "/x/y/z"
-    response_classes:
+      pathRegex: "/x/y/z"
+    responseClasses:
     - condition:
         status:
           min: 500
-      is_failure: true`,
+      isFailure: true`,
 			},
 			service: profileId{namespace: "linkerd", name: "foobar.ns.svc.cluster.local"},
 			expectedProfiles: []*sp.ServiceProfileSpec{

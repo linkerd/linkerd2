@@ -1,11 +1,12 @@
 import Button from '@material-ui/core/Button';
-import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import IconButton from '@material-ui/core/IconButton';
+import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TextField from '@material-ui/core/TextField';
@@ -17,6 +18,9 @@ import { withStyles } from '@material-ui/core/styles';
 const styles = theme => ({
   button: {
     margin: theme.spacing.unit,
+  },
+  margin: {
+    marginRight: theme.spacing.unit,
   },
   container: {
     display: 'flex',
@@ -62,19 +66,36 @@ class ConfigureProfilesMsg extends React.Component {
   }
 
   renderDownloadProfileForm = () => {
-    const { api, classes } = this.props;
+    const { api, classes, showAsIcon } = this.props;
     let { query } = this.state;
 
     let downloadUrl = api.prefixedUrl(`/profiles/new?service=${query.service}&namespace=${query.namespace}`);
+    let button;
 
-    return (
-      <React.Fragment>
+    if (showAsIcon) {
+      button = (
+        <IconButton
+          onClick={this.handleClickOpen}
+          aria-label="Add"
+          className={classes.margin}
+          variant="outlined">
+          <NoteAddIcon fontSize="small" />
+        </IconButton>
+      );
+    } else {
+      button = (
         <Button
           className={classes.button}
           variant="outlined"
           color="primary"
+          size="small"
           onClick={this.handleClickOpen}>Create Service Profile
         </Button>
+      );
+    }
+    return (
+      <React.Fragment>
+        {button}
 
         <Dialog
           open={this.state.open}
@@ -117,26 +138,34 @@ class ConfigureProfilesMsg extends React.Component {
   }
 
   render() {
-    const { classes } = this.props;
+    const { showAsIcon } = this.props;
 
-    return (
-      <Card className={classes.root}>
+    if (showAsIcon) {
+      return this.renderDownloadProfileForm();
+    } else {
+      return (
         <CardContent>
           <Typography component="div">
-            No traffic found.  Does the service have a service profile?
+            No named route traffic found. This could be because the service is not receiving any traffic,
+            or because there is no service profile configured. Does the service have a service profile?
             {this.renderDownloadProfileForm()}
           </Typography>
         </CardContent>
-      </Card>
-    );
+      );
+    }
   }
 }
 
 ConfigureProfilesMsg.propTypes = {
   api: PropTypes.shape({
-    prefixedFetch: PropTypes.func.isRequired,
+    prefixedUrl: PropTypes.func.isRequired,
   }).isRequired,
-  classes: PropTypes.shape({}).isRequired
+  classes: PropTypes.shape({}).isRequired,
+  showAsIcon: PropTypes.bool
+};
+
+ConfigureProfilesMsg.defaultProps = {
+  showAsIcon: false
 };
 
 export default withContext(withStyles(styles, { withTheme: true })(ConfigureProfilesMsg));

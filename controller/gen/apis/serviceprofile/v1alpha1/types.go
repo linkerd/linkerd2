@@ -32,20 +32,20 @@ type ServiceProfileSpec struct {
 type RouteSpec struct {
 	Name            string           `json:"name"`
 	Condition       *RequestMatch    `json:"condition"`
-	ResponseClasses []*ResponseClass `json:"response_classes,omitempty"`
+	ResponseClasses []*ResponseClass `json:"responseClasses,omitempty"`
 }
 
 type RequestMatch struct {
 	All       []*RequestMatch `json:"all,omitempty"`
 	Not       *RequestMatch   `json:"not,omitempty"`
 	Any       []*RequestMatch `json:"any,omitempty"`
-	PathRegex string          `json:"path_regex,omitempty"`
+	PathRegex string          `json:"pathRegex,omitempty"`
 	Method    string          `json:"method,omitempty"`
 }
 
 type ResponseClass struct {
 	Condition *ResponseMatch `json:"condition"`
-	IsFailure bool           `json:"is_failure,omitempty"`
+	IsFailure bool           `json:"isFailure,omitempty"`
 }
 
 type ResponseMatch struct {
