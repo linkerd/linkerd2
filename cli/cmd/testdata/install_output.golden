@@ -1090,7 +1090,7 @@ spec:
           initialDelaySeconds: 10
         name: proxy-injector
         ports:
-        - containerPort: 443
+        - containerPort: 8443
           name: proxy-injector
         readinessProbe:
           failureThreshold: 7

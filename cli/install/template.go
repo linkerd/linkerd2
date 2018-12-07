@@ -803,7 +803,7 @@ spec:
         - "-log-level={{.ControllerLogLevel}}"
         ports:
         - name: proxy-injector
-          containerPort: 443
+          containerPort: 8443
         volumeMounts:
         - name: linkerd-trust-anchors
           mountPath: /var/linkerd-io/trust-anchors
