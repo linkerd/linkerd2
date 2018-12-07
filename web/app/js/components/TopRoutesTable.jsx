@@ -3,12 +3,22 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import { DefaultRoute } from './util/MetricUtils.jsx';
 
 const routesColumns = [
   {
     title: "Route",
     dataIndex: "route",
-    sorter: (a, b) => (a.route).localeCompare(b.route)
+    sorter: (a, b) => {
+      if (a.route === DefaultRoute) {
+        return 1;
+      } else {
+        if (b.route === DefaultRoute) {
+          return -1;
+        }
+      }
+      return (a.route).localeCompare(b.route);
+    }
   },
   {
     title: "Authority",

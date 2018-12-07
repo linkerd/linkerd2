@@ -1,3 +1,5 @@
+import { DefaultRoute, processTopRoutesResults } from './util/MetricUtils.jsx';
+
 import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
@@ -6,7 +8,6 @@ import Spinner from './util/Spinner.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
 import _ from 'lodash';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
-import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';
 
 class TopRoutesBase extends React.Component {
@@ -41,7 +42,7 @@ class TopRoutesBase extends React.Component {
   render() {
     const {data, loading} = this.props;
     let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
-    let allRoutesUnknown = _.every(metrics, m => m.route === "UNKNOWN");
+    let allRoutesUnknown = _.every(metrics, m => m.route === DefaultRoute);
     let showCallToAction = !loading &&  (_.isEmpty(metrics) || allRoutesUnknown);
 
     return (

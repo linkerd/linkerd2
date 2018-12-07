@@ -156,9 +156,10 @@ const processStatTable = table => {
     .value();
 };
 
+export const DefaultRoute = "[default]";
 export const processTopRoutesResults = rows => {
   return _.map(rows, row => ({
-    route: row.route || "UNKNOWN",
+    route: row.route || DefaultRoute,
     authority: row.authority,
     totalRequests: getTotalRequests(row),
     requestRate: getRequestRate(row),
