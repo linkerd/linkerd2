@@ -94,7 +94,8 @@ class BaseTable extends React.Component {
       );
     }
 
-    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
+    return _.isNil(col.tooltip) ? tableCell :
+    <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
   render() {
@@ -118,14 +119,19 @@ class BaseTable extends React.Component {
               let key = !rowKey ? d.key : rowKey(d);
               return (
                 <TableRow key={key}>
-                  { _.map(tableColumns, c => (
-                    <TableCell
-                      className={classNames({[classes.denseTable]: padding === 'dense'})}
-                      key={`table-${key}-${c.key || c.dataIndex}`}
-                      numeric={c.isNumeric}>
-                      {c.render ? c.render(d) : _.get(d, c.dataIndex)}
-                    </TableCell>
-                  ))}
+                  { _.map(tableColumns, c => {
+                    let tableCell = (
+                      <TableCell
+                        className={classNames({[classes.denseTable]: padding === 'dense'})}
+                        key={`table-${key}-${c.key || c.dataIndex}`}
+                        numeric={c.isNumeric}>
+                        {c.render ? c.render(d) : _.get(d, c.dataIndex)}
+                      </TableCell>
+                    );
+
+                    return _.isNil(d.tooltip) ? tableCell :
+                    <Tooltip key={`table-${key}-${c.key || c.dataIndex}`} placement="right" title={d.tooltip}>{tableCell}</Tooltip>;
+                  })}
                 </TableRow>
               );
             })}

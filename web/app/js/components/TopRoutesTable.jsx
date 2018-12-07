@@ -1,9 +1,9 @@
 import { metricToFormatter, numericSort } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
+import { DefaultRoute } from './util/MetricUtils.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
-import { DefaultRoute } from './util/MetricUtils.jsx';
 
 const routesColumns = [
   {
