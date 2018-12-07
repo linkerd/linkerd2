@@ -199,7 +199,7 @@ class NavigationBase extends React.Component {
     );
   }
   render() {
-    const { classes, ChildComponent } = this.props;
+    const { classes, ChildComponent, ...otherProps } = this.props;
 
     return (
       <div className={classes.root}>
@@ -287,7 +287,7 @@ class NavigationBase extends React.Component {
 
         <main className={classNames(classes.content, {[classes.contentDrawerClose]: !this.state.drawerOpen})}>
           <div className={classes.toolbar} />
-          <div className="main-content"><ChildComponent {...this.props} /></div>
+          <div className="main-content"><ChildComponent {...otherProps} /></div>
         </main>
       </div>
     );
