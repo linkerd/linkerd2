@@ -117,24 +117,23 @@ class BaseTable extends React.Component {
             {
               _.map(sortedTableRows, d => {
               let key = !rowKey ? d.key : rowKey(d);
-              return (
+              let tableRow = (
                 <TableRow key={key}>
-                  { _.map(tableColumns, c => {
-                    let tableCell = (
-                      <TableCell
-                        className={classNames({[classes.denseTable]: padding === 'dense'})}
-                        key={`table-${key}-${c.key || c.dataIndex}`}
-                        numeric={c.isNumeric}>
-                        {c.render ? c.render(d) : _.get(d, c.dataIndex)}
-                      </TableCell>
-                    );
-
-                    return _.isNil(d.tooltip) ? tableCell :
-                    <Tooltip key={`table-${key}-${c.key || c.dataIndex}`} placement="right" title={d.tooltip}>{tableCell}</Tooltip>;
-                  })}
+                  { _.map(tableColumns, c => (
+                    <TableCell
+                      className={classNames({[classes.denseTable]: padding === 'dense'})}
+                      key={`table-${key}-${c.key || c.dataIndex}`}
+                      numeric={c.isNumeric}>
+                      {c.render ? c.render(d) : _.get(d, c.dataIndex)}
+                    </TableCell>
+                    )
+                  )}
                 </TableRow>
               );
-            })}
+              return _.isNil(d.tooltip) ? tableRow :
+              <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
+              }
+            )}
           </TableBody>
         </Table>
       </Paper>
