@@ -470,6 +470,9 @@ data:
       scrape_timeout: 10s
       evaluation_interval: 10s
 
+    rule_files:
+    - /etc/prometheus/*_rules.yml
+
     scrape_configs:
     - job_name: 'prometheus'
       static_configs:
