@@ -25,9 +25,6 @@ const topRoutesQueryProps = {
   resource_name: PropTypes.string,
   resource_type: PropTypes.string,
   namespace: PropTypes.string,
-  from_name: PropTypes.string,
-  from_type: PropTypes.string,
-  from_namespace: PropTypes.string
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
@@ -57,9 +54,6 @@ class TopRoutes extends React.Component {
       resource_name: '',
       resource_type: '',
       namespace: '',
-      from_name: '',
-      from_type: '',
-      from_namespace: ''
     },
   }
 
