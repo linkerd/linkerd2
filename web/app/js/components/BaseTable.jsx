@@ -94,7 +94,8 @@ class BaseTable extends React.Component {
       );
     }
 
-    return _.isNil(col.tooltip) ? tableCell : <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
+    return _.isNil(col.tooltip) ? tableCell :
+    <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
   render() {
@@ -116,7 +117,7 @@ class BaseTable extends React.Component {
             {
               _.map(sortedTableRows, d => {
               let key = !rowKey ? d.key : rowKey(d);
-              return (
+              let tableRow = (
                 <TableRow key={key}>
                   { _.map(tableColumns, c => (
                     <TableCell
@@ -125,10 +126,14 @@ class BaseTable extends React.Component {
                       numeric={c.isNumeric}>
                       {c.render ? c.render(d) : _.get(d, c.dataIndex)}
                     </TableCell>
-                  ))}
+                    )
+                  )}
                 </TableRow>
               );
-            })}
+              return _.isNil(d.tooltip) ? tableRow :
+              <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
+              }
+            )}
           </TableBody>
         </Table>
       </Paper>
