@@ -99,6 +99,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
   updateStrategy: {}
 status:

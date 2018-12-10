@@ -282,6 +282,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsUser: 2103
@@ -442,6 +445,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsUser: 2103
@@ -582,6 +588,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsGroup: 65534
@@ -807,6 +816,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsGroup: 472
@@ -1042,6 +1054,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsUser: 2103
@@ -1169,6 +1184,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       securityContext:
         runAsUser: 2103
@@ -1268,6 +1286,9 @@ data:
         add:
         - NET_ADMIN
       privileged: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
   ProxySpecFileName: |
     env:

@@ -928,6 +928,9 @@ data:
         add:
         - NET_ADMIN
       privileged: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
   {{.ProxySpecFileName}}: |
     env:
