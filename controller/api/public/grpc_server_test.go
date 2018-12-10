@@ -174,7 +174,7 @@ spec:
 				[]string{},
 			)
 
-			k8sAPI.Sync(nil)
+			k8sAPI.Sync()
 
 			rsp, err := fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{})
 			if err != exp.err {
@@ -255,7 +255,7 @@ metadata:
 				[]string{},
 			)
 
-			k8sAPI.Sync(nil)
+			k8sAPI.Sync()
 
 			rsp, err := fakeGrpcServer.ListServices(context.TODO(), &pb.ListServicesRequest{})
 			if err != exp.err {

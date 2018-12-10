@@ -70,16 +70,14 @@ func main() {
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
-	ready := make(chan struct{})
-
-	go k8sAPI.Sync(ready)
+	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
 		server.ListenAndServe()
 	}()
 
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 

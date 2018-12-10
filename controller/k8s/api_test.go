@@ -35,7 +35,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	api.Sync(nil)
+	api.Sync()
 
 	return api, k8sResults, nil
 }

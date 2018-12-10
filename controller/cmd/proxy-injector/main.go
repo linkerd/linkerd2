@@ -80,7 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	go admin.StartServer(*metricsAddr, nil)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 	log.Info("shutting down webhook server")
