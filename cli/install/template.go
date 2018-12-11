@@ -851,6 +851,12 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
@@ -861,12 +867,6 @@ spec:
       - name: proxy-spec
         configMap:
           name: linkerd-proxy-injector-sidecar-config
-      {{- if .EnableHA }}
-      resources:
-        requests:
-          cpu: 20m
-          memory: 50Mi
-      {{- end }}
 
 ---
 ### Proxy Injector Service Account ###
