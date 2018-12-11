@@ -75,7 +75,10 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
 
-		exp.verifyPromQueries(mockProm)
+		err = exp.verifyPromQueries(mockProm)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		rspStatTables := rsp.GetOk().StatTables
 
@@ -199,7 +202,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -246,7 +249,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -352,7 +355,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -408,7 +411,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -475,7 +478,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -542,7 +545,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}),
+				}, true),
 			},
 		}
 
@@ -919,8 +922,13 @@ metadata:
 status:
   phase: Failed
 `},
-						mockPromResponse:          model.Vector{},
-						expectedPrometheusQueries: []string{},
+						mockPromResponse: model.Vector{},
+						expectedPrometheusQueries: []string{
+							`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto"}[])) by (le, namespace, pod))`,
+							`sum(increase(response_total{direction="inbound", namespace="emojivoto"}[])) by (namespace, pod, classification, tls)`,
+						},
 					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
@@ -1016,7 +1024,7 @@ status:
 						MeshedPods:  1,
 						RunningPods: 2,
 						FailedPods:  1,
-					}),
+					}, true),
 				},
 			}
 
@@ -1061,7 +1069,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true),
 			},
 		}
 
@@ -1112,7 +1120,7 @@ status:
 						},
 					},
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil, true),
 			},
 		}
 
@@ -1157,7 +1165,49 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Stats returned are nil when SkipStats is true", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				expectedStatRpc: expectedStatRpc{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`,
+					},
+					mockPromResponse:          model.Vector{},
+					expectedPrometheusQueries: []string{},
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+					SkipStats:  true,
+				},
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}, false),
 			},
 		}
 

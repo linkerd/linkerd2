@@ -168,9 +168,12 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		return resourceResult{res: nil, err: err}
 	}
 
-	requestMetrics, err := s.getStatMetrics(ctx, req, req.TimeWindow)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
+	var requestMetrics map[rKey]*pb.BasicStats
+	if !req.SkipStats {
+		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
 	}
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
@@ -213,9 +216,13 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 }
 
 func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	requestMetrics, err := s.getStatMetrics(ctx, req, req.TimeWindow)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
+	var requestMetrics map[rKey]*pb.BasicStats
+	if !req.SkipStats {
+		var err error
+		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
 	}
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
