@@ -78,6 +78,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
 ---
 apiVersion: v1
 kind: Service
@@ -122,6 +125,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
 ---
 apiVersion: v1
 kind: Pod
@@ -173,3 +179,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0

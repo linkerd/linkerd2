@@ -185,6 +185,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
       - name: proxy-api
         ports:
         - name: grpc
@@ -217,6 +219,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
       - name: tap
         ports:
         - name: grpc
@@ -246,6 +250,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
 
 ### Service Profile CRD ###
 ---
@@ -339,6 +345,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
 
 ### Prometheus ###
 ---
@@ -428,6 +436,9 @@ spec:
             cpu: 300m
             memory: 300Mi
         {{- end }}
+        securityContext:
+          runAsGroup: 65534
+          runAsUser: 65534
 
 ---
 kind: ConfigMap
@@ -609,6 +620,10 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsGroup: 472
+          runAsUser: 472
+
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -777,6 +792,8 @@ spec:
             cpu: 20m
             memory: 50Mi
         {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
 `
 
 const ProxyInjectorTemplate = `
@@ -814,7 +831,7 @@ spec:
         - "-log-level={{.ControllerLogLevel}}"
         ports:
         - name: proxy-injector
-          containerPort: 443
+          containerPort: 8443
         volumeMounts:
         - name: linkerd-trust-anchors
           mountPath: /var/linkerd-io/trust-anchors
@@ -834,6 +851,8 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
+        securityContext:
+          runAsUser: {{.ControllerUID}}
       volumes:
       - name: webhook-secrets
         secret:
@@ -939,6 +958,9 @@ data:
         add:
         - NET_ADMIN
       privileged: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
   {{.ProxySpecFileName}}: |
     env:

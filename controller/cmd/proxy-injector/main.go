@@ -19,7 +19,7 @@ import (
 
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	addr := flag.String("addr", ":443", "address to serve on")
+	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
