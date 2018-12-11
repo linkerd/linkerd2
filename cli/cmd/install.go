@@ -9,6 +9,8 @@ import (
 	"strings"
 	"text/template"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/linkerd/linkerd2/cli/install"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
@@ -21,7 +23,9 @@ type installConfig struct {
 	ControllerImage                  string
 	WebImage                         string
 	PrometheusImage                  string
+	PrometheusVolumeName             string
 	GrafanaImage                     string
+	GrafanaVolumeName                string
 	ControllerReplicas               uint
 	ImagePullPolicy                  string
 	UUID                             string
@@ -62,12 +66,14 @@ type installConfig struct {
 }
 
 type installOptions struct {
-	controllerReplicas uint
-	controllerLogLevel string
-	proxyAutoInject    bool
-	singleNamespace    bool
-	highAvailability   bool
-	disableH2Upgrade   bool
+	controllerReplicas   uint
+	controllerLogLevel   string
+	proxyAutoInject      bool
+	singleNamespace      bool
+	highAvailability     bool
+	disableH2Upgrade     bool
+	prometheusVolumeName string
+	grafanaVolumeName    string
 	*proxyConfigOptions
 }
 
@@ -79,13 +85,15 @@ const (
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		controllerReplicas: defaultControllerReplicas,
-		controllerLogLevel: "info",
-		proxyAutoInject:    false,
-		singleNamespace:    false,
-		highAvailability:   false,
-		disableH2Upgrade:   false,
-		proxyConfigOptions: newProxyConfigOptions(),
+		controllerReplicas:   defaultControllerReplicas,
+		controllerLogLevel:   "info",
+		proxyAutoInject:      false,
+		singleNamespace:      false,
+		highAvailability:     false,
+		disableH2Upgrade:     false,
+		prometheusVolumeName: "",
+		grafanaVolumeName:    "",
+		proxyConfigOptions:   newProxyConfigOptions(),
 	}
 }
 
@@ -113,6 +121,8 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
 	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
 	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 ugprading")
+	cmd.PersistentFlags().StringVar(&options.prometheusVolumeName, "prometheus-volume-name", options.prometheusVolumeName, "Creates an 'emptyDir' pod entry and configures Prometheus to use this for data storage (Note: must be DNS-1123 compliant)")
+	cmd.PersistentFlags().StringVar(&options.grafanaVolumeName, "grafana-volume-name", options.grafanaVolumeName, "Creates an 'emptyDir' pod entry and configures Grafana to use this for data storage (Note: must be DNS-1123 compliant)")
 	return cmd
 }
 
@@ -155,7 +165,9 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:                  "prom/prometheus:v2.4.0",
+		PrometheusVolumeName:             options.prometheusVolumeName,
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaVolumeName:                options.grafanaVolumeName,
 		ControllerReplicas:               options.controllerReplicas,
 		ImagePullPolicy:                  options.imagePullPolicy,
 		UUID:                             uuid.NewV4().String(),
@@ -197,6 +209,20 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 }
 
 func render(config installConfig, w io.Writer, options *installOptions) error {
+	if len(options.prometheusVolumeName) > 0 {
+		errors := validation.IsDNS1123Label(options.prometheusVolumeName)
+		if len(errors) > 0 {
+			return fmt.Errorf("Provided prometheus volume name is not valid: %v", errors)
+		}
+	}
+
+	if len(options.grafanaVolumeName) > 0 {
+		errors := validation.IsDNS1123Label(options.grafanaVolumeName)
+		if len(errors) > 0 {
+			return fmt.Errorf("Provided grafana volume name is not valid: %v", errors)
+		}
+	}
+
 	template, err := template.New("linkerd").Parse(install.Template)
 	if err != nil {
 		return err

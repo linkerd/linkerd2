@@ -101,6 +101,8 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCpuRequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
+	haWithOverridesOptions.grafanaVolumeName = "my-grafana-data"
+	haWithOverridesOptions.prometheusVolumeName = "prom-data"
 	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
 	haWithOverridesConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 

@@ -381,6 +381,11 @@ spec:
     spec:
       serviceAccount: linkerd-prometheus
       volumes:
+      {{- if .PrometheusVolumeName }}
+      - name: {{.PrometheusVolumeName}}
+        emptyDir:
+          {}
+      {{- end }}
       - name: prometheus-config
         configMap:
           name: linkerd-prometheus-config
@@ -390,12 +395,19 @@ spec:
         - name: admin-http
           containerPort: 9090
         volumeMounts:
+        {{- if .PrometheusVolumeName }}
+        - name: {{.PrometheusVolumeName}}
+          mountPath: /{{.PrometheusVolumeName}}
+        {{- end}}
         - name: prometheus-config
           mountPath: /etc/prometheus
           readOnly: true
         image: {{.PrometheusImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
+        {{- if .PrometheusVolumeName }}
+        - "--storage.tsdb.path=/{{.PrometheusVolumeName}}"
+        {{- end}}
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
         readinessProbe:
@@ -547,6 +559,11 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       volumes:
+      {{- if .GrafanaVolumeName }}
+      - name: {{.GrafanaVolumeName}}
+        emptyDir:
+          {}
+      {{- end }}
       - name: grafana-config
         configMap:
           name: linkerd-grafana-config
@@ -562,7 +579,16 @@ spec:
         ports:
         - name: http
           containerPort: 3000
+        {{- if .GrafanaVolumeName }}
+        env:
+          - name: GF_PATHS_DATA
+            value: /{{.GrafanaVolumeName}}
+        {{- end }}
         volumeMounts:
+        {{- if .GrafanaVolumeName }}
+        - name: {{.GrafanaVolumeName}}
+          mountPath: /{{.GrafanaVolumeName}}
+        {{- end }}
         - name: grafana-config
           mountPath: /etc/grafana
           readOnly: true
