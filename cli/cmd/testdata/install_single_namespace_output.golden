@@ -171,6 +171,8 @@ spec:
             path: /ready
             port: 9995
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - args:
         - proxy-api
         - -addr=:123
@@ -198,6 +200,8 @@ spec:
             path: /ready
             port: 9996
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - args:
         - tap
         - -controller-namespace=Namespace
@@ -222,6 +226,8 @@ spec:
             path: /ready
             port: 9998
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -288,8 +294,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsUser: 2103
       serviceAccount: linkerd-controller
 status: {}
 ---
@@ -385,6 +389,8 @@ spec:
             path: /ready
             port: 9994
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -451,8 +457,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsUser: 2103
 status: {}
 ---
 kind: Service
@@ -522,6 +526,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources: {}
+        securityContext:
+          runAsGroup: 65534
+          runAsUser: 65534
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -594,9 +601,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsGroup: 65534
-        runAsUser: 65534
       serviceAccount: linkerd-prometheus
       volumes:
       - configMap:
@@ -754,6 +758,9 @@ spec:
             path: /api/health
             port: 3000
         resources: {}
+        securityContext:
+          runAsGroup: 472
+          runAsUser: 472
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
@@ -824,9 +831,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsGroup: 472
-        runAsUser: 472
       volumes:
       - configMap:
           items:
@@ -994,6 +998,8 @@ spec:
             path: /ready
             port: 9997
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1060,8 +1066,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsUser: 2103
       serviceAccount: linkerd-ca
 status: {}
 ---
