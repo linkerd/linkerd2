@@ -1,3 +1,4 @@
+import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -20,6 +21,16 @@ import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
+const topRoutesQueryProps = {
+  resource_name: PropTypes.string,
+  resource_type: PropTypes.string,
+  namespace: PropTypes.string,
+};
+const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
+
+const urlPropsQueryConfig = _.mapValues(topRoutesQueryProps, () => {
+  return { type: UrlQueryParamTypes.string };
+});
 
 const styles = theme => ({
   root: {
@@ -35,24 +46,28 @@ class TopRoutes extends React.Component {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    classes: PropTypes.shape({}).isRequired
+    classes: PropTypes.shape({}).isRequired,
+    query: topRoutesQueryPropType,
+  }
+  static defaultProps = {
+    query: {
+      resource_name: '',
+      resource_type: '',
+      namespace: '',
+    },
   }
 
   constructor(props) {
     super(props);
     this.api = this.props.api;
 
+    let query = _.merge({}, props.query, _.pick(this.props, _.keys(topRoutesQueryProps)));
+
     this.state = {
-      query: {
-        resource_name: '',
-        namespace: '',
-        from_name: '',
-        from_type: '',
-        from_namespace: ''
-      },
+      query: query,
       error: null,
       services: [],
-      namespaces: [],
+      namespaces: ["default"],
       resourcesByNs: {},
       pollingInterval: 5000,
       pendingRequests: false,
@@ -61,10 +76,12 @@ class TopRoutes extends React.Component {
   }
 
   componentDidMount() {
+    this._isMounted = true; // https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
     this.startServerPolling();
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     this.stopServerPolling();
   }
 
@@ -124,9 +141,18 @@ class TopRoutes extends React.Component {
     });
   }
 
+  // Each time state.query is updated, this method calls the equivalent
+  // onChange method to reflect the update in url query params. These onChange
+  // methods are automatically added to props by react-url-query.
+  handleUrlUpdate = (name, formVal) => {
+    this.props[`onChange${_.upperFirst(name)}`](formVal);
+  }
+
   handleNamespaceSelect = e => {
     let query = this.state.query;
-    query.namespace = _.get(e, 'target.value');
+    let formVal = _.get(e, 'target.value');
+    query.namespace = formVal;
+    this.handleUrlUpdate("namespace", formVal);
     this.setState({ query });
   };
 
@@ -136,6 +162,8 @@ class TopRoutes extends React.Component {
     let [resource_type, resource_name] = resource.split("/");
     query.resource_name = resource_name;
     query.resource_type = resource_type;
+    this.handleUrlUpdate("resource_name", resource_name);
+    this.handleUrlUpdate("resource_type", resource_type);
     this.setState({ query });
   }
 
@@ -215,10 +243,13 @@ class TopRoutes extends React.Component {
       .map(svc => `service/${svc.name}`).value();
     let otherResources = resourcesByNs[query.namespace] || [];
 
-
     let dropdownOptions = _.sortBy(_.concat(servicesWithPrefix, otherResources));
     let dropdownVal = _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type) ? "" :
       query.resource_type + "/" + query.resource_name;
+
+    if (_.isEmpty(dropdownOptions) && !_.isEmpty(dropdownVal)) {
+      dropdownOptions = [dropdownVal]; // populate from url if autocomplete hasn't loaded
+    }
 
     return (
       <FormControl className={classes.formControl}>
@@ -255,11 +286,11 @@ class TopRoutes extends React.Component {
           { this.renderRoutesQueryForm() }
           {  emptyQuery ? null :
           <QueryToCliCmd cmdName="routes" query={query} resource={query.resource_type + "/" + query.resource_name} /> }
-          { !this.state.requestInProgress ? null : <TopRoutesModule query={this.state.query} /> }
+          { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={this.state.query} /> }
         </Card>
       </div>
     );
   }
 }
 
-export default withContext(withStyles(styles, { withTheme: true })(TopRoutes));
+export default addUrlProps({ urlPropsQueryConfig })(withContext(withStyles(styles, { withTheme: true })(TopRoutes)));

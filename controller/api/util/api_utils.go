@@ -66,6 +66,7 @@ type StatsSummaryRequestParams struct {
 	FromNamespace string
 	FromType      string
 	FromName      string
+	SkipStats     bool
 }
 
 type TopRoutesRequestParams struct {
@@ -153,6 +154,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 			},
 		},
 		TimeWindow: window,
+		SkipStats:  p.SkipStats,
 	}
 
 	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
