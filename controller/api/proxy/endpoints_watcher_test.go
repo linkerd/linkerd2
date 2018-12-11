@@ -158,6 +158,56 @@ status:
 			expectedNoEndpointsServiceExists: false,
 		},
 		{
+			// Test for the issue described in linkerd/linkerd2#1853.
+			serviceType: "local service with named target port and differently-named service port",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: world
+  namespace: ns
+spec:
+  type: ClusterIP
+  ports:
+    - name: app
+      port: 7778
+      targetPort: http`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: world
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 10.1.30.135
+    targetRef:
+      kind: Pod
+      name: world-575bf846b4-tp4hw
+      namespace: ns
+  ports:
+  - name: app
+    port: 7779
+    protocol: TCP`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: world-575bf846b4-tp4hw
+  namespace: ns
+status:
+  podIp: 10.1.30.135
+  phase: Running`,
+			},
+			service: &serviceId{namespace: "ns", name: "world"},
+			port:    uint32(7778),
+			expectedAddresses: []string{
+				"10.1.30.135:7779",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+		{
 			serviceType: "local services with missing pods",
 			k8sConfigs: []string{`
 apiVersion: v1
