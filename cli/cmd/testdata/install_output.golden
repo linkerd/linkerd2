@@ -169,6 +169,8 @@ spec:
             path: /ready
             port: 9995
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - args:
         - proxy-api
         - -addr=:123
@@ -196,6 +198,8 @@ spec:
             path: /ready
             port: 9996
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - args:
         - tap
         - -controller-namespace=Namespace
@@ -220,6 +224,8 @@ spec:
             path: /ready
             port: 9998
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -282,6 +288,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-controller
 status: {}
@@ -378,6 +387,8 @@ spec:
             path: /ready
             port: 9994
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -440,6 +451,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
@@ -510,6 +524,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources: {}
+        securityContext:
+          runAsGroup: 65534
+          runAsUser: 65534
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -578,6 +595,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-prometheus
       volumes:
@@ -734,6 +754,9 @@ spec:
             path: /api/health
             port: 3000
         resources: {}
+        securityContext:
+          runAsGroup: 472
+          runAsUser: 472
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
@@ -800,6 +823,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
       - configMap:
@@ -970,6 +996,8 @@ spec:
             path: /ready
             port: 9997
         resources: {}
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1032,6 +1060,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-ca
 status: {}
@@ -1078,7 +1109,7 @@ spec:
           initialDelaySeconds: 10
         name: proxy-injector
         ports:
-        - containerPort: 443
+        - containerPort: 8443
           name: proxy-injector
         readinessProbe:
           failureThreshold: 7
@@ -1086,6 +1117,8 @@ spec:
             path: /ready
             port: 9995
         resources: {}
+        securityContext:
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/linkerd-io/trust-anchors
           name: linkerd-trust-anchors
@@ -1157,6 +1190,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-proxy-injector
       volumes:
@@ -1254,6 +1290,9 @@ data:
         add:
         - NET_ADMIN
       privileged: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
   ProxySpecFileName: |
     env:

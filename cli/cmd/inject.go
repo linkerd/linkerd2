@@ -211,17 +211,23 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
+	nonRoot := false
+	runAsUser := int64(0)
+	runAsGroup := int64(0)
 	initContainer := v1.Container{
 		Name:                     k8s.InitContainerName,
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: initArgs,
+		Args:                     initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
 			},
-			Privileged: &f,
+			Privileged:   &f,
+			RunAsGroup:   &runAsGroup,
+			RunAsNonRoot: &nonRoot,
+			RunAsUser:    &runAsUser,
 		},
 	}
 	controlPlaneDNS := fmt.Sprintf("linkerd-proxy-api.%s.svc.cluster.local", controlPlaneNamespace)

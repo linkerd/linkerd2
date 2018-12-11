@@ -169,6 +169,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       - args:
         - proxy-api
         - -addr=:8086
@@ -199,6 +201,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       - args:
         - tap
         - -controller-namespace=linkerd
@@ -226,6 +230,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -291,6 +297,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-controller
 status: {}
@@ -389,6 +398,8 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -454,6 +465,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
@@ -526,6 +540,9 @@ spec:
           requests:
             cpu: 300m
             memory: 300Mi
+        securityContext:
+          runAsGroup: 65534
+          runAsUser: 65534
         volumeMounts:
         - mountPath: /etc/prometheus
           name: prometheus-config
@@ -597,6 +614,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-prometheus
       volumes:
@@ -755,6 +775,9 @@ spec:
           requests:
             cpu: 20m
             memory: 50Mi
+        securityContext:
+          runAsGroup: 472
+          runAsUser: 472
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
@@ -824,6 +847,9 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
       - configMap:
