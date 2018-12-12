@@ -200,28 +200,47 @@ func (hc *HealthChecker) addKubernetesAPIChecks() {
 }
 
 func (hc *HealthChecker) addLinkerdPreInstallChecks() {
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "control plane namespace does not already exist",
-		check: func() error {
-			exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
-			if err != nil {
-				return err
-			}
-			if exists {
-				return fmt.Errorf("The \"%s\" namespace already exists", hc.ControlPlaneNamespace)
-			}
-			return nil
-		},
-	})
+	if hc.SingleNamespace {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "control plane namespace exists",
+			check: func() error {
+				exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					return fmt.Errorf("The \"%s\" namespace must exist before installing with --single-namespace", hc.ControlPlaneNamespace)
+				}
+				return nil
+			},
+		})
+	} else {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "control plane namespace does not already exist",
+			check: func() error {
+				exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
+				if err != nil {
+					return err
+				}
+				if exists {
+					return fmt.Errorf("The \"%s\" namespace already exists", hc.ControlPlaneNamespace)
+				}
+				return nil
+			},
+		})
+	}
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create Namespaces",
-		check: func() error {
-			return hc.checkCanCreate("", "", "v1", "Namespace")
-		},
-	})
+	if !hc.SingleNamespace {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create Namespaces",
+			check: func() error {
+				return hc.checkCanCreate("", "", "v1", "Namespace")
+			},
+		})
+	}
 
 	roleType := "ClusterRole"
 	roleBindingType := "ClusterRoleBinding"

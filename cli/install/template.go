@@ -1,7 +1,8 @@
 package install
 
 // Template provides the base template for the `linkerd install` command.
-const Template = `### Namespace ###
+const Template = `{{ if not .SingleNamespace -}}
+### Namespace ###
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -11,6 +12,7 @@ metadata:
     {{.ProxyAutoInjectLabel}}: disabled
   {{- end }}
 
+{{ end -}}
 ### Service Account Controller ###
 ---
 kind: ServiceAccount

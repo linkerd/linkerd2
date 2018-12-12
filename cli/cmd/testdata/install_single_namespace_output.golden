@@ -1,9 +1,3 @@
-### Namespace ###
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: Namespace
-
 ### Service Account Controller ###
 ---
 kind: ServiceAccount
