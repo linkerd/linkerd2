@@ -516,6 +516,7 @@ spec:
     spec:
       containers:
       - args:
+        - --storage.tsdb.path=/data
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
         image: prom/prometheus:v2.4.0
@@ -544,6 +545,8 @@ spec:
           runAsGroup: 65534
           runAsUser: 65534
         volumeMounts:
+        - mountPath: /data
+          name: data
         - mountPath: /etc/prometheus
           name: prometheus-config
           readOnly: true
@@ -620,6 +623,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccount: linkerd-prometheus
       volumes:
+      - emptyDir: {}
+        name: data
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -756,7 +761,10 @@ spec:
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       containers:
-      - image: gcr.io/linkerd-io/grafana:undefined
+      - env:
+        - name: GF_PATHS_DATA
+          value: /data
+        image: gcr.io/linkerd-io/grafana:undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -779,6 +787,8 @@ spec:
           runAsGroup: 472
           runAsUser: 472
         volumeMounts:
+        - mountPath: /data
+          name: data
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
@@ -852,6 +862,8 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
+      - emptyDir: {}
+        name: data
       - configMap:
           items:
           - key: grafana.ini

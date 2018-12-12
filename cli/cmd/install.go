@@ -21,7 +21,9 @@ type installConfig struct {
 	ControllerImage                  string
 	WebImage                         string
 	PrometheusImage                  string
+	PrometheusVolumeName             string
 	GrafanaImage                     string
+	GrafanaVolumeName                string
 	ControllerReplicas               uint
 	ImagePullPolicy                  string
 	UUID                             string
@@ -159,7 +161,9 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:                  "prom/prometheus:v2.4.0",
+		PrometheusVolumeName:             "data",
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaVolumeName:                "data",
 		ControllerReplicas:               options.controllerReplicas,
 		ImagePullPolicy:                  options.imagePullPolicy,
 		UUID:                             uuid.NewV4().String(),
