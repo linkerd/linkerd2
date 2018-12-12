@@ -72,7 +72,7 @@ type installOptions struct {
 	proxyAutoInject      bool
 	singleNamespace      bool
 	highAvailability     bool
-  controllerUID      int64
+	controllerUID        int64
 	disableH2Upgrade     bool
 	prometheusVolumeName string
 	grafanaVolumeName    string
@@ -92,10 +92,10 @@ func newInstallOptions() *installOptions {
 		proxyAutoInject:      false,
 		singleNamespace:      false,
 		highAvailability:     false,
-    controllerUID:        2103,
+		controllerUID:        2103,
 		disableH2Upgrade:     false,
-		prometheusVolumeName: "",
-		grafanaVolumeName:    "",
+		prometheusVolumeName: "data",
+		grafanaVolumeName:    "data",
 		proxyConfigOptions:   newProxyConfigOptions(),
 	}
 }
@@ -125,8 +125,6 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
 	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
 	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 ugprading")
-	cmd.PersistentFlags().StringVar(&options.prometheusVolumeName, "prometheus-volume-name", options.prometheusVolumeName, "Creates an 'emptyDir' pod entry and configures Prometheus to use this for data storage (Note: must be DNS-1123 compliant)")
-	cmd.PersistentFlags().StringVar(&options.grafanaVolumeName, "grafana-volume-name", options.grafanaVolumeName, "Creates an 'emptyDir' pod entry and configures Grafana to use this for data storage (Note: must be DNS-1123 compliant)")
 	return cmd
 }
 
