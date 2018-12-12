@@ -9,8 +9,6 @@ import (
 	"strings"
 	"text/template"
 
-	"k8s.io/apimachinery/pkg/util/validation"
-
 	"github.com/linkerd/linkerd2/cli/install"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
@@ -87,16 +85,14 @@ const (
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		controllerReplicas:   defaultControllerReplicas,
-		controllerLogLevel:   "info",
-		proxyAutoInject:      false,
-		singleNamespace:      false,
-		highAvailability:     false,
-		controllerUID:        2103,
-		disableH2Upgrade:     false,
-		prometheusVolumeName: "data",
-		grafanaVolumeName:    "data",
-		proxyConfigOptions:   newProxyConfigOptions(),
+		controllerReplicas: defaultControllerReplicas,
+		controllerLogLevel: "info",
+		proxyAutoInject:    false,
+		singleNamespace:    false,
+		highAvailability:   false,
+		controllerUID:      2103,
+		disableH2Upgrade:   false,
+		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
 
@@ -167,9 +163,9 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:                  "prom/prometheus:v2.4.0",
-		PrometheusVolumeName:             options.prometheusVolumeName,
+		PrometheusVolumeName:             "data",
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
-		GrafanaVolumeName:                options.grafanaVolumeName,
+		GrafanaVolumeName:                "data",
 		ControllerReplicas:               options.controllerReplicas,
 		ImagePullPolicy:                  options.imagePullPolicy,
 		UUID:                             uuid.NewV4().String(),
@@ -212,20 +208,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 }
 
 func render(config installConfig, w io.Writer, options *installOptions) error {
-	if len(options.prometheusVolumeName) > 0 {
-		errors := validation.IsDNS1123Label(options.prometheusVolumeName)
-		if len(errors) > 0 {
-			return fmt.Errorf("Provided prometheus volume name is not valid: %v", errors)
-		}
-	}
-
-	if len(options.grafanaVolumeName) > 0 {
-		errors := validation.IsDNS1123Label(options.grafanaVolumeName)
-		if len(errors) > 0 {
-			return fmt.Errorf("Provided grafana volume name is not valid: %v", errors)
-		}
-	}
-
 	template, err := template.New("linkerd").Parse(install.Template)
 	if err != nil {
 		return err
