@@ -65,15 +65,13 @@ type installConfig struct {
 }
 
 type installOptions struct {
-	controllerReplicas   uint
-	controllerLogLevel   string
-	proxyAutoInject      bool
-	singleNamespace      bool
-	highAvailability     bool
-	controllerUID        int64
-	disableH2Upgrade     bool
-	prometheusVolumeName string
-	grafanaVolumeName    string
+	controllerReplicas uint
+	controllerLogLevel string
+	proxyAutoInject    bool
+	singleNamespace    bool
+	highAvailability   bool
+	controllerUID      int64
+	disableH2Upgrade   bool
 	*proxyConfigOptions
 }
 
