@@ -200,19 +200,18 @@ func (hc *HealthChecker) addKubernetesAPIChecks() {
 }
 
 func (hc *HealthChecker) addLinkerdPreInstallChecks() {
+	roleType := "ClusterRole"
+	roleBindingType := "ClusterRoleBinding"
+
 	if hc.SingleNamespace {
+		roleType = "Role"
+		roleBindingType = "RoleBinding"
+
 		hc.checkers = append(hc.checkers, &checker{
 			category:    LinkerdPreInstallCategory,
 			description: "control plane namespace exists",
 			check: func() error {
-				exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
-				if err != nil {
-					return err
-				}
-				if !exists {
-					return fmt.Errorf("The \"%s\" namespace must exist before installing with --single-namespace", hc.ControlPlaneNamespace)
-				}
-				return nil
+				return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 			},
 		})
 	} else {
@@ -220,19 +219,10 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 			category:    LinkerdPreInstallCategory,
 			description: "control plane namespace does not already exist",
 			check: func() error {
-				exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, hc.ControlPlaneNamespace)
-				if err != nil {
-					return err
-				}
-				if exists {
-					return fmt.Errorf("The \"%s\" namespace already exists", hc.ControlPlaneNamespace)
-				}
-				return nil
+				return hc.checkNamespace(hc.ControlPlaneNamespace, false)
 			},
 		})
-	}
 
-	if !hc.SingleNamespace {
 		hc.checkers = append(hc.checkers, &checker{
 			category:    LinkerdPreInstallCategory,
 			description: "can create Namespaces",
@@ -240,13 +230,6 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 				return hc.checkCanCreate("", "", "v1", "Namespace")
 			},
 		})
-	}
-
-	roleType := "ClusterRole"
-	roleBindingType := "ClusterRoleBinding"
-	if hc.SingleNamespace {
-		roleType = "Role"
-		roleBindingType = "RoleBinding"
 	}
 
 	hc.checkers = append(hc.checkers, &checker{
@@ -312,7 +295,7 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		description: "control plane namespace exists",
 		fatal:       true,
 		check: func() error {
-			return hc.checkNamespace(hc.ControlPlaneNamespace)
+			return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 		},
 	})
 
@@ -374,7 +357,7 @@ func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
 			description: "data plane namespace exists",
 			fatal:       true,
 			check: func() error {
-				return hc.checkNamespace(hc.DataPlaneNamespace)
+				return hc.checkNamespace(hc.DataPlaneNamespace, true)
 			},
 		})
 	}
@@ -589,13 +572,16 @@ func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkNamespace(namespace string) error {
+func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, namespace)
 	if err != nil {
 		return err
 	}
-	if !exists {
+	if shouldExist && !exists {
 		return fmt.Errorf("The \"%s\" namespace does not exist", namespace)
+	}
+	if !shouldExist && exists {
+		return fmt.Errorf("The \"%s\" namespace already exists", namespace)
 	}
 	return nil
 }
