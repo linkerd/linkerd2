@@ -155,7 +155,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: linkerd-controller
+      serviceAccountName: linkerd-controller
       containers:
       - name: public-api
         ports:
@@ -275,6 +275,14 @@ spec:
     shortNames:
     - sp
 
+### Service Account Web ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: linkerd
+
 ### Web ###
 ---
 kind: Service
@@ -349,6 +357,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
+      serviceAccountName: linkerd-web
 
 ### Prometheus ###
 ---
@@ -389,7 +398,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: linkerd-prometheus
+      serviceAccountName: linkerd-prometheus
       volumes:
       - name: prometheus-config
         configMap:
@@ -520,6 +529,14 @@ data:
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
 
+### Service Account Grafana ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: linkerd
+
 ### Grafana ###
 ---
 kind: Service
@@ -599,6 +616,7 @@ spec:
         securityContext:
           runAsGroup: 472
           runAsUser: 472
+      serviceAccountName: linkerd-grafana
 
 ---
 kind: ConfigMap
@@ -736,7 +754,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: linkerd-ca
+      serviceAccountName: linkerd-ca
       containers:
       - name: ca
         ports:
@@ -796,7 +814,7 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccount: linkerd-proxy-injector
+      serviceAccountName: linkerd-proxy-injector
       containers:
       - name: proxy-injector
         image: {{.ControllerImage}}

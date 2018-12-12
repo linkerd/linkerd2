@@ -288,7 +288,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccount: linkerd-controller
+      serviceAccountName: linkerd-controller
 status: {}
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -308,6 +308,14 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
+
+### Service Account Web ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: linkerd
 
 ### Web ###
 ---
@@ -451,6 +459,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      serviceAccountName: linkerd-web
 status: {}
 ---
 kind: Service
@@ -595,7 +604,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccount: linkerd-prometheus
+      serviceAccountName: linkerd-prometheus
       volumes:
       - configMap:
           name: linkerd-prometheus-config
@@ -688,6 +697,14 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+
+### Service Account Grafana ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: linkerd
 
 ### Grafana ###
 ---
@@ -825,6 +842,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      serviceAccountName: linkerd-grafana
       volumes:
       - configMap:
           items:
@@ -1060,6 +1078,6 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccount: linkerd-ca
+      serviceAccountName: linkerd-ca
 status: {}
 ---
