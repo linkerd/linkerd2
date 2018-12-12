@@ -266,23 +266,13 @@ type servicePort struct {
 }
 
 func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, podLister corelisters.PodLister) *servicePort {
-	// Use the service port as the target port by default.
-	targetPort := intstr.FromInt(int(port))
-
 	id := serviceId{}
-
 	if service != nil {
 		id.namespace = service.Namespace
 		id.name = service.Name
-		// If a port spec exists with a matching service port, use that port spec's
-		// target port.
-		for _, portSpec := range service.Spec.Ports {
-			if portSpec.Port == int32(port) && portSpec.TargetPort != intstr.FromInt(0) {
-				targetPort = portSpec.TargetPort
-				break
-			}
-		}
 	}
+
+	targetPort := getTargetPort(service, port)
 
 	sp := &servicePort{
 		service:    id,
@@ -324,16 +314,7 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	// Use the service port as the target port by default.
-	newTargetPort := intstr.FromInt(int(sp.port))
-	// If a port spec exists with a matching service port, use that port spec's
-	// target port.
-	for _, portSpec := range newService.Spec.Ports {
-		if portSpec.Port == int32(sp.port) && portSpec.TargetPort != intstr.FromInt(0) {
-			newTargetPort = portSpec.TargetPort
-			break
-		}
-	}
+	newTargetPort := getTargetPort(newService, sp.port)
 	if newTargetPort != sp.targetPort {
 		sp.updateAddresses(sp.endpoints, newTargetPort)
 		sp.targetPort = newTargetPort
@@ -412,39 +393,27 @@ func (sp *servicePort) unsubscribeAll() {
 
 /// helpers ///
 
-func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, port intstr.IntOrString) []*updateAddress {
+func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, targetPort intstr.IntOrString) []*updateAddress {
 	addrs := make([]*updateAddress, 0)
 
-	var portNum uint32
-	if port.Type == intstr.String {
-	outer:
-		for _, subset := range endpoints.Subsets {
-			for _, p := range subset.Ports {
-				switch p.Name {
-				case port.StrVal:
-					// Found the target port!
-					portNum = uint32(p.Port)
-					break outer
-				case "":
-					// The port is unnamed. That means there's only one port defined
-					// for this subset. If this is the only subset, then we can use
-					// that port.
-					if len(endpoints.Subsets) == 1 {
-						portNum = uint32(p.Port)
-						break outer
-					}
+	for _, subset := range endpoints.Subsets {
+		var portNum uint32
+		switch targetPort.Type {
+		case intstr.String:
+			for _, port := range subset.Ports {
+				if port.Name == targetPort.StrVal {
+					portNum = uint32(port.Port)
+					break
 				}
 			}
+		case intstr.Int:
+			portNum = uint32(targetPort.IntVal)
 		}
 		if portNum == 0 {
-			log.Errorf("Port %s not found", port.StrVal)
+			log.Errorf("Port %v not found", targetPort)
 			return addrs
 		}
-	} else if port.Type == intstr.Int {
-		portNum = uint32(port.IntVal)
-	}
 
-	for _, subset := range endpoints.Subsets {
 		for _, address := range subset.Addresses {
 			target := address.TargetRef
 			if target == nil {
@@ -473,4 +442,28 @@ func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, port intstr
 		}
 	}
 	return addrs
+}
+
+// getTargetPort returns the port specified as an argument if no service is
+// present. If the service is present and it has a port spec matching the
+// specified port and a target port configured, it returns the name of the
+// service's port (not the name of the target pod port), so that it can be
+// looked up in the the endpoints API response, which uses service port names.
+func getTargetPort(service *v1.Service, port uint32) intstr.IntOrString {
+	// Use the specified port as the target port by default
+	targetPort := intstr.FromInt(int(port))
+
+	if service == nil {
+		return targetPort
+	}
+
+	// If a port spec exists with a port matching the specified port and a target
+	// port configured, use that port spec's name as the target port
+	for _, portSpec := range service.Spec.Ports {
+		if portSpec.Port == int32(port) && portSpec.TargetPort != intstr.FromInt(0) {
+			return intstr.FromString(portSpec.Name)
+		}
+	}
+
+	return targetPort
 }
