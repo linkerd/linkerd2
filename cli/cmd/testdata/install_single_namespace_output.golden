@@ -20,6 +20,10 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  resourceNames: ["Namespace"]
+  verbs: ["list", "get", "watch"]
 
 ---
 kind: RoleBinding

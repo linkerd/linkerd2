@@ -37,7 +37,12 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
-{{- if not .SingleNamespace }}
+{{- if .SingleNamespace }}
+- apiGroups: [""]
+  resources: ["namespaces"]
+  resourceNames: ["{{.Namespace}}"]
+  verbs: ["list", "get", "watch"]
+{{- else }}
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
