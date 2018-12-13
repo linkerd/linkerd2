@@ -30,8 +30,14 @@ type server struct {
 //
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
-func NewServer(addr, k8sDNSZone string, controllerNamespace string, enableTLS, enableH2Upgrade bool, k8sAPI *k8s.API, done chan struct{}) (*grpc.Server, net.Listener, error) {
-	resolver, err := buildResolver(k8sDNSZone, controllerNamespace, k8sAPI)
+func NewServer(
+	addr, k8sDNSZone string,
+	controllerNamespace string,
+	enableTLS, enableH2Upgrade, singleNamespace bool,
+	k8sAPI *k8s.API,
+	done chan struct{},
+) (*grpc.Server, net.Listener, error) {
+	resolver, err := buildResolver(k8sDNSZone, controllerNamespace, k8sAPI, singleNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -124,7 +130,11 @@ func getHostAndPort(dest *pb.GetDestination) (string, int, error) {
 	return host, port, nil
 }
 
-func buildResolver(k8sDNSZone string, controllerNamespace string, k8sAPI *k8s.API) (streamingDestinationResolver, error) {
+func buildResolver(
+	k8sDNSZone, controllerNamespace string,
+	k8sAPI *k8s.API,
+	singleNamespace bool,
+) (streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
 		k8sDNSZoneLabels = []string{}
@@ -136,7 +146,12 @@ func buildResolver(k8sDNSZone string, controllerNamespace string, k8sAPI *k8s.AP
 		}
 	}
 
-	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNamespace, k8sAPI)
+	var pw *profileWatcher
+	if !singleNamespace {
+		pw = newProfileWatcher(k8sAPI)
+	}
+
+	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNamespace, newEndpointsWatcher(k8sAPI), pw)
 
 	log.Infof("Built k8s name resolver")
 

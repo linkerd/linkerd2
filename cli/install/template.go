@@ -35,11 +35,13 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
+{{- if not .SingleNamespace }}
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+{{- end }}
 
 ---
 kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
@@ -255,6 +257,7 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
 
+{{- if not .SingleNamespace }}
 ### Service Profile CRD ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -274,6 +277,7 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
+{{- end }}
 
 ### Service Account Web ###
 ---
@@ -338,6 +342,7 @@ spec:
         - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:

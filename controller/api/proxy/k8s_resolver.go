@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/linkerd/linkerd2/controller/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,12 +21,17 @@ type k8sResolver struct {
 	profileWatcher      *profileWatcher
 }
 
-func newK8sResolver(k8sDNSZoneLabels []string, controllerNamespace string, k8sAPI *k8s.API) *k8sResolver {
+func newK8sResolver(
+	k8sDNSZoneLabels []string,
+	controllerNamespace string,
+	ew *endpointsWatcher,
+	pw *profileWatcher,
+) *k8sResolver {
 	return &k8sResolver{
 		k8sDNSZoneLabels:    k8sDNSZoneLabels,
 		controllerNamespace: controllerNamespace,
-		endpointsWatcher:    newEndpointsWatcher(k8sAPI),
-		profileWatcher:      newProfileWatcher(k8sAPI),
+		endpointsWatcher:    ew,
+		profileWatcher:      pw,
 	}
 }
 
@@ -68,6 +72,15 @@ func (k *k8sResolver) streamResolution(host string, port int, listener endpointU
 }
 
 func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener) error {
+	// In single namespace mode, we'll close the stream immediately and the proxy
+	// will reissue the request after 3 seconds. If we wanted to be more
+	// sophisticated about this in the future, we could leave the stream open
+	// indefinitely, or we could update the API to support a ProfilesDisabled
+	// message. For now, however, this works.
+	if k.profileWatcher == nil {
+		return nil
+	}
+
 	id := profileId{
 		namespace: k.controllerNamespace,
 		name:      host,
@@ -89,7 +102,9 @@ func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener
 
 func (k *k8sResolver) stop() {
 	k.endpointsWatcher.stop()
-	k.profileWatcher.stop()
+	if k.profileWatcher != nil {
+		k.profileWatcher.stop()
+	}
 }
 
 func (k *k8sResolver) resolveKubernetesService(id *serviceId, port int, listener endpointUpdateListener) error {

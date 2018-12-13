@@ -24,6 +24,7 @@ type (
 		apiClient           pb.ApiClient
 		uuid                string
 		controllerNamespace string
+		singleNamespace     bool
 	}
 )
 
@@ -37,6 +38,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	params := appParams{
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
+		SingleNamespace:     h.singleNamespace,
 		PathPrefix:          pathPfx,
 	}
 

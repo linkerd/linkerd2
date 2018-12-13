@@ -31,29 +31,38 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
 
-	restrictToNamespace := ""
+	var k8sAPI *k8s.API
 	if *singleNamespace {
-		restrictToNamespace = *controllerNamespace
+		k8sAPI = k8s.NewAPI(
+			k8sClient,
+			nil,
+			*controllerNamespace,
+			k8s.Endpoint,
+			k8s.Pod,
+			k8s.RS,
+			k8s.Svc,
+		)
+	} else {
+		spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		k8sAPI = k8s.NewAPI(
+			k8sClient,
+			spClient,
+			"",
+			k8s.Endpoint,
+			k8s.Pod,
+			k8s.RS,
+			k8s.Svc,
+			k8s.SP,
+		)
 	}
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		spClient,
-		restrictToNamespace,
-		k8s.Endpoint,
-		k8s.Pod,
-		k8s.RS,
-		k8s.Svc,
-		k8s.SP,
-	)
 
 	done := make(chan struct{})
 
-	server, lis, err := proxy.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, k8sAPI, done)
+	server, lis, err := proxy.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}

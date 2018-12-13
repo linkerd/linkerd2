@@ -25,7 +25,7 @@ rules:
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "namespaces", "replicationcontrollers"]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -375,6 +375,7 @@ spec:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
         - -uuid=UUID
         - -controller-namespace=Namespace
+        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy

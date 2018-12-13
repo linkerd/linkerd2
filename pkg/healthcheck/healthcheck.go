@@ -280,13 +280,15 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 		},
 	})
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create CustomResourceDefinitions",
-		check: func() error {
-			return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
-		},
-	})
+	if !hc.SingleNamespace {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdPreInstallCategory,
+			description: "can create CustomResourceDefinitions",
+			check: func() error {
+				return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+			},
+		})
+	}
 }
 
 func (hc *HealthChecker) addLinkerdAPIChecks() {
@@ -340,14 +342,16 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		},
 	})
 
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
-		description: "no invalid service profiles",
-		warning:     true,
-		check: func() error {
-			return hc.validateServiceProfiles()
-		},
-	})
+	if !hc.SingleNamespace {
+		hc.checkers = append(hc.checkers, &checker{
+			category:    LinkerdAPICategory,
+			description: "no invalid service profiles",
+			warning:     true,
+			check: func() error {
+				return hc.validateServiceProfiles()
+			},
+		})
+	}
 }
 
 func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
