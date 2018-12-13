@@ -40,6 +40,7 @@ type (
 		Data                pb.VersionInfo
 		UUID                string
 		ControllerNamespace string
+		SingleNamespace     bool
 		Error               bool
 		ErrorMessage        string
 		PathPrefix          string
@@ -51,7 +52,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.router.ServeHTTP(w, req)
 }
 
-func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
+func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, singleNamespace bool, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
 	server := &Server{
 		templateDir:     templateDir,
 		staticDir:       staticDir,
@@ -72,6 +73,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace, webpackD
 		serveFile:           server.serveFile,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
+		singleNamespace:     singleNamespace,
 	}
 
 	httpServer := &http.Server{

@@ -26,6 +26,7 @@ func main() {
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
 
 	_, _, err := net.SplitHostPort(*kubernetesApiHost) // Verify kubernetesApiHost is of the form host:port.
@@ -40,7 +41,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *templateDir, *staticDir, *uuid, *controllerNamespace, *webpackDevServer, *reload, client)
+	server := srv.NewServer(*addr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *webpackDevServer, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
