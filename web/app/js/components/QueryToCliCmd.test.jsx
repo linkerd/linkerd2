@@ -22,6 +22,25 @@ describe('QueryToCliCmd', () => {
     expect(component).toIncludeText("linkerd routes deploy/controller --namespace linkerd");
   });
 
+  it('shows the linkerd namespace if the controller is not in the default namespace', () => {
+    let query = {
+      "resource": "deploy/controller",
+      "namespace": "linkerd"
+    }
+
+    let component = mount(
+      <QueryToCliCmd
+        cmdName="routes"
+        query={query}
+        resource={query.resource}
+        controllerNamespace={"my-linkerd-ns"}
+        />
+    );
+
+    expect(component).toIncludeText("Current Routes query");
+    expect(component).toIncludeText("linkerd routes deploy/controller --namespace linkerd --linkerd-namespace my-linkerd-ns");
+  });
+
   it('does not render flags for items that are not populated in the query', () => {
     let query = {
       "resource": "deploy/controller",
