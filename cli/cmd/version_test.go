@@ -11,7 +11,7 @@ import (
 func TestGetServerVersion(t *testing.T) {
 	t.Run("Returns existing version from server", func(t *testing.T) {
 		expectedServerVersion := "1.2.3"
-		mockClient := &public.MockApiClient{}
+		mockClient := &public.MockAPIClient{}
 		mockClient.VersionInfoToReturn = &pb.VersionInfo{
 			ReleaseVersion: expectedServerVersion,
 		}
@@ -26,7 +26,7 @@ func TestGetServerVersion(t *testing.T) {
 
 	t.Run("Returns unavailable when cannot get server version", func(t *testing.T) {
 		expectedServerVersion := "unavailable"
-		mockClient := &public.MockApiClient{}
+		mockClient := &public.MockAPIClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 
 		version := getServerVersion(mockClient)

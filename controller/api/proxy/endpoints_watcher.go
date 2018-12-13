@@ -30,7 +30,7 @@ type endpointsWatcher struct {
 	endpointLister corelisters.EndpointsLister
 	podLister      corelisters.PodLister
 	// a map of service -> service port -> servicePort
-	servicePorts map[serviceId]map[uint32]*servicePort
+	servicePorts map[serviceID]map[uint32]*servicePort
 	// This mutex protects the servicePorts data structure (nested map) itself
 	// and does not protect the servicePort objects themselves.  They are locked
 	// separately.
@@ -42,7 +42,7 @@ func newEndpointsWatcher(k8sAPI *k8s.API) *endpointsWatcher {
 		serviceLister:  k8sAPI.Svc().Lister(),
 		endpointLister: k8sAPI.Endpoint().Lister(),
 		podLister:      k8sAPI.Pod().Lister(),
-		servicePorts:   make(map[serviceId]map[uint32]*servicePort),
+		servicePorts:   make(map[serviceID]map[uint32]*servicePort),
 		mutex:          sync.RWMutex{},
 	}
 
@@ -79,7 +79,7 @@ func (e *endpointsWatcher) stop() {
 // Subscribe to a service and service port.
 // The provided listener will be updated each time the address set for the
 // given service port is changed.
-func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener endpointUpdateListener) error {
+func (e *endpointsWatcher) subscribe(service *serviceID, port uint32, listener endpointUpdateListener) error {
 	log.Infof("Establishing watch on endpoint %s:%d", service, port)
 
 	svc, err := e.getService(service)
@@ -124,7 +124,7 @@ func (e *endpointsWatcher) subscribe(service *serviceId, port uint32, listener e
 	return nil
 }
 
-func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener endpointUpdateListener) error {
+func (e *endpointsWatcher) unsubscribe(service *serviceID, port uint32, listener endpointUpdateListener) error {
 	log.Infof("Stopping watch on endpoint %s:%d", service, port)
 
 	e.mutex.Lock() // Acquire write-lock on servicePorts data structure.
@@ -151,7 +151,7 @@ func (e *endpointsWatcher) unsubscribe(service *serviceId, port uint32, listener
 	return nil
 }
 
-func (e *endpointsWatcher) getService(service *serviceId) (*v1.Service, error) {
+func (e *endpointsWatcher) getService(service *serviceID) (*v1.Service, error) {
 	return e.serviceLister.Services(service.namespace).Get(service.name)
 }
 
@@ -160,7 +160,7 @@ func (e *endpointsWatcher) addService(obj interface{}) {
 	if service.Namespace == kubeSystem {
 		return
 	}
-	id := serviceId{
+	id := serviceID{
 		namespace: service.Namespace,
 		name:      service.Name,
 	}
@@ -180,7 +180,7 @@ func (e *endpointsWatcher) updateService(oldObj, newObj interface{}) {
 	if service.Namespace == kubeSystem {
 		return
 	}
-	id := serviceId{
+	id := serviceID{
 		namespace: service.Namespace,
 		name:      service.Name,
 	}
@@ -195,7 +195,7 @@ func (e *endpointsWatcher) updateService(oldObj, newObj interface{}) {
 	}
 }
 
-func (e *endpointsWatcher) getEndpoints(service *serviceId) (*v1.Endpoints, error) {
+func (e *endpointsWatcher) getEndpoints(service *serviceID) (*v1.Endpoints, error) {
 	return e.endpointLister.Endpoints(service.namespace).Get(service.name)
 }
 
@@ -204,7 +204,7 @@ func (e *endpointsWatcher) addEndpoints(obj interface{}) {
 	if endpoints.Namespace == kubeSystem {
 		return
 	}
-	id := serviceId{
+	id := serviceID{
 		namespace: endpoints.Namespace,
 		name:      endpoints.Name,
 	}
@@ -224,7 +224,7 @@ func (e *endpointsWatcher) deleteEndpoints(obj interface{}) {
 	if endpoints.Namespace == kubeSystem {
 		return
 	}
-	id := serviceId{
+	id := serviceID{
 		namespace: endpoints.Namespace,
 		name:      endpoints.Name,
 	}
@@ -251,7 +251,7 @@ func (e *endpointsWatcher) updateEndpoints(oldObj, newObj interface{}) {
 // updates come from either the endpoints API or the service API.
 type servicePort struct {
 	// these values are immutable properties of the servicePort
-	service serviceId
+	service serviceID
 	port    uint32 // service port
 	// these values hold the current state of the servicePort and are mutable
 	listeners  []endpointUpdateListener
@@ -266,7 +266,7 @@ type servicePort struct {
 }
 
 func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, podLister corelisters.PodLister) *servicePort {
-	id := serviceId{}
+	id := serviceID{}
 	if service != nil {
 		id.namespace = service.Namespace
 		id.name = service.Name

@@ -41,9 +41,9 @@ func callOtherServiceHandler(w http.ResponseWriter, r *http.Request) {
 func response() string {
 	if amITheProxy {
 		return "proxy"
-	} else {
-		return defaultResponse
 	}
+
+	return defaultResponse
 }
 
 func main() {

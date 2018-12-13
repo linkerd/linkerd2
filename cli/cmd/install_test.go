@@ -106,7 +106,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions := newInstallOptions()
 	haWithOverridesOptions.highAvailability = true
 	haWithOverridesOptions.controllerReplicas = 2
-	haWithOverridesOptions.proxyCpuRequest = "400m"
+	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
 	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
 	haWithOverridesConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"

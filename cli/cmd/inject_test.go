@@ -21,7 +21,7 @@ func TestInjectYAML(t *testing.T) {
 
 	proxyRequestOptions := newInjectOptions()
 	proxyRequestOptions.linkerdVersion = "testinjectversion"
-	proxyRequestOptions.proxyCpuRequest = "110m"
+	proxyRequestOptions.proxyCPURequest = "110m"
 	proxyRequestOptions.proxyMemoryRequest = "100Mi"
 
 	testCases := []struct {

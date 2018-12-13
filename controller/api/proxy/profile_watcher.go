@@ -12,12 +12,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type profileId struct {
+type profileID struct {
 	namespace string
 	name      string
 }
 
-func (p profileId) String() string {
+func (p profileID) String() string {
 	return fmt.Sprintf("%s/%s", p.namespace, p.name)
 }
 
@@ -26,14 +26,14 @@ func (p profileId) String() string {
 // publish the service profile and all future changes for that profile.
 type profileWatcher struct {
 	profileLister splisters.ServiceProfileLister
-	profiles      map[profileId]*profileEntry
+	profiles      map[profileID]*profileEntry
 	profilesLock  sync.RWMutex
 }
 
 func newProfileWatcher(k8sAPI *k8s.API) *profileWatcher {
 	watcher := &profileWatcher{
 		profileLister: k8sAPI.SP().Lister(),
-		profiles:      make(map[profileId]*profileEntry),
+		profiles:      make(map[profileID]*profileEntry),
 		profilesLock:  sync.RWMutex{},
 	}
 
@@ -58,7 +58,7 @@ func (p *profileWatcher) stop() {
 	}
 }
 
-func (p *profileWatcher) subscribeToProfile(name profileId, listener profileUpdateListener) error {
+func (p *profileWatcher) subscribeToProfile(name profileID, listener profileUpdateListener) error {
 	p.profilesLock.Lock()
 	defer p.profilesLock.Unlock()
 
@@ -77,7 +77,7 @@ func (p *profileWatcher) subscribeToProfile(name profileId, listener profileUpda
 	return nil
 }
 
-func (p *profileWatcher) unsubscribeToProfile(profile profileId, listener profileUpdateListener) error {
+func (p *profileWatcher) unsubscribeToProfile(profile profileID, listener profileUpdateListener) error {
 	p.profilesLock.Lock()
 	defer p.profilesLock.Unlock()
 
@@ -96,13 +96,13 @@ func (p *profileWatcher) unsubscribeToProfile(profile profileId, listener profil
 	return nil
 }
 
-func (p *profileWatcher) getProfile(profile profileId) (*sp.ServiceProfile, error) {
+func (p *profileWatcher) getProfile(profile profileID) (*sp.ServiceProfile, error) {
 	return p.profileLister.ServiceProfiles(profile.namespace).Get(profile.name)
 }
 
 func (p *profileWatcher) addProfile(obj interface{}) {
 	profile := obj.(*sp.ServiceProfile)
-	id := profileId{
+	id := profileID{
 		namespace: profile.Namespace,
 		name:      profile.Name,
 	}
@@ -121,7 +121,7 @@ func (p *profileWatcher) updateProfile(old interface{}, new interface{}) {
 
 func (p *profileWatcher) deleteProfile(obj interface{}) {
 	profile := obj.(*sp.ServiceProfile)
-	id := profileId{
+	id := profileID{
 		namespace: profile.Namespace,
 		name:      profile.Name,
 	}

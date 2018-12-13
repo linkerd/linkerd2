@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/kubectl/proxy"
+
 	// Load all the auth plugins for the cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
@@ -56,7 +57,7 @@ func (kp *KubernetesProxy) Run() error {
 // URLFor generates a URL based on the configured KubernetesProxy.
 func (kp *KubernetesProxy) URLFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	schemeHostAndPort := fmt.Sprintf("http://127.0.0.1:%d", kp.listener.Addr().(*net.TCPAddr).Port)
-	return generateKubernetesApiBaseUrlFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
+	return generateKubernetesAPIBaseURLFor(schemeHostAndPort, namespace, extraPathStartingWithSlash)
 }
 
 func proxyCreate(config *rest.Config) (*proxy.Server, error) {

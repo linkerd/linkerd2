@@ -15,7 +15,7 @@ import (
 )
 
 type statSumExpected struct {
-	expectedStatRpc
+	expectedStatRPC
 	req              pb.StatSummaryRequest  // the request we would like to test
 	expectedResponse pb.StatSummaryResponse // the stat response we expect
 }
@@ -65,7 +65,7 @@ func genEmptyResponse() pb.StatSummaryResponse {
 
 func testStatSummary(t *testing.T, expectations []statSumExpected) {
 	for _, exp := range expectations {
-		mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRpc)
+		mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRPC)
 		if err != nil {
 			t.Fatalf("Error creating mock grpc server: %s", err)
 		}
@@ -136,7 +136,7 @@ func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: apps/v1beta2
@@ -212,7 +212,7 @@ status:
 	t.Run("Queries prometheus for a specific resource if name is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -259,7 +259,7 @@ status:
 	t.Run("Queries prometheus for outbound metrics if from resource is specified, ignores resource name", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -309,7 +309,7 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -365,7 +365,7 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified and --to-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -421,7 +421,7 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -488,7 +488,7 @@ status:
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified and --from-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -555,7 +555,7 @@ status:
 	t.Run("Successfully queries for resource type 'all'", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: apps/v1beta2
@@ -732,7 +732,7 @@ status:
 
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
 				},
 				req: pb.StatSummaryRequest{
@@ -744,7 +744,7 @@ status:
 				},
 			},
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
 				},
 				req: pb.StatSummaryRequest{
@@ -756,7 +756,7 @@ status:
 				},
 			},
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
 				},
 				req: pb.StatSummaryRequest{
@@ -897,7 +897,7 @@ status:
 		t.Run("when pod phase is succeeded or failed", func(t *testing.T) {
 			expectations := []statSumExpected{
 				statSumExpected{
-					expectedStatRpc: expectedStatRpc{
+					expectedStatRPC: expectedStatRPC{
 						err: nil,
 						k8sConfigs: []string{`
 apiVersion: v1
@@ -948,7 +948,7 @@ status:
 		t.Run("for succeeded or failed replicas of a deployment", func(t *testing.T) {
 			expectations := []statSumExpected{
 				statSumExpected{
-					expectedStatRpc: expectedStatRpc{
+					expectedStatRPC: expectedStatRPC{
 						err: nil,
 						k8sConfigs: []string{`
 apiVersion: apps/v1beta2
@@ -1035,7 +1035,7 @@ status:
 	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -1079,7 +1079,7 @@ status:
 	t.Run("Queries prometheus for authority stats when --from deployment is used", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -1130,7 +1130,7 @@ status:
 	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1
@@ -1175,7 +1175,7 @@ status:
 	t.Run("Stats returned are nil when SkipStats is true", func(t *testing.T) {
 		expectations := []statSumExpected{
 			statSumExpected{
-				expectedStatRpc: expectedStatRpc{
+				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
 apiVersion: v1

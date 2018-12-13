@@ -299,9 +299,9 @@ func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
 		if res, err := k8s.CanonicalResourceNameFromFriendlyName(args[0]); err == nil && res != k8s.All {
 			// --namespace my-ns deploy foo1 foo2 ...
 			return parseResources(namespace, args[0], args[1:])
-		} else {
-			return parseResources(namespace, "", args)
 		}
+
+		return parseResources(namespace, "", args)
 	}
 }
 
@@ -655,7 +655,7 @@ func GetSuccessRate(stats *pb.BasicStats) float64 {
 	return float64(success) / float64(success+failure)
 }
 
-func GetPercentTls(stats *pb.BasicStats) float64 {
+func GetPercentTLS(stats *pb.BasicStats) float64 {
 	reqTotal := stats.SuccessCount + stats.FailureCount
 	if reqTotal == 0 {
 		return 0.0

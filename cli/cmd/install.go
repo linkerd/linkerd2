@@ -143,8 +143,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		options.controllerReplicas = defaultHAControllerReplicas
 	}
 
-	if options.highAvailability && options.proxyCpuRequest == "" {
-		options.proxyCpuRequest = "10m"
+	if options.highAvailability && options.proxyCPURequest == "" {
+		options.proxyCPURequest = "10m"
 	}
 
 	if options.highAvailability && options.proxyMemoryRequest == "" {
@@ -195,7 +195,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),
 		ProxyImage:                       options.taggedProxyImage(),
-		ProxyResourceRequestCPU:          options.proxyCpuRequest,
+		ProxyResourceRequestCPU:          options.proxyCPURequest,
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
 		ProxyBindTimeout:                 "1m",
 		SingleNamespace:                  options.singleNamespace,
@@ -217,7 +217,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 
 	if config.EnableTLS {
-		tlsTemplate, err := template.New("linkerd").Parse(install.TlsTemplate)
+		tlsTemplate, err := template.New("linkerd").Parse(install.TLSTemplate)
 		if err != nil {
 			return err
 		}

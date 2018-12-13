@@ -15,7 +15,7 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 		}
-		actualURL, err := api.UrlFor(namespace, extraPath)
+		actualURL, err := api.URLFor(namespace, extraPath)
 		if err != nil {
 			t.Fatalf("Unexpected error generating URL: %+v", err)
 		}

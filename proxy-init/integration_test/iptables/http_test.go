@@ -32,17 +32,17 @@ func TestMain(m *testing.M) {
 func TestPodWithNoRules(t *testing.T) {
 	t.Parallel()
 
-	podWithNoRulesIp := os.Getenv("POD_WITH_NO_RULES_IP")
+	podWithNoRulesIP := os.Getenv("POD_WITH_NO_RULES_IP")
 	svcName := "svc-pod-with-no-rules"
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podWithNoRulesIp, proxyContainerPort)
+		expectSuccessfulGetRequestTo(t, podWithNoRulesIP, proxyContainerPort)
 	})
 
 	t.Run("fails to connect to pod directly through any port that isn't the container's exposed port", func(t *testing.T) {
-		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8088")
-		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8888")
-		expectCannotConnectGetRequestTo(t, podWithNoRulesIp, "8988")
+		expectCannotConnectGetRequestTo(t, podWithNoRulesIP, "8088")
+		expectCannotConnectGetRequestTo(t, podWithNoRulesIP, "8888")
+		expectCannotConnectGetRequestTo(t, podWithNoRulesIP, "8988")
 	})
 
 	t.Run("succeeds connecting to pod via a service through container's exposed port", func(t *testing.T) {
@@ -59,17 +59,17 @@ func TestPodWithNoRules(t *testing.T) {
 func TestPodRedirectsAllPorts(t *testing.T) {
 	t.Parallel()
 
-	podRedirectsAllPortsIp := os.Getenv("POD_REDIRECTS_ALL_PORTS_IP")
+	podRedirectsAllPortsIP := os.Getenv("POD_REDIRECTS_ALL_PORTS_IP")
 	svcName := "svc-pod-redirects-all-ports"
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, proxyContainerPort)
+		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIP, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through any port that isn't the container's exposed port", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8088")
-		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8888")
-		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIp, "8988")
+		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIP, "8088")
+		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIP, "8888")
+		expectSuccessfulGetRequestTo(t, podRedirectsAllPortsIP, "8988")
 
 	})
 
@@ -87,40 +87,40 @@ func TestPodRedirectsAllPorts(t *testing.T) {
 func TestPodWithSomePortsRedirected(t *testing.T) {
 	t.Parallel()
 
-	podRedirectsSomePortsIp := os.Getenv("POD_REDIRECTS_WHITELISTED_IP")
+	podRedirectsSomePortsIP := os.Getenv("POD_REDIRECTS_WHITELISTED_IP")
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, proxyContainerPort)
+		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIP, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through ports configured to redirect", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, "9090")
-		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIp, "9099")
+		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIP, "9090")
+		expectSuccessfulGetRequestTo(t, podRedirectsSomePortsIP, "9099")
 	})
 
 	t.Run("fails to connect to pod via through any port that isn't configured to redirect", func(t *testing.T) {
-		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8088")
-		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8888")
-		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIp, "8988")
+		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIP, "8088")
+		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIP, "8888")
+		expectCannotConnectGetRequestTo(t, podRedirectsSomePortsIP, "8988")
 	})
 }
 
 func TestPodWithSomePortsIgnored(t *testing.T) {
 	t.Parallel()
 
-	podIgnoredSomePortsIp := os.Getenv("POD_DOEST_REDIRECT_BLACKLISTED_IP")
+	podIgnoredSomePortsIP := os.Getenv("POD_DOEST_REDIRECT_BLACKLISTED_IP")
 
 	t.Run("succeeds connecting to pod directly through container's exposed port", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, proxyContainerPort)
+		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIP, proxyContainerPort)
 	})
 
 	t.Run("succeeds connecting to pod directly through ports configured to redirect", func(t *testing.T) {
-		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, "9090")
-		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, "9099")
+		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIP, "9090")
+		expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIP, "9099")
 	})
 
 	t.Run("doesnt redirect when through port that is ignored", func(t *testing.T) {
-		response := expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIp, ignoredContainerPort)
+		response := expectSuccessfulGetRequestTo(t, podIgnoredSomePortsIP, ignoredContainerPort)
 
 		if response == "proxy" {
 			t.Fatalf("Expected connection through ignored port to directly hit service, but hit [%s]", response)
@@ -135,19 +135,19 @@ func TestPodWithSomePortsIgnored(t *testing.T) {
 func TestPodMakesOutboundConnection(t *testing.T) {
 	t.Parallel()
 
-	podIgnoredSomePortsIp := os.Getenv("POD_DOEST_REDIRECT_BLACKLISTED_IP")
-	podWithNoRulesIp := os.Getenv("POD_WITH_NO_RULES_IP")
+	podIgnoredSomePortsIP := os.Getenv("POD_DOEST_REDIRECT_BLACKLISTED_IP")
+	podWithNoRulesIP := os.Getenv("POD_WITH_NO_RULES_IP")
 	podWithNoRulesName := "pod-with-no-rules"
 
 	proxyPodName := "pod-doesnt-redirect-blacklisted"
-	proxyPodIp := podIgnoredSomePortsIp
+	proxyPodIP := podIgnoredSomePortsIP
 
 	t.Run("connecting to another pod from non-proxy container gets redirected to proxy", func(t *testing.T) {
 		portOfContainerToMAkeTheRequest := ignoredContainerPort
-		targetPodIp := podWithNoRulesIp
+		targetPodIP := podWithNoRulesIP
 		targetPort := ignoredContainerPort
 
-		response := makeCallFromContainerToAnother(t, proxyPodIp, portOfContainerToMAkeTheRequest, targetPodIp, targetPort)
+		response := makeCallFromContainerToAnother(t, proxyPodIP, portOfContainerToMAkeTheRequest, targetPodIP, targetPort)
 
 		expectedDownstreamResponse := fmt.Sprintf("me:[%s:%s]downstream:[proxy]", proxyPodName, portOfContainerToMAkeTheRequest)
 		if !strings.Contains(response, expectedDownstreamResponse) {
@@ -157,9 +157,9 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 
 	t.Run("connecting to another pod from proxy container does not get redirected to proxy", func(t *testing.T) {
 		targetPodName := podWithNoRulesName
-		targetPodIp := podWithNoRulesIp
+		targetPodIP := podWithNoRulesIP
 
-		response := makeCallFromContainerToAnother(t, proxyPodIp, proxyContainerPort, targetPodIp, notTheProxyContainerPort)
+		response := makeCallFromContainerToAnother(t, proxyPodIP, proxyContainerPort, targetPodIP, notTheProxyContainerPort)
 
 		expectedDownstreamResponse := fmt.Sprintf("me:[proxy]downstream:[%s:%s]", targetPodName, notTheProxyContainerPort)
 		if !strings.Contains(response, expectedDownstreamResponse) {
@@ -168,7 +168,7 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 	})
 
 	t.Run("connecting to loopback from non-proxy container does not get redirected to proxy", func(t *testing.T) {
-		response := makeCallFromContainerToAnother(t, proxyPodIp, ignoredContainerPort, "127.0.0.1", notTheProxyContainerPort)
+		response := makeCallFromContainerToAnother(t, proxyPodIP, ignoredContainerPort, "127.0.0.1", notTheProxyContainerPort)
 
 		expectedDownstreamResponse := fmt.Sprintf("me:[%s:%s]downstream:[%s:%s]", proxyPodName, ignoredContainerPort, proxyPodName, notTheProxyContainerPort)
 		if !strings.Contains(response, expectedDownstreamResponse) {
@@ -178,29 +178,29 @@ func TestPodMakesOutboundConnection(t *testing.T) {
 }
 
 func makeCallFromContainerToAnother(t *testing.T, fromPodNamed string, fromContainerAtPort string, podIWantToReachName string, containerPortIWantToReach string) string {
-	downstreamUrl := fmt.Sprintf("http://%s:%s", podIWantToReachName, containerPortIWantToReach)
+	downstreamURL := fmt.Sprintf("http://%s:%s", podIWantToReachName, containerPortIWantToReach)
 
 	//Make request asking target to make a back-end request
-	targetUrl := fmt.Sprintf("http://%s:%s/call?url=%s", fromPodNamed, fromContainerAtPort, url.QueryEscape(downstreamUrl))
-	return expectSuccessfulGetRequestToUrl(t, targetUrl)
+	targetURL := fmt.Sprintf("http://%s:%s/call?url=%s", fromPodNamed, fromContainerAtPort, url.QueryEscape(downstreamURL))
+	return expectSuccessfulGetRequestToURL(t, targetURL)
 }
 
 func expectCannotConnectGetRequestTo(t *testing.T, host string, port string) {
-	targetUrl := fmt.Sprintf("http://%s:%s/", host, port)
-	fmt.Printf("Expecting failed GET to %s\n", targetUrl)
-	resp, err := http.Get(targetUrl)
+	targetURL := fmt.Sprintf("http://%s:%s/", host, port)
+	fmt.Printf("Expecting failed GET to %s\n", targetURL)
+	resp, err := http.Get(targetURL)
 	if err == nil {
-		t.Fatalf("Expected error when connecting to %s, got:\n%+v", targetUrl, resp)
+		t.Fatalf("Expected error when connecting to %s, got:\n%+v", targetURL, resp)
 	}
 }
 
 func expectSuccessfulGetRequestTo(t *testing.T, host string, port string) string {
-	targetUrl := fmt.Sprintf("http://%s:%s/", host, port)
+	targetURL := fmt.Sprintf("http://%s:%s/", host, port)
 
-	return expectSuccessfulGetRequestToUrl(t, targetUrl)
+	return expectSuccessfulGetRequestToURL(t, targetURL)
 }
 
-func expectSuccessfulGetRequestToUrl(t *testing.T, url string) string {
+func expectSuccessfulGetRequestToURL(t *testing.T, url string) string {
 	fmt.Printf("Expecting successful GET to %s\n", url)
 	resp, err := http.Get(url)
 	if err != nil {

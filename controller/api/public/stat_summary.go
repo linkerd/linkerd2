@@ -112,9 +112,9 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
 	if fromResource != nil {
 		return fromResource.Type == k8s.Service
-	} else {
-		return selector.Resource.Type == k8s.Service
 	}
+
+	return selector.Resource.Type == k8s.Service
 }
 
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {

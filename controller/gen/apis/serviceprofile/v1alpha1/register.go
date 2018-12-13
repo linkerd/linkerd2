@@ -8,7 +8,7 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile"
 )
 
-// GroupVersion is the identifier for the API which includes
+// SchemeGroupVersion is the identifier for the API which includes
 // the name of the group and the version of the API
 var SchemeGroupVersion = schema.GroupVersion{
 	Group:   sp.GroupName,

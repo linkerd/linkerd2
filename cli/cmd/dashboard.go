@@ -64,7 +64,7 @@ func newCmdDashboard() *cobra.Command {
 				os.Exit(1)
 			}
 
-			grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/linkerd-grafana:http/proxy/")
+			grafanaURL, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/linkerd-grafana:http/proxy/")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to generate URL for Grafana: %s\n", err)
 				os.Exit(1)
@@ -74,7 +74,7 @@ func newCmdDashboard() *cobra.Command {
 			validatedPublicAPIClient(time.Now().Add(options.wait))
 
 			fmt.Printf("Linkerd dashboard available at:\n%s\n", url.String())
-			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
+			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL.String())
 
 			switch options.dashboardShow {
 			case showLinkerd:
@@ -88,9 +88,9 @@ func newCmdDashboard() *cobra.Command {
 			case showGrafana:
 				fmt.Println("Opening Grafana dashboard in the default browser")
 
-				err = browser.OpenURL(grafanaUrl.String())
+				err = browser.OpenURL(grafanaURL.String())
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaUrl, err)
+					fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaURL, err)
 					os.Exit(1)
 				}
 			case showURL:

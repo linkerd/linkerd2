@@ -17,7 +17,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minApiVersion = [3]int{1, 8, 0}
+var minAPIVersion = [3]int{1, 8, 0}
 
 type KubernetesAPI struct {
 	*rest.Config
@@ -64,10 +64,10 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 		return err
 	}
 
-	if !isCompatibleVersion(minApiVersion, apiVersion) {
+	if !isCompatibleVersion(minAPIVersion, apiVersion) {
 		return fmt.Errorf("Kubernetes is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
 			apiVersion[0], apiVersion[1], apiVersion[2],
-			minApiVersion[0], minApiVersion[1], minApiVersion[2])
+			minAPIVersion[0], minAPIVersion[1], minAPIVersion[2])
 	}
 
 	return nil
@@ -123,9 +123,9 @@ func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Po
 	return podList.Items, nil
 }
 
-// UrlFor generates a URL based on the Kubernetes config.
-func (kubeAPI *KubernetesAPI) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return generateKubernetesApiBaseUrlFor(kubeAPI.Host, namespace, extraPathStartingWithSlash)
+// URLFor generates a URL based on the Kubernetes config.
+func (kubeAPI *KubernetesAPI) URLFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
+	return generateKubernetesAPIBaseURLFor(kubeAPI.Host, namespace, extraPathStartingWithSlash)
 }
 
 func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {

@@ -32,7 +32,7 @@ const (
 	LocalhostDNSNameOverride = "localhost."
 	// ControlPlanePodName default control plane pod name.
 	ControlPlanePodName = "linkerd-controller"
-	// The name of the variable used to pass the pod's namespace.
+	// PodNamespaceEnvVarName is the name of the variable used to pass the pod's namespace.
 	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 
 	// for inject reports
@@ -251,8 +251,8 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		Requests: v1.ResourceList{},
 	}
 
-	if options.proxyCpuRequest != "" {
-		resources.Requests["cpu"] = k8sResource.MustParse(options.proxyCpuRequest)
+	if options.proxyCPURequest != "" {
+		resources.Requests["cpu"] = k8sResource.MustParse(options.proxyCPURequest)
 	}
 
 	if options.proxyMemoryRequest != "" {

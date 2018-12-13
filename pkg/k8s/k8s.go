@@ -41,7 +41,7 @@ var AllResources = []string{
 	StatefulSet,
 }
 
-// resources to query in StatSummary when Resource.Type is "all"
+// StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
 var StatAllResourceTypes = []string{
 	// TODO: add Namespace here to decrease queries from the web process
 	Deployment,
@@ -51,12 +51,12 @@ var StatAllResourceTypes = []string{
 	Authority,
 }
 
-func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
+func generateKubernetesAPIBaseURLFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
 	if string(extraPathStartingWithSlash[0]) != "/" {
 		return nil, fmt.Errorf("Path must start with a [/], was [%s]", extraPathStartingWithSlash)
 	}
 
-	baseURL, err := generateBaseKubernetesApiUrl(schemeHostAndPort)
+	baseURL, err := generateBaseKubernetesAPIURL(schemeHostAndPort)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func generateKubernetesApiBaseUrlFor(schemeHostAndPort string, namespace string,
 	return url, nil
 }
 
-func generateBaseKubernetesApiUrl(schemeHostAndPort string) (*url.URL, error) {
+func generateBaseKubernetesAPIURL(schemeHostAndPort string) (*url.URL, error) {
 	urlString := fmt.Sprintf("%s/api/v1/", schemeHostAndPort)
 	url, err := url.Parse(urlString)
 	if err != nil {
@@ -128,7 +128,7 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
 
-// Return a the shortest name for a k8s canonical name.
+// ShortNameFromCanonicalResourceName returns the shortest name for a k8s canonical name.
 // Essentially the reverse of CanonicalResourceNameFromFriendlyName
 func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {

@@ -10,7 +10,7 @@ import (
 type rootOptions struct {
 	incomingProxyPort     int
 	outgoingProxyPort     int
-	proxyUserId           int
+	proxyUserID           int
 	portsToRedirect       []int
 	inboundPortsToIgnore  []int
 	outboundPortsToIgnore []int
@@ -21,7 +21,7 @@ func newRootOptions() *rootOptions {
 	return &rootOptions{
 		incomingProxyPort:     -1,
 		outgoingProxyPort:     -1,
-		proxyUserId:           -1,
+		proxyUserID:           -1,
 		portsToRedirect:       make([]int, 0),
 		inboundPortsToIgnore:  make([]int, 0),
 		outboundPortsToIgnore: make([]int, 0),
@@ -47,7 +47,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.PersistentFlags().IntVarP(&options.incomingProxyPort, "incoming-proxy-port", "p", options.incomingProxyPort, "Port to redirect incoming traffic")
 	cmd.PersistentFlags().IntVarP(&options.outgoingProxyPort, "outgoing-proxy-port", "o", options.outgoingProxyPort, "Port to redirect outgoing traffic")
-	cmd.PersistentFlags().IntVarP(&options.proxyUserId, "proxy-uid", "u", options.proxyUserId, "User ID that the proxy is running under. Any traffic coming from this user will be ignored to avoid infinite redirection loops.")
+	cmd.PersistentFlags().IntVarP(&options.proxyUserID, "proxy-uid", "u", options.proxyUserID, "User ID that the proxy is running under. Any traffic coming from this user will be ignored to avoid infinite redirection loops.")
 	cmd.PersistentFlags().IntSliceVarP(&options.portsToRedirect, "ports-to-redirect", "r", options.portsToRedirect, "Port to redirect to proxy, if no port is specified then ALL ports are redirected")
 	cmd.PersistentFlags().IntSliceVar(&options.inboundPortsToIgnore, "inbound-ports-to-ignore", options.inboundPortsToIgnore, "Inbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
 	cmd.PersistentFlags().IntSliceVar(&options.outboundPortsToIgnore, "outbound-ports-to-ignore", options.outboundPortsToIgnore, "Outbound ports to ignore and not redirect to proxy. This has higher precedence than any other parameters.")
@@ -68,7 +68,7 @@ func buildFirewallConfiguration(options *rootOptions) (*iptables.FirewallConfigu
 	firewallConfiguration := &iptables.FirewallConfiguration{
 		ProxyInboundPort:       options.incomingProxyPort,
 		ProxyOutgoingPort:      options.outgoingProxyPort,
-		ProxyUid:               options.proxyUserId,
+		ProxyUID:               options.proxyUserID,
 		PortsToRedirectInbound: options.portsToRedirect,
 		InboundPortsToIgnore:   options.inboundPortsToIgnore,
 		OutboundPortsToIgnore:  options.outboundPortsToIgnore,

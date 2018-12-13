@@ -26,10 +26,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type ApiResource int
+type APIResource int
 
 const (
-	CM ApiResource = iota
+	CM APIResource = iota
 	Deploy
 	Endpoint
 	MWC // mutating webhook configuration
@@ -61,7 +61,7 @@ type API struct {
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API
-func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...ApiResource) *API {
+func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...APIResource) *API {
 	var sharedInformers informers.SharedInformerFactory
 	var spSharedInformers sp.SharedInformerFactory
 	if namespace == "" {

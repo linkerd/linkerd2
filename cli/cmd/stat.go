@@ -267,7 +267,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			statTables[resourceKey][key].rowStats = &rowStats{
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
-				tlsPercent:  util.GetPercentTls(r.Stats),
+				tlsPercent:  util.GetPercentTLS(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
@@ -283,7 +283,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, options)
 	case "json":
-		printStatJson(statTables, w)
+		printStatJSON(statTables, w)
 	}
 }
 
@@ -386,10 +386,10 @@ type jsonStats struct {
 	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
 	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
 	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
-	Tls          *float64 `json:"tls"`
+	TLS          *float64 `json:"tls"`
 }
 
-func printStatJson(statTables map[string]map[string]*row, w *tabwriter.Writer) {
+func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
 	for _, resourceType := range k8s.AllResources {
@@ -409,7 +409,7 @@ func printStatJson(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp50 = &stats[key].latencyP50
 					entry.LatencyMSp95 = &stats[key].latencyP95
 					entry.LatencyMSp99 = &stats[key].latencyP99
-					entry.Tls = &stats[key].tlsPercent
+					entry.TLS = &stats[key].tlsPercent
 				}
 
 				entries = append(entries, entry)
@@ -427,10 +427,10 @@ func printStatJson(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 func getNamePrefix(resourceType string) string {
 	if resourceType == "" {
 		return ""
-	} else {
-		canonicalType := k8s.ShortNameFromCanonicalResourceName(resourceType)
-		return canonicalType + "/"
 	}
+
+	canonicalType := k8s.ShortNameFromCanonicalResourceName(resourceType)
+	return canonicalType + "/"
 }
 
 func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.StatSummaryRequest, error) {

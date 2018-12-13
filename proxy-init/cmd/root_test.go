@@ -11,22 +11,22 @@ func TestBuildFirewallConfiguration(t *testing.T) {
 	t.Run("It produces a FirewallConfiguration for the default config", func(t *testing.T) {
 		expectedIncomingProxyPort := 1234
 		expectedOutgoingProxyPort := 2345
-		expectedProxyUserId := 33
+		expectedProxyUserID := 33
 		expectedConfig := &iptables.FirewallConfiguration{
-			Mode: iptables.RedirectAllMode,
+			Mode:                   iptables.RedirectAllMode,
 			PortsToRedirectInbound: make([]int, 0),
 			InboundPortsToIgnore:   make([]int, 0),
 			OutboundPortsToIgnore:  make([]int, 0),
 			ProxyInboundPort:       expectedIncomingProxyPort,
 			ProxyOutgoingPort:      expectedOutgoingProxyPort,
-			ProxyUid:               expectedProxyUserId,
+			ProxyUID:               expectedProxyUserID,
 			SimulateOnly:           false,
 		}
 
 		options := newRootOptions()
 		options.incomingProxyPort = expectedIncomingProxyPort
 		options.outgoingProxyPort = expectedOutgoingProxyPort
-		options.proxyUserId = expectedProxyUserId
+		options.proxyUserID = expectedProxyUserID
 
 		config, err := buildFirewallConfiguration(options)
 		if err != nil {

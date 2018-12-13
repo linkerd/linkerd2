@@ -696,7 +696,8 @@ data:
         homeDashboardId: linkerd-top-line
 `
 
-const TlsTemplate = `
+// TLSTemplate provides additional configs when linkerd is installed with `--tls optional`
+const TLSTemplate = `
 ### Service Account CA ###
 ---
 kind: ServiceAccount
@@ -810,6 +811,7 @@ spec:
           runAsUser: {{.ControllerUID}}
 `
 
+// ProxyInjectorTemplate provides additional configs when linkerd is installed with `--proxy-auto-inject`
 const ProxyInjectorTemplate = `
 ---
 ### Proxy Injector Deployment ###

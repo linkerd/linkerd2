@@ -38,6 +38,7 @@ var (
 	alphaNumDashDotSlashColon = regexp.MustCompile("^[\\./a-zA-Z0-9-:]+$")
 )
 
+// RootCmd represents the root Cobra command
 var RootCmd = &cobra.Command{
 	Use:   "linkerd",
 	Short: "linkerd manages the Linkerd service mesh",
@@ -94,7 +95,7 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 		healthcheck.LinkerdAPIChecks,
 	}
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -185,7 +186,7 @@ type proxyConfigOptions struct {
 	proxyAPIPort            uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
-	proxyCpuRequest         string
+	proxyCPURequest         string
 	proxyMemoryRequest      string
 	proxyOutboundCapacity   map[string]uint
 	tls                     string
@@ -215,7 +216,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyControlPort:        4190,
 		proxyMetricsPort:        4191,
 		proxyOutboundCapacity:   map[string]uint{},
-		proxyCpuRequest:         "",
+		proxyCPURequest:         "",
 		proxyMemoryRequest:      "",
 		tls:                     "",
 		disableExternalProfiles: false,
@@ -239,9 +240,9 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 	}
 
-	if options.proxyCpuRequest != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyCpuRequest); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCpuRequest)
+	if options.proxyCPURequest != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyCPURequest); err != nil {
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCPURequest)
 		}
 	}
 
@@ -287,7 +288,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
-	cmd.PersistentFlags().StringVar(&options.proxyCpuRequest, "proxy-cpu", options.proxyCpuRequest, "Amount of CPU units that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")

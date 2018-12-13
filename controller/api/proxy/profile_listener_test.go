@@ -375,7 +375,7 @@ var (
 
 func TestProfileListener(t *testing.T) {
 	t.Run("Sends update", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -394,7 +394,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Request match with more than one field becomes ALL", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -413,7 +413,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Ignores request match without any fields", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -428,7 +428,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Response match with more than one field becomes ALL", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -447,7 +447,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Ignores response match without any fields", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -462,7 +462,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -477,7 +477,7 @@ func TestProfileListener(t *testing.T) {
 	})
 
 	t.Run("Sends update for one sided status range", func(t *testing.T) {
-		mockGetProfileServer := &mockDestination_GetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
 		listener := &profileListener{
 			stream: mockGetProfileServer,
@@ -493,9 +493,9 @@ func TestProfileListener(t *testing.T) {
 
 	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
-		mockGetProfileServer := &mockDestination_GetProfileServer{
+		mockGetProfileServer := &mockDestinationGetProfileServer{
 			profilesReceived: []*pb.DestinationProfile{},
-			mockDestination_Server: mockDestination_Server{
+			mockDestinationServer: mockDestinationServer{
 				contextToReturn: context,
 			},
 		}

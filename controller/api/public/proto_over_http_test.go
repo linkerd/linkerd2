@@ -52,7 +52,7 @@ func newStubResponseWriter() *stubResponseWriter {
 }
 
 func TestHttpRequestToProto(t *testing.T) {
-	someUrl := "https://www.example.org/something"
+	someURL := "https://www.example.org/something"
 	someMethod := http.MethodPost
 
 	t.Run("Given a valid request, serializes its contents into protobuf object", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestHttpRequestToProto(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		req, err := http.NewRequest(someMethod, someUrl, bytes.NewReader(payload))
+		req, err := http.NewRequest(someMethod, someURL, bytes.NewReader(payload))
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -89,7 +89,7 @@ func TestHttpRequestToProto(t *testing.T) {
 	t.Run("Given a broken request, returns http error", func(t *testing.T) {
 		var actualProtoMessage pb.Pod
 
-		req, err := http.NewRequest(someMethod, someUrl, strings.NewReader("not really protobuf"))
+		req, err := http.NewRequest(someMethod, someURL, strings.NewReader("not really protobuf"))
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -112,12 +112,12 @@ func TestHttpRequestToProto(t *testing.T) {
 
 func TestWriteErrorToHttpResponse(t *testing.T) {
 	t.Run("Writes generic error correctly to response", func(t *testing.T) {
-		expectedErrorStatusCode := defaultHttpErrorStatusCode
+		expectedErrorStatusCode := defaultHTTPErrorStatusCode
 
 		responseWriter := newStubResponseWriter()
 		genericError := errors.New("expected generic error")
 
-		writeErrorToHttpResponse(responseWriter, genericError)
+		writeErrorToHTTPResponse(responseWriter, genericError)
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
@@ -151,7 +151,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			Code:         http.StatusBadGateway,
 		}
 
-		writeErrorToHttpResponse(responseWriter, httpError)
+		writeErrorToHTTPResponse(responseWriter, httpError)
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
@@ -178,13 +178,13 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 	})
 
 	t.Run("Writes gRPC specific error correctly to response", func(t *testing.T) {
-		expectedErrorStatusCode := defaultHttpErrorStatusCode
+		expectedErrorStatusCode := defaultHTTPErrorStatusCode
 
 		responseWriter := newStubResponseWriter()
 		expectedErrorMessage := "error message"
 		grpcError := status.Errorf(codes.AlreadyExists, expectedErrorMessage)
 
-		writeErrorToHttpResponse(responseWriter, grpcError)
+		writeErrorToHTTPResponse(responseWriter, grpcError)
 
 		assertResponseHasProtobufContentType(t, responseWriter)
 
@@ -220,7 +220,7 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 		}
 
 		responseWriter := newStubResponseWriter()
-		err := writeProtoToHttpResponse(responseWriter, &expectedMessage)
+		err := writeProtoToHTTPResponse(responseWriter, &expectedMessage)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

@@ -182,13 +182,13 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 		return nil, err
 	}
 
-	tapEventById := make(map[string]*tapEvent)
+	tapEventByID := make(map[string]*tapEvent)
 	for _, line := range outputLines {
 		fields := toFieldMap(line)
-		obj, ok := tapEventById[fields["id"]]
+		obj, ok := tapEventByID[fields["id"]]
 		if !ok {
 			obj = &tapEvent{}
-			tapEventById[fields["id"]] = obj
+			tapEventByID[fields["id"]] = obj
 		}
 		obj.lineCount++
 
@@ -205,7 +205,7 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 	}
 
 	output := make([]*tapEvent, 0)
-	for _, obj := range tapEventById {
+	for _, obj := range tapEventByID {
 		if obj.lineCount == 3 { // filter out incomplete events
 			output = append(output, obj)
 		}

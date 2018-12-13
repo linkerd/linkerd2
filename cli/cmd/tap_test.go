@@ -71,13 +71,13 @@ func busyTest(t *testing.T, wide bool) {
 		},
 		map[string]string{},
 	)
-	mockApiClient := &public.MockApiClient{}
-	mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
+	mockAPIClient := &public.MockAPIClient{}
+	mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
 		TapEventsToReturn: []pb.TapEvent{event1, event2},
 	}
 
 	writer := bytes.NewBufferString("")
-	err = requestTapByResourceFromAPI(writer, mockApiClient, req, wide)
+	err = requestTapByResourceFromAPI(writer, mockAPIClient, req, wide)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -125,13 +125,13 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockApiClient := &public.MockApiClient{}
-		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
+		mockAPIClient := &public.MockAPIClient{}
+		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
 			TapEventsToReturn: []pb.TapEvent{},
 		}
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockApiClient, req, false)
+		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -164,13 +164,13 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockApiClient := &public.MockApiClient{}
-		mockApiClient.Api_TapByResourceClientToReturn = &public.MockApi_TapByResourceClient{
+		mockAPIClient := &public.MockAPIClient{}
+		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
 			ErrorsToReturn: []error{errors.New("expected")},
 		}
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockApiClient, req, false)
+		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}
@@ -179,18 +179,18 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 func TestEventToString(t *testing.T) {
 	toTapEvent := func(httpEvent *pb.TapEvent_Http) *pb.TapEvent {
-		streamId := &pb.TapEvent_Http_StreamId{
+		streamID := &pb.TapEvent_Http_StreamId{
 			Base:   7,
 			Stream: 8,
 		}
 
 		switch httpEvent.Event.(type) {
 		case *pb.TapEvent_Http_RequestInit_:
-			httpEvent.GetRequestInit().Id = streamId
+			httpEvent.GetRequestInit().Id = streamID
 		case *pb.TapEvent_Http_ResponseInit_:
-			httpEvent.GetResponseInit().Id = streamId
+			httpEvent.GetResponseInit().Id = streamID
 		case *pb.TapEvent_Http_ResponseEnd_:
-			httpEvent.GetResponseEnd().Id = streamId
+			httpEvent.GetResponseEnd().Id = streamID
 		}
 
 		return &pb.TapEvent{
@@ -341,7 +341,7 @@ func TestEventToString(t *testing.T) {
 	})
 }
 
-func createEvent(event_http *pb.TapEvent_Http, dstMeta map[string]string) pb.TapEvent {
+func createEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string) pb.TapEvent {
 	event := pb.TapEvent{
 		ProxyDirection: pb.TapEvent_OUTBOUND,
 		Source: &pb.TcpAddress{
@@ -359,7 +359,7 @@ func createEvent(event_http *pb.TapEvent_Http, dstMeta map[string]string) pb.Tap
 			},
 		},
 		Event: &pb.TapEvent_Http_{
-			Http: event_http,
+			Http: eventHTTP,
 		},
 		DestinationMeta: &pb.TapEvent_EndpointMeta{
 			Labels: dstMeta,

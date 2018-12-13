@@ -132,7 +132,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 		}
 		printRouteTable(table, w, options)
 	case "json":
-		printRouteJson(table, w)
+		printRouteJSON(table, w)
 	}
 }
 
@@ -190,7 +190,7 @@ type jsonRouteStats struct {
 	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJson(stats []*rowStats, w *tabwriter.Writer) {
+func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
 	for _, row := range stats {
