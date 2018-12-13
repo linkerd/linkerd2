@@ -213,19 +213,17 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 	nonRoot := false
 	runAsUser := int64(0)
-	runAsGroup := int64(0)
 	initContainer := v1.Container{
 		Name:                     k8s.InitContainerName,
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args:                     initArgs,
+		Args: initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
 			},
 			Privileged:   &f,
-			RunAsGroup:   &runAsGroup,
 			RunAsNonRoot: &nonRoot,
 			RunAsUser:    &runAsUser,
 		},
