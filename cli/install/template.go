@@ -446,7 +446,6 @@ spec:
             memory: 300Mi
         {{- end }}
         securityContext:
-          runAsGroup: 65534
           runAsUser: 65534
 
 ---
@@ -631,7 +630,6 @@ spec:
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsGroup: 472
           runAsUser: 472
       serviceAccountName: linkerd-grafana
 
@@ -969,7 +967,6 @@ data:
         add:
         - NET_ADMIN
       privileged: false
-      runAsGroup: 0
       runAsNonRoot: false
       runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError

@@ -285,7 +285,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
-          runAsGroup: 0
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -456,7 +455,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
-          runAsGroup: 0
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -531,7 +529,6 @@ spec:
           timeoutSeconds: 30
         resources: {}
         securityContext:
-          runAsGroup: 65534
           runAsUser: 65534
         volumeMounts:
         - mountPath: /data
@@ -603,7 +600,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
-          runAsGroup: 0
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -775,7 +771,6 @@ spec:
             port: 3000
         resources: {}
         securityContext:
-          runAsGroup: 472
           runAsUser: 472
         volumeMounts:
         - mountPath: /data
@@ -845,7 +840,6 @@ spec:
             add:
             - NET_ADMIN
           privileged: false
-          runAsGroup: 0
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
