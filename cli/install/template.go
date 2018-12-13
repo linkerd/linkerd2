@@ -281,7 +281,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: linkerd
+  namespace: {{.Namespace}}
 
 ### Web ###
 ---
@@ -535,7 +535,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
-  namespace: linkerd
+  namespace: {{.Namespace}}
 
 ### Grafana ###
 ---
