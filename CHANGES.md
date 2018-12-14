@@ -16,7 +16,8 @@ older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 * Controller
   * Block controller initialization until caches have synced with kube API
   * Fix proxy-api handling of named target ports in service configs
-  * Add parameter to stats API to skip retrieving prometheus stats
+  * Add parameter to stats API to skip retrieving prometheus stats (thanks,
+    @alpeb!)
 * Web UI
   * Adjust label for unknown routes in route tables, add tooltip
   * Update Top Routes page to persist form settings in URL
