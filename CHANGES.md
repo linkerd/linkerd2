@@ -1,3 +1,31 @@
+## edge-18.12.3
+
+Upgrade notes: The control plane components have been renamed as of the
+edge-18.12.1 release to reduce possible naming collisions. To upgrade an
+older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
+* CLI
+  * Multiple improvements to the `linkerd install` config (thanks @codeman9!)
+    * Use non-default service accounts for grafana and web deployments
+    * Use `emptyDir` volume mount for prometheus and grafana pods
+    * Set security context on control plane components to not run as root
+  * Remove cluster-wide resources from single-namespace installs
+    * Disable service profiles in single-namespace mode
+    * Require that namespace already exist for single-namespace installs
+  * Fix resource requests for proxy-injector container in `--ha` installs
+* Controller
+  * Block controller initialization until caches have synced with kube API
+  * Fix proxy-api handling of named target ports in service configs
+  * Add parameter to stats API to skip retrieving prometheus stats
+* Web UI
+  * Adjust label for unknown routes in route tables, add tooltip
+  * Update Top Routes page to persist form settings in URL
+  * Add button to create new service profiles on Top Routes page
+  * Fix CLI commands displayed when linkerd is running in non-default namespace
+* Proxy
+  * Disable protocol detection for server-speaks-first protocols on default
+    ports when TLS is enabled
+
 ## stable-2.1.0
 
 This stable release introduces several major improvements, including per-route
