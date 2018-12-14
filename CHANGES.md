@@ -24,8 +24,7 @@ older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
   * Add button to create new service profiles on Top Routes page
   * Fix CLI commands displayed when linkerd is running in non-default namespace
 * Proxy
-  * Disable protocol detection for server-speaks-first protocols on default
-    ports when TLS is enabled
+  * Proxies with TLS enabled now honor ports which skip protocol detection
 
 ## stable-2.1.0
 
