@@ -113,7 +113,6 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 				dst:         r.GetAuthority(),
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
-				tlsPercent:  util.GetPercentTls(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
@@ -153,13 +152,12 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 		"RPS",
 		"LATENCY_P50",
 		"LATENCY_P95",
-		"LATENCY_P99",
-		"TLS\t", // trailing \t is required to format last column
+		"LATENCY_P99\t", // trailing \t is required to format last column
 	}
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
 
 	for _, row := range stats {
 
@@ -177,7 +175,6 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 			row.latencyP50,
 			row.latencyP95,
 			row.latencyP99,
-			row.tlsPercent*100,
 		)
 	}
 }
@@ -191,7 +188,6 @@ type jsonRouteStats struct {
 	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
 	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
 	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
-	Tls          *float64 `json:"tls"`
 }
 
 func printRouteJson(stats []*rowStats, w *tabwriter.Writer) {
@@ -209,7 +205,6 @@ func printRouteJson(stats []*rowStats, w *tabwriter.Writer) {
 		entry.LatencyMSp50 = &row.latencyP50
 		entry.LatencyMSp95 = &row.latencyP95
 		entry.LatencyMSp99 = &row.latencyP99
-		entry.Tls = &row.tlsPercent
 
 		entries = append(entries, entry)
 	}

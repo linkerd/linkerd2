@@ -200,12 +200,11 @@ func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse
 			Route:     route,
 			Authority: "foo.default.svc.cluster.local",
 			Stats: &pb.BasicStats{
-				SuccessCount:    counts[i],
-				FailureCount:    0,
-				LatencyMsP50:    123,
-				LatencyMsP95:    123,
-				LatencyMsP99:    123,
-				TlsRequestCount: counts[i],
+				SuccessCount: counts[i],
+				FailureCount: 0,
+				LatencyMsP50: 123,
+				LatencyMsP95: 123,
+				LatencyMsP99: 123,
 			},
 			TimeWindow: "1m",
 		}
