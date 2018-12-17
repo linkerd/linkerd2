@@ -93,132 +93,151 @@ func (r tableRow) merge(other tableRow) tableRow {
 	return r
 }
 
+type topTable struct {
+	sourceColumn      tableColumn
+	destinationColumn tableColumn
+	methodColumn      tableColumn
+	pathColumn        tableColumn
+	routeColumn       tableColumn
+	countColumn       tableColumn
+	bestColumn        tableColumn
+	worstColumn       tableColumn
+	lastColumn        tableColumn
+	successRateColumn tableColumn
+	columns           []*tableColumn
+}
+
+func newTopTable() *topTable {
+	table := topTable{
+		sourceColumn: tableColumn{
+			header:   "Source",
+			width:    23,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.source
+			},
+		},
+
+		destinationColumn: tableColumn{
+			header:   "Destination",
+			width:    23,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.destination
+			},
+		},
+
+		methodColumn: tableColumn{
+			header:   "Method",
+			width:    10,
+			key:      true,
+			display:  true,
+			flexible: false,
+			value: func(r tableRow) string {
+				return r.method
+			},
+		},
+
+		pathColumn: tableColumn{
+			header:   "Path",
+			width:    37,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.path
+			},
+		},
+
+		routeColumn: tableColumn{
+			header:   "Route",
+			width:    47,
+			key:      false,
+			display:  false,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.route
+			},
+		},
+
+		countColumn: tableColumn{
+			header:     "Count",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return strconv.Itoa(r.count)
+			},
+		},
+
+		bestColumn: tableColumn{
+			header:     "Best",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.best)
+			},
+		},
+
+		worstColumn: tableColumn{
+			header:     "Worst",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.worst)
+			},
+		},
+
+		lastColumn: tableColumn{
+			header:     "Last",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.last)
+			},
+		},
+
+		successRateColumn: tableColumn{
+			header:     "Success Rate",
+			width:      12,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return fmt.Sprintf("%.2f%%", 100.0*float32(r.successes)/float32(r.successes+r.failures))
+			},
+		},
+	}
+	table.columns = []*tableColumn{
+		&table.sourceColumn, &table.destinationColumn, &table.methodColumn, &table.pathColumn,
+		&table.routeColumn, &table.countColumn, &table.bestColumn, &table.worstColumn,
+		&table.lastColumn, &table.successRateColumn,
+	}
+	return &table
+}
+
 const (
 	headerHeight  = 3
 	columnSpacing = 2
 )
 
-var (
-	sourceColumn = tableColumn{
-		header:   "Source",
-		width:    23,
-		key:      true,
-		display:  true,
-		flexible: true,
-		value: func(r tableRow) string {
-			return r.source
-		},
-	}
-
-	destinationColumn = tableColumn{
-		header:   "Destination",
-		width:    23,
-		key:      true,
-		display:  true,
-		flexible: true,
-		value: func(r tableRow) string {
-			return r.destination
-		},
-	}
-
-	methodColumn = tableColumn{
-		header:   "Method",
-		width:    10,
-		key:      true,
-		display:  true,
-		flexible: false,
-		value: func(r tableRow) string {
-			return r.method
-		},
-	}
-
-	pathColumn = tableColumn{
-		header:   "Path",
-		width:    37,
-		key:      true,
-		display:  true,
-		flexible: true,
-		value: func(r tableRow) string {
-			return r.path
-		},
-	}
-
-	routeColumn = tableColumn{
-		header:   "Route",
-		width:    47,
-		key:      false,
-		display:  false,
-		flexible: true,
-		value: func(r tableRow) string {
-			return r.route
-		},
-	}
-
-	countColumn = tableColumn{
-		header:     "Count",
-		width:      6,
-		key:        false,
-		display:    true,
-		flexible:   false,
-		rightAlign: true,
-		value: func(r tableRow) string {
-			return strconv.Itoa(r.count)
-		},
-	}
-
-	bestColumn = tableColumn{
-		header:     "Best",
-		width:      6,
-		key:        false,
-		display:    true,
-		flexible:   false,
-		rightAlign: true,
-		value: func(r tableRow) string {
-			return formatDuration(r.best)
-		},
-	}
-
-	worstColumn = tableColumn{
-		header:     "Worst",
-		width:      6,
-		key:        false,
-		display:    true,
-		flexible:   false,
-		rightAlign: true,
-		value: func(r tableRow) string {
-			return formatDuration(r.worst)
-		},
-	}
-
-	lastColumn = tableColumn{
-		header:     "Last",
-		width:      6,
-		key:        false,
-		display:    true,
-		flexible:   false,
-		rightAlign: true,
-		value: func(r tableRow) string {
-			return formatDuration(r.last)
-		},
-	}
-
-	successRateColumn = tableColumn{
-		header:     "Success Rate",
-		width:      12,
-		key:        false,
-		display:    true,
-		flexible:   false,
-		rightAlign: true,
-		value: func(r tableRow) string {
-			return fmt.Sprintf("%.2f%%", 100.0*float32(r.successes)/float32(r.successes+r.failures))
-		},
-	}
-
-	columns = []*tableColumn{
-		&sourceColumn, &destinationColumn, &methodColumn, &pathColumn, &routeColumn,
-		&countColumn, &bestColumn, &worstColumn, &lastColumn, &successRateColumn,
-	}
-)
+var tableColumns = newTopTable()
 
 func newTopOptions() *topOptions {
 	return &topOptions{
@@ -280,17 +299,17 @@ func newCmdTop() *cobra.Command {
 			}
 
 			if options.hideSources {
-				sourceColumn.key = false
-				sourceColumn.display = false
+				tableColumns.sourceColumn.key = false
+				tableColumns.sourceColumn.display = false
 			}
 
 			if options.routes {
-				methodColumn.key = false
-				methodColumn.display = false
-				pathColumn.key = false
-				pathColumn.display = false
-				routeColumn.key = true
-				routeColumn.display = true
+				tableColumns.methodColumn.key = false
+				tableColumns.methodColumn.display = false
+				tableColumns.pathColumn.key = false
+				tableColumns.pathColumn.display = false
+				tableColumns.routeColumn.key = true
+				tableColumns.routeColumn.display = true
 			}
 
 			req, err := util.BuildTapByResourceRequest(requestParams)
@@ -298,7 +317,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req, options)
+			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req)
 		},
 	}
 
@@ -324,7 +343,7 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, options *topOptions) error {
+func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
@@ -462,9 +481,9 @@ func newRow(req topRequest) (tableRow, error) {
 	successes := 0
 	failures := 0
 	if success {
-		successes++
+		successes = 1
 	} else {
-		failures++
+		failures = 1
 	}
 
 	return tableRow{
@@ -494,7 +513,7 @@ func tableInsert(table *[]tableRow, req topRequest) {
 	for i, row := range *table {
 		match := true
 		// If the rows have equal values in all of the key columns, merge them.
-		for _, col := range columns {
+		for _, col := range tableColumns.columns {
 			if col.key {
 				if col.value(row) != col.value(insert) {
 					match = false
@@ -520,7 +539,7 @@ func stripPort(address string) string {
 func renderHeaders() {
 	tbprint(0, 0, "(press q to quit)")
 	x := 0
-	for _, col := range columns {
+	for _, col := range tableColumns.columns {
 		if !col.display {
 			continue
 		}
@@ -541,15 +560,15 @@ func max(i, j int) int {
 }
 
 func adjustColumnWidths(table *[]tableRow) {
-	for i, col := range columns {
+	for i, col := range tableColumns.columns {
 		if !col.flexible {
 			continue
 		}
-		columns[i].width = runewidth.StringWidth(col.header)
+		tableColumns.columns[i].width = runewidth.StringWidth(col.header)
 		for _, row := range *table {
 			cellWidth := runewidth.StringWidth(col.value(row))
-			if cellWidth > columns[i].width {
-				columns[i].width = cellWidth
+			if cellWidth > tableColumns.columns[i].width {
+				tableColumns.columns[i].width = cellWidth
 			}
 		}
 	}
@@ -563,7 +582,7 @@ func renderTableBody(table *[]tableRow) {
 	for i, row := range *table {
 		x := 0
 
-		for _, col := range columns {
+		for _, col := range tableColumns.columns {
 			if !col.display {
 				continue
 			}
