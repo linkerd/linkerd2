@@ -93,23 +93,33 @@ func (r tableRow) merge(other tableRow) tableRow {
 	return r
 }
 
+type column int
+
+const (
+	sourceColumn column = iota
+	destinationColumn
+	methodColumn
+	pathColumn
+	routeColumn
+	countColumn
+	bestColumn
+	worstColumn
+	lastColumn
+	successRateColumn
+
+	columnCount
+)
+
 type topTable struct {
-	sourceColumn      tableColumn
-	destinationColumn tableColumn
-	methodColumn      tableColumn
-	pathColumn        tableColumn
-	routeColumn       tableColumn
-	countColumn       tableColumn
-	bestColumn        tableColumn
-	worstColumn       tableColumn
-	lastColumn        tableColumn
-	successRateColumn tableColumn
-	columns           []*tableColumn
+	columns [columnCount]tableColumn
+	rows    []tableRow
 }
 
 func newTopTable() *topTable {
-	table := topTable{
-		sourceColumn: tableColumn{
+	table := topTable{}
+
+	table.columns[sourceColumn] =
+		tableColumn{
 			header:   "Source",
 			width:    23,
 			key:      true,
@@ -118,9 +128,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return r.source
 			},
-		},
+		}
 
-		destinationColumn: tableColumn{
+	table.columns[destinationColumn] =
+		tableColumn{
 			header:   "Destination",
 			width:    23,
 			key:      true,
@@ -129,9 +140,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return r.destination
 			},
-		},
+		}
 
-		methodColumn: tableColumn{
+	table.columns[methodColumn] =
+		tableColumn{
 			header:   "Method",
 			width:    10,
 			key:      true,
@@ -140,9 +152,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return r.method
 			},
-		},
+		}
 
-		pathColumn: tableColumn{
+	table.columns[pathColumn] =
+		tableColumn{
 			header:   "Path",
 			width:    37,
 			key:      true,
@@ -151,9 +164,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return r.path
 			},
-		},
+		}
 
-		routeColumn: tableColumn{
+	table.columns[routeColumn] =
+		tableColumn{
 			header:   "Route",
 			width:    47,
 			key:      false,
@@ -162,9 +176,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return r.route
 			},
-		},
+		}
 
-		countColumn: tableColumn{
+	table.columns[countColumn] =
+		tableColumn{
 			header:     "Count",
 			width:      6,
 			key:        false,
@@ -174,9 +189,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return strconv.Itoa(r.count)
 			},
-		},
+		}
 
-		bestColumn: tableColumn{
+	table.columns[bestColumn] =
+		tableColumn{
 			header:     "Best",
 			width:      6,
 			key:        false,
@@ -186,9 +202,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return formatDuration(r.best)
 			},
-		},
+		}
 
-		worstColumn: tableColumn{
+	table.columns[worstColumn] =
+		tableColumn{
 			header:     "Worst",
 			width:      6,
 			key:        false,
@@ -198,9 +215,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return formatDuration(r.worst)
 			},
-		},
+		}
 
-		lastColumn: tableColumn{
+	table.columns[lastColumn] =
+		tableColumn{
 			header:     "Last",
 			width:      6,
 			key:        false,
@@ -210,9 +228,10 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return formatDuration(r.last)
 			},
-		},
+		}
 
-		successRateColumn: tableColumn{
+	table.columns[successRateColumn] =
+		tableColumn{
 			header:     "Success Rate",
 			width:      12,
 			key:        false,
@@ -222,13 +241,8 @@ func newTopTable() *topTable {
 			value: func(r tableRow) string {
 				return fmt.Sprintf("%.2f%%", 100.0*float32(r.successes)/float32(r.successes+r.failures))
 			},
-		},
-	}
-	table.columns = []*tableColumn{
-		&table.sourceColumn, &table.destinationColumn, &table.methodColumn, &table.pathColumn,
-		&table.routeColumn, &table.countColumn, &table.bestColumn, &table.worstColumn,
-		&table.lastColumn, &table.successRateColumn,
-	}
+		}
+
 	return &table
 }
 
@@ -236,8 +250,6 @@ const (
 	headerHeight  = 3
 	columnSpacing = 2
 )
-
-var tableColumns = newTopTable()
 
 func newTopOptions() *topOptions {
 	return &topOptions{
@@ -256,6 +268,8 @@ func newTopOptions() *topOptions {
 
 func newCmdTop() *cobra.Command {
 	options := newTopOptions()
+
+	table := newTopTable()
 
 	cmd := &cobra.Command{
 		Use:   "top [flags] (RESOURCE)",
@@ -299,17 +313,17 @@ func newCmdTop() *cobra.Command {
 			}
 
 			if options.hideSources {
-				tableColumns.sourceColumn.key = false
-				tableColumns.sourceColumn.display = false
+				table.columns[sourceColumn].key = false
+				table.columns[sourceColumn].display = false
 			}
 
 			if options.routes {
-				tableColumns.methodColumn.key = false
-				tableColumns.methodColumn.display = false
-				tableColumns.pathColumn.key = false
-				tableColumns.pathColumn.display = false
-				tableColumns.routeColumn.key = true
-				tableColumns.routeColumn.display = true
+				table.columns[methodColumn].key = false
+				table.columns[methodColumn].display = false
+				table.columns[pathColumn].key = false
+				table.columns[pathColumn].display = false
+				table.columns[routeColumn].key = true
+				table.columns[routeColumn].display = true
 			}
 
 			req, err := util.BuildTapByResourceRequest(requestParams)
@@ -317,7 +331,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req)
+			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req, table)
 		},
 	}
 
@@ -343,7 +357,7 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest) error {
+func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
@@ -361,7 +375,7 @@ func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapBy
 	go recvEvents(rsp, requestCh, done)
 	go pollInput(done)
 
-	renderTable(requestCh, done)
+	renderTable(table, requestCh, done)
 
 	return nil
 }
@@ -425,21 +439,20 @@ func pollInput(done chan<- struct{}) {
 	}
 }
 
-func renderTable(requestCh <-chan topRequest, done <-chan struct{}) {
+func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}) {
 	ticker := time.NewTicker(100 * time.Millisecond)
-	var table []tableRow
 
 	for {
 		select {
 		case <-done:
 			return
 		case req := <-requestCh:
-			tableInsert(&table, req)
+			table.insert(req)
 		case <-ticker.C:
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			adjustColumnWidths(&table)
-			renderHeaders()
-			renderTableBody(&table)
+			table.adjustColumnWidths()
+			table.renderHeaders()
+			table.renderBody()
 			termbox.Flush()
 		}
 	}
@@ -501,7 +514,7 @@ func newRow(req topRequest) (tableRow, error) {
 	}, nil
 }
 
-func tableInsert(table *[]tableRow, req topRequest) {
+func (t *topTable) insert(req topRequest) {
 	insert, err := newRow(req)
 	if err != nil {
 		log.Error(err.Error())
@@ -510,10 +523,10 @@ func tableInsert(table *[]tableRow, req topRequest) {
 
 	found := false
 	// Search for a matching row
-	for i, row := range *table {
+	for i, row := range t.rows {
 		match := true
 		// If the rows have equal values in all of the key columns, merge them.
-		for _, col := range tableColumns.columns {
+		for _, col := range t.columns {
 			if col.key {
 				if col.value(row) != col.value(insert) {
 					match = false
@@ -523,12 +536,12 @@ func tableInsert(table *[]tableRow, req topRequest) {
 		}
 		if match {
 			found = true
-			(*table)[i] = row.merge(insert)
+			t.rows[i] = t.rows[i].merge(insert)
 			break
 		}
 	}
 	if !found {
-		*table = append(*table, insert)
+		t.rows = append(t.rows, insert)
 	}
 }
 
@@ -536,10 +549,10 @@ func stripPort(address string) string {
 	return strings.Split(address, ":")[0]
 }
 
-func renderHeaders() {
+func (t *topTable) renderHeaders() {
 	tbprint(0, 0, "(press q to quit)")
 	x := 0
-	for _, col := range tableColumns.columns {
+	for _, col := range t.columns {
 		if !col.display {
 			continue
 		}
@@ -559,30 +572,30 @@ func max(i, j int) int {
 	return j
 }
 
-func adjustColumnWidths(table *[]tableRow) {
-	for i, col := range tableColumns.columns {
+func (t *topTable) adjustColumnWidths() {
+	for i, col := range t.columns {
 		if !col.flexible {
 			continue
 		}
-		tableColumns.columns[i].width = runewidth.StringWidth(col.header)
-		for _, row := range *table {
+		t.columns[i].width = runewidth.StringWidth(col.header)
+		for _, row := range t.rows {
 			cellWidth := runewidth.StringWidth(col.value(row))
-			if cellWidth > tableColumns.columns[i].width {
-				tableColumns.columns[i].width = cellWidth
+			if cellWidth > t.columns[i].width {
+				t.columns[i].width = cellWidth
 			}
 		}
 	}
 }
 
-func renderTableBody(table *[]tableRow) {
-	sort.SliceStable(*table, func(i, j int) bool {
-		return (*table)[i].count > (*table)[j].count
+func (t *topTable) renderBody() {
+	sort.SliceStable(t.rows, func(i, j int) bool {
+		return t.rows[i].count > t.rows[j].count
 	})
 
-	for i, row := range *table {
+	for i, row := range t.rows {
 		x := 0
 
-		for _, col := range tableColumns.columns {
+		for _, col := range t.columns {
 			if !col.display {
 				continue
 			}
