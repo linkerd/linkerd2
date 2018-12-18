@@ -2,6 +2,7 @@
 
 const path = require('path');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -72,5 +73,8 @@ module.exports = {
       }
     ]
   },
-  plugins: [new BundleAnalyzerPlugin()]
+  plugins: [
+    new BundleAnalyzerPlugin(),
+    new MomentLocalesPlugin()
+  ]
 }
