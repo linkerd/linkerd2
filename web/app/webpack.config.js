@@ -1,6 +1,7 @@
 /* global require, module, __dirname */
 
 const path = require('path');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -70,5 +71,6 @@ module.exports = {
         ]
       }
     ]
-  }
+  },
+  plugins: [new BundleAnalyzerPlugin()]
 }
