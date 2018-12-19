@@ -14,10 +14,29 @@ import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { getSuccessRateClassification } from './util/MetricUtils.jsx' ;
+import { withStyles } from "@material-ui/core/styles";
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 
-export default class Octopus extends React.Component {
+const styles = () => ({
+  graphContainer: {
+    overflowX: "scroll",
+    padding: "16px 0"
+  },
+  graph: {
+    maxWidth: "974px",
+    minWidth: "974px",
+    marginLeft: "auto",
+    marginRight: "auto"
+  },
+  centerNode: {
+    width: "244px"
+  },
+  neighborNode: {
+    width: "220px"
+  }
+});
+class Octopus extends React.Component {
   static defaultProps = {
     neighbors: {},
     resource: {},
@@ -25,6 +44,7 @@ export default class Octopus extends React.Component {
   }
 
   static propTypes = {
+    classes: PropTypes.shape({}).isRequired,
     neighbors: PropTypes.shape({}),
     resource: PropTypes.shape({}),
     unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
@@ -68,13 +88,14 @@ export default class Octopus extends React.Component {
   }
 
   renderResourceCard(resource, type) {
+    const { classes } = this.props;
     let display = displayName(resource);
     let classification = getSuccessRateClassification(resource.successRate);
     let Progress = StyledProgress(classification);
 
     return (
       <Grid item key={resource.name} >
-        <Card className={`octopus-body-node ${type}`} title={display}>
+        <Card className={type === "neighbor" ? classes.neighborNode : classes.centerNode} title={display}>
           <CardContent>
 
             <Typography variant={type === "neighbor" ? "subtitle1" : "h6"} align="center">
@@ -106,9 +127,10 @@ export default class Octopus extends React.Component {
   }
 
   renderUnmeshedResources = unmeshedResources => {
+    const { classes } = this.props;
     return (
       <Grid item>
-        <Card key="unmeshed-resources" className="octopus-body-node neighbor">
+        <Card key="unmeshed-resources" className={classes.neighborNode}>
           <CardContent>
             <Typography variant="subtitle1">Unmeshed</Typography>
             {
@@ -124,9 +146,10 @@ export default class Octopus extends React.Component {
   }
 
   renderCollapsedNeighbors = neighbors => {
+    const { classes } = this.props;
     return (
       <Grid item>
-        <Card className="octopus-body-node neighbor">
+        <Card className={classes.neighborNode}>
           <CardContent>
             {
               _.map(neighbors, r => {
@@ -175,7 +198,7 @@ export default class Octopus extends React.Component {
   }
 
   render() {
-    let { resource, neighbors, unmeshedSources } = this.props;
+    let { resource, neighbors, unmeshedSources, classes} = this.props;
 
     if (_.isEmpty(resource)) {
       return null;
@@ -190,8 +213,8 @@ export default class Octopus extends React.Component {
 
 
     return (
-      <div className="octopus-graph-container">
-        <div className="octopus-graph">
+      <div className={classes.graphContainer}>
+        <div className={classes.graph}>
           <Grid
             container
             direction="row"
@@ -242,3 +265,5 @@ export default class Octopus extends React.Component {
     );
   }
 }
+
+export default withStyles(styles)(Octopus);
