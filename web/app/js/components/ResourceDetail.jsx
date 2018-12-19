@@ -235,7 +235,7 @@ export class ResourceDetailBase extends React.Component {
         <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
-          updateNeighbors={this.updateNeighborsFromTapData}
+          updateNeighborsFromTapData={this.updateNeighborsFromTapData}
           disableTop={!this.state.resourceIsMeshed} />
 
 
