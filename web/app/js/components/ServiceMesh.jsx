@@ -39,12 +39,12 @@ const getPodClassification = pod => {
 };
 
 const componentsToDeployNames = {
-  "Grafana" : "grafana",
-  "Prometheus": "prometheus",
-  "Proxy API": "controller",
-  "Public API": "controller",
-  "Tap": "controller",
-  "Web UI": "web"
+  "Grafana" : "linkerd-grafana",
+  "Prometheus": "linkerd-prometheus",
+  "Proxy API": "linkerd-controller",
+  "Public API": "linkerd-controller",
+  "Tap": "linkerd-controller",
+  "Web UI": "linkerd-web"
 };
 
 class ServiceMesh extends React.Component {

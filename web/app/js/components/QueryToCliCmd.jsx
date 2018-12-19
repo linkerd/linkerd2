@@ -1,10 +1,7 @@
-import {
-  CardContent,
-  Typography
-} from '@material-ui/core';
-
+import CardContent from '@material-ui/core/CardContent';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Typography from '@material-ui/core/Typography';
 import _ from 'lodash';
 import { displayOrder } from './util/CliQueryUtils.js';
 import { withContext } from './util/AppContext.jsx';

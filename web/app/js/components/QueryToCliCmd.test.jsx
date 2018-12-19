@@ -15,7 +15,7 @@ describe('QueryToCliCmd', () => {
         cmdName="routes"
         query={query}
         resource={query.resource}
-        />
+        controllerNamespace="linkerd" />
     );
 
     expect(component).toIncludeText("Current Routes query");
@@ -33,8 +33,7 @@ describe('QueryToCliCmd', () => {
         cmdName="routes"
         query={query}
         resource={query.resource}
-        controllerNamespace={"my-linkerd-ns"}
-        />
+        controllerNamespace="my-linkerd-ns" />
     );
 
     expect(component).toIncludeText("Current Routes query");
@@ -54,7 +53,8 @@ describe('QueryToCliCmd', () => {
       <QueryToCliCmd
         cmdName="tap"
         query={query}
-        resource={query.resource} />
+        resource={query.resource}
+        controllerNamespace="linkerd" />
     );
 
     expect(component).toIncludeText("Current Tap query");
@@ -76,7 +76,7 @@ describe('QueryToCliCmd', () => {
         cmdName="tap"
         query={query}
         resource={query.resource}
-        />
+        controllerNamespace="linkerd" />
     );
 
     expect(component).toIncludeText("Current Tap query");
@@ -94,7 +94,7 @@ describe('QueryToCliCmd', () => {
         cmdName="top"
         query={query}
         resource={query.resource}
-        />
+        controllerNamespace="linkerd" />
     );
 
     expect(component).toIncludeText("Current Top query");
@@ -114,7 +114,7 @@ describe('QueryToCliCmd', () => {
           cmdName="tap"
           query={query}
           resource={query.resource}
-          />
+          controllerNamespace="linkerd" />
       );
 
       expect(component).toIncludeText("Current Tap query");

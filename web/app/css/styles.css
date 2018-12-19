@@ -24,21 +24,6 @@ a {
   }
 }
 
-/* Colored dot for indicating statuses */
-div.status-table-dot {
-  width: calc(2 * var(--base-width));
-  height: calc(2 * var(--base-width));
-  min-width: calc(2 * var(--base-width));
-  border-radius: 50%;
-}
-
-div.success-rate-dot {
-  width: calc(1 * var(--base-width));
-  height: calc(1 * var(--base-width));
-  min-width: calc(1 * var(--base-width));
-  border-radius: 50%;
-}
-
 .breadcrumb-link a {
   color: white;
 }
@@ -47,10 +32,9 @@ div.success-rate-dot {
   max-width: 250px;
   padding: 24px;
   font-size: 12px;
-
-  & .new-version-text {
-    margin-bottom: 12px;
-  }
+}
+.version .new-version-text {
+  margin-bottom: 12px;
 }
 
 div.octopus-graph-container {

@@ -1,13 +1,10 @@
-import {
-  Collapse,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  MenuList,
-} from '@material-ui/core';
-
+import Collapse from '@material-ui/core/Collapse';
 import ExpandMore from '@material-ui/icons/ExpandMore';
 import { Link } from 'react-router-dom';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import MenuItem from '@material-ui/core/MenuItem';
+import MenuList from '@material-ui/core/MenuList';
 import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import PropTypes from 'prop-types';
 import React from 'react';

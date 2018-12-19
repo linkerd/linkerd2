@@ -7,7 +7,14 @@ import classNames from 'classnames';
 import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = theme => statusClassNames(theme);
+const styles = theme => _.merge({}, statusClassNames(theme), {
+  statusTableDot: {
+    width: 2 * theme.spacing.unit,
+    height: 2 * theme.spacing.unit,
+    minWidth: 2 * theme.spacing.unit,
+    borderRadius: "50%"
+  }
+});
 
 const columnConfig = {
   "Pod Status": {
@@ -45,7 +52,7 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
     )}>
     <div
       className={classNames(
-        "status-table-dot",
+        classes.statusTableDot,
         classes[status.value],
         { "dot-multiline": multilineDots }
       )}

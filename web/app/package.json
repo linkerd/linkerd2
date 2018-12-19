@@ -10,6 +10,7 @@
     "d3": "4.11.0",
     "lodash": "4.17.10",
     "moment": "2.22.2",
+    "moment-locales-webpack-plugin": "^1.0.7",
     "path": "0.12.7",
     "prop-types": "15.6.1",
     "react": "16.5.0",
@@ -57,6 +58,7 @@
     "style-loader": "0.21.0",
     "url-loader": "1.0.1",
     "webpack": "4.20.2",
+    "webpack-bundle-analyzer": "^3.0.3",
     "webpack-cli": "3.0.7",
     "webpack-dev-server": "3.1.9"
   },

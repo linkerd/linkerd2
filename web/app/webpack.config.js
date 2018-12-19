@@ -1,6 +1,10 @@
 /* global require, module, __dirname */
 
 const path = require('path');
+const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
+
+// uncomment here and in plugins to analyze bundle size
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -70,5 +74,9 @@ module.exports = {
         ]
       }
     ]
-  }
+  },
+  plugins: [
+    // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
+    new MomentLocalesPlugin()
+  ]
 }
