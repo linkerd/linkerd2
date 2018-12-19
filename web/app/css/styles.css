@@ -18,10 +18,9 @@ body {
 a {
   text-decoration: none;
   color: var(--linkblue);
-
-  &:focus, &:hover, &:visited, &:link, &:active {
-    text-decoration: none;
-  }
+}
+a:focus, a:hover, a:visited, a:link, a:active {
+  text-decoration: none;
 }
 
 .breadcrumb-link a {
