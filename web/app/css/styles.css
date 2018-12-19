@@ -5,7 +5,6 @@
 :root {
   --linkblue: #2196f3;
   --font-stack: 'Roboto', 'Lato', helvetica, arial, sans-serif;
-  --base-width: 8px;
 }
 
 body {
@@ -25,15 +24,6 @@ a:focus, a:hover, a:visited, a:link, a:active {
 
 .breadcrumb-link a {
   color: white;
-}
-
-.version {
-  max-width: 250px;
-  padding: 24px;
-  font-size: 12px;
-}
-.version .new-version-text {
-  margin-bottom: 12px;
 }
 
 div.octopus-graph-container {
