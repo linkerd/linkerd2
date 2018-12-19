@@ -1,14 +1,11 @@
-import {
-  Collapse,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  MenuList,
-} from '@material-ui/core';
 import { metricsPropType, processMultiResourceRollup } from './util/MetricUtils.jsx';
-
+import Collapse from '@material-ui/core/Collapse';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
+import MenuItem from '@material-ui/core/MenuItem';
+import MenuList from '@material-ui/core/MenuList';
 import NavigationResource from './NavigationResource.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -17,7 +14,6 @@ import _ from 'lodash';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 import { withStyles } from '@material-ui/core/styles';
-
 
 const styles = () => ({
   navMenuItem: {

@@ -1,35 +1,32 @@
-import {
-  AppBar,
-  Collapse,
-  Divider,
-  Drawer,
-  IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  MenuList,
-  Toolbar,
-  Typography
-} from '@material-ui/core';
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
-
+import AppBar from '@material-ui/core/AppBar';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import Collapse from '@material-ui/core/Collapse';
+import Divider from '@material-ui/core/Divider';
+import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
 import HelpIcon from '@material-ui/icons/HelpOutline';
 import HomeIcon from '@material-ui/icons/Home';
 import Icon from '@material-ui/core/Icon';
+import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
 import MenuIcon from '@material-ui/icons/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
+import MenuList from '@material-ui/core/MenuList';
 import NavigationResources from './NavigationResources.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
+import Toolbar from '@material-ui/core/Toolbar';
+import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
