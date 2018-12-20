@@ -6,6 +6,7 @@ import (
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 )
 
+// ParseScheme converts a scheme string to protobuf
 // TODO: validate scheme
 func ParseScheme(scheme string) *httpPb.Scheme {
 	value, ok := httpPb.Scheme_Registered_value[strings.ToUpper(scheme)]
@@ -23,6 +24,7 @@ func ParseScheme(scheme string) *httpPb.Scheme {
 	}
 }
 
+// ParseMethod converts a method string to protobuf
 // TODO: validate method
 func ParseMethod(method string) *httpPb.HttpMethod {
 	value, ok := httpPb.HttpMethod_Registered_value[strings.ToUpper(method)]

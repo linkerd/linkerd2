@@ -37,6 +37,12 @@ To analyze the Go code without running tests, run:
 go vet ./...
 ```
 
+To lint the Go code using golint, run:
+
+```bash
+bin/lint
+```
+
 ## Javascript
 
 Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and

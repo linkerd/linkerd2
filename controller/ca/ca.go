@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// CA provides a certificate authority for TLS-enabled installs.
 // Issuing certificates concurrently is not supported.
 type CA struct {
 	// validity is the duration for which issued certificates are valid. This
@@ -104,7 +105,7 @@ func NewCA() (*CA, error) {
 	return &ca, nil
 }
 
-// TrustAnchorDER returns the PEM-encoded X.509 certificate of the trust anchor
+// TrustAnchorPEM returns the PEM-encoded X.509 certificate of the trust anchor
 // (root CA).
 func (ca *CA) TrustAnchorPEM() string {
 	return ca.rootPEM

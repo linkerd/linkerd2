@@ -445,6 +445,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:053024e8981dab276218a180e58f97034d06e8c4dd2e24c9365ad489104e1d90"
+  name = "golang.org/x/lint"
+  packages = [
+    ".",
+    "golint",
+  ]
+  pruneopts = ""
+  revision = "8f45f776aaf18cebc8d65861cc70c33c60471952"
+
+[[projects]]
+  branch = "master"
   digest = "1:e8c91565d4707bd93aa70e096884ce533acc5deb2bbb500bb064f49de70acda0"
   name = "golang.org/x/net"
   packages = [
@@ -525,6 +536,9 @@
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
+    "go/gcexportdata",
+    "go/internal/gcimporter",
+    "go/types/typeutil",
     "imports",
     "internal/fastwalk",
   ]
@@ -963,6 +977,7 @@
     "github.com/sergi/go-diff/diffmatchpatch",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
+    "golang.org/x/lint/golint",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
