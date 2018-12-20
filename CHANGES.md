@@ -1,3 +1,23 @@
+## edge-18.12.4
+
+Upgrade notes: The control plane components have been renamed as of the
+edge-18.12.1 release to reduce possible naming collisions. To upgrade an
+older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
+
+* CLI
+  * Add `--routes` flag to the `linkerd top` command, for grouping table rows
+    by route instead of by path
+  * Update Prometheus configuration to automatically load `*_rules.yml` files
+  * Remove TLS column from the `linkerd routes` command output
+* Web UI
+  * Restore unmeshed resources in the network graph on the resource detail page
+  * Reduce the overall size of the asset bundle for the web frontend
+* Proxy
+  * Improve configuration of the PeakEwma load balancer
+
+Special thanks to @radu-matei for cleaning up a whole slew of Go lint warnings,
+and to @jonrichards for improving the Rust build setup!
+
 ## edge-18.12.3
 
 Upgrade notes: The control plane components have been renamed as of the
