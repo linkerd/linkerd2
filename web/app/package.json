@@ -9,6 +9,7 @@
     "classnames": "2.2.6",
     "d3": "4.11.0",
     "lodash": "4.17.10",
+    "lodash-webpack-plugin": "^0.11.5",
     "moment": "2.22.2",
     "moment-locales-webpack-plugin": "^1.0.7",
     "path": "0.12.7",

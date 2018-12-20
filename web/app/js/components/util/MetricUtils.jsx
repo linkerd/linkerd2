@@ -1,6 +1,9 @@
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 import _ from 'lodash';
+// import _get from 'lodash/get';
+// import _isEmpty from 'lodash/isEmpty';
+// import _every from 'lodash/every';
 
 const getPodCategorization = pod => {
   if (pod.added && pod.status === "Running") {
