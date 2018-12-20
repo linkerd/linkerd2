@@ -43,7 +43,6 @@ module.exports = {
         use: [
           'style-loader',
           { loader: 'css-loader', options: { importLoaders: 1, minimize: true } },
-          'postcss-loader'
         ]
       },
       {
@@ -53,22 +52,6 @@ module.exports = {
             loader: 'file-loader',
             options: {
               name: 'img/[name].[ext]'
-            }
-          }
-        ]
-      },
-      {
-        test: /\.less$/,
-        use: [
-          'style-loader',
-          'css-loader',
-          {
-            loader: 'less-loader',
-            options: {
-              modifyVars: {
-                'font-family': '\'Roboto\', \'Lato\', helvetica, arial, sans-serif'
-              },
-              javascriptEnabled: true
             }
           }
         ]

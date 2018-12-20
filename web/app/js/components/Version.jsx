@@ -1,9 +1,23 @@
 import Button from '@material-ui/core/Button';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Typography from '@material-ui/core/Typography';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 
+const styles = theme => ({
+  version: {
+    maxWidth: "250px",
+    padding: 3 * theme.spacing.unit,
+  },
+  versionMsg: {
+    fontSize: "12px"
+  },
+  updateBtn: {
+    marginTop: theme.spacing.unit,
+  }
+});
 class Version extends React.Component {
   static defaultProps = {
     error: null,
@@ -12,6 +26,7 @@ class Version extends React.Component {
   }
 
   static propTypes = {
+    classes: PropTypes.shape({}).isRequired,
     error: apiErrorPropType,
     isLatest: PropTypes.bool.isRequired,
     latestVersion: PropTypes.string,
@@ -36,24 +51,25 @@ class Version extends React.Component {
   }
 
   renderVersionCheck = () => {
-    const {latestVersion, error, isLatest} = this.props;
+    const {classes, latestVersion, error, isLatest} = this.props;
 
     if (!latestVersion) {
       return (
-        <div>
+        <Typography className={classes.versionMsg}>
           Version check failed{error ? `: ${error.statusText}` : ''}.
-        </div>
+        </Typography>
       );
     }
 
     if (isLatest) {
-      return "Linkerd is up to date.";
+      return <Typography className={classes.versionMsg}>Linkerd is up to date.</Typography>;
     }
 
     return (
       <div>
-        <div className="new-version-text">A new version ({this.numericVersion(latestVersion)}) is available.</div>
+        <Typography className={classes.versionMsg}>A new version ({this.numericVersion(latestVersion)}) is available.</Typography>
         <Button
+          className={classes.updateBtn}
           variant="contained"
           color="primary"
           target="_blank"
@@ -65,21 +81,22 @@ class Version extends React.Component {
   }
 
   render() {
-    let channel = this.versionChannel(this.props.releaseVersion);
-    let message = `Running ${this.props.productName || "controller"}`;
-    message += ` ${this.numericVersion(this.props.releaseVersion)}`;
+    const { classes, releaseVersion, productName } = this.props;
+    let channel = this.versionChannel(releaseVersion);
+    let message = `Running ${productName || "controller"}`;
+    message += ` ${this.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
     }
     message += ".";
 
     return (
-      <div className="version">
-        {message}<br />
+      <div className={classes.version}>
+        <Typography className={classes.versionMsg}>{message}</Typography>
         {this.renderVersionCheck()}
       </div>
     );
   }
 }
 
-export default withContext(Version);
+export default withStyles(styles, { withTheme: true })(withContext(Version));

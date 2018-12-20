@@ -5,7 +5,6 @@
 :root {
   --linkblue: #2196f3;
   --font-stack: 'Roboto', 'Lato', helvetica, arial, sans-serif;
-  --base-width: 8px;
 }
 
 body {
@@ -18,40 +17,11 @@ body {
 a {
   text-decoration: none;
   color: var(--linkblue);
-
-  &:focus, &:hover, &:visited, &:link, &:active {
-    text-decoration: none;
-  }
+}
+a:focus, a:hover, a:visited, a:link, a:active {
+  text-decoration: none;
 }
 
 .breadcrumb-link a {
   color: white;
-}
-
-.version {
-  max-width: 250px;
-  padding: 24px;
-  font-size: 12px;
-}
-.version .new-version-text {
-  margin-bottom: 12px;
-}
-
-div.octopus-graph-container {
-  overflow-x: scroll;
-  padding: 16px 0;
-}
-
-div.octopus-graph {
-  max-width: 974px;
-  min-width: 974px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.octopus-body-node.neighbor {
-  width: 220px;
-}
-.octopus-body-node.main {
-  width: 244px;
 }
