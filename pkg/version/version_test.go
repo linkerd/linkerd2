@@ -26,7 +26,7 @@ func TestCheckClientVersion(t *testing.T) {
 
 func TestCheckServerVersion(t *testing.T) {
 	t.Run("Passes when server version matches", func(t *testing.T) {
-		apiClient := createMockPublicApi(version.Version)
+		apiClient := createMockPublicAPI(version.Version)
 		err := version.CheckServerVersion(apiClient, version.Version)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
@@ -34,7 +34,7 @@ func TestCheckServerVersion(t *testing.T) {
 	})
 
 	t.Run("Fails when server version does not match", func(t *testing.T) {
-		apiClient := createMockPublicApi(version.Version + "latest")
+		apiClient := createMockPublicAPI(version.Version + "latest")
 		err := version.CheckServerVersion(apiClient, version.Version)
 		if err == nil {
 			t.Fatalf("Expected error, got none")
@@ -42,8 +42,8 @@ func TestCheckServerVersion(t *testing.T) {
 	})
 }
 
-func createMockPublicApi(version string) *public.MockApiClient {
-	return &public.MockApiClient{
+func createMockPublicAPI(version string) *public.MockAPIClient {
+	return &public.MockAPIClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			ReleaseVersion: version,
 		},

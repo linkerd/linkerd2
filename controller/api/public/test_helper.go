@@ -18,57 +18,57 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MockApiClient struct {
-	ErrorToReturn                   error
-	VersionInfoToReturn             *pb.VersionInfo
-	ListPodsResponseToReturn        *pb.ListPodsResponse
-	ListServicesResponseToReturn    *pb.ListServicesResponse
-	StatSummaryResponseToReturn     *pb.StatSummaryResponse
-	TopRoutesResponseToReturn       *pb.TopRoutesResponse
-	SelfCheckResponseToReturn       *healthcheckPb.SelfCheckResponse
-	Api_TapClientToReturn           pb.Api_TapClient
-	Api_TapByResourceClientToReturn pb.Api_TapByResourceClient
+type MockAPIClient struct {
+	ErrorToReturn                  error
+	VersionInfoToReturn            *pb.VersionInfo
+	ListPodsResponseToReturn       *pb.ListPodsResponse
+	ListServicesResponseToReturn   *pb.ListServicesResponse
+	StatSummaryResponseToReturn    *pb.StatSummaryResponse
+	TopRoutesResponseToReturn      *pb.TopRoutesResponse
+	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
+	APITapClientToReturn           pb.Api_TapClient
+	APITapByResourceClientToReturn pb.Api_TapByResourceClient
 }
 
-func (c *MockApiClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
+func (c *MockAPIClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
+func (c *MockAPIClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
 	return c.TopRoutesResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
+func (c *MockAPIClient) Version(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (*pb.VersionInfo, error) {
 	return c.VersionInfoToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
+func (c *MockAPIClient) ListPods(ctx context.Context, in *pb.ListPodsRequest, opts ...grpc.CallOption) (*pb.ListPodsResponse, error) {
 	return c.ListPodsResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) ListServices(ctx context.Context, in *pb.ListServicesRequest, opts ...grpc.CallOption) (*pb.ListServicesResponse, error) {
+func (c *MockAPIClient) ListServices(ctx context.Context, in *pb.ListServicesRequest, opts ...grpc.CallOption) (*pb.ListServicesResponse, error) {
 	return c.ListServicesResponseToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return c.Api_TapClientToReturn, c.ErrorToReturn
+func (c *MockAPIClient) Tap(ctx context.Context, in *pb.TapRequest, opts ...grpc.CallOption) (pb.Api_TapClient, error) {
+	return c.APITapClientToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	return c.Api_TapByResourceClientToReturn, c.ErrorToReturn
+func (c *MockAPIClient) TapByResource(ctx context.Context, in *pb.TapByResourceRequest, opts ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
+	return c.APITapByResourceClientToReturn, c.ErrorToReturn
 }
 
-func (c *MockApiClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
+func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 
-type MockApi_TapClient struct {
+type MockAPITapClient struct {
 	TapEventsToReturn []pb.TapEvent
 	ErrorsToReturn    []error
 	grpc.ClientStream
 }
 
-func (a *MockApi_TapClient) Recv() (*pb.TapEvent, error) {
+func (a *MockAPITapClient) Recv() (*pb.TapEvent, error) {
 	var eventPopped pb.TapEvent
 	var errorPopped error
 	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
@@ -84,13 +84,13 @@ func (a *MockApi_TapClient) Recv() (*pb.TapEvent, error) {
 	return &eventPopped, errorPopped
 }
 
-type MockApi_TapByResourceClient struct {
+type MockAPITapByResourceClient struct {
 	TapEventsToReturn []pb.TapEvent
 	ErrorsToReturn    []error
 	grpc.ClientStream
 }
 
-func (a *MockApi_TapByResourceClient) Recv() (*pb.TapEvent, error) {
+func (a *MockAPITapByResourceClient) Recv() (*pb.TapEvent, error) {
 	var eventPopped pb.TapEvent
 	var errorPopped error
 	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
@@ -222,14 +222,14 @@ func GenTopRoutesResponse(routes []string, counts []uint64) pb.TopRoutesResponse
 	return resp
 }
 
-type expectedStatRpc struct {
+type expectedStatRPC struct {
 	err                       error
 	k8sConfigs                []string    // k8s objects to seed the API
 	mockPromResponse          model.Value // mock out a prometheus query response
 	expectedPrometheusQueries []string    // queries we expect public-api to issue to prometheus
 }
 
-func newMockGrpcServer(exp expectedStatRpc) (*MockProm, *grpcServer, error) {
+func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	k8sAPI, err := k8s.NewFakeAPI("", exp.k8sConfigs...)
 	if err != nil {
 		return nil, nil, err
@@ -249,7 +249,7 @@ func newMockGrpcServer(exp expectedStatRpc) (*MockProm, *grpcServer, error) {
 	return mockProm, fakeGrpcServer, nil
 }
 
-func (exp expectedStatRpc) verifyPromQueries(mockProm *MockProm) error {
+func (exp expectedStatRPC) verifyPromQueries(mockProm *MockProm) error {
 	// if exp.expectedPrometheusQueries is an empty slice we still wanna check no queries were executed.
 	if exp.expectedPrometheusQueries != nil {
 		sort.Strings(exp.expectedPrometheusQueries)

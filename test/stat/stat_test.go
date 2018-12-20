@@ -231,10 +231,10 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 	}
 
 	// this should be 100.00% when control plane is TLSed by default
-	expectedTlsRate := "0%"
-	if stat.tlsPercent != expectedTlsRate {
+	expectedTLSRate := "0%"
+	if stat.tlsPercent != expectedTLSRate {
 		return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
-			expectedTlsRate, name, stat.tlsPercent)
+			expectedTLSRate, name, stat.tlsPercent)
 	}
 
 	return nil

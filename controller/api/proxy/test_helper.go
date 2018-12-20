@@ -42,7 +42,7 @@ func (c *collectUpdateListener) NoEndpoints(exists bool) {
 	c.noEndpointsExists = exists
 }
 
-func (c *collectUpdateListener) SetServiceId(id *serviceId) {}
+func (c *collectUpdateListener) SetServiceID(id *serviceID) {}
 
 func newCollectUpdateListener() (*collectUpdateListener, context.CancelFunc) {
 	ctx, cancelFn := context.WithCancel(context.Background())

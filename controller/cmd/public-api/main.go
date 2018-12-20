@@ -20,7 +20,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
+	prometheusURL := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -56,7 +56,7 @@ func main() {
 		k8s.Svc,
 	)
 
-	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
+	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
 	if err != nil {
 		log.Fatal(err.Error())
 	}

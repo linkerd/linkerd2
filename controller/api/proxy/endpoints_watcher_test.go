@@ -13,7 +13,7 @@ func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
 		k8sConfigs                       []string
-		service                          *serviceId
+		service                          *serviceID
 		port                             uint32
 		expectedAddresses                []string
 		expectedNoEndpoints              bool
@@ -84,7 +84,7 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			service: &serviceId{namespace: "ns", name: "name1"},
+			service: &serviceID{namespace: "ns", name: "name1"},
 			port:    uint32(8989),
 			expectedAddresses: []string{
 				"172.17.0.12:8989",
@@ -148,7 +148,7 @@ status:
   podIp: 10.233.88.244
   phase: Running`,
 			},
-			service: &serviceId{namespace: "ns", name: "name1"},
+			service: &serviceID{namespace: "ns", name: "name1"},
 			port:    uint32(8989),
 			expectedAddresses: []string{
 				"10.233.66.239:8990",
@@ -199,7 +199,7 @@ status:
   podIp: 10.1.30.135
   phase: Running`,
 			},
-			service: &serviceId{namespace: "ns", name: "world"},
+			service: &serviceID{namespace: "ns", name: "world"},
 			port:    uint32(7778),
 			expectedAddresses: []string{
 				"10.1.30.135:7779",
@@ -254,7 +254,7 @@ status:
   phase: Running
   podIP: 172.17.0.25`,
 			},
-			service: &serviceId{namespace: "ns", name: "name1"},
+			service: &serviceID{namespace: "ns", name: "name1"},
 			port:    uint32(8989),
 			expectedAddresses: []string{
 				"172.17.0.25:8989",
@@ -275,7 +275,7 @@ spec:
   ports:
   - port: 7979`,
 			},
-			service:                          &serviceId{namespace: "ns", name: "name2"},
+			service:                          &serviceID{namespace: "ns", name: "name2"},
 			port:                             uint32(7979),
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
@@ -293,7 +293,7 @@ spec:
   type: ExternalName
   externalName: foo`,
 			},
-			service:                          &serviceId{namespace: "ns", name: "name3"},
+			service:                          &serviceID{namespace: "ns", name: "name3"},
 			port:                             uint32(6969),
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
@@ -302,7 +302,7 @@ spec:
 		{
 			serviceType:                      "services that do not yet exist",
 			k8sConfigs:                       []string{},
-			service:                          &serviceId{namespace: "ns", name: "name4"},
+			service:                          &serviceID{namespace: "ns", name: "name4"},
 			port:                             uint32(5959),
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,

@@ -16,7 +16,7 @@ type endpointUpdateListener interface {
 	ClientClose() <-chan struct{}
 	ServerClose() <-chan struct{}
 	NoEndpoints(exists bool)
-	SetServiceId(id *serviceId)
+	SetServiceID(id *serviceID)
 	Stop()
 }
 
@@ -102,7 +102,7 @@ func (l *endpointListener) Stop() {
 	close(l.stopCh)
 }
 
-func (l *endpointListener) SetServiceId(id *serviceId) {
+func (l *endpointListener) SetServiceID(id *serviceID) {
 	if id != nil {
 		l.labels = map[string]string{
 			"namespace": id.namespace,

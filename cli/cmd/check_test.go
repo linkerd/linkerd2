@@ -13,7 +13,7 @@ func TestCheckStatus(t *testing.T) {
 	t.Run("Prints expected output", func(t *testing.T) {
 		hc := healthcheck.NewHealthChecker(
 			[]healthcheck.Checks{},
-			&healthcheck.HealthCheckOptions{},
+			&healthcheck.Options{},
 		)
 		hc.Add("category", "check1", func() error {
 			return nil

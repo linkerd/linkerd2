@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const DefaultVersionString = "unavailable"
+const defaultVersionString = "unavailable"
 
 type versionOptions struct {
 	shortVersion      bool
@@ -67,7 +67,7 @@ func newCmdVersion() *cobra.Command {
 func getServerVersion(client pb.ApiClient) string {
 	resp, err := client.Version(context.Background(), &pb.Empty{})
 	if err != nil {
-		return DefaultVersionString
+		return defaultVersionString
 	}
 
 	return resp.GetReleaseVersion()

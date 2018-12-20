@@ -45,7 +45,7 @@ func TestHealthChecker(t *testing.T) {
 		retryDeadline: time.Time{},
 	}
 
-	passingRPCClient := public.MockApiClient{
+	passingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
 				&healthcheckPb.CheckResult{
@@ -67,7 +67,7 @@ func TestHealthChecker(t *testing.T) {
 		retryDeadline: time.Time{},
 	}
 
-	failingRPCClient := public.MockApiClient{
+	failingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
 				&healthcheckPb.CheckResult{

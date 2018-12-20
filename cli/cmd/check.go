@@ -87,7 +87,7 @@ func configureAndRunChecks(options *checkOptions) {
 
 	checks = append(checks, healthcheck.LinkerdVersionChecks)
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace:          controlPlaneNamespace,
 		DataPlaneNamespace:             options.namespace,
 		KubeConfig:                     kubeconfigPath,

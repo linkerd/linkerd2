@@ -65,7 +65,7 @@ func defaultOwnerKindAndName(pod *v1.Pod) (string, string) {
 
 func TestEndpointListener(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 
 		listener := &endpointListener{
 			stream:           mockGetServer,
@@ -82,7 +82,7 @@ func TestEndpointListener(t *testing.T) {
 	})
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 
 		listener := &endpointListener{
 			stream:           mockGetServer,
@@ -117,9 +117,9 @@ func TestEndpointListener(t *testing.T) {
 
 	t.Run("It returns when the underlying context is done", func(t *testing.T) {
 		context, cancelFn := context.WithCancel(context.Background())
-		mockGetServer := &mockDestination_GetServer{
+		mockGetServer := &mockDestinationGetServer{
 			updatesReceived: []*pb.Update{},
-			mockDestination_Server: mockDestination_Server{
+			mockDestinationServer: mockDestinationServer{
 				contextToReturn: context,
 			},
 		}
@@ -163,7 +163,7 @@ func TestEndpointListener(t *testing.T) {
 			return "replicationcontroller", expectedReplicationControllerName
 		}
 
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
 			ownerKindAndName: ownerKindAndName,
 			labels: map[string]string{
@@ -186,7 +186,7 @@ func TestEndpointListener(t *testing.T) {
 
 		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
 		expectedAddedAddress1MetricLabels := map[string]string{
-			"pod": expectedPodName,
+			"pod":                   expectedPodName,
 			"replicationcontroller": expectedReplicationControllerName,
 		}
 		if !reflect.DeepEqual(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels) {
@@ -199,7 +199,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedPodNamespace := "this-namespace"
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
-		expectedTlsIdentity := &pb.TlsIdentity_K8SPodIdentity{
+		expectedTLSIdentity := &pb.TlsIdentity_K8SPodIdentity{
 			PodIdentity:  "pod-deployment.deployment.this-namespace.linkerd-managed.linkerd-namespace.svc.cluster.local",
 			ControllerNs: "linkerd-namespace",
 		}
@@ -222,7 +222,7 @@ func TestEndpointListener(t *testing.T) {
 			return "deployment", expectedPodDeployment
 		}
 
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
 			ownerKindAndName: ownerKindAndName,
 			stream:           mockGetServer,
@@ -239,9 +239,9 @@ func TestEndpointListener(t *testing.T) {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
 
-		actualTlsIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
-		if !reflect.DeepEqual(actualTlsIdentity, expectedTlsIdentity) {
-			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTlsIdentity, actualTlsIdentity)
+		actualTLSIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
+		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
+			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
 		}
 	})
 
@@ -269,7 +269,7 @@ func TestEndpointListener(t *testing.T) {
 			return "deployment", expectedPodDeployment
 		}
 
-		mockGetServer := &mockDestination_GetServer{updatesReceived: []*pb.Update{}}
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 		listener := &endpointListener{
 			ownerKindAndName: ownerKindAndName,
 			stream:           mockGetServer,

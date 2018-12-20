@@ -16,7 +16,7 @@ import (
 )
 
 func TestHandleIndex(t *testing.T) {
-	mockApiClient := &public.MockApiClient{
+	mockAPIClient := &public.MockAPIClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			GoVersion:      "the best one",
 			BuildDate:      "never",
@@ -28,7 +28,7 @@ func TestHandleIndex(t *testing.T) {
 
 	handler := &handler{
 		render:    server.RenderTemplate,
-		apiClient: mockApiClient,
+		apiClient: mockAPIClient,
 	}
 
 	recorder := httptest.NewRecorder()
@@ -65,7 +65,7 @@ func TestHandleIndex(t *testing.T) {
 }
 
 func TestHandleConfigDownload(t *testing.T) {
-	mockApiClient := &public.MockApiClient{
+	mockAPIClient := &public.MockAPIClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			GoVersion:      "the best one",
 			BuildDate:      "never",
@@ -76,7 +76,7 @@ func TestHandleConfigDownload(t *testing.T) {
 
 	handler := &handler{
 		render:              server.RenderTemplate,
-		apiClient:           mockApiClient,
+		apiClient:           mockAPIClient,
 		controllerNamespace: "linkerd",
 	}
 

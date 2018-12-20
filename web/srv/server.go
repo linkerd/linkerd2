@@ -105,15 +105,15 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 		filesonly.FileSystem(server.staticDir))
 
 	// webapp api routes
-	server.router.GET("/api/version", handler.handleApiVersion)
+	server.router.GET("/api/version", handler.handleAPIVersion)
 	// Traffic Performance Summary.  This route used to be called /api/stat
 	// but was renamed to avoid triggering ad blockers.
 	// See: https://github.com/linkerd/linkerd2/issues/970
-	server.router.GET("/api/tps-reports", handler.handleApiStat)
-	server.router.GET("/api/pods", handler.handleApiPods)
-	server.router.GET("/api/services", handler.handleApiServices)
-	server.router.GET("/api/tap", handler.handleApiTap)
-	server.router.GET("/api/routes", handler.handleApiTopRoutes)
+	server.router.GET("/api/tps-reports", handler.handleAPIStat)
+	server.router.GET("/api/pods", handler.handleAPIPods)
+	server.router.GET("/api/services", handler.handleAPIServices)
+	server.router.GET("/api/tap", handler.handleAPITap)
+	server.router.GET("/api/routes", handler.handleAPITopRoutes)
 
 	return httpServer
 }
@@ -131,9 +131,9 @@ func (s *Server) RenderTemplate(w http.ResponseWriter, templateFile, templateNam
 	w.Header().Set("Content-Type", "text/html")
 	if templateName == "" {
 		return template.Execute(w, args)
-	} else {
-		return template.ExecuteTemplate(w, templateName, templatePayload{Context: s.templateContext, Contents: args})
 	}
+
+	return template.ExecuteTemplate(w, templateName, templatePayload{Context: s.templateContext, Contents: args})
 }
 
 func (s *Server) loadTemplate(templateFile string) (template *template.Template, err error) {

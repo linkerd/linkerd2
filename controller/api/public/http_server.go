@@ -17,13 +17,13 @@ import (
 )
 
 var (
-	statSummaryPath   = fullUrlPathFor("StatSummary")
-	topRoutesPath     = fullUrlPathFor("TopRoutes")
-	versionPath       = fullUrlPathFor("Version")
-	listPodsPath      = fullUrlPathFor("ListPods")
-	listServicesPath  = fullUrlPathFor("ListServices")
-	tapByResourcePath = fullUrlPathFor("TapByResource")
-	selfCheckPath     = fullUrlPathFor("SelfCheck")
+	statSummaryPath   = fullURLPathFor("StatSummary")
+	topRoutesPath     = fullURLPathFor("TopRoutes")
+	versionPath       = fullURLPathFor("Version")
+	listPodsPath      = fullURLPathFor("ListPods")
+	listServicesPath  = fullURLPathFor("ListServices")
+	tapByResourcePath = fullURLPathFor("TapByResource")
+	selfCheckPath     = fullURLPathFor("SelfCheck")
 )
 
 type handler struct {
@@ -36,7 +36,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}).Debugf("Serving %s %s", req.Method, req.URL.Path)
 	// Validate request method
 	if req.Method != http.MethodPost {
-		writeErrorToHttpResponse(w, fmt.Errorf("POST required"))
+		writeErrorToHTTPResponse(w, fmt.Errorf("POST required"))
 		return
 	}
 
@@ -67,18 +67,18 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.StatSummary(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -88,18 +88,18 @@ func (h *handler) handleTopRoutes(w http.ResponseWriter, req *http.Request) {
 
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.TopRoutes(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -108,19 +108,19 @@ func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.Empty
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.Version(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -129,19 +129,19 @@ func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
 	var protoRequest healthcheckPb.SelfCheckRequest
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.SelfCheck(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -150,19 +150,19 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.ListPodsRequest
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.ListPods(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -172,19 +172,19 @@ func (h *handler) handleListServices(w http.ResponseWriter, req *http.Request) {
 
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.ListServices(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHttpResponse(w, rsp)
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -192,21 +192,21 @@ func (h *handler) handleListServices(w http.ResponseWriter, req *http.Request) {
 func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
 	flushableWriter, err := newStreamingWriter(w)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	var protoRequest pb.TapByResourceRequest
 	err = httpRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 
 	server := tapServer{w: flushableWriter, req: req}
 	err = h.grpcServer.TapByResource(&protoRequest, server)
 	if err != nil {
-		writeErrorToHttpResponse(w, err)
+		writeErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -217,9 +217,9 @@ type tapServer struct {
 }
 
 func (s tapServer) Send(msg *pb.TapEvent) error {
-	err := writeProtoToHttpResponse(s.w, msg)
+	err := writeProtoToHTTPResponse(s.w, msg)
 	if err != nil {
-		writeErrorToHttpResponse(s.w, err)
+		writeErrorToHTTPResponse(s.w, err)
 		return err
 	}
 
@@ -235,7 +235,7 @@ func (s tapServer) Context() context.Context     { return s.req.Context() }
 func (s tapServer) SendMsg(interface{}) error    { return nil }
 func (s tapServer) RecvMsg(interface{}) error    { return nil }
 
-func fullUrlPathFor(method string) string {
+func fullURLPathFor(method string) string {
 	return apiRoot + apiPrefix + method
 }
 

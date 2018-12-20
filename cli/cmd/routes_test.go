@@ -36,7 +36,7 @@ func TestRoutes(t *testing.T) {
 }
 
 func testRoutesCall(exp routesParamsExp, t *testing.T) {
-	mockClient := &public.MockApiClient{}
+	mockClient := &public.MockAPIClient{}
 
 	response := public.GenTopRoutesResponse(exp.routes, exp.counts)
 

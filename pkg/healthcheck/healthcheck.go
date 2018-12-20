@@ -110,7 +110,7 @@ type CheckResult struct {
 
 type checkObserver func(*CheckResult)
 
-type HealthCheckOptions struct {
+type Options struct {
 	ControlPlaneNamespace          string
 	DataPlaneNamespace             string
 	KubeConfig                     string
@@ -126,7 +126,7 @@ type HealthCheckOptions struct {
 
 type HealthChecker struct {
 	checkers []*checker
-	*HealthCheckOptions
+	*Options
 
 	// these fields are set in the process of running checks
 	kubeAPI          *k8s.KubernetesAPI
@@ -139,10 +139,10 @@ type HealthChecker struct {
 	latestVersion    string
 }
 
-func NewHealthChecker(checks []Checks, options *HealthCheckOptions) *HealthChecker {
+func NewHealthChecker(checks []Checks, options *Options) *HealthChecker {
 	hc := &HealthChecker{
-		checkers:           make([]*checker, 0),
-		HealthCheckOptions: options,
+		checkers: make([]*checker, 0),
+		Options:  options,
 	}
 
 	for _, check := range checks {

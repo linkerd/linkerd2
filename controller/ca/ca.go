@@ -152,7 +152,7 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 	const SignatureAlgorithm = x509.ECDSAWithSHA256
 
 	serialNumber := big.NewInt(int64(ca.nextSerialNumber))
-	ca.nextSerialNumber += 1
+	ca.nextSerialNumber++
 
 	notBefore := time.Now()
 

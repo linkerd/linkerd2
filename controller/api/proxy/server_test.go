@@ -10,37 +10,37 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type mockDestination_Server struct {
+type mockDestinationServer struct {
 	errorToReturn   error
 	contextToReturn context.Context
 }
 
-type mockDestination_GetServer struct {
-	mockDestination_Server
+type mockDestinationGetServer struct {
+	mockDestinationServer
 	updatesReceived []*pb.Update
 }
 
-type mockDestination_GetProfileServer struct {
-	mockDestination_Server
+type mockDestinationGetProfileServer struct {
+	mockDestinationServer
 	profilesReceived []*pb.DestinationProfile
 }
 
-func (m *mockDestination_GetServer) Send(update *pb.Update) error {
+func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 	m.updatesReceived = append(m.updatesReceived, update)
 	return m.errorToReturn
 }
 
-func (m *mockDestination_GetProfileServer) Send(profile *pb.DestinationProfile) error {
+func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
 	m.profilesReceived = append(m.profilesReceived, profile)
 	return m.errorToReturn
 }
 
-func (m *mockDestination_Server) SetHeader(metadata.MD) error  { return m.errorToReturn }
-func (m *mockDestination_Server) SendHeader(metadata.MD) error { return m.errorToReturn }
-func (m *mockDestination_Server) SetTrailer(metadata.MD)       {}
-func (m *mockDestination_Server) Context() context.Context     { return m.contextToReturn }
-func (m *mockDestination_Server) SendMsg(x interface{}) error  { return m.errorToReturn }
-func (m *mockDestination_Server) RecvMsg(x interface{}) error  { return m.errorToReturn }
+func (m *mockDestinationServer) SetHeader(metadata.MD) error  { return m.errorToReturn }
+func (m *mockDestinationServer) SendHeader(metadata.MD) error { return m.errorToReturn }
+func (m *mockDestinationServer) SetTrailer(metadata.MD)       {}
+func (m *mockDestinationServer) Context() context.Context     { return m.contextToReturn }
+func (m *mockDestinationServer) SendMsg(x interface{}) error  { return m.errorToReturn }
+func (m *mockDestinationServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestBuildResolver(t *testing.T) {
 	k8sAPI, err := k8s.NewFakeAPI("")
@@ -87,7 +87,7 @@ func (m *mockStreamingDestinationResolver) streamProfiles(host string, listener 
 func (m *mockStreamingDestinationResolver) stop() {}
 
 func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
-	stream := &mockDestination_GetServer{}
+	stream := &mockDestinationGetServer{}
 	host := "something"
 	port := 666
 	k8sAPI, err := k8s.NewFakeAPI("")

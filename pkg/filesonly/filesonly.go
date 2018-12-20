@@ -12,7 +12,7 @@ import (
 	"os"
 )
 
-func FileSystem(dir string) fileSystem {
+func FileSystem(dir string) http.FileSystem {
 	return fileSystem{http.Dir(dir)}
 }
 

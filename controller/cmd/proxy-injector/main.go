@@ -101,7 +101,7 @@ func waitForMounts(timeout time.Duration, paths ...string) error {
 				return
 			}
 
-			ready += 1
+			ready++
 			log.Infof("mount ready: %s", file)
 			if ready == len(paths) {
 				break

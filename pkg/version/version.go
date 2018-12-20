@@ -13,8 +13,9 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
+// Version is updated automatically as part of the build process
+//
 // DO NOT EDIT
-// This var is updated automatically as part of the build process
 var Version = undefinedVersion
 
 const (
@@ -126,8 +127,8 @@ func versionMismatchError(expectedVersion, actualVersion string) error {
 	if channel != "" {
 		return fmt.Errorf("is running version %s but the latest %s version is %s",
 			actualVersionStr, channel, expectedVersionStr)
-	} else {
-		return fmt.Errorf("is running version %s but the latest version is %s",
-			actualVersionStr, expectedVersionStr)
 	}
+
+	return fmt.Errorf("is running version %s but the latest version is %s",
+		actualVersionStr, expectedVersionStr)
 }
