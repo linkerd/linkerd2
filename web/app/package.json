@@ -40,6 +40,7 @@
     "eslint-plugin-jsx-a11y": "6.0.3",
     "eslint-plugin-promise": "3.6.0",
     "eslint-plugin-react": "7.11.1",
+    "eslint-plugin-you-dont-need-lodash-underscore": "^6.4.0",
     "file-loader": "2.0.0",
     "history": "4.7.2",
     "jest": "23.6.0",

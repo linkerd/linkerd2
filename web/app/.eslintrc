@@ -19,7 +19,8 @@
     "airbnb",
     "eslint:recommended",
     "plugin:promise/recommended",
-    "plugin:react/recommended"
+    "plugin:react/recommended",
+    "plugin:you-dont-need-lodash-underscore/compatible"
   ],
   "rules": {
     "arrow-parens": [2, "as-needed"],
