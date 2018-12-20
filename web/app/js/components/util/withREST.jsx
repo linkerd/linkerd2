@@ -3,6 +3,7 @@ import React from 'react';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
+import _merge from 'lodash/merge';
 import { withContext } from './AppContext.jsx';
 
 /**
