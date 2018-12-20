@@ -47,16 +47,15 @@ func TestCertificateController(t *testing.T) {
 			t.Fatal("timed out waiting for sync")
 		}
 
-		actions := controller.k8sAPI.Client.(*fake.Clientset).Actions()
-		action := actions[len(actions)-2] // configmap create
-
-		if !action.Matches("create", "configmaps") {
-			t.Fatalf("expected action to be configmap create, got: %+v", action)
+		var found bool
+		for _, a := range controller.k8sAPI.Client.(*fake.Clientset).Actions() {
+			if a.Matches("create", "configmaps") && a.GetNamespace() == injectedNS {
+				found = true
+			}
 		}
 
-		if action.GetNamespace() != injectedNS {
-			t.Fatalf("expected action to happen in [%s] namespace, got [%s] namespace",
-				injectedNS, action.GetNamespace())
+		if !found {
+			t.Fatalf("configmap create event not found in [%s] namespace", injectedNS)
 		}
 	})
 }
