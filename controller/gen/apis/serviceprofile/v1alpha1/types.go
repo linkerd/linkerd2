@@ -62,7 +62,7 @@ type Range struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MyResourceList is a list of MyResource resources
+// ServiceProfileList is a list of ServiceProfile resources
 type ServiceProfileList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

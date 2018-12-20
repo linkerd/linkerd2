@@ -48,8 +48,8 @@ var (
 	}
 )
 
-// Parameters that are used to build requests for metrics data.  This includes
-// requests to StatSummary and TopRoutes
+// StatsBaseRequestParams contains parameters that are used to build requests
+// for metrics data.  This includes requests to StatSummary and TopRoutes
 type StatsBaseRequestParams struct {
 	TimeWindow    string
 	Namespace     string

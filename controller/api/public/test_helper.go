@@ -122,7 +122,6 @@ type PodCounts struct {
 	FailedPods  uint64
 }
 
-// satisfies v1.API
 func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
