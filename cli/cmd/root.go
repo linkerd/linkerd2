@@ -233,7 +233,6 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
-	proxyBindTimeout        string
 	proxyAPIPort            uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
@@ -251,25 +250,24 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyBindTimeout:        "10s",
-		proxyAPIPort:            8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyOutboundCapacity:   map[string]uint{},
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		tls:                     "",
+		linkerdVersion:        version.Version,
+		proxyImage:            defaultDockerRegistry + "/proxy",
+		initImage:             defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:        defaultDockerRegistry,
+		imagePullPolicy:       "IfNotPresent",
+		inboundPort:           4143,
+		outboundPort:          4140,
+		ignoreInboundPorts:    nil,
+		ignoreOutboundPorts:   nil,
+		proxyUID:              2102,
+		proxyLogLevel:         "warn,linkerd2_proxy=info",
+		proxyAPIPort:          8086,
+		proxyControlPort:      4190,
+		proxyMetricsPort:      4191,
+		proxyOutboundCapacity: map[string]uint{},
+		proxyCPURequest:       "",
+		proxyMemoryRequest:    "",
+		tls:                   "",
 		disableExternalProfiles: false,
 	}
 }
@@ -285,10 +283,6 @@ func (options *proxyConfigOptions) validate() error {
 
 	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
-	}
-
-	if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
-		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 	}
 
 	if options.proxyCPURequest != "" {
@@ -332,7 +326,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().StringVar(&options.proxyBindTimeout, "proxy-bind-timeout", options.proxyBindTimeout, "Timeout the proxy will use")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")
