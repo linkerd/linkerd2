@@ -2,12 +2,15 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _map from 'lodash/map';
+import _merge from 'lodash/merge';
+import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
 import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = theme => _.merge({}, statusClassNames(theme), {
+const styles = theme => _merge({}, statusClassNames(theme), {
   statusTableDot: {
     width: 2 * theme.spacing.unit,
     height: 2 * theme.spacing.unit,
@@ -46,7 +49,7 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
     title={(
       <div>
         <div>{status.name}</div>
-        <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
+        <div>{_get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
         <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
       </div>
     )}>
@@ -86,9 +89,9 @@ const columns = {
       title: name,
       key: "status",
       render: d => {
-        let multilineDots = _.size(d.pods) > columnConfig[name].wrapDotsAt;
+        let multilineDots = d.pods.length > columnConfig[name].wrapDotsAt;
 
-        return _.map(d.pods, (status, i) => {
+        return _map(d.pods, (status, i) => {
           return (
             <StatusDot
               status={status}
@@ -115,12 +118,12 @@ class StatusTable extends React.Component {
   }
 
   getTableData() {
-    let tableData = _.map(this.props.data, datum => {
-      return _.merge(datum, {
-        numEntities: _.size(datum.pods)
+    let tableData = _map(this.props.data, datum => {
+      return _merge(datum, {
+        numEntities: datum.pods.length
       });
     });
-    return _.sortBy(tableData, 'name');
+    return _orderBy(tableData, d => d.name);
   }
 
   render() {
