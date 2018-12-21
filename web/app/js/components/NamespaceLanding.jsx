@@ -12,7 +12,11 @@ import React from 'react';
 import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _find from 'lodash/find';
+import _get from 'lodash/get';
+import _has from 'lodash/has';
+import _isEmpty from 'lodash/isEmpty';
+import _isNil from 'lodash/isNil';
 import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
@@ -74,8 +78,8 @@ class NamespaceLanding extends React.Component {
     let apiRequests = [
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ];
-    if (!_.isEmpty(this.state.selectedNs)) {
-      apiRequests = _.concat(apiRequests, [this.api.fetchMetrics(this.api.urlsForResource("all", this.state.selectedNs))]);
+    if (!_isEmpty(this.state.selectedNs)) {
+      apiRequests = apiRequests.concat([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.selectedNs))]);
     }
     this.api.setCurrentRequests(apiRequests);
 
@@ -83,14 +87,14 @@ class NamespaceLanding extends React.Component {
       .then(([allNs, metricsForNs]) => {
         let namespaces = processSingleResourceRollup(allNs);
         let metricsByNs = this.state.metricsByNs;
-        if (!_.isNil(this.state.selectedNs) && !_.isNil(metricsForNs)) {
+        if (!_isNil(this.state.selectedNs) && !_isNil(metricsForNs)) {
           metricsByNs[this.state.selectedNs] = processMultiResourceRollup(metricsForNs);
         }
 
         // by default, show the first non-linkerd meshed namesapce
         // if no other meshed namespaces are found, show the linkerd namespace
-        let defaultOpenNs = _.find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
-        defaultOpenNs = defaultOpenNs || _.find(namespaces, ['name', this.props.controllerNamespace]);
+        let defaultOpenNs = _find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
+        defaultOpenNs = defaultOpenNs || _find(namespaces, ['name', this.props.controllerNamespace]);
 
         this.setState({
           namespaces,
@@ -117,7 +121,7 @@ class NamespaceLanding extends React.Component {
   }
 
   renderResourceSection(resource, metrics) {
-    if (_.isEmpty(metrics)) {
+    if (_isEmpty(metrics)) {
       return null;
     }
     return (
@@ -137,12 +141,12 @@ class NamespaceLanding extends React.Component {
   }
 
   renderNamespaceSection(namespace) {
-    if (!_.has(this.state.metricsByNs, namespace)) {
+    if (!_has(this.state.metricsByNs, namespace)) {
       return <Spinner />;
     }
 
     let metrics = this.state.metricsByNs[namespace] || {};
-    let noMetrics = _.isEmpty(metrics.pod);
+    let noMetrics = _isEmpty(metrics.pod);
 
     return (
       <Grid container direction="column" spacing={16}>
@@ -159,7 +163,7 @@ class NamespaceLanding extends React.Component {
   }
 
   renderAccordion() {
-    let panelData = _.map(this.state.namespaces, ns => {
+    let panelData = this.state.namespaces.map(ns => {
       let hr = (
         <Grid container justify="space-between" alignItems="center">
           <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
@@ -180,7 +184,7 @@ class NamespaceLanding extends React.Component {
         <Accordion
           onChange={this.onNamespaceChange}
           panels={panelData}
-          defaultOpenPanel={_.get(this.state.defaultOpenNs, 'name', null)} />
+          defaultOpenPanel={_get(this.state.defaultOpenNs, 'name', null)} />
       </Grid>
     );
   }
