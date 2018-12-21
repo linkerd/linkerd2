@@ -62,6 +62,8 @@ module.exports = {
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
     new LodashModuleReplacementPlugin({
+      // 'chain': true,
+      // 'collections': true,
       'paths': true
     }),
     new MomentLocalesPlugin()

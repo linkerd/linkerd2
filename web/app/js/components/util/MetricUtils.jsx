@@ -1,23 +1,18 @@
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 import _ from 'lodash';
-// import _get from 'lodash/get';
-// import _isEmpty from 'lodash/isEmpty';
-// import _every from 'lodash/every';
-
-const getPodCategorization = pod => {
-  if (pod.added && pod.status === "Running") {
-    return "good";
-  } else if (pod.status === "Pending" || pod.status === "Running") {
-    return "default";
-  } else if (pod.status === "Failed") {
-    return "poor";
-  }
-  return ""; // Terminating | Succeeded | Unknown
-};
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _isNull from 'lodash/isNull';
+import _map from 'lodash/map';
+import _orderBy from 'lodash/orderBy';
+import _reduce from 'lodash/reduce';
+import _size from 'lodash/size';
+import _values from 'lodash/values';
 
 export const getSuccessRateClassification = (rate, successRateLabels = srArcClassLabels) => {
-  if (_.isNull(rate)) {
+  if (_isNull(rate)) {
     return successRateLabels.default;
   }
 
@@ -38,14 +33,14 @@ const srArcClassLabels = {
 };
 
 const getTotalRequests = row => {
-  let success = parseInt(_.get(row, ["stats", "successCount"], 0), 10);
-  let failure = parseInt(_.get(row, ["stats", "failureCount"], 0), 10);
+  let success = parseInt(_get(row, ["stats", "successCount"], 0), 10);
+  let failure = parseInt(_get(row, ["stats", "failureCount"], 0), 10);
 
   return success + failure;
 };
 
 const getRequestRate = row => {
-  if (_.isEmpty(row.stats)) {
+  if (_isEmpty(row.stats)) {
     return null;
   }
 
@@ -64,7 +59,7 @@ const getRequestRate = row => {
 };
 
 const getSuccessRate = row => {
-  if (_.isEmpty(row.stats)) {
+  if (_isEmpty(row.stats)) {
     return null;
   }
 
@@ -79,15 +74,15 @@ const getSuccessRate = row => {
 };
 
 const getTlsRequestPercentage = row => {
-  if (_.isEmpty(row.stats)) {
+  if (_isEmpty(row.stats)) {
     return null;
   }
-  let tlsRequests = parseInt(_.get(row, ["stats", "tlsRequestCount"], 0), 10);
+  let tlsRequests = parseInt(_get(row, ["stats", "tlsRequestCount"], 0), 10);
   return new Percentage(tlsRequests, getTotalRequests(row));
 };
 
 const getLatency = row => {
-  if (_.isEmpty(row.stats)) {
+  if (_isEmpty(row.stats)) {
     return {};
   } else {
     return {
@@ -98,41 +93,8 @@ const getLatency = row => {
   }
 };
 
-export const getPodsByDeployment = pods => {
-  return _(pods)
-    .reject(p => _.isEmpty(p.deployment) || p.controlPlane)
-    .groupBy('deployment')
-    .map((componentPods, name) => {
-      let podsWithStatus = _.chain(componentPods)
-        .map(p => {
-          return _.merge({}, p, { value: getPodCategorization(p) });
-        })
-        .reject(p => _.isEmpty(p.value))
-        .value();
-
-      return {
-        name: name,
-        added: _.every(componentPods, 'added'),
-        pods: _.sortBy(podsWithStatus, 'name')
-      };
-    })
-    .reject(p => _.isEmpty(p.pods))
-    .sortBy('name')
-    .value();
-};
-
-export const getComponentPods = componentPods => {
-  return _.chain(componentPods)
-    .map( p => {
-      return { name: p.name, value: getPodCategorization(p) };
-    })
-    .reject(p => _.isEmpty(p.value))
-    .sortBy("name")
-    .value();
-};
-
 const processStatTable = table => {
-  return _(table.podGroup.rows).map(row => {
+  let rows = _.compact(table.podGroup.rows.map(row => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     return {
@@ -153,17 +115,16 @@ const processStatTable = table => {
       },
       errors: row.errorsByPod
     };
-  })
-    .compact()
-    .sortBy("name")
-    .value();
+  }));
+
+  return _orderBy(rows, r => r.name);
 };
 
 export const DefaultRoute = "[default]";
 export const processTopRoutesResults = rows => {
-  return _.map(rows, row => ({
+  return _map(rows, row => ({
     route: row.route || DefaultRoute,
-    tooltip: !_.isEmpty(row.route) ? null : "Traffic does not match any configured routes",
+    tooltip: !_isEmpty(row.route) ? null : "Traffic does not match any configured routes",
     authority: row.authority,
     totalRequests: getTotalRequests(row),
     requestRate: getRequestRate(row),
@@ -176,28 +137,28 @@ export const processTopRoutesResults = rows => {
 
 export const processSingleResourceRollup = rawMetrics => {
   let result = processMultiResourceRollup(rawMetrics);
-  if (_.size(result) > 1) {
+  if (_size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
   }
-  if (_.isEmpty(result)) {
+  if (_isEmpty(result)) {
     return [];
   }
-  return _.values(result)[0];
+  return _values(result)[0];
 };
 
 export const processMultiResourceRollup = rawMetrics => {
-  if (_.isEmpty(rawMetrics.ok) || _.isEmpty(rawMetrics.ok.statTables)) {
+  if (_isEmpty(rawMetrics.ok) || _isEmpty(rawMetrics.ok.statTables)) {
     return {};
   }
 
   let metricsByResource = {};
-  _.each(rawMetrics.ok.statTables, table => {
-    if (_.isEmpty(table.podGroup.rows)) {
+  _each(rawMetrics.ok.statTables, table => {
+    if (_isEmpty(table.podGroup.rows)) {
       return;
     }
 
     // assumes all rows in a podGroup have the same resource type
-    let resource = _.get(table, ["podGroup", "rows", 0, "resource", "type"]);
+    let resource = _get(table, ["podGroup", "rows", 0, "resource", "type"]);
 
     metricsByResource[resource] = processStatTable(table);
   });
@@ -205,10 +166,10 @@ export const processMultiResourceRollup = rawMetrics => {
 };
 
 export const groupResourcesByNs = apiRsp => {
-  let statTables = _.get(apiRsp, ["ok", "statTables"]);
+  let statTables = _get(apiRsp, ["ok", "statTables"]);
   let authoritiesByNs = {};
-  let resourcesByNs = _.reduce(statTables, (mem, table) => {
-    _.each(table.podGroup.rows, row => {
+  let resourcesByNs = _reduce(statTables, (mem, table) => {
+    _each(table.podGroup.rows, row => {
       // filter out resources that aren't meshed. note that authorities don't
       // have pod counts and therefore can't be filtered out here
       if (row.meshedPodCount === "0" && row.resource.type !== "authority") {
@@ -239,7 +200,7 @@ export const groupResourcesByNs = apiRsp => {
 };
 
 export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) => {
-  _.each(resourcesToExclude, resource => {
+  _each(resourcesToExclude, resource => {
     delete rollupMetrics[resource];
   });
   return rollupMetrics;
