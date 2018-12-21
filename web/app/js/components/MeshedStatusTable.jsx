@@ -22,6 +22,7 @@ const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
     dataIndex: "namespace",
+    sorter: (a, b) => a.namespace.localeCompare(b.namespace),
     render: d => {
       return  (
         <React.Fragment>
@@ -77,6 +78,7 @@ class MeshedStatusTable extends React.Component {
         tableClassName="metric-table mesh-completion-table"
         tableRows={this.props.tableRows}
         tableColumns={namespacesColumns(this.props.api.PrefixedLink)}
+        defaultOrderBy="namespace"
         rowKey={d => d.namespace} />
     );
   }

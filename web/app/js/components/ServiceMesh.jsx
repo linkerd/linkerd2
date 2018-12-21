@@ -11,7 +11,14 @@ import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _compact from 'lodash/compact';
+import _countBy from 'lodash/countBy';
+import _get from 'lodash/get';
+import _groupBy from 'lodash/groupBy';
+import _isEmpty from 'lodash/isEmpty';
+import _map from 'lodash/map';
+import _mapKeys from 'lodash/mapKeys';
+import _sumBy from 'lodash/sumBy';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import moment from 'moment';
 import { withContext } from './util/AppContext.jsx';
@@ -75,6 +82,7 @@ class ServiceMesh extends React.Component {
     this.state = {
       pollingInterval: 2000,
       components: [],
+      nsStatuses: [],
       pendingRequests: false,
       loaded: false,
       error: null
@@ -101,18 +109,13 @@ class ServiceMesh extends React.Component {
   }
 
   getControllerComponentData(podData) {
-    let podDataByDeploy = _.chain(podData.pods)
-      .filter( "controlPlane")
-      .groupBy("deployment")
-      .mapKeys((pods, dep) => {
-        return dep.split("/")[1];
-      })
-      .value();
+    let podDataByDeploy = _groupBy(podData.pods.filter(d => d.controlPlane), p => p.deployment);
+    let byDeployName = _mapKeys(podDataByDeploy, (_pods, dep) => dep.split("/")[1]);
 
-    return _.map(componentsToDeployNames, (deployName, component) => {
+    return _map(componentsToDeployNames, (deployName, component) => {
       return {
         name: component,
-        pods: _.map(podDataByDeploy[deployName], p => {
+        pods: byDeployName[deployName].map(p => {
           let uptimeSec = !p.uptime ? 0 : p.uptime.split(".")[0];
           let uptime = moment.duration(parseInt(uptimeSec, 10) * 1000);
 
@@ -128,8 +131,8 @@ class ServiceMesh extends React.Component {
   }
 
   extractNsStatuses(nsData) {
-    let podsByNs = _.get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
-    let dataPlaneNamepaces = _.map(podsByNs, ns => {
+    let podsByNs = _get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
+    let dataPlaneNamepaces = podsByNs.map(ns => {
       let meshedPods = parseInt(ns.meshedPodCount, 10);
       let totalPods = parseInt(ns.runningPodCount, 10);
       let failedPods = parseInt(ns.failedPodCount, 10);
@@ -144,7 +147,7 @@ class ServiceMesh extends React.Component {
         errors: ns.errorsByPod
       };
     });
-    return _.compact(dataPlaneNamepaces);
+    return _compact(dataPlaneNamepaces);
   }
 
   loadFromServer() {
@@ -184,11 +187,11 @@ class ServiceMesh extends React.Component {
   }
 
   componentCount() {
-    return _.size(this.state.components);
+    return this.state.components.length;
   }
 
   proxyCount() {
-    return _.sumBy(this.state.nsStatuses, d => {
+    return _sumBy(this.state.nsStatuses, d => {
       return d.namespace === this.props.controllerNamespace ? 0 : d.meshedPods;
     });
   }
@@ -234,10 +237,10 @@ class ServiceMesh extends React.Component {
     let message = "";
     let numUnadded = 0;
 
-    if (_.isEmpty(this.state.nsStatuses)) {
+    if (_isEmpty(this.state.nsStatuses)) {
       message = "No resources detected.";
     } else {
-      let meshedCount = _.countBy(this.state.nsStatuses, pod => {
+      let meshedCount = _countBy(this.state.nsStatuses, pod => {
         return pod.meshedPercent.get() > 0;
       });
       numUnadded = meshedCount["false"] || 0;
@@ -263,13 +266,15 @@ class ServiceMesh extends React.Component {
           <div>
             {this.proxyCount() === 0 ?
               <CallToAction
-                numResources={_.size(this.state.nsStatuses)}
+                numResources={this.state.nsStatuses.length}
                 resource="namespace" /> : null}
 
             <Grid container spacing={24}>
               <Grid item xs={8} container direction="column" >
                 <Grid item>{this.renderControlPlaneDetails()}</Grid>
-                <Grid item><MeshedStatusTable tableRows={_.sortBy(this.state.nsStatuses, "namespace")} /></Grid>
+                <Grid item>
+                  <MeshedStatusTable tableRows={this.state.nsStatuses} />
+                </Grid>
               </Grid>
 
               <Grid item xs={4} container direction="column" spacing={24}>
