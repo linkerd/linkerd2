@@ -4,7 +4,6 @@ import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
 import _get from 'lodash/get';
 import _merge from 'lodash/merge';
-import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
 import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
@@ -44,7 +43,7 @@ const columnConfig = {
   }
 };
 
-const StatusDot = ({status, multilineDots, columnName, classes}) => (
+const StatusDot = ({status, columnName, classes}) => (
   <Tooltip
     placement="top"
     title={(
@@ -58,7 +57,6 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
       className={classNames(
         classes.statusTableDot,
         classes[status.value],
-        { [classes.dotMultiline]: multilineDots }
       )}
       key={status.name}>&nbsp;
     </div>
@@ -68,7 +66,6 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
 StatusDot.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   columnName: PropTypes.string.isRequired,
-  multilineDots: PropTypes.bool.isRequired,
   status: PropTypes.shape({
     name: PropTypes.string.isRequired,
     value: PropTypes.string.isRequired,
@@ -91,12 +88,9 @@ const columns = {
       title: name,
       key: "status",
       render: d => {
-        let multilineDots = d.pods.length > columnConfig[name].wrapDotsAt;
-
         return d.pods.map(status => (
           <StatusDot
             status={status}
-            multilineDots={multilineDots}
             columnName={name}
             classes={classes}
             key={`${status.name}-pod-status`} />
@@ -115,10 +109,6 @@ class StatusTable extends React.Component {
       added: PropTypes.bool,
     })).isRequired,
     statusColumnTitle: PropTypes.string.isRequired,
-  }
-
-  getTableData() {
-    let tableData = _orderBy(tableData, d => d.name);
   }
 
   render() {
