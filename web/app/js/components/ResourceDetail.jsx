@@ -12,7 +12,12 @@ import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _filter from 'lodash/filter';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _isEqual from 'lodash/isEqual';
+import _merge from 'lodash/merge';
+import _reduce from 'lodash/reduce';
 import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
@@ -80,7 +85,7 @@ export class ResourceDetailBase extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (!_.isEqual(prevProps.match.url, this.props.match.url)) {
+    if (!_isEqual(prevProps.match.url, this.props.match.url)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.unmeshedSources = {};
@@ -133,18 +138,18 @@ export class ResourceDetailBase extends React.Component {
         // Do this by querying for metrics for all pods in this namespace and then filtering
         // out those pods whose owner is not this resource
         // TODO: fix (#1467)
-        let podBelongsToResource = _.reduce(podListRsp.pods, (mem, pod) => {
-          if (_.get(pod, resourceTypeToCamelCase(resource.type)) === resource.namespace + "/" + resource.name) {
+        let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
+          if (_get(pod, resourceTypeToCamelCase(resource.type)) === resource.namespace + "/" + resource.name) {
             mem[pod.name] = true;
           }
 
           return mem;
         }, {});
 
-        let podMetricsForResource = _.filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+        let podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
         let resourceIsMeshed = true;
-        if (!_.isEmpty(this.state.resourceMetrics)) {
-          resourceIsMeshed = _.get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
+        if (!_isEmpty(this.state.resourceMetrics)) {
+          resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
         this.setState({
@@ -202,18 +207,16 @@ export class ResourceDetailBase extends React.Component {
       namespace
     };
 
-    let unmeshed = _.chain(this.state.unmeshedSources)
-      .filter(['type', this.state.resourceType])
-      .map(d => _.merge({}, emptyMetric, d, {
+    let unmeshed = _filter(this.state.unmeshedSources, d => d.type === this.state.resourceType)
+      .map(d => _merge({}, emptyMetric, d, {
         unmeshed: true,
         pods: {
-          totalPods: _.size(d.pods),
+          totalPods: d.pods.length,
           meshedPods: 0
         }
-      }))
-      .value();
+      }));
 
-    let upstreams = _.concat(this.state.neighborMetrics.upstream, unmeshed);
+    let upstreams = this.state.neighborMetrics.upstream.concat(unmeshed);
 
     return (
       <div>
@@ -229,7 +232,7 @@ export class ResourceDetailBase extends React.Component {
         <Octopus
           resource={this.state.resourceMetrics[0]}
           neighbors={this.state.neighborMetrics}
-          unmeshedSources={_.values(this.state.unmeshedSources)}
+          unmeshedSources={Object.values(this.state.unmeshedSources)}
           api={this.api} />
 
         <TopRoutesTabs
@@ -239,7 +242,7 @@ export class ResourceDetailBase extends React.Component {
           disableTop={!this.state.resourceIsMeshed} />
 
 
-        { _.isEmpty(upstreams) ? null : (
+        { _isEmpty(upstreams) ? null : (
           <React.Fragment>
             <Typography variant="h5">Inbound</Typography>
             <MetricsTable
@@ -249,7 +252,7 @@ export class ResourceDetailBase extends React.Component {
           )
         }
 
-        { _.isEmpty(this.state.neighborMetrics.downstream) ? null : (
+        { _isEmpty(this.state.neighborMetrics.downstream) ? null : (
           <React.Fragment>
             <Typography variant="h5">Outbound</Typography>
             <MetricsTable
