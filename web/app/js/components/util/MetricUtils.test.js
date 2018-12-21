@@ -55,7 +55,7 @@ describe('MetricUtils', () => {
   describe('processMultiResourceRollup', () => {
     it('Extracts metrics and groups them by resource type', () => {
       let result = processMultiResourceRollup(multiResourceRollupFixtures);
-      expect(result.length).toEqual(2);
+      expect(Object.keys(result)).toHaveLength(2);
 
       expect(result["deployment"]).toHaveLength(1);
       expect(result["pod"]).toHaveLength(4);
