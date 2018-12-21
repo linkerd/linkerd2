@@ -8,7 +8,8 @@ import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
 import TopModule from './TopModule.jsx';
 import TopRoutesModule from './TopRoutesModule.jsx';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
+import _noop from 'lodash/noop';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -55,7 +56,7 @@ class TopRoutesTabs extends React.Component {
   renderRoutesComponent() {
     const { query } = this.props;
 
-    if (_.isEmpty(query)) {
+    if (_isEmpty(query)) {
       return <ConfigureProfilesMsg />;
     }
 
@@ -110,7 +111,7 @@ TopRoutesTabs.propTypes = {
 TopRoutesTabs.defaultProps = {
   disableTop: false,
   query: {},
-  updateNeighborsFromTapData: _.noop
+  updateNeighborsFromTapData: _noop
 };
 
 export default withStyles(styles, { withTheme: true })(TopRoutesTabs);
