@@ -4,7 +4,10 @@ import * as d3 from 'd3';
 
 import PropTypes from 'prop-types';
 import React from 'react';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _map from 'lodash/map';
+import _uniq from 'lodash/uniq';
 import { metricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
@@ -59,10 +62,10 @@ export class NetworkGraphBase extends React.Component {
     let links = [];
     let nodeList = [];
 
-    _.map(data, (resp, i) => {
-      let rows = _.get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
+    _map(data, (resp, i) => {
+      let rows = _get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
       let dst = this.props.deployments[i].name;
-      _.map(rows, row => {
+      _map(rows, row => {
         links.push({
           source: row.resource.name,
           target: dst,
@@ -72,7 +75,7 @@ export class NetworkGraphBase extends React.Component {
       });
     });
 
-    let nodes = _.map(_.uniq(nodeList), n => ({ id: n }));
+    let nodes = _map(_uniq(nodeList), n => ({ id: n }));
     return {
       links,
       nodes
@@ -90,7 +93,7 @@ export class NetworkGraphBase extends React.Component {
   }
 
   drawGraphComponents(links, nodes) {
-    if (_.isEmpty(nodes)) {
+    if (_isEmpty(nodes)) {
       d3.select(".network-graph-container").select("svg").attr("height", 0);
       return;
     } else {
@@ -193,7 +196,7 @@ export class NetworkGraphBase extends React.Component {
 export default withREST(
   withContext(NetworkGraphBase),
   ({api, namespace, deployments}) =>
-    _.map(deployments, d => {
+    _map(deployments, d => {
       return api.fetchMetrics(api.urlsForResource("deployment", namespace) + "&to_name=" + d.name);
     }),
   {
