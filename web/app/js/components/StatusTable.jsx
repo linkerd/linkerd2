@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
 import _get from 'lodash/get';
-import _map from 'lodash/map';
 import _merge from 'lodash/merge';
 import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
@@ -15,7 +14,9 @@ const styles = theme => _merge({}, statusClassNames(theme), {
     width: 2 * theme.spacing.unit,
     height: 2 * theme.spacing.unit,
     minWidth: 2 * theme.spacing.unit,
-    borderRadius: "50%"
+    borderRadius: "50%",
+    display: "inline-block",
+    marginRight: theme.spacing.unit,
   }
 });
 
@@ -57,7 +58,7 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
       className={classNames(
         classes.statusTableDot,
         classes[status.value],
-        { "dot-multiline": multilineDots }
+        { [classes.dotMultiline]: multilineDots }
       )}
       key={status.name}>&nbsp;
     </div>
@@ -81,8 +82,9 @@ const columns = {
   },
   pods: {
     title: "Pods",
-    dataIndex: "numEntities",
-    isNumeric: true
+    key: "numEntities",
+    isNumeric: true,
+    render: d => d.pods.length
   },
   status: (name, classes) => {
     return {
@@ -91,16 +93,14 @@ const columns = {
       render: d => {
         let multilineDots = d.pods.length > columnConfig[name].wrapDotsAt;
 
-        return _map(d.pods, (status, i) => {
-          return (
-            <StatusDot
-              status={status}
-              multilineDots={multilineDots}
-              columnName={name}
-              classes={classes}
-              key={`${name}-pod-status-${i}`} />
-          );
-        });
+        return d.pods.map(status => (
+          <StatusDot
+            status={status}
+            multilineDots={multilineDots}
+            columnName={name}
+            classes={classes}
+            key={`${status.name}-pod-status`} />
+        ));
       }
     };
   }
@@ -118,28 +118,23 @@ class StatusTable extends React.Component {
   }
 
   getTableData() {
-    let tableData = _map(this.props.data, datum => {
-      return _merge(datum, {
-        numEntities: datum.pods.length
-      });
-    });
-    return _orderBy(tableData, d => d.name);
+    let tableData = _orderBy(tableData, d => d.name);
   }
 
   render() {
-    const { classes } = this.props;
+    const { classes, statusColumnTitle, data } = this.props;
     let tableCols = [
       columns.resourceName,
       columns.pods,
-      columns.status(this.props.statusColumnTitle, classes)
+      columns.status(statusColumnTitle, classes)
     ];
-    let tableData = this.getTableData();
 
     return (
       <BaseTable
-        tableRows={tableData}
+        tableRows={data}
         tableColumns={tableCols}
         tableClassName="metric-table"
+        defaultOrderBy="name"
         rowKey={r => r.name} />
     );
   }
