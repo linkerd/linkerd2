@@ -8,7 +8,10 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _find from 'lodash/find';
+import _get from 'lodash/get';
+import _isNil from 'lodash/isNil';
+import _map from 'lodash/map';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -57,9 +60,9 @@ class BaseTable extends React.Component {
       return tableRows;
     }
 
-    let col = _.find(tableColumns, ['dataIndex', orderBy]);
+    let col = _find(tableColumns, d => d.dataIndex === orderBy);
     let sorted = tableRows.sort(col.sorter);
-    return order === 'desc' ? _.reverse(sorted) : sorted;
+    return order === 'desc' ? sorted.reverse() : sorted;
   }
 
   renderHeaderCell = (col, order, orderBy) => {
@@ -94,7 +97,7 @@ class BaseTable extends React.Component {
       );
     }
 
-    return _.isNil(col.tooltip) ? tableCell :
+    return _isNil(col.tooltip) ? tableCell :
     <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
@@ -108,29 +111,29 @@ class BaseTable extends React.Component {
         <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
           <TableHead>
             <TableRow>
-              { _.map(tableColumns, c => (
+              { _map(tableColumns, c => (
                 this.renderHeaderCell(c, order, orderBy)
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {
-              _.map(sortedTableRows, d => {
+              _map(sortedTableRows, d => {
               let key = !rowKey ? d.key : rowKey(d);
               let tableRow = (
                 <TableRow key={key}>
-                  { _.map(tableColumns, c => (
+                  { _map(tableColumns, c => (
                     <TableCell
                       className={classNames({[classes.denseTable]: padding === 'dense'})}
                       key={`table-${key}-${c.key || c.dataIndex}`}
                       numeric={c.isNumeric}>
-                      {c.render ? c.render(d) : _.get(d, c.dataIndex)}
+                      {c.render ? c.render(d) : _get(d, c.dataIndex)}
                     </TableCell>
                     )
                   )}
                 </TableRow>
               );
-              return _.isNil(d.tooltip) ? tableRow :
+              return _isNil(d.tooltip) ? tableRow :
               <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
               }
             )}
