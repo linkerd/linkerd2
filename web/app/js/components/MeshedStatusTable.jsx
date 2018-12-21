@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
 
 const getClassification = (meshedPodCount, failedPodCount) => {
@@ -27,7 +27,7 @@ const namespacesColumns = PrefixedLink => [
         <React.Fragment>
           <Grid container alignItems="center" spacing={8}>
             <Grid item><PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink></Grid>
-            { _.isEmpty(d.errors) ? null :
+            { _isEmpty(d.errors) ? null :
             <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
           </Grid>
@@ -45,7 +45,7 @@ const namespacesColumns = PrefixedLink => [
     key: "meshification",
     render: row => {
       let percent = row.meshedPercent.get();
-      let barType = _.isEmpty(row.errors) ?
+      let barType = _isEmpty(row.errors) ?
         getClassification(row.meshedPods, row.failedPods) : "warning";
       let Progress = StyledProgress(barType);
 
