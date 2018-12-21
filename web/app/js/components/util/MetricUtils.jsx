@@ -1,6 +1,6 @@
 import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
-import _ from 'lodash';
+import _compact from 'lodash/compact';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -94,7 +94,7 @@ const getLatency = row => {
 };
 
 const processStatTable = table => {
-  let rows = _.compact(table.podGroup.rows.map(row => {
+  let rows = _compact(table.podGroup.rows.map(row => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     return {
