@@ -5,6 +5,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+// NewClient creates a new gRPC client to the Destination service.
+// TODO: consider moving this into destination-client, or removing altogether.
 func NewClient(addr string) (pb.DestinationClient, *grpc.ClientConn, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {

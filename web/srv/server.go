@@ -20,6 +20,7 @@ const (
 )
 
 type (
+	// Server encapsulates the Linkerd control plane's web dashboard server.
 	Server struct {
 		templateDir     string
 		staticDir       string
@@ -52,6 +53,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.router.ServeHTTP(w, req)
 }
 
+// NewServer returns an initialized `http.Server`, configured to listen on an
+// address, render templates, and serve static assets, for a given Linkerd
+// control plane.
 func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, singleNamespace bool, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
 	server := &Server{
 		templateDir:     templateDir,
@@ -118,6 +122,8 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 	return httpServer
 }
 
+// RenderTemplate writes a rendered template into a buffer, given an HTTP
+// request and template information.
 func (s *Server) RenderTemplate(w http.ResponseWriter, templateFile, templateName string, args interface{}) error {
 	log.Debugf("emitting template %s", templateFile)
 	template, err := s.loadTemplate(templateFile)

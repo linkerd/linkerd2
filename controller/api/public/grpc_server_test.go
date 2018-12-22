@@ -167,7 +167,7 @@ spec:
 			}
 
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{Res: exp.promRes},
+				&mockProm{Res: exp.promRes},
 				tap.NewTapClient(nil),
 				k8sAPI,
 				"linkerd",
@@ -248,7 +248,7 @@ metadata:
 			}
 
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{},
+				&mockProm{},
 				tap.NewTapClient(nil),
 				k8sAPI,
 				"linkerd",

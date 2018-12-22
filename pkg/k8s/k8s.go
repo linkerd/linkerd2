@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// These constants are string representations of Kubernetes resource types.
 const (
 	All                   = "all"
 	Authority             = "authority"
@@ -159,6 +160,10 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	}
 }
 
+// KindToL5DLabel converts a Kubernetes `kind` to a Linkerd label.
+// For example:
+//   `pod` -> `pod`
+//   `job` -> `k8s_job`
 func KindToL5DLabel(k8sKind string) string {
 	if k8sKind == Job {
 		return l5dJob

@@ -120,7 +120,12 @@ const (
 	// that contains the actual trust anchor bundle.
 	TLSTrustAnchorFileName = "trust-anchors.pem"
 
-	TLSCertFileName       = "certificate.crt"
+	// TLSCertFileName is the name (key) within proxy-injector ConfigMap that
+	// contains the TLS certificate.
+	TLSCertFileName = "certificate.crt"
+
+	// TLSPrivateKeyFileName is the name (key) within proxy-injector ConfigMap
+	// that contains the TLS private key.
 	TLSPrivateKeyFileName = "private-key.p8"
 
 	/*
@@ -185,6 +190,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 	return labels
 }
 
+// IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *coreV1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
 }
@@ -207,6 +213,7 @@ type TLSIdentity struct {
 	ControllerNamespace string
 }
 
+// ToDNSName formats a TLSIdentity as a DNS name.
 func (i TLSIdentity) ToDNSName() string {
 	if i.Kind == Service {
 		return fmt.Sprintf("%s.%s.svc", i.Name, i.Namespace)
@@ -215,10 +222,13 @@ func (i TLSIdentity) ToDNSName() string {
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }
 
+// ToSecretName formats a TLSIdentity as a secret name.
 func (i TLSIdentity) ToSecretName() string {
 	return fmt.Sprintf("%s-%s-tls-linkerd-io", i.Name, i.Kind)
 }
 
+// ToControllerIdentity returns the TLSIdentity of the Linkerd Controller, given
+// an arbitrary TLSIdentity.
 func (i TLSIdentity) ToControllerIdentity() TLSIdentity {
 	return TLSIdentity{
 		Name:                "controller",

@@ -49,7 +49,7 @@ var (
 )
 
 // StatsBaseRequestParams contains parameters that are used to build requests
-// for metrics data.  This includes requests to StatSummary and TopRoutes
+// for metrics data.  This includes requests to StatSummary and TopRoutes.
 type StatsBaseRequestParams struct {
 	TimeWindow    string
 	Namespace     string
@@ -58,6 +58,8 @@ type StatsBaseRequestParams struct {
 	AllNamespaces bool
 }
 
+// StatsSummaryRequestParams contains parameters that are used to build
+// StatSummary requests.
 type StatsSummaryRequestParams struct {
 	StatsBaseRequestParams
 	ToNamespace   string
@@ -69,12 +71,16 @@ type StatsSummaryRequestParams struct {
 	SkipStats     bool
 }
 
+// TopRoutesRequestParams contains parameters that are used to build TopRoutes
+// requests.
 type TopRoutesRequestParams struct {
 	StatsBaseRequestParams
 	To    string
 	ToAll bool
 }
 
+// TapRequestParams contains parameters that are used to build a
+// TapByResourceRequest.
 type TapRequestParams struct {
 	Resource    string
 	Namespace   string
@@ -119,6 +125,8 @@ func GRPCError(err error) error {
 	return err
 }
 
+// BuildStatSummaryRequest builds a Public API StatSummaryRequest from a
+// StatsSummaryRequestParams.
 func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
@@ -206,6 +214,8 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 	return statRequest, nil
 }
 
+// BuildTopRoutesRequest builds a Public API TopRoutesRequest from a
+// TopRoutesRequestParams.
 func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, error) {
 	window := defaultMetricTimeWindow
 	if p.TimeWindow != "" {
@@ -372,6 +382,8 @@ func buildResource(namespace string, resType string, name string) (pb.Resource, 
 	}, nil
 }
 
+// BuildTapByResourceRequest builds a Public API TapByResourceRequest from a
+// TapRequestParams.
 func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceRequest, error) {
 	target, err := BuildResource(params.Namespace, params.Resource)
 	if err != nil {
@@ -535,6 +547,8 @@ func routeLabels(event *pb.TapEvent) string {
 	return out
 }
 
+// RenderTapEvent renders a Public API TapEvent to a string.
+// TODO: consider moving this into cli/cmd/tap.go.
 func RenderTapEvent(event *pb.TapEvent, resource string) string {
 	dst := dst(event)
 	src := src(event)
@@ -634,6 +648,8 @@ func RenderTapEvent(event *pb.TapEvent, resource string) string {
 	}
 }
 
+// GetRequestRate calculates request rate from Public API BasicStats.
+// TODO: consider moving this into `/cli/cmd`.
 func GetRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
 	success := stats.SuccessCount
 	failure := stats.FailureCount
@@ -645,6 +661,8 @@ func GetRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
 	return float64(success+failure) / windowLength.Seconds()
 }
 
+// GetSuccessRate calculates success rate from Public API BasicStats.
+// TODO: consider moving this into `/cli/cmd`.
 func GetSuccessRate(stats *pb.BasicStats) float64 {
 	success := stats.SuccessCount
 	failure := stats.FailureCount
@@ -655,6 +673,9 @@ func GetSuccessRate(stats *pb.BasicStats) float64 {
 	return float64(success) / float64(success+failure)
 }
 
+// GetPercentTLS calculates the percent of traffic that is TLS, from Public API
+// BasicStats.
+// TODO: consider moving this into `/cli/cmd/stat.go`.
 func GetPercentTLS(stats *pb.BasicStats) float64 {
 	reqTotal := stats.SuccessCount + stats.FailureCount
 	if reqTotal == 0 {

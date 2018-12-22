@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// Supported TLS key types.
 const (
 	KeyTypeRSA   = "rsa"
 	KeyTypeECDSA = "ecdsa"
