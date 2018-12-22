@@ -13,6 +13,7 @@ import StatusTable from './StatusTable.jsx';
 import Typography from '@material-ui/core/Typography';
 import _compact from 'lodash/compact';
 import _countBy from 'lodash/countBy';
+import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _groupBy from 'lodash/groupBy';
 import _isEmpty from 'lodash/isEmpty';
@@ -109,13 +110,13 @@ class ServiceMesh extends React.Component {
   }
 
   getControllerComponentData(podData) {
-    let podDataByDeploy = _groupBy(podData.pods.filter(d => d.controlPlane), p => p.deployment);
+    let podDataByDeploy = _groupBy(_filter(podData.pods, d => d.controlPlane), p => p.deployment);
     let byDeployName = _mapKeys(podDataByDeploy, (_pods, dep) => dep.split("/")[1]);
 
     return _map(componentsToDeployNames, (deployName, component) => {
       return {
         name: component,
-        pods: byDeployName[deployName].map(p => {
+        pods: _map(byDeployName[deployName], p => {
           let uptimeSec = !p.uptime ? 0 : p.uptime.split(".")[0];
           let uptime = moment.duration(parseInt(uptimeSec, 10) * 1000);
 
