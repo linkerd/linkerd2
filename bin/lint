@@ -12,8 +12,8 @@ cd "$rootdir"
 # install golint from vendor
 go install ./vendor/golang.org/x/lint/golint
 
-# use `go list` to exclude packages in vendor, ignore uncommented warnings
-out=$(go list ./... | xargs golint | grep -v 'should have comment') || true
+# use `go list` to exclude packages in vendor
+out=$(go list ./... | xargs golint) || true
 
 if [ -n "$out" ]; then
   echo "$out"
