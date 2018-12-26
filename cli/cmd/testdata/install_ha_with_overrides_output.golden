@@ -320,6 +320,105 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required:
+          - routes
+          properties:
+            routes:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - condition
+                properties:
+                  name:
+                    type: string
+                  condition:
+                    type: object
+                    oneOf:
+                    - type: object
+                      minProperties: 1
+                      properties: 
+                        method:
+                          type: string
+                        pathRegex:
+                          type: string
+                    - type: object
+                      required:
+                      - all
+                      properties:
+                        all:
+                          type: array
+                          items:
+                            type: object
+                    - type: object
+                      required:
+                      - any
+                      properties:
+                        any:
+                          type: array
+                          items:
+                            type: object
+                    - type: object
+                      required:
+                      - not
+                      properties:
+                        not:
+                          type: object
+                  responseClasses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      properties:
+                        isFailure:
+                          type: boolean
+                        condition:
+                          type: object
+                          oneOf:
+                          - type: object
+                            required:
+                            - status
+                            properties:
+                              status:
+                                type: object
+                                minProperties: 1
+                                properties:
+                                  min:
+                                    type: integer
+                                    minimum: 100
+                                    maximum: 600
+                                  max:
+                                    type: integer
+                                    minimum: 100
+                                    maximum: 600
+                          - type: object
+                            required:
+                            - all
+                            properties:
+                              all:
+                                type: array
+                                items:
+                                  type: object
+                          - type: object
+                            required:
+                            - any
+                            properties:
+                              any:
+                                type: array
+                                items:
+                                  type: object
+                          - type: object
+                            required:
+                            - not
+                            properties:
+                              not:
+                                type: object
 
 ### Service Account Web ###
 ---
