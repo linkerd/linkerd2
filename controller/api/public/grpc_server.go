@@ -72,9 +72,23 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	// report from that instance and its process start time
 	reports := make(map[string]podReport)
 
+	if req.GetNamespace() != "" && req.GetSelector() != nil {
+		return nil, fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive")
+	}
+
 	nsQuery := ""
+	namespace := ""
 	if req.GetNamespace() != "" {
-		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetNamespace())
+		namespace = req.GetNamespace()
+	}
+	if req.GetSelector() != nil && req.GetSelector().GetResource().GetNamespace() != "" {
+		namespace = req.GetSelector().GetResource().GetNamespace()
+	}
+	if req.GetSelector() != nil && req.GetSelector().GetResource().GetType() == pkgK8s.Namespace {
+		namespace = req.GetSelector().GetResource().GetName()
+	}
+	if namespace != "" {
+		nsQuery = fmt.Sprintf("namespace=\"%s\"", namespace)
 	}
 	processStartTimeQuery := fmt.Sprintf(podQuery, nsQuery)
 
@@ -94,7 +108,6 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	}
 
 	var pods []*k8sV1.Pod
-	namespace := req.GetNamespace()
 	if namespace != "" {
 		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
 	} else {

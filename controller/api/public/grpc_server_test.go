@@ -2,13 +2,16 @@ package public
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
 )
 
@@ -186,6 +189,131 @@ spec:
 			}
 		}
 	})
+
+	t.Run("Fails for both resource and namespace set in request", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
+		fakeGrpcServer := newGrpcServer(
+			&MockProm{Res: model.Vector{
+				&model.Sample{
+					Metric:    model.Metric{"pod": "emojivoto-meshed"},
+					Timestamp: 456,
+				},
+			}},
+			tap.NewTapClient(nil),
+			k8sAPI,
+			"linkerd",
+			[]string{},
+		)
+
+		k8sAPI.Sync()
+
+		_, err = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
+			Namespace: "test",
+			Selector: &pb.ResourceSelection{
+				Resource: &pb.Resource{
+					Type: pkgK8s.Pod,
+				},
+			},
+		})
+		expectedError := fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive")
+		if err.Error() != expectedError.Error() {
+			t.Fatalf("Expected error: %s, Got: %s", expectedError, err)
+		}
+	})
+
+	t.Run("Reads namespace from resource namespace field", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
+		mockProm := MockProm{Res: model.Vector{
+			&model.Sample{
+				Metric:    model.Metric{"pod": "emojivoto-meshed"},
+				Timestamp: 456,
+			},
+		}}
+		fakeGrpcServer := newGrpcServer(
+			&mockProm,
+			tap.NewTapClient(nil),
+			k8sAPI,
+			"linkerd",
+			[]string{},
+		)
+
+		k8sAPI.Sync()
+
+		_, _ = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
+			Selector: &pb.ResourceSelection{
+				Resource: &pb.Resource{
+					Namespace: "testnamespace",
+				},
+			},
+		})
+
+		err = verifyPromQueries(&mockProm, "testnamespace")
+
+		if err != nil {
+			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
+		}
+	})
+
+	t.Run("Reads namespace from resource name when resource is namespace", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
+		mockProm := MockProm{Res: model.Vector{
+			&model.Sample{
+				Metric:    model.Metric{"pod": "emojivoto-meshed"},
+				Timestamp: 456,
+			},
+		}}
+		fakeGrpcServer := newGrpcServer(
+			&mockProm,
+			tap.NewTapClient(nil),
+			k8sAPI,
+			"linkerd",
+			[]string{},
+		)
+
+		k8sAPI.Sync()
+
+		_, _ = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
+			Selector: &pb.ResourceSelection{
+				Resource: &pb.Resource{
+					Type: pkgK8s.Namespace,
+					Name: "testnamespace",
+				},
+			},
+		})
+
+		err = verifyPromQueries(&mockProm, "testnamespace")
+
+		if err != nil {
+			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
+		}
+	})
+}
+
+type expectedProm struct {
+	expectedPrometheusQueries []string
+}
+
+func verifyPromQueries(mockProm *MockProm, namespace string) error {
+	namespaceSelector := fmt.Sprintf("namespace=\"%s\"", namespace)
+	for _, element := range mockProm.QueriesExecuted {
+		if strings.Contains(element, namespaceSelector) {
+			return nil
+		}
+	}
+	return fmt.Errorf("Prometheus queries incorrect. \nExpected query containing:\n%s \nGot:\n%+v",
+		namespaceSelector, mockProm.QueriesExecuted)
 }
 
 func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesResponse) bool {

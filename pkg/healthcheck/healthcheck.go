@@ -593,7 +593,11 @@ func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) erro
 func (hc *HealthChecker) getDataPlanePods() ([]*pb.Pod, error) {
 	req := &pb.ListPodsRequest{}
 	if hc.DataPlaneNamespace != "" {
-		req.Namespace = hc.DataPlaneNamespace
+		req.Selector = &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: hc.DataPlaneNamespace,
+			},
+		}
 	}
 
 	resp, err := hc.apiClient.ListPods(context.Background(), req)
