@@ -190,6 +190,8 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 	}, nil
 }
 
+// NewInternalClient creates a new Public API client intended to run inside a
+// Kubernetes cluster.
 func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.ApiClient, error) {
 	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
 	if err != nil {
@@ -199,6 +201,8 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.Api
 	return newClient(apiURL, http.DefaultClient, controlPlaneNamespace)
 }
 
+// NewExternalClient creates a new Public API client intended to run from
+// outside a Kubernetes cluster.
 func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (pb.ApiClient, error) {
 	apiURL, err := kubeAPI.URLFor(controlPlaneNamespace, "/services/linkerd-controller-api:http/proxy/")
 	if err != nil {

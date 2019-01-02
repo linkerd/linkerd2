@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// GenServiceProfile generates a mock ServiceProfile.
 func GenServiceProfile(service, namespace, controlPlaneNamespace string) v1alpha1.ServiceProfile {
 	return v1alpha1.ServiceProfile{
 		TypeMeta: metav1.TypeMeta{
@@ -44,6 +45,7 @@ func GenServiceProfile(service, namespace, controlPlaneNamespace string) v1alpha
 	}
 }
 
+// ServiceProfileYamlEquals validates whether two ServiceProfiles are equal.
 func ServiceProfileYamlEquals(actual, expected v1alpha1.ServiceProfile) error {
 	if !reflect.DeepEqual(actual, expected) {
 		acutalYaml, err := yaml.Marshal(actual)

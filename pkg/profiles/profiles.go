@@ -18,6 +18,7 @@ type profileTemplateConfig struct {
 	ClusterZone           string
 }
 
+// ToRoute returns a Proxy API Route, given a ServiceProfile Route.
 func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	cond, err := ToRequestMatch(route.Condition)
 	if err != nil {
@@ -38,6 +39,8 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	}, nil
 }
 
+// ToResponseClass returns a Proxy API ResponseClass, given a ServiceProfile
+// ResponseClass.
 func ToResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 	cond, err := ToResponseMatch(rc.Condition)
 	if err != nil {
@@ -49,6 +52,8 @@ func ToResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 	}, nil
 }
 
+// ToResponseMatch returns a Proxy API ResponseMatch, given a ServiceProfile
+// ResponseMatch.
 func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	if rspMatch == nil {
 		return nil, errors.New("missing response match")
@@ -134,6 +139,8 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	}, nil
 }
 
+// ToRequestMatch returns a Proxy API RequestMatch, given a ServiceProfile
+// RequestMatch.
 func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	if reqMatch == nil {
 		return nil, errors.New("missing request match")
@@ -226,6 +233,8 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	}, nil
 }
 
+// ValidateRequestMatch validates whether a ServiceProfile RequestMatch has at
+// least one field set.
 func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	matchKindSet := false
 	if reqMatch.All != nil {
@@ -267,6 +276,8 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	return nil
 }
 
+// ValidateResponseMatch validates whether a ServiceProfile ResponseMatch has at
+// least one field set, and sanity checks the Status Range.
 func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	invalidRangeErr := errors.New("Range maximum cannot be smaller than minimum")
 	matchKindSet := false
@@ -318,6 +329,8 @@ func buildConfig(namespace, service, controlPlaneNamespace string) *profileTempl
 	}
 }
 
+// RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
+// namespace, service, and control plane namespace.
 func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
 	config := buildConfig(namespace, service, controlPlaneNamespace)
 	template, err := template.New("profile").Parse(Template)
