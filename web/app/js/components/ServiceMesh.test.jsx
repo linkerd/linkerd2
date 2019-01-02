@@ -1,4 +1,4 @@
-import _cloneDeep from 'lodash/clonedeep';
+import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import nsFixtures from '../../test/fixtures/namespaces.json';
 import podFixtures from '../../test/fixtures/podRollup.json';
