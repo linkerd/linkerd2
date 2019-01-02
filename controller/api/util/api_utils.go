@@ -8,7 +8,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/api/core/v1"
@@ -468,29 +467,4 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-// GetRequestRate calculates request rate from Public API BasicStats.
-// TODO: consider moving this into `/cli/cmd`.
-func GetRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
-	windowLength, err := time.ParseDuration(timeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-// GetSuccessRate calculates success rate from Public API BasicStats.
-// TODO: consider moving this into `/cli/cmd`.
-func GetSuccessRate(stats *pb.BasicStats) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
-
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
 }
