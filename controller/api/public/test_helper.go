@@ -127,7 +127,7 @@ type mockProm struct {
 	rwLock          sync.Mutex
 }
 
-// PodCounts is a test helper struct that for representing data in a
+// PodCounts is a test helper struct that is used for representing data in a
 // StatTable.PodGroup.Row.
 type PodCounts struct {
 	MeshedPods  uint64

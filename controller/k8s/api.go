@@ -167,7 +167,8 @@ func (api *API) Pod() coreinformers.PodInformer {
 	return api.pod
 }
 
-// RC provides access to a shared informer and lister for ReplicaSets.
+// RC provides access to a shared informer and lister for
+// ReplicationControllers.
 func (api *API) RC() coreinformers.ReplicationControllerInformer {
 	if api.rc == nil {
 		panic("RC informer not configured")
