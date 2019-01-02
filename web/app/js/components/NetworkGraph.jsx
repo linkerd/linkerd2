@@ -57,7 +57,7 @@ export class NetworkGraphBase extends React.Component {
     super(props);
 
     // https://github.com/d3/d3-zoom/issues/32
-    d3.getEvent = (() => require("d3-selection" ).event).bind(this);
+    d3.getEvent = (() => require("d3-selection").event).bind(this);
   }
 
   componentDidMount() {
