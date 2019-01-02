@@ -1,8 +1,8 @@
-import * as d3 from 'd3';
 import _has from 'lodash/has';
 import _isNil from 'lodash/isNil';
 import _lowerCase from 'lodash/lowerCase';
 import _startCase from 'lodash/startCase';
+import { format as d3Format }  from 'd3-format';
 
 /*
 * Display grid constants
@@ -13,9 +13,9 @@ export const rowGutter = 3 * baseWidth;
 /*
 * Number formatters
 */
-const successRateFormatter = d3.format(".2%");
-const commaFormatter = d3.format(",");
-const secondsFormatter = d3.format(",.3s");
+const successRateFormatter = d3Format(".2%");
+const commaFormatter = d3Format(",");
+const secondsFormatter = d3Format(",.3s");
 
 export const formatWithComma = m => {
   if (_isNil(m)) {
