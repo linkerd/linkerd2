@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -107,6 +108,9 @@ func configureAndRunChecks(options *checkOptions) error {
 
 	success := runChecks(os.Stdout, hc)
 
+	// this empty line separates final results from the checks list in the output
+	fmt.Println("")
+
 	if !success {
 		fmt.Printf("Status check results are %s\n", failStatus)
 		os.Exit(2)
@@ -119,7 +123,7 @@ func configureAndRunChecks(options *checkOptions) error {
 
 func (o *checkOptions) validate() error {
 	if o.preInstallOnly && o.dataPlaneOnly {
-		return fmt.Errorf("--pre and --proxy flags are mutually exclusive")
+		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
 	return nil
 }
