@@ -267,7 +267,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			statTables[resourceKey][key].rowStats = &rowStats{
 				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
 				successRate: util.GetSuccessRate(r.Stats),
-				tlsPercent:  util.GetPercentTLS(r.Stats),
+				tlsPercent:  getPercentTLS(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,
@@ -285,6 +285,16 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	case "json":
 		printStatJSON(statTables, w)
 	}
+}
+
+// getPercentTLS calculates the percent of traffic that is TLS, from Public API
+// BasicStats.
+func getPercentTLS(stats *pb.BasicStats) float64 {
+	reqTotal := stats.SuccessCount + stats.FailureCount
+	if reqTotal == 0 {
+		return 0.0
+	}
+	return float64(stats.TlsRequestCount) / float64(reqTotal)
 }
 
 func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
