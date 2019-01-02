@@ -390,16 +390,13 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 			return err
 		}
 
-		ir := injectReport{}
-		result, err := injectResource(bytes, options, &ir)
+		result, err := injectResource(bytes, options, &injectReports)
 		if err != nil {
 			return err
 		}
 
 		out.Write(result)
 		out.Write([]byte("---\n"))
-
-		injectReports = append(injectReports, ir)
 	}
 
 	generateReport(injectReports, report)
@@ -407,7 +404,7 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 	return nil
 }
 
-func injectList(b []byte, options *injectOptions, report *injectReport) ([]byte, error) {
+func injectList(b []byte, options *injectOptions, reports *[]injectReport) ([]byte, error) {
 	var sourceList v1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
 		return nil, err
@@ -416,7 +413,7 @@ func injectList(b []byte, options *injectOptions, report *injectReport) ([]byte,
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, err := injectResource(item.Raw, options, report)
+		result, err := injectResource(item.Raw, options, reports)
 		if err != nil {
 			return nil, err
 		}
@@ -436,7 +433,7 @@ func injectList(b []byte, options *injectOptions, report *injectReport) ([]byte,
 	return yaml.Marshal(sourceList)
 }
 
-func injectResource(bytes []byte, options *injectOptions, report *injectReport) ([]byte, error) {
+func injectResource(bytes []byte, options *injectOptions, reports *[]injectReport) ([]byte, error) {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -459,6 +456,8 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	if err := yaml.Unmarshal(bytes, &om); err != nil {
 		return nil, err
 	}
+
+	report := injectReport{}
 	report.name = fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name)
 
 	// obj and podTemplateSpec will reference zero or one the following
@@ -568,7 +567,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 		// in the list (instead of just marshaling the injected pod template).
 
 		// TODO: generate an injectReport per list item
-		return injectList(bytes, options, report)
+		return injectList(bytes, options, reports)
 
 	}
 
@@ -592,7 +591,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(podSpec, identity, DNSNameOverride, options, report) {
+		if injectPodSpec(podSpec, identity, DNSNameOverride, options, &report) {
 			injectObjectMeta(objectMeta, k8sLabels, options)
 			var err error
 			output, err = yaml.Marshal(obj)
@@ -603,6 +602,8 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	} else {
 		report.unsupportedResource = true
 	}
+
+	*reports = append(*reports, report)
 
 	return output, nil
 }
