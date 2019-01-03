@@ -1,5 +1,4 @@
 /* eslint-disable */
-import _ from 'lodash';
 import 'raf/polyfill'; // the polyfill import must be first
 import ApiHelpers from './ApiHelpers.jsx';
 import { mount } from 'enzyme';
