@@ -1,3 +1,4 @@
+import { distanceInWordsToNow, subSeconds } from 'date-fns';
 import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
 import Card from '@material-ui/core/Card';
@@ -21,7 +22,6 @@ import _map from 'lodash/map';
 import _mapKeys from 'lodash/mapKeys';
 import _sumBy from 'lodash/sumBy';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
-import moment from 'moment';
 import { withContext } from './util/AppContext.jsx';
 
 const serviceMeshDetailsColumns = [
@@ -118,12 +118,12 @@ class ServiceMesh extends React.Component {
         name: component,
         pods: _map(byDeployName[deployName], p => {
           let uptimeSec = !p.uptime ? 0 : p.uptime.split(".")[0];
-          let uptime = moment.duration(parseInt(uptimeSec, 10) * 1000);
+          let uptime = distanceInWordsToNow(subSeconds(Date.now(), parseInt(uptimeSec, 10)));
 
           return {
             name: p.name,
             value: getPodClassification(p),
-            uptime: uptime.humanize(),
+            uptime,
             uptimeSec
           };
         })
