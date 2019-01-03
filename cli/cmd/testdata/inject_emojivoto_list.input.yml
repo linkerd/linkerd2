@@ -36,5 +36,35 @@ items:
               name: http
             resources: {}
     status: {}
+  - apiVersion: apps/v1beta1
+    kind: Deployment
+    metadata:
+      creationTimestamp: null
+      name: emoji
+      namespace: emojivoto
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: emoji-svc
+      strategy: {}
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            app: emoji-svc
+        spec:
+          containers:
+          - env:
+            - name: GRPC_PORT
+              value: "8080"
+            image: buoyantio/emojivoto-emoji-svc:v3
+            name: emoji-svc
+            ports:
+            - containerPort: 8080
+              name: grpc
+              protocol: TCP
+            resources: {}
+    status: {}
 kind: List
 metadata: {}
