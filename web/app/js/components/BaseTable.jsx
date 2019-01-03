@@ -11,7 +11,6 @@ import Tooltip from '@material-ui/core/Tooltip';
 import _find from 'lodash/find';
 import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
-import _map from 'lodash/map';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -111,18 +110,18 @@ class BaseTable extends React.Component {
         <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
           <TableHead>
             <TableRow>
-              { _map(tableColumns, c => (
+              { tableColumns.map(c => (
                 this.renderHeaderCell(c, order, orderBy)
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {
-              _map(sortedTableRows, d => {
+              sortedTableRows.map(d => {
               let key = !rowKey ? d.key : rowKey(d);
               let tableRow = (
                 <TableRow key={key}>
-                  { _map(tableColumns, c => (
+                  { tableColumns.map(c => (
                     <TableCell
                       className={classNames({[classes.denseTable]: padding === 'dense'})}
                       key={`table-${key}-${c.key || c.dataIndex}`}
