@@ -5,7 +5,7 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
-import _ from 'lodash';
+import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
@@ -62,7 +62,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Success Rate",
     dataIndex: "successRate",
     isNumeric: true,
-    render: d => _.isNil(d) || _.isNil(d.successRate) ? "---" :
+    render: d => _isNil(d) || _isNil(d.successRate) ? "---" :
     <SuccessRateMiniChart sr={d.successRate.get()} />,
     sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
   },

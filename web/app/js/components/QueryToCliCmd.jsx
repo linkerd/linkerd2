@@ -2,7 +2,8 @@ import CardContent from '@material-ui/core/CardContent';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
+import _startCase from 'lodash/startCase';
 import { displayOrder } from './util/CliQueryUtils.js';
 import { withContext } from './util/AppContext.jsx';
 
@@ -32,22 +33,22 @@ class QueryToCliCmd extends React.Component {
   }
 
   renderCliItem = (queryLabel, queryVal) => {
-    return _.isEmpty(queryVal) ? null : ` ${queryLabel} ${queryVal}`;
+    return _isEmpty(queryVal) ? null : ` ${queryLabel} ${queryVal}`;
   }
 
   render = () => {
     let { cmdName, query, resource, controllerNamespace } = this.props;
 
     return (
-      _.isEmpty(resource) ? null :
+      _isEmpty(resource) ? null :
       <CardContent>
         <Typography variant="caption" gutterBottom>
-          Current {_.startCase(cmdName)} query
+          Current {_startCase(cmdName)} query
         </Typography>
 
         <code>
           linkerd {this.props.cmdName} {resource}
-          { _.map(displayOrder(cmdName, query), item => {
+          { displayOrder(cmdName, query).map(item => {
             return !toCliParam[item] ? null : this.renderCliItem(toCliParam[item], query[item]);
           })}
           { controllerNamespace === "linkerd" ? null : ` --linkerd-namespace ${controllerNamespace}`}

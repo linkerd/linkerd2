@@ -4,7 +4,6 @@ import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import PropTypes from 'prop-types';
 import React from 'react';
-import _ from 'lodash';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -44,7 +43,7 @@ class Accordion extends React.Component {
     return (
       <div className={classes.root}>
         {
-          _.map(panels, panel => (
+          panels.map(panel => (
             <ExpansionPanel
               expanded={expanded === panel.id}
               onChange={this.handlePanelSelect(panel.id)}

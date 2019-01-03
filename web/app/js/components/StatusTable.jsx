@@ -2,17 +2,20 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _merge from 'lodash/merge';
 import classNames from 'classnames';
 import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = theme => _.merge({}, statusClassNames(theme), {
+const styles = theme => _merge({}, statusClassNames(theme), {
   statusTableDot: {
     width: 2 * theme.spacing.unit,
     height: 2 * theme.spacing.unit,
     minWidth: 2 * theme.spacing.unit,
-    borderRadius: "50%"
+    borderRadius: "50%",
+    display: "inline-block",
+    marginRight: theme.spacing.unit,
   }
 });
 
@@ -40,13 +43,13 @@ const columnConfig = {
   }
 };
 
-const StatusDot = ({status, multilineDots, columnName, classes}) => (
+const StatusDot = ({status, columnName, classes}) => (
   <Tooltip
     placement="top"
     title={(
       <div>
         <div>{status.name}</div>
-        <div>{_.get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
+        <div>{_get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
         <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
       </div>
     )}>
@@ -54,7 +57,6 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
       className={classNames(
         classes.statusTableDot,
         classes[status.value],
-        { "dot-multiline": multilineDots }
       )}
       key={status.name}>&nbsp;
     </div>
@@ -64,7 +66,6 @@ const StatusDot = ({status, multilineDots, columnName, classes}) => (
 StatusDot.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   columnName: PropTypes.string.isRequired,
-  multilineDots: PropTypes.bool.isRequired,
   status: PropTypes.shape({
     name: PropTypes.string.isRequired,
     value: PropTypes.string.isRequired,
@@ -78,26 +79,22 @@ const columns = {
   },
   pods: {
     title: "Pods",
-    dataIndex: "numEntities",
-    isNumeric: true
+    key: "numEntities",
+    isNumeric: true,
+    render: d => d.pods.length
   },
   status: (name, classes) => {
     return {
       title: name,
       key: "status",
       render: d => {
-        let multilineDots = _.size(d.pods) > columnConfig[name].wrapDotsAt;
-
-        return _.map(d.pods, (status, i) => {
-          return (
-            <StatusDot
-              status={status}
-              multilineDots={multilineDots}
-              columnName={name}
-              classes={classes}
-              key={`${name}-pod-status-${i}`} />
-          );
-        });
+        return d.pods.map(status => (
+          <StatusDot
+            status={status}
+            columnName={name}
+            classes={classes}
+            key={`${status.name}-pod-status`} />
+        ));
       }
     };
   }
@@ -114,29 +111,20 @@ class StatusTable extends React.Component {
     statusColumnTitle: PropTypes.string.isRequired,
   }
 
-  getTableData() {
-    let tableData = _.map(this.props.data, datum => {
-      return _.merge(datum, {
-        numEntities: _.size(datum.pods)
-      });
-    });
-    return _.sortBy(tableData, 'name');
-  }
-
   render() {
-    const { classes } = this.props;
+    const { classes, statusColumnTitle, data } = this.props;
     let tableCols = [
       columns.resourceName,
       columns.pods,
-      columns.status(this.props.statusColumnTitle, classes)
+      columns.status(statusColumnTitle, classes)
     ];
-    let tableData = this.getTableData();
 
     return (
       <BaseTable
-        tableRows={tableData}
+        tableRows={data}
         tableColumns={tableCols}
         tableClassName="metric-table"
+        defaultOrderBy="name"
         rowKey={r => r.name} />
     );
   }

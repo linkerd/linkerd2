@@ -11,7 +11,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -126,7 +126,7 @@ class ConfigureProfilesMsg extends React.Component {
             <Button onClick={this.handleClose} color="primary">Cancel</Button>
             <a href={downloadUrl} style={{ textDecoration: 'none' }}>
               <Button
-                disabled={_.isEmpty(query.service) || _.isEmpty(query.namespace)}
+                disabled={_isEmpty(query.service) || _isEmpty(query.namespace)}
                 onClick={this.handleClose}
                 color="primary">Download
               </Button>

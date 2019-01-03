@@ -35,6 +35,7 @@
     "jsx-quotes": 2,
     "keyword-spacing": 2,
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
+    "no-restricted-imports": [2, "lodash"],
     "no-trailing-spaces": 2,
     "no-var": 2,
     "promise/always-return": 0,

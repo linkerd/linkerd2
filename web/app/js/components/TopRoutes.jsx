@@ -16,7 +16,13 @@ import React from 'react';
 import Select from '@material-ui/core/Select';
 import TopRoutesModule from './TopRoutesModule.jsx';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _mapValues from 'lodash/mapValues';
+import _merge from 'lodash/merge';
+import _pick from 'lodash/pick';
+import _uniq from 'lodash/uniq';
+import _upperFirst from 'lodash/upperFirst';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
@@ -28,7 +34,7 @@ const topRoutesQueryProps = {
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
-const urlPropsQueryConfig = _.mapValues(topRoutesQueryProps, () => {
+const urlPropsQueryConfig = _mapValues(topRoutesQueryProps, () => {
   return { type: UrlQueryParamTypes.string };
 });
 
@@ -62,7 +68,7 @@ class TopRoutes extends React.Component {
     super(props);
     this.api = this.props.api;
 
-    let query = _.merge({}, props.query, _.pick(this.props, _.keys(topRoutesQueryProps)));
+    let query = _merge({}, props.query, _pick(this.props, Object.keys(topRoutesQueryProps)));
 
     this.state = {
       query: query,
@@ -100,8 +106,8 @@ class TopRoutes extends React.Component {
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([svcList, allMetrics]) => {
-        let services =  _.get(svcList, 'services', []);
-        let namespaces = _.uniq(_.map(services, 'namespace'));
+        let services =  _get(svcList, 'services', []);
+        let namespaces = _uniq(services.map(s => s.namespace));
         let { resourcesByNs } = groupResourcesByNs(allMetrics);
 
         this.setState({
@@ -146,12 +152,12 @@ class TopRoutes extends React.Component {
   // onChange method to reflect the update in url query params. These onChange
   // methods are automatically added to props by react-url-query.
   handleUrlUpdate = (name, formVal) => {
-    this.props[`onChange${_.upperFirst(name)}`](formVal);
+    this.props[`onChange${_upperFirst(name)}`](formVal);
   }
 
   handleNamespaceSelect = e => {
     let query = this.state.query;
-    let formVal = _.get(e, 'target.value');
+    let formVal = _get(e, 'target.value');
     query.namespace = formVal;
     this.handleUrlUpdate("namespace", formVal);
     this.setState({ query });
@@ -159,7 +165,7 @@ class TopRoutes extends React.Component {
 
   handleResourceSelect = e => {
     let query = this.state.query;
-    let resource = _.get(e, 'target.value');
+    let resource = _get(e, 'target.value');
     let [resource_type, resource_name] = resource.split("/");
     query.resource_name = resource_name;
     query.resource_type = resource_type;
@@ -180,7 +186,7 @@ class TopRoutes extends React.Component {
             </Grid>
 
             <Grid item>
-              { this.renderServiceDropdown() }
+              { this.renderResourceDropdown() }
             </Grid>
 
             <Grid item>
@@ -226,7 +232,7 @@ class TopRoutes extends React.Component {
           }}
           name={key}>
           {
-            _.map(_.sortBy(this.state.namespaces), ns =>
+            this.state.namespaces.sort().map(ns =>
               <MenuItem key={`namespace-${ns}`} value={ns}>{ns}</MenuItem>)
           }
         </Select>
@@ -235,21 +241,21 @@ class TopRoutes extends React.Component {
     );
   }
 
-  renderServiceDropdown = () => {
+  renderResourceDropdown = () => {
     const { classes } = this.props;
     let { query, services, resourcesByNs } = this.state;
 
     let key = "resource_name";
-    let servicesWithPrefix = _.chain(services)
-      .filter(['namespace', query.namespace])
-      .map(svc => `service/${svc.name}`).value();
+    let servicesWithPrefix = services
+      .filter(s => s.namespace === query.namespace)
+      .map(svc => `service/${svc.name}`);
     let otherResources = resourcesByNs[query.namespace] || [];
 
-    let dropdownOptions = _.sortBy(_.concat(servicesWithPrefix, otherResources));
-    let dropdownVal = _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type) ? "" :
+    let dropdownOptions = servicesWithPrefix.concat(otherResources).sort();
+    let dropdownVal = _isEmpty(query.resource_name) || _isEmpty(query.resource_type) ? "" :
       query.resource_type + "/" + query.resource_name;
 
-    if (_.isEmpty(dropdownOptions) && !_.isEmpty(dropdownVal)) {
+    if (_isEmpty(dropdownOptions) && !_isEmpty(dropdownVal)) {
       dropdownOptions = [dropdownVal]; // populate from url if autocomplete hasn't loaded
     }
 
@@ -259,14 +265,14 @@ class TopRoutes extends React.Component {
         <Select
           value={dropdownVal}
           onChange={this.handleResourceSelect}
-          disabled={_.isEmpty(query.namespace)}
+          disabled={_isEmpty(query.namespace)}
           inputProps={{
             name: key,
             id: `${key}-dropdown`,
           }}
           name={key}>
           {
-            _.map(dropdownOptions, resource => <MenuItem key={resource} value={resource}>{resource}</MenuItem>)
+            dropdownOptions.map(resource => <MenuItem key={resource} value={resource}>{resource}</MenuItem>)
           }
         </Select>
         <FormHelperText>Resource to query</FormHelperText>
@@ -276,7 +282,7 @@ class TopRoutes extends React.Component {
 
   render() {
     let query = this.state.query;
-    let emptyQuery = _.isEmpty(query.resource_name) || _.isEmpty(query.resource_type);
+    let emptyQuery = _isEmpty(query.resource_name) || _isEmpty(query.resource_type);
 
     return (
       <div>
