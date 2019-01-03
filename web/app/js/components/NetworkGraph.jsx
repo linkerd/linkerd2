@@ -1,6 +1,6 @@
 import 'whatwg-fetch';
-import { attr, call, select, selectAll } from 'd3-selection';
 import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
+import { select, selectAll } from 'd3-selection';
 import PropTypes from 'prop-types';
 import React from 'react';
 import _get from 'lodash/get';
@@ -17,8 +17,6 @@ import withREST from './util/withREST.jsx';
 const d3 = Object.assign(
   {},
   {
-    attr,
-    call,
     drag,
     forceCenter,
     forceLink,
