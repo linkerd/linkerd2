@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -574,8 +574,9 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 		return injectList(bytes, options)
 	}
 
-	report := injectReport{}
-	report.name = fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name)
+	report := injectReport{
+		name: fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name),
+	}
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
