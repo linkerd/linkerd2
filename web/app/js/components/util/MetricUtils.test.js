@@ -1,5 +1,3 @@
-
-import _ from 'lodash';
 import deployRollupFixtures from '../../../test/fixtures/deployRollup.json';
 import multiDeployRollupFixtures from '../../../test/fixtures/multiDeployRollup.json';
 import multiResourceRollupFixtures from '../../../test/fixtures/allRollup.json';
