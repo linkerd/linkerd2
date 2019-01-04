@@ -127,52 +127,59 @@ func newCmdLogs() *cobra.Command {
 	return cmd
 }
 
+func (l *logCmdOpts) followLogs(pod, container string, logLineCh chan<- string, colorPicker *ColorPicker) {
+	stream, err := l.clientset.
+		CoreV1().
+		Pods(controlPlaneNamespace).
+		GetLogs(pod, &v1.PodLogOptions{
+			Container: container,
+			Follow:    true,
+		}).
+		Stream()
+
+	if err != nil {
+		return
+	}
+
+	defer stream.Close()
+
+	scanner := bufio.NewScanner(stream)
+	loglineId := fmt.Sprintf("[%s %s]", pod, container)
+
+	for scanner.Scan() {
+		logLineCh <- fmt.Sprintf("%s %s\n", colorPicker.pick(loglineId).Color(loglineId), scanner.Text())
+	}
+
+}
+
 func runLogOutput(writer io.Writer, opts *logCmdOpts) error {
 
-	lineRead := make(chan string)
-
+	logLineCh := make(chan string)
 	colorPicker := newColorPicker()
+
 	if opts.targetPod.Name == "" && opts.targetContainerName == "" {
 		for _, pod := range opts.controlPlanePods.Items {
 			for _, container := range pod.Spec.Containers {
-				go func(p, c string) {
-
-					stream, err := opts.clientset.
-						CoreV1().
-						Pods(controlPlaneNamespace).
-						GetLogs(p, &v1.PodLogOptions{Container: c}).
-						Stream()
-
-					if err != nil {
-						return
-					}
-
-					defer stream.Close()
-
-					bufReader := bufio.NewReader(stream)
-					bytes, err := bufReader.ReadBytes('\n')
-
-					loglineId := fmt.Sprintf("[%s %s]", p, c)
-
-					lineRead <- fmt.Sprintf("%s %s", colorPicker.pick(loglineId).Color(loglineId), string(bytes))
-				}(pod.Name, container.Name)
+				go opts.followLogs(pod.Name, container.Name, logLineCh, colorPicker)
 			}
 		}
+	} else if opts.targetPod.Name != "" && opts.targetContainerName == "" {
+		for _, container := range opts.targetPod.Spec.Containers {
+			go opts.followLogs(opts.targetPod.Name, container.Name, logLineCh, colorPicker)
+		}
+	} else if opts.targetPod.Name != "" && opts.targetContainerName != "" {
+		go opts.followLogs(opts.targetPod.Name, opts.targetContainerName, logLineCh, colorPicker)
 	}
 
 	for {
 		select {
-		case line := <-lineRead:
+		case line := <-logLineCh:
 			_, err := fmt.Fprint(writer, line)
 			if err != nil {
-				os.Exit(1)
-
+				return err
 			}
-		default:
 		}
 	}
-
-	return nil
 }
 
 // validateArgs returns podWithContainer if args and container name matches
@@ -188,6 +195,10 @@ func validateArgs(args []string, pods *v1.PodList, containerName string) (*logFi
 	}
 
 	for _, pod := range pods.Items {
+		for _, ref := range pod.OwnerReferences{
+			println(ref.Name)
+		}
+
 		if pod.Name == podName {
 			return &logFilter{pod, containerName}, nil
 		}
