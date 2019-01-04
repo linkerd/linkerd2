@@ -179,18 +179,17 @@ $ bin/test-run `pwd`/bin/linkerd
 That will create multiple namespaces in your Kubernetes cluster:
 
 ```bash
-$ kubectl get ns | grep linkerd
-NAME                  STATUS    AGE
-linkerd               Active    4m
-linkerd-egress-test   Active    4m
-linkerd-get-test      Active    3m
+$ kubectl get ns | grep l5d-integration
+l5d-integration                  Active    4m
+l5d-integration-egress-test      Active    2m
+l5d-integration-get-test         Active    1m
 ...
 ```
 
 To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup linkerd
+$ bin/test-cleanup
 ```
 
 ## Writing tests
