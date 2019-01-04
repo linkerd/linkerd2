@@ -142,19 +142,17 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   // prefix all links in the app with `pathPrefix`
   class PrefixedLink extends React.Component {
     static defaultProps = {
-      deployment: "",
       targetBlank: false,
     }
 
     static propTypes = {
       children: PropTypes.node.isRequired,
-      deployment: PropTypes.string,
       targetBlank: PropTypes.bool,
       to: PropTypes.string.isRequired,
     }
 
     render() {
-      let url = prefixLink(this.props.to, this.props.deployment);
+      let url = prefixLink(this.props.to);
 
       return (
         <Link
@@ -166,14 +164,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
   }
 
-  const prefixLink = (to, controllerDeployment) => {
-    let prefix = pathPrefix;
-    if (!_isEmpty(controllerDeployment)) { // add field for grafana deployment
-      prefix = prefix.replace("/linkerd-web:", "/" + controllerDeployment + ":");
-    }
-
-    return `${prefix}${to}`;
-  };
+  const prefixLink = to => `${pathPrefix}${to}`;
 
   const generateResourceURL = r => {
     if (r.type === "namespace") {

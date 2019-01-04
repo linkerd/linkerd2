@@ -19,6 +19,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8084", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9994", "address to serve scrapable metrics on")
+	grafanaAddr := flag.String("grafana-addr", "http://127.0.0.1:3000", "address of grafana service")
 	kubernetesAPIHost := flag.String("api-addr", ":8085", "host address of kubernetes public api")
 	templateDir := flag.String("template-dir", "templates", "directory to search for template files")
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
@@ -41,7 +42,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *webpackDevServer, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *webpackDevServer, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

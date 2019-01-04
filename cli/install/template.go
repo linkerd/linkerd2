@@ -345,6 +345,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
+        - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.cluster.local:3000"
         - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-single-namespace={{.SingleNamespace}}"
@@ -656,7 +657,7 @@ data:
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/linkerd-grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/{{.Namespace}}/services/linkerd-web:http/proxy/grafana/
 
     [auth]
     disable_login_form = true
