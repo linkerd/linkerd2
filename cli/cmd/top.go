@@ -331,7 +331,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req, table)
+			return getTrafficByResourceFromAPI(os.Stdout, cliPublicAPIClient(), req, table)
 		},
 	}
 

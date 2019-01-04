@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -58,7 +57,7 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(validatedPublicAPIClient(time.Time{}), req, options)
+			output, err := requestRouteStatsFromAPI(cliPublicAPIClient(), req, options)
 			if err != nil {
 				return err
 			}

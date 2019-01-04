@@ -85,22 +85,36 @@ func init() {
 	RootCmd.AddCommand(newCmdVersion())
 }
 
+// cliPublicAPIClient builds a new public API client and executes default status
+// checks to determine if the client can successfully perform cli commands. If the
+// checks fail, then CLI will print an error and exit.
+func cliPublicAPIClient() pb.ApiClient {
+	return validatedPublicAPIClient(time.Time{}, false)
+}
+
 // validatedPublicAPIClient builds a new public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit. If the shouldRetry param
-// is specified, then the CLI will print a message to stderr and retry.
-func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
+// checks fail, then CLI will print an error and exit. If the retryDeadline
+// param is specified, then the CLI will print a message to stderr and retry.
+func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiClient {
 	checks := []healthcheck.Checks{
 		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdAPIChecks,
+		healthcheck.LinkerdExistenceChecks,
 	}
 
+	if apiChecks {
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
+	}
+
+	checks = append(checks, healthcheck.LinkerdVersionChecks)
+
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		KubeConfig:            kubeconfigPath,
-		KubeContext:           kubeContext,
-		APIAddr:               apiAddr,
-		RetryDeadline:         retryDeadline,
+		ControlPlaneNamespace:          controlPlaneNamespace,
+		KubeConfig:                     kubeconfigPath,
+		KubeContext:                    kubeContext,
+		APIAddr:                        apiAddr,
+		RetryDeadline:                  retryDeadline,
+		ShouldCheckControlPlaneVersion: true,
 	})
 
 	exitOnError := func(result *healthcheck.CheckResult) {
@@ -114,8 +128,12 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 			switch result.Category {
 			case healthcheck.KubernetesAPICategory:
 				msg = "Cannot connect to Kubernetes"
+			case healthcheck.LinkerdExistenceCategory:
+				msg = "Cannot find Linkerd"
 			case healthcheck.LinkerdAPICategory:
 				msg = "Cannot connect to Linkerd"
+			case healthcheck.LinkerdVersionCategory:
+				msg = "Invalid Linkerd version"
 			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 
