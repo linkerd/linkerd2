@@ -2,7 +2,7 @@
 
 set -eu
 
-linkerd_namespace=$1
+linkerd_namespace=${1:-l5d-integration}
 
 if [ -z "$linkerd_namespace" ]; then
     echo "usage: $(basename "$0") <namespace>" >&2
