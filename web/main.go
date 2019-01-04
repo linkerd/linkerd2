@@ -30,7 +30,7 @@ func main() {
 	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
 
-	_, _, err := net.SplitHostPort(*apiAddr) // Verify kubernetesApiHost is of the form host:port.
+	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", *apiAddr)
 	}
