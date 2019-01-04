@@ -95,7 +95,7 @@ cluster. Prior to running the test suite, verify that:
   accessible to the Kubernetes cluster to which you are deploying
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
 - The namespace where the tests will install Linkerd does not already exist;
-  by default the namespace `linkerd` is used
+  by default the namespace `l5d-integration` is used
 - The repo's Go dependencies have been downloaded by running `bin/dep ensure`
 
 ## Running tests
