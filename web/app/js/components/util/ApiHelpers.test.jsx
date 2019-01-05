@@ -87,16 +87,6 @@ describe('ApiHelpers', () => {
       expect(prefixedLink).toIncludeText(linkProps.children[0]);
     });
 
-    it('replaces the deployment in a pathPrefix', () => {
-      api = ApiHelpers('/my/path/prefix/linkerd-web:/foo');
-      let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).toHaveLength(1);
-      expect(prefixedLink.find('a')).toHaveProp('href', '/my/path/prefix/mydeployment:/foo/myrelpath');
-      expect(prefixedLink).toIncludeText(linkProps.children[0]);
-    });
-
     it('sets target=blank', () => {
       api = ApiHelpers('/my/path/prefix');
       let linkProps = { targetBlank: true, to: "/myrelpath", children: ["Informative Link Title"] };
