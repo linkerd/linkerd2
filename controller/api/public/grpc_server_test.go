@@ -301,10 +301,7 @@ spec:
 	})
 }
 
-type expectedProm struct {
-	expectedPrometheusQueries []string
-}
-
+// TODO: consider refactoring with expectedStatRPC.verifyPromQueries
 func verifyPromQueries(mockProm *MockProm, namespace string) error {
 	namespaceSelector := fmt.Sprintf("namespace=\"%s\"", namespace)
 	for _, element := range mockProm.QueriesExecuted {
