@@ -1,80 +1,95 @@
 package cmd
 
 import (
-	"bufio"
-	"errors"
-	"fmt"
-	"io"
-	"net/http"
+	"context"
 	"os"
-	"sync"
+	"os/signal"
+	"regexp"
+	"text/template"
+	"time"
 
+	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
-	"k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/wercker/stern/stern"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
-
-type logFilter struct {
-	targetPod           v1.Pod
-	targetContainerName string
-}
-
+//This code replicates most of the functionality in https://github.com/wercker/stern/blob/master/cmd/cli.go
 type logCmdOpts struct {
-	kubeAPI          *k8s.KubernetesAPI
-	k8sClient        *http.Client
-	controlPlanePods *v1.PodList
-	clientset        *kubernetes.Clientset
-	*logFilter
+	clientset *kubernetes.Clientset
+	*stern.Config
 }
 
-type ColorPicker struct {
-	m               map[string]chalk.Color
-	mu              sync.Mutex
-	availableColors []chalk.Color
-	lastUsedColor   int
+type commandFlags struct {
+	containerFilter string
+	namespace       string
+	podFilter       string
+	containerState  string
+	labelSelector   string
+	sinceSeconds    time.Duration
+	tail            int64
+	timestamps      bool
+	follow          bool
 }
 
-func (c *ColorPicker) pick(id string) chalk.Color {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if color, ok := c.m[id]; !ok {
-		if c.lastUsedColor > len(c.availableColors)-1 {
-			c.lastUsedColor = 1
-		}
-		newColor := c.availableColors[c.lastUsedColor]
-		c.m[id] = newColor
-		c.lastUsedColor += 1
-		return newColor
-	} else {
-		return color
+func (c *commandFlags) NewTailConfig() (*stern.Config, error) {
+	config := &stern.Config{}
+
+	podFilterRgx, err := regexp.Compile(c.podFilter)
+	if err != nil {
+		return nil, err
+	}
+	config.PodQuery = podFilterRgx
+
+	containerFilterRgx, err := regexp.Compile(c.containerFilter)
+	if err != nil {
+		return nil, err
+	}
+	config.ContainerQuery = containerFilterRgx
+
+	containerState, err := stern.NewContainerState(c.containerState)
+	if err != nil {
+		return nil, err
+	}
+	config.ContainerState = containerState
+
+	funcs := make(map[string]interface{})
+
+	funcs["color"] = func(color color.Color, text string) string {
+		return color.SprintFunc()(text)
 	}
 
-}
-
-func newColorPicker() *ColorPicker {
-	return &ColorPicker{
-		m: map[string]chalk.Color{},
-		availableColors: []chalk.Color{
-			chalk.Yellow,
-			chalk.Red,
-			chalk.Cyan,
-			chalk.Green,
-			chalk.Magenta,
-			chalk.White,
-		},
+	tmpl, err := template.New("logs").
+		Funcs(funcs).Parse("{{color .PodColor .PodName}} {{color .ContainerColor .ContainerName}} {{.Message}}")
+	if err != nil {
+		return nil, err
 	}
-}
+	config.Template = tmpl
 
-func newLogOptions(args []string, containerFilter, kubeconfigPath, kubeContext string) (*logCmdOpts, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	selector, err := labels.Parse(c.labelSelector)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kubeAPI.NewClient()
+	if c.labelSelector == "" {
+		config.LabelSelector = labels.Everything()
+	}
+	config.LabelSelector = selector
+
+	if c.tail != -1 {
+		config.TailLines = &c.tail
+	}
+
+	config.Since = c.sinceSeconds
+	config.Timestamps = c.timestamps
+	config.Namespace = c.namespace
+
+	return config, nil
+}
+
+func newLogOptions(flags *commandFlags, kubeconfigPath, kubeContext string) (*logCmdOpts, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
 	}
@@ -84,136 +99,101 @@ func newLogOptions(args []string, containerFilter, kubeconfigPath, kubeContext s
 		return nil, err
 	}
 
-	controlPlanePods, err := clientset.
-		CoreV1().
-		Pods(controlPlaneNamespace).
-		List(meta_v1.ListOptions{})
-
-	filterOpts, err := validateArgs(args, controlPlanePods, containerFilter)
+	c, err := flags.NewTailConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	return &logCmdOpts{
-		kubeAPI,
-		client,
-		controlPlanePods,
 		clientset,
-		filterOpts,
+		c,
 	}, nil
 }
 
 func newCmdLogs() *cobra.Command {
 
-	var containerFilter string
+	flags := &commandFlags{}
 
 	cmd := &cobra.Command{
-		Use:   "logs (COMPONENT) [flags]",
-		Short: "Prints logs for controller components",
-		Long:  `Prints logs for controller components`,
+		Use:   "logs [flags]",
+		Short: "Tail logs from kubernetes resource",
+		Long:  `Tail logs from kubernetes resource.`,
+		Example:`# Tail logs from all containers in pods that have the prefix 'linkerd-controller' in the linkerd namespace
+  linkerd logs --pod-filter linkerd-controller.* --namespace linkerd
+
+  # Tail logs from the linkerd-proxy container in the grafana pod within the linkerd control plane
+  linkerd logs --pod-filter linkerd-grafana.* --container-filter linkerd-proxy --namespace linkerd
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts, err := newLogOptions(args, containerFilter, kubeconfigPath, kubeContext)
+			opts, err := newLogOptions(flags, kubeconfigPath, kubeContext)
 
 			if err != nil {
 				return err
 			}
 
-			return runLogOutput(os.Stdout, opts)
+			return runLogOutput(opts)
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&containerFilter, "container", "c", containerFilter, "Filters log lines by provided container name")
+	cmd.PersistentFlags().StringVarP(&flags.containerFilter, "container-filter", "c", "", "Regex string to use for filtering log lines by container name")
+	cmd.PersistentFlags().StringVar(&flags.labelSelector, "label-selector", "", "kubernetes label selector to retrieve logs from resources that match")
+	cmd.PersistentFlags().StringVar(&flags.containerState, "container-state", "running", "Show logs from containers that are in a specific container state")
+	cmd.PersistentFlags().StringVarP(&flags.namespace, "namespace", "n", controlPlaneNamespace, "String to retrieve logs from pods in the given namespace")
+	cmd.PersistentFlags().StringVarP(&flags.podFilter, "pod-filter", "p", "", "Regex string to use for filtering log lines by pod name")
+	cmd.PersistentFlags().DurationVarP(&flags.sinceSeconds, "since", "s", 172800*time.Second, "Duration of how far back logs should be retrieved")
+	cmd.PersistentFlags().Int64Var(&flags.tail, "tail", -1, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
+	cmd.PersistentFlags().BoolVarP(&flags.timestamps, "timestamps", "t", false, "Print timestamps for each given log line")
 
 	return cmd
 }
 
-func (l *logCmdOpts) followLogs(pod, container string, logLineCh chan<- string, colorPicker *ColorPicker) {
-	stream, err := l.clientset.
-		CoreV1().
-		Pods(controlPlaneNamespace).
-		GetLogs(pod, &v1.PodLogOptions{
-			Container: container,
-			Follow:    true,
-		}).
-		Stream()
+func runLogOutput(opts *logCmdOpts) error {
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, os.Kill)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	podInterface := opts.clientset.CoreV1().Pods(opts.Namespace)
+	tails := make(map[string]*stern.Tail)
+
+	added, _, err := stern.Watch(
+		ctx,
+		podInterface,
+		opts.PodQuery,
+		opts.ContainerQuery,
+		nil,
+		opts.ContainerState,
+		opts.LabelSelector,
+	)
 
 	if err != nil {
-		return
+		return err
 	}
 
-	defer stream.Close()
+	go func() {
+		for {
+			select {
+			case a := <-added:
+				if a != nil {
+					tailOpts := &stern.TailOptions{
+						SinceSeconds: int64(opts.Since.Seconds()),
+						Timestamps:   opts.Timestamps,
+						TailLines:    opts.TailLines,
+						Namespace:    true,
+					}
 
-	scanner := bufio.NewScanner(stream)
-	loglineId := fmt.Sprintf("[%s %s]", pod, container)
-
-	for scanner.Scan() {
-		logLineCh <- fmt.Sprintf("%s %s\n", colorPicker.pick(loglineId).Color(loglineId), scanner.Text())
-	}
-
-}
-
-func runLogOutput(writer io.Writer, opts *logCmdOpts) error {
-
-	logLineCh := make(chan string)
-	colorPicker := newColorPicker()
-
-	if opts.targetPod.Name == "" && opts.targetContainerName == "" {
-		for _, pod := range opts.controlPlanePods.Items {
-			for _, container := range pod.Spec.Containers {
-				go opts.followLogs(pod.Name, container.Name, logLineCh, colorPicker)
+					newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, opts.Template, tailOpts)
+					if _, ok := tails[a.GetID()]; !ok {
+						tails[a.GetID()] = newTail
+					}
+					newTail.Start(ctx, podInterface)
+				}
 			}
 		}
-	} else if opts.targetPod.Name != "" && opts.targetContainerName == "" {
-		for _, container := range opts.targetPod.Spec.Containers {
-			go opts.followLogs(opts.targetPod.Name, container.Name, logLineCh, colorPicker)
-		}
-	} else if opts.targetPod.Name != "" && opts.targetContainerName != "" {
-		go opts.followLogs(opts.targetPod.Name, opts.targetContainerName, logLineCh, colorPicker)
-	}
+	}()
 
-	for {
-		select {
-		case line := <-logLineCh:
-			_, err := fmt.Fprint(writer, line)
-			if err != nil {
-				return err
-			}
-		}
-	}
-}
-
-// validateArgs returns podWithContainer if args and container name matches
-// a valid pod and a valid container within that pod
-func validateArgs(args []string, pods *v1.PodList, containerName string) (*logFilter, error) {
-	var podName string
-	if len(args) == 1 {
-		podName = args[0]
-	}
-
-	if pods == nil {
-		return nil, errors.New("no pods to filter logs from")
-	}
-
-	for _, pod := range pods.Items {
-		for _, ref := range pod.OwnerReferences{
-			println(ref.Name)
-		}
-
-		if pod.Name == podName {
-			return &logFilter{pod, containerName}, nil
-		}
-		for _, container := range pod.Spec.Containers {
-			if containerName != "" && containerName == container.Name {
-				return &logFilter{pod, containerName}, nil
-			}
-		}
-	}
-
-	// If we have exhausted the entire pod list and haven't found the container we are looking for
-	// return as error as that container does not exist in the control plane.
-	if containerName != "" {
-		return nil, errors.New(fmt.Sprintf("[%s] is not a valid container in pod [%s]", containerName, podName))
-	}
-
-	return &logFilter{}, nil
+	<-sigCh
+	return nil
 }
