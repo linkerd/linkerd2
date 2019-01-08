@@ -39,6 +39,7 @@ type FirewallConfiguration struct {
 	ProxyOutgoingPort      int
 	ProxyUID               int
 	SimulateOnly           bool
+	NetNs                  string
 }
 
 //ConfigureFirewall configures a pod's internal iptables to redirect all desired traffic through the proxy, allowing for
@@ -157,10 +158,22 @@ func addRulesForIgnoredPorts(portsToIgnore []int, chainName string, commands []*
 }
 
 func executeCommand(firewallConfiguration FirewallConfiguration, cmd *exec.Cmd) error {
-
-	log.Printf("> %s", strings.Trim(fmt.Sprintf("%v", cmd.Args), "[]"))
+	originalCmd := strings.Trim(fmt.Sprintf("%v", cmd.Args), "[]")
+	log.Printf("> %s", originalCmd)
 
 	if !firewallConfiguration.SimulateOnly {
+		// wrap up the cmd with nsenter if we were givin a netns
+		if len(firewallConfiguration.NetNs) > 0 {
+			netnsArg := fmt.Sprintf("--net=%s", firewallConfiguration.NetNs)
+			originalCmdAsArgs := strings.Split(originalCmd, " ")
+			nsenterArgs := []string{
+				netnsArg,
+			}
+			finalArgs := append(nsenterArgs, originalCmdAsArgs...)
+
+			log.Printf(">> nsenter %v", finalArgs)
+			cmd = exec.Command("nsenter", finalArgs...)
+		}
 		out, err := cmd.CombinedOutput()
 		log.Printf("< %s\n", string(out))
 		if err != nil {

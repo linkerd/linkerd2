@@ -1,0 +1,212 @@
+#   gcr.io/linkerd-io/cni-plugin:test
+
+# This ConfigMap is used to configure a self-hosted linkerd2 CNI installation.
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd2-cni-config
+  namespace: linkerd
+data:
+  incoming_proxy_port: "4143"
+  outgoing_proxy_port: "4140"
+  proxy_uid: "2102"
+  ports_to_redirect: ""
+  inbound_ports_to_ignore: "[4190,4191]"
+  outbound_ports_to_ignore: ""
+  simulate: "false"
+  log_level: "debug"
+  # The CNI network configuration to install on each node. The special
+  # values in this config will be automatically populated.
+  cni_network_config: |-
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.0",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "etcd_endpoints": "http://10.96.232.136:6666",
+          "etcd_key_file": "",
+          "etcd_cert_file": "",
+          "etcd_ca_cert_file": "",
+          "mtu": 1440,
+          "ipam": {
+              "type": "calico-ipam"
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "/etc/cni/net.d/calico-kubeconfig"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        },
+        {
+          "name": "linkerd2-cni",
+          "type": "linkerd2-cni",
+          "log_level": "__LOG_LEVEL__",
+          "policy": {
+              "type": "k8s",
+              "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
+              "k8s_auth_token": "__SERVICEACCOUNT_TOKEN__"
+          },
+          "kubernetes": {
+              "kubeconfig": "__KUBECONFIG_FILEPATH__"
+          },
+          "linkerd2": {
+            "incoming-proxy-port": __INCOMING_PROXY_PORT__,
+            "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
+            "proxy-uid": __PROXY_UID__,
+            "ports-to-redirect": __PORTS_TO_REDIRECT__,
+            "inbound-ports-to-ignore": __INBOUND_PORTS_TO_IGNORE__,
+            "outbound-ports-to-ignore": __OUTBOUND_PORTS_TO_IGNORE__,
+            "simulate": __SIMULATE__
+          }
+        }
+      ]
+    }
+---
+# This manifest installs the linkerd2 CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd2-cni
+  namespace: linkerd
+  labels:
+    k8s-app: linkerd2-cni
+spec:
+  selector:
+    matchLabels:
+      k8s-app: linkerd2-cni
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: linkerd2-cni
+      annotations:
+        # This, along with the CriticalAddonsOnly toleration below,
+        # marks the pod as a critical add-on, ensuring it gets
+        # priority scheduling and that its resources are reserved
+        # if it ever gets evicted.
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      hostNetwork: true
+      tolerations:
+        # Make sure linkerd2-cni gets scheduled on all nodes.
+        - effect: NoSchedule
+          operator: Exists
+        # Mark the pod as a critical add-on for rescheduling.
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      serviceAccountName: linkerd2-cni
+      # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
+      # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
+      terminationGracePeriodSeconds: 0
+      containers:
+        # This container installs the linkerd2 CNI binaries
+        # and CNI network config file on each node. The install
+        # script copies the files into place and then sleeps so
+        # that Kubernetes doesn't keep trying to restart it.
+        - name: install-cni
+          image: gcr.io/linkerd-io/cni-plugin:test
+          command: ["/install-cni.sh"]
+          env:
+            # Name of the CNI config file to create. Because
+            # Kubernetes will choose the conf file in
+            # lexicographic order, we name this file to ensure
+            # it is going to be chosen.
+            - name: CNI_CONF_NAME
+              value: "01-linkerd2-cni.conflist"
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: cni_network_config
+            - name: INCOMING_PROXY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: incoming_proxy_port
+            - name: OUTGOING_PROXY_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: outgoing_proxy_port
+            - name: PROXY_UID
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: proxy_uid
+            - name: PORTS_TO_REDIRECT
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: ports_to_redirect
+            - name: INBOUND_PORTS_TO_IGNORE
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: inbound_ports_to_ignore
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: linkerd2-cni-config
+                  key: log_level
+            - name: SLEEP
+              value: "true"
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+      volumes:
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd2-cni
+  namespace: linkerd
+---
+# Include a clusterrole for the linkerd2 CNI DaemonSet,
+# and bind it to the linkerd2-cni serviceaccount.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd2-cni
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd2-cni
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd2-cni
+subjects:
+- kind: ServiceAccount
+  name: linkerd2-cni
+  namespace: linkerd2

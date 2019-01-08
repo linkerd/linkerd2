@@ -70,8 +70,8 @@ func getK8sPodInfo(client *kubernetes.Clientset, podName, podNamespace string) (
 		}).Debug("Inspecting container")
 		containers[containerIdx] = container.Name
 
-		if container.Name == "istio-proxy" {
-			// don't include ports from istio-proxy in the redirect ports
+		if container.Name == "linkerd-proxy" {
+			// don't include ports from linkerd-proxy in the redirect ports
 			continue
 		}
 		for _, containerPort := range container.Ports {

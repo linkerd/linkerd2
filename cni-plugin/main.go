@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is a sample chained plugin that supports multiple CNI versions. It
-// parses prevResult according to the cniVersion
 package main
 
 import (
@@ -35,7 +33,6 @@ import (
 )
 
 var (
-	nsSetupBinDir       = "/opt/cni/bin"
 	injectAnnotationKey = "linkerd.io/setup-iptables"
 )
 
@@ -56,7 +53,6 @@ type Kubernetes struct {
 	Kubeconfig        string   `json:"kubeconfig"`
 	NodeName          string   `json:"node_name"`
 	ExcludeNamespaces []string `json:"exclude_namespaces"`
-	CniBinDir         string   `json:"cni_bin_dir"`
 }
 
 // K8sArgs is the valid CNI_ARGS used for Kubernetes
@@ -64,33 +60,22 @@ type Kubernetes struct {
 type K8sArgs struct {
 	types.CommonArgs
 	IP                         net.IP
-	K8S_POD_NAME               types.UnmarshallableString // nolint: golint
-	K8S_POD_NAMESPACE          types.UnmarshallableString // nolint: golint
-	K8S_POD_INFRA_CONTAINER_ID types.UnmarshallableString // nolint: golint
+	K8S_POD_NAME               types.UnmarshallableString
+	K8S_POD_NAMESPACE          types.UnmarshallableString
+	K8S_POD_INFRA_CONTAINER_ID types.UnmarshallableString
 }
 
-// PluginConf is whatever you expect your configuration json to be. This is whatever
-// is passed in on stdin. Your plugin may wish to expose its functionality via
-// runtime args, see CONVENTIONS.md in the CNI spec.
+// PluginConf is whatever JSON is passed via stdin.
 type PluginConf struct {
-	types.NetConf // You may wish to not nest this type
-	RuntimeConfig *struct {
-		SampleConfig map[string]interface{} `json:"sample"`
-	} `json:"runtimeConfig"`
+	types.NetConf
 
 	// This is the previous result, when called in the context of a chained
-	// plugin. Because this plugin supports multiple versions, we'll have to
-	// parse this in two passes. If your plugin is not chained, this can be
-	// removed (though you may wish to error if a non-chainable plugin is
-	// chained.
-	// If you need to modify the result before returning it, you will need
-	// to actually convert it to a concrete versioned struct.
+	// plugin. We will just pass any prevResult through.
 	RawPrevResult *map[string]interface{} `json:"prevResult"`
 	PrevResult    *current.Result         `json:"-"`
 
-	// Add plugin-specifc flags here
 	LogLevel   string     `json:"log_level"`
-	ProxyInit  ProxyInit  `json:"proxy-init"`
+	ProxyInit  ProxyInit  `json:"linkerd2"`
 	Kubernetes Kubernetes `json:"kubernetes"`
 }
 
@@ -98,16 +83,19 @@ type PluginConf struct {
 func parseConfig(stdin []byte) (*PluginConf, error) {
 	conf := PluginConf{}
 
+	logrus.Debugf("stdin to plugin: %v", string(stdin))
 	if err := json.Unmarshal(stdin, &conf); err != nil {
 		return nil, fmt.Errorf("failed to parse network configuration: %v", err)
 	}
 
-	// Parse previous result. Remove this if your plugin is not chained.
+	// Begin previous result parsing
 	if conf.RawPrevResult != nil {
 		resultBytes, err := json.Marshal(conf.RawPrevResult)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize prevResult: %v", err)
 		}
+		logrus.Debugf("RawPrevResult: %v", string(resultBytes))
+
 		res, err := version.NewResult(conf.CNIVersion, resultBytes)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse prevResult: %v", err)
@@ -117,15 +105,14 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not convert result to current version: %v", err)
 		}
+		logrus.Debugf("New PrevResult: %v", conf.PrevResult)
 	}
 	// End previous result parsing
-
-	// Do any validation here
 
 	return &conf, nil
 }
 
-// ConfigureLogging sets up logging using the provided log level,
+// ConfigureLogging sets up logging using the provided log level
 func ConfigureLogging(logLevel string) {
 	if strings.EqualFold(logLevel, "debug") {
 		logrus.SetLevel(logrus.DebugLevel)
@@ -136,47 +123,46 @@ func ConfigureLogging(logLevel string) {
 		logrus.SetLevel(logrus.WarnLevel)
 	}
 
+	// Must log to Stderr because the CNI runtime uses Stdout as its state
 	logrus.SetOutput(os.Stderr)
 }
 
-// cmdAdd is called for ADD requests
+// cmdAdd is called by the CNI runtime for ADD requests
 func cmdAdd(args *skel.CmdArgs) error {
-	logrus.Info("linkerd2-cni cmdAdd parsing config")
+	logrus.Info("cmdAdd parsing config")
 	conf, err := parseConfig(args.StdinData)
 	if err != nil {
 		return err
 	}
 	ConfigureLogging(conf.LogLevel)
 
-	if conf.PrevResult == nil {
-		logrus.Error("must be called as chained plugin")
-		return fmt.Errorf("must be called as chained plugin")
+	if conf.PrevResult != nil {
+		logrus.WithFields(logrus.Fields{
+			"version":    conf.CNIVersion,
+			"prevResult": conf.PrevResult,
+		}).Info("cmdAdd config parsed")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"version": conf.CNIVersion,
+		}).Info("cmdAdd config parsed")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"version":    conf.CNIVersion,
-		"prevResult": conf.PrevResult,
-	}).Info("cmdAdd config parsed")
-
 	// Determine if running under k8s by checking the CNI args
+	logrus.Infof("Getting identifiers with arguments: %s", args.Args)
 	k8sArgs := K8sArgs{}
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
-	logrus.Infof("Getting identifiers with arguments: %s", args.Args)
 	logrus.Infof("Loaded k8s arguments: %v", k8sArgs)
-	if conf.Kubernetes.CniBinDir != "" {
-		nsSetupBinDir = conf.Kubernetes.CniBinDir
-	}
 
-	var logger *logrus.Entry
-	logger = logrus.WithFields(logrus.Fields{
+	var logEntry *logrus.Entry
+	logEntry = logrus.WithFields(logrus.Fields{
 		"ContainerID": args.ContainerID,
 		"Pod":         string(k8sArgs.K8S_POD_NAME),
 		"Namespace":   string(k8sArgs.K8S_POD_NAMESPACE),
 	})
 
-	// Check if the workload is running under Kubernetes.
+	// Check if running under Kubernetes.
 	if string(k8sArgs.K8S_POD_NAMESPACE) != "" && string(k8sArgs.K8S_POD_NAME) != "" {
 		excludePod := false
 		for _, excludeNs := range conf.Kubernetes.ExcludeNamespaces {
@@ -186,16 +172,16 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 		if !excludePod {
-			client, err := newKubeClient(*conf, logger)
+			client, err := newKubeClient(*conf, logEntry)
 			if err != nil {
 				return err
 			}
 			logrus.WithField("client", client).Debug("Created Kubernetes client")
 			containers, _, annotations, ports, k8sErr := getKubePodInfo(client, string(k8sArgs.K8S_POD_NAME), string(k8sArgs.K8S_POD_NAMESPACE))
 			if k8sErr != nil {
-				logger.Warnf("Error geting Pod data %v", k8sErr)
+				logEntry.Warnf("Error geting Pod data %v", k8sErr)
 			}
-			logger.Infof("Found containers %v", containers)
+			logEntry.Infof("Found containers %v", containers)
 			if len(containers) > 1 {
 				logrus.WithFields(logrus.Fields{
 					"ContainerID": args.ContainerID,
@@ -206,16 +192,16 @@ func cmdAdd(args *skel.CmdArgs) error {
 					"annotations": annotations,
 				}).Infof("Checking annotations prior to redirect for linkerd2-proxy")
 				if val, ok := annotations[injectAnnotationKey]; ok {
-					logrus.Infof("Pod %s contains inject annotation: %s", string(k8sArgs.K8S_POD_NAME), val)
+					logEntry.Infof("Pod %s contains inject annotation: %s", string(k8sArgs.K8S_POD_NAME), val)
 					if injectEnabled, err := strconv.ParseBool(val); err == nil {
 						if !injectEnabled {
-							logrus.Infof("Pod excluded due to inject-disabled annotation")
+							logEntry.Infof("Pod excluded due to inject-disabled annotation")
 							excludePod = true
 						}
 					}
 				}
 				if !excludePod {
-					logrus.Infof("setting up iptables firewall")
+					logEntry.Infof("setting up iptables firewall")
 					options := cmd.RootOptions{
 						IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
 						OutgoingProxyPort:     conf.ProxyInit.OutgoingProxyPort,
@@ -224,29 +210,39 @@ func cmdAdd(args *skel.CmdArgs) error {
 						InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
 						OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
 						SimulateOnly:          conf.ProxyInit.Simulate,
+						NetNs:                 args.Netns,
 					}
+					logEntry.Debugf("options being passed: %v", options)
 					firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
+					logEntry.Debugf("firewallConfiguration: %v", firewallConfiguration)
 					if err != nil {
-						logger.Errorf("Could not create a Firewall Configuration from the options: %v", options)
+						logEntry.Errorf("Could not create a Firewall Configuration from the options: %v", options)
 						return err
 					}
 					iptables.ConfigureFirewall(*firewallConfiguration)
 				}
 			}
 		} else {
-			logger.Infof("Pod excluded")
+			logEntry.Infof("Pod excluded")
 		}
 	} else {
-		logger.Infof("No Kubernetes Data")
+		logEntry.Infof("No Kubernetes Data")
 	}
 
-	// Pass through the result for the next plugin
-	return types.PrintResult(conf.PrevResult, conf.CNIVersion)
+	logrus.Infof("plugin is finished")
+	if conf.PrevResult != nil {
+		// Pass through the prevResult for the next plugin
+		logrus.Debugf("Passing previous result: %v\n\n%v", conf.PrevResult, conf.PrevResult.String())
+		return types.PrintResult(conf.PrevResult, conf.CNIVersion)
+	}
+
+	logrus.Infof("emptying stdout")
+	return nil
 }
 
 // cmdDel is called for DELETE requests
 func cmdDel(args *skel.CmdArgs) error {
-	logrus.Info("linkerd2-cni cmdDel parsing config")
+	logrus.Info("cmdDel parsing config")
 	conf, err := parseConfig(args.StdinData)
 	if err != nil {
 		return err
@@ -266,11 +262,10 @@ func main() {
 	// Install a hook that adds file/line no information.
 	logrus.AddHook(&logutils.ContextHook{})
 
-	skel.PluginMain(cmdAdd, cmdGet, cmdDel, version.All, "CNI plugin linkerd2 v1.0.0")
+	skel.PluginMain(cmdAdd, cmdDel, version.All)
 }
 
 func cmdGet(args *skel.CmdArgs) error {
 	logrus.Info("cmdGet not implemented")
-	// TODO: implement
 	return fmt.Errorf("not implemented")
 }
