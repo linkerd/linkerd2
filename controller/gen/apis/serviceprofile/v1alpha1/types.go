@@ -25,16 +25,19 @@ type ServiceProfile struct {
 	Spec ServiceProfileSpec `json:"spec"`
 }
 
+// ServiceProfileSpec specifies a ServiceProfile resource.
 type ServiceProfileSpec struct {
 	Routes []*RouteSpec `json:"routes"`
 }
 
+// RouteSpec specifies a Route resource.
 type RouteSpec struct {
 	Name            string           `json:"name"`
 	Condition       *RequestMatch    `json:"condition"`
 	ResponseClasses []*ResponseClass `json:"responseClasses,omitempty"`
 }
 
+// RequestMatch describes the conditions under which to match a Route.
 type RequestMatch struct {
 	All       []*RequestMatch `json:"all,omitempty"`
 	Not       *RequestMatch   `json:"not,omitempty"`
@@ -43,11 +46,14 @@ type RequestMatch struct {
 	Method    string          `json:"method,omitempty"`
 }
 
+// ResponseClass describes how to classify a response (e.g. success or
+// failures).
 type ResponseClass struct {
 	Condition *ResponseMatch `json:"condition"`
 	IsFailure bool           `json:"isFailure,omitempty"`
 }
 
+// ResponseMatch describes the conditions under which to classify a response.
 type ResponseMatch struct {
 	All    []*ResponseMatch `json:"all,omitempty"`
 	Not    *ResponseMatch   `json:"not,omitempty"`
@@ -55,6 +61,7 @@ type ResponseMatch struct {
 	Status *Range           `json:"status,omitempty"`
 }
 
+// Range describes a range of integers (e.g. status codes).
 type Range struct {
 	Min uint32 `json:"min,omitempty"`
 	Max uint32 `json:"max,omitempty"`
@@ -62,7 +69,7 @@ type Range struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ServiceProfileList is a list of ServiceProfile resources
+// ServiceProfileList is a list of ServiceProfile resources.
 type ServiceProfileList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

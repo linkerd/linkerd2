@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -218,7 +218,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		Image:                    options.taggedProxyInitImage(),
 		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: initArgs,
+		Args:                     initArgs,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -390,8 +390,7 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 			return err
 		}
 
-		ir := injectReport{}
-		result, err := injectResource(bytes, options, &ir)
+		result, irs, err := injectResource(bytes, options)
 		if err != nil {
 			return err
 		}
@@ -399,7 +398,7 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 		out.Write(result)
 		out.Write([]byte("---\n"))
 
-		injectReports = append(injectReports, ir)
+		injectReports = append(injectReports, irs...)
 	}
 
 	generateReport(injectReports, report)
@@ -407,18 +406,19 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 	return nil
 }
 
-func injectList(b []byte, options *injectOptions, report *injectReport) ([]byte, error) {
+func injectList(b []byte, options *injectOptions) ([]byte, []injectReport, error) {
 	var sourceList v1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
+	injectReports := []injectReport{}
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, err := injectResource(item.Raw, options, report)
+		result, reports, err := injectResource(item.Raw, options)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// At this point, we have yaml. The kubernetes internal representation is
@@ -426,17 +426,23 @@ func injectList(b []byte, options *injectOptions, report *injectReport) ([]byte,
 		// to be converted to json.
 		injected, err := yaml.YAMLToJSON(result)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		items = append(items, runtime.RawExtension{Raw: injected})
+		injectReports = append(injectReports, reports...)
 	}
 
 	sourceList.Items = items
-	return yaml.Marshal(sourceList)
+	result, err := yaml.Marshal(sourceList)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return result, injectReports, nil
 }
 
-func injectResource(bytes []byte, options *injectOptions, report *injectReport) ([]byte, error) {
+func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -451,15 +457,14 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	// Unmarshal the object enough to read the Kind field
 	var meta metaV1.TypeMeta
 	if err := yaml.Unmarshal(bytes, &meta); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// retrieve the `metadata/name` field for reporting later
 	var om objMeta
 	if err := yaml.Unmarshal(bytes, &om); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	report.name = fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name)
 
 	// obj and podTemplateSpec will reference zero or one the following
 	// objects, depending on the type.
@@ -485,7 +490,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "Deployment":
 		var deployment v1beta1.Deployment
 		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
@@ -500,7 +505,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "ReplicationController":
 		var rc v1.ReplicationController
 		if err := yaml.Unmarshal(bytes, &rc); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &rc
@@ -511,7 +516,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "ReplicaSet":
 		var rs v1beta1.ReplicaSet
 		if err := yaml.Unmarshal(bytes, &rs); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &rs
@@ -522,7 +527,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "Job":
 		var job batchV1.Job
 		if err := yaml.Unmarshal(bytes, &job); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &job
@@ -533,7 +538,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "DaemonSet":
 		var ds v1beta1.DaemonSet
 		if err := yaml.Unmarshal(bytes, &ds); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &ds
@@ -544,7 +549,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "StatefulSet":
 		var statefulset appsV1.StatefulSet
 		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &statefulset
@@ -555,7 +560,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	case "Pod":
 		var pod v1.Pod
 		if err := yaml.Unmarshal(bytes, &pod); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		obj = &pod
@@ -566,10 +571,11 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 		// Lists are a little different than the other types. There's no immediate
 		// pod template. Because of this, we do a recursive call for each element
 		// in the list (instead of just marshaling the injected pod template).
+		return injectList(bytes, options)
+	}
 
-		// TODO: generate an injectReport per list item
-		return injectList(bytes, options, report)
-
+	report := injectReport{
+		name: fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name),
 	}
 
 	// If we don't inject anything into the pod template then output the
@@ -579,7 +585,7 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 	if podSpec != nil {
 		metaAccessor, err := k8sMeta.Accessor(obj)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// The namespace isn't necessarily in the input so it has to be substituted
@@ -592,19 +598,19 @@ func injectResource(bytes []byte, options *injectOptions, report *injectReport) 
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(podSpec, identity, DNSNameOverride, options, report) {
+		if injectPodSpec(podSpec, identity, DNSNameOverride, options, &report) {
 			injectObjectMeta(objectMeta, k8sLabels, options)
 			var err error
 			output, err = yaml.Marshal(obj)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	} else {
 		report.unsupportedResource = true
 	}
 
-	return output, nil
+	return output, []injectReport{report}, nil
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.

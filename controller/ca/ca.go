@@ -48,6 +48,7 @@ type CA struct {
 	nextSerialNumber uint64
 }
 
+// CertificateAndPrivateKey encapsulates a certificate / private key pair.
 type CertificateAndPrivateKey struct {
 	// The ASN.1 DER-encoded (binary, not PEM) certificate.
 	Certificate []byte

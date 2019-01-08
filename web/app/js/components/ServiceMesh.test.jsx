@@ -1,4 +1,5 @@
-import _ from 'lodash';
+import _cloneDeep from 'lodash/cloneDeep';
+import _each from 'lodash/each';
 import nsFixtures from '../../test/fixtures/namespaces.json';
 import podFixtures from '../../test/fixtures/podRollup.json';
 import { routerWrap } from '../../test/testHelpers.jsx';
@@ -145,7 +146,7 @@ describe('ServiceMesh', () => {
     });
 
     it("displays a message if >1 resource has not been added to the mesh", () => {
-      let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
+      let nsAllResourcesAdded = _cloneDeep(nsFixtures);
       nsAllResourcesAdded.ok.statTables[0].podGroup.rows.push({
         "resource": {
           "namespace": "",
@@ -170,8 +171,8 @@ describe('ServiceMesh', () => {
     });
 
     it("displays a message if 1 resource has not added to servicemesh", () => {
-      let nsOneResourceNotAdded = _.cloneDeep(nsFixtures);
-      _.each(nsOneResourceNotAdded.ok.statTables[0].podGroup.rows, row => {
+      let nsOneResourceNotAdded = _cloneDeep(nsFixtures);
+      _each(nsOneResourceNotAdded.ok.statTables[0].podGroup.rows, row => {
         // set all namespaces to have fully meshed pod counts, except one
         if (row.resource.name !== "default") {
           row.meshedPodCount = "10";
@@ -190,8 +191,8 @@ describe('ServiceMesh', () => {
     });
 
     it("displays a message if all resources have been added to servicemesh", () => {
-      let nsAllResourcesAdded = _.cloneDeep(nsFixtures);
-      _.each(nsAllResourcesAdded.ok.statTables[0].podGroup.rows, row => {
+      let nsAllResourcesAdded = _cloneDeep(nsFixtures);
+      _each(nsAllResourcesAdded.ok.statTables[0].podGroup.rows, row => {
         row.meshedPodCount = "10";
         row.runningPodCount = "10";
       });

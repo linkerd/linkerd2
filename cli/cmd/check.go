@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -57,8 +58,8 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunChecks(options)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return configureAndRunChecks(options)
 		},
 	}
 
@@ -73,7 +74,11 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(options *checkOptions) {
+func configureAndRunChecks(options *checkOptions) error {
+	err := options.validate()
+	if err != nil {
+		return fmt.Errorf("Validation error when executing check command: %v", err)
+	}
 	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
 
 	if options.preInstallOnly {
@@ -103,6 +108,7 @@ func configureAndRunChecks(options *checkOptions) {
 
 	success := runChecks(os.Stdout, hc)
 
+	// this empty line separates final results from the checks list in the output
 	fmt.Println("")
 
 	if !success {
@@ -111,6 +117,15 @@ func configureAndRunChecks(options *checkOptions) {
 	}
 
 	fmt.Printf("Status check results are %s\n", okStatus)
+
+	return nil
+}
+
+func (o *checkOptions) validate() error {
+	if o.preInstallOnly && o.dataPlaneOnly {
+		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	return nil
 }
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {

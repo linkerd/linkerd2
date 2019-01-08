@@ -19,10 +19,13 @@ import (
 
 var minAPIVersion = [3]int{1, 8, 0}
 
+// KubernetesAPI provides a client for accessing a Kubernetes cluster.
 type KubernetesAPI struct {
 	*rest.Config
 }
 
+// NewClient returns an http.Client configured with a Transport to connect to
+// the Kubernetes cluster.
 func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 	secureTransport, err := rest.TransportFor(kubeAPI.Config)
 	if err != nil {
@@ -34,6 +37,7 @@ func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 	}, nil
 }
 
+// GetVersionInfo returns version.Info for the Kubernetes cluster.
 func (kubeAPI *KubernetesAPI) GetVersionInfo(client *http.Client) (*version.Info, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -58,6 +62,8 @@ func (kubeAPI *KubernetesAPI) GetVersionInfo(client *http.Client) (*version.Info
 	return &versionInfo, err
 }
 
+// CheckVersion validates whether the configured Kubernetes cluster's version is
+// running a minimum Kubernetes API version.
 func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 	apiVersion, err := getK8sVersion(versionInfo.String())
 	if err != nil {
@@ -73,6 +79,7 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 	return nil
 }
 
+// NamespaceExists validates whether a given namespace exists.
 func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

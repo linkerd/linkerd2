@@ -1,14 +1,15 @@
-import _ from 'lodash';
+import _compact from 'lodash/compact';
+import _isNil from 'lodash/isNil';
 
 const topRoutesDisplayOrder = [
   "namespace",
 ];
 
 
-const tapDisplayOrder = query => _.compact([
-  _.isNil(query.resource) ? null : query.resource.indexOf("namespace") === 0 ? null : "namespace",
+const tapDisplayOrder = query => _compact([
+  _isNil(query.resource) ? null : query.resource.indexOf("namespace") === 0 ? null : "namespace",
   "toResource",
-  _.isNil(query.toResource) ? null : query.toResource.indexOf("namespace") === 0 ? null : "toNamespace",
+  _isNil(query.toResource) ? null : query.toResource.indexOf("namespace") === 0 ? null : "toNamespace",
   "method",
   "path",
   "scheme",

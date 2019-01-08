@@ -12,7 +12,9 @@ import ListItemText from '@material-ui/core/ListItemText';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _isNull from 'lodash/isNull';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -49,7 +51,7 @@ const httpStatusCol = {
   title: "HTTP status",
   key: "http-status",
   render: datum => {
-    let d = _.get(datum, "responseInit.http.responseInit");
+    let d = _get(datum, "responseInit.http.responseInit");
     return !d ? <Spinner /> : d.httpStatus;
   }
 };
@@ -59,7 +61,7 @@ const responseInitLatencyCol = {
   key: "rsp-latency",
   isNumeric: true,
   render: datum => {
-    let d = _.get(datum, "responseInit.http.responseInit");
+    let d = _get(datum, "responseInit.http.responseInit");
     return !d ? <Spinner /> : formatTapLatency(d.sinceRequestInit);
   }
 };
@@ -68,9 +70,9 @@ const grpcStatusCol = {
   title: "GRPC status",
   key: "grpc-status",
   render: datum => {
-    let d = _.get(datum, "responseEnd.http.responseEnd");
+    let d = _get(datum, "responseEnd.http.responseEnd");
     return !d ? <Spinner /> :
-      _.isNull(d.eos) ? "---" : grpcStatusCodes[_.get(d, "eos.grpcStatusCode")];
+      _isNull(d.eos) ? "---" : grpcStatusCodes[_get(d, "eos.grpcStatusCode")];
   }
 };
 
@@ -78,7 +80,7 @@ const pathCol = {
   title: "Path",
   key: "path",
   render: datum => {
-    let d = _.get(datum, "requestInit.http.requestInit");
+    let d = _get(datum, "requestInit.http.requestInit");
     return !d ? <Spinner /> : d.path;
   }
 };
@@ -87,8 +89,8 @@ const methodCol = {
   title: "Method",
   key: "method",
   render: datum => {
-    let d = _.get(datum, "requestInit.http.requestInit");
-    return !d ? <Spinner /> : _.get(d, "method.registered");
+    let d = _get(datum, "requestInit.http.requestInit");
+    return !d ? <Spinner /> : _get(d, "method.registered");
   }
 };
 
@@ -103,11 +105,11 @@ const topLevelColumns = (resourceType, ResourceLink) => [
     key: "src-dst",
     render: d => {
       let datum = {
-        direction: _.get(d, "base.proxyDirection"),
-        source: _.get(d, "base.source"),
-        destination: _.get(d, "base.destination"),
-        sourceLabels: _.get(d, "base.sourceMeta.labels", {}),
-        destinationLabels: _.get(d, "base.destinationMeta.labels", {})
+        direction: _get(d, "base.proxyDirection"),
+        source: _get(d, "base.source"),
+        destination: _get(d, "base.destination"),
+        sourceLabels: _get(d, "base.sourceMeta.labels", {}),
+        destinationLabels: _get(d, "base.destinationMeta.labels", {})
       };
       return srcDstColumn(datum, resourceType, ResourceLink);
     }
@@ -115,8 +117,7 @@ const topLevelColumns = (resourceType, ResourceLink) => [
 ];
 
 const tapColumns = (resourceType, ResourceLink) => {
-  return _.concat(
-    topLevelColumns(resourceType, ResourceLink),
+  return topLevelColumns(resourceType, ResourceLink).concat(
     [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
   );
 };
@@ -138,35 +139,35 @@ const requestInitSection = d => (
     <Typography variant="subtitle2">Request Init</Typography>
     <br />
     <List dense>
-      {itemDisplay("Authority", _.get(d, "requestInit.http.requestInit.authority"))}
-      {itemDisplay("Path", _.get(d, "requestInit.http.requestInit.path"))}
-      {itemDisplay("Scheme", _.get(d, "requestInit.http.requestInit.scheme.registered"))}
-      {itemDisplay("Method", _.get(d, "requestInit.http.requestInit.method.registered"))}
-      {itemDisplay("TLS", _.get(d, "base.tls"))}
+      {itemDisplay("Authority", _get(d, "requestInit.http.requestInit.authority"))}
+      {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
+      {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
+      {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
+      {itemDisplay("TLS", _get(d, "base.tls"))}
     </List>
   </React.Fragment>
 );
 
-const responseInitSection = d => _.isEmpty(d.responseInit) ? null : (
+const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
   <React.Fragment>
     <Typography variant="subtitle2">Response Init</Typography>
     <br />
     <List dense>
-      {itemDisplay("HTTP Status", _.get(d, "responseInit.http.responseInit.httpStatus"))}
-      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseInit.http.responseInit.sinceRequestInit")))}
+      {itemDisplay("HTTP Status", _get(d, "responseInit.http.responseInit.httpStatus"))}
+      {itemDisplay("Latency", formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
     </List>
   </React.Fragment>
 );
 
-const responseEndSection = d => _.isEmpty(d.responseEnd) ? null : (
+const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
     <Typography variant="subtitle2">Response End</Typography>
     <br />
 
     <List dense>
-      {itemDisplay("GRPC Status", _.isNull(_.get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
-      {itemDisplay("Latency", formatTapLatency(_.get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
-      {itemDisplay("Response Length (B)", formatWithComma(_.get(d, "responseEnd.http.responseEnd.responseBytes")))}
+      {itemDisplay("GRPC Status", _isNull(_get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
+      {itemDisplay("Latency", formatTapLatency(_get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
+      {itemDisplay("Response Length (B)", formatWithComma(_get(d, "responseEnd.http.responseEnd.responseBytes")))}
     </List>
   </React.Fragment>
 );

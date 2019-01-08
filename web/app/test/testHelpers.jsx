@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _merge from 'lodash/merge';
 import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
 import { createMemoryHistory } from 'history';
 import React from 'react';
@@ -13,7 +13,7 @@ const componentDefaultProps = {
 
 export function routerWrap(Component, extraProps={}, route="/", currentLoc="/") {
   const createElement = (ComponentToWrap, props) => (
-    <ComponentToWrap {...(_.merge({}, componentDefaultProps, props, extraProps))} />
+    <ComponentToWrap {...(_merge({}, componentDefaultProps, props, extraProps))} />
   );
   return (
     <Router history={createMemoryHistory(currentLoc)} createElement={createElement}>

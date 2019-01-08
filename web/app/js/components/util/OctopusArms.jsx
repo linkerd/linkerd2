@@ -1,5 +1,4 @@
 import React from 'react';
-import _ from 'lodash';
 import grey from '@material-ui/core/colors/grey';
 
 const strokeOpacity = "0.7";
@@ -34,7 +33,7 @@ const generateSvgComponents = (y1, width, height) => {
   let curve2End = `${x4},${y4}`;
   let horizLine2 = `L ${x5},${y4}`;
 
-  let arrowPath = _.join([start, horizLine1, curve1, curve1End, verticalLineEnd, curve2, curve2End, horizLine2], " ");
+  let arrowPath = [start, horizLine1, curve1, curve1End, verticalLineEnd, curve2, curve2End, horizLine2].join(" ");
 
   let arrowEndX = width;
   let arrowEndY = y4;

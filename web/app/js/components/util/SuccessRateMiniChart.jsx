@@ -2,7 +2,7 @@ import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateDot from "./SuccessRateDot.jsx";
-import _ from 'lodash';
+import _isNil from 'lodash/isNil';
 import { metricToFormatter } from './Utils.js';
 
 class SuccessRateMiniChart extends React.Component {
@@ -12,7 +12,7 @@ class SuccessRateMiniChart extends React.Component {
     return (
       <Grid container justify="flex-end" alignItems="center" spacing={8}>
         <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
-        <Grid item>{_.isNil(sr) ? null :
+        <Grid item>{_isNil(sr) ? null :
         <SuccessRateDot sr={sr} />
         }
         </Grid>

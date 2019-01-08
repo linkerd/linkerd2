@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// Checks is an enum for the types of health checks.
 type Checks int
 
 const (
@@ -56,11 +57,19 @@ const (
 	// and ShouldCheckDataPlaneVersion options are false.
 	LinkerdVersionChecks
 
-	KubernetesAPICategory     = "kubernetes-api"
+	// KubernetesAPICategory is the string representation of KubernetesAPIChecks.
+	KubernetesAPICategory = "kubernetes-api"
+	// LinkerdPreInstallCategory is the string representation of
+	// LinkerdPreInstallChecks.
 	LinkerdPreInstallCategory = "kubernetes-setup"
-	LinkerdDataPlaneCategory  = "linkerd-data-plane"
-	LinkerdAPICategory        = "linkerd-api"
-	LinkerdVersionCategory    = "linkerd-version"
+	// LinkerdDataPlaneCategory is the string representation of
+	// LinkerdDataPlaneChecks.
+	LinkerdDataPlaneCategory = "linkerd-data-plane"
+	// LinkerdAPICategory is the string representation of LinkerdAPIChecks.
+	LinkerdAPICategory = "linkerd-api"
+	// LinkerdVersionCategory is the string representation of
+	// LinkerdVersionChecks.
+	LinkerdVersionCategory = "linkerd-version"
 )
 
 var (
@@ -100,6 +109,7 @@ type checker struct {
 	checkRPC func() (*healthcheckPb.SelfCheckResponse, error)
 }
 
+// CheckResult encapsulates a check's identifying information and output
 type CheckResult struct {
 	Category    string
 	Description string
@@ -110,6 +120,7 @@ type CheckResult struct {
 
 type checkObserver func(*CheckResult)
 
+// Options specifies configuration for a HealthChecker.
 type Options struct {
 	ControlPlaneNamespace          string
 	DataPlaneNamespace             string
@@ -124,6 +135,8 @@ type Options struct {
 	SingleNamespace                bool
 }
 
+// HealthChecker encapsulates all health check checkers, and clients required to
+// perform those checks.
 type HealthChecker struct {
 	checkers []*checker
 	*Options
@@ -139,6 +152,7 @@ type HealthChecker struct {
 	latestVersion    string
 }
 
+// NewHealthChecker returns an initialized HealthChecker
 func NewHealthChecker(checks []Checks, options *Options) *HealthChecker {
 	hc := &HealthChecker{
 		checkers: make([]*checker, 0),

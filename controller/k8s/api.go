@@ -26,8 +26,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+// APIResource is an enum for Kubernetes API resource types, for use when
+// initializing a K8s API, to describe which resource types to interact with.
 type APIResource int
 
+// These constants enumerate Kubernetes resource types.
 const (
 	CM APIResource = iota
 	Deploy
@@ -140,6 +143,7 @@ func (api *API) Sync() {
 	log.Infof("caches synced")
 }
 
+// Deploy provides access to a shared informer and lister for Deployments.
 func (api *API) Deploy() appinformers.DeploymentInformer {
 	if api.deploy == nil {
 		panic("Deploy informer not configured")
@@ -147,6 +151,7 @@ func (api *API) Deploy() appinformers.DeploymentInformer {
 	return api.deploy
 }
 
+// RS provides access to a shared informer and lister for ReplicaSets.
 func (api *API) RS() appinformers.ReplicaSetInformer {
 	if api.rs == nil {
 		panic("RS informer not configured")
@@ -154,6 +159,7 @@ func (api *API) RS() appinformers.ReplicaSetInformer {
 	return api.rs
 }
 
+// Pod provides access to a shared informer and lister for Pods.
 func (api *API) Pod() coreinformers.PodInformer {
 	if api.pod == nil {
 		panic("Pod informer not configured")
@@ -161,6 +167,8 @@ func (api *API) Pod() coreinformers.PodInformer {
 	return api.pod
 }
 
+// RC provides access to a shared informer and lister for
+// ReplicationControllers.
 func (api *API) RC() coreinformers.ReplicationControllerInformer {
 	if api.rc == nil {
 		panic("RC informer not configured")
@@ -168,6 +176,7 @@ func (api *API) RC() coreinformers.ReplicationControllerInformer {
 	return api.rc
 }
 
+// Svc provides access to a shared informer and lister for Services.
 func (api *API) Svc() coreinformers.ServiceInformer {
 	if api.svc == nil {
 		panic("Svc informer not configured")
@@ -175,6 +184,7 @@ func (api *API) Svc() coreinformers.ServiceInformer {
 	return api.svc
 }
 
+// Endpoint provides access to a shared informer and lister for Endpoints.
 func (api *API) Endpoint() coreinformers.EndpointsInformer {
 	if api.endpoint == nil {
 		panic("Endpoint informer not configured")
@@ -182,6 +192,7 @@ func (api *API) Endpoint() coreinformers.EndpointsInformer {
 	return api.endpoint
 }
 
+// CM provides access to a shared informer and lister for ConfigMaps.
 func (api *API) CM() coreinformers.ConfigMapInformer {
 	if api.cm == nil {
 		panic("CM informer not configured")
@@ -189,6 +200,7 @@ func (api *API) CM() coreinformers.ConfigMapInformer {
 	return api.cm
 }
 
+// SP provides access to a shared informer and lister for ServiceProfiles.
 func (api *API) SP() spinformers.ServiceProfileInformer {
 	if api.sp == nil {
 		panic("SP informer not configured")
@@ -196,6 +208,7 @@ func (api *API) SP() spinformers.ServiceProfileInformer {
 	return api.sp
 }
 
+// MWC provides access to a shared informer and lister for MutatingWebhookConfigurations.
 func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
 	if api.mwc == nil {
 		panic("MWC informer not configured")
@@ -439,6 +452,8 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
+// GetServices returns a list of Service resources, based on input namespace and
+// name.
 func (api *API) GetServices(namespace, name string) ([]*apiv1.Service, error) {
 	var err error
 	var services []*apiv1.Service

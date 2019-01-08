@@ -111,8 +111,8 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 			table = append(table, &rowStats{
 				route:       route,
 				dst:         r.GetAuthority(),
-				requestRate: util.GetRequestRate(r.Stats, r.TimeWindow),
-				successRate: util.GetSuccessRate(r.Stats),
+				requestRate: getRequestRate(r.Stats, r.TimeWindow),
+				successRate: getSuccessRate(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
 				latencyP99:  r.Stats.LatencyMsP99,

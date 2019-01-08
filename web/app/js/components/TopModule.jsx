@@ -5,7 +5,16 @@ import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TopEventTable from './TopEventTable.jsx';
-import _ from 'lodash';
+import _cloneDeep from 'lodash/cloneDeep';
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _isEqual from 'lodash/isEqual';
+import _isNil from 'lodash/isNil';
+import _noop from 'lodash/noop';
+import _size from 'lodash/size';
+import _take from 'lodash/take';
+import _throttle from 'lodash/throttle';
+import _values from 'lodash/values';
 import { withContext } from './util/AppContext.jsx';
 
 class TopModule extends React.Component {
@@ -28,8 +37,8 @@ class TopModule extends React.Component {
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
     maxRowsToStore: 50,
-    updateNeighbors: _.noop,
-    updateTapClosingState: _.noop,
+    updateNeighbors: _noop,
+    updateTapClosingState: _noop,
     query: {
       resource: ""
     }
@@ -39,7 +48,7 @@ class TopModule extends React.Component {
     super(props);
     this.tapResultsById = {};
     this.topEventIndex = {};
-    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapEventIndexState, 500);
+    this.throttledWebsocketRecvHandler = _throttle(this.updateTapEventIndexState, 500);
     this.updateTapClosingState = this.props.updateTapClosingState;
 
     this.state = {
@@ -61,7 +70,7 @@ class TopModule extends React.Component {
     if (!this.props.startTap && prevProps.startTap) {
       this.stopTapStreaming();
     }
-    if (!_.isEqual(this.props.query, prevProps.query)) {
+    if (!_isEqual(this.props.query, prevProps.query)) {
       this.clearTopTable();
     }
   }
@@ -69,11 +78,11 @@ class TopModule extends React.Component {
   componentWillUnmount() {
     this.throttledWebsocketRecvHandler.cancel();
     this.stopTapStreaming();
-    this.updateTapClosingState = _.noop;
+    this.updateTapClosingState = _noop;
   }
 
   onWebsocketOpen = () => {
-    let query = _.cloneDeep(this.props.query);
+    let query = _cloneDeep(this.props.query);
     setMaxRps(query);
 
     this.ws.send(JSON.stringify({
@@ -134,7 +143,7 @@ class TopModule extends React.Component {
     let sourceKey = event.source.owner || event.source.pod || event.source.str;
     let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
 
-    return [sourceKey, dstKey, _.get(event, "http.requestInit.method.registered"), event.http.requestInit.path].join("_");
+    return [sourceKey, dstKey, _get(event, "http.requestInit.method.registered"), event.http.requestInit.path].join("_");
   }
 
   initialTopResult(d, eventKey) {
@@ -144,7 +153,7 @@ class TopModule extends React.Component {
       pods: {}
     };
     sourceDisplay.ips[d.base.source.str] = true;
-    if (!_.isNil(d.base.source.pod)) {
+    if (!_isNil(d.base.source.pod)) {
       sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
     }
 
@@ -153,7 +162,7 @@ class TopModule extends React.Component {
       pods: {}
     };
     destinationDisplay.ips[d.base.destination.str] = true;
-    if (!_.isNil(d.base.destination.pod)) {
+    if (!_isNil(d.base.destination.pod)) {
       destinationDisplay.pods[d.base.destination.pod] = d.base.destination.namespace;
     }
 
@@ -172,7 +181,7 @@ class TopModule extends React.Component {
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
       destinationDisplay,
-      httpMethod: _.get(d, "requestInit.http.requestInit.method.registered"),
+      httpMethod: _get(d, "requestInit.http.requestInit.method.registered"),
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
       lastUpdated: Date.now()
@@ -197,11 +206,11 @@ class TopModule extends React.Component {
     }
 
     result.sourceDisplay.ips[d.base.source.str] = true;
-    if (!_.isNil(d.requestInit.sourceMeta.labels.pod)) {
+    if (!_isNil(d.requestInit.sourceMeta.labels.pod)) {
       result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
     }
     result.destinationDisplay.ips[d.base.destination.str] = true;
-    if (!_.isNil(d.requestInit.destinationMeta.labels.pod)) {
+    if (!_isNil(d.requestInit.destinationMeta.labels.pod)) {
       result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     }
 
@@ -209,6 +218,11 @@ class TopModule extends React.Component {
   }
 
   indexTopResult = (d, topResults) => {
+    // only index if have the full request (i.e. init and end)
+    if (!d.requestInit) {
+      return topResults;
+    }
+
     let eventKey = this.topEventKey(d.requestInit);
     this.addSuccessCount(d);
 
@@ -218,12 +232,12 @@ class TopModule extends React.Component {
       this.incrementTopResult(d, topResults[eventKey]);
     }
 
-    if (_.size(topResults) > this.props.maxRowsToStore) {
+    if (_size(topResults) > this.props.maxRowsToStore) {
       this.deleteOldestIndexedResult(topResults);
     }
 
     if (d.base.proxyDirection === "INBOUND") {
-      this.props.updateNeighbors(d.requestInit.source, _.get(d, "requestInit.sourceMeta.labels"), null);
+      this.props.updateNeighbors(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"), null);
     }
 
     return topResults;
@@ -246,9 +260,9 @@ class TopModule extends React.Component {
     let resultIndex = this.tapResultsById;
     let d = this.parseTapResult(data);
 
-    if (_.isNil(resultIndex[d.id])) {
+    if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
-      if (_.size(resultIndex) > this.props.maxRowsToStore) {
+      if (_size(resultIndex) > this.props.maxRowsToStore) {
         this.deleteOldestIndexedResult(resultIndex);
       }
 
@@ -271,12 +285,12 @@ class TopModule extends React.Component {
   addSuccessCount = d => {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
-    let success = parseInt(_.get(d, "responseInit.http.responseInit.httpStatus"), 10) < 500;
+    let success = parseInt(_get(d, "responseInit.http.responseInit.httpStatus"), 10) < 500;
     if (success) {
-      let grpcStatusCode = _.get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
-      if (!_.isNil(grpcStatusCode)) {
+      let grpcStatusCode = _get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
+      if (!_isNil(grpcStatusCode)) {
         success = grpcStatusCode === 0;
-      } else if (!_.isNil(_.get(d, "responseEnd.http.responseEnd.eos.resetErrorCode"))) {
+      } else if (!_isNil(_get(d, "responseEnd.http.responseEnd.eos.resetErrorCode"))) {
         success = false;
       }
     }
@@ -288,7 +302,7 @@ class TopModule extends React.Component {
     let oldest = Date.now();
     let oldestId = "";
 
-    _.each(resultIndex, (res, id) => {
+    _each(resultIndex, (res, id) => {
       if (res.lastUpdated < oldest) {
         oldest = res.lastUpdated;
         oldestId = id;
@@ -332,8 +346,8 @@ class TopModule extends React.Component {
   }
 
   render() {
-    let tableRows = _.take(_.values(this.state.topEventIndex), this.props.maxRowsToDisplay);
-    let resourceType = _.isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
+    let tableRows = _take(_values(this.state.topEventIndex), this.props.maxRowsToDisplay);
+    let resourceType = _isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
 
     return (
       <React.Fragment>

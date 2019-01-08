@@ -170,6 +170,39 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	return out
 }
 
+// getRequestRate calculates request rate from Public API BasicStats.
+func getRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
+	success := stats.SuccessCount
+	failure := stats.FailureCount
+	windowLength, err := time.ParseDuration(timeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(success+failure) / windowLength.Seconds()
+}
+
+// getSuccessRate calculates success rate from Public API BasicStats.
+func getSuccessRate(stats *pb.BasicStats) float64 {
+	success := stats.SuccessCount
+	failure := stats.FailureCount
+
+	if success+failure == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(success+failure)
+}
+
+// getPercentTLS calculates the percent of traffic that is TLS, from Public API
+// BasicStats.
+func getPercentTLS(stats *pb.BasicStats) float64 {
+	reqTotal := stats.SuccessCount + stats.FailureCount
+	if reqTotal == 0 {
+		return 0.0
+	}
+	return float64(stats.TlsRequestCount) / float64(reqTotal)
+}
+
 type proxyConfigOptions struct {
 	linkerdVersion          string
 	proxyImage              string
