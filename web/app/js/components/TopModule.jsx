@@ -218,6 +218,11 @@ class TopModule extends React.Component {
   }
 
   indexTopResult = (d, topResults) => {
+    // only index if have the full request (i.e. init and end)
+    if (!d.requestInit) {
+      return topResults;
+    }
+
     let eventKey = this.topEventKey(d.requestInit);
     this.addSuccessCount(d);
 
