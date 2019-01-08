@@ -81,11 +81,9 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	namespace := ""
 	if req.GetNamespace() != "" {
 		namespace = req.GetNamespace()
-	}
-	if req.GetSelector() != nil && req.GetSelector().GetResource().GetNamespace() != "" {
+	} else if req.GetSelector().GetResource().GetNamespace() != "" {
 		namespace = req.GetSelector().GetResource().GetNamespace()
-	}
-	if req.GetSelector() != nil && req.GetSelector().GetResource().GetType() == pkgK8s.Namespace {
+	} else if req.GetSelector().GetResource().GetType() == pkgK8s.Namespace {
 		namespace = req.GetSelector().GetResource().GetName()
 	}
 	if namespace != "" {
