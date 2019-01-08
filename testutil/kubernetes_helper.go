@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
 	// Loads the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
@@ -136,7 +137,7 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 		var deploymentReplicas int
 		for _, pod := range pods.Items {
-			if strings.HasPrefix(pod.Name, deploymentName){
+			if strings.HasPrefix(pod.Name, deploymentName) {
 				deploymentReplicas++
 				if pod.Status.Phase != "Running" {
 					return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
@@ -202,21 +203,17 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 	return matches[0][1], matches[0][2], nil
 }
 
-// ProxyURLFor creates a kubernetes proxy, runs it, and returns the URL that
-// tests can use for access to the given service. Note that the proxy remains
-// running for the duration of the test.
-func (h *KubernetesHelper) ProxyURLFor(namespace, service, port string) (string, error) {
-	proxy, err := k8s.NewProxy("", "", 0)
+// URLFor creates a kubernetes port-forward, runs it, and returns the URL that
+// tests can use for access to the given deployment. Note that the port-forward
+// remains running for the duration of the test.
+func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) (string, error) {
+	pf, err := k8s.NewPortForward("", "", namespace, deployName, 0, remotePort)
 	if err != nil {
 		return "", err
 	}
 
-	url, err := proxy.URLFor(namespace, fmt.Sprintf("/services/%s:%s/proxy/", service, port))
-	if err != nil {
-		return "", err
-	}
+	go pf.Run()
+	<-pf.Ready()
 
-	go proxy.Run()
-
-	return url.String(), nil
+	return pf.URLFor(""), nil
 }
