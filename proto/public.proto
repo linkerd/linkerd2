@@ -28,8 +28,8 @@ message Service {
 }
 
 message ListPodsRequest {
-  string namespace = 1; [deprecated=true];
-  ResourceSelection selector = 2; // resource is treated as an owner of the pod
+  string namespace = 1 [deprecated=true];
+  ResourceSelection selector = 2;
 }
 message ListPodsResponse {
   repeated Pod pods = 1;
