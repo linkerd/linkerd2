@@ -13,6 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+// KubernetesProxy provides a proxied connection into a Kubernetes cluster.
 type KubernetesProxy struct {
 	listener net.Listener
 	server   *proxy.Server

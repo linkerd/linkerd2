@@ -12,6 +12,7 @@ type handler struct {
 	promHandler http.Handler
 }
 
+// StartServer starts an admin server listening on a given address.
 func StartServer(addr string) {
 	log.Infof("starting admin server on %s", addr)
 

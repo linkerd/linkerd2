@@ -40,10 +40,10 @@ type podReport struct {
 
 const (
 	podQuery                   = "max(process_start_time_seconds{%s}) by (pod, namespace)"
-	K8sClientSubsystemName     = "kubernetes"
-	K8sClientCheckDescription  = "control plane can talk to Kubernetes"
-	PromClientSubsystemName    = "prometheus"
-	PromClientCheckDescription = "control plane can talk to Prometheus"
+	k8sClientSubsystemName     = "kubernetes"
+	k8sClientCheckDescription  = "control plane can talk to Kubernetes"
+	promClientSubsystemName    = "prometheus"
+	promClientCheckDescription = "control plane can talk to Prometheus"
 )
 
 func newGrpcServer(
@@ -202,8 +202,8 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest) (*healthcheckPb.SelfCheckResponse, error) {
 	k8sClientCheck := &healthcheckPb.CheckResult{
-		SubsystemName:    K8sClientSubsystemName,
-		CheckDescription: K8sClientCheckDescription,
+		SubsystemName:    k8sClientSubsystemName,
+		CheckDescription: k8sClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
 	_, err := s.k8sAPI.Pod().Lister().List(labels.Everything())
@@ -213,8 +213,8 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	}
 
 	promClientCheck := &healthcheckPb.CheckResult{
-		SubsystemName:    PromClientSubsystemName,
-		CheckDescription: PromClientCheckDescription,
+		SubsystemName:    promClientSubsystemName,
+		CheckDescription: promClientCheckDescription,
 		Status:           healthcheckPb.CheckStatus_OK,
 	}
 	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))

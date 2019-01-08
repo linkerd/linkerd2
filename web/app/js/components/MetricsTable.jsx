@@ -7,7 +7,11 @@ import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
-import _ from 'lodash';
+import _cloneDeep from 'lodash/cloneDeep';
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _isNil from 'lodash/isNil';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
@@ -53,7 +57,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
         return (
           <Grid container alignItems="center" spacing={8}>
             <Grid item>{nameContents}</Grid>
-            { _.isEmpty(d.errors) ? null :
+            { _isEmpty(d.errors) ? null :
             <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /></Grid>}
           </Grid>
         );
@@ -99,7 +103,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       title: "TLS",
       dataIndex: "tlsRequestPercent",
       isNumeric: true,
-      render: d => _.isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
+      render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
       sorter: (a, b) => numericSort(
         a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
         b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
@@ -109,7 +113,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       key: "grafanaDashboard",
       isNumeric: true,
       render: row => {
-        if (!isAuthorityTable && (!row.added || _.get(row, "pods.totalPods") === "0") ) {
+        if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0") ) {
           return null;
         }
 
@@ -132,16 +136,16 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   if (!showNamespaceColumn) {
     return columns;
   } else {
-    return _.concat(nsColumn, columns);
+    return nsColumn.concat(columns);
   }
 };
 
 
 const preprocessMetrics = metrics => {
-  let tableData = _.cloneDeep(metrics);
+  let tableData = _cloneDeep(metrics);
 
-  _.each(tableData, datum => {
-    _.each(datum.latency, (value, quantile) => {
+  _each(tableData, datum => {
+    _each(datum.latency, (value, quantile) => {
       datum[quantile] = value;
     });
   });

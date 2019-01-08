@@ -10,16 +10,26 @@ import (
 )
 
 const (
-	RedirectAllMode             = "redirect-all"
-	RedirectListedMode          = "redirect-listed"
+	// RedirectAllMode indicates redirecting all ports.
+	RedirectAllMode = "redirect-all"
+
+	// RedirectListedMode indicates redirecting a given list of ports.
+	RedirectListedMode = "redirect-listed"
+
+	// IptablesPreroutingChainName specifies an iptables `PREROUTING` chain,
+	// responsible for packets that just arrived at the network interface.
 	IptablesPreroutingChainName = "PREROUTING"
-	IptablesOutputChainName     = "OUTPUT"
+
+	// IptablesOutputChainName specifies an iptables `OUTPUT` chain.
+	IptablesOutputChainName = "OUTPUT"
 )
 
 var (
+	// ExecutionTraceID provides a unique identifier for this script's execution.
 	ExecutionTraceID = strconv.Itoa(int(time.Now().Unix()))
 )
 
+// FirewallConfiguration specifies how to configure a pod's iptables.
 type FirewallConfiguration struct {
 	Mode                   string
 	PortsToRedirectInbound []int

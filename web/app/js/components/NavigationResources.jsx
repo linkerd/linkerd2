@@ -10,7 +10,7 @@ import NavigationResource from './NavigationResource.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ViewListIcon from '@material-ui/icons/ViewList';
-import _ from 'lodash';
+import _has from 'lodash/has';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 import { withStyles } from '@material-ui/core/styles';
@@ -57,10 +57,10 @@ class NavigationResourcesBase extends React.Component {
 
     let allMetrics = {};
     let nsMetrics = {};
-    if (_.has(data, '[0]')) {
+    if (_has(data, '[0]')) {
       allMetrics = processMultiResourceRollup(data[0]);
 
-      if (_.has(data, '[1]')) {
+      if (_has(data, '[1]')) {
         nsMetrics = processMultiResourceRollup(data[1]);
       }
     }

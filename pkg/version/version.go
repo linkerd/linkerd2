@@ -37,6 +37,8 @@ func init() {
 	}
 }
 
+// CheckClientVersion validates whether the Linkerd Public API client's version
+// matches an expected version.
 func CheckClientVersion(expectedVersion string) error {
 	if Version != expectedVersion {
 		return versionMismatchError(expectedVersion, Version)
@@ -45,6 +47,8 @@ func CheckClientVersion(expectedVersion string) error {
 	return nil
 }
 
+// CheckServerVersion validates whether the Linkerd Public API server's version
+// matches an expected version.
 func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -61,6 +65,8 @@ func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
 	return nil
 }
 
+// GetLatestVersion performs an online request to check for the latest Linkerd
+// version.
 func GetLatestVersion(uuid string, source string) (string, error) {
 	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
 	req, err := http.NewRequest("GET", url, nil)

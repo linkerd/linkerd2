@@ -9,7 +9,8 @@ import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateDot from "./util/SuccessRateDot.jsx";
-import _ from 'lodash';
+import _merge from 'lodash/merge';
+import _orderBy from 'lodash/orderBy';
 import { friendlyTitle } from "./util/Utils.js";
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -48,15 +49,15 @@ class NavigationResource extends React.Component {
   constructor(props) {
     super(props);
 
-    this.resources = _(props.metrics)
+    let resources = props.metrics
       .filter(m => m.pods.meshedPods !== "0")
       .map(m =>
-        _.merge(m, {
+        _merge(m, {
           menuName: props.type === "namespaces" ? m.name : `${m.namespace}/${m.name}`
         })
-      )
-      .sortBy("menuName")
-      .value();
+      );
+    this.resources = _orderBy(resources, r => r.menuName);
+
     this.to = props.api.prefixLink("/" + props.type);
 
     this.state = {open: false};
@@ -106,7 +107,7 @@ class NavigationResource extends React.Component {
             className={classes.navResourceText} />
         </MenuItem>
         {
-          _.map(this.resources, r => {
+          this.resources.map(r => {
             let url = api.prefixLink(api.generateResourceURL(r));
             return (
               <MenuItem

@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Snackbar from '@material-ui/core/Snackbar';
 import WarningIcon from '@material-ui/icons/Warning';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
@@ -66,7 +66,7 @@ class ErrorSnackbar extends React.Component {
           <div id="message-id" >
             <div className={classes.message}>
               <WarningIcon className={classNames(classes.icon, classes.iconVariant)} />
-              { !status ? null : status + " " }{ _.isEmpty(statusText) ? defaultMessage : statusText }
+              { !status ? null : status + " " }{ _isEmpty(statusText) ? defaultMessage : statusText }
             </div>
             { !error ? null : <div>{error}</div> }
             { !url ? null : <div>{url}</div> }

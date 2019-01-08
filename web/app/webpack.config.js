@@ -1,7 +1,7 @@
 /* global require, module, __dirname */
 
 const path = require('path');
-const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
+const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 
 // uncomment here and in plugins to analyze bundle size
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
@@ -60,6 +60,10 @@ module.exports = {
   },
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
-    new MomentLocalesPlugin()
+    new LodashModuleReplacementPlugin({
+      // 'chain': true,
+      'collections': true,
+      'paths': true
+    })
   ]
 }

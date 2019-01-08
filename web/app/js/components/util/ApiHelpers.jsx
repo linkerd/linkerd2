@@ -3,7 +3,10 @@ import 'whatwg-fetch';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
-import _ from 'lodash';
+import _each from 'lodash/each';
+import _isEmpty from 'lodash/isEmpty';
+import _isNil from 'lodash/isNil';
+import _map from 'lodash/map';
 
 const checkFetchOk = resp => {
   if (resp.ok) {
@@ -66,7 +69,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   // for getting json api results
   const apiFetch = path => {
-    if (!_.isEmpty(pathPrefix)) {
+    if (!_isEmpty(pathPrefix)) {
       path = `${pathPrefix}${path}`;
     }
 
@@ -75,7 +78,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   // for getting non-json results
   const prefixedUrl = path => {
-    if (!_.isEmpty(pathPrefix)) {
+    if (!_isEmpty(pathPrefix)) {
       path = `${pathPrefix}${path}`;
     }
 
@@ -94,14 +97,14 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const fetchPods = namespace => {
-    if (!_.isNil(namespace)) {
+    if (!_isNil(namespace)) {
       return apiFetch(podsPath + "?namespace=" + namespace);
     }
     return apiFetch(podsPath);
   };
 
   const fetchServices = namespace => {
-    if (!_.isNil(namespace)) {
+    if (!_isNil(namespace)) {
       return apiFetch(servicesPath + "?namespace=" + namespace);
     }
     return apiFetch(servicesPath);
@@ -128,10 +131,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     currentRequests = cancelablePromises;
   };
   const getCurrentPromises = () => {
-    return _.map(currentRequests, 'promise');
+    return _map(currentRequests, r => r.promise);
   };
   const cancelCurrentRequests = () => {
-    _.each(currentRequests, promise => {
+    _each(currentRequests, promise => {
       promise.cancel();
     });
   };
@@ -139,19 +142,17 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   // prefix all links in the app with `pathPrefix`
   class PrefixedLink extends React.Component {
     static defaultProps = {
-      deployment: "",
       targetBlank: false,
     }
 
     static propTypes = {
       children: PropTypes.node.isRequired,
-      deployment: PropTypes.string,
       targetBlank: PropTypes.bool,
       to: PropTypes.string.isRequired,
     }
 
     render() {
-      let url = prefixLink(this.props.to, this.props.deployment);
+      let url = prefixLink(this.props.to);
 
       return (
         <Link
@@ -163,14 +164,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     }
   }
 
-  const prefixLink = (to, controllerDeployment) => {
-    let prefix = pathPrefix;
-    if (!_.isEmpty(controllerDeployment)) { // add field for grafana deployment
-      prefix = prefix.replace("/linkerd-web:", "/" + controllerDeployment + ":");
-    }
-
-    return `${prefix}${to}`;
-  };
+  const prefixLink = to => `${pathPrefix}${to}`;
 
   const generateResourceURL = r => {
     if (r.type === "namespace") {
@@ -209,7 +203,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     fetchServices,
     getMetricsWindow,
     setMetricsWindow,
-    getValidMetricsWindows: () => _.keys(validMetricsWindows),
+    getValidMetricsWindows: () => Object.keys(validMetricsWindows),
     getMetricsWindowDisplayText,
     urlsForResource,
     PrefixedLink,

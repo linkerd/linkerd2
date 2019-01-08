@@ -7,7 +7,10 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _filter from 'lodash/filter';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _isEqual from 'lodash/isEqual';
 import { friendlyTitle } from './util/Utils.js';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -45,7 +48,7 @@ class Namespaces extends React.Component {
   }
 
   getInitialState(params) {
-    let ns = _.get(params, "namespace", "default");
+    let ns = _get(params, "namespace", "default");
 
     return {
       ns: ns,
@@ -63,7 +66,7 @@ class Namespaces extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (!_.isEqual(prevProps.match.params.namespace, this.props.match.params.namespace)) {
+    if (!_isEqual(prevProps.match.params.namespace, this.props.match.params.namespace)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.setState(this.getInitialState(this.props.match.params));
@@ -109,7 +112,7 @@ class Namespaces extends React.Component {
   }
 
   renderResourceSection(resource, metrics) {
-    if (_.isEmpty(metrics)) {
+    if (_isEmpty(metrics)) {
       return null;
     }
     return (
@@ -125,8 +128,8 @@ class Namespaces extends React.Component {
 
   render() {
     const {metrics} = this.state;
-    let noMetrics = _.isEmpty(metrics.pod);
-    let deploymentsWithMetrics = _.filter(metrics.deployment, "requestRate");
+    let noMetrics = _isEmpty(metrics.pod);
+    let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
     return (
       <div className="page-content">
@@ -135,7 +138,7 @@ class Namespaces extends React.Component {
           <div>
             { noMetrics ? <div>No resources detected.</div> : null}
             {
-              _.isEmpty(deploymentsWithMetrics) ? null :
+              _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
             }
             {this.renderResourceSection("deployment", metrics.deployment)}

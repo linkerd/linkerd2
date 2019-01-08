@@ -6,7 +6,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
-import _ from 'lodash';
+import _every from 'lodash/every';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import withREST from './util/withREST.jsx';
 
@@ -41,9 +43,9 @@ class TopRoutesBase extends React.Component {
 
   render() {
     const {data, loading} = this.props;
-    let metrics = processTopRoutesResults(_.get(data, '[0].routes.rows', []));
-    let allRoutesUnknown = _.every(metrics, m => m.route === DefaultRoute);
-    let showCallToAction = !loading &&  (_.isEmpty(metrics) || allRoutesUnknown);
+    let metrics = processTopRoutesResults(_get(data, '[0].routes.rows', []));
+    let allRoutesUnknown = _every(metrics, m => m.route === DefaultRoute);
+    let showCallToAction = !loading &&  (_isEmpty(metrics) || allRoutesUnknown);
 
     return (
       <React.Fragment>

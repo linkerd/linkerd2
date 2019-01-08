@@ -239,6 +239,7 @@ func fullURLPathFor(method string) string {
 	return apiRoot + apiPrefix + method
 }
 
+// NewServer creates a Public API HTTP server.
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,

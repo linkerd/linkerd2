@@ -771,7 +771,7 @@ status:
 
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
-				&MockProm{Res: exp.mockPromResponse},
+				&mockProm{Res: exp.mockPromResponse},
 				tap.NewTapClient(nil),
 				k8sAPI,
 				"linkerd",
@@ -795,7 +795,7 @@ status:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 		fakeGrpcServer := newGrpcServer(
-			&MockProm{Res: model.Vector{}},
+			&mockProm{Res: model.Vector{}},
 			tap.NewTapClient(nil),
 			k8sAPI,
 			"linkerd",

@@ -29,6 +29,8 @@ func newRootOptions() *rootOptions {
 	}
 }
 
+// NewRootCmd returns a configured cobra.Command for the `proxy-init` command.
+// TODO: consider moving this to `/proxy-init/main.go`
 func NewRootCmd() *cobra.Command {
 	options := newRootOptions()
 

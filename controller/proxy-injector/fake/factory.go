@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// These constants provide default, fake strings for testing proxy-injector.
 const (
 	DefaultControllerNamespace   = "linkerd"
 	DefaultNamespace             = "default"

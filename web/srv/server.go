@@ -20,6 +20,7 @@ const (
 )
 
 type (
+	// Server encapsulates the Linkerd control plane's web dashboard server.
 	Server struct {
 		templateDir     string
 		staticDir       string
@@ -52,7 +53,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.router.ServeHTTP(w, req)
 }
 
-func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, singleNamespace bool, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
+// NewServer returns an initialized `http.Server`, configured to listen on an
+// address, render templates, and serve static assets, for a given Linkerd
+// control plane.
+func NewServer(
+	addr string,
+	grafanaAddr string,
+	templateDir string,
+	staticDir string,
+	uuid string,
+	controllerNamespace string,
+	singleNamespace bool,
+	webpackDevServer string,
+	reload bool,
+	apiClient pb.ApiClient,
+) *http.Server {
 	server := &Server{
 		templateDir:     templateDir,
 		staticDir:       staticDir,
@@ -74,6 +89,7 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
 		singleNamespace:     singleNamespace,
+		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 
 	httpServer := &http.Server{
@@ -115,9 +131,20 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 	server.router.GET("/api/tap", handler.handleAPITap)
 	server.router.GET("/api/routes", handler.handleAPITopRoutes)
 
+	// grafana proxy
+	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.GET("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.HEAD("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.OPTIONS("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.PATCH("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.POST("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.PUT("/grafana/*grafanapath", handler.handleGrafana)
+
 	return httpServer
 }
 
+// RenderTemplate writes a rendered template into a buffer, given an HTTP
+// request and template information.
 func (s *Server) RenderTemplate(w http.ResponseWriter, templateFile, templateName string, args interface{}) error {
 	log.Debugf("emitting template %s", templateFile)
 	template, err := s.loadTemplate(templateFile)
