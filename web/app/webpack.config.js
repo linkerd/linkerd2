@@ -3,10 +3,14 @@
 const path = require('path');
 const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 
-// uncomment here and in plugins to analyze bundle size
+// analyze plugin speeds
+const SpeedMeasurePlugin = require("speed-measure-webpack-plugin");
+const smp = new SpeedMeasurePlugin();
+
+// uncomment here and in plugins to analyze webpack bundle size
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
-module.exports = {
+module.exports = smp.wrap({
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
   output: {
@@ -66,4 +70,4 @@ module.exports = {
       'paths': true
     })
   ]
-}
+});
