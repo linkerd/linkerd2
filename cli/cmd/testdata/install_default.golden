@@ -327,36 +327,22 @@ spec:
                     type: string
                   condition:
                     type: object
-                    oneOf:
-                    - type: object
-                      minProperties: 1
-                      properties: 
-                        method:
-                          type: string
-                        pathRegex:
-                          type: string
-                    - type: object
-                      required:
-                      - all
-                      properties:
-                        all:
-                          type: array
-                          items:
-                            type: object
-                    - type: object
-                      required:
-                      - any
-                      properties:
-                        any:
-                          type: array
-                          items:
-                            type: object
-                    - type: object
-                      required:
-                      - not
-                      properties:
-                        not:
+                    minProperties: 1
+                    properties:
+                      method:
+                        type: string
+                      pathRegex:
+                        type: string
+                      all:
+                        type: array
+                        items:
                           type: object
+                      any:
+                        type: array
+                        items:
+                          type: object
+                      not:
+                        type: object
                   responseClasses:
                     type: array
                     items:
@@ -368,45 +354,29 @@ spec:
                           type: boolean
                         condition:
                           type: object
-                          oneOf:
-                          - type: object
-                            required:
-                            - status
-                            properties:
-                              status:
+                          properties:
+                            status:
+                              type: object
+                              minProperties: 1
+                              properties:
+                                min:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                                max:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                            all:
+                              type: array
+                              items:
                                 type: object
-                                minProperties: 1
-                                properties:
-                                  min:
-                                    type: integer
-                                    minimum: 100
-                                    maximum: 600
-                                  max:
-                                    type: integer
-                                    minimum: 100
-                                    maximum: 600
-                          - type: object
-                            required:
-                            - all
-                            properties:
-                              all:
-                                type: array
-                                items:
-                                  type: object
-                          - type: object
-                            required:
-                            - any
-                            properties:
-                              any:
-                                type: array
-                                items:
-                                  type: object
-                          - type: object
-                            required:
-                            - not
-                            properties:
-                              not:
+                            any:
+                              type: array
+                              items:
                                 type: object
+                            not:
+                              type: object
 
 ### Service Account Web ###
 ---
