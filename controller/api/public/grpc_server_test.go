@@ -197,7 +197,7 @@ spec:
 		}
 
 		fakeGrpcServer := newGrpcServer(
-			&MockProm{Res: model.Vector{
+			&mockProm{Res: model.Vector{
 				&model.Sample{
 					Metric:    model.Metric{"pod": "emojivoto-meshed"},
 					Timestamp: 456,
@@ -231,14 +231,14 @@ spec:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
-		mockProm := MockProm{Res: model.Vector{
+		mProm := mockProm{Res: model.Vector{
 			&model.Sample{
 				Metric:    model.Metric{"pod": "emojivoto-meshed"},
 				Timestamp: 456,
 			},
 		}}
 		fakeGrpcServer := newGrpcServer(
-			&mockProm,
+			&mProm,
 			tap.NewTapClient(nil),
 			k8sAPI,
 			"linkerd",
@@ -255,7 +255,7 @@ spec:
 			},
 		})
 
-		err = verifyPromQueries(&mockProm, "testnamespace")
+		err = verifyPromQueries(&mProm, "testnamespace")
 
 		if err != nil {
 			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
@@ -268,14 +268,14 @@ spec:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 
-		mockProm := MockProm{Res: model.Vector{
+		mProm := mockProm{Res: model.Vector{
 			&model.Sample{
 				Metric:    model.Metric{"pod": "emojivoto-meshed"},
 				Timestamp: 456,
 			},
 		}}
 		fakeGrpcServer := newGrpcServer(
-			&mockProm,
+			&mProm,
 			tap.NewTapClient(nil),
 			k8sAPI,
 			"linkerd",
@@ -293,7 +293,7 @@ spec:
 			},
 		})
 
-		err = verifyPromQueries(&mockProm, "testnamespace")
+		err = verifyPromQueries(&mProm, "testnamespace")
 
 		if err != nil {
 			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
@@ -302,15 +302,15 @@ spec:
 }
 
 // TODO: consider refactoring with expectedStatRPC.verifyPromQueries
-func verifyPromQueries(mockProm *MockProm, namespace string) error {
+func verifyPromQueries(mProm *mockProm, namespace string) error {
 	namespaceSelector := fmt.Sprintf("namespace=\"%s\"", namespace)
-	for _, element := range mockProm.QueriesExecuted {
+	for _, element := range mProm.QueriesExecuted {
 		if strings.Contains(element, namespaceSelector) {
 			return nil
 		}
 	}
 	return fmt.Errorf("Prometheus queries incorrect. \nExpected query containing:\n%s \nGot:\n%+v",
-		namespaceSelector, mockProm.QueriesExecuted)
+		namespaceSelector, mProm.QueriesExecuted)
 }
 
 func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesResponse) bool {
