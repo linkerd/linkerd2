@@ -25,7 +25,6 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	uuid := flag.String("uuid", "", "unique linkerd install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
-	webpackDevServer := flag.String("webpack-dev-server", "", "use webpack to serve static assets; frontend will use this instead of static-dir")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
@@ -42,7 +41,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *webpackDevServer, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

@@ -16,11 +16,9 @@ var proxyPathRegexp = regexp.MustCompile("/api/v1/namespaces/.*/proxy/")
 
 type (
 	renderTemplate func(http.ResponseWriter, string, string, interface{}) error
-	serveFile      func(http.ResponseWriter, string, string, interface{}) error
 
 	handler struct {
 		render              renderTemplate
-		serveFile           serveFile
 		apiClient           pb.ApiClient
 		uuid                string
 		controllerNamespace string

@@ -1,11 +1,16 @@
 /* global require, module, __dirname */
 
 const path = require('path');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
+const WebpackMv = require('./webpack-mv.js');
 
 // analyze plugin speeds
 const SpeedMeasurePlugin = require("speed-measure-webpack-plugin");
-const smp = new SpeedMeasurePlugin();
+// disable by default until this is fixed:
+// https://github.com/stephencookdev/speed-measure-webpack-plugin/issues/44
+const smp = new SpeedMeasurePlugin({disable: true});
 
 // uncomment here and in plugins to analyze webpack bundle size
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
@@ -13,10 +18,13 @@ const smp = new SpeedMeasurePlugin();
 module.exports = smp.wrap({
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
+  devServer: {
+    writeToDisk: true
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
     publicPath: 'dist/',
-    filename: 'index_bundle.js'
+    filename: '[name].[contenthash].js'
   },
   devtool: 'cheap-module-source-map',
   externals: {
@@ -64,10 +72,17 @@ module.exports = smp.wrap({
   },
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
+    new CleanWebpackPlugin(['dist']),
+    new HtmlWebpackPlugin({
+      inject: false,
+      filename: "index_bundle.js.out",
+      template: 'lodash/index_bundle.js.lodash.tmpl',
+    }),
     new LodashModuleReplacementPlugin({
       // 'chain': true,
       'collections': true,
       'paths': true
-    })
+    }),
+    new WebpackMv()
   ]
 });

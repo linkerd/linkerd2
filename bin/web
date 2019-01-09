@@ -45,7 +45,7 @@ function dev {
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
   cd $ROOT/web && \
-    ../bin/go-run . --webpack-dev-server=http://localhost:$DEV_PORT $*
+    ../bin/go-run . $*
 }
 
 function build {
