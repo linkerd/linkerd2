@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -46,12 +45,13 @@ type injectOptions struct {
 	*proxyConfigOptions
 }
 
-type injectReport struct {
-	name                string
-	hostNetwork         bool
-	sidecar             bool
-	udp                 bool // true if any port in any container has `protocol: UDP`
-	unsupportedResource bool
+// InjectYAML processes resource definitions and outputs them after injection in out
+var InjectYAML = func(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
+	return ProcessYAML(in, out, report, options, injectResource)
+}
+
+var runInjectCmd = func(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	return transformInput(inputs, errWriter, outWriter, options, injectResource)
 }
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
@@ -103,33 +103,16 @@ sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 	return cmd
 }
 
-// Read all the resource files found in path into a slice of readers.
-// path can be either a file, directory or stdin.
-func read(path string) ([]io.Reader, error) {
-	var (
-		in  []io.Reader
-		err error
-	)
-	if path == "-" {
-		in = append(in, os.Stdin)
-	} else {
-		in, err = walk(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return in, nil
-}
-
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+// TODO: move to separate file
+func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions, transform resourceTransformer) int {
 	postInjectBuf := &bytes.Buffer{}
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := InjectYAML(input, postInjectBuf, reportBuf, options)
+		err := ProcessYAML(input, postInjectBuf, reportBuf, options, transform)
 		if err != nil {
+			// TODO: have a more generic error (shared with uninject)
 			fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
 			return 1
 		}
@@ -373,8 +356,9 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	return true
 }
 
-// InjectYAML takes an input stream of YAML, outputting injected YAML to out.
-func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
+// ProcessYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
+// TODO: move to separate file
+func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions, transform resourceTransformer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	injectReports := []injectReport{}
@@ -390,7 +374,7 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 			return err
 		}
 
-		result, irs, err := injectResource(bytes, options)
+		result, irs, err := transform(bytes, options)
 		if err != nil {
 			return err
 		}
@@ -406,7 +390,8 @@ func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOp
 	return nil
 }
 
-func injectList(b []byte, options *injectOptions) ([]byte, []injectReport, error) {
+// TODO: shared with uninject, so better move it to some common file
+func processList(b []byte, options *injectOptions, transform resourceTransformer) ([]byte, []injectReport, error) {
 	var sourceList v1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
 		return nil, nil, err
@@ -416,7 +401,7 @@ func injectList(b []byte, options *injectOptions) ([]byte, []injectReport, error
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, reports, err := injectResource(item.Raw, options)
+		result, reports, err := transform(item.Raw, options)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -442,7 +427,8 @@ func injectList(b []byte, options *injectOptions) ([]byte, []injectReport, error
 	return result, injectReports, nil
 }
 
-func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+// TODO: move to separate file
+func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, transform resourceTransformer) ([]byte, []injectReport, error) {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -455,24 +441,16 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 	// supported type is found. Otherwise, it is returned unmodified.
 
 	// Unmarshal the object enough to read the Kind field
-	var meta metaV1.TypeMeta
-	if err := yaml.Unmarshal(bytes, &meta); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return nil, nil, err
 	}
 
 	// retrieve the `metadata/name` field for reporting later
-	var om objMeta
-	if err := yaml.Unmarshal(bytes, &om); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
 		return nil, nil, err
 	}
 
-	// obj and podTemplateSpec will reference zero or one the following
-	// objects, depending on the type.
-	var obj interface{}
-	var podSpec *v1.PodSpec
-	var objectMeta *metaV1.ObjectMeta
-	var DNSNameOverride string
-	k8sLabels := map[string]string{}
+	conf.k8sLabels = map[string]string{}
 
 	// When injecting the linkerd proxy into a linkerd controller pod. The linkerd proxy's
 	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
@@ -486,7 +464,7 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 	//     across all controller pod replicas. This is undesirable as we would want all traffic between
 	//	   containers to be self contained.
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
-	switch meta.Kind {
+	switch conf.meta.Kind {
 	case "Deployment":
 		var deployment v1beta1.Deployment
 		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
@@ -494,13 +472,13 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 		}
 
 		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
-			DNSNameOverride = LocalhostDNSNameOverride
+			conf.DNSNameOverride = LocalhostDNSNameOverride
 		}
 
-		obj = &deployment
-		k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
-		podSpec = &deployment.Spec.Template.Spec
-		objectMeta = &deployment.Spec.Template.ObjectMeta
+		conf.obj = &deployment
+		conf.k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
+		conf.podSpec = &deployment.Spec.Template.Spec
+		conf.objectMeta = &deployment.Spec.Template.ObjectMeta
 
 	case "ReplicationController":
 		var rc v1.ReplicationController
@@ -508,10 +486,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &rc
-		k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
-		podSpec = &rc.Spec.Template.Spec
-		objectMeta = &rc.Spec.Template.ObjectMeta
+		conf.obj = &rc
+		conf.k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
+		conf.podSpec = &rc.Spec.Template.Spec
+		conf.objectMeta = &rc.Spec.Template.ObjectMeta
 
 	case "ReplicaSet":
 		var rs v1beta1.ReplicaSet
@@ -519,10 +497,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &rs
-		k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
-		podSpec = &rs.Spec.Template.Spec
-		objectMeta = &rs.Spec.Template.ObjectMeta
+		conf.obj = &rs
+		conf.k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
+		conf.podSpec = &rs.Spec.Template.Spec
+		conf.objectMeta = &rs.Spec.Template.ObjectMeta
 
 	case "Job":
 		var job batchV1.Job
@@ -530,10 +508,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &job
-		k8sLabels[k8s.ProxyJobLabel] = job.Name
-		podSpec = &job.Spec.Template.Spec
-		objectMeta = &job.Spec.Template.ObjectMeta
+		conf.obj = &job
+		conf.k8sLabels[k8s.ProxyJobLabel] = job.Name
+		conf.podSpec = &job.Spec.Template.Spec
+		conf.objectMeta = &job.Spec.Template.ObjectMeta
 
 	case "DaemonSet":
 		var ds v1beta1.DaemonSet
@@ -541,10 +519,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &ds
-		k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
-		podSpec = &ds.Spec.Template.Spec
-		objectMeta = &ds.Spec.Template.ObjectMeta
+		conf.obj = &ds
+		conf.k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
+		conf.podSpec = &ds.Spec.Template.Spec
+		conf.objectMeta = &ds.Spec.Template.ObjectMeta
 
 	case "StatefulSet":
 		var statefulset appsV1.StatefulSet
@@ -552,10 +530,10 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &statefulset
-		k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
-		podSpec = &statefulset.Spec.Template.Spec
-		objectMeta = &statefulset.Spec.Template.ObjectMeta
+		conf.obj = &statefulset
+		conf.k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
+		conf.podSpec = &statefulset.Spec.Template.Spec
+		conf.objectMeta = &statefulset.Spec.Template.ObjectMeta
 
 	case "Pod":
 		var pod v1.Pod
@@ -563,27 +541,37 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 			return nil, nil, err
 		}
 
-		obj = &pod
-		podSpec = &pod.Spec
-		objectMeta = &pod.ObjectMeta
+		conf.obj = &pod
+		conf.podSpec = &pod.Spec
+		conf.objectMeta = &pod.ObjectMeta
 
 	case "List":
 		// Lists are a little different than the other types. There's no immediate
 		// pod template. Because of this, we do a recursive call for each element
 		// in the list (instead of just marshaling the injected pod template).
-		return injectList(bytes, options)
+		return processList(bytes, options, transform)
+	}
+
+	return nil, nil, nil
+}
+
+func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+	conf := &resourceConfig{}
+	output, reports, err := conf.parse(bytes, options, injectResource)
+	if output != nil || err != nil {
+		return output, reports, err
 	}
 
 	report := injectReport{
-		name: fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name),
+		name: fmt.Sprintf("%s/%s", strings.ToLower(conf.meta.Kind), conf.om.Name),
 	}
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
-	output := bytes
-	if podSpec != nil {
-		metaAccessor, err := k8sMeta.Accessor(obj)
+	output = bytes
+	if conf.podSpec != nil {
+		metaAccessor, err := k8sMeta.Accessor(conf.obj)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -593,15 +581,15 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 		// but not necessarily other variables.
 		identity := k8s.TLSIdentity{
 			Name:                metaAccessor.GetName(),
-			Kind:                strings.ToLower(meta.Kind),
+			Kind:                strings.ToLower(conf.meta.Kind),
 			Namespace:           "$" + PodNamespaceEnvVarName,
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(podSpec, identity, DNSNameOverride, options, &report) {
-			injectObjectMeta(objectMeta, k8sLabels, options)
+		if injectPodSpec(conf.podSpec, identity, conf.DNSNameOverride, options, &report) {
+			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
 			var err error
-			output, err = yaml.Marshal(obj)
+			output, err = yaml.Marshal(conf.obj)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -611,137 +599,6 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 	}
 
 	return output, []injectReport{report}, nil
-}
-
-// walk walks the file tree rooted at path. path may be a file or a directory.
-// Creates a reader for each file found.
-func walk(path string) ([]io.Reader, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if !stat.IsDir() {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil, err
-		}
-
-		return []io.Reader{file}, nil
-	}
-
-	var in []io.Reader
-	werr := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		in = append(in, file)
-		return nil
-	})
-
-	if werr != nil {
-		return nil, werr
-	}
-
-	return in, nil
-}
-
-func generateReport(injectReports []injectReport, output io.Writer) {
-
-	injected := []string{}
-	hostNetwork := []string{}
-	sidecar := []string{}
-	udp := []string{}
-
-	for _, r := range injectReports {
-		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
-			injected = append(injected, r.name)
-		}
-
-		if r.hostNetwork {
-			hostNetwork = append(hostNetwork, r.name)
-		}
-
-		if r.sidecar {
-			sidecar = append(sidecar, r.name)
-		}
-
-		if r.udp {
-			udp = append(udp, r.name)
-		}
-	}
-
-	//
-	// Warnings
-	//
-
-	// leading newline to separate from yaml output on stdout
-	output.Write([]byte("\n"))
-
-	hostNetworkPrefix := fmt.Sprintf("%s%s", hostNetworkDesc, getFiller(hostNetworkDesc))
-	if len(hostNetwork) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", hostNetworkPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- \"hostNetwork: true\" detected in %s\n", hostNetworkPrefix, warnStatus, strings.Join(hostNetwork, ", "))))
-	}
-
-	sidecarPrefix := fmt.Sprintf("%s%s", sidecarDesc, getFiller(sidecarDesc))
-	if len(sidecar) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", sidecarPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- known sidecar detected in %s\n", sidecarPrefix, warnStatus, strings.Join(sidecar, ", "))))
-	}
-
-	unsupportedPrefix := fmt.Sprintf("%s%s", unsupportedDesc, getFiller(unsupportedDesc))
-	if len(injected) > 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", unsupportedPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- no supported objects found\n", unsupportedPrefix, warnStatus)))
-	}
-
-	udpPrefix := fmt.Sprintf("%s%s", udpDesc, getFiller(udpDesc))
-	if len(udp) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", udpPrefix, okStatus)))
-	} else {
-		verb := "uses"
-		if len(udp) > 1 {
-			verb = "use"
-		}
-		output.Write([]byte(fmt.Sprintf("%s%s -- %s %s \"protocol: UDP\"\n", udpPrefix, warnStatus, strings.Join(udp, ", "), verb)))
-	}
-
-	//
-	// Summary
-	//
-
-	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) injected", len(injected), len(injectReports))
-	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
-
-	for _, i := range injected {
-		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
-	}
-
-	// trailing newline to separate from kubectl output if piping
-	output.Write([]byte("\n"))
-}
-
-func getFiller(text string) string {
-	filler := ""
-	for i := 0; i < lineWidth-len(text)-len(okStatus)-len("\n"); i++ {
-		filler = filler + "."
-	}
-
-	return filler
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
