@@ -1,14 +1,14 @@
 import 'whatwg-fetch';
-
 import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
-
 import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+import Grid from '@material-ui/core/Grid';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
 import Typography from '@material-ui/core/Typography';
@@ -20,6 +20,9 @@ import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+
+// if there has been no traffic for some time, show a warning
+const showNoTrafficMsgDelay = 1000;
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
@@ -64,6 +67,7 @@ export class ResourceDetailBase extends React.Component {
       resourceName: resource.name,
       resourceType: resource.type,
       resource,
+      lastMetricReceivedTime: Date.now(),
       pollingInterval: 2000,
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
@@ -152,6 +156,11 @@ export class ResourceDetailBase extends React.Component {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
+        let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
+        if (!_isEmpty(resourceMetrics[0]) && resourceMetrics[0].totalRequests !== 0) {
+          lastMetricReceivedTime = Date.now();
+        }
+
         this.setState({
           resourceMetrics,
           resourceIsMeshed,
@@ -160,6 +169,7 @@ export class ResourceDetailBase extends React.Component {
             upstream: upstreamMetrics,
             downstream: downstreamMetrics
           },
+          lastMetricReceivedTime,
           loaded: true,
           pendingRequests: false,
           error: null,
@@ -207,7 +217,8 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics,
       unmeshedSources,
       resourceIsMeshed,
-      neighborMetrics
+      neighborMetrics,
+      lastMetricReceivedTime
     } = this.state;
 
     let query = {
@@ -227,9 +238,25 @@ export class ResourceDetailBase extends React.Component {
 
     let upstreams = neighborMetrics.upstream.concat(unmeshed);
 
-    console.log(resourceMetrics[0]);
+    let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelay);
+
     return (
       <div>
+        <Grid container justify="space-between" alignItems="center">
+          <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
+          <Grid item>
+            <Grid container spacing={8}>
+              { showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null }
+              <Grid item>
+                { resourceIsMeshed ?
+                  <SimpleChip label="meshed" type="good" /> :
+                  <SimpleChip label="unmeshed" type="bad" />
+                }
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
+
         {
           resourceIsMeshed ? null :
           <React.Fragment>
@@ -250,7 +277,6 @@ export class ResourceDetailBase extends React.Component {
           pathPrefix={this.props.pathPrefix}
           updateNeighborsFromTapData={this.updateNeighborsFromTapData}
           disableTop={!resourceIsMeshed} />
-
 
         { _isEmpty(upstreams) ? null : (
           <React.Fragment>

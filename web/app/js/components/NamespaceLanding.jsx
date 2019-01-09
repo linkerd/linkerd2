@@ -167,7 +167,7 @@ class NamespaceLanding extends React.Component {
       let hr = (
         <Grid container justify="space-between" alignItems="center">
           <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
-          {!ns.added ? null : <Grid item><SimpleChip /></Grid> }
+          {!ns.added ? null : <Grid item><SimpleChip label="meshed" type="good" /></Grid> }
         </Grid>
       );
       return {
