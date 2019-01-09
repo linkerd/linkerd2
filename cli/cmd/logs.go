@@ -136,7 +136,7 @@ func newCmdLogs() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&flags.containerFilter, "container-filter", "c", "", "Regex string to use for filtering log lines by container name")
+	cmd.PersistentFlags().StringVarP(&flags.containerFilter, "container", "c", "", "Regex string to use for filtering log lines by container name")
 	cmd.PersistentFlags().StringVar(&flags.labelSelector, "label-selector", "", "kubernetes label selector to retrieve logs from resources that match")
 	cmd.PersistentFlags().StringVar(&flags.containerState, "container-state", "running", "Show logs from containers that are in a specific container state")
 	cmd.PersistentFlags().StringVarP(&flags.namespace, "namespace", "n", controlPlaneNamespace, "String to retrieve logs from pods in the given namespace")
