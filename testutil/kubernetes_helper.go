@@ -207,7 +207,7 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 // tests can use for access to the given deployment. Note that the port-forward
 // remains running for the duration of the test.
 func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) (string, error) {
-	pf, err := k8s.NewPortForward("", "", namespace, deployName, 0, remotePort)
+	pf, err := k8s.NewPortForward("", "", namespace, deployName, 0, remotePort, false)
 	if err != nil {
 		return "", err
 	}

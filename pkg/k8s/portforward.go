@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -24,6 +25,7 @@ type PortForward struct {
 	url        *url.URL
 	localPort  int
 	remotePort int
+	emitLogs   bool
 	stopCh     chan struct{}
 	readyCh    chan struct{}
 	config     *rest.Config
@@ -36,6 +38,7 @@ type PortForward struct {
 func NewPortForward(
 	configPath, kubeContext, namespace, deployName string,
 	localPort, remotePort int,
+	emitLogs bool,
 ) (*PortForward, error) {
 	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
@@ -90,6 +93,7 @@ func NewPortForward(
 		url:        req.URL(),
 		localPort:  localPort,
 		remotePort: remotePort,
+		emitLogs:   emitLogs,
 		stopCh:     make(chan struct{}, 1),
 		readyCh:    make(chan struct{}),
 		config:     config,
@@ -103,10 +107,17 @@ func (pf *PortForward) Run() error {
 		return err
 	}
 
+	out := ioutil.Discard
+	errOut := ioutil.Discard
+	if pf.emitLogs {
+		out = os.Stdout
+		errOut = os.Stderr
+	}
+
 	ports := []string{fmt.Sprintf("%d:%d", pf.localPort, pf.remotePort)}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, pf.method, pf.url)
 
-	fw, err := portforward.New(dialer, ports, pf.stopCh, pf.readyCh, ioutil.Discard, ioutil.Discard)
+	fw, err := portforward.New(dialer, ports, pf.stopCh, pf.readyCh, out, errOut)
 	if err != nil {
 		return err
 	}

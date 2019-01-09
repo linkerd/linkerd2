@@ -22,10 +22,10 @@ const (
 	// showURL displays dashboard URLs without opening a browser.
 	showURL = "url"
 
-	// webDeployment is the name of the web UI's deployment in the install config
+	// webDeployment is the name of the web deployment in cli/install/template.go
 	webDeployment = "linkerd-web"
 
-	// webPort is the port on which the web UI is served in the web pod
+	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
 )
 
@@ -74,6 +74,7 @@ func newCmdDashboard() *cobra.Command {
 				webDeployment,
 				options.port,
 				webPort,
+				verbose,
 			)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to initialize port-forward: %s\n", err)
