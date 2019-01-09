@@ -16,7 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
@@ -357,9 +357,10 @@ func (hc *HealthChecker) addLinkerdControlPlaneExistenceChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdControlPlaneExistenceCategory,
-		description: "can successfully call the /Version endpoint",
-		fatal:       true,
+		category:      LinkerdControlPlaneExistenceCategory,
+		description:   "can successfully call the /Version endpoint",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
 		check: func() error {
 			_, err := version.GetServerVersion(hc.apiClient)
 			return err
