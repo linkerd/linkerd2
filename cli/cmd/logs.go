@@ -123,7 +123,7 @@ func newCmdLogs() *cobra.Command {
   linkerd logs --pod-filter linkerd-controller.* --namespace linkerd
 
   # Tail logs from the linkerd-proxy container in the grafana pod within the linkerd control plane
-  linkerd logs --pod-filter linkerd-grafana.* --container-filter linkerd-proxy --namespace linkerd
+  linkerd logs --pod-filter linkerd-grafana.* --container linkerd-proxy --namespace linkerd
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogOptions(flags, kubeconfigPath, kubeContext)

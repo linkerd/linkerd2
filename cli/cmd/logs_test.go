@@ -9,11 +9,6 @@ import (
 	"github.com/wercker/stern/stern"
 )
 
-func assertConfig(actual, expected *stern.Config) bool {
-	return actual.Template != nil &&
-		actual.ContainerState == expected.ContainerState &&
-		actual.PodQuery != nil
-}
 func TestNewSternConfig(t *testing.T) {
 	t.Run("Default log template", func(t *testing.T) {
 		flags := &logFlags{containerState:"running"}
