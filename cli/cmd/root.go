@@ -129,8 +129,6 @@ func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiCli
 				msg = "Cannot find Linkerd"
 			case healthcheck.LinkerdAPICategory:
 				msg = "Cannot connect to Linkerd"
-			case healthcheck.LinkerdVersionCategory:
-				msg = "Invalid Linkerd version"
 			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 

@@ -358,7 +358,7 @@ func (hc *HealthChecker) addLinkerdControlPlaneExistenceChecks() {
 
 	hc.checkers = append(hc.checkers, &checker{
 		category:      LinkerdControlPlaneExistenceCategory,
-		description:   "can successfully call the /Version endpoint",
+		description:   "can query the control plane API",
 		retryDeadline: hc.RetryDeadline,
 		fatal:         true,
 		check: func() error {
