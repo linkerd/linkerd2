@@ -68,8 +68,8 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
       neighborMetrics: {
-        upstream: {},
-        downstream: {}
+        upstream: [],
+        downstream: []
       },
       unmeshedSources: {},
       resourceIsMeshed: true,
@@ -200,14 +200,23 @@ export class ResourceDetailBase extends React.Component {
       return <Spinner />;
     }
 
-    let { resourceName, resourceType, namespace } = this.state;
+    let {
+      resourceName,
+      resourceType,
+      namespace,
+      resourceMetrics,
+      unmeshedSources,
+      resourceIsMeshed,
+      neighborMetrics
+    } = this.state;
+
     let query = {
       resourceName,
       resourceType,
       namespace
     };
 
-    let unmeshed = _filter(this.state.unmeshedSources, d => d.type === this.state.resourceType)
+    let unmeshed = _filter(unmeshedSources, d => d.type === resourceType)
       .map(d => _merge({}, emptyMetric, d, {
         unmeshed: true,
         pods: {
@@ -216,30 +225,31 @@ export class ResourceDetailBase extends React.Component {
         }
       }));
 
-    let upstreams = this.state.neighborMetrics.upstream.concat(unmeshed);
+    let upstreams = neighborMetrics.upstream.concat(unmeshed);
 
+    console.log(resourceMetrics[0]);
     return (
       <div>
         {
-          this.state.resourceIsMeshed ? null :
+          resourceIsMeshed ? null :
           <React.Fragment>
             <AddResources
-              resourceName={this.state.resourceName}
-              resourceType={this.state.resourceType} />
+              resourceName={resourceName}
+              resourceType={resourceType} />
           </React.Fragment>
         }
 
         <Octopus
-          resource={this.state.resourceMetrics[0]}
-          neighbors={this.state.neighborMetrics}
-          unmeshedSources={Object.values(this.state.unmeshedSources)}
+          resource={resourceMetrics[0]}
+          neighbors={neighborMetrics}
+          unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
         <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
           updateNeighborsFromTapData={this.updateNeighborsFromTapData}
-          disableTop={!this.state.resourceIsMeshed} />
+          disableTop={!resourceIsMeshed} />
 
 
         { _isEmpty(upstreams) ? null : (
