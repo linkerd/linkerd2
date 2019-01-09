@@ -84,11 +84,11 @@ func configureAndRunChecks(options *checkOptions) error {
 	if options.preInstallOnly {
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else if options.dataPlaneOnly {
-		checks = append(checks, healthcheck.LinkerdExistenceChecks)
+		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
-		checks = append(checks, healthcheck.LinkerdExistenceChecks)
+		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 

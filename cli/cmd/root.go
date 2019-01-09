@@ -99,22 +99,19 @@ func cliPublicAPIClient() pb.ApiClient {
 func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiClient {
 	checks := []healthcheck.Checks{
 		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdExistenceChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
 	}
 
 	if apiChecks {
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 
-	checks = append(checks, healthcheck.LinkerdVersionChecks)
-
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace:          controlPlaneNamespace,
-		KubeConfig:                     kubeconfigPath,
-		KubeContext:                    kubeContext,
-		APIAddr:                        apiAddr,
-		RetryDeadline:                  retryDeadline,
-		ShouldCheckControlPlaneVersion: true,
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+		RetryDeadline:         retryDeadline,
 	})
 
 	exitOnError := func(result *healthcheck.CheckResult) {
@@ -128,7 +125,7 @@ func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiCli
 			switch result.Category {
 			case healthcheck.KubernetesAPICategory:
 				msg = "Cannot connect to Kubernetes"
-			case healthcheck.LinkerdExistenceCategory:
+			case healthcheck.LinkerdControlPlaneExistenceCategory:
 				msg = "Cannot find Linkerd"
 			case healthcheck.LinkerdAPICategory:
 				msg = "Cannot connect to Linkerd"
