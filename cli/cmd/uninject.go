@@ -14,7 +14,7 @@ import (
 
 func newCmdUninject() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "uninject",
+		Use:   "uninject [flags] CONFIG-FILE",
 		Short: "Remove the Linkerd proxy from a Kubernetes config",
 		Long: `Remove the Linkerd proxy from a Kubernetes config.
 
@@ -24,6 +24,11 @@ Also works with a folder containing resource files and other
 sub-folder. e.g. linkerd uninject <folder> | kubectl apply -f -
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if len(args) < 1 {
+				return fmt.Errorf("please specify a kubernetes resource file")
+			}
+
 			in, err := read(args[0])
 			if err != nil {
 				return err
