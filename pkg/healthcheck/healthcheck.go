@@ -27,17 +27,43 @@ type Checks int
 
 const (
 	// KubernetesAPIChecks adds a series of checks to validate that the caller is
-	// configured to interact with a working Kubernetes cluster and that the
-	// cluster meets the minimum version requirements, unless the
-	// ShouldCheckKubeVersion option is false.
+	// configured to interact with a working Kubernetes cluster.
 	KubernetesAPIChecks Checks = iota
 
-	// LinkerdPreInstallChecks adds a check to validate that the control plane
-	// namespace does not already exist. This check only runs as part of the set
+	// KubernetesVersionChecks validate that the cluster meets the minimum version
+	// requirements.
+	KubernetesVersionChecks
+
+	// LinkerdPreInstallClusterChecks adds checks to validate that the control
+	// plane namespace does not already exist, and that the user can create
+	// cluster-wide resources, including ClusterRole, ClusterRoleBinding, and
+	// CustomResourceDefinition. This check only runs as part of the set
+	// of pre-install checks.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdPreInstallClusterChecks
+
+	// LinkerdPreInstallSingleNamespaceChecks adds a check to validate that the
+	// control plane namespace already exists, and that the user can create
+	// namespace-scoped resources, including Role and RoleBinding. This check only
+	// runs as part of the set of pre-install checks.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdPreInstallSingleNamespaceChecks
+
+	// LinkerdPreInstallChecks adds checks to validate that the user can create
+	// Kubernetes objects necessary to install the control plane, including
+	// Service, Deployment, and ConfigMap. This check only runs as part of the set
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdPreInstallChecks
+
+	// LinkerdDataPlaneExistenceChecks adds a data plane check to validate that
+	// the data plane namespace exists.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdDataPlaneExistenceChecks
 
 	// LinkerdDataPlaneChecks adds a data plane check to validate that the proxy
 	// containers are in the ready state.
@@ -45,8 +71,8 @@ const (
 	// checks must be added first.
 	LinkerdDataPlaneChecks
 
-	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that the control
-	// plane namespace and controller pod exist.
+	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
+	// the control plane namespace and controller pod exist.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdControlPlaneExistenceChecks
@@ -57,18 +83,47 @@ const (
 	// checks must be added first.
 	LinkerdAPIChecks
 
-	// LinkerdVersionChecks adds a series of checks to validate that the CLI,
-	// control plane, and data plane are running the latest available version.
-	// These checks are dependent on the output of AddLinkerdAPIChecks, so those
-	// checks must be added first, unless the the ShouldCheckControlPlaneVersion
-	// and ShouldCheckDataPlaneVersion options are false.
+	// LinkerdServiceProfileChecks add a check validate any ServiceProfiles that
+	// may already be installed.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdServiceProfileChecks
+
+	// LinkerdVersionChecks adds a series of checks to query for the latest
+	// version, and validate the the CLI is up to date.
 	LinkerdVersionChecks
+
+	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
+	// the control plane is running the latest available version.
+	// These checks are dependent on `apiClient` from
+	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
+	// LinkerdVersionChecks, so those checks must be added first.
+	LinkerdControlPlaneVersionChecks
+
+	// LinkerdDataPlaneVersionChecks adds a series of checks to validate that the
+	// control plane is running the latest available version.
+	// These checks are dependent on `apiClient` from
+	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
+	// LinkerdVersionChecks, so those checks must be added first.
+	LinkerdDataPlaneVersionChecks
 
 	// KubernetesAPICategory is the string representation of KubernetesAPIChecks.
 	KubernetesAPICategory = "kubernetes-api"
+	// KubernetesVersionCategory is the string representation of
+	// KubernetesVersionChecks.
+	KubernetesVersionCategory = "kubernetes-version"
+	// LinkerdPreInstallClusterCategory is the string representation of
+	// LinkerdPreInstallClusterChecks.
+	LinkerdPreInstallClusterCategory = "kubernetes-cluster-setup"
+	// LinkerdPreInstallSingleNamespaceCategory is the string representation of
+	// LinkerdPreInstallSingleNamespaceChecks.
+	LinkerdPreInstallSingleNamespaceCategory = "kubernetes-single-namespace-setup"
 	// LinkerdPreInstallCategory is the string representation of
 	// LinkerdPreInstallChecks.
 	LinkerdPreInstallCategory = "kubernetes-setup"
+	// LinkerdDataPlaneExistenceCategory is the string representation of
+	// LinkerdDataPlaneExistenceChecks.
+	LinkerdDataPlaneExistenceCategory = "linkerd-data-plane-existence"
 	// LinkerdDataPlaneCategory is the string representation of
 	// LinkerdDataPlaneChecks.
 	LinkerdDataPlaneCategory = "linkerd-data-plane"
@@ -77,9 +132,18 @@ const (
 	LinkerdControlPlaneExistenceCategory = "linkerd-existence"
 	// LinkerdAPICategory is the string representation of LinkerdAPIChecks.
 	LinkerdAPICategory = "linkerd-api"
+	// LinkerdServiceProfileCategory is the string representation of
+	// LinkerdServiceProfileChecks.
+	LinkerdServiceProfileCategory = "linkerd-service-profile"
 	// LinkerdVersionCategory is the string representation of
 	// LinkerdVersionChecks.
 	LinkerdVersionCategory = "linkerd-version"
+	// LinkerdControlPlaneVersionCategory is the string representation of
+	// LinkerdControlPlaneVersionChecks.
+	LinkerdControlPlaneVersionCategory = "linkerd-control-plane-version"
+	// LinkerdDataPlaneVersionCategory is the string representation of
+	// LinkerdDataPlaneVersionChecks.
+	LinkerdDataPlaneVersionCategory = "linkerd-data-plane-version"
 )
 
 var (
@@ -132,17 +196,13 @@ type checkObserver func(*CheckResult)
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
-	ControlPlaneNamespace          string
-	DataPlaneNamespace             string
-	KubeConfig                     string
-	KubeContext                    string
-	APIAddr                        string
-	VersionOverride                string
-	RetryDeadline                  time.Time
-	ShouldCheckKubeVersion         bool
-	ShouldCheckControlPlaneVersion bool
-	ShouldCheckDataPlaneVersion    bool
-	SingleNamespace                bool
+	ControlPlaneNamespace string
+	DataPlaneNamespace    string
+	KubeConfig            string
+	KubeContext           string
+	APIAddr               string
+	VersionOverride       string
+	RetryDeadline         time.Time
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -173,16 +233,30 @@ func NewHealthChecker(checks []Checks, options *Options) *HealthChecker {
 		switch check {
 		case KubernetesAPIChecks:
 			hc.addKubernetesAPIChecks()
+		case KubernetesVersionChecks:
+			hc.addKubernetesVersionChecks()
+		case LinkerdPreInstallClusterChecks:
+			hc.addLinkerdPreInstallClusterChecks()
+		case LinkerdPreInstallSingleNamespaceChecks:
+			hc.addLinkerdPreInstallSingleNamespaceChecks()
 		case LinkerdPreInstallChecks:
 			hc.addLinkerdPreInstallChecks()
+		case LinkerdDataPlaneExistenceChecks:
+			hc.addLinkerdDataPlaneExistenceChecks()
 		case LinkerdDataPlaneChecks:
 			hc.addLinkerdDataPlaneChecks()
 		case LinkerdControlPlaneExistenceChecks:
 			hc.addLinkerdControlPlaneExistenceChecks()
 		case LinkerdAPIChecks:
 			hc.addLinkerdAPIChecks()
+		case LinkerdServiceProfileChecks:
+			hc.addLinkerdServiceProfileChecks()
 		case LinkerdVersionChecks:
 			hc.addLinkerdVersionChecks()
+		case LinkerdControlPlaneVersionChecks:
+			hc.addLinkerdControlPlaneVersionChecks()
+		case LinkerdDataPlaneVersionChecks:
+			hc.addLinkerdDataPlaneVersionChecks()
 		}
 	}
 
@@ -213,53 +287,41 @@ func (hc *HealthChecker) addKubernetesAPIChecks() {
 			return
 		},
 	})
-
-	if hc.ShouldCheckKubeVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    KubernetesAPICategory,
-			description: "is running the minimum Kubernetes API version",
-			check: func() error {
-				return hc.kubeAPI.CheckVersion(hc.kubeVersion)
-			},
-		})
-	}
 }
 
-func (hc *HealthChecker) addLinkerdPreInstallChecks() {
+func (hc *HealthChecker) addKubernetesVersionChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    KubernetesVersionCategory,
+		description: "is running the minimum Kubernetes API version",
+		check: func() error {
+			return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdPreInstallClusterChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallClusterCategory,
+		description: "control plane namespace does not already exist",
+		check: func() error {
+			return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallClusterCategory,
+		description: "can create Namespaces",
+		check: func() error {
+			return hc.checkCanCreate("", "", "v1", "Namespace")
+		},
+	})
+
+	// TODO: refactor with LinkerdPreInstallSingleNamespaceChecks
 	roleType := "ClusterRole"
 	roleBindingType := "ClusterRoleBinding"
 
-	if hc.SingleNamespace {
-		roleType = "Role"
-		roleBindingType = "RoleBinding"
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "control plane namespace exists",
-			check: func() error {
-				return hc.checkNamespace(hc.ControlPlaneNamespace, true)
-			},
-		})
-	} else {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "control plane namespace does not already exist",
-			check: func() error {
-				return hc.checkNamespace(hc.ControlPlaneNamespace, false)
-			},
-		})
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create Namespaces",
-			check: func() error {
-				return hc.checkCanCreate("", "", "v1", "Namespace")
-			},
-		})
-	}
-
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
+		category:    LinkerdPreInstallClusterCategory,
 		description: fmt.Sprintf("can create %ss", roleType),
 		check: func() error {
 			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleType)
@@ -267,13 +329,53 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 	})
 
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
+		category:    LinkerdPreInstallClusterCategory,
 		description: fmt.Sprintf("can create %ss", roleBindingType),
 		check: func() error {
 			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleBindingType)
 		},
 	})
 
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallClusterCategory,
+		description: "can create CustomResourceDefinitions",
+		check: func() error {
+			return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdPreInstallSingleNamespaceChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallSingleNamespaceCategory,
+		description: "control plane namespace exists",
+		check: func() error {
+			return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+		},
+	})
+
+	// TODO: refactor with LinkerdPreInstallClusterChecks
+	roleType := "Role"
+	roleBindingType := "RoleBinding"
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallSingleNamespaceCategory,
+		description: fmt.Sprintf("can create %ss", roleType),
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleType)
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdPreInstallSingleNamespaceCategory,
+		description: fmt.Sprintf("can create %ss", roleBindingType),
+		check: func() error {
+			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleBindingType)
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 	hc.checkers = append(hc.checkers, &checker{
 		category:    LinkerdPreInstallCategory,
 		description: "can create ServiceAccounts",
@@ -305,16 +407,6 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
 		},
 	})
-
-	if !hc.SingleNamespace {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create CustomResourceDefinitions",
-			check: func() error {
-				return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
-			},
-		})
-	}
 }
 
 func (hc *HealthChecker) addLinkerdControlPlaneExistenceChecks() {
@@ -395,31 +487,31 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 			return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 		},
 	})
+}
 
-	if !hc.SingleNamespace {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdAPICategory,
-			description: "no invalid service profiles",
-			warning:     true,
-			check: func() error {
-				return hc.validateServiceProfiles()
-			},
-		})
-	}
+func (hc *HealthChecker) addLinkerdServiceProfileChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdServiceProfileCategory,
+		description: "no invalid service profiles",
+		warning:     true,
+		check: func() error {
+			return hc.validateServiceProfiles()
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdDataPlaneExistenceChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdDataPlaneExistenceCategory,
+		description: "data plane namespace exists",
+		fatal:       true,
+		check: func() error {
+			return hc.checkNamespace(hc.DataPlaneNamespace, true)
+		},
+	})
 }
 
 func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
-	if hc.DataPlaneNamespace != "" {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdDataPlaneCategory,
-			description: "data plane namespace exists",
-			fatal:       true,
-			check: func() error {
-				return hc.checkNamespace(hc.DataPlaneNamespace, true)
-			},
-		})
-	}
-
 	hc.checkers = append(hc.checkers, &checker{
 		category:      LinkerdDataPlaneCategory,
 		description:   "data plane proxies are ready",
@@ -489,39 +581,39 @@ func (hc *HealthChecker) addLinkerdVersionChecks() {
 			return version.CheckClientVersion(hc.latestVersion)
 		},
 	})
+}
 
-	if hc.ShouldCheckControlPlaneVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdVersionCategory,
-			description: "control plane is up-to-date",
-			warning:     true,
-			check: func() error {
-				return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
-			},
-		})
-	}
+func (hc *HealthChecker) addLinkerdControlPlaneVersionChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdControlPlaneVersionCategory,
+		description: "control plane is up-to-date",
+		warning:     true,
+		check: func() error {
+			return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+		},
+	})
+}
 
-	if hc.ShouldCheckDataPlaneVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdVersionCategory,
-			description: "data plane is up-to-date",
-			warning:     true,
-			check: func() error {
-				pods, err := hc.getDataPlanePods()
-				if err != nil {
-					return err
+func (hc *HealthChecker) addLinkerdDataPlaneVersionChecks() {
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdDataPlaneVersionCategory,
+		description: "data plane is up-to-date",
+		warning:     true,
+		check: func() error {
+			pods, err := hc.getDataPlanePods()
+			if err != nil {
+				return err
+			}
+
+			for _, pod := range pods {
+				if pod.ProxyVersion != hc.latestVersion {
+					return fmt.Errorf("%s is running version %s but the latest version is %s",
+						pod.Name, pod.ProxyVersion, hc.latestVersion)
 				}
-
-				for _, pod := range pods {
-					if pod.ProxyVersion != hc.latestVersion {
-						return fmt.Errorf("%s is running version %s but the latest version is %s",
-							pod.Name, pod.ProxyVersion, hc.latestVersion)
-					}
-				}
-				return nil
-			},
-		})
-	}
+			}
+			return nil
+		},
+	})
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For

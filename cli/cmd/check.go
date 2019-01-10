@@ -79,33 +79,52 @@ func configureAndRunChecks(options *checkOptions) error {
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
-	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
+	checks := []healthcheck.Checks{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.KubernetesVersionChecks,
+	}
 
 	if options.preInstallOnly {
+		if options.singleNamespace {
+			checks = append(checks, healthcheck.LinkerdPreInstallSingleNamespaceChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdPreInstallClusterChecks)
+		}
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else if options.dataPlaneOnly {
 		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		if !options.singleNamespace {
+			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
+		}
+		if options.namespace != "" {
+			checks = append(checks, healthcheck.LinkerdDataPlaneExistenceChecks)
+		}
 		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		if !options.singleNamespace {
+			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
+		}
 	}
 
 	checks = append(checks, healthcheck.LinkerdVersionChecks)
+	if !(options.preInstallOnly || options.dataPlaneOnly) {
+		checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+	}
+	if options.dataPlaneOnly {
+		checks = append(checks, healthcheck.LinkerdDataPlaneVersionChecks)
+	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace:          controlPlaneNamespace,
-		DataPlaneNamespace:             options.namespace,
-		KubeConfig:                     kubeconfigPath,
-		KubeContext:                    kubeContext,
-		APIAddr:                        apiAddr,
-		VersionOverride:                options.versionOverride,
-		RetryDeadline:                  time.Now().Add(options.wait),
-		ShouldCheckKubeVersion:         true,
-		ShouldCheckControlPlaneVersion: !(options.preInstallOnly || options.dataPlaneOnly),
-		ShouldCheckDataPlaneVersion:    options.dataPlaneOnly,
-		SingleNamespace:                options.singleNamespace,
+		ControlPlaneNamespace: controlPlaneNamespace,
+		DataPlaneNamespace:    options.namespace,
+		KubeConfig:            kubeconfigPath,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+		VersionOverride:       options.versionOverride,
+		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
 	success := runChecks(os.Stdout, hc)
