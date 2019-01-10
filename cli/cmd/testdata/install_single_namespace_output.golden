@@ -862,7 +862,7 @@ data:
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/linkerd-web:http/proxy/grafana/
+    root_url = %(protocol)s://%(domain)s:/grafana/
 
     [auth]
     disable_login_form = true

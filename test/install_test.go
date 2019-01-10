@@ -137,10 +137,7 @@ func TestCheckPostInstall(t *testing.T) {
 
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
-	dashboardURL := fmt.Sprintf(
-		"http://127.0.0.1:%d/api/v1/namespaces/%s/services/linkerd-web:http/proxy",
-		dashboardPort, TestHelper.GetLinkerdNamespace(),
-	)
+	dashboardURL := fmt.Sprintf("http://127.0.0.1:%d", dashboardPort)
 
 	outputStream, err := TestHelper.LinkerdRunStream("dashboard", "-p",
 		strconv.Itoa(dashboardPort), "--show", "url")
@@ -199,12 +196,12 @@ func TestInject(t *testing.T) {
 		}
 	}
 
-	svcURL, err := TestHelper.ProxyURLFor(prefixedNs, "smoke-test-gateway-svc", "http")
+	url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
 	if err != nil {
-		t.Fatalf("Failed to get proxy URL: %s", err)
+		t.Fatalf("Failed to get URL: %s", err)
 	}
 
-	output, err := TestHelper.HTTPGetURL(svcURL)
+	output, err := TestHelper.HTTPGetURL(url)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v %s", err, output)
 	}

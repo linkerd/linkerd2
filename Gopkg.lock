@@ -62,6 +62,16 @@
   version = "v3.1.0"
 
 [[projects]]
+  digest = "1:59be0b37b12a8cdb8fedd44f6ccdd4aec6735ad4fb10bf19bb99ae5d1c701dda"
+  name = "github.com/docker/spdystream"
+  packages = [
+    ".",
+    "spdy",
+  ]
+  pruneopts = ""
+  revision = "449fdfce4d962303d702fec724ef0ad181c92528"
+
+[[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -314,14 +324,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d33ce379780d7c43405b9251289493cabada82f6bf9ab35eea6915d04f6ac8e0"
-  name = "github.com/mxk/go-flowrate"
-  packages = ["flowrate"]
-  pruneopts = ""
-  revision = "cca7078d478f8520f85629ad7c68962d31ed7682"
-
-[[projects]]
-  branch = "master"
   digest = "1:1a25d906193d34ce43e96fcab1a2de2b90e0242f9b0c176564db1b268bf48ea5"
   name = "github.com/nsf/termbox-go"
   packages = ["."]
@@ -461,8 +463,6 @@
   packages = [
     "context",
     "context/ctxhttp",
-    "html",
-    "html/atom",
     "http2",
     "http2/hpack",
     "idna",
@@ -689,11 +689,11 @@
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/httpstream",
+    "pkg/util/httpstream/spdy",
     "pkg/util/intstr",
     "pkg/util/json",
     "pkg/util/mergepatch",
     "pkg/util/net",
-    "pkg/util/proxy",
     "pkg/util/runtime",
     "pkg/util/sets",
     "pkg/util/strategicpatch",
@@ -866,8 +866,10 @@
     "tools/clientcmd/api/v1",
     "tools/metrics",
     "tools/pager",
+    "tools/portforward",
     "tools/reference",
     "transport",
+    "transport/spdy",
     "util/buffer",
     "util/cert",
     "util/connrotation",
@@ -934,18 +936,6 @@
   packages = ["pkg/util/proto"]
   pruneopts = ""
   revision = "d8ea2fe547a448256204cfc68dfee7b26c720acb"
-
-[[projects]]
-  digest = "1:7107d2e83c67ac0dbd9b62e8e2bfe1a75b194864ea4fe30778f4842151cd356d"
-  name = "k8s.io/kubernetes"
-  packages = [
-    "pkg/apis/core",
-    "pkg/kubectl/proxy",
-    "pkg/kubectl/util",
-  ]
-  pruneopts = ""
-  revision = "b1b29978270dc22fecc592ac55d903350454310a"
-  version = "v1.11.1"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -1023,6 +1013,8 @@
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/tools/portforward",
+    "k8s.io/client-go/transport/spdy",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
@@ -1030,7 +1022,6 @@
     "k8s.io/code-generator/cmd/defaulter-gen",
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
-    "k8s.io/kubernetes/pkg/kubectl/proxy",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
