@@ -1,3 +1,22 @@
+## edge-19.1.1
+
+* CLI
+  * Adjust the set of checks that are run before executing CLI commands, which
+    allows the CLI to be invoked even when the control plane is not fully ready
+  * Fix reporting of injected resources when the `linkerd inject` command is run
+    on `List` type resources with multiple items.
+  * Update the `linkerd dashboard` command to use port-forwarding instead of
+    proxying when connecting to the web UI and Grafana
+  * Add validation for the `ServiceProfile` CRD (thanks, @alenkacz!)
+  * Update the `linkerd check` command to disallow setting both the `--pre` and
+    `--proxy` flags simultaneously (thanks again, @alenkacz!)
+* Web UI
+  * Reduce the size of the webpack javascript bundle by nearly 50%!
+  * Fix an indexing error on the top results page
+* Proxy
+  * **Fixed** The proxy previously leaked UDP sockets when DNS queries timed
+    out; this has been fixed
+
 ## edge-18.12.4
 
 Upgrade notes: The control plane components have been renamed as of the
