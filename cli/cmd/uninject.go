@@ -112,6 +112,14 @@ func uninjectPodSpec(t *v1.PodSpec) {
 		}
 	}
 	t.Containers = containers
+
+	volumes := []v1.Volume{}
+	for _, volume := range t.Volumes {
+		if volume.Name != "linkerd-trust-anchors" && volume.Name != "linkerd-secrets" {
+			volumes = append(volumes, volume)
+		}
+	}
+	t.Volumes = volumes
 }
 
 func uninjectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string) {
