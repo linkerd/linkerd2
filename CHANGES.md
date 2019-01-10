@@ -14,8 +14,10 @@
   * Reduce the size of the webpack JavaScript bundle by nearly 50%!
   * Fix an indexing error on the top results page
 * Proxy
-  * **Fixed** The proxy previously leaked UDP sockets for failed DNS queries;
-    this has been fixed
+  * **Fixed** The proxy-init container now exits with a non-zero exit code if
+    initialization fails, making initialization errors much more visible
+  * **Fixed** The proxy previously leaked UDP sockets for failed DNS queries,
+    causing a memory leak; this has been fixed
 
 ## edge-18.12.4
 
