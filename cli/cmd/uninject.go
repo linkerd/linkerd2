@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,6 +12,8 @@ import (
 	"k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type resourceTransformerUninject struct{}
 
 func newCmdUninject() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,7 +37,7 @@ sub-folder. e.g. linkerd uninject <folder> | kubectl apply -f -
 				return err
 			}
 
-			exitCode := transformInput(in, os.Stderr, os.Stdout, nil, uninjectResource)
+			exitCode := transformInput(in, os.Stderr, os.Stdout, nil, resourceTransformerUninject{})
 			os.Exit(exitCode)
 			return nil
 		},
@@ -43,9 +46,9 @@ sub-folder. e.g. linkerd uninject <folder> | kubectl apply -f -
 	return cmd
 }
 
-func uninjectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
 	conf := &resourceConfig{}
-	output, reports, err := conf.parse(bytes, options, uninjectResource)
+	output, reports, err := conf.parse(bytes, options, rt)
 	if output != nil || err != nil {
 		return output, reports, err
 	}
@@ -71,6 +74,24 @@ func uninjectResource(bytes []byte, options *injectOptions) ([]byte, []injectRep
 	}
 
 	return output, []injectReport{report}, nil
+}
+
+func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
+	uninjected := []string{}
+	for _, r := range uninjectReports {
+		if !r.unsupportedResource {
+			uninjected = append(uninjected, r.name)
+		}
+	}
+	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) uninjected", len(uninjected), len(uninjectReports))
+	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
+
+	for _, i := range uninjected {
+		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
+	}
+
+	// trailing newline to separate from kubectl output if piping
+	output.Write([]byte("\n"))
 }
 
 // Given a PodSpec, update the PodSpec in place with the sidecar

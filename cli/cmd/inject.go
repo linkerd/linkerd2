@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -45,13 +45,15 @@ type injectOptions struct {
 	*proxyConfigOptions
 }
 
+type resourceTransformerInject struct{}
+
 // InjectYAML processes resource definitions and outputs them after injection in out
 var InjectYAML = func(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
-	return ProcessYAML(in, out, report, options, injectResource)
+	return ProcessYAML(in, out, report, options, resourceTransformerInject{})
 }
 
 var runInjectCmd = func(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
-	return transformInput(inputs, errWriter, outWriter, options, injectResource)
+	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerInject{})
 }
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
@@ -105,12 +107,12 @@ sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
 // TODO: move to separate file
-func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions, transform resourceTransformer) int {
+func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions, rt resourceTransformer) int {
 	postInjectBuf := &bytes.Buffer{}
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := ProcessYAML(input, postInjectBuf, reportBuf, options, transform)
+		err := ProcessYAML(input, postInjectBuf, reportBuf, options, rt)
 		if err != nil {
 			// TODO: have a more generic error (shared with uninject)
 			fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
@@ -358,7 +360,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 // ProcessYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
 // TODO: move to separate file
-func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions, transform resourceTransformer) error {
+func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions, rt resourceTransformer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	injectReports := []injectReport{}
@@ -374,7 +376,7 @@ func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectO
 			return err
 		}
 
-		result, irs, err := transform(bytes, options)
+		result, irs, err := rt.transform(bytes, options)
 		if err != nil {
 			return err
 		}
@@ -385,13 +387,13 @@ func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectO
 		injectReports = append(injectReports, irs...)
 	}
 
-	generateReport(injectReports, report)
+	rt.generateReport(injectReports, report)
 
 	return nil
 }
 
 // TODO: shared with uninject, so better move it to some common file
-func processList(b []byte, options *injectOptions, transform resourceTransformer) ([]byte, []injectReport, error) {
+func processList(b []byte, options *injectOptions, rt resourceTransformer) ([]byte, []injectReport, error) {
 	var sourceList v1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
 		return nil, nil, err
@@ -401,7 +403,7 @@ func processList(b []byte, options *injectOptions, transform resourceTransformer
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, reports, err := transform(item.Raw, options)
+		result, reports, err := rt.transform(item.Raw, options)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -428,7 +430,7 @@ func processList(b []byte, options *injectOptions, transform resourceTransformer
 }
 
 // TODO: move to separate file
-func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, transform resourceTransformer) ([]byte, []injectReport, error) {
+func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resourceTransformer) ([]byte, []injectReport, error) {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -549,15 +551,15 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, transfor
 		// Lists are a little different than the other types. There's no immediate
 		// pod template. Because of this, we do a recursive call for each element
 		// in the list (instead of just marshaling the injected pod template).
-		return processList(bytes, options, transform)
+		return processList(bytes, options, rt)
 	}
 
 	return nil, nil, nil
 }
 
-func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
 	conf := &resourceConfig{}
-	output, reports, err := conf.parse(bytes, options, injectResource)
+	output, reports, err := conf.parse(bytes, options, rt)
 	if output != nil || err != nil {
 		return output, reports, err
 	}
@@ -599,6 +601,84 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 	}
 
 	return output, []injectReport{report}, nil
+}
+
+func (resourceTransformerInject) generateReport(injectReports []injectReport, output io.Writer) {
+	injected := []string{}
+	hostNetwork := []string{}
+	sidecar := []string{}
+	udp := []string{}
+
+	for _, r := range injectReports {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+			injected = append(injected, r.name)
+		}
+
+		if r.hostNetwork {
+			hostNetwork = append(hostNetwork, r.name)
+		}
+
+		if r.sidecar {
+			sidecar = append(sidecar, r.name)
+		}
+
+		if r.udp {
+			udp = append(udp, r.name)
+		}
+	}
+
+	//
+	// Warnings
+	//
+
+	// leading newline to separate from yaml output on stdout
+	output.Write([]byte("\n"))
+
+	hostNetworkPrefix := fmt.Sprintf("%s%s", hostNetworkDesc, getFiller(hostNetworkDesc))
+	if len(hostNetwork) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", hostNetworkPrefix, okStatus)))
+	} else {
+		output.Write([]byte(fmt.Sprintf("%s%s -- \"hostNetwork: true\" detected in %s\n", hostNetworkPrefix, warnStatus, strings.Join(hostNetwork, ", "))))
+	}
+
+	sidecarPrefix := fmt.Sprintf("%s%s", sidecarDesc, getFiller(sidecarDesc))
+	if len(sidecar) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", sidecarPrefix, okStatus)))
+	} else {
+		output.Write([]byte(fmt.Sprintf("%s%s -- known sidecar detected in %s\n", sidecarPrefix, warnStatus, strings.Join(sidecar, ", "))))
+	}
+
+	unsupportedPrefix := fmt.Sprintf("%s%s", unsupportedDesc, getFiller(unsupportedDesc))
+	if len(injected) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", unsupportedPrefix, okStatus)))
+	} else {
+		output.Write([]byte(fmt.Sprintf("%s%s -- no supported objects found\n", unsupportedPrefix, warnStatus)))
+	}
+
+	udpPrefix := fmt.Sprintf("%s%s", udpDesc, getFiller(udpDesc))
+	if len(udp) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s%s\n", udpPrefix, okStatus)))
+	} else {
+		verb := "uses"
+		if len(udp) > 1 {
+			verb = "use"
+		}
+		output.Write([]byte(fmt.Sprintf("%s%s -- %s %s \"protocol: UDP\"\n", udpPrefix, warnStatus, strings.Join(udp, ", "), verb)))
+	}
+
+	//
+	// Summary
+	//
+
+	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) injected", len(injected), len(injectReports))
+	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
+
+	for _, i := range injected {
+		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
+	}
+
+	// trailing newline to separate from kubectl output if piping
+	output.Write([]byte("\n"))
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
