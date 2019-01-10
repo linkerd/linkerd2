@@ -71,7 +71,7 @@ func newCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			validatedPublicAPIClient(time.Now().Add(options.wait))
+			validatedPublicAPIClient(time.Now().Add(options.wait), true)
 
 			fmt.Printf("Linkerd dashboard available at:\n%s\n", url.String())
 			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL.String())

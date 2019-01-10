@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -44,8 +45,14 @@ const (
 	// checks must be added first.
 	LinkerdDataPlaneChecks
 
+	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that the control
+	// plane namespace and controller pod exist.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdControlPlaneExistenceChecks
+
 	// LinkerdAPIChecks adds a series of checks to validate that the control plane
-	// namespace exists and that it's successfully serving the public API.
+	// is successfully serving the public API.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdAPIChecks
@@ -65,6 +72,9 @@ const (
 	// LinkerdDataPlaneCategory is the string representation of
 	// LinkerdDataPlaneChecks.
 	LinkerdDataPlaneCategory = "linkerd-data-plane"
+	// LinkerdControlPlaneExistenceCategory is the string representation of
+	// LinkerdControlPlaneExistenceChecks.
+	LinkerdControlPlaneExistenceCategory = "linkerd-existence"
 	// LinkerdAPICategory is the string representation of LinkerdAPIChecks.
 	LinkerdAPICategory = "linkerd-api"
 	// LinkerdVersionCategory is the string representation of
@@ -167,6 +177,8 @@ func NewHealthChecker(checks []Checks, options *Options) *HealthChecker {
 			hc.addLinkerdPreInstallChecks()
 		case LinkerdDataPlaneChecks:
 			hc.addLinkerdDataPlaneChecks()
+		case LinkerdControlPlaneExistenceChecks:
+			hc.addLinkerdControlPlaneExistenceChecks()
 		case LinkerdAPIChecks:
 			hc.addLinkerdAPIChecks()
 		case LinkerdVersionChecks:
@@ -305,9 +317,9 @@ func (hc *HealthChecker) addLinkerdPreInstallChecks() {
 	}
 }
 
-func (hc *HealthChecker) addLinkerdAPIChecks() {
+func (hc *HealthChecker) addLinkerdControlPlaneExistenceChecks() {
 	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
+		category:    LinkerdControlPlaneExistenceCategory,
 		description: "control plane namespace exists",
 		fatal:       true,
 		check: func() error {
@@ -315,6 +327,48 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 		},
 	})
 
+	hc.checkers = append(hc.checkers, &checker{
+		category:      LinkerdControlPlaneExistenceCategory,
+		description:   "controller pod is running",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
+		check: func() error {
+			var err error
+			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+			return checkControllerRunning(hc.controlPlanePods)
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:    LinkerdControlPlaneExistenceCategory,
+		description: "can initialize the client",
+		fatal:       true,
+		check: func() (err error) {
+			if hc.APIAddr != "" {
+				hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+			} else {
+				hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+			}
+			return
+		},
+	})
+
+	hc.checkers = append(hc.checkers, &checker{
+		category:      LinkerdControlPlaneExistenceCategory,
+		description:   "can query the control plane API",
+		retryDeadline: hc.RetryDeadline,
+		fatal:         true,
+		check: func() error {
+			_, err := version.GetServerVersion(hc.apiClient)
+			return err
+		},
+	})
+}
+
+func (hc *HealthChecker) addLinkerdAPIChecks() {
 	hc.checkers = append(hc.checkers, &checker{
 		category:      LinkerdAPICategory,
 		description:   "control plane pods are ready",
@@ -327,20 +381,6 @@ func (hc *HealthChecker) addLinkerdAPIChecks() {
 				return err
 			}
 			return validateControlPlanePods(hc.controlPlanePods)
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdAPICategory,
-		description: "can initialize the client",
-		fatal:       true,
-		check: func() (err error) {
-			if hc.APIAddr != "" {
-				hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
-			} else {
-				hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
-			}
-			return
 		},
 	})
 
@@ -725,7 +765,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	return nil
 }
 
-func validateControlPlanePods(pods []v1.Pod) error {
+func getPodStatuses(pods []v1.Pod) map[string][]v1.ContainerStatus {
 	statuses := make(map[string][]v1.ContainerStatus)
 
 	for _, pod := range pods {
@@ -738,6 +778,12 @@ func validateControlPlanePods(pods []v1.Pod) error {
 			statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 		}
 	}
+
+	return statuses
+}
+
+func validateControlPlanePods(pods []v1.Pod) error {
+	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "prometheus", "web", "grafana"}
 	if _, found := statuses["ca"]; found {
@@ -760,6 +806,14 @@ func validateControlPlanePods(pods []v1.Pod) error {
 		}
 	}
 
+	return nil
+}
+
+func checkControllerRunning(pods []v1.Pod) error {
+	statuses := getPodStatuses(pods)
+	if _, ok := statuses["controller"]; !ok {
+		return errors.New("No running pods for \"linkerd-controller\"")
+	}
 	return nil
 }
 
