@@ -17,12 +17,12 @@ import (
 )
 
 //This code replicates most of the functionality in https://github.com/wercker/stern/blob/master/cmd/cli.go
-type logCmdOpts struct {
+type logCmdConfig struct {
 	clientset *kubernetes.Clientset
 	*stern.Config
 }
 
-type logFlags struct {
+type logsOptions struct {
 	containerFilter string
 	namespace       string
 	podFilter       string
@@ -34,22 +34,35 @@ type logFlags struct {
 	follow          bool
 }
 
-func (c *logFlags) NewSternConfig() (*stern.Config, error) {
+func newLogsOptions() *logsOptions {
+	return &logsOptions{
+		containerFilter: "",
+		namespace:       controlPlaneNamespace,
+		podFilter:       "",
+		containerState:  "running",
+		labelSelector:   "",
+		sinceSeconds:    48 * time.Hour,
+		tail:            -1,
+		timestamps:      false,
+	}
+}
+
+func (o *logsOptions) toSternConfig() (*stern.Config, error) {
 	config := &stern.Config{}
 
-	podFilterRgx, err := regexp.Compile(c.podFilter)
+	podFilterRgx, err := regexp.Compile(o.podFilter)
 	if err != nil {
 		return nil, err
 	}
 	config.PodQuery = podFilterRgx
 
-	containerFilterRgx, err := regexp.Compile(c.containerFilter)
+	containerFilterRgx, err := regexp.Compile(o.containerFilter)
 	if err != nil {
 		return nil, err
 	}
 	config.ContainerQuery = containerFilterRgx
 
-	containerState, err := stern.NewContainerState(c.containerState)
+	containerState, err := stern.NewContainerState(o.containerState)
 	if err != nil {
 		return nil, err
 	}
@@ -68,28 +81,28 @@ func (c *logFlags) NewSternConfig() (*stern.Config, error) {
 	}
 	config.Template = tmpl
 
-	if c.labelSelector == "" {
+	if o.labelSelector == "" {
 		config.LabelSelector = labels.Everything()
 	} else {
-		selector, err := labels.Parse(c.labelSelector)
+		selector, err := labels.Parse(o.labelSelector)
 		if err != nil {
 			return nil, err
 		}
 		config.LabelSelector = selector
 	}
 
-	if c.tail != -1 {
-		config.TailLines = &c.tail
+	if o.tail != -1 {
+		config.TailLines = &o.tail
 	}
 
-	config.Since = c.sinceSeconds
-	config.Timestamps = c.timestamps
-	config.Namespace = c.namespace
+	config.Since = o.sinceSeconds
+	config.Timestamps = o.timestamps
+	config.Namespace = o.namespace
 
 	return config, nil
 }
 
-func newLogOptions(flags *logFlags, kubeconfigPath, kubeContext string) (*logCmdOpts, error) {
+func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
@@ -100,20 +113,19 @@ func newLogOptions(flags *logFlags, kubeconfigPath, kubeContext string) (*logCmd
 		return nil, err
 	}
 
-	c, err := flags.NewSternConfig()
+	c, err := options.toSternConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return &logCmdOpts{
+	return &logCmdConfig{
 		clientset,
 		c,
 	}, nil
 }
 
 func newCmdLogs() *cobra.Command {
-
-	flags := &logFlags{}
+	options := newLogsOptions()
 
 	cmd := &cobra.Command{
 		Use:   "logs [flags]",
@@ -126,7 +138,7 @@ func newCmdLogs() *cobra.Command {
   linkerd logs --pod-filter linkerd-grafana.* --container linkerd-proxy --namespace linkerd
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts, err := newLogOptions(flags, kubeconfigPath, kubeContext)
+			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
 
 			if err != nil {
 				return err
@@ -136,20 +148,19 @@ func newCmdLogs() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&flags.containerFilter, "container", "c", "", "Regex string to use for filtering log lines by container name")
-	cmd.PersistentFlags().StringVar(&flags.labelSelector, "label-selector", "", "kubernetes label selector to retrieve logs from resources that match")
-	cmd.PersistentFlags().StringVar(&flags.containerState, "container-state", "running", "Show logs from containers that are in a specific container state")
-	cmd.PersistentFlags().StringVarP(&flags.namespace, "namespace", "n", controlPlaneNamespace, "String to retrieve logs from pods in the given namespace")
-	cmd.PersistentFlags().StringVarP(&flags.podFilter, "pod-filter", "p", "", "Regex string to use for filtering log lines by pod name")
-	cmd.PersistentFlags().DurationVarP(&flags.sinceSeconds, "since", "s", 48*time.Hour, "Duration of how far back logs should be retrieved")
-	cmd.PersistentFlags().Int64Var(&flags.tail, "tail", -1, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
-	cmd.PersistentFlags().BoolVarP(&flags.timestamps, "timestamps", "t", false, "Print timestamps for each given log line")
+	cmd.PersistentFlags().StringVarP(&options.containerFilter, "container", "c", options.containerFilter, "Regex string to use for filtering log lines by container name")
+	cmd.PersistentFlags().StringVar(&options.labelSelector, "label-selector", options.labelSelector, "kubernetes label selector to retrieve logs from resources that match")
+	cmd.PersistentFlags().StringVar(&options.containerState, "container-state", options.containerState, "Show logs from containers that are in a specific container state")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "String to retrieve logs from pods in the given namespace")
+	cmd.PersistentFlags().StringVarP(&options.podFilter, "pod-filter", "p", options.podFilter, "Regex string to use for filtering log lines by pod name")
+	cmd.PersistentFlags().DurationVarP(&options.sinceSeconds, "since", "s", options.sinceSeconds, "Duration of how far back logs should be retrieved")
+	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
+	cmd.PersistentFlags().BoolVarP(&options.timestamps, "timestamps", "t", options.timestamps, "Print timestamps for each given log line")
 
 	return cmd
 }
 
-func runLogOutput(opts *logCmdOpts) error {
-
+func runLogOutput(opts *logCmdConfig) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, os.Kill)
 
