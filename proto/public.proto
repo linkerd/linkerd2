@@ -370,20 +370,24 @@ message TopRoutesRequest {
 
   oneof outbound {
     Empty none = 3;
-    string to_authority = 5;
-    Empty to_all = 6;
+    Resource to_resource = 7;
   }
 }
 
 message TopRoutesResponse {
   oneof response {
-    RouteTable routes = 1;
     ResourceError error = 2;
+    Ok ok = 3;
+  }
+
+  message Ok {
+    repeated RouteTable routes = 1;
   }
 }
 
 message RouteTable {
   repeated Row rows = 1;
+  string resource = 2;
 
   message Row {
     string route = 1;

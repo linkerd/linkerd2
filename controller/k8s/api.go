@@ -320,6 +320,50 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 	return allPods, nil
 }
 
+// GetNameAndNamespaceOf returns the name and namespace of the given object.
+func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
+	switch typed := obj.(type) {
+	case *apiv1.Namespace:
+		return typed.Name, typed.Name, nil
+
+	case *appsv1beta2.Deployment:
+		return typed.Name, typed.Namespace, nil
+
+	case *appsv1beta2.ReplicaSet:
+		return typed.Name, typed.Namespace, nil
+
+	case *apiv1.ReplicationController:
+		return typed.Name, typed.Namespace, nil
+
+	case *apiv1.Service:
+		return typed.Name, typed.Namespace, nil
+
+	case *apiv1.Pod:
+		return typed.Name, typed.Namespace, nil
+
+	default:
+		return "", "", fmt.Errorf("Cannot determine object type: %v", obj)
+	}
+}
+
+// GetNameOf returns the name of the given object.
+func GetNameOf(obj runtime.Object) (string, error) {
+	name, _, err := GetNameAndNamespaceOf(obj)
+	if err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+// GetNamespaceOf returns the namespace of the given object.
+func GetNamespaceOf(obj runtime.Object) (string, error) {
+	_, namespace, err := GetNameAndNamespaceOf(obj)
+	if err != nil {
+		return "", err
+	}
+	return namespace, nil
+}
+
 // getNamespaces returns the namespace matching the specified name. If no name
 // is given, it returns all namespaces, unless the API was configured to only
 // work with a single namespace, in which case it returns that namespace. Note
@@ -469,6 +513,50 @@ func (api *API) GetServices(namespace, name string) ([]*apiv1.Service, error) {
 	}
 
 	return services, err
+}
+
+// GetServicesFor returns all Service resources which include a pod of the given
+// resource object.  In other words, it returns all Services of which the given
+// resource object is a part of.
+func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Service, error) {
+	if svc, ok := obj.(*apiv1.Service); ok {
+		return []*apiv1.Service{svc}, nil
+	}
+
+	pods, err := api.GetPodsFor(obj, includeFailed)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := GetNamespaceOf(obj)
+	if err != nil {
+		return nil, err
+	}
+	allServices, err := api.GetServices(namespace, "")
+	if err != nil {
+		return nil, err
+	}
+	services := make([]*apiv1.Service, 0)
+	for _, svc := range allServices {
+		svcPods, err := api.GetPodsFor(svc, includeFailed)
+		if err != nil {
+			return nil, err
+		}
+		if hasOverlap(pods, svcPods) {
+			services = append(services, svc)
+		}
+	}
+	return services, nil
+}
+
+func hasOverlap(as, bs []*apiv1.Pod) bool {
+	for _, a := range as {
+		for _, b := range bs {
+			if a.Name == b.Name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func isPendingOrRunning(pod *apiv1.Pod) bool {

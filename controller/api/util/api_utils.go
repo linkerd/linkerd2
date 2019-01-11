@@ -73,8 +73,9 @@ type StatsSummaryRequestParams struct {
 // requests.
 type TopRoutesRequestParams struct {
 	StatsBaseRequestParams
-	To    string
-	ToAll bool
+	ToNamespace string
+	ToType      string
+	ToName      string
 }
 
 // TapRequestParams contains parameters that are used to build a
@@ -251,19 +252,30 @@ func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, erro
 		TimeWindow: window,
 	}
 
-	if p.To != "" && p.ToAll {
-		return nil, errors.New("ToService and ToAll are mutually exclusive")
-	}
-
-	if p.To != "" {
-		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAuthority{
-			ToAuthority: p.To,
+	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
+		if p.ToNamespace == "" {
+			p.ToNamespace = targetNamespace
 		}
-	}
+		if p.ToType == "" {
+			p.ToType = resourceType
+		}
 
-	if p.ToAll {
-		topRoutesRequest.Outbound = &pb.TopRoutesRequest_ToAll{
-			ToAll: &pb.Empty{},
+		toType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ToType)
+		if err != nil {
+			return nil, err
+		}
+
+		toResource := pb.TopRoutesRequest_ToResource{
+			ToResource: &pb.Resource{
+				Namespace: p.ToNamespace,
+				Type:      toType,
+				Name:      p.ToName,
+			},
+		}
+		topRoutesRequest.Outbound = &toResource
+	} else {
+		topRoutesRequest.Outbound = &pb.TopRoutesRequest_None{
+			None: &pb.Empty{},
 		}
 	}
 

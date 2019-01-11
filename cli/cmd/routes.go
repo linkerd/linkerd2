@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -89,7 +88,7 @@ func requestRouteStatsFromAPI(client pb.ApiClient, req *pb.TopRoutesRequest, opt
 		return "", fmt.Errorf("TopRoutes API error: %v", err)
 	}
 	if e := resp.GetError(); e != nil {
-		return "", fmt.Errorf("TopRoutes API response error: %v", e.Error)
+		return "", errors.New(e.Error)
 	}
 
 	return renderRouteStats(resp, options), nil
@@ -105,16 +104,17 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 }
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
-	table := make([]*routeRowStats, 0)
 
-	for _, r := range resp.GetRoutes().Rows {
-		if r.Stats != nil {
-			route := r.GetRoute()
-			if route == "" {
-				route = defaultRoute
-			}
-			table = append(table, &routeRowStats{
-				rowStats: rowStats{
+	tables := make(map[string][]*rowStats)
+
+	for _, resourceTable := range resp.GetOk().GetRoutes() {
+
+		table := make([]*rowStats, 0)
+
+		for _, r := range resourceTable.GetRows() {
+			if r.Stats != nil {
+				route := r.GetRoute()
+				table = append(table, &rowStats{
 					route:       route,
 					dst:         r.GetAuthority(),
 					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
@@ -122,26 +122,28 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 					latencyP50:  r.Stats.LatencyMsP50,
 					latencyP95:  r.Stats.LatencyMsP95,
 					latencyP99:  r.Stats.LatencyMsP99,
-				},
-				actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
-				actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
-			})
+				})
+			}
 		}
-	}
 
-	sort.Slice(table, func(i, j int) bool {
-		return table[i].route+table[i].dst < table[j].route+table[j].dst
-	})
+		sort.Slice(table, func(i, j int) bool {
+			return table[i].dst+table[i].route < table[j].dst+table[j].route
+		})
+
+		tables[resourceTable.GetResource()] = table
+	}
 
 	switch options.outputFormat {
 	case "table", "wide", "":
-		if len(table) == 0 {
-			fmt.Fprintln(os.Stderr, "No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.")
-			os.Exit(0)
+		for resource, table := range tables {
+			if len(tables) > 1 {
+				fmt.Fprintf(w, "==> %s <==\t\f", resource)
+			}
+			printRouteTable(table, w, options)
+			fmt.Fprintln(w)
 		}
-		printRouteTable(table, w, options)
 	case "json":
-		printRouteJSON(table, w, options)
+		printRouteJSON(tables, w, options)
 	}
 }
 
@@ -192,15 +194,9 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 
 	for _, row := range stats {
 
-		authorityValue := row.dst
-		if options.dstIsService {
-			segments := strings.Split(row.dst, ".")
-			authorityValue = segments[0]
-		}
-
 		values := []interface{}{
 			row.route,
-			authorityValue,
+			row.dst,
 			row.successRate * 100,
 			row.requestRate,
 		}
@@ -235,30 +231,32 @@ type jsonRouteStats struct {
 	LatencyMSp99     *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteJSON(tables map[string][]*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
-	entries := []*jsonRouteStats{}
-	for _, row := range stats {
-		route := row.route
-		entry := &jsonRouteStats{
-			Route: route,
-		}
+	entries := map[string][]*jsonRouteStats{}
+	for resource, table := range tables {
+		for _, row := range table {
+			route := row.route
+			entry := &jsonRouteStats{
+				Route: route,
+			}
 
-		entry.Authority = row.dst
-		if options.toResource != "" {
-			entry.EffectiveSuccess = &row.successRate
-			entry.EffectiveRps = &row.requestRate
-			entry.ActualSuccess = &row.actualSuccessRate
-			entry.ActualRps = &row.actualRequestRate
-		} else {
-			entry.Success = &row.successRate
-			entry.Rps = &row.requestRate
-		}
-		entry.LatencyMSp50 = &row.latencyP50
-		entry.LatencyMSp95 = &row.latencyP95
-		entry.LatencyMSp99 = &row.latencyP99
+			entry.Authority = row.dst
+			if options.toResource != "" {
+				entry.EffectiveSuccess = &row.successRate
+				entry.EffectiveRps = &row.requestRate
+				entry.ActualSuccess = &row.actualSuccessRate
+				entry.ActualRps = &row.actualRequestRate
+			} else {
+				entry.Success = &row.successRate
+				entry.Rps = &row.requestRate
+			}
+			entry.LatencyMSp50 = &row.latencyP50
+			entry.LatencyMSp95 = &row.latencyP95
+			entry.LatencyMSp99 = &row.latencyP99
 
-		entries = append(entries, entry)
+			entries[resource] = append(entries[resource], entry)
+		}
 	}
 	b, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
@@ -302,12 +300,9 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		},
 	}
 
-	options.dstIsService = target.GetType() == k8s.Service
+	options.dstIsService = !(target.GetType() == k8s.Authority)
 
 	if options.toResource != "" {
-		if target.GetType() == k8s.Service {
-			return nil, errors.New("Cannot use \"--to\" when the target resource is a service")
-		}
 		if options.toNamespace == "" {
 			options.toNamespace = options.namespace
 		}
@@ -316,36 +311,19 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			return nil, err
 		}
 
-		options.dstIsService = toRes.GetType() == k8s.Service
+		options.dstIsService = !(toRes.GetType() == k8s.Authority)
 
-		toDNS, err := buildTopRoutesTo(toRes)
-		if err != nil {
-			return nil, err
-		}
-
-		if toDNS == "" && toRes.GetType() == k8s.Authority {
-			requestParams.ToAll = true
-		} else {
-			requestParams.To = toDNS
-		}
+		requestParams.ToName = toRes.Name
+		requestParams.ToNamespace = toRes.Namespace
+		requestParams.ToType = toRes.Type
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)
 }
 
-func buildTopRoutesTo(toResource pb.Resource) (string, error) {
-	if toResource.GetType() == k8s.Service {
-		return fmt.Sprintf("%s.%s.svc.cluster.local", toResource.GetName(), toResource.GetNamespace()), nil
-	}
-	if toResource.GetType() == k8s.Authority {
-		return toResource.GetName(), nil
-	}
-	return "", errors.New("The \"--to\" resource must be an authority or service")
-}
-
 // returns the length of the longest route name
-func routeWidth(stats []*routeRowStats) int {
-	maxLength := len(defaultRoute)
+func routeWidth(stats []*rowStats) int {
+	maxLength := 0
 	for _, row := range stats {
 		if len(row.route) > maxLength {
 			maxLength = len(row.route)

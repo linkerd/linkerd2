@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -462,7 +463,7 @@ func newRow(req topRequest) (tableRow, error) {
 	path := req.reqInit.GetPath()
 	route := req.event.GetRouteMeta().GetLabels()["route"]
 	if route == "" {
-		route = defaultRoute
+		route = public.DefaultRouteName
 	}
 	method := req.reqInit.GetMethod().GetRegistered().String()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))

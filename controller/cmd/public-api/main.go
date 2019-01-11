@@ -41,18 +41,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	restrictToNamespace := ""
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
 	}
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
-		nil,
+		spClient,
 		restrictToNamespace,
 		k8s.Deploy,
 		k8s.Pod,
 		k8s.RC,
 		k8s.RS,
+		k8s.SP,
 		k8s.Svc,
 	)
 
