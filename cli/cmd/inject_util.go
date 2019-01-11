@@ -28,7 +28,7 @@ type resourceConfig struct {
 	meta            metaV1.TypeMeta
 	podSpec         *v1.PodSpec
 	objectMeta      *metaV1.ObjectMeta
-	DNSNameOverride string
+	dnsNameOverride string
 	k8sLabels       map[string]string
 }
 

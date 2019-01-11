@@ -1,55 +1,69 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   labels:
     app: contour
   name: contour
   namespace: heptio-contour
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: contour
-  replicas: 2
+  strategy: {}
   template:
     metadata:
+      annotations:
+        prometheus.io/format: prometheus
+        prometheus.io/path: /stats
+        prometheus.io/port: "9001"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
       labels:
         app: contour
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9001"
-        prometheus.io/path: "/stats"
-        prometheus.io/format: "prometheus"
     spec:
       containers:
-      - image: gcr.io/heptio-images/contour:master
+      - args:
+        - serve
+        - --incluster
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
         imagePullPolicy: Always
         name: contour
-        command: ["contour"]
-        args: ["serve", "--incluster"]
-      - image: docker.io/envoyproxy/envoy-alpine:v1.6.0
+        resources: {}
+      - args:
+        - --config-path /config/contour.yaml
+        - --service-cluster cluster0
+        - --service-node node0
+        - --log-level info
+        - --v2-config-only
+        command:
+        - envoy
+        image: docker.io/envoyproxy/envoy-alpine:v1.6.0
         name: envoy
         ports:
         - containerPort: 8080
           name: http
         - containerPort: 8443
           name: https
-        command: ["envoy"]
-        args:
-        - --config-path /config/contour.yaml
-        - --service-cluster cluster0
-        - --service-node node0
-        - --log-level info
-        - --v2-config-only
+        resources: {}
         volumeMounts:
-        - name: contour-config
-          mountPath: /config
+        - mountPath: /config
+          name: contour-config
       initContainers:
-      - image: gcr.io/heptio-images/contour:master
+      - args:
+        - bootstrap
+        - /config/contour.yaml
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
         imagePullPolicy: Always
         name: envoy-initconfig
-        command: ["contour"]
-        args: ["bootstrap", "/config/contour.yaml"]
+        resources: {}
         volumeMounts:
-        - name: contour-config
-          mountPath: /config
+        - mountPath: /config
+          name: contour-config
+status: {}
 ---

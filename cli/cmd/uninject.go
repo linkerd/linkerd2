@@ -15,17 +15,30 @@ import (
 
 type resourceTransformerUninject struct{}
 
+// UninjectYAML processes resource definitions and outputs them after uninjection in out
+func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
+	return ProcessYAML(in, out, report, options, resourceTransformerUninject{})
+}
+
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerUninject{})
+}
+
 func newCmdUninject() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninject [flags] CONFIG-FILE",
 		Short: "Remove the Linkerd proxy from a Kubernetes config",
 		Long: `Remove the Linkerd proxy from a Kubernetes config.
 
-You can use a config file from stdin by using the '-' argument
-with 'linkerd uninject'. e.g. curl http://url.to/yml | linkerd uninject -
-Also works with a folder containing resource files and other
-sub-folder. e.g. linkerd uninject <folder> | kubectl apply -f -
-`,
+You can uninject resources contained in a single file, inside a folder and its sub-folders, or coming from stdin.`,
+		Example: `  # Uninject all the deployments in the default namespace.
+  kubectl get deploy -o yaml | linkerd uninject - | kubectl apply -f -
+
+  # Download a resource and uninject it through stdin.
+  curl http://url.to/yml | linkerd uninject - | kubectl apply -f -
+  
+  # Uninject all the resources inside a folder and its sub-folders.
+  linkerd uninject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -37,7 +50,7 @@ sub-folder. e.g. linkerd uninject <folder> | kubectl apply -f -
 				return err
 			}
 
-			exitCode := transformInput(in, os.Stderr, os.Stdout, nil, resourceTransformerUninject{})
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -62,8 +75,8 @@ func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOpt
 	// serialization of the modified object.
 	output = bytes
 	if conf.podSpec != nil {
-		uninjectPodSpec(conf.podSpec)
-		uninjectObjectMeta(conf.objectMeta, conf.k8sLabels)
+		uninjectPodSpec(conf.podSpec, &report)
+		uninjectObjectMeta(conf.objectMeta)
 		var err error
 		output, err = yaml.Marshal(conf.obj)
 		if err != nil {
@@ -79,7 +92,7 @@ func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOpt
 func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
 	uninjected := []string{}
 	for _, r := range uninjectReports {
-		if !r.unsupportedResource {
+		if r.sidecar {
 			uninjected = append(uninjected, r.name)
 		}
 	}
@@ -96,11 +109,13 @@ func (resourceTransformerUninject) generateReport(uninjectReports []injectReport
 
 // Given a PodSpec, update the PodSpec in place with the sidecar
 // and init-container uninjected
-func uninjectPodSpec(t *v1.PodSpec) {
+func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 	initContainers := []v1.Container{}
 	for _, container := range t.InitContainers {
 		if container.Name != k8s.InitContainerName {
 			initContainers = append(initContainers, container)
+		} else {
+			report.sidecar = true
 		}
 	}
 	t.InitContainers = initContainers
@@ -115,6 +130,7 @@ func uninjectPodSpec(t *v1.PodSpec) {
 
 	volumes := []v1.Volume{}
 	for _, volume := range t.Volumes {
+		// TODO: move those strings to constants
 		if volume.Name != "linkerd-trust-anchors" && volume.Name != "linkerd-secrets" {
 			volumes = append(volumes, volume)
 		}
@@ -122,7 +138,7 @@ func uninjectPodSpec(t *v1.PodSpec) {
 	t.Volumes = volumes
 }
 
-func uninjectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string) {
+func uninjectObjectMeta(t *metaV1.ObjectMeta) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
 		if key != k8s.CreatedByAnnotation && key != k8s.ProxyVersionAnnotation {
@@ -132,13 +148,9 @@ func uninjectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string) {
 	t.Annotations = newAnnotations
 
 	labels := make(map[string]string)
-	ldLabels := []string{k8s.ControllerNSLabel}
-	for key := range k8sLabels {
-		ldLabels = append(ldLabels, key)
-	}
 	for key, val := range t.Labels {
 		keep := true
-		for _, label := range ldLabels {
+		for _, label := range k8s.InjectedLabels {
 			if key == label {
 				keep = false
 				break

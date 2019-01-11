@@ -48,11 +48,11 @@ type injectOptions struct {
 type resourceTransformerInject struct{}
 
 // InjectYAML processes resource definitions and outputs them after injection in out
-var InjectYAML = func(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
+func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
 	return ProcessYAML(in, out, report, options, resourceTransformerInject{})
 }
 
-var runInjectCmd = func(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
 	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerInject{})
 }
 
@@ -75,11 +75,15 @@ func newCmdInject() *cobra.Command {
 		Short: "Add the Linkerd proxy to a Kubernetes config",
 		Long: `Add the Linkerd proxy to a Kubernetes config.
 
-You can use a config file from stdin by using the '-' argument
-with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
-Also works with a folder containing resource files and other
-sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
-	`,
+You can inject resources contained in a single file, inside a folder and its sub-folders, or coming from stdin.`,
+		Example: `  # Inject all the deployments in the default namespace.
+  kubectl get deploy -o yaml | linkerd inject - | kubectl apply -f -
+
+  # Download a resource and inject it through stdin.
+  curl http://url.to/yml | linkerd inject - | kubectl apply -f -
+  
+  # Inject all the resources inside a folder and its sub-folders.
+  linkerd inject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -474,7 +478,7 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resou
 		}
 
 		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
-			conf.DNSNameOverride = LocalhostDNSNameOverride
+			conf.dnsNameOverride = LocalhostDNSNameOverride
 		}
 
 		conf.obj = &deployment
@@ -588,7 +592,7 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(conf.podSpec, identity, conf.DNSNameOverride, options, &report) {
+		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) {
 			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
 			var err error
 			output, err = yaml.Marshal(conf.obj)
