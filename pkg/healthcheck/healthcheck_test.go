@@ -18,31 +18,43 @@ import (
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(_ *CheckResult) {}
 
-	passingCheck1 := &checker{
-		category:    "cat1",
-		description: "desc1",
-		check: func() error {
-			return nil
+	passingCheck1 := group{
+		category: "cat1",
+		checkers: []checker{
+			checker{
+				description: "desc1",
+				check: func() error {
+					return nil
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	passingCheck2 := &checker{
-		category:    "cat2",
-		description: "desc2",
-		check: func() error {
-			return nil
+	passingCheck2 := group{
+		category: "cat2",
+		checkers: []checker{
+			checker{
+				description: "desc2",
+				check: func() error {
+					return nil
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	failingCheck := &checker{
-		category:    "cat3",
-		description: "desc3",
-		check: func() error {
-			return fmt.Errorf("error")
+	failingCheck := group{
+		category: "cat3",
+		checkers: []checker{
+			checker{
+				description: "desc3",
+				check: func() error {
+					return fmt.Errorf("error")
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
 	passingRPCClient := public.MockAPIClient{
@@ -57,14 +69,18 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingRPCCheck := &checker{
-		category:    "cat4",
-		description: "desc4",
-		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-			return passingRPCClient.SelfCheck(context.Background(),
-				&healthcheckPb.SelfCheckRequest{})
+	passingRPCCheck := group{
+		category: "cat4",
+		checkers: []checker{
+			checker{
+				description: "desc4",
+				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+					return passingRPCClient.SelfCheck(context.Background(),
+						&healthcheckPb.SelfCheckRequest{})
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
 	failingRPCClient := public.MockAPIClient{
@@ -80,36 +96,44 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingRPCCheck := &checker{
-		category:    "cat5",
-		description: "desc5",
-		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-			return failingRPCClient.SelfCheck(context.Background(),
-				&healthcheckPb.SelfCheckRequest{})
+	failingRPCCheck := group{
+		category: "cat5",
+		checkers: []checker{
+			checker{
+				description: "desc5",
+				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+					return failingRPCClient.SelfCheck(context.Background(),
+						&healthcheckPb.SelfCheckRequest{})
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	fatalCheck := &checker{
-		category:    "cat6",
-		description: "desc6",
-		fatal:       true,
-		check: func() error {
-			return fmt.Errorf("fatal")
+	fatalCheck := group{
+		category: "cat6",
+		checkers: []checker{
+			checker{
+				description: "desc6",
+				fatal:       true,
+				check: func() error {
+					return fmt.Errorf("fatal")
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				passingCheck2,
-				failingCheck,
-				passingRPCCheck,
-				failingRPCCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(passingCheck2)
+		hc.addGroup(failingCheck)
+		hc.addGroup(passingRPCCheck)
+		hc.addGroup(failingRPCCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -138,13 +162,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is successful if all checks were successful", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				passingCheck2,
-				passingRPCCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(passingCheck2)
+		hc.addGroup(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -154,13 +178,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is not successful if one check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				failingCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(failingCheck)
+		hc.addGroup(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -170,13 +194,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is not successful if one RPC check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				failingRPCCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(failingRPCCheck)
+		hc.addGroup(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -186,13 +210,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Does not run remaining check if fatal check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				fatalCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(fatalCheck)
+		hc.addGroup(passingCheck2)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -219,25 +243,29 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := &checker{
-			category:      "cat7",
-			description:   "desc7",
-			retryDeadline: time.Now().Add(100 * time.Second),
-			check: func() error {
-				if returnError {
-					returnError = false
-					return fmt.Errorf("retry")
-				}
-				return nil
+		retryCheck := group{
+			category: "cat7",
+			checkers: []checker{
+				checker{
+					description:   "desc7",
+					retryDeadline: time.Now().Add(100 * time.Second),
+					check: func() error {
+						if returnError {
+							returnError = false
+							return fmt.Errorf("retry")
+						}
+						return nil
+					},
+				},
 			},
 		}
 
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				retryCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]Category{},
+			&Options{},
+		)
+		hc.addGroup(passingCheck1)
+		hc.addGroup(retryCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
