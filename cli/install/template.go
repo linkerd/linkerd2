@@ -32,7 +32,7 @@ metadata:
   {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]

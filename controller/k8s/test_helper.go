@@ -41,6 +41,7 @@ func NewFakeAPI(namespace string, configs ...string) (*API, error) {
 		spClientSet,
 		namespace,
 		CM,
+		Daemonset,
 		Deploy,
 		Endpoint,
 		Pod,

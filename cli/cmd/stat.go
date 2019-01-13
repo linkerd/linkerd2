@@ -59,6 +59,7 @@ func newCmdStat() *cobra.Command {
   Examples:
   * deploy
   * deploy/my-deploy
+  * ds/my-daemonset
   * rc/my-replication-controller
   * ns/my-ns
   * authority
