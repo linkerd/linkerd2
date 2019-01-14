@@ -14,10 +14,8 @@ USAGE: web <command>
   * build - build the assets
   * dev - run a dev server (with live reloading). Options:
       -p $DEV_PORT
-  * port-forward-controller - forward the public-api container from the
-      controller pod in a running k8s cluster to localhost:8085
-  * port-forward-grafana - forward the grafana container from the
-      grafana pod in a running k8s cluster to localhost:3000
+  * port-forward - setup a tunnel to a controller component and port
+      Example: port-forward controller 8085
   * run - run a local server (sans. reloading)
   * setup - get the environment setup for development
       Note: any command line options are passed on to yarn
@@ -51,8 +49,8 @@ function dev {
   done
 
   check-for-linkerd && (
-    port-forward-controller &
-    port-forward-grafana &
+    port-forward controller 8085 &
+    port-forward grafana 3000 &
   )
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
@@ -66,8 +64,8 @@ function build {
 }
 
 function get-pod {
-  if [[ -z "${1:-}" ]]; then
-    echo "usage: web get-pod component-name" >&2
+  if [[ "$#" -ne 1 ]]; then
+    echo "usage: bin/web get-pod component-name" >&2
     exit 1
   fi
 
@@ -77,22 +75,22 @@ function get-pod {
     -o jsonpath='{.items[*].metadata.name}'
 }
 
-function port-forward-controller {
-  nc -z localhost 8085 || \
-    kubectl --namespace=linkerd port-forward $(get-pod controller) 8085:8085
-}
+function port-forward {
+  if [[ "$#" -ne 2 ]]; then
+    echo "usage: bin/web port-forward component-name port-number" >&2
+    exit 1
+  fi
 
-function port-forward-grafana {
-  nc -z localhost 8085 || \
-    kubectl --namespace=linkerd port-forward $(get-pod grafana) 3000:3000
+  nc -z localhost "$2" || \
+    kubectl --namespace=linkerd port-forward $(get-pod $1) "$2:$2"
 }
 
 function run {
   build
 
   check-for-linkerd && (
-    port-forward-controller &
-    port-forward-grafana &
+    port-forward controller 8085 &
+    port-forward grafana 3000 &
   )
 
   cd $ROOT/web
