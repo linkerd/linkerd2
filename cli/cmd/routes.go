@@ -78,7 +78,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default), \"wide\", and \"json\" are supported")
 
 	return cmd
 }
@@ -134,14 +134,14 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	})
 
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		if len(table) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.")
 			os.Exit(0)
 		}
 		printRouteTable(table, w, options)
 	case "json":
-		printRouteJSON(table, w)
+		printRouteJSON(table, w, options)
 	}
 }
 
@@ -158,7 +158,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
 	}
-	if options.toResource == "" {
+	if options.toResource == "" || options.outputFormat != "wide" {
 		headers = append(headers, []string{
 			"SUCCESS",
 			"RPS",
@@ -182,7 +182,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 
 	// route, success rate, rps
 	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
-	if options.toResource != "" {
+	if options.toResource != "" && options.outputFormat == "wide" {
 		// actual success rate, actual rps
 		templateString = templateString + "%.2f%%\t%.1frps\t"
 	}
@@ -203,7 +203,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 			row.successRate * 100,
 			row.requestRate,
 		}
-		if options.toResource != "" {
+		if options.toResource != "" && options.outputFormat == "wide" {
 			values = append(values, []interface{}{
 				row.actualSuccessRate * 100,
 				row.actualRequestRate,
@@ -221,16 +221,20 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
-	Route        string   `json:"route"`
-	Authority    string   `json:"authority"`
-	Success      *float64 `json:"success"`
-	Rps          *float64 `json:"rps"`
-	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
-	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
-	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
+	Route            string   `json:"route"`
+	Authority        string   `json:"authority"`
+	Success          *float64 `json:"success,omitempty"`
+	Rps              *float64 `json:"rps,omitempty"`
+	EffectiveSuccess *float64 `json:"effective_success,omitempty"`
+	EffectiveRps     *float64 `json:"effective_rps,omitempty"`
+	ActualSuccess    *float64 `json:"actual_success,omitempty"`
+	ActualRps        *float64 `json:"actual_rps,omitempty"`
+	LatencyMSp50     *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95     *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99     *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer) {
+func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
 	for _, row := range stats {
@@ -240,8 +244,15 @@ func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer) {
 		}
 
 		entry.Authority = row.dst
-		entry.Success = &row.successRate
-		entry.Rps = &row.requestRate
+		if options.toResource != "" {
+			entry.EffectiveSuccess = &row.successRate
+			entry.EffectiveRps = &row.requestRate
+			entry.ActualSuccess = &row.actualSuccessRate
+			entry.ActualRps = &row.actualRequestRate
+		} else {
+			entry.Success = &row.successRate
+			entry.Rps = &row.requestRate
+		}
 		entry.LatencyMSp50 = &row.latencyP50
 		entry.LatencyMSp95 = &row.latencyP95
 		entry.LatencyMSp99 = &row.latencyP99

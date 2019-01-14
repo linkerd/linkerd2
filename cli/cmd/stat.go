@@ -275,7 +275,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		if len(statTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)

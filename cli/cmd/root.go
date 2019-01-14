@@ -162,17 +162,17 @@ func newStatOptionsBase() *statOptionsBase {
 
 func (o *statOptionsBase) validateOutputFormat() error {
 	switch o.outputFormat {
-	case "table", "json", "":
+	case "table", "json", "wide", "":
 		return nil
 	default:
-		return fmt.Errorf("--output currently only supports table and json")
+		return fmt.Errorf("--output currently only supports table, wide, and json")
 	}
 }
 
 func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	var out string
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
 		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
