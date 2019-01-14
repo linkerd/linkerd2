@@ -79,7 +79,7 @@ func configureAndRunChecks(options *checkOptions) error {
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
-	checks := []healthcheck.Category{
+	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
 	}

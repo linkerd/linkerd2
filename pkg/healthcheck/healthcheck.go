@@ -22,16 +22,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Category string
+type CategoryID string
 
 const (
 	// KubernetesAPIChecks adds a series of checks to validate that the caller is
 	// configured to interact with a working Kubernetes cluster.
-	KubernetesAPIChecks = "kubernetes-api"
+	KubernetesAPIChecks CategoryID = "kubernetes-api"
 
 	// KubernetesVersionChecks validate that the cluster meets the minimum version
 	// requirements.
-	KubernetesVersionChecks Category = "kubernetes-version"
+	KubernetesVersionChecks CategoryID = "kubernetes-version"
 
 	// LinkerdPreInstallClusterChecks adds checks to validate that the control
 	// plane namespace does not already exist, and that the user can create
@@ -40,7 +40,7 @@ const (
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallClusterChecks Category = "kubernetes-cluster-setup"
+	LinkerdPreInstallClusterChecks CategoryID = "kubernetes-cluster-setup"
 
 	// LinkerdPreInstallSingleNamespaceChecks adds a check to validate that the
 	// control plane namespace already exists, and that the user can create
@@ -48,7 +48,7 @@ const (
 	// runs as part of the set of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallSingleNamespaceChecks Category = "kubernetes-single-namespace-setup"
+	LinkerdPreInstallSingleNamespaceChecks CategoryID = "kubernetes-single-namespace-setup"
 
 	// LinkerdPreInstallChecks adds checks to validate that the user can create
 	// Kubernetes objects necessary to install the control plane, including
@@ -56,55 +56,55 @@ const (
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallChecks Category = "kubernetes-setup"
+	LinkerdPreInstallChecks CategoryID = "kubernetes-setup"
 
 	// LinkerdDataPlaneExistenceChecks adds a data plane check to validate that
 	// the data plane namespace exists.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdDataPlaneExistenceChecks Category = "linkerd-data-plane-existence"
+	LinkerdDataPlaneExistenceChecks CategoryID = "linkerd-data-plane-existence"
 
 	// LinkerdDataPlaneChecks adds a data plane check to validate that the proxy
 	// containers are in the ready state.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdDataPlaneChecks Category = "linkerd-data-plane"
+	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
 	// the control plane namespace and controller pod exist.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdControlPlaneExistenceChecks Category = "linkerd-existence"
+	LinkerdControlPlaneExistenceChecks CategoryID = "linkerd-existence"
 
 	// LinkerdAPIChecks adds a series of checks to validate that the control plane
 	// is successfully serving the public API.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdAPIChecks Category = "linkerd-api"
+	LinkerdAPIChecks CategoryID = "linkerd-api"
 
 	// LinkerdServiceProfileChecks add a check validate any ServiceProfiles that
 	// may already be installed.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdServiceProfileChecks Category = "linkerd-service-profile"
+	LinkerdServiceProfileChecks CategoryID = "linkerd-service-profile"
 
 	// LinkerdVersionChecks adds a series of checks to query for the latest
 	// version, and validate the the CLI is up to date.
-	LinkerdVersionChecks Category = "linkerd-version"
+	LinkerdVersionChecks CategoryID = "linkerd-version"
 
 	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
 	// the control plane is running the latest available version.
 	// These checks are dependent on `apiClient` from
 	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
 	// LinkerdVersionChecks, so those checks must be added first.
-	LinkerdControlPlaneVersionChecks Category = "linkerd-control-plane-version"
+	LinkerdControlPlaneVersionChecks CategoryID = "linkerd-control-plane-version"
 
 	// LinkerdDataPlaneVersionChecks adds a series of checks to validate that the
 	// control plane is running the latest available version.
 	// These checks are dependent on `apiClient` from
 	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
 	// LinkerdVersionChecks, so those checks must be added first.
-	LinkerdDataPlaneVersionChecks Category = "linkerd-data-plane-version"
+	LinkerdDataPlaneVersionChecks CategoryID = "linkerd-data-plane-version"
 )
 
 var (
@@ -143,7 +143,7 @@ type checker struct {
 
 // CheckResult encapsulates a check's identifying information and output
 type CheckResult struct {
-	Category    Category
+	Category    CategoryID
 	Description string
 	Retry       bool
 	Warning     bool
@@ -152,8 +152,8 @@ type CheckResult struct {
 
 type checkObserver func(*CheckResult)
 
-type group struct {
-	category Category
+type category struct {
+	id       CategoryID
 	checkers []checker
 	enabled  bool
 }
@@ -172,7 +172,7 @@ type Options struct {
 // HealthChecker encapsulates all health check checkers, and clients required to
 // perform those checks.
 type HealthChecker struct {
-	groups []group
+	categories []category
 	*Options
 
 	// these fields are set in the process of running checks
@@ -187,34 +187,34 @@ type HealthChecker struct {
 }
 
 // NewHealthChecker returns an initialized HealthChecker
-func NewHealthChecker(categories []Category, options *Options) *HealthChecker {
+func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker {
 	hc := &HealthChecker{
 		Options: options,
 	}
 
-	hc.groups = hc.allGroups()
+	hc.categories = hc.allCategories()
 
-	catMap := map[Category]struct{}{}
-	for _, category := range categories {
-		catMap[category] = struct{}{}
+	checkMap := map[CategoryID]struct{}{}
+	for _, category := range categoryIDs {
+		checkMap[category] = struct{}{}
 	}
-	for i := range hc.groups {
-		if _, ok := catMap[hc.groups[i].category]; ok {
-			hc.groups[i].enabled = true
+	for i := range hc.categories {
+		if _, ok := checkMap[hc.categories[i].id]; ok {
+			hc.categories[i].enabled = true
 		}
 	}
 
 	return hc
 }
 
-// allGroups is the global, ordered list of all checkers, grouped by category.
-// This method is attached to the HealthChecker struct because the checkers
-// directly reference other members of the struct, such as kubeAPI,
+// allCategories is the global, ordered list of all checkers, grouped by
+// category. This method is attached to the HealthChecker struct because the
+// checkers directly reference other members of the struct, such as kubeAPI,
 // controlPlanePods, etc.
-func (hc *HealthChecker) allGroups() []group {
-	return []group{
+func (hc *HealthChecker) allCategories() []category {
+	return []category{
 		{
-			category: KubernetesAPIChecks,
+			id: KubernetesAPIChecks,
 			checkers: []checker{
 				{
 					description: "can initialize the client",
@@ -239,7 +239,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: KubernetesVersionChecks,
+			id: KubernetesVersionChecks,
 			checkers: []checker{
 				{
 					description: "is running the minimum Kubernetes API version",
@@ -250,7 +250,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdPreInstallClusterChecks,
+			id: LinkerdPreInstallClusterChecks,
 			checkers: []checker{
 				{
 					description: "control plane namespace does not already exist",
@@ -285,7 +285,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdPreInstallSingleNamespaceChecks,
+			id: LinkerdPreInstallSingleNamespaceChecks,
 			checkers: []checker{
 				{
 					description: "control plane namespace exists",
@@ -308,7 +308,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdPreInstallChecks,
+			id: LinkerdPreInstallChecks,
 			checkers: []checker{
 				{
 					description: "can create ServiceAccounts",
@@ -337,7 +337,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdControlPlaneExistenceChecks,
+			id: LinkerdControlPlaneExistenceChecks,
 			checkers: []checker{
 				{
 					description: "control plane namespace exists",
@@ -383,7 +383,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdAPIChecks,
+			id: LinkerdAPIChecks,
 			checkers: []checker{
 				{
 					description:   "control plane pods are ready",
@@ -411,7 +411,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdServiceProfileChecks,
+			id: LinkerdServiceProfileChecks,
 			checkers: []checker{
 				{
 					description: "no invalid service profiles",
@@ -423,7 +423,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdDataPlaneExistenceChecks,
+			id: LinkerdDataPlaneExistenceChecks,
 			checkers: []checker{
 				{
 					description: "data plane namespace exists",
@@ -435,7 +435,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdDataPlaneChecks,
+			id: LinkerdDataPlaneChecks,
 			checkers: []checker{
 				{
 					description:   "data plane proxies are ready",
@@ -465,7 +465,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdVersionChecks,
+			id: LinkerdVersionChecks,
 			checkers: []checker{
 				{
 					description: "can determine the latest version",
@@ -505,7 +505,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdControlPlaneVersionChecks,
+			id: LinkerdControlPlaneVersionChecks,
 			checkers: []checker{
 				{
 					description: "control plane is up-to-date",
@@ -517,7 +517,7 @@ func (hc *HealthChecker) allGroups() []group {
 			},
 		},
 		{
-			category: LinkerdDataPlaneVersionChecks,
+			id: LinkerdDataPlaneVersionChecks,
 			checkers: []checker{
 				{
 					description: "data plane is up-to-date",
@@ -545,10 +545,10 @@ func (hc *HealthChecker) allGroups() []group {
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHeathChecker.
-func (hc *HealthChecker) Add(category Category, description string, check func() error) {
-	hc.addGroup(
-		group{
-			category: category,
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, check func() error) {
+	hc.addCategory(
+		category{
+			id: categoryID,
 			checkers: []checker{
 				checker{
 					description: description,
@@ -559,10 +559,10 @@ func (hc *HealthChecker) Add(category Category, description string, check func()
 	)
 }
 
-// addGroup is also for testing
-func (hc *HealthChecker) addGroup(g group) {
-	g.enabled = true
-	hc.groups = append(hc.groups, g)
+// addCategory is also for testing
+func (hc *HealthChecker) addCategory(c category) {
+	c.enabled = true
+	hc.categories = append(hc.categories, c)
 }
 
 // RunChecks runs all configured checkers, and passes the results of each
@@ -573,11 +573,11 @@ func (hc *HealthChecker) addGroup(g group) {
 func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	success := true
 
-	for _, g := range hc.groups {
-		if g.enabled {
-			for _, checker := range g.checkers {
+	for _, c := range hc.categories {
+		if c.enabled {
+			for _, checker := range c.checkers {
 				if checker.check != nil {
-					if !hc.runCheck(g.category, &checker, observer) {
+					if !hc.runCheck(c.id, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -588,7 +588,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 				}
 
 				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(g.category, &checker, observer) {
+					if !hc.runCheckRPC(c.id, &checker, observer) {
 						if !checker.warning {
 							success = false
 						}
@@ -604,11 +604,11 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(category Category, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
 	for {
 		err := c.check()
 		checkResult := &CheckResult{
-			Category:    category,
+			Category:    categoryID,
 			Description: c.description,
 			Warning:     c.warning,
 			Err:         err,
@@ -626,10 +626,10 @@ func (hc *HealthChecker) runCheck(category Category, c *checker, observer checkO
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(category Category, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
 	checkRsp, err := c.checkRPC()
 	observer(&CheckResult{
-		Category:    category,
+		Category:    categoryID,
 		Description: c.description,
 		Warning:     c.warning,
 		Err:         err,
@@ -644,7 +644,7 @@ func (hc *HealthChecker) runCheckRPC(category Category, c *checker, observer che
 			err = fmt.Errorf(check.FriendlyMessageToUser)
 		}
 		observer(&CheckResult{
-			Category:    Category(fmt.Sprintf("%s[%s]", category, check.SubsystemName)),
+			Category:    CategoryID(fmt.Sprintf("%s[%s]", categoryID, check.SubsystemName)),
 			Description: check.CheckDescription,
 			Warning:     c.warning,
 			Err:         err,

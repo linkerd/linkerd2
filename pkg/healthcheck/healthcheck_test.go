@@ -18,8 +18,8 @@ import (
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(_ *CheckResult) {}
 
-	passingCheck1 := group{
-		category: "cat1",
+	passingCheck1 := category{
+		id: "cat1",
 		checkers: []checker{
 			checker{
 				description: "desc1",
@@ -31,8 +31,8 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingCheck2 := group{
-		category: "cat2",
+	passingCheck2 := category{
+		id: "cat2",
 		checkers: []checker{
 			checker{
 				description: "desc2",
@@ -44,8 +44,8 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingCheck := group{
-		category: "cat3",
+	failingCheck := category{
+		id: "cat3",
 		checkers: []checker{
 			checker{
 				description: "desc3",
@@ -69,8 +69,8 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingRPCCheck := group{
-		category: "cat4",
+	passingRPCCheck := category{
+		id: "cat4",
 		checkers: []checker{
 			checker{
 				description: "desc4",
@@ -96,8 +96,8 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingRPCCheck := group{
-		category: "cat5",
+	failingRPCCheck := category{
+		id: "cat5",
 		checkers: []checker{
 			checker{
 				description: "desc5",
@@ -110,8 +110,8 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	fatalCheck := group{
-		category: "cat6",
+	fatalCheck := category{
+		id: "cat6",
 		checkers: []checker{
 			checker{
 				description: "desc6",
@@ -126,14 +126,14 @@ func TestHealthChecker(t *testing.T) {
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(passingCheck2)
-		hc.addGroup(failingCheck)
-		hc.addGroup(passingRPCCheck)
-		hc.addGroup(failingRPCCheck)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(passingCheck2)
+		hc.addCategory(failingCheck)
+		hc.addCategory(passingRPCCheck)
+		hc.addCategory(failingRPCCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -163,12 +163,12 @@ func TestHealthChecker(t *testing.T) {
 
 	t.Run("Is successful if all checks were successful", func(t *testing.T) {
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(passingCheck2)
-		hc.addGroup(passingRPCCheck)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(passingCheck2)
+		hc.addCategory(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -179,12 +179,12 @@ func TestHealthChecker(t *testing.T) {
 
 	t.Run("Is not successful if one check fails", func(t *testing.T) {
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(failingCheck)
-		hc.addGroup(passingCheck2)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(failingCheck)
+		hc.addCategory(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -195,12 +195,12 @@ func TestHealthChecker(t *testing.T) {
 
 	t.Run("Is not successful if one RPC check fails", func(t *testing.T) {
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(failingRPCCheck)
-		hc.addGroup(passingCheck2)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(failingRPCCheck)
+		hc.addCategory(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -211,12 +211,12 @@ func TestHealthChecker(t *testing.T) {
 
 	t.Run("Does not run remaining check if fatal check fails", func(t *testing.T) {
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(fatalCheck)
-		hc.addGroup(passingCheck2)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(fatalCheck)
+		hc.addCategory(passingCheck2)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -243,8 +243,8 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := group{
-			category: "cat7",
+		retryCheck := category{
+			id: "cat7",
 			checkers: []checker{
 				checker{
 					description:   "desc7",
@@ -261,11 +261,11 @@ func TestHealthChecker(t *testing.T) {
 		}
 
 		hc := NewHealthChecker(
-			[]Category{},
+			[]CategoryID{},
 			&Options{},
 		)
-		hc.addGroup(passingCheck1)
-		hc.addGroup(retryCheck)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(retryCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {

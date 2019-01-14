@@ -97,7 +97,7 @@ func cliPublicAPIClient() pb.ApiClient {
 // checks fail, then CLI will print an error and exit. If the retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.
 func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiClient {
-	checks := []healthcheck.Category{
+	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
 	}
