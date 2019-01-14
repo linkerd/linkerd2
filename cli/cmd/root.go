@@ -82,6 +82,7 @@ func init() {
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
+	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdVersion())
 }
 

@@ -1,12 +1,9 @@
 package cmd
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -14,16 +11,11 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	appsV1 "k8s.io/api/apps/v1"
-	batchV1 "k8s.io/api/batch/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/api/core/v1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 const (
@@ -46,12 +38,15 @@ type injectOptions struct {
 	*proxyConfigOptions
 }
 
-type injectReport struct {
-	name                string
-	hostNetwork         bool
-	sidecar             bool
-	udp                 bool // true if any port in any container has `protocol: UDP`
-	unsupportedResource bool
+type resourceTransformerInject struct{}
+
+// InjectYAML processes resource definitions and outputs them after injection in out
+func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
+	return ProcessYAML(in, out, report, options, resourceTransformerInject{})
+}
+
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerInject{})
 }
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
@@ -73,11 +68,16 @@ func newCmdInject() *cobra.Command {
 		Short: "Add the Linkerd proxy to a Kubernetes config",
 		Long: `Add the Linkerd proxy to a Kubernetes config.
 
-You can use a config file from stdin by using the '-' argument
-with 'linkerd inject'. e.g. curl http://url.to/yml | linkerd inject -
-Also works with a folder containing resource files and other
-sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
-	`,
+You can inject resources contained in a single file, inside a folder and its
+sub-folders, or coming from stdin.`,
+		Example: `  # Inject all the deployments in the default namespace.
+  kubectl get deploy -o yaml | linkerd inject - | kubectl apply -f -
+
+  # Download a resource and inject it through stdin.
+  curl http://url.to/yml | linkerd inject - | kubectl apply -f -
+  
+  # Inject all the resources inside a folder and its sub-folders.
+  linkerd inject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -101,49 +101,6 @@ sub-folder. e.g. linkerd inject <folder> | kubectl apply -f -
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	return cmd
-}
-
-// Read all the resource files found in path into a slice of readers.
-// path can be either a file, directory or stdin.
-func read(path string) ([]io.Reader, error) {
-	var (
-		in  []io.Reader
-		err error
-	)
-	if path == "-" {
-		in = append(in, os.Stdin)
-	} else {
-		in, err = walk(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return in, nil
-}
-
-// Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
-	postInjectBuf := &bytes.Buffer{}
-	reportBuf := &bytes.Buffer{}
-
-	for _, input := range inputs {
-		err := InjectYAML(input, postInjectBuf, reportBuf, options)
-		if err != nil {
-			fmt.Fprintf(errWriter, "Error injecting linkerd proxy: %v\n", err)
-			return 1
-		}
-		_, err = io.Copy(outWriter, postInjectBuf)
-
-		// print error report after yaml output, for better visibility
-		io.Copy(errWriter, reportBuf)
-
-		if err != nil {
-			fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
-			return 1
-		}
-	}
-	return 0
 }
 
 /* Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -373,217 +330,23 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	return true
 }
 
-// InjectYAML takes an input stream of YAML, outputting injected YAML to out.
-func InjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
-	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
-
-	injectReports := []injectReport{}
-
-	// Iterate over all YAML objects in the input
-	for {
-		// Read a single YAML object
-		bytes, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		result, irs, err := injectResource(bytes, options)
-		if err != nil {
-			return err
-		}
-
-		out.Write(result)
-		out.Write([]byte("---\n"))
-
-		injectReports = append(injectReports, irs...)
-	}
-
-	generateReport(injectReports, report)
-
-	return nil
-}
-
-func injectList(b []byte, options *injectOptions) ([]byte, []injectReport, error) {
-	var sourceList v1.List
-	if err := yaml.Unmarshal(b, &sourceList); err != nil {
-		return nil, nil, err
-	}
-
-	injectReports := []injectReport{}
-	items := []runtime.RawExtension{}
-
-	for _, item := range sourceList.Items {
-		result, reports, err := injectResource(item.Raw, options)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// At this point, we have yaml. The kubernetes internal representation is
-		// json. Because we're building a list from RawExtensions, the yaml needs
-		// to be converted to json.
-		injected, err := yaml.YAMLToJSON(result)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		items = append(items, runtime.RawExtension{Raw: injected})
-		injectReports = append(injectReports, reports...)
-	}
-
-	sourceList.Items = items
-	result, err := yaml.Marshal(sourceList)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return result, injectReports, nil
-}
-
-func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
-	// The Kubernetes API is versioned and each version has an API modeled
-	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
-	// version we support then it will provide a representation of that
-	// object using the given type if possible. However, it only allows us
-	// to supply one object (of one type), so first we have to determine
-	// what kind of object `bytes` represents so we can pass an object of
-	// the correct type to `yaml.Unmarshal()`.
-	// ---------------------------------------
-	// Note: bytes is expected to be YAML and will only modify it when a
-	// supported type is found. Otherwise, it is returned unmodified.
-
-	// Unmarshal the object enough to read the Kind field
-	var meta metaV1.TypeMeta
-	if err := yaml.Unmarshal(bytes, &meta); err != nil {
-		return nil, nil, err
-	}
-
-	// retrieve the `metadata/name` field for reporting later
-	var om objMeta
-	if err := yaml.Unmarshal(bytes, &om); err != nil {
-		return nil, nil, err
-	}
-
-	// obj and podTemplateSpec will reference zero or one the following
-	// objects, depending on the type.
-	var obj interface{}
-	var podSpec *v1.PodSpec
-	var objectMeta *metaV1.ObjectMeta
-	var DNSNameOverride string
-	k8sLabels := map[string]string{}
-
-	// When injecting the linkerd proxy into a linkerd controller pod. The linkerd proxy's
-	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
-	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
-	//     where pods are unable to connect to themselves through their associated service IP.
-	//     Setting the LINKERD2_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
-	//     name resolution as a workaround to this issue.
-	//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
-	//     between containers in the same pod.
-	//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
-	//     across all controller pod replicas. This is undesirable as we would want all traffic between
-	//	   containers to be self contained.
-	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
-	switch meta.Kind {
-	case "Deployment":
-		var deployment v1beta1.Deployment
-		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
-			return nil, nil, err
-		}
-
-		if deployment.Name == ControlPlanePodName && deployment.Namespace == controlPlaneNamespace {
-			DNSNameOverride = LocalhostDNSNameOverride
-		}
-
-		obj = &deployment
-		k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
-		podSpec = &deployment.Spec.Template.Spec
-		objectMeta = &deployment.Spec.Template.ObjectMeta
-
-	case "ReplicationController":
-		var rc v1.ReplicationController
-		if err := yaml.Unmarshal(bytes, &rc); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &rc
-		k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
-		podSpec = &rc.Spec.Template.Spec
-		objectMeta = &rc.Spec.Template.ObjectMeta
-
-	case "ReplicaSet":
-		var rs v1beta1.ReplicaSet
-		if err := yaml.Unmarshal(bytes, &rs); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &rs
-		k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
-		podSpec = &rs.Spec.Template.Spec
-		objectMeta = &rs.Spec.Template.ObjectMeta
-
-	case "Job":
-		var job batchV1.Job
-		if err := yaml.Unmarshal(bytes, &job); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &job
-		k8sLabels[k8s.ProxyJobLabel] = job.Name
-		podSpec = &job.Spec.Template.Spec
-		objectMeta = &job.Spec.Template.ObjectMeta
-
-	case "DaemonSet":
-		var ds v1beta1.DaemonSet
-		if err := yaml.Unmarshal(bytes, &ds); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &ds
-		k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
-		podSpec = &ds.Spec.Template.Spec
-		objectMeta = &ds.Spec.Template.ObjectMeta
-
-	case "StatefulSet":
-		var statefulset appsV1.StatefulSet
-		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &statefulset
-		k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
-		podSpec = &statefulset.Spec.Template.Spec
-		objectMeta = &statefulset.Spec.Template.ObjectMeta
-
-	case "Pod":
-		var pod v1.Pod
-		if err := yaml.Unmarshal(bytes, &pod); err != nil {
-			return nil, nil, err
-		}
-
-		obj = &pod
-		podSpec = &pod.Spec
-		objectMeta = &pod.ObjectMeta
-
-	case "List":
-		// Lists are a little different than the other types. There's no immediate
-		// pod template. Because of this, we do a recursive call for each element
-		// in the list (instead of just marshaling the injected pod template).
-		return injectList(bytes, options)
+func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+	conf := &resourceConfig{}
+	output, reports, err := conf.parse(bytes, options, rt)
+	if output != nil || err != nil {
+		return output, reports, err
 	}
 
 	report := injectReport{
-		name: fmt.Sprintf("%s/%s", strings.ToLower(meta.Kind), om.Name),
+		name: fmt.Sprintf("%s/%s", strings.ToLower(conf.meta.Kind), conf.om.Name),
 	}
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
-	output := bytes
-	if podSpec != nil {
-		metaAccessor, err := k8sMeta.Accessor(obj)
+	output = bytes
+	if conf.podSpec != nil {
+		metaAccessor, err := k8sMeta.Accessor(conf.obj)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -593,15 +356,15 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 		// but not necessarily other variables.
 		identity := k8s.TLSIdentity{
 			Name:                metaAccessor.GetName(),
-			Kind:                strings.ToLower(meta.Kind),
+			Kind:                strings.ToLower(conf.meta.Kind),
 			Namespace:           "$" + PodNamespaceEnvVarName,
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(podSpec, identity, DNSNameOverride, options, &report) {
-			injectObjectMeta(objectMeta, k8sLabels, options)
+		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) {
+			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
 			var err error
-			output, err = yaml.Marshal(obj)
+			output, err = yaml.Marshal(conf.obj)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -613,51 +376,7 @@ func injectResource(bytes []byte, options *injectOptions) ([]byte, []injectRepor
 	return output, []injectReport{report}, nil
 }
 
-// walk walks the file tree rooted at path. path may be a file or a directory.
-// Creates a reader for each file found.
-func walk(path string) ([]io.Reader, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if !stat.IsDir() {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil, err
-		}
-
-		return []io.Reader{file}, nil
-	}
-
-	var in []io.Reader
-	werr := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		in = append(in, file)
-		return nil
-	})
-
-	if werr != nil {
-		return nil, werr
-	}
-
-	return in, nil
-}
-
-func generateReport(injectReports []injectReport, output io.Writer) {
-
+func (resourceTransformerInject) generateReport(injectReports []injectReport, output io.Writer) {
 	injected := []string{}
 	hostNetwork := []string{}
 	sidecar := []string{}
@@ -733,15 +452,6 @@ func generateReport(injectReports []injectReport, output io.Writer) {
 
 	// trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
-}
-
-func getFiller(text string) string {
-	filler := ""
-	for i := 0; i < lineWidth-len(text)-len(okStatus)-len("\n"); i++ {
-		filler = filler + "."
-	}
-
-	return filler
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {

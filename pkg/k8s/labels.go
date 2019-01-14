@@ -136,6 +136,10 @@ const (
 	MountPathBase = "/var/linkerd-io"
 )
 
+// InjectedLabels contains the list of label keys subjected to be injected by Linkerd into resource definitions
+var InjectedLabels = []string{ControllerNSLabel, ProxyDeploymentLabel, ProxyReplicationControllerLabel,
+	ProxyReplicaSetLabel, ProxyJobLabel, ProxyDaemonSetLabel, ProxyStatefulSetLabel}
+
 var (
 	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
 	// mounted
