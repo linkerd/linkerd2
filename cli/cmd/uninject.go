@@ -30,7 +30,8 @@ func newCmdUninject() *cobra.Command {
 		Short: "Remove the Linkerd proxy from a Kubernetes config",
 		Long: `Remove the Linkerd proxy from a Kubernetes config.
 
-You can uninject resources contained in a single file, inside a folder and its sub-folders, or coming from stdin.`,
+You can uninject resources contained in a single file, inside a folder and its
+sub-folders, or coming from stdin.`,
 		Example: `  # Uninject all the deployments in the default namespace.
   kubectl get deploy -o yaml | linkerd uninject - | kubectl apply -f -
 

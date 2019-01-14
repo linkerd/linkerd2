@@ -113,7 +113,7 @@ func TestUninjectYAML(t *testing.T) {
 	}
 }
 
-// stripDashes removes the YAML dashes (---) found at the beginning and endind of the
+// stripDashes removes the YAML dashes (---) found at the beginning and ending of the
 // input and golden files respectively.
 func stripDashes(str string) string {
 	return strings.Trim(str, "-\n")
