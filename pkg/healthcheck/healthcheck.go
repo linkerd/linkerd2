@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// CategoryID is an identifier for the types of health checks.
 type CategoryID string
 
 const (
