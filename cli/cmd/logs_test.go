@@ -70,8 +70,8 @@ func TestNewSternConfig(t *testing.T) {
 	}
 
 	for _, tt := range flagTestCases {
-		t.Run("Can only specify valid control plane container names", func(t *testing.T) {
-			flags := &logsOptions{component: tt.testComponent, container: tt.testContainer}
+		t.Run("container logs selection", func(t *testing.T) {
+			flags := &logsOptions{controlPlaneComponent: tt.testComponent, container: tt.testContainer}
 			_, err := flags.toSternConfig(tt.components, tt.containers)
 			if err != nil && err.Error() != tt.expectedErrStr {
 				t.Fatalf("Unexpected error: \ngot: %v\n expected: %v", err, tt.expectedErrStr)

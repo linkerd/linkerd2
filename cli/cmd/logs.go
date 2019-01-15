@@ -27,41 +27,41 @@ type logCmdConfig struct {
 }
 
 type logsOptions struct {
-	container    string
-	component    string
-	sinceSeconds time.Duration
-	tail         int64
-	timestamps   bool
+	container             string
+	controlPlaneComponent string
+	sinceSeconds          time.Duration
+	tail                  int64
+	timestamps            bool
 }
 
 func newLogsOptions() *logsOptions {
 	return &logsOptions{
-		container:    "",
-		component:    "",
-		sinceSeconds: 48 * time.Hour,
-		tail:         -1,
-		timestamps:   false,
+		container:             "",
+		controlPlaneComponent: "",
+		sinceSeconds:          48 * time.Hour,
+		tail:                  -1,
+		timestamps:            false,
 	}
 }
 
 func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers []string) (*stern.Config, error) {
 	config := &stern.Config{}
 
-	if o.component == "" {
+	if o.controlPlaneComponent == "" {
 		config.LabelSelector = labels.Everything()
 	} else {
 		var podExists string
 		for _, p := range controlPlaneComponents {
-			if p == o.component {
+			if p == o.controlPlaneComponent {
 				podExists = p
 				break
 			}
 		}
 
 		if podExists == "" {
-			return nil, errors.New(fmt.Sprintf("control plane component [%s] does not exist. Must be one of %v", o.component, controlPlaneComponents))
+			return nil, errors.New(fmt.Sprintf("control plane component [%s] does not exist. Must be one of %v", o.controlPlaneComponent, controlPlaneComponents))
 		}
-		selector, err := labels.Parse(fmt.Sprintf("linkerd.io/control-plane-component=%s", o.component))
+		selector, err := labels.Parse(fmt.Sprintf("linkerd.io/control-plane-component=%s", o.controlPlaneComponent))
 		if err != nil {
 			return nil, err
 		}
@@ -110,6 +110,8 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 		config.TailLines = &o.tail
 	}
 
+	// Do not use regex to filter pods. Instead, we provide the list of all control plane components and use
+	// the label selector filter logs.
 	podFilterRgx, err := regexp.Compile("")
 	if err != nil {
 		return nil, err
@@ -122,14 +124,15 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	return config, nil
 }
 
-func getControlPlaneComponentsAndContainers(pods *v1.PodList) (controlPlaneComponents []string, containers []string) {
+func getControlPlaneComponentsAndContainers(pods *v1.PodList) ([]string, []string) {
+	var controlPlaneComponents, containers []string
 	for _, pod := range pods.Items {
 		controlPlaneComponents = append(controlPlaneComponents, pod.Labels["linkerd.io/control-plane-component"])
 		for _, container := range pod.Spec.Containers {
 			containers = append(containers, container.Name)
 		}
 	}
-	return
+	return controlPlaneComponents, containers
 }
 
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
@@ -171,13 +174,13 @@ func newCmdLogs() *cobra.Command {
 		Short: "Tail logs from containers in the linkerd control plane",
 		Long:  `Tail logs from containers in the linkerd control plane`,
 		Example: `  # Tail logs from all containers in the prometheus control plane component
-  linkerd logs --component prometheus
+  linkerd logs --control-plane-component prometheus
 
   # Tail logs from the linkerd-proxy container in the grafana control plane component
-  linkerd logs --component grafana --container linkerd-proxy
+  linkerd logs --control-plane-component grafana --container linkerd-proxy
 
   # Tail logs from the linkerd-proxy container in the controller component with timestamps
-  linkerd logs --component controller --container linkerd-proxy -t true
+  linkerd logs --control-plane-component controller --container linkerd-proxy -t true
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
@@ -191,9 +194,9 @@ func newCmdLogs() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.container, "container", "c", options.container, "Tail logs from the specified container. Options are 'public-api', 'proxy-api', 'tap', 'destination', 'prometheus', 'grafana' or 'linkerd-proxy'")
-	cmd.PersistentFlags().StringVar(&options.component, "component", options.component, "Tail logs from the specified control plane component. Default value (empty string) causes this command to tail logs from all resources marked with the 'linkerd.io/control-plane-component' labelSelector")
+	cmd.PersistentFlags().StringVar(&options.controlPlaneComponent, "control-plane-component", options.controlPlaneComponent, "Tail logs from the specified control plane component. Default value (empty string) causes this command to tail logs from all resources marked with the 'linkerd.io/control-plane-component' label selector")
 	cmd.PersistentFlags().DurationVarP(&options.sinceSeconds, "since", "s", options.sinceSeconds, "Duration of how far back logs should be retrieved")
-	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
+	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show previous log lines")
 	cmd.PersistentFlags().BoolVarP(&options.timestamps, "timestamps", "t", options.timestamps, "Print timestamps for each given log line")
 
 	return cmd
