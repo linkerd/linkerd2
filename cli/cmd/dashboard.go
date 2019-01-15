@@ -109,16 +109,16 @@ func newCmdDashboard() *cobra.Command {
 
 				err = browser.OpenURL(webURL)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to open Linkerd URL %s in the default browser: %s", webURL, err)
-					os.Exit(1)
+					fmt.Fprintln(os.Stderr, "Failed to open Linkerd dashboard automatically")
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL)
 				}
 			case showGrafana:
 				fmt.Println("Opening Grafana dashboard in the default browser")
 
 				err = browser.OpenURL(grafanaURL)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaURL, err)
-					os.Exit(1)
+					fmt.Fprintln(os.Stderr, "Failed to open Grafana dashboard automatically")
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", grafanaURL)
 				}
 			case showURL:
 				// no-op, we already printed the URLs
