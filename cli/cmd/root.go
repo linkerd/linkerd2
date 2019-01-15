@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -18,12 +19,12 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
-
-	lineWidth  = 80
-	okStatus   = "✅"
-	warnStatus = "⚠️ "
-	failStatus = "❌"
+	lineWidth        = 80
 )
+
+var okStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u2714")    // ✔
+var warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u26A0") // ⚠
+var failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u2718")    // ✘
 
 var controlPlaneNamespace string
 var apiAddr string // An empty value means "use the Kubernetes configuration"

@@ -1,6 +1,6 @@
 
-⚠️  known sidecar detected in deployment/web1, deployment/web2, deployment/web3, deployment/web4
-⚠️  no supported objects found
+⚠ known sidecar detected in deployment/web1, deployment/web2, deployment/web3, deployment/web4
+⚠ no supported objects found
 
 deployment "web1" skipped
 deployment "web2" skipped

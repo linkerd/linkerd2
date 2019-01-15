@@ -46,12 +46,11 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
-  digest = "1:87a8cd3894b69f36d93f71074b921d6446483cc9465b36415991ecc02851ec08"
+  digest = "1:453c7a777da3e9aa031a0d9b8e0c882af15afb18e6c3651de7610fcb628dbd4b"
   name = "github.com/briandowns/spinner"
   packages = ["."]
   pruneopts = ""
-  revision = "dd69c579ff204842e8962816987f838e2c2c18d8"
-  version = "1.4"
+  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
 
 [[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
@@ -973,6 +972,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/briandowns/spinner",
+    "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/go-openapi/spec",
     "github.com/golang/protobuf/jsonpb",

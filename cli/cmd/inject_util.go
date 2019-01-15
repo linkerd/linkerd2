@@ -328,12 +328,3 @@ func walk(path string) ([]io.Reader, error) {
 
 	return in, nil
 }
-
-func getFiller(text string) string {
-	filler := ""
-	for i := 0; i < lineWidth-len(text)-len(okStatus)-len("\n"); i++ {
-		filler = filler + "."
-	}
-
-	return filler
-}

@@ -136,13 +136,13 @@ func (o *checkOptions) validate() error {
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
-	spin := spinner.New(spinner.CharSets[0], 100*time.Millisecond)
+	spin := spinner.New(spinner.CharSets[21], 100*time.Millisecond)
 	spin.Writer = w
 
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
 		if lastCategory != result.Category {
 			if lastCategory != "" {
-				fmt.Fprintln(w, "")
+				fmt.Fprintln(w)
 			}
 
 			underline := ""
@@ -158,8 +158,8 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 
 		spin.Stop()
 		if result.Retry {
-			spin.Suffix = fmt.Sprintf("  %s -- %s", result.Description, result.Err)
-			spin.Color("bgBlack", "bold", "fgRed")
+			spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
+			spin.Color("bold")
 			return
 		}
 
@@ -171,7 +171,7 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 			}
 		}
 
-		fmt.Fprintln(w, status, result.Description)
+		fmt.Fprintf(w, "%s %s\n", status, result.Description)
 		if result.Err != nil {
 			fmt.Fprintf(w, "    %s\n", result.Err)
 			if result.HintURL != "" {
