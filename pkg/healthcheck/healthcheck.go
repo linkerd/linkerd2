@@ -266,13 +266,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: fmt.Sprintf("can create %ss", "ClusterRole"),
+					description: "can create ClusterRoles",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
-					description: fmt.Sprintf("can create %ss", "ClusterRoleBinding"),
+					description: "can create ClusterRoleBindings",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
@@ -295,13 +295,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: fmt.Sprintf("can create %ss", "Role"),
+					description: "can create Roles",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
-					description: fmt.Sprintf("can create %ss", "RoleBinding"),
+					description: "can create RoleBindings",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
