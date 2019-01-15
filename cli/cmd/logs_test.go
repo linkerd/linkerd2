@@ -1,42 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"testing"
-
-	"github.com/fatih/color"
-	"github.com/wercker/stern/stern"
 )
 
 func TestNewSternConfig(t *testing.T) {
-	t.Run("Default log template", func(t *testing.T) {
-		flags := &logsOptions{}
-		testColor := color.New(color.FgHiRed)
-		expectedLogLine := "linkerd-controller-xyz web-container Starting server on port 8084"
-		buf := bytes.Buffer{}
-		c, err := flags.toSternConfig(nil, nil)
-
-		if err != nil {
-			t.Fatalf("Error creating stern config: %s", err.Error())
-		}
-
-		err = c.Template.Execute(&buf, &stern.Log{
-			Message:        "Starting server on port 8084",
-			Namespace:      "linkerd",
-			PodName:        "linkerd-controller-xyz",
-			ContainerName:  "web-container",
-			PodColor:       testColor,
-			ContainerColor: testColor,
-		})
-
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err.Error())
-		}
-
-		if buf.String() != expectedLogLine {
-			t.Fatalf("Invalid log line format\n got: %s\n expected:%s\n", buf.String(), expectedLogLine)
-		}
-	})
 
 	flagTestCases := []struct {
 		components     []string

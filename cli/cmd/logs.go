@@ -7,10 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"text/template"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/wercker/stern/stern"
@@ -87,25 +85,6 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	}
 	config.ContainerQuery = containerFilterRgx
 
-	containerState, err := stern.NewContainerState("running")
-	if err != nil {
-		return nil, err
-	}
-	config.ContainerState = containerState
-
-	funcs := make(map[string]interface{})
-
-	funcs["color"] = func(color color.Color, text string) string {
-		return color.SprintFunc()(text)
-	}
-
-	tmpl, err := template.New("logs").
-		Funcs(funcs).Parse("{{color .PodColor .PodName}} {{color .ContainerColor .ContainerName}} {{.Message}}")
-	if err != nil {
-		return nil, err
-	}
-	config.Template = tmpl
-
 	if o.tail != -1 {
 		config.TailLines = &o.tail
 	}
@@ -180,7 +159,7 @@ func newCmdLogs() *cobra.Command {
   linkerd logs --control-plane-component grafana --container linkerd-proxy
 
   # Tail logs from the linkerd-proxy container in the controller component with timestamps
-  linkerd logs --control-plane-component controller --container linkerd-proxy -t true
+  linkerd logs --control-plane-component controller --container linkerd-proxy --tail true
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
@@ -217,8 +196,6 @@ func runLogOutput(opts *logCmdConfig) error {
 		podInterface,
 		opts.PodQuery,
 		opts.ContainerQuery,
-		nil,
-		opts.ContainerState,
 		opts.LabelSelector,
 	)
 
@@ -235,7 +212,7 @@ func runLogOutput(opts *logCmdConfig) error {
 				Namespace:    true,
 			}
 
-			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, opts.Template, tailOpts)
+			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, tailOpts)
 			if _, ok := tails[a.GetID()]; !ok {
 				tails[a.GetID()] = newTail
 			}
