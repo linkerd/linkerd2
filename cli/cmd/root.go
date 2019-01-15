@@ -20,8 +20,9 @@ const (
 	defaultNamespace = "linkerd"
 
 	lineWidth  = 80
-	okStatus   = "[ok]"
-	warnStatus = "[warn]"
+	okStatus   = "✅"
+	warnStatus = "⚠️ "
+	failStatus = "❌"
 )
 
 var controlPlaneNamespace string

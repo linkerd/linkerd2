@@ -1,0 +1,8 @@
+
+✅ pods do not use host networking
+✅ pods do not have a proxy or initContainer already injected
+✅ at least one resource injected
+✅ pod specs do not include UDP ports
+
+deployment "web" injected
+

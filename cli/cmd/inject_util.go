@@ -25,6 +25,7 @@ type resourceTransformer interface {
 }
 
 type injectReport struct {
+	kind                string
 	name                string
 	hostNetwork         bool
 	sidecar             bool
@@ -40,6 +41,10 @@ type resourceConfig struct {
 	objectMeta      *metaV1.ObjectMeta
 	dnsNameOverride string
 	k8sLabels       map[string]string
+}
+
+func (i injectReport) resName() string {
+	return fmt.Sprintf("%s/%s", i.kind, i.name)
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.

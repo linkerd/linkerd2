@@ -149,9 +149,9 @@ func TestHealthChecker(t *testing.T) {
 			"cat2 desc2",
 			"cat3 desc3: error",
 			"cat4 desc4",
-			"cat4[rpc1] rpc desc1",
+			"cat4 [rpc1] rpc desc1",
 			"cat5 desc5",
-			"cat5[rpc2] rpc desc2: rpc error",
+			"cat5 [rpc2] rpc desc2: rpc error",
 		}
 
 		hc.RunChecks(observer)

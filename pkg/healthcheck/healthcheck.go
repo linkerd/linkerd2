@@ -34,6 +34,8 @@ const (
 	// requirements.
 	KubernetesVersionChecks CategoryID = "kubernetes-version"
 
+	// LinkerdPreInstall* checks enabled by `linkerd check --pre`
+
 	// LinkerdPreInstallClusterChecks adds checks to validate that the control
 	// plane namespace does not already exist, and that the user can create
 	// cluster-wide resources, including ClusterRole, ClusterRoleBinding, and
@@ -41,7 +43,7 @@ const (
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallClusterChecks CategoryID = "kubernetes-cluster-setup"
+	LinkerdPreInstallClusterChecks CategoryID = "pre-kubernetes-cluster-setup"
 
 	// LinkerdPreInstallSingleNamespaceChecks adds a check to validate that the
 	// control plane namespace already exists, and that the user can create
@@ -49,7 +51,7 @@ const (
 	// runs as part of the set of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallSingleNamespaceChecks CategoryID = "kubernetes-single-namespace-setup"
+	LinkerdPreInstallSingleNamespaceChecks CategoryID = "pre-kubernetes-single-namespace-setup"
 
 	// LinkerdPreInstallChecks adds checks to validate that the user can create
 	// Kubernetes objects necessary to install the control plane, including
@@ -57,19 +59,7 @@ const (
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallChecks CategoryID = "kubernetes-setup"
-
-	// LinkerdDataPlaneExistenceChecks adds a data plane check to validate that
-	// the data plane namespace exists.
-	// This check is dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdDataPlaneExistenceChecks CategoryID = "linkerd-data-plane-existence"
-
-	// LinkerdDataPlaneChecks adds a data plane check to validate that the proxy
-	// containers are in the ready state.
-	// This check is dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
+	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
 	// the control plane namespace and controller pod exist.
@@ -98,14 +88,15 @@ const (
 	// These checks are dependent on `apiClient` from
 	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
 	// LinkerdVersionChecks, so those checks must be added first.
-	LinkerdControlPlaneVersionChecks CategoryID = "linkerd-control-plane-version"
+	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
-	// LinkerdDataPlaneVersionChecks adds a series of checks to validate that the
-	// control plane is running the latest available version.
-	// These checks are dependent on `apiClient` from
-	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
-	// LinkerdVersionChecks, so those checks must be added first.
-	LinkerdDataPlaneVersionChecks CategoryID = "linkerd-data-plane-version"
+	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
+	// plane namespace exists, and that the the proxy containers are in a ready
+	// state and running the latest available version.
+	// These checks are dependent on the output of KubernetesAPIChecks,
+	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersion`
+	// from LinkerdVersionChecks, so those checks must be added first.
+	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 )
 
 var (
@@ -118,6 +109,9 @@ type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
 	description string
+
+	// hintURL provides a pointer to more information about the check
+	hintURL string
 
 	// fatal indicates that all remaining checks should be aborted if this check
 	// fails; it should only be used if subsequent checks cannot possibly succeed
@@ -146,6 +140,7 @@ type checker struct {
 type CheckResult struct {
 	Category    CategoryID
 	Description string
+	HintURL     string
 	Retry       bool
 	Warning     bool
 	Err         error
@@ -267,12 +262,14 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can create ClusterRoles",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
@@ -296,12 +293,14 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can create Roles",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
@@ -424,48 +423,6 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdDataPlaneExistenceChecks,
-			checkers: []checker{
-				{
-					description: "data plane namespace exists",
-					fatal:       true,
-					check: func() error {
-						return hc.checkNamespace(hc.DataPlaneNamespace, true)
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdDataPlaneChecks,
-			checkers: []checker{
-				{
-					description:   "data plane proxies are ready",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
-						if err != nil {
-							return err
-						}
-
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
-					},
-				},
-				{
-					description:   "data plane proxy metrics are present in Prometheus",
-					retryDeadline: hc.RetryDeadline,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
-						if err != nil {
-							return err
-						}
-
-						return validateDataPlanePodReporting(pods)
-					},
-				},
-			},
-		},
-		{
 			id: LinkerdVersionChecks,
 			checkers: []checker{
 				{
@@ -518,8 +475,40 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdDataPlaneVersionChecks,
+			id: LinkerdDataPlaneChecks,
 			checkers: []checker{
+				{
+					description: "data plane namespace exists",
+					fatal:       true,
+					check: func() error {
+						return hc.checkNamespace(hc.DataPlaneNamespace, true)
+					},
+				},
+				{
+					description:   "data plane proxies are ready",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+					},
+				},
+				{
+					description:   "data plane proxy metrics are present in Prometheus",
+					retryDeadline: hc.RetryDeadline,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						return validateDataPlanePodReporting(pods)
+					},
+				},
 				{
 					description: "data plane is up-to-date",
 					warning:     true,
@@ -546,7 +535,7 @@ func (hc *HealthChecker) allCategories() []category {
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHeathChecker.
-func (hc *HealthChecker) Add(categoryID CategoryID, description string, check func() error) {
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL string, check func() error) {
 	hc.addCategory(
 		category{
 			id: categoryID,
@@ -554,6 +543,7 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, check fu
 				checker{
 					description: description,
 					check:       check,
+					hintURL:     hintURL,
 				},
 			},
 		},
@@ -611,6 +601,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
+			HintURL:     c.hintURL,
 			Warning:     c.warning,
 			Err:         err,
 		}
@@ -645,8 +636,9 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 			err = fmt.Errorf(check.FriendlyMessageToUser)
 		}
 		observer(&CheckResult{
-			Category:    CategoryID(fmt.Sprintf("%s[%s]", categoryID, check.SubsystemName)),
-			Description: check.CheckDescription,
+			Category:    categoryID,
+			Description: fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription),
+			HintURL:     c.hintURL,
 			Warning:     c.warning,
 			Err:         err,
 		})

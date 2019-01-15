@@ -7,14 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
-)
-
-const (
-	retryStatus   = "[retry]"
-	failStatus    = "[FAIL]"
-	warningStatus = "[warning]"
 )
 
 type checkOptions struct {
@@ -82,6 +77,7 @@ func configureAndRunChecks(options *checkOptions) error {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
+		healthcheck.LinkerdVersionChecks,
 	}
 
 	if options.preInstallOnly {
@@ -91,30 +87,19 @@ func configureAndRunChecks(options *checkOptions) error {
 			checks = append(checks, healthcheck.LinkerdPreInstallClusterChecks)
 		}
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
-	} else if options.dataPlaneOnly {
-		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
-		if !options.singleNamespace {
-			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
-		}
-		if options.namespace != "" {
-			checks = append(checks, healthcheck.LinkerdDataPlaneExistenceChecks)
-		}
-		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
+
 		if !options.singleNamespace {
 			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
 		}
-	}
 
-	checks = append(checks, healthcheck.LinkerdVersionChecks)
-	if !(options.preInstallOnly || options.dataPlaneOnly) {
-		checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
-	}
-	if options.dataPlaneOnly {
-		checks = append(checks, healthcheck.LinkerdDataPlaneVersionChecks)
+		if options.dataPlaneOnly {
+			checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+		}
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -150,30 +135,49 @@ func (o *checkOptions) validate() error {
 }
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
+	var lastCategory healthcheck.CategoryID
+	spin := spinner.New(spinner.CharSets[0], 100*time.Millisecond)
+	spin.Writer = w
+
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
-		checkLabel := fmt.Sprintf("%s: %s", result.Category, result.Description)
-
-		filler := ""
-		lineBreak := "\n"
-		for i := 0; i < lineWidth-len(checkLabel)-len(okStatus)-len(lineBreak); i++ {
-			filler = filler + "."
-		}
-
-		if result.Retry {
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, retryStatus, result.Err, lineBreak)
-			return
-		}
-
-		if result.Err != nil {
-			status := failStatus
-			if result.Warning {
-				status = warningStatus
+		if lastCategory != result.Category {
+			if lastCategory != "" {
+				fmt.Fprintln(w, "")
 			}
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, status, result.Err, lineBreak)
+
+			underline := ""
+			for i := 0; i < len(result.Category); i++ {
+				underline = underline + "-"
+			}
+
+			fmt.Fprintln(w, result.Category)
+			fmt.Fprintln(w, underline)
+
+			lastCategory = result.Category
+		}
+
+		spin.Stop()
+		if result.Retry {
+			spin.Suffix = fmt.Sprintf("  %s -- %s", result.Description, result.Err)
+			spin.Color("bgBlack", "bold", "fgRed")
 			return
 		}
 
-		fmt.Fprintf(w, "%s%s%s%s", checkLabel, filler, okStatus, lineBreak)
+		status := okStatus
+		if result.Err != nil {
+			status = failStatus
+			if result.Warning {
+				status = warnStatus
+			}
+		}
+
+		fmt.Fprintln(w, status, result.Description)
+		if result.Err != nil {
+			fmt.Fprintf(w, "    %s\n", result.Err)
+			if result.HintURL != "" {
+				fmt.Fprintf(w, "    See %s for hints\n", result.HintURL)
+			}
+		}
 	}
 
 	return hc.RunChecks(prettyPrintResults)
