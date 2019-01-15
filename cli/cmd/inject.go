@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +30,7 @@ const (
 
 	// for inject reports
 	hostNetworkDesc = "hostNetwork: pods do not use host networking"
+	// TODO: change to "pods do not have a 3rd party proxy or initContainer already injected" once #2087 merges
 	sidecarDesc     = "sidecar: pods do not have a proxy or initContainer already injected"
 	unsupportedDesc = "supported: at least one resource injected"
 	udpDesc         = "udp: pod specs do not include UDP ports"
@@ -93,7 +95,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
+			exitCode := uninjectAndInject(in, os.Stderr, os.Stdout, options)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -101,6 +103,14 @@ sub-folders, or coming from stdin.`,
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	return cmd
+}
+
+func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	var out bytes.Buffer
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, nil); exitCode != 0 {
+		return exitCode
+	}
+	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, options)
 }
 
 /* Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -128,7 +138,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
 	report.hostNetwork = t.HostNetwork
-	report.sidecar = healthcheck.HasExistingSidecars(t)
+	report.sidecar = healthcheck.HasExisting3rdPartySidecars(t)
 	report.udp = checkUDPPorts(t)
 
 	// Skip injection if:
@@ -418,6 +428,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	if len(sidecar) == 0 {
 		output.Write([]byte(fmt.Sprintf("%s%s\n", sidecarPrefix, okStatus)))
 	} else {
+		// TODO: change to "known 3rd party sidecar detected" once #2087 merges
 		output.Write([]byte(fmt.Sprintf("%s%s -- known sidecar detected in %s\n", sidecarPrefix, warnStatus, strings.Join(sidecar, ", "))))
 	}
 
