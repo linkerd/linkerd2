@@ -14,7 +14,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/wercker/stern/stern"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
@@ -44,7 +45,6 @@ func newLogsOptions() *logsOptions {
 }
 
 func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers []string) (*stern.Config, error) {
-
 	config := &stern.Config{}
 
 	if o.component == "" {
@@ -122,6 +122,16 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	return config, nil
 }
 
+func getControlPlaneComponentsAndContainers(pods *v1.PodList) (controlPlaneComponents []string, containers []string) {
+	for _, pod := range pods.Items {
+		controlPlaneComponents = append(controlPlaneComponents, pod.Labels["linkerd.io/control-plane-component"])
+		for _, container := range pod.Spec.Containers {
+			containers = append(containers, container.Name)
+		}
+	}
+	return
+}
+
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
 	// Check that we can call the Kubernetes API
 	cliPublicAPIClient()
@@ -135,21 +145,14 @@ func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (
 		return nil, err
 	}
 
-	var containers []string
-	var controlPlaneComponent []string
-	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(v1.ListOptions{})
+	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(meta_v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, pod := range podList.Items {
-		controlPlaneComponent = append(controlPlaneComponent, pod.Labels["linkerd.io/control-plane-component"])
-		for _, container := range pod.Spec.Containers {
-			containers = append(containers, container.Name)
-		}
-	}
+	components, containers := getControlPlaneComponentsAndContainers(podList)
 
-	c, err := options.toSternConfig(controlPlaneComponent, containers)
+	c, err := options.toSternConfig(components, containers)
 	if err != nil {
 		return nil, err
 	}
@@ -187,8 +190,8 @@ func newCmdLogs() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.container, "container", "c", options.container, "control plane container to tail logs from. Options are 'public-api', 'proxy-api', 'tap', 'destination', 'prometheus', 'grafana' or 'linkerd-proxy'")
-	cmd.PersistentFlags().StringVar(&options.component, "component", options.component, "control plane component to tail log lines from. Default value gets logs from all resources marked with the 'linkerd.io/control-plane-component' labelSelector")
+	cmd.PersistentFlags().StringVarP(&options.container, "container", "c", options.container, "Tail logs from the specified container. Options are 'public-api', 'proxy-api', 'tap', 'destination', 'prometheus', 'grafana' or 'linkerd-proxy'")
+	cmd.PersistentFlags().StringVar(&options.component, "component", options.component, "Tail logs from the specified control plane component. Default value (empty string) causes this command to tail logs from all resources marked with the 'linkerd.io/control-plane-component' labelSelector")
 	cmd.PersistentFlags().DurationVarP(&options.sinceSeconds, "since", "s", options.sinceSeconds, "Duration of how far back logs should be retrieved")
 	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
 	cmd.PersistentFlags().BoolVarP(&options.timestamps, "timestamps", "t", options.timestamps, "Print timestamps for each given log line")
