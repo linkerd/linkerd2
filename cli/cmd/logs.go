@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -57,7 +56,7 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 		}
 
 		if podExists == "" {
-			return nil, errors.New(fmt.Sprintf("control plane component [%s] does not exist. Must be one of %v", o.controlPlaneComponent, controlPlaneComponents))
+			return nil, fmt.Errorf("control plane component [%s] does not exist. Must be one of %v", o.controlPlaneComponent, controlPlaneComponents)
 		}
 		selector, err := labels.Parse(fmt.Sprintf("linkerd.io/control-plane-component=%s", o.controlPlaneComponent))
 		if err != nil {
@@ -75,7 +74,7 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 			}
 		}
 		if matchingContainer == "" {
-			return nil, errors.New(fmt.Sprintf("container [%s] does not exist in control plane [%s]", o.container, controlPlaneNamespace))
+			return nil, fmt.Errorf("container [%s] does not exist in control plane [%s]", o.container, controlPlaneNamespace)
 		}
 	}
 
