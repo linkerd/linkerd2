@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
@@ -12,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/wercker/stern/stern"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
@@ -23,46 +26,68 @@ type logCmdConfig struct {
 }
 
 type logsOptions struct {
-	containerFilter string
-	namespace       string
-	podFilter       string
-	containerState  string
-	labelSelector   string
-	sinceSeconds    time.Duration
-	tail            int64
-	timestamps      bool
-	follow          bool
+	container    string
+	component    string
+	sinceSeconds time.Duration
+	tail         int64
+	timestamps   bool
 }
 
 func newLogsOptions() *logsOptions {
 	return &logsOptions{
-		containerFilter: "",
-		namespace:       controlPlaneNamespace,
-		podFilter:       "",
-		containerState:  "running",
-		labelSelector:   "",
-		sinceSeconds:    48 * time.Hour,
-		tail:            -1,
-		timestamps:      false,
+		container:    "",
+		component:    "",
+		sinceSeconds: 48 * time.Hour,
+		tail:         -1,
+		timestamps:   false,
 	}
 }
 
-func (o *logsOptions) toSternConfig() (*stern.Config, error) {
+func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers []string) (*stern.Config, error) {
+
 	config := &stern.Config{}
 
-	podFilterRgx, err := regexp.Compile(o.podFilter)
-	if err != nil {
-		return nil, err
-	}
-	config.PodQuery = podFilterRgx
+	if o.component == "" {
+		config.LabelSelector = labels.Everything()
+	} else {
+		var podExists string
+		for _, p := range controlPlaneComponents {
+			if p == o.component {
+				podExists = p
+				break
+			}
+		}
 
-	containerFilterRgx, err := regexp.Compile(o.containerFilter)
+		if podExists == "" {
+			return nil, errors.New(fmt.Sprintf("control plane component [%s] does not exist. Must be one of %v", o.component, controlPlaneComponents))
+		}
+		selector, err := labels.Parse(fmt.Sprintf("linkerd.io/control-plane-component=%s", o.component))
+		if err != nil {
+			return nil, err
+		}
+		config.LabelSelector = selector
+	}
+
+	if o.container != "" {
+		var matchingContainer string
+		for _, c := range availableContainers {
+			if o.container == c {
+				matchingContainer = c
+				break
+			}
+		}
+		if matchingContainer == "" {
+			return nil, errors.New(fmt.Sprintf("container [%s] does not exist in control plane [%s]", o.container, controlPlaneNamespace))
+		}
+	}
+
+	containerFilterRgx, err := regexp.Compile(o.container)
 	if err != nil {
 		return nil, err
 	}
 	config.ContainerQuery = containerFilterRgx
 
-	containerState, err := stern.NewContainerState(o.containerState)
+	containerState, err := stern.NewContainerState("running")
 	if err != nil {
 		return nil, err
 	}
@@ -81,28 +106,25 @@ func (o *logsOptions) toSternConfig() (*stern.Config, error) {
 	}
 	config.Template = tmpl
 
-	if o.labelSelector == "" {
-		config.LabelSelector = labels.Everything()
-	} else {
-		selector, err := labels.Parse(o.labelSelector)
-		if err != nil {
-			return nil, err
-		}
-		config.LabelSelector = selector
-	}
-
 	if o.tail != -1 {
 		config.TailLines = &o.tail
 	}
 
+	podFilterRgx, err := regexp.Compile("")
+	if err != nil {
+		return nil, err
+	}
+	config.PodQuery = podFilterRgx
 	config.Since = o.sinceSeconds
 	config.Timestamps = o.timestamps
-	config.Namespace = o.namespace
+	config.Namespace = controlPlaneNamespace
 
 	return config, nil
 }
 
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
+	// Check that we can call the Kubernetes API
+	cliPublicAPIClient()
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
@@ -113,7 +135,21 @@ func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (
 		return nil, err
 	}
 
-	c, err := options.toSternConfig()
+	var containers []string
+	var controlPlaneComponent []string
+	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pod := range podList.Items {
+		controlPlaneComponent = append(controlPlaneComponent, pod.Labels["linkerd.io/control-plane-component"])
+		for _, container := range pod.Spec.Containers {
+			containers = append(containers, container.Name)
+		}
+	}
+
+	c, err := options.toSternConfig(controlPlaneComponent, containers)
 	if err != nil {
 		return nil, err
 	}
@@ -129,13 +165,16 @@ func newCmdLogs() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logs [flags]",
-		Short: "Tail logs from kubernetes resource",
-		Long:  `Tail logs from kubernetes resource.`,
-		Example: `  # Tail logs from all containers in pods that have the prefix 'linkerd-controller' in the linkerd namespace
-  linkerd logs --pod-filter linkerd-controller.* --namespace linkerd
+		Short: "Tail logs from containers in the linkerd control plane",
+		Long:  `Tail logs from containers in the linkerd control plane`,
+		Example: `  # Tail logs from all containers in the prometheus control plane component
+  linkerd logs --component prometheus
 
-  # Tail logs from the linkerd-proxy container in the grafana pod within the linkerd control plane
-  linkerd logs --pod-filter linkerd-grafana.* --container linkerd-proxy --namespace linkerd
+  # Tail logs from the linkerd-proxy container in the grafana control plane component
+  linkerd logs --component grafana --container linkerd-proxy
+
+  # Tail logs from the linkerd-proxy container in the controller component with timestamps
+  linkerd logs --component controller --container linkerd-proxy -t true
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
@@ -148,11 +187,8 @@ func newCmdLogs() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.containerFilter, "container", "c", options.containerFilter, "Regex string to use for filtering log lines by container name")
-	cmd.PersistentFlags().StringVar(&options.labelSelector, "label-selector", options.labelSelector, "kubernetes label selector to retrieve logs from resources that match")
-	cmd.PersistentFlags().StringVar(&options.containerState, "container-state", options.containerState, "Show logs from containers that are in a specific container state")
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "String to retrieve logs from pods in the given namespace")
-	cmd.PersistentFlags().StringVarP(&options.podFilter, "pod-filter", "p", options.podFilter, "Regex string to use for filtering log lines by pod name")
+	cmd.PersistentFlags().StringVarP(&options.container, "container", "c", options.container, "control plane container to tail logs from. Options are 'public-api', 'proxy-api', 'tap', 'destination', 'prometheus', 'grafana' or 'linkerd-proxy'")
+	cmd.PersistentFlags().StringVar(&options.component, "component", options.component, "control plane component to tail log lines from. Default value gets logs from all resources marked with the 'linkerd.io/control-plane-component' labelSelector")
 	cmd.PersistentFlags().DurationVarP(&options.sinceSeconds, "since", "s", options.sinceSeconds, "Duration of how far back logs should be retrieved")
 	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show any previous log lines")
 	cmd.PersistentFlags().BoolVarP(&options.timestamps, "timestamps", "t", options.timestamps, "Print timestamps for each given log line")
