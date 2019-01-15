@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -16,10 +17,12 @@ import (
 )
 
 type listPodsExpected struct {
-	err     error
-	k8sRes  []string
-	promRes model.Value
-	res     pb.ListPodsResponse
+	err              error
+	k8sRes           []string
+	promRes          model.Value
+	req              *pb.ListPodsRequest
+	res              *pb.ListPodsResponse
+	promReqNamespace string
 }
 
 type listServicesExpected struct {
@@ -42,7 +45,11 @@ func (bs ByService) Len() int           { return len(bs) }
 func (bs ByService) Swap(i, j int)      { bs[i], bs[j] = bs[j], bs[i] }
 func (bs ByService) Less(i, j int) bool { return bs[i].Name <= bs[j].Name }
 
-func listPodResponsesEqual(a pb.ListPodsResponse, b pb.ListPodsResponse) bool {
+func listPodResponsesEqual(a *pb.ListPodsResponse, b *pb.ListPodsResponse) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
 	if len(a.Pods) != len(b.Pods) {
 		return false
 	}
@@ -72,7 +79,7 @@ func listPodResponsesEqual(a pb.ListPodsResponse, b pb.ListPodsResponse) bool {
 }
 
 func TestListPods(t *testing.T) {
-	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
+	t.Run("Queries to the ListPods endpoint", func(t *testing.T) {
 		expectations := []listPodsExpected{
 			listPodsExpected{
 				err: nil,
@@ -142,7 +149,8 @@ spec:
       pod-template-hash: hash-not-meshed
 `,
 				},
-				res: pb.ListPodsResponse{
+				req: &pb.ListPodsRequest{},
+				res: &pb.ListPodsResponse{
 					Pods: []*pb.Pod{
 						&pb.Pod{
 							Name:            "emojivoto/emojivoto-meshed",
@@ -161,6 +169,64 @@ spec:
 					},
 				},
 			},
+			listPodsExpected{
+				err: fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive"),
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{},
+				req: &pb.ListPodsRequest{
+					Namespace: "test",
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Pod,
+						},
+					},
+				},
+				res: nil,
+			},
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "testnamespace",
+						},
+					},
+				},
+				res:              &pb.ListPodsResponse{},
+				promReqNamespace: "testnamespace",
+			},
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Namespace,
+							Name: "testnamespace",
+						},
+					},
+				},
+				res:              &pb.ListPodsResponse{},
+				promReqNamespace: "testnamespace",
+			},
 		}
 
 		for _, exp := range expectations {
@@ -169,8 +235,10 @@ spec:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
+			mProm := mockProm{Res: exp.promRes}
+
 			fakeGrpcServer := newGrpcServer(
-				&mockProm{Res: exp.promRes},
+				&mProm,
 				tap.NewTapClient(nil),
 				k8sAPI,
 				"linkerd",
@@ -179,124 +247,21 @@ spec:
 
 			k8sAPI.Sync()
 
-			rsp, err := fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{})
-			if err != exp.err {
+			rsp, err := fakeGrpcServer.ListPods(context.TODO(), exp.req)
+			if !reflect.DeepEqual(err, exp.err) {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 
-			if !listPodResponsesEqual(exp.res, *rsp) {
-				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
+			if !listPodResponsesEqual(exp.res, rsp) {
+				t.Fatalf("Expected: %+v, Got: %+v", exp.res, rsp)
 			}
-		}
-	})
 
-	t.Run("Fails for both resource and namespace set in request", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
-		if err != nil {
-			t.Fatalf("NewFakeAPI returned an error: %s", err)
-		}
-
-		fakeGrpcServer := newGrpcServer(
-			&mockProm{Res: model.Vector{
-				&model.Sample{
-					Metric:    model.Metric{"pod": "emojivoto-meshed"},
-					Timestamp: 456,
-				},
-			}},
-			tap.NewTapClient(nil),
-			k8sAPI,
-			"linkerd",
-			[]string{},
-		)
-
-		k8sAPI.Sync()
-
-		_, err = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
-			Namespace: "test",
-			Selector: &pb.ResourceSelection{
-				Resource: &pb.Resource{
-					Type: pkgK8s.Pod,
-				},
-			},
-		})
-		expectedError := fmt.Errorf("cannot set both namespace and resource in the request. These are mutually exclusive")
-		if err.Error() != expectedError.Error() {
-			t.Fatalf("Expected error: %s, Got: %s", expectedError, err)
-		}
-	})
-
-	t.Run("Reads namespace from resource namespace field", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
-		if err != nil {
-			t.Fatalf("NewFakeAPI returned an error: %s", err)
-		}
-
-		mProm := mockProm{Res: model.Vector{
-			&model.Sample{
-				Metric:    model.Metric{"pod": "emojivoto-meshed"},
-				Timestamp: 456,
-			},
-		}}
-		fakeGrpcServer := newGrpcServer(
-			&mProm,
-			tap.NewTapClient(nil),
-			k8sAPI,
-			"linkerd",
-			[]string{},
-		)
-
-		k8sAPI.Sync()
-
-		_, _ = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
-			Selector: &pb.ResourceSelection{
-				Resource: &pb.Resource{
-					Namespace: "testnamespace",
-				},
-			},
-		})
-
-		err = verifyPromQueries(&mProm, "testnamespace")
-
-		if err != nil {
-			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
-		}
-	})
-
-	t.Run("Reads namespace from resource name when resource is namespace", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("", make([]string, 0)...)
-		if err != nil {
-			t.Fatalf("NewFakeAPI returned an error: %s", err)
-		}
-
-		mProm := mockProm{Res: model.Vector{
-			&model.Sample{
-				Metric:    model.Metric{"pod": "emojivoto-meshed"},
-				Timestamp: 456,
-			},
-		}}
-		fakeGrpcServer := newGrpcServer(
-			&mProm,
-			tap.NewTapClient(nil),
-			k8sAPI,
-			"linkerd",
-			[]string{},
-		)
-
-		k8sAPI.Sync()
-
-		_, _ = fakeGrpcServer.ListPods(context.TODO(), &pb.ListPodsRequest{
-			Selector: &pb.ResourceSelection{
-				Resource: &pb.Resource{
-					Type: pkgK8s.Namespace,
-					Name: "testnamespace",
-				},
-			},
-		})
-
-		err = verifyPromQueries(&mProm, "testnamespace")
-
-		if err != nil {
-			t.Fatalf("Prometheus queries don't match. Got error: %s", err)
+			if exp.promReqNamespace != "" {
+				err := verifyPromQueries(&mProm, exp.promReqNamespace)
+				if err != nil {
+					t.Fatalf("Expected prometheus query with namespace: %s, Got error: %s", exp.promReqNamespace, err)
+				}
+			}
 		}
 	})
 }
