@@ -28,10 +28,10 @@ const (
 	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 
 	// for inject reports
-	hostNetworkDesc = "hostNetwork: pods do not use host networking"
-	sidecarDesc     = "sidecar: pods do not have a proxy or initContainer already injected"
-	unsupportedDesc = "supported: at least one resource injected"
-	udpDesc         = "udp: pod specs do not include UDP ports"
+	hostNetworkDesc = "pods do not use host networking"
+	sidecarDesc     = "pods do not have a proxy or initContainer already injected"
+	unsupportedDesc = "at least one resource injected"
+	udpDesc         = "pod specs do not include UDP ports"
 )
 
 type injectOptions struct {
@@ -75,7 +75,7 @@ sub-folders, or coming from stdin.`,
 
   # Download a resource and inject it through stdin.
   curl http://url.to/yml | linkerd inject - | kubectl apply -f -
-  
+
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -338,7 +338,8 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 	}
 
 	report := injectReport{
-		name: fmt.Sprintf("%s/%s", strings.ToLower(conf.meta.Kind), conf.om.Name),
+		kind: strings.ToLower(conf.meta.Kind),
+		name: conf.om.Name,
 	}
 
 	// If we don't inject anything into the pod template then output the
@@ -377,26 +378,30 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 }
 
 func (resourceTransformerInject) generateReport(injectReports []injectReport, output io.Writer) {
-	injected := []string{}
+	injected := []injectReport{}
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
+	warningsPrinted := verbose
 
 	for _, r := range injectReports {
 		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
-			injected = append(injected, r.name)
+			injected = append(injected, r)
 		}
 
 		if r.hostNetwork {
-			hostNetwork = append(hostNetwork, r.name)
+			hostNetwork = append(hostNetwork, r.resName())
+			warningsPrinted = true
 		}
 
 		if r.sidecar {
-			sidecar = append(sidecar, r.name)
+			sidecar = append(sidecar, r.resName())
+			warningsPrinted = true
 		}
 
 		if r.udp {
-			udp = append(udp, r.name)
+			udp = append(udp, r.resName())
+			warningsPrinted = true
 		}
 	}
 
@@ -407,47 +412,48 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	// leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
 
-	hostNetworkPrefix := fmt.Sprintf("%s%s", hostNetworkDesc, getFiller(hostNetworkDesc))
-	if len(hostNetwork) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", hostNetworkPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- \"hostNetwork: true\" detected in %s\n", hostNetworkPrefix, warnStatus, strings.Join(hostNetwork, ", "))))
+	if len(hostNetwork) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s \"hostNetwork: true\" detected in %s\n", warnStatus, strings.Join(hostNetwork, ", "))))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, hostNetworkDesc)))
 	}
 
-	sidecarPrefix := fmt.Sprintf("%s%s", sidecarDesc, getFiller(sidecarDesc))
-	if len(sidecar) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", sidecarPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- known sidecar detected in %s\n", sidecarPrefix, warnStatus, strings.Join(sidecar, ", "))))
+	if len(sidecar) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s known sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, sidecarDesc)))
 	}
 
-	unsupportedPrefix := fmt.Sprintf("%s%s", unsupportedDesc, getFiller(unsupportedDesc))
-	if len(injected) > 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", unsupportedPrefix, okStatus)))
-	} else {
-		output.Write([]byte(fmt.Sprintf("%s%s -- no supported objects found\n", unsupportedPrefix, warnStatus)))
+	if len(injected) == 0 {
+		output.Write([]byte(fmt.Sprintf("%s no supported objects found\n", warnStatus)))
+		warningsPrinted = true
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, unsupportedDesc)))
 	}
 
-	udpPrefix := fmt.Sprintf("%s%s", udpDesc, getFiller(udpDesc))
-	if len(udp) == 0 {
-		output.Write([]byte(fmt.Sprintf("%s%s\n", udpPrefix, okStatus)))
-	} else {
+	if len(udp) > 0 {
 		verb := "uses"
 		if len(udp) > 1 {
 			verb = "use"
 		}
-		output.Write([]byte(fmt.Sprintf("%s%s -- %s %s \"protocol: UDP\"\n", udpPrefix, warnStatus, strings.Join(udp, ", "), verb)))
+		output.Write([]byte(fmt.Sprintf("%s %s %s \"protocol: UDP\"\n", warnStatus, strings.Join(udp, ", "), verb)))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
 	}
 
 	//
 	// Summary
 	//
+	if warningsPrinted {
+		output.Write([]byte("\n"))
+	}
 
-	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) injected", len(injected), len(injectReports))
-	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
-
-	for _, i := range injected {
-		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
+	for _, r := range injectReports {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.kind, r.name)))
+		} else {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+		}
 	}
 
 	// trailing newline to separate from kubectl output if piping

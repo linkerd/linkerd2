@@ -33,6 +33,10 @@ required = [
   version = "kubernetes-1.11.1"
 
 [[constraint]]
+  name = "github.com/briandowns/spinner"
+  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
+
+[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "v1.0.3"
 

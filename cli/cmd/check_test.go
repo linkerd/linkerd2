@@ -15,10 +15,10 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", func() error {
+		hc.Add("category", "check1", "", func() error {
 			return nil
 		})
-		hc.Add("category", "check2", func() error {
+		hc.Add("category", "check2", "http://linkerd.io/hint-url", func() error {
 			return fmt.Errorf("This should contain instructions for fail")
 		})
 
