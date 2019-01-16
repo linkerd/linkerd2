@@ -67,16 +67,18 @@ module.exports = {
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
     new CleanWebpackPlugin(['dist']),
-    new HtmlWebpackPlugin({
-      inject: false,
-      filename: "index_bundle.js.out",
-      template: 'index_bundle.js.lodash.tmpl',
-    }),
     new LodashModuleReplacementPlugin({
       // 'chain': true,
       'collections': true,
       'paths': true
     }),
+    // compile the bundle with hashed filename into index_bundle.js.out
+    new HtmlWebpackPlugin({
+      inject: false,
+      filename: "index_bundle.js.out",
+      template: 'index_bundle.js.lodash.tmpl',
+    }),
+    // move /dist/index_bundle.js.out to /dist/index_bundle.js
     new WebpackMvPlugin()
   ]
 };
