@@ -114,8 +114,6 @@ func getControlPlaneComponentsAndContainers(pods *v1.PodList) ([]string, []strin
 }
 
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
-	// Check that we can call the Kubernetes API
-	_ := cliPublicAPIClient()
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
@@ -149,16 +147,19 @@ func newCmdLogs() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logs [flags]",
-		Short: "Tail logs from containers in the linkerd control plane",
-		Long:  `Tail logs from containers in the linkerd control plane`,
+		Short: "Tail logs from containers in the Linkerd control plane",
+		Long:  `Tail logs from containers in the Linkerd control plane.`,
 		Example: `  # Tail logs from all containers in the prometheus control plane component
   linkerd logs --control-plane-component prometheus
 
   # Tail logs from the linkerd-proxy container in the grafana control plane component
   linkerd logs --control-plane-component grafana --container linkerd-proxy
 
-  # Tail logs from the linkerd-proxy container in the controller component with timestamps
+  # Tail logs from the linkerd-proxy container in the controller component beginning with the last two lines
   linkerd logs --control-plane-component controller --container linkerd-proxy --tail 2
+
+  # Tail logs from the linkerd-proxy container in the controller component showing timestamps for each line
+  linkerd logs --control-plane-component controller --container linkerd-proxy --timestamps true
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
