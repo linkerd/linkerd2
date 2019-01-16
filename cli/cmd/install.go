@@ -7,13 +7,19 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"text/template"
 
-	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/renderutil"
+	"k8s.io/helm/pkg/timeconv"
+	tversion "k8s.io/helm/pkg/version"
 )
 
 type installConfig struct {
@@ -208,37 +214,87 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 }
 
 func render(config installConfig, w io.Writer, options *installOptions) error {
-	template, err := template.New("linkerd").Parse(install.Template)
+	// Set up chart
+	c := &chart.Chart{}
+
+	// Initialize chart Metadata for use in rendering values
+	cm, err := ioutil.ReadFile("../install/Chart.yaml")
 	if err != nil {
 		return err
 	}
-	buf := &bytes.Buffer{}
-	err = template.Execute(buf, config)
+	m, err := chartutil.UnmarshalChartfile(cm)
 	if err != nil {
 		return err
 	}
+	c.Metadata = m
+
+	// Initialize templates
+	baseTmpl, err := ioutil.ReadFile("../install/base_template.yaml")
+	if err != nil {
+		return err
+	}
+	c.Templates = append(c.Templates, &chart.Template{Name: "base", Data: baseTmpl})
 
 	if config.EnableTLS {
-		tlsTemplate, err := template.New("linkerd").Parse(install.TLSTemplate)
+		tlsTmpl, err := ioutil.ReadFile("../install/tls_template.yaml")
 		if err != nil {
 			return err
 		}
-		err = tlsTemplate.Execute(buf, config)
-		if err != nil {
-			return err
-		}
+		c.Templates = append(c.Templates, &chart.Template{Name: "tls", Data: tlsTmpl})
 
 		if config.ProxyAutoInjectEnabled {
-			proxyInjectorTemplate, err := template.New("linkerd").Parse(install.ProxyInjectorTemplate)
+			proxyInjectorTmpl, err := ioutil.ReadFile("../install/proxy_injector_template.yaml")
 			if err != nil {
 				return err
 			}
-			err = proxyInjectorTemplate.Execute(buf, config)
-			if err != nil {
-				return err
-			}
+			c.Templates = append(c.Templates, &chart.Template{Name: "proxy_injector", Data: proxyInjectorTmpl})
 		}
 	}
+
+	// Initialize helper structs for use in rendering values
+	caps := &chartutil.Capabilities{
+		APIVersions:   chartutil.DefaultVersionSet,
+		KubeVersion:   chartutil.DefaultKubeVersion,
+		TillerVersion: tversion.GetVersionProto(),
+	}
+
+	renderOpts := renderutil.Options{
+		ReleaseOptions: chartutil.ReleaseOptions{
+			Name:      "release-name",
+			IsInstall: true,
+			IsUpgrade: false,
+			Time:      timeconv.Now(),
+			Namespace: "default",
+		},
+		KubeVersion: "",
+	}
+
+	// Render values
+	rawVals, err := yaml.Marshal(&config)
+	if err != nil {
+		return err
+	}
+	cConf := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
+
+	vals, err := chartutil.ToRenderValuesCaps(c, cConf, renderOpts.ReleaseOptions, caps)
+	if err != nil {
+		fmt.Printf("failed to render vals: %v", err)
+	}
+
+	// Set up engine
+	renderer := engine.New()
+
+	rendered, err := renderer.Render(c, vals)
+	if err != nil {
+		return err
+	}
+
+	// Convert rendered template into reader interface
+	renderedBytes, err := yaml.Marshal(rendered)
+	if err != nil {
+		return err
+	}
+	buf := bytes.NewBuffer(renderedBytes)
 
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions

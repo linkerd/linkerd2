@@ -1,0 +1,111 @@
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: {{.Namespace}}
+
+### CA RBAC ###
+---
+kind: {{if not .SingleNamespace}}Cluster{{end}}Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Namespace}}-ca
+  {{- if .SingleNamespace}}
+  namespace: {{.Namespace}}
+  {{- end}}
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.TLSTrustAnchorConfigMapName}}]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
+{{- if and .EnableTLS .ProxyAutoInjectEnabled }}
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
+  verbs: ["list", "get", "watch"]
+{{- end }}
+
+---
+kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Namespace}}-ca
+  {{- if .SingleNamespace}}
+  namespace: {{.Namespace}}
+  {{- end}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Namespace}}-ca
+subjects:
+- kind: ServiceAccount
+  name: linkerd-ca
+  namespace: {{.Namespace}}
+
+### CA ###
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-ca
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: ca
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: ca
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-ca
+      containers:
+      - name: ca
+        ports:
+        - name: admin-http
+          containerPort: 9997
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "ca"
+        - "-controller-namespace={{.Namespace}}"
+        - "-single-namespace={{.SingleNamespace}}"
+        {{- if and .EnableTLS .ProxyAutoInjectEnabled }}
+        - "-proxy-auto-inject={{ .ProxyAutoInjectEnabled }}"
+        {{- end }}
+        - "-log-level={{.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9997
+          failureThreshold: 7
+        {{- if .EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
