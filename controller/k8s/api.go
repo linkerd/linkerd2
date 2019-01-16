@@ -35,8 +35,8 @@ type APIResource int
 // These constants enumerate Kubernetes resource types.
 const (
 	CM APIResource = iota
-	Daemonset
 	Deploy
+	DS
 	Endpoint
 	MWC // mutating webhook configuration
 	Pod
@@ -50,16 +50,16 @@ const (
 type API struct {
 	Client kubernetes.Interface
 
-	cm        coreinformers.ConfigMapInformer
-	daemonset appv1informers.DaemonSetInformer
-	deploy    appv1beta2informers.DeploymentInformer
-	endpoint  coreinformers.EndpointsInformer
-	mwc       arinformers.MutatingWebhookConfigurationInformer
-	pod       coreinformers.PodInformer
-	rc        coreinformers.ReplicationControllerInformer
-	rs        appv1beta2informers.ReplicaSetInformer
-	sp        spinformers.ServiceProfileInformer
-	svc       coreinformers.ServiceInformer
+	cm       coreinformers.ConfigMapInformer
+	deploy   appv1beta2informers.DeploymentInformer
+	ds       appv1informers.DaemonSetInformer
+	endpoint coreinformers.EndpointsInformer
+	mwc      arinformers.MutatingWebhookConfigurationInformer
+	pod      coreinformers.PodInformer
+	rc       coreinformers.ReplicationControllerInformer
+	rs       appv1beta2informers.ReplicaSetInformer
+	sp       spinformers.ServiceProfileInformer
+	svc      coreinformers.ServiceInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -102,12 +102,12 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case CM:
 			api.cm = sharedInformers.Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
-		case Daemonset:
-			api.daemonset = sharedInformers.Apps().V1().DaemonSets()
-			api.syncChecks = append(api.syncChecks, api.daemonset.Informer().HasSynced)
 		case Deploy:
 			api.deploy = sharedInformers.Apps().V1beta2().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
+		case DS:
+			api.ds = sharedInformers.Apps().V1().DaemonSets()
+			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
@@ -150,20 +150,20 @@ func (api *API) Sync() {
 	log.Infof("caches synced")
 }
 
-// DS provides access to a shared informer and lister for Daemonsets.
-func (api *API) DS() appv1informers.DaemonSetInformer {
-	if api.daemonset == nil {
-		panic("Daemonset informer not configured")
-	}
-	return api.daemonset
-}
-
 // Deploy provides access to a shared informer and lister for Deployments.
 func (api *API) Deploy() appv1beta2informers.DeploymentInformer {
 	if api.deploy == nil {
 		panic("Deploy informer not configured")
 	}
 	return api.deploy
+}
+
+// DS provides access to a shared informer and lister for Daemonsets.
+func (api *API) DS() appv1informers.DaemonSetInformer {
+	if api.ds == nil {
+		panic("DS informer not configured")
+	}
+	return api.ds
 }
 
 // RS provides access to a shared informer and lister for ReplicaSets.

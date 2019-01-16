@@ -70,6 +70,7 @@ func newCmdStat() *cobra.Command {
   * all
 
   Valid resource types include:
+  * daemonsets
   * deployments
   * namespaces
   * pods
