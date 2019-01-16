@@ -6,13 +6,13 @@
   * Add Daemonset support to Web UI, Grafana, and cli `stat` command (thanks,
     @zknill!)
 * Web UI
-  * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
-    config
   * Add "meshed" and "no traffic" badges on the resource detail pages
   * Fixed `linkerd dashboard` to maintain proxy connection when browser open
     fails
   * Fixed JavaScript bundling to avoid serving old versions after upgrade
 * CLI
+  * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
+    config
   * Add `linkerd logs` command to surface logs from any container in the Linkerd
     control plane.
   * Improved `linkerd routes` to list all routes, including those without
