@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -145,13 +146,8 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 				fmt.Fprintln(w)
 			}
 
-			underline := ""
-			for i := 0; i < len(result.Category); i++ {
-				underline = underline + "-"
-			}
-
 			fmt.Fprintln(w, result.Category)
-			fmt.Fprintln(w, underline)
+			fmt.Fprintln(w, strings.Repeat("-", len(result.Category)))
 
 			lastCategory = result.Category
 		}
