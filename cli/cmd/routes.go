@@ -25,6 +25,12 @@ type routesOptions struct {
 	dstIsService bool
 }
 
+type routeRowStats struct {
+	rowStats
+	actualRequestRate float64
+	actualSuccessRate float64
+}
+
 const defaultRoute = "[UNKNOWN]"
 
 func newRoutesOptions() *routesOptions {
@@ -72,7 +78,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default), \"wide\", and \"json\" are supported")
 
 	return cmd
 }
@@ -99,7 +105,7 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 }
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
-	table := make([]*rowStats, 0)
+	table := make([]*routeRowStats, 0)
 
 	for _, r := range resp.GetRoutes().Rows {
 		if r.Stats != nil {
@@ -107,14 +113,18 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 			if route == "" {
 				route = defaultRoute
 			}
-			table = append(table, &rowStats{
-				route:       route,
-				dst:         r.GetAuthority(),
-				requestRate: getRequestRate(r.Stats, r.TimeWindow),
-				successRate: getSuccessRate(r.Stats),
-				latencyP50:  r.Stats.LatencyMsP50,
-				latencyP95:  r.Stats.LatencyMsP95,
-				latencyP99:  r.Stats.LatencyMsP99,
+			table = append(table, &routeRowStats{
+				rowStats: rowStats{
+					route:       route,
+					dst:         r.GetAuthority(),
+					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+					successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
+					latencyP50:  r.Stats.LatencyMsP50,
+					latencyP95:  r.Stats.LatencyMsP95,
+					latencyP99:  r.Stats.LatencyMsP99,
+				},
+				actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
+				actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
 			})
 		}
 	}
@@ -124,18 +134,18 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	})
 
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		if len(table) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.")
 			os.Exit(0)
 		}
 		printRouteTable(table, w, options)
 	case "json":
-		printRouteJSON(table, w)
+		printRouteJSON(table, w, options)
 	}
 }
 
-func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth(stats))
 
@@ -147,16 +157,38 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
-		"SUCCESS",
-		"RPS",
+	}
+	outputActual := options.toResource != "" && options.outputFormat == "wide"
+	if outputActual {
+		headers = append(headers, []string{
+			"EFFECTIVE_SUCCESS",
+			"EFFECTIVE_RPS",
+			"ACTUAL_SUCCESS",
+			"ACTUAL_RPS",
+		}...)
+	} else {
+		headers = append(headers, []string{
+			"SUCCESS",
+			"RPS",
+		}...)
+	}
+
+	headers = append(headers, []string{
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99\t", // trailing \t is required to format last column
-	}
+	}...)
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+	// route, success rate, rps
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
+	if outputActual {
+		// actual success rate, actual rps
+		templateString = templateString + "%.2f%%\t%.1frps\t"
+	}
+	// p50, p95, p99
+	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
 	for _, row := range stats {
 
@@ -166,30 +198,44 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 			authorityValue = segments[0]
 		}
 
-		fmt.Fprintf(w, templateString,
+		values := []interface{}{
 			row.route,
 			authorityValue,
-			row.successRate*100,
+			row.successRate * 100,
 			row.requestRate,
+		}
+		if outputActual {
+			values = append(values, []interface{}{
+				row.actualSuccessRate * 100,
+				row.actualRequestRate,
+			}...)
+		}
+		values = append(values, []interface{}{
 			row.latencyP50,
 			row.latencyP95,
 			row.latencyP99,
-		)
+		}...)
+
+		fmt.Fprintf(w, templateString, values...)
 	}
 }
 
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
-	Route        string   `json:"route"`
-	Authority    string   `json:"authority"`
-	Success      *float64 `json:"success"`
-	Rps          *float64 `json:"rps"`
-	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
-	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
-	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
+	Route            string   `json:"route"`
+	Authority        string   `json:"authority"`
+	Success          *float64 `json:"success,omitempty"`
+	Rps              *float64 `json:"rps,omitempty"`
+	EffectiveSuccess *float64 `json:"effective_success,omitempty"`
+	EffectiveRps     *float64 `json:"effective_rps,omitempty"`
+	ActualSuccess    *float64 `json:"actual_success,omitempty"`
+	ActualRps        *float64 `json:"actual_rps,omitempty"`
+	LatencyMSp50     *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95     *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99     *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
+func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonRouteStats{}
 	for _, row := range stats {
@@ -199,8 +245,15 @@ func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
 		}
 
 		entry.Authority = row.dst
-		entry.Success = &row.successRate
-		entry.Rps = &row.requestRate
+		if options.toResource != "" {
+			entry.EffectiveSuccess = &row.successRate
+			entry.EffectiveRps = &row.requestRate
+			entry.ActualSuccess = &row.actualSuccessRate
+			entry.ActualRps = &row.actualRequestRate
+		} else {
+			entry.Success = &row.successRate
+			entry.Rps = &row.requestRate
+		}
 		entry.LatencyMSp50 = &row.latencyP50
 		entry.LatencyMSp95 = &row.latencyP95
 		entry.LatencyMSp99 = &row.latencyP99
@@ -213,6 +266,20 @@ func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
 		return
 	}
 	fmt.Fprintf(w, "%s\n", b)
+}
+
+func (o *routesOptions) validateOutputFormat() error {
+	switch o.outputFormat {
+	case "table", "json", "":
+		return nil
+	case "wide":
+		if o.toResource == "" {
+			return errors.New("wide output is only available when --to is specified")
+		}
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table, wide, and json")
+	}
 }
 
 func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
@@ -277,7 +344,7 @@ func buildTopRoutesTo(toResource pb.Resource) (string, error) {
 }
 
 // returns the length of the longest route name
-func routeWidth(stats []*rowStats) int {
+func routeWidth(stats []*routeRowStats) int {
 	maxLength := len(defaultRoute)
 	for _, row := range stats {
 		if len(row.route) > maxLength {

@@ -13,6 +13,7 @@ import (
 
 const (
 	routeReqQuery             = "sum(increase(route_response_total%s[%s])) by (%s, dst, classification)"
+	actualRouteReqQuery       = "sum(increase(route_actual_response_total%s[%s])) by (%s, dst, classification)"
 	routeLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(route_response_latency_ms_bucket%s[%s])) by (le, dst, %s))"
 	dstLabel                  = `dst=~"%s(:\\d+)?"`
 )
@@ -52,7 +53,16 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 	reqLabels := buildRouteLabels(req)
 	groupBy := "rt_route"
 
-	results, err := s.getPrometheusMetrics(ctx, routeReqQuery, routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy)
+	queries := map[promType]string{
+		promRequests: routeReqQuery,
+	}
+
+	if req.GetOutbound() != nil && req.GetNone() == nil {
+		// If this req has an Outbound, then query the actual request counts as well.
+		queries[promActualRequests] = actualRouteReqQuery
+	}
+
+	results, err := s.getPrometheusMetrics(ctx, queries, routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +145,13 @@ func processRouteMetrics(results []promResult, timeWindow string) *pb.RouteTable
 					routeStats[key].Stats.SuccessCount += value
 				case "failure":
 					routeStats[key].Stats.FailureCount += value
+				}
+			case promActualRequests:
+				switch string(sample.Metric[model.LabelName("classification")]) {
+				case "success":
+					routeStats[key].Stats.ActualSuccessCount += value
+				case "failure":
+					routeStats[key].Stats.ActualFailureCount += value
 				}
 			case promLatencyP50:
 				routeStats[key].Stats.LatencyMsP50 = value

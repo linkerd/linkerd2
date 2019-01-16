@@ -111,7 +111,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenTopRoutesResponse(routes, counts),
+				expectedResponse: GenTopRoutesResponse(routes, counts, false),
 			},
 		}
 
@@ -143,7 +143,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenTopRoutesResponse(routes, counts),
+				expectedResponse: GenTopRoutesResponse(routes, counts, false),
 			},
 		}
 
@@ -163,6 +163,7 @@ func TestTopRoutes(t *testing.T) {
 						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
 						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
 						`sum(increase(route_response_total{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (rt_route, dst, classification)`,
+						`sum(increase(route_actual_response_total{deployment="traffic", direction="outbound", namespace="books"}[1m])) by (rt_route, dst, classification)`,
 					},
 				},
 				req: pb.TopRoutesRequest{
@@ -178,7 +179,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenTopRoutesResponse(routes, counts),
+				expectedResponse: GenTopRoutesResponse(routes, counts, true),
 			},
 		}
 
@@ -198,6 +199,7 @@ func TestTopRoutes(t *testing.T) {
 						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, dst, rt_route))`,
 						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (le, dst, rt_route))`,
 						`sum(increase(route_response_total{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (rt_route, dst, classification)`,
+						`sum(increase(route_actual_response_total{deployment="traffic", direction="outbound", dst=~"books.default.svc.cluster.local(:\\d+)?", namespace="books"}[1m])) by (rt_route, dst, classification)`,
 					},
 				},
 				req: pb.TopRoutesRequest{
@@ -213,7 +215,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenTopRoutesResponse(routes, counts),
+				expectedResponse: GenTopRoutesResponse(routes, counts, true),
 			},
 		}
 

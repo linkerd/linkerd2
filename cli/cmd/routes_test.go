@@ -38,7 +38,7 @@ func TestRoutes(t *testing.T) {
 func testRoutesCall(exp routesParamsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
 
-	response := public.GenTopRoutesResponse(exp.routes, exp.counts)
+	response := public.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "")
 
 	mockClient.TopRoutesResponseToReturn = &response
 

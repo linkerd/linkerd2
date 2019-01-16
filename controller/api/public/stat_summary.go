@@ -309,7 +309,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
-	results, err := s.getPrometheusMetrics(ctx, reqQuery, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
+	results, err := s.getPrometheusMetrics(ctx, map[promType]string{promRequests: reqQuery}, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 
 	if err != nil {
 		return nil, err

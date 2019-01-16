@@ -39,6 +39,11 @@ spec:
       #       method: DELETE
       #   - pathRegex: /info.txt
 
+    # A route may be marked as retryable.  This indicates that requests to this
+    # route are always safe to retry and will cause the proxy to retry failed
+    # requests on this route whenever possible.
+    # isRetryable: true
+
     # A route may optionally define a list of response classes which describe
     # how responses from this route will be classified.
     responseClasses:
@@ -67,4 +72,23 @@ spec:
       # The response class defines whether responses should be counted as
       # successes or failures.
       isFailure: true
+
+  # A service profile can also define a retry budget.  This specifies the
+  # maximum total number of retries that should be sent to this service as a
+  # ratio of the original request volume.
+  # retryBudget:
+  #   The retryRatio is the maximum ratio of retries requests to original
+  #   requests.  A retryRatio of 0.2 means that retries may add at most an
+  #   additional 20% to the request load.
+  #   retryRatio: 0.2
+
+  #   This is an allowance of retries per second in addition to those allowed
+  #   by the retryRatio.  This allows retries to be performed, when the request
+  #   rate is very low.
+  #   minRetriesPerSecond: 10
+
+  #   This duration indicates for how long requests should be considered for the
+  #   purposes of calculating the retryRatio.  A higher value considers a larger
+  #   window and therefore allows burstier retries.
+  #   ttl: 10s
 `

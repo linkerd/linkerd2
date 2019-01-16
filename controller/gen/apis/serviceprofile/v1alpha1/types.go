@@ -27,7 +27,8 @@ type ServiceProfile struct {
 
 // ServiceProfileSpec specifies a ServiceProfile resource.
 type ServiceProfileSpec struct {
-	Routes []*RouteSpec `json:"routes"`
+	Routes      []*RouteSpec `json:"routes"`
+	RetryBudget *RetryBudget `json:"retryBudget"`
 }
 
 // RouteSpec specifies a Route resource.
@@ -35,6 +36,7 @@ type RouteSpec struct {
 	Name            string           `json:"name"`
 	Condition       *RequestMatch    `json:"condition"`
 	ResponseClasses []*ResponseClass `json:"responseClasses,omitempty"`
+	IsRetryable     bool             `json:"isRetryable,omitempty"`
 }
 
 // RequestMatch describes the conditions under which to match a Route.
@@ -65,6 +67,14 @@ type ResponseMatch struct {
 type Range struct {
 	Min uint32 `json:"min,omitempty"`
 	Max uint32 `json:"max,omitempty"`
+}
+
+// RetryBudget describes the maximum number of retries that should be issued to
+// this service.
+type RetryBudget struct {
+	RetryRatio          float32 `json:"retryRatio"`
+	MinRetriesPerSecond uint32  `json:"minRetriesPerSecond"`
+	TTL                 string  `json:"ttl"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
