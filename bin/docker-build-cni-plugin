@@ -22,4 +22,4 @@ validate_go_deps_tag "$dockerfile"
     "$bindir"/docker-build-go-deps
 ) >/dev/null
 
-docker_build proxy-init "$(head_root_tag)" "$dockerfile"
+docker_build cni-plugin "$(head_root_tag)" "$dockerfile"
