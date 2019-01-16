@@ -26,6 +26,7 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/cni/pkg/version"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/proxy-init/cmd"
 	"github.com/linkerd/linkerd2/proxy-init/iptables"
 	"github.com/projectcalico/libcalico-go/lib/logutils"
@@ -172,25 +173,54 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 		if !excludePod {
-			client, err := newKubeClient(*conf, logEntry)
+			client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd2-cni-context")
 			if err != nil {
 				return err
 			}
 			logrus.WithField("client", client).Debug("Created Kubernetes client")
-			containers, _, annotations, ports, k8sErr := getKubePodInfo(client, string(k8sArgs.K8S_POD_NAME), string(k8sArgs.K8S_POD_NAMESPACE))
-			if k8sErr != nil {
-				logEntry.Warnf("Error geting Pod data %v", k8sErr)
+
+			httpClient, err := client.NewClient()
+			if err != nil {
+				return err
 			}
+			logrus.WithField("httpClient", httpClient).Debug("Created httpClient")
+
+			pod, err := client.GetPodInNamespace(httpClient, string(k8sArgs.K8S_POD_NAMESPACE), string(k8sArgs.K8S_POD_NAME))
+			if err != nil {
+				return err
+			}
+			logEntry.WithField("pod", pod).Debugf("Found Pod: %v in Namespace: %v", pod.GetName(), string(k8sArgs.K8S_POD_NAMESPACE))
+
+			annotations := pod.GetAnnotations()
+			containers := make([]string, len(pod.Spec.Containers))
+			ports := make([]string, 4)
+			for containerIdx, container := range pod.Spec.Containers {
+				logEntry.WithFields(logrus.Fields{
+					"container": container.Name,
+				}).Debug("Inspecting container")
+				containers[containerIdx] = container.Name
+
+				if container.Name == "linkerd-proxy" {
+					// don't include ports from linkerd-proxy in the redirect ports
+					continue
+				}
+				for _, containerPort := range container.Ports {
+					logEntry.WithFields(logrus.Fields{
+						"container": container.Name,
+						"port":      containerPort,
+					}).Debug("Added pod port")
+
+					ports = append(ports, strconv.Itoa(int(containerPort.ContainerPort)))
+				}
+			}
+
 			logEntry.Infof("Found containers %v", containers)
 			if len(containers) > 1 {
-				logrus.WithFields(logrus.Fields{
-					"ContainerID": args.ContainerID,
+				logEntry.WithFields(logrus.Fields{
 					"netns":       args.Netns,
-					"pod":         string(k8sArgs.K8S_POD_NAME),
-					"Namespace":   string(k8sArgs.K8S_POD_NAMESPACE),
 					"ports":       ports,
 					"annotations": annotations,
-				}).Infof("Checking annotations prior to redirect for linkerd2-proxy")
+				}).Infof("Checking annotations prior to redirect for linkerd-proxy")
 				if val, ok := annotations[injectAnnotationKey]; ok {
 					logEntry.Infof("Pod %s contains inject annotation: %s", string(k8sArgs.K8S_POD_NAME), val)
 					if injectEnabled, err := strconv.ParseBool(val); err == nil {
