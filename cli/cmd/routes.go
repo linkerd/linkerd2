@@ -158,17 +158,18 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
 	}
-	if options.toResource == "" || options.outputFormat != "wide" {
-		headers = append(headers, []string{
-			"SUCCESS",
-			"RPS",
-		}...)
-	} else {
+	outputActual := options.toResource != "" && options.outputFormat == "wide"
+	if outputActual {
 		headers = append(headers, []string{
 			"EFFECTIVE_SUCCESS",
 			"EFFECTIVE_RPS",
 			"ACTUAL_SUCCESS",
 			"ACTUAL_RPS",
+		}...)
+	} else {
+		headers = append(headers, []string{
+			"SUCCESS",
+			"RPS",
 		}...)
 	}
 
@@ -182,7 +183,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 
 	// route, success rate, rps
 	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
-	if options.toResource != "" && options.outputFormat == "wide" {
+	if outputActual {
 		// actual success rate, actual rps
 		templateString = templateString + "%.2f%%\t%.1frps\t"
 	}
@@ -203,7 +204,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 			row.successRate * 100,
 			row.requestRate,
 		}
-		if options.toResource != "" && options.outputFormat == "wide" {
+		if outputActual {
 			values = append(values, []interface{}{
 				row.actualSuccessRate * 100,
 				row.actualRequestRate,
@@ -267,8 +268,22 @@ func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer, options *routes
 	fmt.Fprintf(w, "%s\n", b)
 }
 
+func validateOutputFormat(options *routesOptions) error {
+	switch options.outputFormat {
+	case "table", "json", "":
+		return nil
+	case "wide":
+		if options.toResource == "" {
+			return errors.New("wide output is only available when --to is specified")
+		}
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table, wide, and json")
+	}
+}
+
 func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
-	err := options.validateOutputFormat()
+	err := validateOutputFormat(options)
 	if err != nil {
 		return nil, err
 	}
