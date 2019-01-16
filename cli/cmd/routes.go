@@ -268,12 +268,12 @@ func printRouteJSON(stats []*routeRowStats, w *tabwriter.Writer, options *routes
 	fmt.Fprintf(w, "%s\n", b)
 }
 
-func validateOutputFormat(options *routesOptions) error {
-	switch options.outputFormat {
+func (o *routesOptions) validateOutputFormat() error {
+	switch o.outputFormat {
 	case "table", "json", "":
 		return nil
 	case "wide":
-		if options.toResource == "" {
+		if o.toResource == "" {
 			return errors.New("wide output is only available when --to is specified")
 		}
 		return nil
@@ -283,7 +283,7 @@ func validateOutputFormat(options *routesOptions) error {
 }
 
 func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
-	err := validateOutputFormat(options)
+	err := options.validateOutputFormat()
 	if err != nil {
 		return nil, err
 	}
