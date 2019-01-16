@@ -1,12 +1,12 @@
-{{ if not .SingleNamespace -}}
+{{ if not .Values.SingleNamespace -}}
 ### Namespace ###
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{.Namespace}}
-  {{- if and .EnableTLS .ProxyAutoInjectEnabled }}
+  name: {{.Values.Namespace}}
+  {{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
   labels:
-    {{.ProxyAutoInjectLabel}}: disabled
+    {{.Values.ProxyAutoInjectLabel}}: disabled
   {{- end }}
 
 {{ end -}}
@@ -16,28 +16,28 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-controller
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Controller RBAC ###
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}Role
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-controller
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-controller
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
-{{- if .SingleNamespace }}
+{{- if .Values.SingleNamespace }}
 - apiGroups: [""]
   resources: ["namespaces"]
-  resourceNames: ["{{.Namespace}}"]
+  resourceNames: ["{{.Values.Namespace}}"]
   verbs: ["list", "get", "watch"]
 {{- else }}
 - apiGroups: ["linkerd.io"]
@@ -46,21 +46,21 @@ rules:
 {{- end }}
 
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-controller
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-controller
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
-  name: linkerd-{{.Namespace}}-controller
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Service Account Prometheus ###
 ---
@@ -68,16 +68,16 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Prometheus RBAC ###
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}Role
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-prometheus
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-prometheus
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 rules:
 - apiGroups: [""]
@@ -85,21 +85,21 @@ rules:
   verbs: ["get", "list", "watch"]
 
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-prometheus
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-prometheus
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
-  name: linkerd-{{.Namespace}}-prometheus
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
   name: linkerd-prometheus
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Controller ###
 ---
@@ -107,15 +107,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-controller-api
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.Values.ControllerComponentLabel}}: controller
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: controller
+    {{.Values.ControllerComponentLabel}}: controller
   ports:
   - name: http
     port: 8085
@@ -126,38 +126,38 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-api
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.Values.ControllerComponentLabel}}: controller
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: controller
+    {{.Values.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
-    port: {{.ProxyAPIPort}}
-    targetPort: {{.ProxyAPIPort}}
+    port: {{.Values.ProxyAPIPort}}
+    targetPort: {{.Values.ProxyAPIPort}}
 
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-controller
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.Values.ControllerComponentLabel}}: controller
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
-  replicas: {{.ControllerReplicas}}
+  replicas: {{.Values.ControllerReplicas}}
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: controller
+        {{.Values.ControllerComponentLabel}}: controller
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-controller
       containers:
@@ -167,14 +167,14 @@ spec:
           containerPort: 8085
         - name: admin-http
           containerPort: 9995
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "public-api"
-        - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-prometheus-url=http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -185,30 +185,30 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}
       - name: proxy-api
         ports:
         - name: grpc
-          containerPort: {{.ProxyAPIPort}}
+          containerPort: {{.Values.ProxyAPIPort}}
         - name: admin-http
           containerPort: 9996
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "proxy-api"
-        - "-addr=:{{.ProxyAPIPort}}"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        - "-enable-tls={{.EnableTLS}}"
-        - "-enable-h2-upgrade={{.EnableH2Upgrade}}"
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-addr=:{{.Values.ProxyAPIPort}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-enable-tls={{.Values.EnableTLS}}"
+        - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -219,27 +219,27 @@ spec:
             path: /ready
             port: 9996
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}
       - name: tap
         ports:
         - name: grpc
           containerPort: 8088
         - name: admin-http
           containerPort: 9998
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "tap"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -250,25 +250,25 @@ spec:
             path: /ready
             port: 9998
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}
 
-{{- if not .SingleNamespace }}
+{{- if not .Values.SingleNamespace }}
 ### Service Profile CRD ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -356,7 +356,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Web ###
 ---
@@ -364,15 +364,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: web
+    {{.Values.ControllerComponentLabel}}: web
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: web
+    {{.Values.ControllerComponentLabel}}: web
   ports:
   - name: http
     port: 8084
@@ -386,19 +386,19 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: web
+    {{.Values.ControllerComponentLabel}}: web
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: web
+        {{.Values.ControllerComponentLabel}}: web
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       containers:
       - name: web
@@ -407,15 +407,15 @@ spec:
           containerPort: 8084
         - name: admin-http
           containerPort: 9994
-        image: {{.WebImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.WebImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
-        - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
-        - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.cluster.local:3000"
-        - "-uuid={{.UUID}}"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-api-addr=linkerd-controller-api.{{.Values.Namespace}}.svc.cluster.local:8085"
+        - "-grafana-addr=linkerd-grafana.{{.Values.Namespace}}.svc.cluster.local:3000"
+        - "-uuid={{.Values.UUID}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -426,14 +426,14 @@ spec:
             path: /ready
             port: 9994
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}
       serviceAccountName: linkerd-web
 
 ### Prometheus ###
@@ -442,15 +442,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: prometheus
+    {{.Values.ControllerComponentLabel}}: prometheus
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: prometheus
+    {{.Values.ControllerComponentLabel}}: prometheus
   ports:
   - name: admin-http
     port: 9090
@@ -461,23 +461,23 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: prometheus
+    {{.Values.ControllerComponentLabel}}: prometheus
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: prometheus
+        {{.Values.ControllerComponentLabel}}: prometheus
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-prometheus
       volumes:
-      - name: {{.PrometheusVolumeName}}
+      - name: {{.Values.PrometheusVolumeName}}
         emptyDir: {}
       - name: prometheus-config
         configMap:
@@ -488,15 +488,15 @@ spec:
         - name: admin-http
           containerPort: 9090
         volumeMounts:
-        - name: {{.PrometheusVolumeName}}
-          mountPath: /{{.PrometheusVolumeName}}
+        - name: {{.Values.PrometheusVolumeName}}
+          mountPath: /{{.Values.PrometheusVolumeName}}
         - name: prometheus-config
           mountPath: /etc/prometheus
           readOnly: true
-        image: {{.PrometheusImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.PrometheusImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
-        - "--storage.tsdb.path=/{{.PrometheusVolumeName}}"
+        - "--storage.tsdb.path=/{{.Values.PrometheusVolumeName}}"
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
         readinessProbe:
@@ -511,7 +511,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 300m
@@ -525,11 +525,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-prometheus-config
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: prometheus
+    {{.Values.ControllerComponentLabel}}: prometheus
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   prometheus.yml: |-
     global:
@@ -549,7 +549,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Namespace}}']
+          names: ['{{.Values.Namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -560,7 +560,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Namespace}}']
+          names: ['{{.Values.Namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -574,9 +574,9 @@ data:
     - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
-        {{- if .SingleNamespace}}
+        {{- if .Values.SingleNamespace}}
         namespaces:
-          names: ['{{.Namespace}}']
+          names: ['{{.Values.Namespace}}']
         {{- end}}
       relabel_configs:
       - source_labels:
@@ -584,7 +584,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^{{.ProxyContainerName}};linkerd-metrics;{{.Namespace}}$
+        regex: ^{{.Values.ProxyContainerName}};linkerd-metrics;{{.Values.Namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -619,7 +619,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### Grafana ###
 ---
@@ -627,15 +627,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: grafana
+    {{.Values.ControllerComponentLabel}}: grafana
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: grafana
+    {{.Values.ControllerComponentLabel}}: grafana
   ports:
   - name: http
     port: 3000
@@ -646,22 +646,22 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: grafana
+    {{.Values.ControllerComponentLabel}}: grafana
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: grafana
+        {{.Values.ControllerComponentLabel}}: grafana
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       volumes:
-      - name: {{.GrafanaVolumeName}}
+      - name: {{.Values.GrafanaVolumeName}}
         emptyDir: {}
       - name: grafana-config
         configMap:
@@ -680,15 +680,15 @@ spec:
           containerPort: 3000
         env:
         - name: GF_PATHS_DATA
-          value: /{{.GrafanaVolumeName}}
+          value: /{{.Values.GrafanaVolumeName}}
         volumeMounts:
-        - name: {{.GrafanaVolumeName}}
-          mountPath: /{{.GrafanaVolumeName}}
+        - name: {{.Values.GrafanaVolumeName}}
+          mountPath: /{{.Values.GrafanaVolumeName}}
         - name: grafana-config
           mountPath: /etc/grafana
           readOnly: true
-        image: {{.GrafanaImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.GrafanaImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /api/health
@@ -698,7 +698,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
@@ -713,11 +713,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-grafana-config
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: grafana
+    {{.Values.ControllerComponentLabel}}: grafana
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   grafana.ini: |-
     instance_name = linkerd-grafana
@@ -745,7 +745,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090
+      url: http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
