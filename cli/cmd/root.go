@@ -259,7 +259,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyOutboundCapacity:   map[string]uint{},
 		proxyCPURequest:         "",
 		proxyMemoryRequest:      "",
-		tls:                     ""
+		tls:                     "",
 		disableExternalProfiles: false,
 	}
 }
