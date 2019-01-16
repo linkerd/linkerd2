@@ -76,7 +76,7 @@ type PluginConf struct {
 	PrevResult    *current.Result         `json:"-"`
 
 	LogLevel   string     `json:"log_level"`
-	ProxyInit  ProxyInit  `json:"linkerd2"`
+	ProxyInit  ProxyInit  `json:"linkerd"`
 	Kubernetes Kubernetes `json:"kubernetes"`
 }
 
@@ -173,7 +173,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 		if !excludePod {
-			client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd2-cni-context")
+			client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd-cni-context")
 			if err != nil {
 				return err
 			}

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Script to install Linkerd2 CNI on a Kubernetes host.
+# Script to install Linkerd CNI on a Kubernetes host.
 # - Expects the host CNI binary path to be mounted at /host/opt/cni/bin.
 # - Expects the host CNI network config path to be mounted at /host/etc/cni/net.d.
 # - Expects the desired CNI config in the CNI_NETWORK_CONFIG env variable.
@@ -31,29 +31,29 @@ HOST_CNI_BIN_DIR=${CNI_BIN_DIR:-/opt/cni/bin}
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
 CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
-CNI_CONF_PATH=${CNI_CONF_PATH:-"${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd2-cni.conflist"}
+CNI_CONF_PATH=${CNI_CONF_PATH:-"${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conflist"}
 
-KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd2-cni-kubeconfig}
+KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
 cleanup() {
-  echo 'Removing linkerd2-cni artifacts.'
+  echo 'Removing linkerd-cni artifacts.'
 
   if [ -e "${CNI_CONF_PATH}" ]; then
-    echo "Removing linkerd2-cni config: ${CNI_CONF_PATH}"
-    CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd2-cni" ))')
+    echo "Removing linkerd-cni config: ${CNI_CONF_PATH}"
+    CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))')
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
-    if [ "${CNI_CONF_PATH}" = "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd2-cni.conflist" ]; then
+    if [ "${CNI_CONF_PATH}" = "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conflist" ]; then
       rm -f "${CNI_CONF_PATH}"
     fi
   fi
   if [ -e "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" ]; then
-    echo "Removing linkerd2-cni kubeconfig: ${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+    echo "Removing linkerd-cni kubeconfig: ${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
     rm -f "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
   fi
-  if [ -e "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}"/linkerd2-cni ]; then
-    echo "Removing linkerd2-cni binary: ${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd2-cni"
-    rm -f "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd2-cni"
+  if [ -e "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}"/linkerd-cni ]; then
+    echo "Removing linkerd-cni binary: ${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd-cni"
+    rm -f "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd-cni"
   fi
   echo 'Exiting.'
 }
@@ -74,9 +74,9 @@ do
   cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
 done
 
-echo "Wrote linkerd2 CNI binaries to ${dir}"
+echo "Wrote linkerd CNI binaries to ${dir}"
 
-TMP_CONF='/linkerd2-cni.conf.default'
+TMP_CONF='/linkerd-cni.conf.default'
 # If specified, overwrite the network configuration file.
 : "${CNI_NETWORK_CONFIG_FILE:=}"
 : "${CNI_NETWORK_CONFIG:=}"
@@ -119,7 +119,7 @@ if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
   touch "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
   chmod "${KUBECONFIG_MODE:-600}" "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
   cat > "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" <<EOF
-# Kubeconfig file for linkerd2 CNI plugin.
+# Kubeconfig file for linkerd CNI plugin.
 apiVersion: v1
 kind: Config
 clusters:
@@ -128,15 +128,15 @@ clusters:
     server: ${KUBERNETES_SERVICE_PROTOCOL:-https}://[${KUBERNETES_SERVICE_HOST}]:${KUBERNETES_SERVICE_PORT}
     ${TLS_CFG}
 users:
-- name: linkerd2-cni
+- name: linkerd-cni
   user:
     token: ${SERVICEACCOUNT_TOKEN}
 contexts:
-- name: linkerd2-cni-context
+- name: linkerd-cni-context
   context:
     cluster: local
-    user: linkerd2-cni
-current-context: linkerd2-cni-context
+    user: linkerd-cni
+current-context: linkerd-cni-context
 EOF
 
 fi
@@ -169,7 +169,7 @@ sed -i s/__SERVICEACCOUNT_TOKEN__/"${SERVICEACCOUNT_TOKEN:-}"/g ${TMP_CONF}
 
 CNI_CONF_FILE="${CNI_CONF_PATH}"
 if [ -e "${CNI_CONF_FILE}" ]; then
-  # Add the linkerd2-cni plugin to the existing list
+  # Add the linkerd-cni plugin to the existing list
   CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
   CNI_CONF_DATA=$(cat "${CNI_CONF_FILE}" | jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /filter.jq)
   echo "${CNI_CONF_DATA}" > ${TMP_CONF}

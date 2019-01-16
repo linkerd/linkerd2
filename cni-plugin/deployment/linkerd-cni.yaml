@@ -7,15 +7,15 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: linkerd2-cni
+  name: linkerd-cni
   namespace: linkerd
 ---
-# Include a clusterrole for the linkerd2 CNI DaemonSet,
-# and bind it to the linkerd2-cni serviceaccount.
+# Include a clusterrole for the linkerd CNI DaemonSet,
+# and bind it to the linkerd-cni serviceaccount.
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd2-cni
+  name: linkerd-cni
 rules:
   - apiGroups: [""]
     resources: ["pods", "nodes", "namespaces"]
@@ -24,21 +24,21 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
-  name: linkerd2-cni
+  name: linkerd-cni
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: linkerd-linkerd-controller
 subjects:
 - kind: ServiceAccount
-  name: linkerd2-cni
+  name: linkerd-cni
   namespace: linkerd
 ---
-# This ConfigMap is used to configure a self-hosted linkerd2 CNI installation.
+# This ConfigMap is used to configure a self-hosted linkerd CNI installation.
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd2-cni-config
+  name: linkerd-cni-config
   namespace: linkerd
 data:
   incoming_proxy_port: "4143"
@@ -53,8 +53,8 @@ data:
   # values in this config will be automatically populated.
   cni_network_config: |-
     {
-      "name": "linkerd2-cni",
-      "type": "linkerd2-cni",
+      "name": "linkerd-cni",
+      "type": "linkerd-cni",
       "log_level": "__LOG_LEVEL__",
       "policy": {
           "type": "k8s",
@@ -64,7 +64,7 @@ data:
       "kubernetes": {
           "kubeconfig": "__KUBECONFIG_FILEPATH__"
       },
-      "linkerd2": {
+      "linkerd": {
         "incoming-proxy-port": __INCOMING_PROXY_PORT__,
         "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
         "proxy-uid": __PROXY_UID__,
@@ -75,19 +75,19 @@ data:
       }
     }
 ---
-# This manifest installs the linkerd2 CNI plugins and network config on
+# This manifest installs the linkerd CNI plugins and network config on
 # each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
-  name: linkerd2-cni
+  name: linkerd-cni
   namespace: linkerd
   labels:
-    k8s-app: linkerd2-cni
+    k8s-app: linkerd-cni
 spec:
   selector:
     matchLabels:
-      k8s-app: linkerd2-cni
+      k8s-app: linkerd-cni
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -95,7 +95,7 @@ spec:
   template:
     metadata:
       labels:
-        k8s-app: linkerd2-cni
+        k8s-app: linkerd-cni
       annotations:
         # This, along with the CriticalAddonsOnly toleration below,
         # marks the pod as a critical add-on, ensuring it gets
@@ -107,7 +107,7 @@ spec:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       tolerations:
-        # Make sure linkerd2-cni gets scheduled on all nodes.
+        # Make sure linkerd-cni gets scheduled on all nodes.
         - effect: NoSchedule
           operator: Exists
         # Mark the pod as a critical add-on for rescheduling.
@@ -115,54 +115,54 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
-      serviceAccountName: linkerd2-cni
+      serviceAccountName: linkerd-cni
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 5
       containers:
-        # This container installs the linkerd2 CNI binaries
+        # This container installs the linkerd CNI binaries
         # and CNI network config file on each node. The install
         # script copies the files into place and then sleeps so
         # that Kubernetes doesn't keep trying to restart it.
         - name: install-cni
-          image: gcr.io/linkerd-io/cni-plugin:dev-eec29001-x27s
+          image: gcr.io/linkerd-io/cni-plugin:dev-bd117b06-x27s
           command: ["/install-cni.sh"]
           env:
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: cni_network_config
             - name: INCOMING_PROXY_PORT
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: incoming_proxy_port
             - name: OUTGOING_PROXY_PORT
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: outgoing_proxy_port
             - name: PROXY_UID
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: proxy_uid
             - name: PORTS_TO_REDIRECT
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: ports_to_redirect
             - name: INBOUND_PORTS_TO_IGNORE
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: inbound_ports_to_ignore
             - name: LOG_LEVEL
               valueFrom:
                 configMapKeyRef:
-                  name: linkerd2-cni-config
+                  name: linkerd-cni-config
                   key: log_level
             - name: SLEEP
               value: "true"

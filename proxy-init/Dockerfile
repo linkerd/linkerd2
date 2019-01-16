@@ -1,5 +1,5 @@
 ## compile proxy-init utility
-FROM gcr.io/linkerd-io/go-deps:b758b586 as golang
+FROM gcr.io/linkerd-io/go-deps:7db9daa2 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY ./proxy-init ./proxy-init
 RUN CGO_ENABLED=0 GOOS=linux go install -v ./proxy-init/

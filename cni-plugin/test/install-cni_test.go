@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 	"testing"
 	"time"
@@ -95,12 +94,10 @@ func rm(dir string, t *testing.T) {
 }
 
 // populateTempDirs populates temporary test directories with golden files
-func populateTempDirs(wd string, tempCNINetDir string, t *testing.T) {
+func populateTempDirs(wd string, tempCNINetDir string, preConfFile string, t *testing.T) {
 	t.Logf("Pre-populating working dirs")
-	for _, f := range ls(wd+cniNetSubDir, t) {
-		t.Logf("Copying %v into temp config dir %v", f, tempCNINetDir)
-		cp(wd+cniNetSubDir+f, tempCNINetDir+"/"+f, t)
-	}
+	t.Logf("Copying %v into temp config dir %v", preConfFile, tempCNINetDir)
+	cp(wd+cniNetSubDir+preConfFile, tempCNINetDir+"/"+preConfFile, t)
 }
 
 // populateK8sCreds populates temporary k8s directories with k8s credentials like service account token
@@ -116,15 +113,15 @@ func populateK8sCreds(wd string, tempK8sSvcAcctDir string, t *testing.T) {
 func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
 	// The following is in place to default to a sane development environment that mirrors how bin/fast-build
 	// does it. To change to a different docker image, set the HUB and TAG environment variables before running the tests.
-	gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
-	user, _ := user.Current()
-	tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
-	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", string(tag))
+	// gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
+	// user, _ := user.Current()
+	// tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
+	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", "dev-bd117b06-x27s")
 	errFileName := wd + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.
 	args := []string{"run", "-d",
-		"--name", "test-linkerd2-cni-install",
+		"--name", "test-linkerd-cni-install",
 		"-v", tempCNINetDir + ":" + hostCniNetDir,
 		"-v", tempCNIBinDir + ":/host/opt/cni/bin",
 		"-v", tempK8sSvcAcctDir + ":/var/run/secrets/kubernetes.io/serviceaccount",
@@ -221,9 +218,9 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	if initialNetConfFile != "NONE" {
 		setEnv(cniConfName, initialNetConfFile, t)
 	}
-	defaultData, err := ioutil.ReadFile(wd + "../deployment/linkerd2-cni.conf.default")
+	defaultData, err := ioutil.ReadFile(wd + "../deployment/linkerd-cni.conf.default")
 	if err != nil {
-		t.Fatalf("Failed to read file %v, err: %v", wd+"../deployment/linkerd2-cni.conf.default", err)
+		t.Fatalf("Failed to read file %v, err: %v", wd+"../deployment/linkerd-cni.conf.default", err)
 	}
 	setEnv(cniNetworkConfigName, string(defaultData), t)
 
@@ -231,13 +228,13 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	time.Sleep(5 * time.Second)
 
 	compareConfResult(testWorkRootDir, tempCNINetDir, finalNetConfFile, expectNetConfFile, t)
-	checkBinDir(t, tempCNIBinDir, "add", "linkerd2-cni")
+	checkBinDir(t, tempCNIBinDir, "add", "linkerd-cni")
 
 	docker("stop", containerID, t)
 	time.Sleep(5 * time.Second)
 
 	t.Logf("Test %v: Check the cleanup worked", testNum)
-	checkBinDir(t, tempCNIBinDir, "del", "linkerd2-cni")
+	checkBinDir(t, tempCNIBinDir, "del", "linkerd-cni")
 	if len(expectedPostCleanNetConfFile) > 0 {
 		compareConfResult(testWorkRootDir, tempCNINetDir, finalNetConfFile, expectedPostCleanNetConfFile, t)
 	} else {
@@ -259,18 +256,18 @@ func TestInstallCNI_Scenario1(t *testing.T) {
 	t.Log("Scenario 1: There isn't an existing plugin configuration in the CNI_NET_DIR.")
 	t.Log("GIVEN the CNI_NET_DIR=/etc/cni/net.d/ is empty")
 	t.Log("WHEN the install-cni.sh script is executed")
-	t.Log("THEN it should write the 01-linkerd2-cni.conflist file appropriately")
+	t.Log("THEN it should write the 01-linkerd-cni.conflist file appropriately")
 	t.Log("AND WHEN the container is stopped")
-	t.Log("THEN it should delete the linkerd2-cni artifacts")
+	t.Log("THEN it should delete the linkerd-cni artifacts")
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
 	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
-	testCNINetDir := mktemp(testWd, "linkerd2-cni-confXXXXX", t)
+	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)
 	defer rm(testCNINetDir, t)
-	testCNIBinDir := mktemp(testWd, "linkerd2-cni-binXXXXX", t)
+	testCNIBinDir := mktemp(testWd, "linkerd-cni-binXXXXX", t)
 	t.Logf("..creating the test CNI_BIN_DIR: %v", testCNIBinDir)
 	defer rm(testCNIBinDir, t)
 	testK8sSvcAcctDir := mktemp(testWd, "kube-svcacctXXXXX", t)
@@ -278,7 +275,7 @@ func TestInstallCNI_Scenario1(t *testing.T) {
 	defer rm(testK8sSvcAcctDir, t)
 
 	populateK8sCreds(wd, testK8sSvcAcctDir, t)
-	doTest(1, wd, "NONE", "01-linkerd2-cni.conflist", wd+"data/expected/01-linkerd-cni.conflist-1", "", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
+	doTest(1, wd, "NONE", "01-linkerd-cni.conflist", wd+"data/expected/01-linkerd-cni.conflist-1", "", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
 }
 
 func TestInstallCNI_Scenario2(t *testing.T) {
@@ -290,24 +287,24 @@ func TestInstallCNI_Scenario2(t *testing.T) {
 	t.Log("THEN it should update the existing file contents appropriately")
 	t.Log("THEN it should rename the existing file appropriately")
 	t.Log("AND WHEN the container is stopped")
-	t.Log("THEN it should delete the linkerd2-cni artifacts")
+	t.Log("THEN it should delete the linkerd-cni artifacts")
 	t.Log("THEN it should revert back to the previous plugin configuration and filename")
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
 	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
-	testCNINetDir := mktemp(testWd, "linkerd2-cni-confXXXXX", t)
+	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)
 	defer rm(testCNINetDir, t)
-	testCNIBinDir := mktemp(testWd, "linkerd2-cni-binXXXXX", t)
+	testCNIBinDir := mktemp(testWd, "linkerd-cni-binXXXXX", t)
 	t.Logf("..creating the test CNI_BIN_DIR: %v", testCNIBinDir)
 	defer rm(testCNIBinDir, t)
 	testK8sSvcAcctDir := mktemp(testWd, "kube-svcacctXXXXX", t)
 	t.Logf("..creating the k8s service account directory: %v", testK8sSvcAcctDir)
 	defer rm(testK8sSvcAcctDir, t)
 
-	populateTempDirs(wd, testCNINetDir, t)
+	populateTempDirs(wd, testCNINetDir, "10-host-local.conf", t)
 	populateK8sCreds(wd, testK8sSvcAcctDir, t)
 	doTest(2, wd, hostCniNetDir+"/10-host-local.conf", "10-host-local.conf", wd+"data/expected/10-host-local.conflist-1", wd+"data/expected/10-host-local.conf-1.clean", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
 }
@@ -321,24 +318,24 @@ func TestInstallCNI_Scenario3(t *testing.T) {
 	t.Log("THEN it should update the existing file contents appropriately")
 	t.Log("THEN it should rename the existing file appropriately")
 	t.Log("AND WHEN the container is stopped")
-	t.Log("THEN it should delete the linkerd2-cni artifacts")
+	t.Log("THEN it should delete the linkerd-cni artifacts")
 	t.Log("THEN it should revert back to the previous plugin configuration and filename")
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
 	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
-	testCNINetDir := mktemp(testWd, "linkerd2-cni-confXXXXX", t)
+	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)
 	defer rm(testCNINetDir, t)
-	testCNIBinDir := mktemp(testWd, "linkerd2-cni-binXXXXX", t)
+	testCNIBinDir := mktemp(testWd, "linkerd-cni-binXXXXX", t)
 	t.Logf("..creating the test CNI_BIN_DIR: %v", testCNIBinDir)
 	defer rm(testCNIBinDir, t)
 	testK8sSvcAcctDir := mktemp(testWd, "kube-svcacctXXXXX", t)
 	t.Logf("..creating the k8s service account directory: %v", testK8sSvcAcctDir)
 	defer rm(testK8sSvcAcctDir, t)
 
-	populateTempDirs(wd, testCNINetDir, t)
+	populateTempDirs(wd, testCNINetDir, "10-calico.conflist", t)
 	populateK8sCreds(wd, testK8sSvcAcctDir, t)
 	doTest(3, wd, hostCniNetDir+"/10-calico.conflist", "10-calico.conflist", wd+"data/expected/10-calico.conflist-1", wd+"data/expected/10-calico.conflist-1.clean", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
 }

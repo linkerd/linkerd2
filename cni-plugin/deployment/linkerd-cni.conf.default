@@ -1,6 +1,6 @@
 {
-    "name": "linkerd2-cni",
-    "type": "linkerd2-cni",
+    "name": "linkerd-cni",
+    "type": "linkerd-cni",
     "log_level": "__LOG_LEVEL__",
     "policy": {
         "type": "k8s",
@@ -10,7 +10,7 @@
     "kubernetes": {
         "kubeconfig": "__KUBECONFIG_FILEPATH__"
     },
-    "linkerd2": {
+    "linkerd": {
         "incoming-proxy-port": __INCOMING_PROXY_PORT__,
         "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
         "proxy-uid": __PROXY_UID__,
