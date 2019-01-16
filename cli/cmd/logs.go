@@ -89,7 +89,7 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	}
 
 	// Do not use regex to filter pods. Instead, we provide the list of all control plane components and use
-	// the label selector filter logs.
+	// the label selector to filter logs.
 	podFilterRgx, err := regexp.Compile("")
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func getControlPlaneComponentsAndContainers(pods *v1.PodList) ([]string, []strin
 
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
 	// Check that we can call the Kubernetes API
-	cliPublicAPIClient()
+	_ := cliPublicAPIClient()
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func newCmdLogs() *cobra.Command {
   linkerd logs --control-plane-component grafana --container linkerd-proxy
 
   # Tail logs from the linkerd-proxy container in the controller component with timestamps
-  linkerd logs --control-plane-component controller --container linkerd-proxy --tail true
+  linkerd logs --control-plane-component controller --container linkerd-proxy --tail 2
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
