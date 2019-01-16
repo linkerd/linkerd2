@@ -159,7 +159,7 @@ func newCmdLogs() *cobra.Command {
   linkerd logs --control-plane-component controller --container linkerd-proxy --tail 2
 
   # Tail logs from the linkerd-proxy container in the controller component showing timestamps for each line
-  linkerd logs --control-plane-component controller --container linkerd-proxy --timestamps true
+  linkerd logs --control-plane-component controller --container linkerd-proxy --timestamps
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
