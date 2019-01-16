@@ -22,64 +22,81 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// Checks is an enum for the types of health checks.
-type Checks int
+// CategoryID is an identifier for the types of health checks.
+type CategoryID string
 
 const (
 	// KubernetesAPIChecks adds a series of checks to validate that the caller is
-	// configured to interact with a working Kubernetes cluster and that the
-	// cluster meets the minimum version requirements, unless the
-	// ShouldCheckKubeVersion option is false.
-	KubernetesAPIChecks Checks = iota
+	// configured to interact with a working Kubernetes cluster.
+	KubernetesAPIChecks CategoryID = "kubernetes-api"
 
-	// LinkerdPreInstallChecks adds a check to validate that the control plane
-	// namespace does not already exist. This check only runs as part of the set
+	// KubernetesVersionChecks validate that the cluster meets the minimum version
+	// requirements.
+	KubernetesVersionChecks CategoryID = "kubernetes-version"
+
+	// LinkerdPreInstall* checks enabled by `linkerd check --pre`
+
+	// LinkerdPreInstallClusterChecks adds checks to validate that the control
+	// plane namespace does not already exist, and that the user can create
+	// cluster-wide resources, including ClusterRole, ClusterRoleBinding, and
+	// CustomResourceDefinition. This check only runs as part of the set
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallChecks
+	LinkerdPreInstallClusterChecks CategoryID = "pre-kubernetes-cluster-setup"
 
-	// LinkerdDataPlaneChecks adds a data plane check to validate that the proxy
-	// containers are in the ready state.
+	// LinkerdPreInstallSingleNamespaceChecks adds a check to validate that the
+	// control plane namespace already exists, and that the user can create
+	// namespace-scoped resources, including Role and RoleBinding. This check only
+	// runs as part of the set of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdDataPlaneChecks
+	LinkerdPreInstallSingleNamespaceChecks CategoryID = "pre-kubernetes-single-namespace-setup"
 
-	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that the control
-	// plane namespace and controller pod exist.
+	// LinkerdPreInstallChecks adds checks to validate that the user can create
+	// Kubernetes objects necessary to install the control plane, including
+	// Service, Deployment, and ConfigMap. This check only runs as part of the set
+	// of pre-install checks.
+	// This check is dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
+
+	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
+	// the control plane namespace and controller pod exist.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdControlPlaneExistenceChecks
+	LinkerdControlPlaneExistenceChecks CategoryID = "linkerd-existence"
 
 	// LinkerdAPIChecks adds a series of checks to validate that the control plane
 	// is successfully serving the public API.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdAPIChecks
+	LinkerdAPIChecks CategoryID = "linkerd-api"
 
-	// LinkerdVersionChecks adds a series of checks to validate that the CLI,
-	// control plane, and data plane are running the latest available version.
-	// These checks are dependent on the output of AddLinkerdAPIChecks, so those
-	// checks must be added first, unless the the ShouldCheckControlPlaneVersion
-	// and ShouldCheckDataPlaneVersion options are false.
-	LinkerdVersionChecks
+	// LinkerdServiceProfileChecks add a check validate any ServiceProfiles that
+	// may already be installed.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdServiceProfileChecks CategoryID = "linkerd-service-profile"
 
-	// KubernetesAPICategory is the string representation of KubernetesAPIChecks.
-	KubernetesAPICategory = "kubernetes-api"
-	// LinkerdPreInstallCategory is the string representation of
-	// LinkerdPreInstallChecks.
-	LinkerdPreInstallCategory = "kubernetes-setup"
-	// LinkerdDataPlaneCategory is the string representation of
-	// LinkerdDataPlaneChecks.
-	LinkerdDataPlaneCategory = "linkerd-data-plane"
-	// LinkerdControlPlaneExistenceCategory is the string representation of
-	// LinkerdControlPlaneExistenceChecks.
-	LinkerdControlPlaneExistenceCategory = "linkerd-existence"
-	// LinkerdAPICategory is the string representation of LinkerdAPIChecks.
-	LinkerdAPICategory = "linkerd-api"
-	// LinkerdVersionCategory is the string representation of
-	// LinkerdVersionChecks.
-	LinkerdVersionCategory = "linkerd-version"
+	// LinkerdVersionChecks adds a series of checks to query for the latest
+	// version, and validate the the CLI is up to date.
+	LinkerdVersionChecks CategoryID = "linkerd-version"
+
+	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
+	// the control plane is running the latest available version.
+	// These checks are dependent on `apiClient` from
+	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
+	// LinkerdVersionChecks, so those checks must be added first.
+	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
+
+	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
+	// plane namespace exists, and that the the proxy containers are in a ready
+	// state and running the latest available version.
+	// These checks are dependent on the output of KubernetesAPIChecks,
+	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersion`
+	// from LinkerdVersionChecks, so those checks must be added first.
+	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 )
 
 var (
@@ -89,12 +106,12 @@ var (
 )
 
 type checker struct {
-	// category is one of the *Category constants defined above
-	category string
-
 	// description is the short description that's printed to the command line
 	// when the check is executed
 	description string
+
+	// hintURL provides a pointer to more information about the check
+	hintURL string
 
 	// fatal indicates that all remaining checks should be aborted if this check
 	// fails; it should only be used if subsequent checks cannot possibly succeed
@@ -121,8 +138,9 @@ type checker struct {
 
 // CheckResult encapsulates a check's identifying information and output
 type CheckResult struct {
-	Category    string
+	Category    CategoryID
 	Description string
+	HintURL     string
 	Retry       bool
 	Warning     bool
 	Err         error
@@ -130,25 +148,27 @@ type CheckResult struct {
 
 type checkObserver func(*CheckResult)
 
+type category struct {
+	id       CategoryID
+	checkers []checker
+	enabled  bool
+}
+
 // Options specifies configuration for a HealthChecker.
 type Options struct {
-	ControlPlaneNamespace          string
-	DataPlaneNamespace             string
-	KubeConfig                     string
-	KubeContext                    string
-	APIAddr                        string
-	VersionOverride                string
-	RetryDeadline                  time.Time
-	ShouldCheckKubeVersion         bool
-	ShouldCheckControlPlaneVersion bool
-	ShouldCheckDataPlaneVersion    bool
-	SingleNamespace                bool
+	ControlPlaneNamespace string
+	DataPlaneNamespace    string
+	KubeConfig            string
+	KubeContext           string
+	APIAddr               string
+	VersionOverride       string
+	RetryDeadline         time.Time
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
 // perform those checks.
 type HealthChecker struct {
-	checkers []*checker
+	categories []category
 	*Options
 
 	// these fields are set in the process of running checks
@@ -163,376 +183,377 @@ type HealthChecker struct {
 }
 
 // NewHealthChecker returns an initialized HealthChecker
-func NewHealthChecker(checks []Checks, options *Options) *HealthChecker {
+func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker {
 	hc := &HealthChecker{
-		checkers: make([]*checker, 0),
-		Options:  options,
+		Options: options,
 	}
 
-	for _, check := range checks {
-		switch check {
-		case KubernetesAPIChecks:
-			hc.addKubernetesAPIChecks()
-		case LinkerdPreInstallChecks:
-			hc.addLinkerdPreInstallChecks()
-		case LinkerdDataPlaneChecks:
-			hc.addLinkerdDataPlaneChecks()
-		case LinkerdControlPlaneExistenceChecks:
-			hc.addLinkerdControlPlaneExistenceChecks()
-		case LinkerdAPIChecks:
-			hc.addLinkerdAPIChecks()
-		case LinkerdVersionChecks:
-			hc.addLinkerdVersionChecks()
+	hc.categories = hc.allCategories()
+
+	checkMap := map[CategoryID]struct{}{}
+	for _, category := range categoryIDs {
+		checkMap[category] = struct{}{}
+	}
+	for i := range hc.categories {
+		if _, ok := checkMap[hc.categories[i].id]; ok {
+			hc.categories[i].enabled = true
 		}
 	}
 
 	return hc
 }
 
-func (hc *HealthChecker) addKubernetesAPIChecks() {
-	hc.checkers = append(hc.checkers, &checker{
-		category:    KubernetesAPICategory,
-		description: "can initialize the client",
-		fatal:       true,
-		check: func() (err error) {
-			hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
-			return
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    KubernetesAPICategory,
-		description: "can query the Kubernetes API",
-		fatal:       true,
-		check: func() (err error) {
-			hc.httpClient, err = hc.kubeAPI.NewClient()
-			if err != nil {
-				return
-			}
-			hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(hc.httpClient)
-			return
-		},
-	})
-
-	if hc.ShouldCheckKubeVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    KubernetesAPICategory,
-			description: "is running the minimum Kubernetes API version",
-			check: func() error {
-				return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+// allCategories is the global, ordered list of all checkers, grouped by
+// category. This method is attached to the HealthChecker struct because the
+// checkers directly reference other members of the struct, such as kubeAPI,
+// controlPlanePods, etc.
+func (hc *HealthChecker) allCategories() []category {
+	return []category{
+		{
+			id: KubernetesAPIChecks,
+			checkers: []checker{
+				{
+					description: "can initialize the client",
+					fatal:       true,
+					check: func() (err error) {
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
+						return
+					},
+				},
+				{
+					description: "can query the Kubernetes API",
+					fatal:       true,
+					check: func() (err error) {
+						hc.httpClient, err = hc.kubeAPI.NewClient()
+						if err != nil {
+							return
+						}
+						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(hc.httpClient)
+						return
+					},
+				},
 			},
-		})
-	}
-}
-
-func (hc *HealthChecker) addLinkerdPreInstallChecks() {
-	roleType := "ClusterRole"
-	roleBindingType := "ClusterRoleBinding"
-
-	if hc.SingleNamespace {
-		roleType = "Role"
-		roleBindingType = "RoleBinding"
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "control plane namespace exists",
-			check: func() error {
-				return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+		},
+		{
+			id: KubernetesVersionChecks,
+			checkers: []checker{
+				{
+					description: "is running the minimum Kubernetes API version",
+					check: func() error {
+						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+					},
+				},
 			},
-		})
-	} else {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "control plane namespace does not already exist",
-			check: func() error {
-				return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+		},
+		{
+			id: LinkerdPreInstallClusterChecks,
+			checkers: []checker{
+				{
+					description: "control plane namespace does not already exist",
+					check: func() error {
+						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+					},
+				},
+				{
+					description: "can create Namespaces",
+					check: func() error {
+						return hc.checkCanCreate("", "", "v1", "Namespace")
+					},
+				},
+				{
+					description: "can create ClusterRoles",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
+					check: func() error {
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+					},
+				},
+				{
+					description: "can create ClusterRoleBindings",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
+					check: func() error {
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+					},
+				},
+				{
+					description: "can create CustomResourceDefinitions",
+					check: func() error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+					},
+				},
 			},
-		})
-
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create Namespaces",
-			check: func() error {
-				return hc.checkCanCreate("", "", "v1", "Namespace")
+		},
+		{
+			id: LinkerdPreInstallSingleNamespaceChecks,
+			checkers: []checker{
+				{
+					description: "control plane namespace exists",
+					check: func() error {
+						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description: "can create Roles",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
+					check: func() error {
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
+					},
+				},
+				{
+					description: "can create RoleBindings",
+					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
+					check: func() error {
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
+					},
+				},
 			},
-		})
-	}
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: fmt.Sprintf("can create %ss", roleType),
-		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleType)
 		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: fmt.Sprintf("can create %ss", roleBindingType),
-		check: func() error {
-			return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", roleBindingType)
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create ServiceAccounts",
-		check: func() error {
-			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create Services",
-		check: func() error {
-			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create Deployments",
-		check: func() error {
-			return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdPreInstallCategory,
-		description: "can create ConfigMaps",
-		check: func() error {
-			return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
-		},
-	})
-
-	if !hc.SingleNamespace {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdPreInstallCategory,
-			description: "can create CustomResourceDefinitions",
-			check: func() error {
-				return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+		{
+			id: LinkerdPreInstallChecks,
+			checkers: []checker{
+				{
+					description: "can create ServiceAccounts",
+					check: func() error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
+					},
+				},
+				{
+					description: "can create Services",
+					check: func() error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
+					},
+				},
+				{
+					description: "can create Deployments",
+					check: func() error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
+					},
+				},
+				{
+					description: "can create ConfigMaps",
+					check: func() error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
+					},
+				},
 			},
-		})
-	}
-}
-
-func (hc *HealthChecker) addLinkerdControlPlaneExistenceChecks() {
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdControlPlaneExistenceCategory,
-		description: "control plane namespace exists",
-		fatal:       true,
-		check: func() error {
-			return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdControlPlaneExistenceCategory,
-		description:   "controller pod is running",
-		retryDeadline: hc.RetryDeadline,
-		fatal:         true,
-		check: func() error {
-			var err error
-			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
-			if err != nil {
-				return err
-			}
-			return checkControllerRunning(hc.controlPlanePods)
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdControlPlaneExistenceCategory,
-		description: "can initialize the client",
-		fatal:       true,
-		check: func() (err error) {
-			if hc.APIAddr != "" {
-				hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
-			} else {
-				hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
-			}
-			return
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdControlPlaneExistenceCategory,
-		description:   "can query the control plane API",
-		retryDeadline: hc.RetryDeadline,
-		fatal:         true,
-		check: func() error {
-			_, err := version.GetServerVersion(hc.apiClient)
-			return err
-		},
-	})
-}
-
-func (hc *HealthChecker) addLinkerdAPIChecks() {
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdAPICategory,
-		description:   "control plane pods are ready",
-		retryDeadline: hc.RetryDeadline,
-		fatal:         true,
-		check: func() error {
-			var err error
-			hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
-			if err != nil {
-				return err
-			}
-			return validateControlPlanePods(hc.controlPlanePods)
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdAPICategory,
-		description:   "can query the control plane API",
-		fatal:         true,
-		retryDeadline: hc.RetryDeadline,
-		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
-		},
-	})
-
-	if !hc.SingleNamespace {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdAPICategory,
-			description: "no invalid service profiles",
-			warning:     true,
-			check: func() error {
-				return hc.validateServiceProfiles()
+		{
+			id: LinkerdControlPlaneExistenceChecks,
+			checkers: []checker{
+				{
+					description: "control plane namespace exists",
+					fatal:       true,
+					check: func() error {
+						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description:   "controller pod is running",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func() error {
+						var err error
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkControllerRunning(hc.controlPlanePods)
+					},
+				},
+				{
+					description: "can initialize the client",
+					fatal:       true,
+					check: func() (err error) {
+						if hc.APIAddr != "" {
+							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+						} else {
+							hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+						}
+						return
+					},
+				},
+				{
+					description:   "can query the control plane API",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func() error {
+						_, err := version.GetServerVersion(hc.apiClient)
+						return err
+					},
+				},
 			},
-		})
-	}
-}
-
-func (hc *HealthChecker) addLinkerdDataPlaneChecks() {
-	if hc.DataPlaneNamespace != "" {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdDataPlaneCategory,
-			description: "data plane namespace exists",
-			fatal:       true,
-			check: func() error {
-				return hc.checkNamespace(hc.DataPlaneNamespace, true)
+		},
+		{
+			id: LinkerdAPIChecks,
+			checkers: []checker{
+				{
+					description:   "control plane pods are ready",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func() error {
+						var err error
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return validateControlPlanePods(hc.controlPlanePods)
+					},
+				},
+				{
+					description:   "can query the control plane API",
+					fatal:         true,
+					retryDeadline: hc.RetryDeadline,
+					checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+						ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+						defer cancel()
+						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+					},
+				},
 			},
-		})
-	}
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdDataPlaneCategory,
-		description:   "data plane proxies are ready",
-		retryDeadline: hc.RetryDeadline,
-		fatal:         true,
-		check: func() error {
-			pods, err := hc.getDataPlanePods()
-			if err != nil {
-				return err
-			}
-
-			return validateDataPlanePods(pods, hc.DataPlaneNamespace)
 		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:      LinkerdDataPlaneCategory,
-		description:   "data plane proxy metrics are present in Prometheus",
-		retryDeadline: hc.RetryDeadline,
-		check: func() error {
-			pods, err := hc.getDataPlanePods()
-			if err != nil {
-				return err
-			}
-
-			return validateDataPlanePodReporting(pods)
+		{
+			id: LinkerdServiceProfileChecks,
+			checkers: []checker{
+				{
+					description: "no invalid service profiles",
+					warning:     true,
+					check: func() error {
+						return hc.validateServiceProfiles()
+					},
+				},
+			},
 		},
-	})
-}
-
-func (hc *HealthChecker) addLinkerdVersionChecks() {
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdVersionCategory,
-		description: "can determine the latest version",
-		fatal:       true,
-		check: func() (err error) {
-			if hc.VersionOverride != "" {
-				hc.latestVersion = hc.VersionOverride
-			} else {
-				// The UUID is only known to the web process. At some point we may want
-				// to consider providing it in the Public API.
-				uuid := "unknown"
-				for _, pod := range hc.controlPlanePods {
-					if strings.Split(pod.Name, "-")[0] == "web" {
-						for _, container := range pod.Spec.Containers {
-							if container.Name == "web" {
-								for _, arg := range container.Args {
-									if strings.HasPrefix(arg, "-uuid=") {
-										uuid = strings.TrimPrefix(arg, "-uuid=")
+		{
+			id: LinkerdVersionChecks,
+			checkers: []checker{
+				{
+					description: "can determine the latest version",
+					fatal:       true,
+					check: func() (err error) {
+						if hc.VersionOverride != "" {
+							hc.latestVersion = hc.VersionOverride
+						} else {
+							// The UUID is only known to the web process. At some point we may want
+							// to consider providing it in the Public API.
+							uuid := "unknown"
+							for _, pod := range hc.controlPlanePods {
+								if strings.Split(pod.Name, "-")[0] == "web" {
+									for _, container := range pod.Spec.Containers {
+										if container.Name == "web" {
+											for _, arg := range container.Args {
+												if strings.HasPrefix(arg, "-uuid=") {
+													uuid = strings.TrimPrefix(arg, "-uuid=")
+												}
+											}
+										}
 									}
 								}
 							}
+							hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
 						}
-					}
-				}
-				hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
-			}
-			return
-		},
-	})
-
-	hc.checkers = append(hc.checkers, &checker{
-		category:    LinkerdVersionCategory,
-		description: "cli is up-to-date",
-		warning:     true,
-		check: func() error {
-			return version.CheckClientVersion(hc.latestVersion)
-		},
-	})
-
-	if hc.ShouldCheckControlPlaneVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdVersionCategory,
-			description: "control plane is up-to-date",
-			warning:     true,
-			check: func() error {
-				return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+						return
+					},
+				},
+				{
+					description: "cli is up-to-date",
+					warning:     true,
+					check: func() error {
+						return version.CheckClientVersion(hc.latestVersion)
+					},
+				},
 			},
-		})
-	}
-
-	if hc.ShouldCheckDataPlaneVersion {
-		hc.checkers = append(hc.checkers, &checker{
-			category:    LinkerdVersionCategory,
-			description: "data plane is up-to-date",
-			warning:     true,
-			check: func() error {
-				pods, err := hc.getDataPlanePods()
-				if err != nil {
-					return err
-				}
-
-				for _, pod := range pods {
-					if pod.ProxyVersion != hc.latestVersion {
-						return fmt.Errorf("%s is running version %s but the latest version is %s",
-							pod.Name, pod.ProxyVersion, hc.latestVersion)
-					}
-				}
-				return nil
+		},
+		{
+			id: LinkerdControlPlaneVersionChecks,
+			checkers: []checker{
+				{
+					description: "control plane is up-to-date",
+					warning:     true,
+					check: func() error {
+						return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+					},
+				},
 			},
-		})
+		},
+		{
+			id: LinkerdDataPlaneChecks,
+			checkers: []checker{
+				{
+					description: "data plane namespace exists",
+					fatal:       true,
+					check: func() error {
+						return hc.checkNamespace(hc.DataPlaneNamespace, true)
+					},
+				},
+				{
+					description:   "data plane proxies are ready",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+					},
+				},
+				{
+					description:   "data plane proxy metrics are present in Prometheus",
+					retryDeadline: hc.RetryDeadline,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						return validateDataPlanePodReporting(pods)
+					},
+				},
+				{
+					description: "data plane is up-to-date",
+					warning:     true,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						for _, pod := range pods {
+							if pod.ProxyVersion != hc.latestVersion {
+								return fmt.Errorf("%s is running version %s but the latest version is %s",
+									pod.Name, pod.ProxyVersion, hc.latestVersion)
+							}
+						}
+						return nil
+					},
+				},
+			},
+		},
 	}
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHeathChecker.
-func (hc *HealthChecker) Add(category, description string, check func() error) {
-	hc.checkers = append(hc.checkers, &checker{
-		category:    category,
-		description: description,
-		check:       check,
-	})
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL string, check func() error) {
+	hc.addCategory(
+		category{
+			id: categoryID,
+			checkers: []checker{
+				checker{
+					description: description,
+					check:       check,
+					hintURL:     hintURL,
+				},
+			},
+		},
+	)
+}
+
+// addCategory is also for testing
+func (hc *HealthChecker) addCategory(c category) {
+	c.enabled = true
+	hc.categories = append(hc.categories, c)
 }
 
 // RunChecks runs all configured checkers, and passes the results of each
@@ -543,25 +564,29 @@ func (hc *HealthChecker) Add(category, description string, check func() error) {
 func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	success := true
 
-	for _, checker := range hc.checkers {
-		if checker.check != nil {
-			if !hc.runCheck(checker, observer) {
-				if !checker.warning {
-					success = false
+	for _, c := range hc.categories {
+		if c.enabled {
+			for _, checker := range c.checkers {
+				if checker.check != nil {
+					if !hc.runCheck(c.id, &checker, observer) {
+						if !checker.warning {
+							success = false
+						}
+						if checker.fatal {
+							return success
+						}
+					}
 				}
-				if checker.fatal {
-					break
-				}
-			}
-		}
 
-		if checker.checkRPC != nil {
-			if !hc.runCheckRPC(checker, observer) {
-				if !checker.warning {
-					success = false
-				}
-				if checker.fatal {
-					break
+				if checker.checkRPC != nil {
+					if !hc.runCheckRPC(c.id, &checker, observer) {
+						if !checker.warning {
+							success = false
+						}
+						if checker.fatal {
+							return success
+						}
+					}
 				}
 			}
 		}
@@ -570,12 +595,13 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
 	for {
 		err := c.check()
 		checkResult := &CheckResult{
-			Category:    c.category,
+			Category:    categoryID,
 			Description: c.description,
+			HintURL:     c.hintURL,
 			Warning:     c.warning,
 			Err:         err,
 		}
@@ -592,10 +618,10 @@ func (hc *HealthChecker) runCheck(c *checker, observer checkObserver) bool {
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
 	checkRsp, err := c.checkRPC()
 	observer(&CheckResult{
-		Category:    c.category,
+		Category:    categoryID,
 		Description: c.description,
 		Warning:     c.warning,
 		Err:         err,
@@ -610,8 +636,9 @@ func (hc *HealthChecker) runCheckRPC(c *checker, observer checkObserver) bool {
 			err = fmt.Errorf(check.FriendlyMessageToUser)
 		}
 		observer(&CheckResult{
-			Category:    fmt.Sprintf("%s[%s]", c.category, check.SubsystemName),
-			Description: check.CheckDescription,
+			Category:    categoryID,
+			Description: fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription),
+			HintURL:     c.hintURL,
 			Warning:     c.warning,
 			Err:         err,
 		})

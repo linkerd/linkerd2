@@ -264,8 +264,8 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		if r.Stats != nil {
 			statTables[resourceKey][key].rowStats = &rowStats{
-				requestRate: getRequestRate(r.Stats, r.TimeWindow),
-				successRate: getSuccessRate(r.Stats),
+				requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+				successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
 				tlsPercent:  getPercentTLS(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
@@ -275,7 +275,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		if len(statTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)

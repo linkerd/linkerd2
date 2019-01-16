@@ -164,10 +164,12 @@ func renderOpenAPI(options *profileOptions, w io.Writer) error {
 	routes := make([]*sp.RouteSpec, 0)
 
 	paths := make([]string, 0)
-	for path := range swagger.Paths.Paths {
-		paths = append(paths, path)
+	if swagger.Paths != nil {
+		for path := range swagger.Paths.Paths {
+			paths = append(paths, path)
+		}
+		sort.Strings(paths)
 	}
-	sort.Strings(paths)
 
 	for _, path := range paths {
 		item := swagger.Paths.Paths[path]

@@ -46,6 +46,13 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
+  digest = "1:453c7a777da3e9aa031a0d9b8e0c882af15afb18e6c3651de7610fcb628dbd4b"
+  name = "github.com/briandowns/spinner"
+  packages = ["."]
+  pruneopts = ""
+  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
+
+[[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -70,6 +77,14 @@
   ]
   pruneopts = ""
   revision = "449fdfce4d962303d702fec724ef0ad181c92528"
+
+[[projects]]
+  digest = "1:e988ed0ca0d81f4d28772760c02ee95084961311291bdfefc1b04617c178b722"
+  name = "github.com/fatih/color"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
+  version = "v1.7.0"
 
 [[projects]]
   digest = "1:b13707423743d41665fd23f0c36b2f37bb49c30e94adb813319c44188a51ba22"
@@ -266,7 +281,7 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:269d1fe034b09288b2328b197baceb4f23873fc09bb0e81a774620cdb020bfe9"
+  digest = "1:4e1a388c562b46c42eaeefcf35ae8858df7aa6f2bda261ca1d36aa40d10f62e4"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
@@ -275,8 +290,7 @@
     "go/tap",
   ]
   pruneopts = ""
-  revision = "bb4861389d504dfea7b616df8cf6329b1c6f5e50"
-  version = "v0.1.4"
+  revision = "1ad70188f9a6d94e2865413713a50390456fa6b6"
 
 [[projects]]
   branch = "master"
@@ -289,6 +303,22 @@
   ]
   pruneopts = ""
   revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
+
+[[projects]]
+  digest = "1:9ea83adf8e96d6304f394d40436f2eb44c1dc3250d223b74088cc253a6cd0a1c"
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  pruneopts = ""
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  digest = "1:3140e04675a6a91d2a20ea9d10bdadf6072085502e6def6768361260aee4b967"
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
+  version = "v0.0.4"
 
 [[projects]]
   digest = "1:81e673df85e765593a863f67cba4544cf40e8919590f04d67664940786c2b61a"
@@ -941,6 +971,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/briandowns/spinner",
+    "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/go-openapi/spec",
     "github.com/golang/protobuf/jsonpb",

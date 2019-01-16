@@ -8,6 +8,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	"github.com/linkerd/linkerd2/pkg/profiles"
 )
 
 var (
@@ -173,6 +174,7 @@ var (
 			pbRoute1,
 			pbRoute2,
 		},
+		RetryBudget: &profiles.DefaultRetryBudget,
 	}
 
 	multipleRequestMatches = &sp.ServiceProfile{
@@ -222,6 +224,7 @@ var (
 				ResponseClasses: []*pb.ResponseClass{},
 			},
 		},
+		RetryBudget: &profiles.DefaultRetryBudget,
 	}
 
 	notEnoughRequestMatches = &sp.ServiceProfile{
@@ -310,6 +313,7 @@ var (
 				},
 			},
 		},
+		RetryBudget: &profiles.DefaultRetryBudget,
 	}
 
 	oneSidedStatusRange = &sp.ServiceProfile{
