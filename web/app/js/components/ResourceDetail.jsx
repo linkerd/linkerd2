@@ -22,7 +22,7 @@ import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 // if there has been no traffic for some time, show a warning
-const showNoTrafficMsgDelay = 1000;
+const showNoTrafficMsgDelayMs = 6000;
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
@@ -238,7 +238,7 @@ export class ResourceDetailBase extends React.Component {
 
     let upstreams = neighborMetrics.upstream.concat(unmeshed);
 
-    let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelay);
+    let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
     return (
       <div>
