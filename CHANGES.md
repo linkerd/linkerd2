@@ -1,3 +1,24 @@
+## edge-19.1.2
+
+* Controller
+  * Retry support! Introduce an `isRetryable` property to service profiles to
+    enable configuring retries on a per-route basis
+* Web UI
+  * Add "meshed" and "no traffic" badges on the resource detail pages
+  * Fix `linkerd dashboard` to maintain proxy connection when browser open fails
+  * Fix JavaScript bundling to avoid serving old versions after upgrade
+* CLI
+  * Add `linkerd logs` command to surface logs from any container in the Linkerd
+    control plane (shout out to [Stern](https://github.com/wercker/stern)!)
+  * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
+    config
+  * Improve `linkerd inject` to re-inject a resource that already has a Linkerd
+    proxy
+  * Improve `linkerd routes` to list all routes, including those without traffic
+  * Improve readability in `linkerd check` and `linkerd inject` outputs
+* Proxy
+  * Fix a deadlock in HTTP/2 stream reference counts
+
 ## edge-19.1.1
 
 * CLI
