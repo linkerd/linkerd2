@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 	"testing"
 	"time"
@@ -113,10 +114,10 @@ func populateK8sCreds(wd string, tempK8sSvcAcctDir string, t *testing.T) {
 func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
 	// The following is in place to default to a sane development environment that mirrors how bin/fast-build
 	// does it. To change to a different docker image, set the HUB and TAG environment variables before running the tests.
-	// gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
-	// user, _ := user.Current()
-	// tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
-	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", "dev-bd117b06-x27s")
+	gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
+	user, _ := user.Current()
+	tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
+	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", tag)
 	errFileName := tempCNINetDir + "/.." + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.
