@@ -43,7 +43,7 @@ sub-folders, or coming from stdin.`,
 
   # Download a resource and uninject it through stdin.
   curl http://url.to/yml | linkerd uninject - | kubectl apply -f -
-  
+
   # Uninject all the resources inside a folder and its sub-folders.
   linkerd uninject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -102,6 +102,9 @@ func (rt resourceTransformerUninjectSilent) transform(bytes []byte, options *inj
 }
 
 func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
+	// leading newline to separate from yaml output on stdout
+	output.Write([]byte("\n"))
+
 	for _, r := range uninjectReports {
 		if r.sidecar {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.kind, r.name)))
