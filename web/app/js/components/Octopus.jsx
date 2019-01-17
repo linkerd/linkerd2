@@ -17,7 +17,7 @@ import _floor from 'lodash/floor';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
-import _orderBy from 'lodash/orderBy';
+import _sortBy from 'lodash/sortBy';
 import _size from 'lodash/size';
 import _slice from 'lodash/slice';
 import _take from 'lodash/take';
@@ -62,8 +62,8 @@ class Octopus extends React.Component {
   getNeighborDisplayData = neighbors => {
     // only display maxNumNeighbors neighboring nodes in the octopus graph,
     // otherwise it will be really tall
-    let upstreams = _orderBy(neighbors.upstream, n => n.successRate);
-    let downstreams = _orderBy(neighbors.downstream, n => n.successRate);
+    let upstreams = _sortBy(neighbors.upstream, n => n.successRate);
+    let downstreams = _sortBy(neighbors.downstream, n => n.successRate);
 
     let display = {
       upstreams: {
