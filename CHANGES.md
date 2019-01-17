@@ -18,6 +18,8 @@
     proxy
   * Improve `linkerd routes` to list all routes, including those without traffic
   * Improve readability in `linkerd check` and `linkerd inject` outputs
+* Proxy
+  * Fix a deadlock in HTTP/2 stream reference counts
 
 ## edge-19.1.1
 
