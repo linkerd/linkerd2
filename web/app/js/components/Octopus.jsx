@@ -103,7 +103,7 @@ class Octopus extends React.Component {
     let Progress = StyledProgress(classification);
 
     return (
-      <Grid item key={resource.name} >
+      <Grid item key={resource.type + "-" + resource.name} >
         <Card className={type === "neighbor" ? classes.neighborNode : classes.centerNode} title={display}>
           <CardContent>
 

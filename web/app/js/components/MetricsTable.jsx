@@ -1,5 +1,4 @@
-import { friendlyTitle, metricToFormatter, numericSort } from './util/Utils.js';
-
+import { friendlyTitle, metricToFormatter, numericSort, toShortResourceName } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
@@ -17,6 +16,7 @@ import { withContext } from './util/AppContext.jsx';
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let isAuthorityTable = resource === "authority";
+  let isMultiResourceTable = resource === "multi_resource";
 
   let nsColumn = [
     {
@@ -46,11 +46,11 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
         if (resource === "namespace") {
           nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
         } else if (!d.added || isAuthorityTable) {
-          nameContents = d.name;
+          nameContents = isMultiResourceTable ? `${toShortResourceName(d.type)}/${d.name}` : d.name;
         } else {
           nameContents = (
-            <PrefixedLink to={"/namespaces/" + d.namespace + "/" + resource + "s/" + d.name}>
-              {d.name}
+            <PrefixedLink to={"/namespaces/" + d.namespace + "/" + d.type + "s/" + d.name}>
+              {isMultiResourceTable ? `${toShortResourceName(d.type)}/${d.name}` : d.name}
             </PrefixedLink>
           );
         }
@@ -58,7 +58,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
           <Grid container alignItems="center" spacing={8}>
             <Grid item>{nameContents}</Grid>
             { _isEmpty(d.errors) ? null :
-            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={resource} /></Grid>}
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
           </Grid>
         );
       },
@@ -121,7 +121,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
           <GrafanaLink
             name={row.name}
             namespace={row.namespace}
-            resource={resource}
+            resource={row.type}
             PrefixedLink={PrefixedLink} />
         );
       }
