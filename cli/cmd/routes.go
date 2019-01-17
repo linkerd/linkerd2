@@ -105,23 +105,27 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
 
-	tables := make(map[string][]*rowStats)
+	tables := make(map[string][]*routeRowStats)
 
 	for _, resourceTable := range resp.GetOk().GetRoutes() {
 
-		table := make([]*rowStats, 0)
+		table := make([]*routeRowStats, 0)
 
 		for _, r := range resourceTable.GetRows() {
 			if r.Stats != nil {
 				route := r.GetRoute()
-				table = append(table, &rowStats{
-					route:       route,
-					dst:         r.GetAuthority(),
-					requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
-					successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
-					latencyP50:  r.Stats.LatencyMsP50,
-					latencyP95:  r.Stats.LatencyMsP95,
-					latencyP99:  r.Stats.LatencyMsP99,
+				table = append(table, &routeRowStats{
+					rowStats: rowStats{
+						route:       route,
+						dst:         r.GetAuthority(),
+						requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+						successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
+						latencyP50:  r.Stats.LatencyMsP50,
+						latencyP95:  r.Stats.LatencyMsP95,
+						latencyP99:  r.Stats.LatencyMsP99,
+					},
+					actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
+					actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
 				})
 			}
 		}
@@ -322,7 +326,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 }
 
 // returns the length of the longest route name
-func routeWidth(stats []*rowStats) int {
+func routeWidth(stats []*routeRowStats) int {
 	maxLength := 0
 	for _, row := range stats {
 		if len(row.route) > maxLength {

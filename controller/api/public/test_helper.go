@@ -228,7 +228,7 @@ func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, autho
 		}
 		rows = append(rows, row)
 	}
-	rows = append(rows, &pb.RouteTable_Row{
+	defaultRow := &pb.RouteTable_Row{
 		Route:     "[DEFAULT]",
 		Authority: authority,
 		Stats: &pb.BasicStats{
@@ -239,7 +239,11 @@ func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, autho
 			LatencyMsP99: 123,
 		},
 		TimeWindow: "1m",
-	})
+	}
+	if outbound {
+		defaultRow.Stats.ActualSuccessCount = counts[len(counts)-1]
+	}
+	rows = append(rows, defaultRow)
 
 	resp := pb.TopRoutesResponse{
 		Response: &pb.TopRoutesResponse_Ok_{

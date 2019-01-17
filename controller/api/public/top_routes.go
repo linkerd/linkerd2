@@ -374,9 +374,9 @@ func processRouteMetrics(results []promResult, timeWindow string, table indexedT
 			case promActualRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
-					routeStats[key].Stats.ActualSuccessCount += value
+					table[key].Stats.ActualSuccessCount += value
 				case "failure":
-					routeStats[key].Stats.ActualFailureCount += value
+					table[key].Stats.ActualFailureCount += value
 				}
 			case promLatencyP50:
 				table[key].Stats.LatencyMsP50 = value
