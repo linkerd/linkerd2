@@ -137,13 +137,19 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 		tables[resourceTable.GetResource()] = table
 	}
 
+	resources := make([]string, 0)
+	for resource, _ := range tables {
+		resources = append(resources, resource)
+	}
+	sort.Strings(resources)
+
 	switch options.outputFormat {
 	case "table", "wide", "":
-		for resource, table := range tables {
+		for _, resource := range resources {
 			if len(tables) > 1 {
 				fmt.Fprintf(w, "==> %s <==\t\f", resource)
 			}
-			printRouteTable(table, w, options)
+			printRouteTable(tables[resource], w, options)
 			fmt.Fprintln(w)
 		}
 	case "json":
