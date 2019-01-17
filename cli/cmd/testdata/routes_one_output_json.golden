@@ -1,38 +1,40 @@
-[
-  {
-    "route": "/a",
-    "authority": "foo.default.svc.cluster.local",
-    "success": 1,
-    "rps": 1.5,
-    "latency_ms_p50": 123,
-    "latency_ms_p95": 123,
-    "latency_ms_p99": 123
-  },
-  {
-    "route": "/b",
-    "authority": "foo.default.svc.cluster.local",
-    "success": 1,
-    "rps": 1,
-    "latency_ms_p50": 123,
-    "latency_ms_p95": 123,
-    "latency_ms_p99": 123
-  },
-  {
-    "route": "/c",
-    "authority": "foo.default.svc.cluster.local",
-    "success": 0,
-    "rps": 0,
-    "latency_ms_p50": 123,
-    "latency_ms_p95": 123,
-    "latency_ms_p99": 123
-  },
-  {
-    "route": "[UNKNOWN]",
-    "authority": "foo.default.svc.cluster.local",
-    "success": 1,
-    "rps": 0.5,
-    "latency_ms_p50": 123,
-    "latency_ms_p95": 123,
-    "latency_ms_p99": 123
-  }
-]
+{
+  "deploy/foobar": [
+    {
+      "route": "/a",
+      "authority": "foobar",
+      "success": 1,
+      "rps": 1.5,
+      "latency_ms_p50": 123,
+      "latency_ms_p95": 123,
+      "latency_ms_p99": 123
+    },
+    {
+      "route": "/b",
+      "authority": "foobar",
+      "success": 1,
+      "rps": 1,
+      "latency_ms_p50": 123,
+      "latency_ms_p95": 123,
+      "latency_ms_p99": 123
+    },
+    {
+      "route": "/c",
+      "authority": "foobar",
+      "success": 0,
+      "rps": 0,
+      "latency_ms_p50": 123,
+      "latency_ms_p95": 123,
+      "latency_ms_p99": 123
+    },
+    {
+      "route": "[DEFAULT]",
+      "authority": "foobar",
+      "success": 1,
+      "rps": 0.5,
+      "latency_ms_p50": 123,
+      "latency_ms_p95": 123,
+      "latency_ms_p99": 123
+    }
+  ]
+}

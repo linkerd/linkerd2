@@ -17,7 +17,7 @@ func TestRoutes(t *testing.T) {
 	options := newRoutesOptions()
 	t.Run("Returns route stats", func(t *testing.T) {
 		testRoutesCall(routesParamsExp{
-			routes:  []string{"/a", "/b", "/c", ""},
+			routes:  []string{"/a", "/b", "/c"},
 			counts:  []uint64{90, 60, 0, 30},
 			options: options,
 			file:    "routes_one_output.golden",
@@ -27,7 +27,7 @@ func TestRoutes(t *testing.T) {
 	options.outputFormat = "json"
 	t.Run("Returns route stats (json)", func(t *testing.T) {
 		testRoutesCall(routesParamsExp{
-			routes:  []string{"/a", "/b", "/c", ""},
+			routes:  []string{"/a", "/b", "/c"},
 			counts:  []uint64{90, 60, 0, 30},
 			options: options,
 			file:    "routes_one_output_json.golden",
@@ -38,7 +38,7 @@ func TestRoutes(t *testing.T) {
 func testRoutesCall(exp routesParamsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
 
-	response := public.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "")
+	response := public.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "", "foobar")
 
 	mockClient.TopRoutesResponseToReturn = &response
 
