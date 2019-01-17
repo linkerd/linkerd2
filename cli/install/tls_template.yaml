@@ -4,16 +4,16 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-ca
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### CA RBAC ###
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}Role
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-ca
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-ca
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 rules:
 - apiGroups: [""]
@@ -21,7 +21,7 @@ rules:
   verbs: ["create"]
 - apiGroups: [""]
   resources: ["configmaps"]
-  resourceNames: [{{.TLSTrustAnchorConfigMapName}}]
+  resourceNames: [{{.Values.TLSTrustAnchorConfigMapName}}]
   verbs: ["update"]
 - apiGroups: [""]
   resources: ["pods"]
@@ -32,28 +32,28 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-{{- if and .EnableTLS .ProxyAutoInjectEnabled }}
+{{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["list", "get", "watch"]
 {{- end }}
 
 ---
-kind: {{if not .SingleNamespace}}Cluster{{end}}RoleBinding
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Namespace}}-ca
-  {{- if .SingleNamespace}}
-  namespace: {{.Namespace}}
+  name: linkerd-{{.Values.Namespace}}-ca
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
   {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .SingleNamespace}}Cluster{{end}}Role
-  name: linkerd-{{.Namespace}}-ca
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-ca
 subjects:
 - kind: ServiceAccount
   name: linkerd-ca
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ### CA ###
 ---
@@ -61,19 +61,19 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-ca
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: ca
+    {{.Values.ControllerComponentLabel}}: ca
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: ca
+        {{.Values.ControllerComponentLabel}}: ca
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-ca
       containers:
@@ -81,16 +81,16 @@ spec:
         ports:
         - name: admin-http
           containerPort: 9997
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "ca"
-        - "-controller-namespace={{.Namespace}}"
-        - "-single-namespace={{.SingleNamespace}}"
-        {{- if and .EnableTLS .ProxyAutoInjectEnabled }}
-        - "-proxy-auto-inject={{ .ProxyAutoInjectEnabled }}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        {{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
+        - "-proxy-auto-inject={{ .Values.ProxyAutoInjectEnabled }}"
         {{- end }}
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -101,11 +101,11 @@ spec:
             path: /ready
             port: 9997
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}

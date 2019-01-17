@@ -283,18 +283,26 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Set up engine
 	renderer := engine.New()
-
 	rendered, err := renderer.Render(c, vals)
 	if err != nil {
 		return err
 	}
 
-	// Convert rendered template into reader interface
-	renderedBytes, err := yaml.Marshal(rendered)
-	if err != nil {
+	var merged bytes.Buffer
+	if _, err := merged.WriteString(rendered["linkerd/base"]); err != nil {
 		return err
 	}
-	buf := bytes.NewBuffer(renderedBytes)
+
+	if tlsTmpl, ok := rendered["linkerd/tls"]; ok {
+		if _, err := merged.WriteString(tlsTmpl); err != nil {
+			return err
+		}
+	}
+	if proxyInjectorTmpl, ok := rendered["linkerd/proxy_injector"]; ok {
+		if _, err := merged.WriteString(proxyInjectorTmpl); err != nil {
+			return err
+		}
+	}
 
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
@@ -302,7 +310,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Special case for linkerd-proxy running in the Prometheus pod.
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
 
-	return InjectYAML(buf, w, ioutil.Discard, injectOptions)
+	return InjectYAML(&merged, w, ioutil.Discard, injectOptions)
 }
 
 func (options *installOptions) validate() error {

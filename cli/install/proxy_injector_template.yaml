@@ -4,32 +4,32 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerComponentLabel}}: proxy-injector
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.ControllerComponentLabel}}: proxy-injector
+      {{.Values.ControllerComponentLabel}}: proxy-injector
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: proxy-injector
+        {{.Values.ControllerComponentLabel}}: proxy-injector
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-proxy-injector
       containers:
       - name: proxy-injector
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "proxy-injector"
-        - "-controller-namespace={{.Namespace}}"
-        - "-log-level={{.ControllerLogLevel}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
         ports:
         - name: proxy-injector
           containerPort: 8443
@@ -52,18 +52,18 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{- if .Values.EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.ControllerUID}}
+          runAsUser: {{.Values.ControllerUID}}
       volumes:
       - name: webhook-secrets
         secret:
-          secretName: {{.ProxyInjectorTLSSecret}}
+          secretName: {{.Values.ProxyInjectorTLSSecret}}
           optional: true
       - name: proxy-spec
         configMap:
@@ -75,14 +75,14 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 
 ---
 ### Proxy Injector RBAC ###
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
@@ -92,15 +92,15 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 
 ---
@@ -109,15 +109,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerComponentLabel}}: proxy-injector
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerComponentLabel}}: proxy-injector
   ports:
   - name: proxy-injector
     port: 443
@@ -129,29 +129,29 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-sidecar-config
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerComponentLabel}}: proxy-injector
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
-  {{.ProxyInitSpecFileName}}: |
+  {{.Values.ProxyInitSpecFileName}}: |
     args:
     - --incoming-proxy-port
-    - {{.InboundPort}}
+    - {{.Values.InboundPort}}
     - --outgoing-proxy-port
-    - {{.OutboundPort}}
+    - {{.Values.OutboundPort}}
     - --proxy-uid
-    - {{.ProxyUID}}
-    {{- if ne (len .IgnoreInboundPorts) 0}}
+    - {{.Values.ProxyUID}}
+    {{- if ne (len .Values.IgnoreInboundPorts) 0}}
     - --inbound-ports-to-ignore
-    - {{.IgnoreInboundPorts}}
+    - {{.Values.IgnoreInboundPorts}}
     {{- end }}
-    {{- if ne (len .IgnoreOutboundPorts) 0}}
+    {{- if ne (len .Values.IgnoreOutboundPorts) 0}}
     - --outbound-ports-to-ignore
-    - {{.IgnoreOutboundPorts}}
+    - {{.Values.IgnoreOutboundPorts}}
     {{- end}}
-    image: {{.ProxyInitImage}}
+    image: {{.Values.ProxyInitImage}}
     imagePullPolicy: IfNotPresent
     name: linkerd-init
     securityContext:
@@ -162,70 +162,70 @@ data:
       runAsNonRoot: false
       runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
-  {{.ProxySpecFileName}}: |
+  {{.Values.ProxySpecFileName}}: |
     env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
     - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: {{.ProxyBindTimeout}}
+      value: {{.Values.ProxyBindTimeout}}
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
+      value: tcp://linkerd-proxy-api.{{.Values.Namespace}}.svc.cluster.local:{{.Values.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
-      value: tcp://0.0.0.0:{{.ProxyControlPort}}
+      value: tcp://0.0.0.0:{{.Values.ProxyControlPort}}
     - name: LINKERD2_PROXY_METRICS_LISTENER
-      value: tcp://0.0.0.0:{{.ProxyMetricsPort}}
+      value: tcp://0.0.0.0:{{.Values.ProxyMetricsPort}}
     - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-      value: tcp://127.0.0.1:{{.OutboundPort}}
+      value: tcp://127.0.0.1:{{.Values.OutboundPort}}
     - name: LINKERD2_PROXY_INBOUND_LISTENER
-      value: tcp://0.0.0.0:{{.InboundPort}}
+      value: tcp://0.0.0.0:{{.Values.InboundPort}}
     - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-      value: {{.ProfileSuffixes}}
+      value: {{.Values.ProfileSuffixes}}
     - name: LINKERD2_PROXY_POD_NAMESPACE
       valueFrom:
         fieldRef:
           fieldPath: metadata.namespace
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-      value: /var/linkerd-io/trust-anchors/{{.TLSTrustAnchorFileName}}
+      value: /var/linkerd-io/trust-anchors/{{.Values.TLSTrustAnchorFileName}}
     - name: LINKERD2_PROXY_TLS_CERT
-      value: /var/linkerd-io/identity/{{.TLSCertFileName}}
+      value: /var/linkerd-io/identity/{{.Values.TLSCertFileName}}
     - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-      value: /var/linkerd-io/identity/{{.TLSPrivateKeyFileName}}
+      value: /var/linkerd-io/identity/{{.Values.TLSPrivateKeyFileName}}
     - name: LINKERD2_PROXY_TLS_POD_IDENTITY
       value: "" # this value will be computed by the webhook
     - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-      value: {{.Namespace}}
+      value: {{.Values.Namespace}}
     - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
       value: "" # this value will be computed by the webhook
-    image: {{.ProxyImage}}
+    image: {{.Values.ProxyImage}}
     imagePullPolicy: IfNotPresent
     livenessProbe:
       httpGet:
         path: /metrics
-        port: {{.ProxyMetricsPort}}
+        port: {{.Values.ProxyMetricsPort}}
       initialDelaySeconds: 10
     name: linkerd-proxy
     ports:
-    - containerPort: {{.InboundPort}}
+    - containerPort: {{.Values.InboundPort}}
       name: linkerd-proxy
-    - containerPort: {{.ProxyMetricsPort}}
+    - containerPort: {{.Values.ProxyMetricsPort}}
       name: linkerd-metrics
     readinessProbe:
       httpGet:
         path: /metrics
-        port: {{.ProxyMetricsPort}}
+        port: {{.Values.ProxyMetricsPort}}
       initialDelaySeconds: 10
-    {{- if or .ProxyResourceRequestCPU .ProxyResourceRequestMemory }}
+    {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory }}
     resources:
       requests:
-        {{- if .ProxyResourceRequestCPU }}
-        cpu: {{.ProxyResourceRequestCPU}}
+        {{- if .Values.ProxyResourceRequestCPU }}
+        cpu: {{.Values.ProxyResourceRequestCPU}}
         {{- end }}
-        {{- if .ProxyResourceRequestMemory}}
-        memory: {{.ProxyResourceRequestMemory}}
+        {{- if .Values.ProxyResourceRequestMemory}}
+        memory: {{.Values.ProxyResourceRequestMemory}}
         {{- end }}
     {{- end }}
     securityContext:
-      runAsUser: {{.ProxyUID}}
+      runAsUser: {{.Values.ProxyUID}}
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
     - mountPath: /var/linkerd-io/trust-anchors
@@ -234,12 +234,12 @@ data:
     - mountPath: /var/linkerd-io/identity
       name: linkerd-secrets
       readOnly: true
-  {{.TLSTrustAnchorVolumeSpecFileName}}: |
+  {{.Values.TLSTrustAnchorVolumeSpecFileName}}: |
     name: linkerd-trust-anchors
     configMap:
-      name: {{.TLSTrustAnchorConfigMapName}}
+      name: {{.Values.TLSTrustAnchorConfigMapName}}
       optional: true
-  {{.TLSIdentityVolumeSpecFileName}}: |
+  {{.Values.TLSIdentityVolumeSpecFileName}}: |
     name: linkerd-secrets
     secret:
       secretName: "" # this value will be computed by the webhook
