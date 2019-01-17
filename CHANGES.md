@@ -3,8 +3,6 @@
 * Controller
   * Retry support! Introduce an `isRetryable` property to service profiles to
     enable configuring retries on a per-route basis
-  * Add Daemonset support to Web UI, Grafana, and cli `stat` command (thanks,
-    @zknill!)
 * Web UI
   * Add "meshed" and "no traffic" badges on the resource detail pages
   * Fix `linkerd dashboard` to maintain proxy connection when browser open fails
