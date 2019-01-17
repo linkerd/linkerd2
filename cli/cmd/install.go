@@ -83,9 +83,17 @@ type installOptions struct {
 }
 
 const (
-	prometheusProxyOutboundCapacity = 10000
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
+	prometheusProxyOutboundCapacity = 10000
+
+	baseTemplateName  = "base"
+	tlsTemplateName   = "tls"
+	proxyInjectorName = "proxy_injector"
+
+	baseTemplatePath          = "../install/base_template.yaml"
+	tlsTemplatePath           = "../install/tls_template.yaml"
+	proxyInjectorTemplatePath = "../install/proxy_injector_template.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -213,44 +221,105 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}, nil
 }
 
+func (options *installOptions) validate() error {
+	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+	}
+
+	if options.proxyAutoInject && options.singleNamespace {
+		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
+	}
+
+	return options.proxyConfigOptions.validate()
+}
+
 func render(config installConfig, w io.Writer, options *installOptions) error {
-	// Set up chart
-	c := &chart.Chart{}
+	// Load chart for rendering
+	chrt, err := loadChart(&config)
+	if err != nil {
+		return err
+	}
 
-	// Initialize chart Metadata for use in rendering values
-	cm, err := ioutil.ReadFile("../install/Chart.yaml")
+	// Render raw values
+	values, err := renderRawValues(chrt, &config)
 	if err != nil {
 		return err
 	}
-	m, err := chartutil.UnmarshalChartfile(cm)
-	if err != nil {
-		return err
-	}
-	c.Metadata = m
 
-	// Initialize templates
-	baseTmpl, err := ioutil.ReadFile("../install/base_template.yaml")
+	// Render templates with raw values
+	renderer := engine.New()
+	rendered, err := renderer.Render(chrt, values)
 	if err != nil {
 		return err
 	}
-	c.Templates = append(c.Templates, &chart.Template{Name: "base", Data: baseTmpl})
+
+	injectTmpl, err := renderInjectTemplate(rendered, &config)
+	if err != nil {
+		return err
+	}
+
+	injectOptions := newInjectOptions()
+	injectOptions.proxyConfigOptions = options.proxyConfigOptions
+
+	// Special case for linkerd-proxy running in the Prometheus pod.
+	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
+
+	return InjectYAML(&injectTmpl, w, ioutil.Discard, injectOptions)
+}
+
+func loadChart(config *installConfig) (*chart.Chart, error) {
+	chrt := &chart.Chart{}
+
+	// Load chart metadata
+	if err := loadMetaData(chrt); err != nil {
+		return &chart.Chart{}, err
+	}
+
+	// Always load the base template
+	if err := loadTemplate(chrt, baseTemplateName, baseTemplatePath); err != nil {
+		return &chart.Chart{}, err
+	}
 
 	if config.EnableTLS {
-		tlsTmpl, err := ioutil.ReadFile("../install/tls_template.yaml")
-		if err != nil {
-			return err
+		if err := loadTemplate(chrt, tlsTemplateName, tlsTemplatePath); err != nil {
+			return &chart.Chart{}, err
 		}
-		c.Templates = append(c.Templates, &chart.Template{Name: "tls", Data: tlsTmpl})
 
 		if config.ProxyAutoInjectEnabled {
-			proxyInjectorTmpl, err := ioutil.ReadFile("../install/proxy_injector_template.yaml")
-			if err != nil {
-				return err
+			if err := loadTemplate(chrt, proxyInjectorName, proxyInjectorTemplatePath); err != nil {
+				return &chart.Chart{}, err
 			}
-			c.Templates = append(c.Templates, &chart.Template{Name: "proxy_injector", Data: proxyInjectorTmpl})
 		}
 	}
 
+	return chrt, nil
+}
+
+func loadMetaData(chrt *chart.Chart) error {
+	metadataBytes, err := ioutil.ReadFile("../install/Chart.yaml")
+	if err != nil {
+		return err
+	}
+	metadata, err := chartutil.UnmarshalChartfile(metadataBytes)
+	if err != nil {
+		return err
+	}
+	chrt.Metadata = metadata
+
+	return nil
+}
+
+func loadTemplate(chrt *chart.Chart, tmplName string, tmplPath string) error {
+	tmpl, err := ioutil.ReadFile(tmplPath)
+	if err != nil {
+		return err
+	}
+	chrt.Templates = append(chrt.Templates, &chart.Template{Name: tmplName, Data: tmpl})
+
+	return nil
+}
+
+func renderRawValues(chrt *chart.Chart, config *installConfig) (chartutil.Values, error) {
 	// Initialize helper structs for use in rendering values
 	caps := &chartutil.Capabilities{
 		APIVersions:   chartutil.DefaultVersionSet,
@@ -269,58 +338,38 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		KubeVersion: "",
 	}
 
-	// Render values
-	rawVals, err := yaml.Marshal(&config)
+	rawValues, err := yaml.Marshal(config)
 	if err != nil {
-		return err
-	}
-	cConf := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
-
-	vals, err := chartutil.ToRenderValuesCaps(c, cConf, renderOpts.ReleaseOptions, caps)
-	if err != nil {
-		fmt.Printf("failed to render vals: %v", err)
+		return chartutil.Values{}, err
 	}
 
-	// Set up engine
-	renderer := engine.New()
-	rendered, err := renderer.Render(c, vals)
-	if err != nil {
-		return err
-	}
+	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	var merged bytes.Buffer
-	if _, err := merged.WriteString(rendered["linkerd/base"]); err != nil {
-		return err
-	}
-
-	if tlsTmpl, ok := rendered["linkerd/tls"]; ok {
-		if _, err := merged.WriteString(tlsTmpl); err != nil {
-			return err
-		}
-	}
-	if proxyInjectorTmpl, ok := rendered["linkerd/proxy_injector"]; ok {
-		if _, err := merged.WriteString(proxyInjectorTmpl); err != nil {
-			return err
-		}
-	}
-
-	injectOptions := newInjectOptions()
-	injectOptions.proxyConfigOptions = options.proxyConfigOptions
-
-	// Special case for linkerd-proxy running in the Prometheus pod.
-	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
-
-	return InjectYAML(&merged, w, ioutil.Discard, injectOptions)
+	return chartutil.ToRenderValuesCaps(chrt, chrtConfig, renderOpts.ReleaseOptions, caps)
 }
 
-func (options *installOptions) validate() error {
-	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
-		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+func renderInjectTemplate(rendered map[string]string, config *installConfig) (bytes.Buffer, error) {
+	var injectTmpl bytes.Buffer
+
+	// Order matters in template; the base template must be first
+	if _, err := injectTmpl.WriteString(rendered["linkerd/base"]); err != nil {
+		return bytes.Buffer{}, err
 	}
 
-	if options.proxyAutoInject && options.singleNamespace {
-		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
+	// If TLS should be enabled, then the TLS template must be second
+	if config.EnableTLS {
+		if _, err := injectTmpl.WriteString(rendered["linkerd/tls"]); err != nil {
+			return bytes.Buffer{}, err
+		}
+
+		// If TLS is enabled and the proxy should be injected, then the proxy
+		// injector template should be third
+		if config.ProxyAutoInjectEnabled {
+			if _, err := injectTmpl.WriteString(rendered["linkerd/proxy_injector"]); err != nil {
+				return bytes.Buffer{}, err
+			}
+		}
 	}
 
-	return options.proxyConfigOptions.validate()
+	return injectTmpl, nil
 }
