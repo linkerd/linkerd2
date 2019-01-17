@@ -101,17 +101,12 @@ func (rt resourceTransformerUninjectSilent) transform(bytes []byte, options *inj
 }
 
 func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
-	uninjected := []string{}
 	for _, r := range uninjectReports {
 		if r.sidecar {
-			uninjected = append(uninjected, r.name)
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.kind, r.name)))
+		} else {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
 		}
-	}
-	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) uninjected", len(uninjected), len(uninjectReports))
-	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
-
-	for _, i := range uninjected {
-		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
 	}
 
 	// trailing newline to separate from kubectl output if piping
