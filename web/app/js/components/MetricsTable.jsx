@@ -17,6 +17,9 @@ import { withContext } from './util/AppContext.jsx';
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let isAuthorityTable = resource === "authority";
   let isMultiResourceTable = resource === "multi_resource";
+  let getResourceDisplayName =  isMultiResourceTable ?
+    d => `${toShortResourceName(d.type)}/${d.name}` :
+    d => d.name;
 
   let nsColumn = [
     {
@@ -46,11 +49,11 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
         if (resource === "namespace") {
           nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
         } else if (!d.added || isAuthorityTable) {
-          nameContents = isMultiResourceTable ? `${toShortResourceName(d.type)}/${d.name}` : d.name;
+          nameContents = getResourceDisplayName(d);
         } else {
           nameContents = (
             <PrefixedLink to={"/namespaces/" + d.namespace + "/" + d.type + "s/" + d.name}>
-              {isMultiResourceTable ? `${toShortResourceName(d.type)}/${d.name}` : d.name}
+              {getResourceDisplayName(d)}
             </PrefixedLink>
           );
         }
@@ -62,7 +65,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
           </Grid>
         );
       },
-      sorter: (a, b) => (a.name || "").localeCompare(b.name)
+      sorter: (a, b) => (getResourceDisplayName(a) || "").localeCompare(getResourceDisplayName(b))
     },
     {
       title: "Success Rate",
