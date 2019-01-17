@@ -24,7 +24,6 @@ func generateRegexForContainer(containerName string, t *testing.T) *regexp.Regex
 	containerRegex, err := regexp.Compile(containerName)
 	if err != nil {
 		t.Fatalf("Unable to generate regex from [%s]", containerName)
-		return nil
 	}
 	return containerRegex
 }
