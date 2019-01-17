@@ -102,22 +102,6 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(client *http.Client, namespace 
 	return kubeAPI.getPods(client, "/api/v1/namespaces/"+namespace+"/pods")
 }
 
-// GetPodInNamespace returns the requested pod in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodInNamespace(client *http.Client, namespace string, podName string) (*v1.Pod, error) {
-	podList, err := kubeAPI.GetPodsByNamespace(client, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, pod := range podList {
-		if pod.GetName() == podName {
-			return &pod, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Could not find pod: %v in namespace: %v", podName, namespace)
-}
-
 func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Pod, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

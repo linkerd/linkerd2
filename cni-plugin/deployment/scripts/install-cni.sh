@@ -171,7 +171,7 @@ CNI_CONF_FILE="${CNI_CONF_PATH}"
 if [ -e "${CNI_CONF_FILE}" ]; then
   # Add the linkerd-cni plugin to the existing list
   CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
-  CNI_CONF_DATA=$(cat "${CNI_CONF_FILE}" | jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /filter.jq)
+  CNI_CONF_DATA=$(cat "${CNI_CONF_FILE}" | jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq)
   echo "${CNI_CONF_DATA}" > ${TMP_CONF}
 fi
 

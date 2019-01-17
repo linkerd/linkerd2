@@ -126,7 +126,6 @@ spec:
         # that Kubernetes doesn't keep trying to restart it.
         - name: install-cni
           image: gcr.io/linkerd-io/cni-plugin:dev-bd117b06-x27s
-          command: ["/install-cni.sh"]
           env:
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG

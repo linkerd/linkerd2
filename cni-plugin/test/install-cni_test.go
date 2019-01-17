@@ -117,7 +117,7 @@ func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir str
 	// user, _ := user.Current()
 	// tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
 	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", "dev-bd117b06-x27s")
-	errFileName := wd + "/docker_run_stderr"
+	errFileName := tempCNINetDir + "/.." + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.
 	args := []string{"run", "-d",
