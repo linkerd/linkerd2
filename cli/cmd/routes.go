@@ -138,7 +138,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	}
 
 	resources := make([]string, 0)
-	for resource, _ := range tables {
+	for resource := range tables {
 		resources = append(resources, resource)
 	}
 	sort.Strings(resources)
