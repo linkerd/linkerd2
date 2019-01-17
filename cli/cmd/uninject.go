@@ -15,6 +15,8 @@ import (
 
 type resourceTransformerUninject struct{}
 
+type resourceTransformerUninjectSilent struct{}
+
 // UninjectYAML processes resource definitions and outputs them after uninjection in out
 func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
 	return ProcessYAML(in, out, report, options, resourceTransformerUninject{})
@@ -22,6 +24,10 @@ func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, options *inject
 
 func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
 	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerUninject{})
+}
+
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerUninjectSilent{})
 }
 
 func newCmdUninject() *cobra.Command {
@@ -68,7 +74,8 @@ func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOpt
 	}
 
 	report := injectReport{
-		name: fmt.Sprintf("%s/%s", strings.ToLower(conf.meta.Kind), conf.om.Name),
+		kind: strings.ToLower(conf.meta.Kind),
+		name: conf.om.Name,
 	}
 
 	// If we don't uninject anything into the pod template then output the
@@ -90,22 +97,24 @@ func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOpt
 	return output, []injectReport{report}, nil
 }
 
+func (rt resourceTransformerUninjectSilent) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
+	return resourceTransformerUninject{}.transform(bytes, options)
+}
+
 func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
-	uninjected := []string{}
 	for _, r := range uninjectReports {
 		if r.sidecar {
-			uninjected = append(uninjected, r.name)
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.kind, r.name)))
+		} else {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
 		}
-	}
-	summary := fmt.Sprintf("Summary: %d of %d YAML document(s) uninjected", len(uninjected), len(uninjectReports))
-	output.Write([]byte(fmt.Sprintf("\n%s\n", summary)))
-
-	for _, i := range uninjected {
-		output.Write([]byte(fmt.Sprintf("  %s\n", i)))
 	}
 
 	// trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
+}
+
+func (resourceTransformerUninjectSilent) generateReport(uninjectReports []injectReport, output io.Writer) {
 }
 
 // Given a PodSpec, update the PodSpec in place with the sidecar

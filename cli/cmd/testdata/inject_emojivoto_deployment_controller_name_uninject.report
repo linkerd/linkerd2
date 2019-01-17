@@ -1,5 +1,3 @@
-
-Summary: 2 of 2 YAML document(s) uninjected
-  deployment/controller
-  deployment/not-controller
+deployment "controller" uninjected
+deployment "not-controller" uninjected
 
