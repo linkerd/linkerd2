@@ -311,6 +311,75 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required:
+          - routes
+          properties:
+            routes:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - condition
+                properties:
+                  name:
+                    type: string
+                  condition:
+                    type: object
+                    minProperties: 1
+                    properties:
+                      method:
+                        type: string
+                      pathRegex:
+                        type: string
+                      all:
+                        type: array
+                        items:
+                          type: object
+                      any:
+                        type: array
+                        items:
+                          type: object
+                      not:
+                        type: object
+                  responseClasses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      properties:
+                        isFailure:
+                          type: boolean
+                        condition:
+                          type: object
+                          properties:
+                            status:
+                              type: object
+                              minProperties: 1
+                              properties:
+                                min:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                                max:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                            all:
+                              type: array
+                              items:
+                                type: object
+                            any:
+                              type: array
+                              items:
+                                type: object
+                            not:
+                              type: object
 
 ### Service Account Web ###
 ---
@@ -372,6 +441,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
+        - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -uuid=UUID
         - -controller-namespace=Namespace
         - -single-namespace=false
@@ -882,7 +952,7 @@ data:
     instance_name = linkerd-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/api/v1/namespaces/Namespace/services/linkerd-grafana:http/proxy/
+    root_url = %(protocol)s://%(domain)s:/grafana/
 
     [auth]
     disable_login_form = true

@@ -94,7 +94,7 @@ class NamespaceLanding extends React.Component {
         // by default, show the first non-linkerd meshed namesapce
         // if no other meshed namespaces are found, show the linkerd namespace
         let defaultOpenNs = _find(namespaces, ns => ns.added && ns.name !== this.props.controllerNamespace);
-        defaultOpenNs = defaultOpenNs || _find(namespaces, ['name', this.props.controllerNamespace]);
+        defaultOpenNs = defaultOpenNs || _find(namespaces, ns => ns.name === this.props.controllerNamespace);
 
         this.setState({
           namespaces,

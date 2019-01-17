@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -123,7 +122,7 @@ If no resource name is specified, displays stats about all resources of the spec
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := validatedPublicAPIClient(time.Time{})
+			client := cliPublicAPIClient()
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
@@ -265,8 +264,8 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		if r.Stats != nil {
 			statTables[resourceKey][key].rowStats = &rowStats{
-				requestRate: getRequestRate(r.Stats, r.TimeWindow),
-				successRate: getSuccessRate(r.Stats),
+				requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+				successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
 				tlsPercent:  getPercentTLS(r.Stats),
 				latencyP50:  r.Stats.LatencyMsP50,
 				latencyP95:  r.Stats.LatencyMsP95,
@@ -276,7 +275,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	switch options.outputFormat {
-	case "table", "":
+	case "table", "wide", "":
 		if len(statTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)

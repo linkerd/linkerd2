@@ -35,8 +35,10 @@ spec:
         resources: {}
       - image: gcr.io/istio-release/proxyv2:1.0.2
         name: istio-proxy
+        resources: {}
       initContainers:
       - image: gcr.io/istio-release/proxy_init:1.0.2
         name: istio-init
+        resources: {}
 status: {}
 ---

@@ -16,15 +16,14 @@ var proxyPathRegexp = regexp.MustCompile("/api/v1/namespaces/.*/proxy/")
 
 type (
 	renderTemplate func(http.ResponseWriter, string, string, interface{}) error
-	serveFile      func(http.ResponseWriter, string, string, interface{}) error
 
 	handler struct {
 		render              renderTemplate
-		serveFile           serveFile
 		apiClient           pb.ApiClient
 		uuid                string
 		controllerNamespace string
 		singleNamespace     bool
+		grafanaProxy        *grafanaProxy
 	}
 )
 
@@ -84,4 +83,8 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	w.Header().Set("Content-Disposition", dispositionHeaderVal)
 
 	w.Write(profileYaml.Bytes())
+}
+
+func (h *handler) handleGrafana(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	h.grafanaProxy.ServeHTTP(w, req)
 }

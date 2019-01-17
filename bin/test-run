@@ -48,7 +48,7 @@ check_if_k8s_reachable
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 test_directory="$bindir/../test"
 linkerd_version=$($linkerd_path version --client --short)
-linkerd_namespace=${2:-linkerd}
+linkerd_namespace=${2:-l5d-integration}
 
 printf "==================RUNNING ALL TESTS==================\\n"
 

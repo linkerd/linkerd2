@@ -47,19 +47,29 @@ func CheckClientVersion(expectedVersion string) error {
 	return nil
 }
 
-// CheckServerVersion validates whether the Linkerd Public API server's version
-// matches an expected version.
-func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
+// GetServerVersion returns the Linkerd Public API server version
+func GetServerVersion(apiClient pb.ApiClient) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	rsp, err := apiClient.Version(ctx, &pb.Empty{})
 	if err != nil {
+		return "", err
+	}
+
+	return rsp.GetReleaseVersion(), nil
+}
+
+// CheckServerVersion validates whether the Linkerd Public API server's version
+// matches an expected version.
+func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
+	releaseVersion, err := GetServerVersion(apiClient)
+	if err != nil {
 		return err
 	}
 
-	if v := rsp.GetReleaseVersion(); v != expectedVersion {
-		return versionMismatchError(expectedVersion, v)
+	if releaseVersion != expectedVersion {
+		return versionMismatchError(expectedVersion, releaseVersion)
 	}
 
 	return nil

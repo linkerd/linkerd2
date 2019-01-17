@@ -52,17 +52,17 @@ func TestEgressHttp(t *testing.T) {
 		}
 	}
 
-	testCase := func(serviceName, dnsName, protocolToUse, methodToUse string) {
-		testName := fmt.Sprintf("Can use egress to send %s request to %s (%s)", methodToUse, protocolToUse, serviceName)
+	testCase := func(deployName, dnsName, protocolToUse, methodToUse string) {
+		testName := fmt.Sprintf("Can use egress to send %s request to %s (%s)", methodToUse, protocolToUse, deployName)
 		t.Run(testName, func(t *testing.T) {
 			expectedURL := fmt.Sprintf("%s://%s/%s", protocolToUse, dnsName, strings.ToLower(methodToUse))
 
-			svcURL, err := TestHelper.ProxyURLFor(prefixedNs, serviceName, "http")
+			url, err := TestHelper.URLFor(prefixedNs, deployName, 8080)
 			if err != nil {
 				t.Fatalf("Failed to get proxy URL: %s", err)
 			}
 
-			output, err := TestHelper.HTTPGetURL(svcURL)
+			output, err := TestHelper.HTTPGetURL(url)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -88,11 +88,11 @@ func TestEgressHttp(t *testing.T) {
 	methods := []string{"GET", "POST"}
 	for _, protocolToUse := range supportedProtocols {
 		for _, methodToUse := range methods {
-			serviceName := fmt.Sprintf("egress-test-%s-%s-svc", protocolToUse, strings.ToLower(methodToUse))
+			serviceName := fmt.Sprintf("egress-test-%s-%s", protocolToUse, strings.ToLower(methodToUse))
 			testCase(serviceName, "www.httpbin.org", protocolToUse, methodToUse)
 		}
 	}
 
 	// Test egress for a domain with fewer than 3 segments.
-	testCase("egress-test-not-www-get-svc", "httpbin.org", "https", "GET")
+	testCase("egress-test-not-www-get", "httpbin.org", "https", "GET")
 }

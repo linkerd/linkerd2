@@ -1,7 +1,6 @@
 package srv
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"path"
@@ -22,19 +21,13 @@ const (
 type (
 	// Server encapsulates the Linkerd control plane's web dashboard server.
 	Server struct {
-		templateDir     string
-		staticDir       string
-		reload          bool
-		templateContext templateContext
-		templates       map[string]*template.Template
-		router          *httprouter.Router
+		templateDir string
+		reload      bool
+		templates   map[string]*template.Template
+		router      *httprouter.Router
 	}
 
-	templateContext struct {
-		WebpackDevServer string
-	}
 	templatePayload struct {
-		Context  templateContext
 		Contents interface{}
 	}
 	appParams struct {
@@ -56,12 +49,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // NewServer returns an initialized `http.Server`, configured to listen on an
 // address, render templates, and serve static assets, for a given Linkerd
 // control plane.
-func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, singleNamespace bool, webpackDevServer string, reload bool, apiClient pb.ApiClient) *http.Server {
+func NewServer(
+	addr string,
+	grafanaAddr string,
+	templateDir string,
+	staticDir string,
+	uuid string,
+	controllerNamespace string,
+	singleNamespace bool,
+	reload bool,
+	apiClient pb.ApiClient,
+) *http.Server {
 	server := &Server{
-		templateDir:     templateDir,
-		staticDir:       staticDir,
-		templateContext: templateContext{webpackDevServer},
-		reload:          reload,
+		templateDir: templateDir,
+		reload:      reload,
 	}
 
 	server.router = &httprouter.Router{
@@ -74,10 +75,10 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 	handler := &handler{
 		apiClient:           apiClient,
 		render:              server.RenderTemplate,
-		serveFile:           server.serveFile,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
 		singleNamespace:     singleNamespace,
+		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 
 	httpServer := &http.Server{
@@ -104,9 +105,8 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 	server.router.GET("/top", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
 	server.router.GET("/profiles/new", handler.handleProfileDownload)
-	server.router.ServeFiles(
-		"/dist/*filepath", // add catch-all parameter to match all files in dir
-		filesonly.FileSystem(server.staticDir))
+	// add catch-all parameter to match all files in dir
+	server.router.GET("/dist/*filepath", mkStaticHandler(staticDir))
 
 	// webapp api routes
 	server.router.GET("/api/version", handler.handleAPIVersion)
@@ -118,6 +118,15 @@ func NewServer(addr, templateDir, staticDir, uuid, controllerNamespace string, s
 	server.router.GET("/api/services", handler.handleAPIServices)
 	server.router.GET("/api/tap", handler.handleAPITap)
 	server.router.GET("/api/routes", handler.handleAPITopRoutes)
+
+	// grafana proxy
+	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.GET("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.HEAD("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.OPTIONS("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.PATCH("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.POST("/grafana/*grafanapath", handler.handleGrafana)
+	server.router.PUT("/grafana/*grafanapath", handler.handleGrafana)
 
 	return httpServer
 }
@@ -139,7 +148,7 @@ func (s *Server) RenderTemplate(w http.ResponseWriter, templateFile, templateNam
 		return template.Execute(w, args)
 	}
 
-	return template.ExecuteTemplate(w, templateName, templatePayload{Context: s.templateContext, Contents: args})
+	return template.ExecuteTemplate(w, templateName, templatePayload{Contents: args})
 }
 
 func (s *Server) loadTemplate(templateFile string) (template *template.Template, err error) {
@@ -167,17 +176,17 @@ func safelyJoinPath(rootPath, userPath string) string {
 	return filepath.Join(rootPath, path.Clean("/"+userPath))
 }
 
-func (s *Server) serveFile(w http.ResponseWriter, fileName string, templateName string, args interface{}) error {
-	dispositionHeaderVal := fmt.Sprintf("attachment; filename='%s'", fileName)
+func mkStaticHandler(staticDir string) httprouter.Handle {
+	fileServer := http.FileServer(filesonly.FileSystem(staticDir))
 
-	w.Header().Set("Content-Type", "text/yaml")
-	w.Header().Set("Content-Disposition", dispositionHeaderVal)
+	return func(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+		filepath := p.ByName("filepath")
+		if filepath == "/index_bundle.js" {
+			// don't cache the bundle because it references a hashed js file
+			w.Header().Set("Cache-Control", "no-cache, private, max-age=0")
+		}
 
-	template, err := s.loadTemplate(templateName)
-	if err != nil {
-		return err
+		req.URL.Path = filepath
+		fileServer.ServeHTTP(w, req)
 	}
-
-	template.Execute(w, args)
-	return nil
 }
