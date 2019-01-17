@@ -36,5 +36,6 @@ linkerd-data-plane
 √ data plane proxies are ready
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
+√ data plane and cli versions match
 
 Status check results are √

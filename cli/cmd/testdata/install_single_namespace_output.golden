@@ -132,8 +132,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
@@ -244,7 +244,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -276,7 +276,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -338,8 +338,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: web
@@ -396,7 +396,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -428,7 +428,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -479,8 +479,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
@@ -542,7 +542,7 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -574,7 +574,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -731,8 +731,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
@@ -788,7 +788,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -820,7 +820,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -971,8 +971,8 @@ spec:
     metadata:
       annotations:
         CreatedByAnnotation: CliVersion
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         ControllerComponentLabel: ca
@@ -1025,7 +1025,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1057,7 +1057,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}

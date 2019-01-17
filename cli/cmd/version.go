@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
@@ -33,27 +34,7 @@ func newCmdVersion() *cobra.Command {
 		Use:   "version",
 		Short: "Print the client and server version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			clientVersion := version.Version
-			if options.shortVersion {
-				fmt.Println(clientVersion)
-			} else {
-				fmt.Printf("Client version: %s\n", clientVersion)
-			}
-
-			client, err := newVersionClient()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error connecting to server: %s\n", err)
-				os.Exit(1)
-			}
-
-			if !options.onlyClientVersion {
-				serverVersion := getServerVersion(client)
-				if options.shortVersion {
-					fmt.Println(serverVersion)
-				} else {
-					fmt.Printf("Server version: %s\n", serverVersion)
-				}
-			}
+			configureAndRunVersion(options, os.Stdout, os.Stderr, newVersionClient)
 		},
 	}
 
@@ -64,13 +45,36 @@ func newCmdVersion() *cobra.Command {
 	return cmd
 }
 
-func getServerVersion(client pb.ApiClient) string {
-	resp, err := client.Version(context.Background(), &pb.Empty{})
-	if err != nil {
-		return defaultVersionString
+func configureAndRunVersion(
+	options *versionOptions,
+	stdout io.Writer,
+	stderr io.Writer,
+	mkClient func() (pb.ApiClient, error),
+) {
+	clientVersion := version.Version
+	if options.shortVersion {
+		fmt.Fprintln(stdout, clientVersion)
+	} else {
+		fmt.Fprintf(stdout, "Client version: %s\n", clientVersion)
 	}
 
-	return resp.GetReleaseVersion()
+	if !options.onlyClientVersion {
+		client, err := mkClient()
+		if err != nil {
+			fmt.Fprintf(stderr, "Error connecting to server: %s\n", err)
+			os.Exit(1)
+		}
+
+		serverVersion, err := healthcheck.GetServerVersion(client)
+		if err != nil {
+			serverVersion = defaultVersionString
+		}
+		if options.shortVersion {
+			fmt.Fprintln(stdout, serverVersion)
+		} else {
+			fmt.Fprintf(stdout, "Server version: %s\n", serverVersion)
+		}
+	}
 }
 
 // This client does not do any validation

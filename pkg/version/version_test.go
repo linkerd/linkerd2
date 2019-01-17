@@ -1,51 +1,34 @@
-package version_test
+package version
 
 import (
+	"errors"
+	"fmt"
 	"testing"
-
-	"github.com/linkerd/linkerd2/controller/api/public"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/version"
 )
 
-func TestCheckClientVersion(t *testing.T) {
-	t.Run("Passes when client version matches", func(t *testing.T) {
-		err := version.CheckClientVersion(version.Version)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-	})
+func TestMatch(t *testing.T) {
+	testCases := []struct {
+		expected string
+		actual   string
+		err      error
+	}{
+		{"dev-foo", "dev-foo", nil},
+		{"dev-foo-bar", "dev-foo-bar", nil},
+		{"dev-foo-bar", "dev-foo-baz", errors.New("is running version foo-baz but the latest dev version is foo-bar")},
+		{"dev-foo", "dev-bar", errors.New("is running version bar but the latest dev version is foo")},
+		{"dev-foo", "git-foo", errors.New("mismatched channels: running git-foo but retrieved dev-foo")},
+		{"badformat", "dev-foo", errors.New("failed to parse expected version: unsupported version format: badformat")},
+		{"dev-foo", "badformat", errors.New("failed to parse actual version: unsupported version format: badformat")},
+	}
 
-	t.Run("Fails when client version does not match", func(t *testing.T) {
-		err := version.CheckClientVersion(version.Version + "latest")
-		if err == nil {
-			t.Fatalf("Expected error, got none")
-		}
-	})
-}
-
-func TestCheckServerVersion(t *testing.T) {
-	t.Run("Passes when server version matches", func(t *testing.T) {
-		apiClient := createMockPublicAPI(version.Version)
-		err := version.CheckServerVersion(apiClient, version.Version)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-	})
-
-	t.Run("Fails when server version does not match", func(t *testing.T) {
-		apiClient := createMockPublicAPI(version.Version + "latest")
-		err := version.CheckServerVersion(apiClient, version.Version)
-		if err == nil {
-			t.Fatalf("Expected error, got none")
-		}
-	})
-}
-
-func createMockPublicAPI(version string) *public.MockAPIClient {
-	return &public.MockAPIClient{
-		VersionInfoToReturn: &pb.VersionInfo{
-			ReleaseVersion: version,
-		},
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("test %d Match(%s, %s)", i, tc.expected, tc.actual), func(t *testing.T) {
+			err := Match(tc.expected, tc.actual)
+			if (err == nil && tc.err != nil) ||
+				(err != nil && tc.err == nil) ||
+				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {
+				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
+			}
+		})
 	}
 }
