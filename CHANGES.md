@@ -14,7 +14,7 @@
   * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
     config
   * Add `linkerd logs` command to surface logs from any container in the Linkerd
-    control plane.
+    control plane (shout out to [Stern](https://github.com/wercker/stern)!)
   * Improved `linkerd routes` to list all routes, including those without
     traffic
   * Improved readability in `linkerd check` and `linkerd inject` outputs
