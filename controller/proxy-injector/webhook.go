@@ -212,7 +212,7 @@ func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
 		}
 	}
 
-	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec, false)
+	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec)
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {

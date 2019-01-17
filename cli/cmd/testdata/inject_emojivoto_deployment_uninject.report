@@ -1,2 +1,2 @@
- "deployment/web" uninjected
+deployment "web" uninjected
 

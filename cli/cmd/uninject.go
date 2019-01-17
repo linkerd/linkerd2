@@ -74,7 +74,8 @@ func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOpt
 	}
 
 	report := injectReport{
-		name: fmt.Sprintf("%s/%s", strings.ToLower(conf.meta.Kind), conf.om.Name),
+		kind: strings.ToLower(conf.meta.Kind),
+		name: conf.om.Name,
 	}
 
 	// If we don't uninject anything into the pod template then output the

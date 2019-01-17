@@ -1,2 +1,2 @@
- "statefulset/web" uninjected
+statefulset "web" uninjected
 

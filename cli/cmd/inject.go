@@ -138,7 +138,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
  */
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
 	report.hostNetwork = t.HostNetwork
-	report.sidecar = healthcheck.HasExistingSidecars(t, true)
+	report.sidecar = healthcheck.HasExistingSidecars(t)
 	report.udp = checkUDPPorts(t)
 
 	// Skip injection if:
