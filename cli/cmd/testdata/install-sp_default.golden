@@ -1,11 +1,9 @@
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-controller-api.linkerd.svc.cluster.local
   namespace: linkerd
 spec:
-  retryBudget: null
   routes:
   - name: POST /api/v1/StatSummary
     condition:
@@ -43,11 +41,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-proxy-api.linkerd.svc.cluster.local
   namespace: linkerd
 spec:
-  retryBudget: null
   routes:
   - name: POST /io.linkerd.proxy.destination.Destination/Get
     condition:
@@ -61,11 +57,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-prometheus.linkerd.svc.cluster.local
   namespace: linkerd
 spec:
-  retryBudget: null
   routes:
   - name: GET /api/v1/query
     condition:
@@ -83,11 +77,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-grafana.linkerd.svc.cluster.local
   namespace: linkerd
 spec:
-  retryBudget: null
   routes:
   - name: GET /api/annotations
     condition:

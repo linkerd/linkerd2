@@ -4,11 +4,9 @@ package installsp
 const Template = `apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-controller-api.{{.Namespace}}.svc.cluster.local
   namespace: {{.Namespace}}
 spec:
-  retryBudget: null
   routes:
   - name: POST /api/v1/StatSummary
     condition:
@@ -46,11 +44,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-proxy-api.{{.Namespace}}.svc.cluster.local
   namespace: {{.Namespace}}
 spec:
-  retryBudget: null
   routes:
   - name: POST /io.linkerd.proxy.destination.Destination/Get
     condition:
@@ -64,11 +60,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-prometheus.{{.Namespace}}.svc.cluster.local
   namespace: {{.Namespace}}
 spec:
-  retryBudget: null
   routes:
   - name: GET /api/v1/query
     condition:
@@ -86,11 +80,9 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  creationTimestamp: null
   name: linkerd-grafana.{{.Namespace}}.svc.cluster.local
   namespace: {{.Namespace}}
 spec:
-  retryBudget: null
   routes:
   - name: GET /api/annotations
     condition:
