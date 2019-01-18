@@ -39,7 +39,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
 
   let columns = [
     {
-      title: friendlyTitle(resource).singular,
+      title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
       dataIndex: "name",
       isNumeric: false,
       render: d => {

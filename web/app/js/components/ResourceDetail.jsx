@@ -105,7 +105,8 @@ export class ResourceDetailBase extends React.Component {
     // if we're displaying another type of resource page, display metrics for
     // rcs, deploys, replicasets, etc but not pods or authorities
     let shouldExclude = this.state.resourceType === "pod" ?
-      r => r !== "pod" : r => r === "pod" || r === "authority";
+      r => r !== "pod" :
+      r => r === "pod" || r === "authority"  || r === "service";
     return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
       if (shouldExclude(resource)) {
         return mem;
@@ -248,7 +249,6 @@ export class ResourceDetailBase extends React.Component {
     let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
     let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
 
-    let octopusDownstreams = _filter(downstreamMetrics, d => d.type !== "service");
     let upstreams = upstreamMetrics.concat(unmeshed);
 
     let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
@@ -281,7 +281,7 @@ export class ResourceDetailBase extends React.Component {
 
         <Octopus
           resource={resourceMetrics[0]}
-          neighbors={{ upstream: upstreamMetrics, downstream: octopusDownstreams }}
+          neighbors={{ upstream: upstreamMetrics, downstream: downstreamMetrics }}
           unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
