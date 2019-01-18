@@ -1,15 +1,15 @@
-import { DefaultRoute, processTopRoutesResults } from './util/MetricUtils.jsx';
-
+import CardContent from '@material-ui/core/CardContent';
 import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
-import _every from 'lodash/every';
+import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
+import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';
 
 class TopRoutesBase extends React.Component {
@@ -43,16 +43,30 @@ class TopRoutesBase extends React.Component {
 
   render() {
     const {data, loading} = this.props;
-    let metrics = processTopRoutesResults(_get(data, '[0].routes.rows', []));
-    let allRoutesUnknown = _every(metrics, m => m.route === DefaultRoute);
-    let showCallToAction = !loading &&  (_isEmpty(metrics) || allRoutesUnknown);
+    let results = _get(data, '[0].ok.routes', []);
+
+    let metricsByResource = results.map(r => {
+      return {
+        resource: r.resource,
+        rows: processTopRoutesResults(r.rows)
+      };
+    });
 
     return (
       <React.Fragment>
         {this.loading()}
         {this.banner()}
-        <TopRoutesTable rows={metrics} />
-        { showCallToAction ? <ConfigureProfilesMsg /> : null}
+        {
+          metricsByResource.map(metric => {
+            return (
+              <CardContent key={metric.resource}>
+                <Typography variant="h5">{metric.resource}</Typography>
+                <TopRoutesTable rows={metric.rows} />
+              </CardContent>
+            );
+          })
+        }
+        { !loading && _isEmpty(metricsByResource) ? <ConfigureProfilesMsg /> : null }
       </React.Fragment>
     );
   }
