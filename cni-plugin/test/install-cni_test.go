@@ -1,4 +1,5 @@
 // Copyright 2018 Istio Authors
+// Modifications copyright (c) Nordstrom, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -111,18 +113,18 @@ func populateK8sCreds(wd string, tempK8sSvcAcctDir string, t *testing.T) {
 }
 
 // startDocker starts a test Docker container and runs the install-cni.sh script.
-func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
+func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
 	// The following is in place to default to a sane development environment that mirrors how bin/fast-build
 	// does it. To change to a different docker image, set the HUB and TAG environment variables before running the tests.
 	gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
 	user, _ := user.Current()
 	tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
 	dockerImage := env("HUB", "gcr.io/linkerd-io") + "/cni-plugin:" + env("TAG", tag)
-	errFileName := tempCNINetDir + "/.." + "/docker_run_stderr"
+	errFileName := testWorkRootDir + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.
 	args := []string{"run", "-d",
-		"--name", "test-linkerd-cni-install",
+		"--name", "test-linkerd-cni-install-" + strconv.Itoa(testNum),
 		"-v", tempCNINetDir + ":" + hostCniNetDir,
 		"-v", tempCNIBinDir + ":/host/opt/cni/bin",
 		"-v", tempK8sSvcAcctDir + ":/var/run/secrets/kubernetes.io/serviceaccount",
@@ -144,7 +146,7 @@ func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir str
 	defer func() {
 		errClose := errFile.Close()
 		if errClose != nil {
-			t.Fatalf("Couldn't create docker stderr file, err: %v", errClose)
+			t.Fatalf("Couldn't close docker stderr file, err: %v", errClose)
 		}
 	}()
 
@@ -154,6 +156,8 @@ func startDocker(testNum int, wd string, tempCNINetDir string, tempCNIBinDir str
 
 	containerID, err := cmd.Output()
 	if err != nil {
+		errFileContents, _ := ioutil.ReadFile(errFileName)
+		t.Logf("%v contents:\n\n%v\n\n", errFileName, string(errFileContents))
 		t.Fatalf("Test %v ERROR: failed to start docker container '%v', see %v", testNum, dockerImage, errFileName)
 	}
 	t.Logf("Container ID: %s", containerID)
@@ -225,7 +229,7 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	}
 	setEnv(cniNetworkConfigName, string(defaultData), t)
 
-	containerID := startDocker(testNum, wd, tempCNINetDir, tempCNIBinDir, tempK8sSvcAcctDir, t)
+	containerID := startDocker(testNum, wd, testWorkRootDir, tempCNINetDir, tempCNIBinDir, tempK8sSvcAcctDir, t)
 	time.Sleep(5 * time.Second)
 
 	compareConfResult(testWorkRootDir, tempCNINetDir, finalNetConfFile, expectNetConfFile, t)

@@ -1,4 +1,23 @@
 #!/bin/sh
+# Copyright (c) 2018 Tigera, Inc. All rights reserved.
+# Copyright 2018 Istio Authors
+# Modifications copyright (c) Nordstrom, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file was inspired by:
+# 1) https://github.com/projectcalico/cni-plugin/blob/c1175467c227c1656577c80bfc0ee7795da2e2bc/k8s-install/scripts/install-cni.sh
+# 2) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/scripts/install-cni.sh
 
 # Script to install Linkerd CNI on a Kubernetes host.
 # - Expects the host CNI binary path to be mounted at /host/opt/cni/bin.
