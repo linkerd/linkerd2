@@ -62,8 +62,11 @@ class Octopus extends React.Component {
   getNeighborDisplayData = neighbors => {
     // only display maxNumNeighbors neighboring nodes in the octopus graph,
     // otherwise it will be really tall
-    let upstreams = _sortBy(neighbors.upstream, n => n.successRate);
-    let downstreams = _sortBy(neighbors.downstream, n => n.successRate);
+    // even though _sortBy is a stable sort, the order that this data is returned by the API
+    // can change, so the original order of items can change; this means we have to sort by
+    // name and by SR to ensure an actual stable sort
+    let upstreams = _sortBy(_sortBy(neighbors.upstream, displayName), n => n.successRate);
+    let downstreams = _sortBy(_sortBy(neighbors.downstream, displayName), n => n.successRate);
 
     let display = {
       upstreams: {

@@ -1,4 +1,4 @@
-import { friendlyTitle, metricToFormatter, numericSort, toShortResourceName } from './util/Utils.js';
+import { displayName, friendlyTitle, metricToFormatter, numericSort } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
@@ -17,9 +17,7 @@ import { withContext } from './util/AppContext.jsx';
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
   let isAuthorityTable = resource === "authority";
   let isMultiResourceTable = resource === "multi_resource";
-  let getResourceDisplayName =  isMultiResourceTable ?
-    d => `${toShortResourceName(d.type)}/${d.name}` :
-    d => d.name;
+  let getResourceDisplayName =  isMultiResourceTable ? displayName : d => d.name;
 
   let nsColumn = [
     {
