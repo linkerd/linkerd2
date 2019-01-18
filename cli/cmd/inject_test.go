@@ -18,7 +18,7 @@ type injectYAML struct {
 	testInjectOptions *injectOptions
 }
 
-func testInjectYAML(t *testing.T, tc injectYAML) {
+func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	file, err := os.Open("testdata/" + tc.inputFileName)
 	if err != nil {
 		t.Errorf("error opening test input file: %v\n", err)
@@ -29,9 +29,8 @@ func testInjectYAML(t *testing.T, tc injectYAML) {
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
 
-	err = InjectYAML(read, output, report, tc.testInjectOptions)
-	if err != nil {
-		t.Errorf("Unexpected error injecting YAML: %v\n", err)
+	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, tc.testInjectOptions); exitCode != 0 {
+		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
 
 	actualOutput := output.String()
@@ -51,7 +50,7 @@ func testInjectYAML(t *testing.T, tc injectYAML) {
 	}
 }
 
-func TestInjectYAML(t *testing.T) {
+func TestUninjectAndInject(t *testing.T) {
 	defaultOptions := newInjectOptions()
 	defaultOptions.linkerdVersion = "testinjectversion"
 
@@ -133,7 +132,7 @@ func TestInjectYAML(t *testing.T) {
 		},
 		{
 			inputFileName:     "inject_emojivoto_already_injected.input.yml",
-			goldenFileName:    "inject_emojivoto_already_injected.input.yml",
+			goldenFileName:    "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:    "inject_emojivoto_already_injected.report",
 			testInjectOptions: defaultOptions,
 		},
@@ -154,11 +153,11 @@ func TestInjectYAML(t *testing.T) {
 	for i, tc := range testCases {
 		verbose = true
 		t.Run(fmt.Sprintf("%d: %s --verbose", i, tc.inputFileName), func(t *testing.T) {
-			testInjectYAML(t, tc)
+			testUninjectAndInject(t, tc)
 		})
 		verbose = false
 		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
-			testInjectYAML(t, tc)
+			testUninjectAndInject(t, tc)
 		})
 	}
 }

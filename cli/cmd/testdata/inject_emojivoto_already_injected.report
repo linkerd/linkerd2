@@ -1,9 +1,6 @@
 
-⚠ known sidecar detected in deployment/web1, deployment/web2, deployment/web3, deployment/web4
-⚠ no supported objects found
-
-deployment "web1" skipped
-deployment "web2" skipped
-deployment "web3" skipped
-deployment "web4" skipped
+deployment "web1" injected
+deployment "web2" injected
+deployment "web3" injected
+deployment "web4" injected
 

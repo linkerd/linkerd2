@@ -1,4 +1,3 @@
 
-Summary: 1 of 1 YAML document(s) uninjected
-  statefulset/web
+statefulset "web" uninjected
 

@@ -34,6 +34,7 @@ spec:
           name: http
         resources: {}
       - image: gcr.io/linkerd-io/proxy:foo
+        name: linkerd-proxy
 status: {}
 ---
 apiVersion: apps/v1beta1
@@ -109,6 +110,7 @@ spec:
         resources: {}
       initContainers:
       - image: gcr.io/linkerd-io/proxy-init:foo
+        name: linkerd-init
 status: {}
 ---
 apiVersion: apps/v1beta1

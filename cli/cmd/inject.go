@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -28,8 +29,9 @@ const (
 	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 
 	// for inject reports
+
 	hostNetworkDesc = "pods do not use host networking"
-	sidecarDesc     = "pods do not have a proxy or initContainer already injected"
+	sidecarDesc     = "pods do not have a 3rd party proxy or initContainer already injected"
 	unsupportedDesc = "at least one resource injected"
 	udpDesc         = "pod specs do not include UDP ports"
 )
@@ -93,7 +95,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runInjectCmd(in, os.Stderr, os.Stdout, options)
+			exitCode := uninjectAndInject(in, os.Stderr, os.Stdout, options)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -101,6 +103,14 @@ sub-folders, or coming from stdin.`,
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	return cmd
+}
+
+func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
+	var out bytes.Buffer
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, nil); exitCode != 0 {
+		return exitCode
+	}
+	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, options)
 }
 
 /* Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -135,7 +145,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	// 1) Pods with `hostNetwork: true` share a network namespace with the host.
 	//    The init-container would destroy the iptables configuration on the host.
 	// OR
-	// 2) Known sidecars already present.
+	// 2) Known 3rd party sidecars already present.
 	if report.hostNetwork || report.sidecar {
 		return false
 	}
@@ -419,7 +429,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	}
 
 	if len(sidecar) > 0 {
-		output.Write([]byte(fmt.Sprintf("%s known sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
+		output.Write([]byte(fmt.Sprintf("%s known 3rd party sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, sidecarDesc)))
 	}
