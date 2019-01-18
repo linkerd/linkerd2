@@ -12,7 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +37,7 @@ const (
 )
 
 type injectOptions struct {
+	noInitContainer bool
 	*proxyConfigOptions
 }
 
@@ -58,6 +59,7 @@ type objMeta struct {
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
+		noInitContainer:    false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -122,6 +124,9 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
 	t.Annotations[k8s.ProxyVersionAnnotation] = options.linkerdVersion
+	if options.noInitContainer {
+		t.Annotations[k8s.SetupIPTablesLabel] = strconv.FormatBool(options.noInitContainer)
+	}
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)
@@ -178,23 +183,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
-	nonRoot := false
-	runAsUser := int64(0)
-	initContainer := v1.Container{
-		Name:                     k8s.InitContainerName,
-		Image:                    options.taggedProxyInitImage(),
-		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
-		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args:                     initArgs,
-		SecurityContext: &v1.SecurityContext{
-			Capabilities: &v1.Capabilities{
-				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
-			},
-			Privileged:   &f,
-			RunAsNonRoot: &nonRoot,
-			RunAsUser:    &runAsUser,
-		},
-	}
 	controlPlaneDNS := fmt.Sprintf("linkerd-proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
@@ -335,7 +323,26 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	t.Containers = append(t.Containers, sidecar)
-	t.InitContainers = append(t.InitContainers, initContainer)
+	if !options.noInitContainer {
+		nonRoot := false
+		runAsUser := int64(0)
+		initContainer := v1.Container{
+			Name:                     k8s.InitContainerName,
+			Image:                    options.taggedProxyInitImage(),
+			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
+			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+			Args:                     initArgs,
+			SecurityContext: &v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
+				},
+				Privileged:   &f,
+				RunAsNonRoot: &nonRoot,
+				RunAsUser:    &runAsUser,
+			},
+		}
+		t.InitContainers = append(t.InitContainers, initContainer)
+	}
 
 	return true
 }
