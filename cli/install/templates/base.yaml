@@ -10,6 +10,7 @@ metadata:
   {{- end }}
 
 {{ end -}}
+
 ### Service Account Controller ###
 ---
 kind: ServiceAccount

@@ -1170,11 +1170,9 @@
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
     "k8s.io/helm/pkg/chartutil",
-    "k8s.io/helm/pkg/engine",
     "k8s.io/helm/pkg/proto/hapi/chart",
     "k8s.io/helm/pkg/renderutil",
     "k8s.io/helm/pkg/timeconv",
-    "k8s.io/helm/pkg/version",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

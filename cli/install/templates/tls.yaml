@@ -1,3 +1,4 @@
+{{ if .Values.EnableTLS }}
 ### Service Account CA ###
 ---
 kind: ServiceAccount
@@ -109,3 +110,4 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
+{{ end }}
