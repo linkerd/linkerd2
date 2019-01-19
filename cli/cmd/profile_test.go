@@ -35,7 +35,7 @@ func TestParseProfile(t *testing.T) {
 
 func TestValidateOptions(t *testing.T) {
 	options := newProfileOptions()
-	exp := errors.New("You must specify exactly one of --template or --open-api")
+	exp := errors.New("You must specify exactly one of --template or --open-api or --tap")
 	err := options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -44,7 +44,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.openAPI = "openAPI"
-	exp = errors.New("You must specify exactly one of --template or --open-api")
+	exp = errors.New("You must specify exactly one of --template or --open-api or --tap")
 	err = options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -81,6 +81,17 @@ func TestValidateOptions(t *testing.T) {
 	err = options.validate()
 	if err != nil {
 		t.Fatalf("validateOptions returned unexpected error (%s) for options: %+v", err, options)
+	}
+
+	options = newProfileOptions()
+	options.name = "service-name"
+	options.namespace = "service-namespace"
+	options.tap = "deploy/webapp"
+	options.tapDuration = "badduration"
+	exp = errors.New("invalid duration \"badduration\": time: invalid duration badduration")
+	err = options.validate()
+	if err == nil || err.Error() != exp.Error() {
+		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
 	}
 
 	options = newProfileOptions()
