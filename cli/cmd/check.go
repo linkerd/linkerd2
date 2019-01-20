@@ -55,7 +55,7 @@ non-zero exit code.`,
   linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(options)
+			return configureAndRunChecks(stdout, options)
 		},
 	}
 
@@ -70,7 +70,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(options *checkOptions) error {
+func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -113,17 +113,17 @@ func configureAndRunChecks(options *checkOptions) error {
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	success := runChecks(os.Stdout, hc)
+	success := runChecks(w, hc)
 
 	// this empty line separates final results from the checks list in the output
-	fmt.Println("")
+	fmt.Fprintln(w, "")
 
 	if !success {
-		fmt.Printf("Status check results are %s\n", failStatus)
+		fmt.Fprintf(w, "Status check results are %s\n", failStatus)
 		os.Exit(2)
 	}
 
-	fmt.Printf("Status check results are %s\n", okStatus)
+	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
 
 	return nil
 }
@@ -137,7 +137,7 @@ func (o *checkOptions) validate() error {
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
-	spin := spinner.New(spinner.CharSets[21], 100*time.Millisecond)
+	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = w
 
 	prettyPrintResults := func(result *healthcheck.CheckResult) {

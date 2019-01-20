@@ -1,6 +1,6 @@
 category
 --------
-✔ check1
-✘ check2
+√ check1
+× check2
     This should contain instructions for fail
     See http://linkerd.io/hint-url for hints

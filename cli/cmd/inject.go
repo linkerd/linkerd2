@@ -95,7 +95,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := uninjectAndInject(in, os.Stderr, os.Stdout, options)
+			exitCode := uninjectAndInject(in, stderr, stdout, options)
 			os.Exit(exitCode)
 			return nil
 		},

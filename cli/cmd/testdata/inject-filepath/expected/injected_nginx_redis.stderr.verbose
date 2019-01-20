@@ -1,16 +1,16 @@
 
-✔ pods do not use host networking
-✔ pods do not have a 3rd party proxy or initContainer already injected
-✔ at least one resource injected
-✔ pod specs do not include UDP ports
+√ pods do not use host networking
+√ pods do not have a 3rd party proxy or initContainer already injected
+√ at least one resource injected
+√ pod specs do not include UDP ports
 
 deployment "redis" injected
 
 
-✔ pods do not use host networking
-✔ pods do not have a 3rd party proxy or initContainer already injected
-✔ at least one resource injected
-✔ pod specs do not include UDP ports
+√ pods do not use host networking
+√ pods do not have a 3rd party proxy or initContainer already injected
+√ at least one resource injected
+√ pod specs do not include UDP ports
 
 deployment "nginx" injected
 
