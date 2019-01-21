@@ -63,8 +63,8 @@ type Kubernetes struct {
 // The field names need to match exact keys in kubelet args for unmarshalling
 type K8sArgs struct {
 	types.CommonArgs
-	K8S_POD_NAME      types.UnmarshallableString
-	K8S_POD_NAMESPACE types.UnmarshallableString
+	K8sPodName      types.UnmarshallableString
+	K8sPodNamespace types.UnmarshallableString
 }
 
 // PluginConf is whatever JSON is passed via stdin.
@@ -155,12 +155,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	// Determine if running under k8s by checking the CNI args
 	k8sArgs := K8sArgs{}
+	args.Args = strings.Replace(args.Args, "K8S_POD_NAMESPACE", "K8sPodNamespace", 1)
+	args.Args = strings.Replace(args.Args, "K8S_POD_NAME", "K8sPodName", 1)
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
 
-	namespace := string(k8sArgs.K8S_POD_NAMESPACE)
-	podName := string(k8sArgs.K8S_POD_NAME)
+	namespace := string(k8sArgs.K8sPodNamespace)
+	podName := string(k8sArgs.K8sPodName)
 	logEntry := logrus.WithFields(logrus.Fields{
 		"ContainerID": args.ContainerID,
 		"Pod":         podName,
