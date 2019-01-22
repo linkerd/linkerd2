@@ -235,6 +235,38 @@ func TestTopRoutes(t *testing.T) {
 		testTopRoutes(t, expectations)
 	})
 
+	t.Run("Successfully performs a routes query for a daemonset", func(t *testing.T) {
+		routes := []string{"/a"}
+		counts := []uint64{123}
+		expectations := []topRoutesExpected{
+			topRoutesExpected{
+				expectedStatRPC: expectedStatRPC{
+					err:              nil,
+					mockPromResponse: routesMetric([]string{"/a"}),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{daemonset="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{daemonset="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{daemonset="webapp", direction="inbound", namespace="books"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{daemonset="webapp", direction="inbound", namespace="books"}[1m])) by (rt_route, dst, classification)`,
+					},
+				},
+				req: pb.TopRoutesRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "books",
+							Type:      pkgK8s.DaemonSet,
+							Name:      "webapp",
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenTopRoutesResponse(routes, counts, false, "books"),
+			},
+		}
+
+		testTopRoutes(t, expectations)
+	})
+
 	t.Run("Successfully performs an outbound routes query", func(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
