@@ -2149,7 +2149,7 @@
         "datasource": "prometheus",
         "hide": 0,
         "includeAll": false,
-        "label": "Daemonset",
+        "label": "DaemonSet",
         "multi": false,
         "name": "daemonset",
         "options": [],
@@ -2235,7 +2235,7 @@
     ]
   },
   "timezone": "",
-  "title": "Linkerd Daemonset",
+  "title": "Linkerd DaemonSet",
   "uid": "QLL-ZKQmk",
   "version": 1
 }
