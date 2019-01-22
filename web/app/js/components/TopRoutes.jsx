@@ -163,15 +163,17 @@ class TopRoutes extends React.Component {
   // Each time state.query is updated, this method calls the equivalent
   // onChange method to reflect the update in url query params. These onChange
   // methods are automatically added to props by react-url-query.
-  handleUrlUpdate = (name, formVal) => {
-    this.props[`onChange${_upperFirst(name)}`](formVal);
+  handleUrlUpdate = query => {
+    for (let key in query) {
+      this.props[`onChange${_upperFirst(key)}`](query[key]);
+    }
   }
 
   handleNamespaceSelect = nsKey => e => {
     let query = this.state.query;
     let formVal = _get(e, 'target.value');
     query[nsKey] = formVal;
-    this.handleUrlUpdate(nsKey, formVal);
+    this.handleUrlUpdate(query);
     this.setState({ query });
   };
 
@@ -182,11 +184,9 @@ class TopRoutes extends React.Component {
 
     resourceName = resourceName || "";
     query[nameKey] = resourceName;
-    this.handleUrlUpdate(nameKey, resourceName);
-
     query[typeKey] = resourceType;
-    this.handleUrlUpdate(typeKey, resourceType);
 
+    this.handleUrlUpdate(query);
     this.setState({ query });
   }
 
