@@ -271,10 +271,15 @@ class TopRoutes extends React.Component {
     const { classes } = this.props;
     let { query, services, resourcesByNs } = this.state;
 
+    let nsFilterKey = "namespace";
+    if (typeKey === "to_type") {
+      nsFilterKey = "to_namespace";
+    }
+
     let servicesWithPrefix = services
-      .filter(s => s.namespace === query.namespace)
+      .filter(s => s[nsFilterKey] === query[nsFilterKey])
       .map(svc => `service/${svc.name}`);
-    let otherResources = resourcesByNs[query.namespace] || [];
+    let otherResources = resourcesByNs[query[nsFilterKey]] || [];
 
     let dropdownOptions = servicesWithPrefix
       .concat(otherResources)
