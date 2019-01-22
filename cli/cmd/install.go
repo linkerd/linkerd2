@@ -248,7 +248,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 			IsInstall: true,
 			IsUpgrade: false,
 			Time:      timeconv.Now(),
-			Namespace: "default",
+			Namespace: controlPlaneNamespace,
 		},
 		KubeVersion: "",
 	}
