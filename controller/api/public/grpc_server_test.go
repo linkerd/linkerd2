@@ -172,6 +172,7 @@ spec:
 				k8sAPI,
 				"linkerd",
 				[]string{},
+				false,
 			)
 
 			k8sAPI.Sync()
@@ -253,6 +254,7 @@ metadata:
 				k8sAPI,
 				"linkerd",
 				[]string{},
+				false,
 			)
 
 			k8sAPI.Sync()

@@ -29,6 +29,7 @@ type (
 		k8sAPI              *k8s.API
 		controllerNamespace string
 		ignoredNamespaces   []string
+		singleNamespace     bool
 	}
 )
 
@@ -51,6 +52,7 @@ func newGrpcServer(
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
+	singleNamespace bool,
 ) *grpcServer {
 	return &grpcServer{
 		prometheusAPI:       promAPI,
@@ -58,6 +60,7 @@ func newGrpcServer(
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 		ignoredNamespaces:   ignoredNamespaces,
+		singleNamespace:     singleNamespace,
 	}
 }
 

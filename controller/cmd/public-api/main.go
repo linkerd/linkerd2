@@ -41,25 +41,40 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+
+	var k8sAPI *k8s.API
 	restrictToNamespace := ""
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
+
+		k8sAPI = k8s.NewAPI(
+			k8sClient,
+			nil,
+			restrictToNamespace,
+			k8s.Deploy,
+			k8s.Pod,
+			k8s.RC,
+			k8s.RS,
+			k8s.Svc,
+		)
+	} else {
+		spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		k8sAPI = k8s.NewAPI(
+			k8sClient,
+			spClient,
+			restrictToNamespace,
+			k8s.Deploy,
+			k8s.Pod,
+			k8s.RC,
+			k8s.RS,
+			k8s.SP,
+			k8s.Svc,
+		)
 	}
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		spClient,
-		restrictToNamespace,
-		k8s.Deploy,
-		k8s.Pod,
-		k8s.RC,
-		k8s.RS,
-		k8s.SP,
-		k8s.Svc,
-	)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
 	if err != nil {
@@ -73,6 +88,7 @@ func main() {
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
+		*singleNamespace,
 	)
 
 	k8sAPI.Sync() // blocks until caches are synced
