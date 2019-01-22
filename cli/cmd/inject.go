@@ -104,6 +104,8 @@ sub-folders, or coming from stdin.`,
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "no-init-container", options.noInitContainer, "Injects the pod without reliance on an initContainer. Requires the linkerd-cni DaemonSet to be deployed to be useful.")
+
 	return cmd
 }
 
