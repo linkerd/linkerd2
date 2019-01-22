@@ -14,9 +14,9 @@
         "incoming-proxy-port": __INCOMING_PROXY_PORT__,
         "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
         "proxy-uid": __PROXY_UID__,
-        "ports-to-redirect": __PORTS_TO_REDIRECT__,
-        "inbound-ports-to-ignore": __INBOUND_PORTS_TO_IGNORE__,
-        "outbound-ports-to-ignore": __OUTBOUND_PORTS_TO_IGNORE__,
+        "ports-to-redirect": [__PORTS_TO_REDIRECT__],
+        "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
+        "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
         "simulate": __SIMULATE__
     }
 }

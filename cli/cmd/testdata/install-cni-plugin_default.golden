@@ -140,7 +140,7 @@ spec:
         # script copies the files into place and then sleeps so
         # that Kubernetes doesn't keep trying to restart it.
         - name: install-cni
-          image: gcr.io/linkerd-io/cni-plugin:dev-8e879794-x27s
+          image: gcr.io/linkerd-io/cni-plugin:undefined
           env:
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
@@ -188,3 +188,4 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: /etc/cni/net.d
+---

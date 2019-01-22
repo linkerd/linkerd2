@@ -1,4 +1,7 @@
-# Copyright 2017 CNI authors
+package installcniplugin
+
+// Template provides the base template for the `linkerd install-cni-plugin` command.
+const Template = `# Copyright 2017 CNI authors
 # Modifications copyright (c) Nordstrom, Inc
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,13 +23,13 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: linkerd
+  name: {{.Namespace}}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: {{.Namespace}}
 ---
 # Include a clusterrole for the linkerd CNI DaemonSet,
 # and bind it to the linkerd-cni serviceaccount.
@@ -50,20 +53,20 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: linkerd
+  namespace: {{.Namespace}}
 ---
 # This ConfigMap is used to configure a self-hosted linkerd CNI installation.
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: linkerd
+  namespace: {{.Namespace}}
 data:
-  incoming_proxy_port: "4143"
-  outgoing_proxy_port: "4140"
-  proxy_uid: "2102"
-  inbound_ports_to_ignore: "4190,4191"
-  outbound_ports_to_ignore: ""
+  incoming_proxy_port: "{{.InboundPort}}"
+  outgoing_proxy_port: "{{.OutboundPort}}"
+  proxy_uid: "{{.ProxyUID}}"
+  inbound_ports_to_ignore: "{{.IgnoreInboundPorts}}"
+  outbound_ports_to_ignore: "{{.IgnoreOutboundPorts}}"
   simulate: "false"
   log_level: "debug"
   # The CNI network configuration to install on each node. The special
@@ -98,7 +101,7 @@ kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: {{.Namespace}}
   labels:
     k8s-app: linkerd-cni
 spec:
@@ -140,7 +143,7 @@ spec:
         # script copies the files into place and then sleeps so
         # that Kubernetes doesn't keep trying to restart it.
         - name: install-cni
-          image: gcr.io/linkerd-io/cni-plugin:dev-8e879794-x27s
+          image: {{.CNIPluginImage}}
           env:
             # The CNI network config to install on each node.
             - name: CNI_NETWORK_CONFIG
@@ -188,3 +191,4 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: /etc/cni/net.d
+`
