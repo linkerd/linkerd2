@@ -39,6 +39,8 @@ func TestRender(t *testing.T) {
 		CreatedByAnnotation:              "CreatedByAnnotation",
 		ProxyAPIPort:                     123,
 		EnableTLS:                        true,
+		TLSTrustAnchorVolumeName:         "linkerd-trust-anchors",
+		TLSSecretsVolumeName:             "linkerd-secrets",
 		TLSTrustAnchorConfigMapName:      "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:               "ProxyContainerName",
 		TLSTrustAnchorFileName:           "TLSTrustAnchorFileName",
