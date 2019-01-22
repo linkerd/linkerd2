@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -237,7 +238,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
 	// Create chart and render templates
-	chrt, err := chartutil.Load("../install/")
+	gp := os.Getenv("GOPATH")
+	cp := path.Join(gp, "/src/github.com/linkerd/linkerd2/cli/install")
+	chrt, err := chartutil.Load(cp)
 	if err != nil {
 		return err
 	}
