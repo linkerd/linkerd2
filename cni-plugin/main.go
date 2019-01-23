@@ -38,10 +38,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	injectAnnotationKey = "linkerd.io/setup-iptables"
-)
-
 // ProxyInit is the configuration for the proxy-init binary
 type ProxyInit struct {
 	IncomingProxyPort     int   `json:"incoming-proxy-port"`
@@ -195,7 +191,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 		annotations := pod.GetAnnotations()
 		if len(pod.Spec.Containers) > 1 && containsLinkerdProxy {
-			if val, ok := annotations[injectAnnotationKey]; ok {
+			if val, ok := annotations[k8s.SetupIPTablesLabel]; ok {
 				if injectEnabled, err := strconv.ParseBool(val); err == nil {
 					if !injectEnabled {
 						logEntry.Infof("linkerd-cni: inject annotation is false")

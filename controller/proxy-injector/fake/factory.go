@@ -19,6 +19,7 @@ const (
 	FileProxyInitSpec            = "fake/data/config-proxy-init.yaml"
 	FileTLSTrustAnchorVolumeSpec = "fake/data/config-linkerd-trust-anchors.yaml"
 	FileTLSIdentityVolumeSpec    = "fake/data/config-linkerd-secrets.yaml"
+	DefaultNoInitContainer       = false
 )
 
 // Factory is a factory that can convert in-file YAML content into Kubernetes

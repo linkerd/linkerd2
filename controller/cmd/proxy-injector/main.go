@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/controller/proxy-injector"
+	injector "github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
@@ -24,6 +24,7 @@ func main() {
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
 	webhookServiceName := flag.String("webhook-service", "linkerd-proxy-injector.linkerd.io", "name of the admission webhook")
+	noInitContainer := flag.Bool("no-init-container", false, "whether to use an init container or the linkerd-cni plugin")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -40,7 +41,7 @@ func main() {
 		log.Fatalf("failed to mount the ca bundle: %s", err)
 	}
 
-	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, k8sPkg.MountPathTLSTrustAnchor)
+	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, k8sPkg.MountPathTLSTrustAnchor, *noInitContainer)
 	if err != nil {
 		log.Fatalf("failed to read the trust anchor file: %s", err)
 	}
@@ -66,7 +67,7 @@ func main() {
 		FileTLSTrustAnchorVolumeSpec: k8sPkg.MountPathTLSTrustAnchorVolumeSpec,
 		FileTLSIdentityVolumeSpec:    k8sPkg.MountPathTLSIdentityVolumeSpec,
 	}
-	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile)
+	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile, *noInitContainer)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

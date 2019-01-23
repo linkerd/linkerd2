@@ -118,6 +118,13 @@ func TestRender(t *testing.T) {
 	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
 	noInitContainerConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
+	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
+	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
+	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
+	noInitContainerWithProxyAutoInjectOptions.proxyConfigOptions.tls = "optional"
+	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
+	noInitContainerWithProxyAutoInjectConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
 	testCases := []struct {
 		config                installConfig
 		options               *installOptions
@@ -130,6 +137,7 @@ func TestRender(t *testing.T) {
 		{*haConfig, haOptions, haConfig.Namespace, "testdata/install_ha_output.golden"},
 		{*haWithOverridesConfig, haWithOverridesOptions, haWithOverridesConfig.Namespace, "testdata/install_ha_with_overrides_output.golden"},
 		{*noInitContainerConfig, noInitContainerOptions, noInitContainerConfig.Namespace, "testdata/install_no_init_container.golden"},
+		{*noInitContainerWithProxyAutoInjectConfig, noInitContainerWithProxyAutoInjectOptions, noInitContainerWithProxyAutoInjectConfig.Namespace, "testdata/install_no_init_container_auto_inject.golden"},
 	}
 
 	for i, tc := range testCases {

@@ -36,11 +36,8 @@ jobs:
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
-        - go_deps_sha=$(. ./bin/_tag.sh ; go_deps_sha)
-        - docker build -t gcr.io/linkerd-io/go-deps:${go_deps_sha} -f ./Dockerfile-go-deps .
-        - docker build -t gcr.io/linkerd-io/cni-plugin:travis -f ./cni-plugin/Dockerfile .
         - ./bin/protoc-go.sh
-        - TAG=travis go test -race -v ./...
+        - go test -race -v ./...
         - go vet ./...
         - ./bin/lint
 
@@ -164,7 +161,9 @@ jobs:
           # Run integration tests.
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
           ./bin/test-run `pwd`/linkerd linkerd-$version
-
+        - |
+          # Run linkerd-cni integration tests.
+          TAG="$(./linkerd version --client --short)" go test -race ./cni-plugin/test
       after_script:
         - |
           # Cleanup after integration test run.

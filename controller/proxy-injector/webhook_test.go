@@ -24,7 +24,7 @@ func init() {
 		panic(err)
 	}
 
-	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace)
+	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
 		panic(err)
 	}
@@ -41,6 +41,7 @@ func TestMutate(t *testing.T) {
 		{title: "inject enabled", requestFile: "inject-enabled-request.json", responseFile: "inject-enabled-response.yaml"},
 		{title: "inject disabled", requestFile: "inject-disabled-request.json", responseFile: "inject-disabled-response.yaml"},
 		{title: "inject completed", requestFile: "inject-completed-request.json", responseFile: "inject-completed-response.yaml"},
+		{title: "inject no-init-container", requestFile: "inject-no-init-container-request.json", responseFile: "inject-no-init-container-response.yaml"},
 	}
 
 	for _, testCase := range testCases {

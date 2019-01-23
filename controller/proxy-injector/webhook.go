@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -32,10 +34,11 @@ type Webhook struct {
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	resources           *WebhookResources
+	noInitContainer     bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -45,6 +48,7 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
+		noInitContainer:     noInitContainer,
 	}, nil
 }
 
@@ -141,10 +145,18 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch := NewPatch()
 	patch.addContainer(proxy)
 
-	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
-		patch.addInitContainerRoot()
+	annotations := deployment.Spec.Template.GetAnnotations()
+	if val, ok := annotations[k8s.SetupIPTablesLabel]; ok {
+		if setupIPTables, err := strconv.ParseBool(val); err == nil {
+			if !setupIPTables {
+				addInitContainer(deployment, proxyInit, patch)
+			}
+		} else {
+			addInitContainer(deployment, proxyInit, patch)
+		}
+	} else {
+		addInitContainer(deployment, proxyInit, patch)
 	}
-	patch.addInitContainer(proxyInit)
 
 	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
 		patch.addVolumeRoot()
@@ -200,6 +212,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	return admissionResponse, nil
+}
+
+func addInitContainer(deployment appsv1.Deployment, proxyInit *corev1.Container, patch *Patch) {
+	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
+		patch.addInitContainerRoot()
+	}
+	patch.addInitContainer(proxyInit)
 }
 
 func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {

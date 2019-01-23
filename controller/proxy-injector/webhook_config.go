@@ -23,10 +23,11 @@ type WebhookConfig struct {
 	trustAnchor         []byte
 	configTemplate      *template.Template
 	k8sAPI              kubernetes.Interface
+	noInitContainer     bool
 }
 
 // NewWebhookConfig returns a new instance of initiator.
-func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string) (*WebhookConfig, error) {
+func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string, noInitContainer bool) (*WebhookConfig, error) {
 	trustAnchor, err := ioutil.ReadFile(trustAnchorFile)
 	if err != nil {
 		return nil, err
@@ -40,6 +41,7 @@ func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookS
 		trustAnchor:         trustAnchor,
 		configTemplate:      template.Must(t.Parse(tmpl.MutatingWebhookConfigurationSpec)),
 		k8sAPI:              client,
+		noInitContainer:     noInitContainer,
 	}, nil
 }
 
@@ -83,12 +85,14 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 			ControllerNamespace  string
 			CABundle             string
 			ProxyAutoInjectLabel string
+			NoInitContainer      bool
 		}{
 			WebhookConfigName:    k8sPkg.ProxyInjectorWebhookConfig,
 			WebhookServiceName:   w.webhookServiceName,
 			ControllerNamespace:  w.controllerNamespace,
 			CABundle:             base64.StdEncoding.EncodeToString(w.trustAnchor),
 			ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectLabel,
+			NoInitContainer:      w.noInitContainer,
 		}
 	)
 	if err := w.configTemplate.Execute(buf, spec); err != nil {
