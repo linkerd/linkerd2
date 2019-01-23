@@ -1,4 +1,5 @@
 import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -24,6 +25,7 @@ import _pick from 'lodash/pick';
 import _uniq from 'lodash/uniq';
 import _upperFirst from 'lodash/upperFirst';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
+import { tapResourceTypes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -31,12 +33,19 @@ const topRoutesQueryProps = {
   resource_name: PropTypes.string,
   resource_type: PropTypes.string,
   namespace: PropTypes.string,
+  to_name: PropTypes.string,
+  to_type: PropTypes.string,
+  to_namespace: PropTypes.string,
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
 const urlPropsQueryConfig = _mapValues(topRoutesQueryProps, () => {
   return { type: UrlQueryParamTypes.string };
 });
+
+const toResourceName = (query, typeKey, nameKey) => {
+  return `${query[typeKey] || ""}${!query[nameKey] ? "" : "/"}${query[nameKey] || ""}`;
+};
 
 const styles = theme => ({
   root: {
@@ -61,6 +70,9 @@ class TopRoutes extends React.Component {
       resource_name: '',
       resource_type: '',
       namespace: '',
+      to_name: '',
+      to_type: '',
+      to_namespace: ''
     },
   }
 
@@ -151,26 +163,30 @@ class TopRoutes extends React.Component {
   // Each time state.query is updated, this method calls the equivalent
   // onChange method to reflect the update in url query params. These onChange
   // methods are automatically added to props by react-url-query.
-  handleUrlUpdate = (name, formVal) => {
-    this.props[`onChange${_upperFirst(name)}`](formVal);
+  handleUrlUpdate = query => {
+    for (let key in query) {
+      this.props[`onChange${_upperFirst(key)}`](query[key]);
+    }
   }
 
-  handleNamespaceSelect = e => {
+  handleNamespaceSelect = nsKey => e => {
     let query = this.state.query;
     let formVal = _get(e, 'target.value');
-    query.namespace = formVal;
-    this.handleUrlUpdate("namespace", formVal);
+    query[nsKey] = formVal;
+    this.handleUrlUpdate(query);
     this.setState({ query });
   };
 
-  handleResourceSelect = e => {
+  handleResourceSelect = (nameKey, typeKey) => e => {
     let query = this.state.query;
     let resource = _get(e, 'target.value');
-    let [resource_type, resource_name] = resource.split("/");
-    query.resource_name = resource_name;
-    query.resource_type = resource_type;
-    this.handleUrlUpdate("resource_name", resource_name);
-    this.handleUrlUpdate("resource_type", resource_type);
+    let [resourceType, resourceName] = resource.split("/");
+
+    resourceName = resourceName || "";
+    query[nameKey] = resourceName;
+    query[typeKey] = resourceType;
+
+    this.handleUrlUpdate(query);
     this.setState({ query });
   }
 
@@ -186,7 +202,7 @@ class TopRoutes extends React.Component {
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown() }
+              { this.renderResourceDropdown("Resource", "resource_name", "resource_type", "Resource to query") }
             </Grid>
 
             <Grid item>
@@ -209,6 +225,16 @@ class TopRoutes extends React.Component {
               </Button>
             </Grid>
           </Grid>
+
+          <Grid item container spacing={32} alignItems="center" justify="flex-start">
+            <Grid item>
+              { this.renderNamespaceDropdown("To Namespace", "to_namespace", "Namespece of target resource") }
+            </Grid>
+
+            <Grid item>
+              { this.renderResourceDropdown("To Resource", "to_name", "to_type", "Target resource") }
+            </Grid>
+          </Grid>
         </Grid>
         <Divider light className={classes.root} />
         {this.props.singleNamespace === "true" ? null :
@@ -225,7 +251,7 @@ class TopRoutes extends React.Component {
         <InputLabel htmlFor={`${key}-dropdown`}>{title}</InputLabel>
         <Select
           value={this.state.query[key]}
-          onChange={this.handleNamespaceSelect}
+          onChange={this.handleNamespaceSelect(key)}
           inputProps={{
             name: key,
             id: `${key}-dropdown`,
@@ -241,19 +267,26 @@ class TopRoutes extends React.Component {
     );
   }
 
-  renderResourceDropdown = () => {
+  renderResourceDropdown = (title, nameKey, typeKey, helperText) => {
     const { classes } = this.props;
     let { query, services, resourcesByNs } = this.state;
 
-    let key = "resource_name";
-    let servicesWithPrefix = services
-      .filter(s => s.namespace === query.namespace)
-      .map(svc => `service/${svc.name}`);
-    let otherResources = resourcesByNs[query.namespace] || [];
+    let nsFilterKey = "namespace";
+    if (typeKey === "to_type") {
+      nsFilterKey = "to_namespace";
+    }
 
-    let dropdownOptions = servicesWithPrefix.concat(otherResources).sort();
-    let dropdownVal = _isEmpty(query.resource_name) || _isEmpty(query.resource_type) ? "" :
-      query.resource_type + "/" + query.resource_name;
+    let servicesWithPrefix = services
+      .filter(s => s[nsFilterKey] === query[nsFilterKey])
+      .map(svc => `service/${svc.name}`);
+    let otherResources = resourcesByNs[query[nsFilterKey]] || [];
+
+    let dropdownOptions = servicesWithPrefix
+      .concat(otherResources)
+      .concat(tapResourceTypes)
+      .sort();
+
+    let dropdownVal = toResourceName(query, typeKey, nameKey);
 
     if (_isEmpty(dropdownOptions) && !_isEmpty(dropdownVal)) {
       dropdownOptions = [dropdownVal]; // populate from url if autocomplete hasn't loaded
@@ -261,28 +294,31 @@ class TopRoutes extends React.Component {
 
     return (
       <FormControl className={classes.formControl}>
-        <InputLabel htmlFor={`${key}-dropdown`}>Resource</InputLabel>
+        <InputLabel htmlFor={`${nameKey}-dropdown`}>{title}</InputLabel>
         <Select
           value={dropdownVal}
-          onChange={this.handleResourceSelect}
+          onChange={this.handleResourceSelect(nameKey, typeKey)}
           disabled={_isEmpty(query.namespace)}
           inputProps={{
-            name: key,
-            id: `${key}-dropdown`,
+            name: nameKey,
+            id: `${nameKey}-dropdown`,
           }}
-          name={key}>
+          name={nameKey}>
           {
             dropdownOptions.map(resource => <MenuItem key={resource} value={resource}>{resource}</MenuItem>)
           }
         </Select>
-        <FormHelperText>Resource to query</FormHelperText>
+        <FormHelperText>{helperText}</FormHelperText>
       </FormControl>
     );
   }
 
+
+
   render() {
     let query = this.state.query;
-    let emptyQuery = _isEmpty(query.resource_name) || _isEmpty(query.resource_type);
+    let emptyQuery = _isEmpty(query.resource_type);
+    let cliQueryToDisplay = _merge({}, query, {toResource: toResourceName(query, "to_type", "to_name"), toNamespace: query.to_namespace});
 
     return (
       <div>
@@ -292,8 +328,13 @@ class TopRoutes extends React.Component {
         }
         <Card>
           { this.renderRoutesQueryForm() }
-          {  emptyQuery ? null :
-          <QueryToCliCmd cmdName="routes" query={query} resource={query.resource_type + "/" + query.resource_name} /> }
+          {
+            emptyQuery ? null :
+            <QueryToCliCmd
+              cmdName="routes"
+              query={cliQueryToDisplay}
+              resource={toResourceName(query, "resource_type", "resource_name")} />
+            }
           { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={this.state.query} /> }
         </Card>
       </div>

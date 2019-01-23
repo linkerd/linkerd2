@@ -30,6 +30,15 @@ export const setMaxRps = query => {
   }
 };
 
+// resources you can tap/top to tap all pods in the resource
+export const tapResourceTypes = [
+  "deployment",
+  "daemonset",
+  "pod",
+  "replicationcontroller",
+  "statefulset"
+];
+
 // use a generator to get this object, to prevent it from being overwritten
 export const emptyTapQuery = () => ({
   resource: "",
