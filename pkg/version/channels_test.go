@@ -17,18 +17,27 @@ func TestGetLatestVersions(t *testing.T) {
 	}{
 		{
 			map[string]string{
-				"foo":     "foo-1.2.3",
-				"stable":  "stable-2.1.0",
-				"version": "stable-2.1.0",
+				"foo":    "foo-1.2.3",
+				"stable": "stable-2.1.0",
+				"edge":   "edge-2.1.0",
 			},
 			nil,
 			Channels{
 				[]channelVersion{
 					{"foo", "1.2.3"},
 					{"stable", "2.1.0"},
-					{"version", "2.1.0"},
+					{"edge", "2.1.0"},
 				},
 			},
+		},
+		{
+			map[string]string{
+				"foo":        "foo-1.2.3",
+				"stable":     "stable-2.1.0",
+				"badchannel": "edge-2.1.0",
+			},
+			fmt.Errorf("unexpected versioncheck response: channel in edge-2.1.0 does not match badchannel"),
+			Channels{},
 		},
 		{
 			map[string]string{

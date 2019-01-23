@@ -95,18 +95,15 @@ func getLatestVersions(client *http.Client, url string, uuid string, source stri
 	}
 
 	channels := Channels{}
-	for _, v := range versionRsp {
+	for c, v := range versionRsp {
 		cv, err := parseChannelVersion(v)
 		if err != nil {
 			return Channels{}, fmt.Errorf("unexpected versioncheck response: %s", err)
 		}
 
-		// TODO: introduce this sanity check once all keys in the response match
-		// their respective channels.
-		// Right now we have: `"version": "stable-2.1.0"`
-		// if c != cv.channel {
-		// 	return Channels{}, fmt.Errorf("unexpected versioncheck response: channel in %s does not match %s", cv, c)
-		// }
+		if c != cv.channel {
+			return Channels{}, fmt.Errorf("unexpected versioncheck response: channel in %s does not match %s", cv, c)
+		}
 
 		channels.array = append(channels.array, cv)
 	}
