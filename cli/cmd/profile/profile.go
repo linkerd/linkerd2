@@ -43,8 +43,11 @@ func (options *profileOptions) validate() error {
 	if options.openAPI != "" {
 		outputs++
 	}
+	if options.proto != "" {
+		outputs++
+	}
 	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template or --open-api")
+		return errors.New("You must specify exactly one of --template, --open-api, or --proto")
 	}
 
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
@@ -69,7 +72,7 @@ func NewCmdProfile(controlPlaneNamespace string) *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] (--template | --open-api file) (SERVICE)",
+		Use:   "profile [flags] (--template | --open-api file | --proto file) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long: `Output service profile config for Kubernetes.
 
@@ -88,7 +91,13 @@ If the --open-api flag is specified, it reads the given OpenAPI
 specification file and outputs a corresponding service profile.
 
 Example:
-  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -`,
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -
+
+If the --proto flag is specified, it reads the given protobuf specification
+file and outputs a corresponding service profile.
+
+Example:
+  linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
@@ -102,6 +111,8 @@ Example:
 				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.openAPI != "" {
 				return renderOpenAPI(options, controlPlaneNamespace, os.Stdout)
+			} else if options.proto != "" {
+				return renderProto(options, controlPlaneNamespace, os.Stdout)
 			}
 
 			// we should never get here
@@ -112,6 +123,7 @@ Example:
 	cmd.PersistentFlags().BoolVar(&options.template, "template", options.template, "Output a service profile template")
 	cmd.PersistentFlags().StringVar(&options.openAPI, "open-api", options.openAPI, "Output a service profile based on the given OpenAPI spec file")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
+	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 
 	return cmd
 }

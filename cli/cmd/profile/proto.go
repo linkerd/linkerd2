@@ -3,6 +3,7 @@ package profile
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/emicklei/proto"
@@ -42,7 +43,8 @@ func renderProto(options *profileOptions, controlPlaneNamespace string, w io.Wri
 				route := &sp.RouteSpec{
 					Name: typed.Name,
 					Condition: &sp.RequestMatch{
-						PathRegex: fmt.Sprintf("%s.%s/%s", pkg, service.Name, typed.Name),
+						Method:    http.MethodPost,
+						PathRegex: fmt.Sprintf("/%s.%s/%s", pkg, service.Name, typed.Name),
 					},
 				}
 				routes = append(routes, route)

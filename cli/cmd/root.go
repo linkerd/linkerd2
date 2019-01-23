@@ -81,7 +81,7 @@ func init() {
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdLogs())
-	RootCmd.AddCommand(profile.NewCmdProfile())
+	RootCmd.AddCommand(profile.NewCmdProfile(controlPlaneNamespace))
 	RootCmd.AddCommand(newCmdRoutes())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
