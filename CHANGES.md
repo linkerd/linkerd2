@@ -1,3 +1,45 @@
+## edge-19.1.2
+
+* Controller
+  * Retry support! Introduce an `isRetryable` property to service profiles to
+    enable configuring retries on a per-route basis
+* Web UI
+  * Add "meshed" and "no traffic" badges on the resource detail pages
+  * Fix `linkerd dashboard` to maintain proxy connection when browser open fails
+  * Fix JavaScript bundling to avoid serving old versions after upgrade
+* CLI
+  * Add `linkerd logs` command to surface logs from any container in the Linkerd
+    control plane (shout out to [Stern](https://github.com/wercker/stern)!)
+  * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
+    config
+  * Improve `linkerd inject` to re-inject a resource that already has a Linkerd
+    proxy
+  * Improve `linkerd routes` to list all routes, including those without traffic
+  * Improve readability in `linkerd check` and `linkerd inject` outputs
+* Proxy
+  * Fix a deadlock in HTTP/2 stream reference counts
+
+## edge-19.1.1
+
+* CLI
+  * Adjust the set of checks that are run before executing CLI commands, which
+    allows the CLI to be invoked even when the control plane is not fully ready
+  * Fix reporting of injected resources when the `linkerd inject` command is run
+    on `List` type resources with multiple items
+  * Update the `linkerd dashboard` command to use port-forwarding instead of
+    proxying when connecting to the web UI and Grafana
+  * Add validation for the `ServiceProfile` CRD (thanks, @alenkacz!)
+  * Update the `linkerd check` command to disallow setting both the `--pre` and
+    `--proxy` flags simultaneously (thanks again, @alenkacz!)
+* Web UI
+  * Reduce the size of the webpack JavaScript bundle by nearly 50%!
+  * Fix an indexing error on the top results page
+* Proxy
+  * **Fixed** The proxy-init container now exits with a non-zero exit code if
+    initialization fails, making initialization errors much more visible
+  * **Fixed** The proxy previously leaked UDP sockets for failed DNS queries,
+    causing a memory leak; this has been fixed
+
 ## edge-18.12.4
 
 Upgrade notes: The control plane components have been renamed as of the

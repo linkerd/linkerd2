@@ -1,8 +1,6 @@
 
-hostNetwork: pods do not use host networking...............................[ok]
-sidecar: pods do not have a proxy or initContainer already injected........[warn] -- known sidecar detected in deployment/web1, deployment/web2, deployment/web3, deployment/web4
-supported: at least one resource injected..................................[warn] -- no supported objects found
-udp: pod specs do not include UDP ports....................................[ok]
-
-Summary: 0 of 4 YAML document(s) injected
+deployment "web1" injected
+deployment "web2" injected
+deployment "web3" injected
+deployment "web4" injected
 

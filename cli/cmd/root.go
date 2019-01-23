@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -18,11 +19,12 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
-
-	lineWidth  = 80
-	okStatus   = "[ok]"
-	warnStatus = "[warn]"
+	lineWidth        = 80
 )
+
+var okStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u2714")    // ✔
+var warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u26A0") // ⚠
+var failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u2718")    // ✘
 
 var controlPlaneNamespace string
 var apiAddr string // An empty value means "use the Kubernetes configuration"
@@ -77,22 +79,35 @@ func init() {
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
+	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdRoutes())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
+	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdVersion())
+}
+
+// cliPublicAPIClient builds a new public API client and executes default status
+// checks to determine if the client can successfully perform cli commands. If the
+// checks fail, then CLI will print an error and exit.
+func cliPublicAPIClient() pb.ApiClient {
+	return validatedPublicAPIClient(time.Time{}, false)
 }
 
 // validatedPublicAPIClient builds a new public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit. If the shouldRetry param
-// is specified, then the CLI will print a message to stderr and retry.
-func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
-	checks := []healthcheck.Checks{
+// checks fail, then CLI will print an error and exit. If the retryDeadline
+// param is specified, then the CLI will print a message to stderr and retry.
+func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiClient {
+	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+	}
+
+	if apiChecks {
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -112,9 +127,11 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 		if result.Err != nil && !result.Warning {
 			var msg string
 			switch result.Category {
-			case healthcheck.KubernetesAPICategory:
+			case healthcheck.KubernetesAPIChecks:
 				msg = "Cannot connect to Kubernetes"
-			case healthcheck.LinkerdAPICategory:
+			case healthcheck.LinkerdControlPlaneExistenceChecks:
+				msg = "Cannot find Linkerd"
+			case healthcheck.LinkerdAPIChecks:
 				msg = "Cannot connect to Linkerd"
 			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
@@ -159,21 +176,19 @@ func (o *statOptionsBase) validateOutputFormat() error {
 func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	var out string
 	switch options.outputFormat {
-	case "table", "":
+	case "json":
+		out = string(buffer.Bytes())
+	default:
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
 		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
-	case "json":
-		out = string(buffer.Bytes())
 	}
 
 	return out
 }
 
 // getRequestRate calculates request rate from Public API BasicStats.
-func getRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
+func getRequestRate(success, failure uint64, timeWindow string) float64 {
 	windowLength, err := time.ParseDuration(timeWindow)
 	if err != nil {
 		log.Error(err.Error())
@@ -183,10 +198,7 @@ func getRequestRate(stats *pb.BasicStats, timeWindow string) float64 {
 }
 
 // getSuccessRate calculates success rate from Public API BasicStats.
-func getSuccessRate(stats *pb.BasicStats) float64 {
-	success := stats.SuccessCount
-	failure := stats.FailureCount
-
+func getSuccessRate(success, failure uint64) float64 {
 	if success+failure == 0 {
 		return 0.0
 	}

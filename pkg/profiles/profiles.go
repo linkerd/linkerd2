@@ -5,7 +5,9 @@ import (
 	"errors"
 	"io"
 	"text/template"
+	"time"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -16,6 +18,45 @@ type profileTemplateConfig struct {
 	ServiceNamespace      string
 	ServiceName           string
 	ClusterZone           string
+}
+
+// DefaultRetryBudget is used for routes which do not specify one.
+var DefaultRetryBudget = pb.RetryBudget{
+	MinRetriesPerSecond: 10,
+	RetryRatio:          0.2,
+	Ttl: &duration.Duration{
+		Seconds: 10,
+	},
+}
+
+// ToServiceProfile returns a Proxy API DestinationProfile, given a
+// ServiceProfile.
+func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, error) {
+	routes := make([]*pb.Route, 0)
+	for _, route := range profile.Routes {
+		pbRoute, err := ToRoute(route)
+		if err != nil {
+			return nil, err
+		}
+		routes = append(routes, pbRoute)
+	}
+	budget := DefaultRetryBudget
+	if profile.RetryBudget != nil {
+		budget.MinRetriesPerSecond = profile.RetryBudget.MinRetriesPerSecond
+		budget.RetryRatio = profile.RetryBudget.RetryRatio
+		ttl, err := time.ParseDuration(profile.RetryBudget.TTL)
+		if err != nil {
+			return nil, err
+		}
+		budget.Ttl = &duration.Duration{
+			Seconds: int64(ttl / time.Second),
+			Nanos:   int32(ttl % time.Second),
+		}
+	}
+	return &pb.DestinationProfile{
+		Routes:      routes,
+		RetryBudget: &budget,
+	}, nil
 }
 
 // ToRoute returns a Proxy API Route, given a ServiceProfile Route.
@@ -32,11 +73,13 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 		}
 		rcs = append(rcs, pbRc)
 	}
-	return &pb.Route{
+	ret := pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
 		MetricsLabels:   map[string]string{"route": route.Name},
-	}, nil
+		IsRetryable:     route.IsRetryable,
+	}
+	return &ret, nil
 }
 
 // ToResponseClass returns a Proxy API ResponseClass, given a ServiceProfile

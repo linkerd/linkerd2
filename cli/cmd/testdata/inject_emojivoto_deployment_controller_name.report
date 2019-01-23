@@ -1,10 +1,4 @@
 
-hostNetwork: pods do not use host networking...............................[ok]
-sidecar: pods do not have a proxy or initContainer already injected........[ok]
-supported: at least one resource injected..................................[ok]
-udp: pod specs do not include UDP ports....................................[ok]
-
-Summary: 2 of 2 YAML document(s) injected
-  deployment/controller
-  deployment/not-controller
+deployment "controller" injected
+deployment "not-controller" injected
 

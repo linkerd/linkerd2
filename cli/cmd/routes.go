@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -24,6 +22,12 @@ type routesOptions struct {
 	toResource   string
 	toNamespace  string
 	dstIsService bool
+}
+
+type routeRowStats struct {
+	rowStats
+	actualRequestRate float64
+	actualSuccessRate float64
 }
 
 const defaultRoute = "[UNKNOWN]"
@@ -48,7 +52,7 @@ This command will only display traffic which is sent to a service that has a Ser
 		Example: `  # Routes for the webapp service in the test namespace.
   linkerd routes service/webapp -n test
 
-  # Routes for calls from from the traffic deployment to the webapp service in the test namespace.
+  # Routes for calls from the traffic deployment to the webapp service in the test namespace.
   linkerd routes deploy/traffic -n test --to svc/webapp`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
@@ -58,7 +62,7 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(validatedPublicAPIClient(time.Time{}), req, options)
+			output, err := requestRouteStatsFromAPI(cliPublicAPIClient(), req, options)
 			if err != nil {
 				return err
 			}
@@ -73,7 +77,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default) and \"json\" are supported")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default), \"wide\", and \"json\" are supported")
 
 	return cmd
 }
@@ -84,7 +88,7 @@ func requestRouteStatsFromAPI(client pb.ApiClient, req *pb.TopRoutesRequest, opt
 		return "", fmt.Errorf("TopRoutes API error: %v", err)
 	}
 	if e := resp.GetError(); e != nil {
-		return "", fmt.Errorf("TopRoutes API response error: %v", e.Error)
+		return "", errors.New(e.Error)
 	}
 
 	return renderRouteStats(resp, options), nil
@@ -100,43 +104,60 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 }
 
 func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
-	table := make([]*rowStats, 0)
 
-	for _, r := range resp.GetRoutes().Rows {
-		if r.Stats != nil {
-			route := r.GetRoute()
-			if route == "" {
-				route = defaultRoute
+	tables := make(map[string][]*routeRowStats)
+
+	for _, resourceTable := range resp.GetOk().GetRoutes() {
+
+		table := make([]*routeRowStats, 0)
+
+		for _, r := range resourceTable.GetRows() {
+			if r.Stats != nil {
+				route := r.GetRoute()
+				table = append(table, &routeRowStats{
+					rowStats: rowStats{
+						route:       route,
+						dst:         r.GetAuthority(),
+						requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+						successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
+						latencyP50:  r.Stats.LatencyMsP50,
+						latencyP95:  r.Stats.LatencyMsP95,
+						latencyP99:  r.Stats.LatencyMsP99,
+					},
+					actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
+					actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
+				})
 			}
-			table = append(table, &rowStats{
-				route:       route,
-				dst:         r.GetAuthority(),
-				requestRate: getRequestRate(r.Stats, r.TimeWindow),
-				successRate: getSuccessRate(r.Stats),
-				latencyP50:  r.Stats.LatencyMsP50,
-				latencyP95:  r.Stats.LatencyMsP95,
-				latencyP99:  r.Stats.LatencyMsP99,
-			})
 		}
+
+		sort.Slice(table, func(i, j int) bool {
+			return table[i].dst+table[i].route < table[j].dst+table[j].route
+		})
+
+		tables[resourceTable.GetResource()] = table
 	}
 
-	sort.Slice(table, func(i, j int) bool {
-		return table[i].route+table[i].dst < table[j].route+table[j].dst
-	})
+	resources := make([]string, 0)
+	for resource := range tables {
+		resources = append(resources, resource)
+	}
+	sort.Strings(resources)
 
 	switch options.outputFormat {
-	case "table", "":
-		if len(table) == 0 {
-			fmt.Fprintln(os.Stderr, "No traffic found.  Does the service have a service profile?  You can create one with the `linkerd profile` command.")
-			os.Exit(0)
+	case "table", "wide", "":
+		for _, resource := range resources {
+			if len(tables) > 1 {
+				fmt.Fprintf(w, "==> %s <==\t\f", resource)
+			}
+			printRouteTable(tables[resource], w, options)
+			fmt.Fprintln(w)
 		}
-		printRouteTable(table, w, options)
 	case "json":
-		printRouteJSON(table, w)
+		printRouteJSON(tables, w, options)
 	}
 }
 
-func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth(stats))
 
@@ -148,65 +169,104 @@ func printRouteTable(stats []*rowStats, w *tabwriter.Writer, options *routesOpti
 	headers := []string{
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
-		"SUCCESS",
-		"RPS",
+	}
+	outputActual := options.toResource != "" && options.outputFormat == "wide"
+	if outputActual {
+		headers = append(headers, []string{
+			"EFFECTIVE_SUCCESS",
+			"EFFECTIVE_RPS",
+			"ACTUAL_SUCCESS",
+			"ACTUAL_RPS",
+		}...)
+	} else {
+		headers = append(headers, []string{
+			"SUCCESS",
+			"RPS",
+		}...)
+	}
+
+	headers = append(headers, []string{
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99\t", // trailing \t is required to format last column
-	}
+	}...)
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t\n"
+	// route, success rate, rps
+	templateString := routeTemplate + "\t%s\t%.2f%%\t%.1frps\t"
+	if outputActual {
+		// actual success rate, actual rps
+		templateString = templateString + "%.2f%%\t%.1frps\t"
+	}
+	// p50, p95, p99
+	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
 	for _, row := range stats {
 
-		authorityValue := row.dst
-		if options.dstIsService {
-			segments := strings.Split(row.dst, ".")
-			authorityValue = segments[0]
-		}
-
-		fmt.Fprintf(w, templateString,
+		values := []interface{}{
 			row.route,
-			authorityValue,
-			row.successRate*100,
+			row.dst,
+			row.successRate * 100,
 			row.requestRate,
+		}
+		if outputActual {
+			values = append(values, []interface{}{
+				row.actualSuccessRate * 100,
+				row.actualRequestRate,
+			}...)
+		}
+		values = append(values, []interface{}{
 			row.latencyP50,
 			row.latencyP95,
 			row.latencyP99,
-		)
+		}...)
+
+		fmt.Fprintf(w, templateString, values...)
 	}
 }
 
 // Using pointers there where the value is NA and the corresponding json is null
 type jsonRouteStats struct {
-	Route        string   `json:"route"`
-	Authority    string   `json:"authority"`
-	Success      *float64 `json:"success"`
-	Rps          *float64 `json:"rps"`
-	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
-	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
-	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
+	Route            string   `json:"route"`
+	Authority        string   `json:"authority"`
+	Success          *float64 `json:"success,omitempty"`
+	Rps              *float64 `json:"rps,omitempty"`
+	EffectiveSuccess *float64 `json:"effective_success,omitempty"`
+	EffectiveRps     *float64 `json:"effective_rps,omitempty"`
+	ActualSuccess    *float64 `json:"actual_success,omitempty"`
+	ActualRps        *float64 `json:"actual_rps,omitempty"`
+	LatencyMSp50     *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95     *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99     *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
+func printRouteJSON(tables map[string][]*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
-	entries := []*jsonRouteStats{}
-	for _, row := range stats {
-		route := row.route
-		entry := &jsonRouteStats{
-			Route: route,
+	entries := map[string][]*jsonRouteStats{}
+	for resource, table := range tables {
+		for _, row := range table {
+			route := row.route
+			entry := &jsonRouteStats{
+				Route: route,
+			}
+
+			entry.Authority = row.dst
+			if options.toResource != "" {
+				entry.EffectiveSuccess = &row.successRate
+				entry.EffectiveRps = &row.requestRate
+				entry.ActualSuccess = &row.actualSuccessRate
+				entry.ActualRps = &row.actualRequestRate
+			} else {
+				entry.Success = &row.successRate
+				entry.Rps = &row.requestRate
+			}
+			entry.LatencyMSp50 = &row.latencyP50
+			entry.LatencyMSp95 = &row.latencyP95
+			entry.LatencyMSp99 = &row.latencyP99
+
+			entries[resource] = append(entries[resource], entry)
 		}
-
-		entry.Authority = row.dst
-		entry.Success = &row.successRate
-		entry.Rps = &row.requestRate
-		entry.LatencyMSp50 = &row.latencyP50
-		entry.LatencyMSp95 = &row.latencyP95
-		entry.LatencyMSp99 = &row.latencyP99
-
-		entries = append(entries, entry)
 	}
 	b, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
@@ -214,6 +274,20 @@ func printRouteJSON(stats []*rowStats, w *tabwriter.Writer) {
 		return
 	}
 	fmt.Fprintf(w, "%s\n", b)
+}
+
+func (o *routesOptions) validateOutputFormat() error {
+	switch o.outputFormat {
+	case "table", "json", "":
+		return nil
+	case "wide":
+		if o.toResource == "" {
+			return errors.New("wide output is only available when --to is specified")
+		}
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table, wide, and json")
+	}
 }
 
 func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRoutesRequest, error) {
@@ -236,12 +310,9 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		},
 	}
 
-	options.dstIsService = target.GetType() == k8s.Service
+	options.dstIsService = !(target.GetType() == k8s.Authority)
 
 	if options.toResource != "" {
-		if target.GetType() == k8s.Service {
-			return nil, errors.New("Cannot use \"--to\" when the target resource is a service")
-		}
 		if options.toNamespace == "" {
 			options.toNamespace = options.namespace
 		}
@@ -250,36 +321,19 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			return nil, err
 		}
 
-		options.dstIsService = toRes.GetType() == k8s.Service
+		options.dstIsService = !(toRes.GetType() == k8s.Authority)
 
-		toDNS, err := buildTopRoutesTo(toRes)
-		if err != nil {
-			return nil, err
-		}
-
-		if toDNS == "" && toRes.GetType() == k8s.Authority {
-			requestParams.ToAll = true
-		} else {
-			requestParams.To = toDNS
-		}
+		requestParams.ToName = toRes.Name
+		requestParams.ToNamespace = toRes.Namespace
+		requestParams.ToType = toRes.Type
 	}
 
 	return util.BuildTopRoutesRequest(requestParams)
 }
 
-func buildTopRoutesTo(toResource pb.Resource) (string, error) {
-	if toResource.GetType() == k8s.Service {
-		return fmt.Sprintf("%s.%s.svc.cluster.local", toResource.GetName(), toResource.GetNamespace()), nil
-	}
-	if toResource.GetType() == k8s.Authority {
-		return toResource.GetName(), nil
-	}
-	return "", errors.New("The \"--to\" resource must be an authority or service")
-}
-
 // returns the length of the longest route name
-func routeWidth(stats []*rowStats) int {
-	maxLength := len(defaultRoute)
+func routeWidth(stats []*routeRowStats) int {
+	maxLength := 0
 	for _, row := range stats {
 		if len(row.route) > maxLength {
 			maxLength = len(row.route)

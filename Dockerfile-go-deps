@@ -96,6 +96,4 @@ RUN CGO_ENABLED=0 GOOS=linux go install \
     k8s.io/client-go/util/flowcontrol \
     k8s.io/client-go/util/homedir \
     k8s.io/client-go/util/integer \
-    k8s.io/client-go/util/jsonpath \
-    k8s.io/kubernetes/pkg/kubectl/proxy \
-    k8s.io/kubernetes/pkg/kubectl/util
+    k8s.io/client-go/util/jsonpath
