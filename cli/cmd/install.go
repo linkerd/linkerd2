@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -86,9 +87,9 @@ const (
 	defaultHAControllerReplicas     = 3
 	prometheusProxyOutboundCapacity = 10000
 
-	baseTemplateName          = "linkerd/templates/base.yaml"
-	tlsTemplateName           = "linkerd/templates/tls.yaml"
-	proxyInjectorTemplateName = "linkerd/templates/proxy_injector.yaml"
+	baseTemplateName          = "templates/base.yaml"
+	tlsTemplateName           = "templates/tls.yaml"
+	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -240,9 +241,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Load chart files
 	files := []*chartutil.BufferedFile{}
 	files = append(files, &chartutil.BufferedFile{Name: "Chart.yaml", Data: install.Chart})
-	files = append(files, &chartutil.BufferedFile{Name: "templates/base.yaml", Data: install.BaseTemplate})
-	files = append(files, &chartutil.BufferedFile{Name: "templates/tls.yaml", Data: install.TLSTemplate})
-	files = append(files, &chartutil.BufferedFile{Name: "templates/proxy_injector.yaml", Data: install.ProxyInjectorTemplate})
+	files = append(files, &chartutil.BufferedFile{Name: baseTemplateName, Data: install.BaseTemplate})
+	files = append(files, &chartutil.BufferedFile{Name: tlsTemplateName, Data: install.TLSTemplate})
+	files = append(files, &chartutil.BufferedFile{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate})
 
 	// Create chart and render templates
 	chrt, err := chartutil.LoadFiles(files)
@@ -268,17 +269,20 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	if _, err := buf.WriteString(renderedTemplates[baseTemplateName]); err != nil {
+	bt := path.Join(renderOpts.ReleaseOptions.Name, baseTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[bt]); err != nil {
 		return err
 	}
 
 	if config.EnableTLS {
-		if _, err := buf.WriteString(renderedTemplates[tlsTemplateName]); err != nil {
+		tt := path.Join(renderOpts.ReleaseOptions.Name, tlsTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}
 
 		if config.ProxyAutoInjectEnabled {
-			if _, err := buf.WriteString(renderedTemplates[proxyInjectorTemplateName]); err != nil {
+			pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
+			if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
 				return err
 			}
 		}
