@@ -81,7 +81,11 @@ Only pod resources (aka pods, po) are supported.`,
 func getPods(apiClient pb.ApiClient, options *getOptions) ([]string, error) {
 	req := &pb.ListPodsRequest{}
 	if !options.allNamespaces {
-		req.Namespace = options.namespace
+		req.Selector = &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: options.namespace,
+			},
+		}
 	}
 
 	resp, err := apiClient.ListPods(context.Background(), req)
