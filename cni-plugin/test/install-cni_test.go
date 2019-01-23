@@ -17,6 +17,8 @@ package test
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -253,6 +255,18 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 
 	docker("logs", containerID, t)
 	docker("rm", containerID, t)
+}
+
+func TestMain(m *testing.M) {
+	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
+	flag.Parse()
+
+	if !*runTests {
+		fmt.Fprintln(os.Stderr, "integration tests not enabled: enable with -integration-tests")
+		os.Exit(0)
+	}
+
+	os.Exit(m.Run())
 }
 
 func TestInstallCNI_Scenario1(t *testing.T) {
