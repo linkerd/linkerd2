@@ -6,10 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/linkerd/linkerd2/cli/install"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -237,10 +237,15 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
+	// Load chart files
+	files := []*chartutil.BufferedFile{}
+	files = append(files, &chartutil.BufferedFile{Name: "Chart.yaml", Data: install.Chart})
+	files = append(files, &chartutil.BufferedFile{Name: "templates/base.yaml", Data: install.BaseTemplate})
+	files = append(files, &chartutil.BufferedFile{Name: "templates/tls.yaml", Data: install.TLSTemplate})
+	files = append(files, &chartutil.BufferedFile{Name: "templates/proxy_injector.yaml", Data: install.ProxyInjectorTemplate})
+
 	// Create chart and render templates
-	gp := os.Getenv("GOPATH")
-	cp := path.Join(gp, "/src/github.com/linkerd/linkerd2/cli/install")
-	chrt, err := chartutil.Load(cp)
+	chrt, err := chartutil.LoadFiles(files)
 	if err != nil {
 		return err
 	}
