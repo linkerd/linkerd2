@@ -206,6 +206,7 @@ export class ResourceDetailBase extends React.Component {
     // store this outside of state, as updating the state upon every websocket event received
     // is very costly and causes the page to freeze up
     this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, this.state.resource.type);
+    return this.unmeshedSources;
   }
 
   banner = () => {

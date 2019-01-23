@@ -354,7 +354,9 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
   let namespace = d.sourceLabels.namespace;
   let resource = "";
 
-  if (_has(d.sourceLabels, resourceType)) {
+  if (!d.meshed) {
+    return null;
+  } else if (_has(d.sourceLabels, resourceType)) {
     resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
   } else if (_has(d.sourceLabels, "pod")) {
     resource = `pod/${d.sourceLabels.pod}`;

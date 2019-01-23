@@ -8,6 +8,7 @@ import TopEventTable from './TopEventTable.jsx';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
+import _has from 'lodash/has';
 import _isEqual from 'lodash/isEqual';
 import _isNil from 'lodash/isNil';
 import _noop from 'lodash/noop';
@@ -173,6 +174,7 @@ class TopModule extends React.Component {
       last: d.responseEnd.latency,
       success: !d.success ? 0 : 1,
       failure: !d.success ? 1 : 0,
+      meshed: true,
       successRate: !d.success ? new Percentage(0, 1) : new Percentage(1, 1),
       direction: d.base.proxyDirection,
       source: d.requestInit.source,
@@ -237,7 +239,8 @@ class TopModule extends React.Component {
     }
 
     if (d.base.proxyDirection === "INBOUND") {
-      this.props.updateNeighbors(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"), null);
+      let unmeshedSources = this.props.updateNeighbors(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"), null);
+      topResults[eventKey].meshed = !_has(unmeshedSources, d.base.source.owner);
     }
 
     return topResults;
