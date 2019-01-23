@@ -1,9 +1,11 @@
 package install
 
+// Chart provides the Chart.yaml file needed to validate chart metadata
 var Chart = []byte(`apiVersion: "v1"
 name: "linkerd"
 version: 0.1.0`)
 
+// BaseTemplate provides the base template used in `linkerd install` command
 var BaseTemplate = []byte(`{{ if not .Values.SingleNamespace -}}
 ### Namespace ###
 kind: Namespace
@@ -772,6 +774,8 @@ data:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line`)
 
+// TLSTemplate provides the additional configurations when linkerd is
+// installed with `--tls optional`
 var TLSTemplate = []byte(`{{ if .Values.EnableTLS }}
 ### Service Account CA ###
 ---
@@ -886,6 +890,8 @@ spec:
           runAsUser: {{.Values.ControllerUID}}
 {{ end }}`)
 
+// ProxyInjectorTemplate provides the additional configurations when linkerd
+// is installed with `--proxy-auto-inject`
 var ProxyInjectorTemplate = []byte(`{{ if .Values.ProxyAutoInjectEnabled }}
 ### Proxy Injector Deployment ###
 ---
