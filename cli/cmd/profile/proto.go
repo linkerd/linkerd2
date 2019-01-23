@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/emicklei/proto"
 	"github.com/ghodss/yaml"
@@ -44,7 +45,7 @@ func renderProto(options *profileOptions, controlPlaneNamespace string, w io.Wri
 					Name: typed.Name,
 					Condition: &sp.RequestMatch{
 						Method:    http.MethodPost,
-						PathRegex: fmt.Sprintf("/%s.%s/%s", pkg, service.Name, typed.Name),
+						PathRegex: regexp.QuoteMeta(fmt.Sprintf("/%s.%s/%s", pkg, service.Name, typed.Name)),
 					},
 				}
 				routes = append(routes, route)
