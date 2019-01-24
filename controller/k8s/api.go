@@ -347,6 +347,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	case *apiv1.Namespace:
 		return typed.Name, typed.Name, nil
 
+	case *appsv1.DaemonSet:
+		return typed.Name, typed.Namespace, nil
+
 	case *appsv1beta2.Deployment:
 		return typed.Name, typed.Namespace, nil
 
