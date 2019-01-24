@@ -1,9 +1,22 @@
 package install
 
+import (
+	"fmt"
+
+	"github.com/linkerd/linkerd2/pkg/version"
+)
+
 // Chart provides the Chart.yaml file needed to validate chart metadata
-var Chart = []byte(`apiVersion: "v1"
+var Chart = []byte(fmt.Sprintf(`apiVersion: "v1"
 name: "linkerd"
-version: 0.1.0`)
+version: 0.1.0
+description: Linkerd gives you observability, reliability, and security for your microservices — with no code change required.
+keywords:
+  - service-mesh
+home: https://linkerd.io
+sources:
+  - https://github.com/linkerd/linkerd2/
+appVersion: %s`, version.Version))
 
 // BaseTemplate provides the base template used in `linkerd install` command
 var BaseTemplate = []byte(`{{ if not .Values.SingleNamespace -}}
