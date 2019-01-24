@@ -11,7 +11,7 @@
   * Fixed stats not appearing for routes that have service profiles installed
 * CLI
   * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
-    commands, as the proxy no longer accepts this environment variable.
+    commands, as the proxy no longer accepts this environment variable
   * Improved CLI appearance on Windows systems
   * Improved `linkerd check` output, fixed some bugs in check
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
