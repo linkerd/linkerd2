@@ -15,7 +15,7 @@
   * Improved CLI appearance on Windows systems
   * Improved `linkerd check` output, fixed some bugs in check
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
-  * Fixed panic when routes is called in single-namespace mode
+  * Fixed panic when `linkerd routes` is called in single-namespace mode
 * Proxy
   * Added the ability to override a proxy's normal outbound routing by adding an
    `l5d-override-dst` header.
