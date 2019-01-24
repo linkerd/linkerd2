@@ -1,28 +1,23 @@
-package profile
+package profiles
 
 import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 
 	"github.com/emicklei/proto"
-	"github.com/ghodss/yaml"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func renderProto(options *profileOptions, controlPlaneNamespace string, w io.Writer) error {
-	var input io.Reader
-	if options.proto == "-" {
-		input = os.Stdin
-	} else {
-		var err error
-		input, err = os.Open(options.proto)
-		if err != nil {
-			return err
-		}
+// RenderProto reads a protobuf definition file and renders the corresponding
+// ServiceProfile to a buffer, given a namespace, service, and control plane
+// namespace.
+func RenderProto(fileName, namespace, name, controlPlaneNamespace string, w io.Writer) error {
+	input, err := readFile(fileName)
+	if err != nil {
+		return err
 	}
 
 	// READ PROTO
@@ -57,23 +52,14 @@ func renderProto(options *profileOptions, controlPlaneNamespace string, w io.Wri
 
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", options.name, options.namespace),
+			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: controlPlaneNamespace,
 		},
-		TypeMeta: meta_v1.TypeMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
+		TypeMeta: ServiceProfileMeta,
 		Spec: sp.ServiceProfileSpec{
 			Routes: routes,
 		},
 	}
 
-	output, err := yaml.Marshal(profile)
-	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
-	}
-	w.Write(output)
-
-	return nil
+	return writeProfile(profile, w)
 }

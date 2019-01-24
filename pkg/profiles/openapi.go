@@ -1,11 +1,10 @@
-package profile
+package profiles
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 
@@ -17,16 +16,14 @@ import (
 
 var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 
-func renderOpenAPI(options *profileOptions, controlPlaneNamespace string, w io.Writer) error {
-	var input io.Reader
-	if options.openAPI == "-" {
-		input = os.Stdin
-	} else {
-		var err error
-		input, err = os.Open(options.openAPI)
-		if err != nil {
-			return err
-		}
+// RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
+// ServiceProfile to a buffer, given a namespace, service, and control plane
+// namespace.
+func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io.Writer) error {
+
+	input, err := readFile(fileName)
+	if err != nil {
+		return err
 	}
 
 	bytes, err := ioutil.ReadAll(input)
@@ -46,13 +43,10 @@ func renderOpenAPI(options *profileOptions, controlPlaneNamespace string, w io.W
 
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", options.name, options.namespace),
+			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: controlPlaneNamespace,
 		},
-		TypeMeta: meta_v1.TypeMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
+		TypeMeta: ServiceProfileMeta,
 	}
 
 	routes := make([]*sp.RouteSpec, 0)
@@ -99,13 +93,8 @@ func renderOpenAPI(options *profileOptions, controlPlaneNamespace string, w io.W
 	}
 
 	profile.Spec.Routes = routes
-	output, err := yaml.Marshal(profile)
-	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
-	}
-	w.Write(output)
 
-	return nil
+	return writeProfile(profile, w)
 }
 
 func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses) *sp.RouteSpec {

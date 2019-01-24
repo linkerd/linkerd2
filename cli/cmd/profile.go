@@ -1,4 +1,4 @@
-package profile
+package cmd
 
 import (
 	"errors"
@@ -67,8 +67,7 @@ func (options *profileOptions) validate() error {
 
 // NewCmdProfile creates a new cobra command for the Profile subcommand which
 // generates Linkerd service profiles.
-func NewCmdProfile(controlPlaneNamespace string) *cobra.Command {
-
+func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
@@ -78,25 +77,23 @@ func NewCmdProfile(controlPlaneNamespace string) *cobra.Command {
 
 This outputs a service profile for the given service.
 
-If the --template flag is specified, it outputs a service profile template.
-Edit the template and then apply it with kubectl to add a service profile to
-a service.
+Examples:
+  If the --template flag is specified, it outputs a service profile template.
+  Edit the template and then apply it with kubectl to add a service profile to
+  a service:
 
-Example:
   linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
   # (edit web-svc-profile.yaml manually)
   kubectl apply -f web-svc-profile.yaml
 
-If the --open-api flag is specified, it reads the given OpenAPI
-specification file and outputs a corresponding service profile.
+  If the --open-api flag is specified, it reads the given OpenAPI
+  specification file and outputs a corresponding service profile:
 
-Example:
   linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -
 
-If the --proto flag is specified, it reads the given protobuf specification
-file and outputs a corresponding service profile.
+  If the --proto flag is specified, it reads the given protobuf definition file
+  and outputs a corresponding service profile:
 
-Example:
   linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -110,9 +107,9 @@ Example:
 			if options.template {
 				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.openAPI != "" {
-				return renderOpenAPI(options, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.proto != "" {
-				return renderProto(options, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderProto(options.proto, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
 
 			// we should never get here

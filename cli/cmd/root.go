@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/cli/cmd/profile"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -81,7 +80,7 @@ func init() {
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdLogs())
-	RootCmd.AddCommand(profile.NewCmdProfile(controlPlaneNamespace))
+	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdRoutes())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
@@ -246,25 +245,25 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:        version.Version,
-		proxyImage:            defaultDockerRegistry + "/proxy",
-		initImage:             defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:        defaultDockerRegistry,
-		imagePullPolicy:       "IfNotPresent",
-		inboundPort:           4143,
-		outboundPort:          4140,
-		ignoreInboundPorts:    nil,
-		ignoreOutboundPorts:   nil,
-		proxyUID:              2102,
-		proxyLogLevel:         "warn,linkerd2_proxy=info",
-		proxyBindTimeout:      "10s",
-		proxyAPIPort:          8086,
-		proxyControlPort:      4190,
-		proxyMetricsPort:      4191,
-		proxyOutboundCapacity: map[string]uint{},
-		proxyCPURequest:       "",
-		proxyMemoryRequest:    "",
-		tls:                   "",
+		linkerdVersion:          version.Version,
+		proxyImage:              defaultDockerRegistry + "/proxy",
+		initImage:               defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:          defaultDockerRegistry,
+		imagePullPolicy:         "IfNotPresent",
+		inboundPort:             4143,
+		outboundPort:            4140,
+		ignoreInboundPorts:      nil,
+		ignoreOutboundPorts:     nil,
+		proxyUID:                2102,
+		proxyLogLevel:           "warn,linkerd2_proxy=info",
+		proxyBindTimeout:        "10s",
+		proxyAPIPort:            8086,
+		proxyControlPort:        4190,
+		proxyMetricsPort:        4191,
+		proxyOutboundCapacity:   map[string]uint{},
+		proxyCPURequest:         "",
+		proxyMemoryRequest:      "",
+		tls:                     "",
 		disableExternalProfiles: false,
 	}
 }

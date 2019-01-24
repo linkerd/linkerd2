@@ -3,14 +3,18 @@ package profiles
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"text/template"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type profileTemplateConfig struct {
@@ -20,14 +24,21 @@ type profileTemplateConfig struct {
 	ClusterZone           string
 }
 
-// DefaultRetryBudget is used for routes which do not specify one.
-var DefaultRetryBudget = pb.RetryBudget{
-	MinRetriesPerSecond: 10,
-	RetryRatio:          0.2,
-	Ttl: &duration.Duration{
-		Seconds: 10,
-	},
-}
+var (
+	// DefaultRetryBudget is used for routes which do not specify one.
+	DefaultRetryBudget = pb.RetryBudget{
+		MinRetriesPerSecond: 10,
+		RetryRatio:          0.2,
+		Ttl: &duration.Duration{
+			Seconds: 10,
+		},
+	}
+	// ServiceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
+	ServiceProfileMeta = meta_v1.TypeMeta{
+		APIVersion: "linkerd.io/v1alpha1",
+		Kind:       "ServiceProfile",
+	}
+)
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
@@ -387,5 +398,21 @@ func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w i
 	}
 
 	_, err = w.Write(buf.Bytes())
+	return err
+}
+
+func readFile(fileName string) (io.Reader, error) {
+	if fileName == "-" {
+		return os.Stdin, nil
+	}
+	return os.Open(fileName)
+}
+
+func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
+	output, err := yaml.Marshal(profile)
+	if err != nil {
+		return fmt.Errorf("Error writing Service Profile: %s", err)
+	}
+	_, err = w.Write(output)
 	return err
 }
