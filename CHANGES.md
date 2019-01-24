@@ -1,8 +1,6 @@
 ## edge-19.1.3
 
 * Controller
-  * Added `linkerd install-sp` command to install service profiles into the
-    Linkerd control plane
   * Improved API for `ListPods` (thanks @alenkacz!)
   * Fixed `GetProfiles` API call not returning immediately when no profile
     exists (resulting in proxies logging warnings)
@@ -10,6 +8,8 @@
   * Improved resource detail pages now show all resource types
   * Fixed stats not appearing for routes that have service profiles installed
 * CLI
+  * Added `linkerd install-sp` command to install service profiles into the
+    Linkerd control plane
   * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
     commands, as the proxy no longer accepts this environment variable
   * Improved CLI appearance on Windows systems
