@@ -278,7 +278,7 @@ func TestHealthChecker(t *testing.T) {
 
 		expectedResults := []string{
 			"cat1 desc1 retry=false",
-			"cat7 desc7 retry=true: retry",
+			"cat7 desc7 retry=true: waiting for check to complete",
 			"cat7 desc7 retry=false",
 		}
 
