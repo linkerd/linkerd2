@@ -2,7 +2,7 @@
 
 * Controller
   * Added `linkerd install-sp` command to install service profiles into the
-    linkerd control plane
+    Linkerd control plane
   * Improved API for ListPods (thanks @alenkacz!)
   * Fixed `GetProfiles` API call not returning immediately when no profile
     exists (resulting in proxies logging warnings)
@@ -16,13 +16,13 @@
   * Fixed panic when routes is called in single-namespace mode
 * Proxy
   * Added the ability to override a proxy's normal outbound routing by adding an
-   `l5d-override-dst` header.
+   `l5d-override-dst` header
   * Added `LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT` environment variable to
-    customize the timeout for DNS queries to canonicalize a name.
-  * Added support for route timeouts in service profiles.
-  * Improved logging for gRPC errors and for malformed HTTP/2 request headers.
+    customize the timeout for DNS queries to canonicalize a name
+  * Added support for route timeouts in service profiles
+  * Improved logging for gRPC errors and for malformed HTTP/2 request headers
   * Improved log readability by moving some noisy log messages to more verbose
-    log levels.
+    log levels
 
 ## edge-19.1.2
 
