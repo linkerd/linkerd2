@@ -51,11 +51,11 @@ spec:
   - name: POST /io.linkerd.proxy.destination.Destination/Get
     condition:
       method: POST
-      pathRegex: /io.linkerd.proxy.destination.Destination/Get
+      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/Get
   - name: POST /io.linkerd.proxy.destination.Destination/GetProfile
     condition:
       method: POST
-      pathRegex: /io.linkerd.proxy.destination.Destination/GetProfile
+      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/GetProfile
 ---
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
