@@ -15,8 +15,14 @@
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
   * Fixed panic when routes is called in single-namespace mode
 * Proxy
-  * Improved logging, including cleanup of noisier logs and moving of some
-    logging to a more verbose level
+  * Added the ability to override a proxy's normal outbound routing by adding an
+   `l5d-override-dst` header.  
+  * Added `LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT` environment variable to
+    customize the timeout for DNS queries to canonicalize a name.
+  * Added support for route timeouts in service profiles.
+  * Improved logging for gRPC errors and for malformed HTTP/2 request headers.
+  * Improved log readability by moving some noisy log messages to more verbose
+    log levels.
 
 ## edge-19.1.2
 
