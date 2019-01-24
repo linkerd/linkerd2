@@ -1,3 +1,22 @@
+## edge-19.1.3
+
+* Controller
+  * Added `linkerd install-sp` command to install service profiles into the
+    linkerd control plane
+  * Improved API for ListPods (thanks @alenkacz!)
+  * fast-build has been improved and renamed to build-cli-bin
+* Web UI
+  * Improved resource detail pages now show all resource types
+  * Fixed stats not appearing for routes that have service profiles installed
+* CLI
+  * Improved CLI appearance on Windows systems
+  * Improved `linkerd check` output, fixed some bugs in check
+  * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
+  * Fixed panic when routes is called in single-namespace mode
+* Proxy
+  * Improved logging, including cleanup of noisier logs and moving of some
+    logging to a more verbose level
+
 ## edge-19.1.2
 
 * Controller
