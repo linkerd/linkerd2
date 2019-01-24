@@ -284,7 +284,7 @@ func newCmdTop() *cobra.Command {
   * deploy
   * deploy/my-deploy
   * deploy my-deploy
-  * ds/my-deploy
+  * ds/my-daemonset
   * ns/my-ns
 
   Valid resource types include:
