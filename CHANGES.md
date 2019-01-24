@@ -2,15 +2,16 @@
 
 * Controller
   * Added `linkerd install-sp` command to install service profiles into the
-    linkerd control plane
+    Linkerd control plane
   * Improved API for ListPods (thanks @alenkacz!)
-  * fast-build has been improved and renamed to build-cli-bin
 * Web UI
   * Improved resource detail pages now show all resource types
   * Fixed stats not appearing for routes that have service profiles installed
 * CLI
   * Improved CLI appearance on Windows systems
-  * Improved `linkerd check` output, fixed some bugs in check
+  * Improved `linkerd check --single-namespace` output, thanks for the bug
+    report, @djeeg!
+  * Improved `linkerd check` messages when checks are being retried
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
   * Fixed panic when routes is called in single-namespace mode
 * Proxy
