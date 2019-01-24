@@ -238,7 +238,7 @@ func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.
 }
 
 func sortMapKeys(m map[string]*sp.RouteSpec) (keys []string) {
-	for key, _ := range m {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
