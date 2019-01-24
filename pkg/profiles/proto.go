@@ -20,11 +20,20 @@ func RenderProto(fileName, namespace, name, controlPlaneNamespace string, w io.W
 		return err
 	}
 
-	// READ PROTO
 	parser := proto.NewParser(input)
-	definition, err := parser.Parse()
+
+	profile, err := protoToServiceProfile(parser, namespace, name, controlPlaneNamespace)
 	if err != nil {
 		return err
+	}
+
+	return writeProfile(*profile, w)
+}
+
+func protoToServiceProfile(parser *proto.Parser, namespace, name, controlPlaneNamespace string) (*sp.ServiceProfile, error) {
+	definition, err := parser.Parse()
+	if err != nil {
+		return nil, err
 	}
 
 	routes := make([]*sp.RouteSpec, 0)
@@ -50,7 +59,7 @@ func RenderProto(fileName, namespace, name, controlPlaneNamespace string, w io.W
 
 	proto.Walk(definition, handle)
 
-	profile := sp.ServiceProfile{
+	return &sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: controlPlaneNamespace,
@@ -59,7 +68,5 @@ func RenderProto(fileName, namespace, name, controlPlaneNamespace string, w io.W
 		Spec: sp.ServiceProfileSpec{
 			Routes: routes,
 		},
-	}
-
-	return writeProfile(profile, w)
+	}, nil
 }

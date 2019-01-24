@@ -41,6 +41,12 @@ func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io
 		return fmt.Errorf("Error parsing OpenAPI spec: %s", err)
 	}
 
+	profile := swaggerToServiceProfile(swagger, namespace, name, controlPlaneNamespace)
+
+	return writeProfile(profile, w)
+}
+
+func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, controlPlaneNamespace string) sp.ServiceProfile {
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
@@ -93,8 +99,7 @@ func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io
 	}
 
 	profile.Spec.Routes = routes
-
-	return writeProfile(profile, w)
+	return profile
 }
 
 func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses) *sp.RouteSpec {
