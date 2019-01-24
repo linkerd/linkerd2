@@ -3,7 +3,7 @@
 * Controller
   * Added `linkerd install-sp` command to install service profiles into the
     linkerd control plane
-  * Improved API for ListPods (thanks @alenkacz!)
+  * Improved API for `ListPods` (thanks @alenkacz!)
   * Fixed `GetProfiles` API call not returning immediately when no profile
     exists (resulting in proxies logging warnings)
 * Web UI
