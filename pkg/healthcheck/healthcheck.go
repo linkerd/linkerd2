@@ -85,16 +85,17 @@ const (
 
 	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
 	// the control plane is running the latest available version.
-	// These checks are dependent on `apiClient` from
-	// LinkerdControlPlaneExistenceChecks and `latestVersion` from
-	// LinkerdVersionChecks, so those checks must be added first.
+	// These checks are dependent on the following:
+	// 1) `apiClient` from LinkerdControlPlaneExistenceChecks
+	// 2) `latestVersions` from LinkerdVersionChecks
+	// 3) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
 	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
 	// plane namespace exists, and that the the proxy containers are in a ready
 	// state and running the latest available version.
 	// These checks are dependent on the output of KubernetesAPIChecks,
-	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersion`
+	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 )
@@ -179,7 +180,8 @@ type HealthChecker struct {
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []v1.Pod
 	apiClient        pb.ApiClient
-	latestVersion    string
+	latestVersions   version.Channels
+	serverVersion    string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -375,9 +377,9 @@ func (hc *HealthChecker) allCategories() []category {
 					description:   "can query the control plane API",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func() error {
-						_, err := version.GetServerVersion(hc.apiClient)
-						return err
+					check: func() (err error) {
+						hc.serverVersion, err = GetServerVersion(hc.apiClient)
+						return
 					},
 				},
 			},
@@ -427,10 +429,9 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "can determine the latest version",
-					fatal:       true,
 					check: func() (err error) {
 						if hc.VersionOverride != "" {
-							hc.latestVersion = hc.VersionOverride
+							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
 							// The UUID is only known to the web process. At some point we may want
 							// to consider providing it in the Public API.
@@ -448,7 +449,7 @@ func (hc *HealthChecker) allCategories() []category {
 									}
 								}
 							}
-							hc.latestVersion, err = version.GetLatestVersion(uuid, "cli")
+							hc.latestVersions, err = version.GetLatestVersions(uuid, "cli")
 						}
 						return
 					},
@@ -457,7 +458,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cli is up-to-date",
 					warning:     true,
 					check: func() error {
-						return version.CheckClientVersion(hc.latestVersion)
+						return hc.latestVersions.Match(version.Version)
 					},
 				},
 			},
@@ -469,7 +470,14 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane is up-to-date",
 					warning:     true,
 					check: func() error {
-						return version.CheckServerVersion(hc.apiClient, hc.latestVersion)
+						return hc.latestVersions.Match(hc.serverVersion)
+					},
+				},
+				{
+					description: "control plane and cli versions match",
+					warning:     true,
+					check: func() error {
+						return version.Match(hc.serverVersion, version.Version)
 					},
 				},
 			},
@@ -519,9 +527,27 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 
 						for _, pod := range pods {
-							if pod.ProxyVersion != hc.latestVersion {
-								return fmt.Errorf("%s is running version %s but the latest version is %s",
-									pod.Name, pod.ProxyVersion, hc.latestVersion)
+							err = hc.latestVersions.Match(pod.ProxyVersion)
+							if err != nil {
+								return fmt.Errorf("%s: %s", pod.Name, err)
+							}
+						}
+						return nil
+					},
+				},
+				{
+					description: "data plane and cli versions match",
+					warning:     true,
+					check: func() error {
+						pods, err := hc.getDataPlanePods()
+						if err != nil {
+							return err
+						}
+
+						for _, pod := range pods {
+							err = version.Match(pod.ProxyVersion, version.Version)
+							if err != nil {
+								return fmt.Errorf("%s: %s", pod.Name, err)
 							}
 						}
 						return nil
