@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -189,37 +188,34 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 
-		annotations := pod.GetAnnotations()
-		if len(pod.Spec.Containers) > 1 && containsLinkerdProxy {
-			if val, ok := annotations[k8s.SetupIPTablesLabel]; ok {
-				if injectEnabled, err := strconv.ParseBool(val); err == nil {
-					if !injectEnabled {
-						logEntry.Infof("linkerd-cni: inject annotation is false")
-					} else {
-						logEntry.Infof("linkerd-cni: setting up iptables firewall")
-						options := cmd.RootOptions{
-							IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
-							OutgoingProxyPort:     conf.ProxyInit.OutgoingProxyPort,
-							ProxyUserID:           conf.ProxyInit.ProxyUID,
-							PortsToRedirect:       conf.ProxyInit.PortsToRedirect,
-							InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
-							OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
-							SimulateOnly:          conf.ProxyInit.Simulate,
-							NetNs:                 args.Netns,
-						}
-						firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
-						if err != nil {
-							logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
-							return err
-						}
-						iptables.ConfigureFirewall(*firewallConfiguration)
-					}
-				}
-			} else {
-				logEntry.Infof("linkerd-cni: inject annotation is missing, skipping.")
+		containsInitContainer := true
+		for _, container := range pod.Spec.InitContainers {
+			if container.Name == "linkerd-init" {
+				containsInitContainer = true
+				break
 			}
+		}
+
+		if containsLinkerdProxy && !containsInitContainer {
+			logEntry.Infof("linkerd-cni: setting up iptables firewall")
+			options := cmd.RootOptions{
+				IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
+				OutgoingProxyPort:     conf.ProxyInit.OutgoingProxyPort,
+				ProxyUserID:           conf.ProxyInit.ProxyUID,
+				PortsToRedirect:       conf.ProxyInit.PortsToRedirect,
+				InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
+				OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
+				SimulateOnly:          conf.ProxyInit.Simulate,
+				NetNs:                 args.Netns,
+			}
+			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
+				return err
+			}
+			iptables.ConfigureFirewall(*firewallConfiguration)
 		} else {
-			logEntry.Infof("linkerd-cni: need the linkerd-proxy container to be present in the pod, skipping.")
+			logEntry.Infof("linkerd-cni: linkerd-init initConainer is present, skipping.")
 		}
 	} else {
 		logEntry.Infof("linkerd-cni: no Kubernetes namespace or pod name found, skipping.")

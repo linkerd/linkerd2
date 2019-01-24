@@ -49,8 +49,7 @@
               "linkerd.io/auto-inject": "enabled"
             },
             "annotations": {
-              "created-by": "isim",
-              "linkerd.io/setup-iptables": "true"
+              "created-by": "isim"
             }
           },
           "spec": {

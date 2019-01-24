@@ -15,7 +15,6 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: testinjectversion
-        linkerd.io/setup-iptables: "true"
       creationTimestamp: null
       labels:
         app: web-svc

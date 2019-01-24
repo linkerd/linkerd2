@@ -66,10 +66,6 @@ const (
 	// on the pod. Supported values are "enabled", "disabled" or "completed".
 	ProxyAutoInjectLabel = "linkerd.io/auto-inject"
 
-	// SetupIPTablesLabel indicates that the linkerd-cni plugin will write the
-	// iptables for the pod.
-	SetupIPTablesLabel = "linkerd.io/setup-iptables"
-
 	// ProxyAutoInjectEnabled is assigned to the ProxyAutoInjectLabel label to
 	// indicate that the sidecar auto-inject is enabled for a particular resource.
 	ProxyAutoInjectEnabled = "enabled"

@@ -123,9 +123,6 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	}
 	t.Annotations[k8s.CreatedByAnnotation] = k8s.CreatedByAnnotationValue()
 	t.Annotations[k8s.ProxyVersionAnnotation] = options.linkerdVersion
-	if options.noInitContainer {
-		t.Annotations[k8s.SetupIPTablesLabel] = strconv.FormatBool(options.noInitContainer)
-	}
 
 	if t.Labels == nil {
 		t.Labels = make(map[string]string)

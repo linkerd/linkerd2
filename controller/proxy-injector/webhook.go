@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -145,17 +143,11 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch := NewPatch()
 	patch.addContainer(proxy)
 
-	annotations := deployment.Spec.Template.GetAnnotations()
-	if val, ok := annotations[k8s.SetupIPTablesLabel]; ok {
-		if setupIPTables, err := strconv.ParseBool(val); err == nil {
-			if !setupIPTables {
-				addInitContainer(deployment, proxyInit, patch)
-			}
-		} else {
-			addInitContainer(deployment, proxyInit, patch)
+	if !w.noInitContainer {
+		if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
+			patch.addInitContainerRoot()
 		}
-	} else {
-		addInitContainer(deployment, proxyInit, patch)
+		patch.addInitContainer(proxyInit)
 	}
 
 	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
@@ -212,13 +204,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	return admissionResponse, nil
-}
-
-func addInitContainer(deployment appsv1.Deployment, proxyInit *corev1.Container, patch *Patch) {
-	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
-		patch.addInitContainerRoot()
-	}
-	patch.addInitContainer(proxyInit)
 }
 
 func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {

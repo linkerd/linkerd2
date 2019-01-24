@@ -134,7 +134,6 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
-        linkerd.io/setup-iptables: "true"
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
@@ -407,7 +406,6 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
-        linkerd.io/setup-iptables: "true"
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
@@ -526,7 +524,6 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
-        linkerd.io/setup-iptables: "true"
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
@@ -754,7 +751,6 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli undefined
         linkerd.io/proxy-version: undefined
-        linkerd.io/setup-iptables: "true"
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana

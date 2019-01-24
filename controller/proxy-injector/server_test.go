@@ -32,7 +32,7 @@ func init() {
 		FileTLSTrustAnchorVolumeSpec: fake.FileTLSTrustAnchorVolumeSpec,
 		FileTLSIdentityVolumeSpec:    fake.FileTLSIdentityVolumeSpec,
 	}
-	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false)
 	if err != nil {
 		panic(err)
 	}
