@@ -830,13 +830,17 @@ func getPodStatuses(pods []v1.Pod) map[string][]v1.ContainerStatus {
 	statuses := make(map[string][]v1.ContainerStatus)
 
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodRunning {
+		if pod.Status.Phase == v1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
-			name := strings.Join(parts[1:len(parts)-2], "-")
-			if _, found := statuses[name]; !found {
-				statuses[name] = make([]v1.ContainerStatus, 0)
+			// All control plane pods should have a name that results in at least 4
+			// substrings when string.Split on '-'
+			if len(parts) >= 4 {
+				name := strings.Join(parts[1:len(parts)-2], "-")
+				if _, found := statuses[name]; !found {
+					statuses[name] = make([]v1.ContainerStatus, 0)
+				}
+				statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 			}
-			statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 		}
 	}
 

@@ -353,6 +353,21 @@ func TestValidateControlPlanePods(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 	})
+
+	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
+		pods := []v1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+			pod("hello-43c25d", v1.PodRunning, true),
+		}
+
+		err := validateControlPlanePods(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error message: %s", err.Error())
+		}
+	})
 }
 
 func TestValidateDataPlanePods(t *testing.T) {
