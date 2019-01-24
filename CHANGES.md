@@ -2,21 +2,21 @@
 
 * Controller
   * Added `linkerd install-sp` command to install service profiles into the
-    Linkerd control plane
+    linkerd control plane
   * Improved API for ListPods (thanks @alenkacz!)
+  * Fixed `GetProfiles` API call not returning immediately when no profile
+    exists (resulting in proxies logging warnings)
 * Web UI
   * Improved resource detail pages now show all resource types
   * Fixed stats not appearing for routes that have service profiles installed
 * CLI
   * Improved CLI appearance on Windows systems
-  * Improved `linkerd check --single-namespace` output, thanks for the bug
-    report, @djeeg!
-  * Improved `linkerd check` messages when checks are being retried
+  * Improved `linkerd check` output, fixed some bugs in check
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
   * Fixed panic when routes is called in single-namespace mode
 * Proxy
   * Added the ability to override a proxy's normal outbound routing by adding an
-   `l5d-override-dst` header.  
+   `l5d-override-dst` header.
   * Added `LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT` environment variable to
     customize the timeout for DNS queries to canonicalize a name.
   * Added support for route timeouts in service profiles.
