@@ -142,6 +142,7 @@ class Namespaces extends React.Component {
               <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
             }
             {this.renderResourceSection("deployment", metrics.deployment)}
+            {this.renderResourceSection("daemonset", metrics.daemonset)}
             {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
             {this.renderResourceSection("pod", metrics.pod)}
             {this.renderResourceSection("authority", metrics.authority)}

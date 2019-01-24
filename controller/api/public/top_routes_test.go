@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -11,9 +12,8 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-var booksConfig = []string{
-	// deployment/books
-	`kind: Deployment
+// deployment/books
+var booksDeployConfig = `kind: Deployment
 apiVersion: apps/v1beta2
 metadata:
   name: books
@@ -30,8 +30,28 @@ spec:
     spec:
       dnsPolicy: ClusterFirst
       containers:
-      - image: buoyantio/booksapp:v0.0.2`,
+      - image: buoyantio/booksapp:v0.0.2`
 
+// daemonset/books
+var booksDaemonsetConfig = `kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: books
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: books
+  template:
+    metadata:
+      labels:
+        app: books
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - image: buoyantio/booksapp:v0.0.2`
+
+var booksServiceConfig = []string{
 	// service/books
 	`apiVersion: v1
 kind: Service
@@ -70,6 +90,9 @@ spec:
     name: /a
 `,
 }
+
+var booksConfig = append(booksServiceConfig, booksDeployConfig)
+var booksDSConfig = append(booksServiceConfig, booksDaemonsetConfig)
 
 type topRoutesExpected struct {
 	expectedStatRPC
@@ -120,45 +143,46 @@ func genDefaultRouteSample() *model.Sample {
 }
 
 func testTopRoutes(t *testing.T, expectations []topRoutesExpected) {
-	for _, exp := range expectations {
-
-		mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRPC)
-		if err != nil {
-			t.Fatalf("Error creating mock grpc server: %s", err)
-		}
-
-		rsp, err := fakeGrpcServer.TopRoutes(context.TODO(), &exp.req)
-		if err != exp.err {
-			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
-		}
-
-		err = exp.verifyPromQueries(mockProm)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rows := rsp.GetOk().GetRoutes()[0].Rows
-
-		if len(rows) != len(exp.expectedResponse.GetOk().GetRoutes()[0].Rows) {
-			t.Fatalf(
-				"Expected [%d] rows, got [%d].\nExpected:\n%s\nGot:\n%s",
-				len(exp.expectedResponse.GetOk().GetRoutes()[0].Rows),
-				len(rows),
-				exp.expectedResponse.GetOk().GetRoutes()[0].Rows,
-				rows,
-			)
-		}
-
-		sort.Slice(rows, func(i, j int) bool {
-			return rows[i].GetAuthority()+rows[i].GetRoute() < rows[j].GetAuthority()+rows[j].GetRoute()
-		})
-
-		for i, row := range rows {
-			expected := exp.expectedResponse.GetOk().GetRoutes()[0].Rows[i]
-			if !proto.Equal(row, expected) {
-				t.Fatalf("Expected: %+v\n Got: %+v", expected, row)
+	for id, exp := range expectations {
+		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+			mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRPC)
+			if err != nil {
+				t.Fatalf("Error creating mock grpc server: %s", err)
 			}
-		}
+
+			rsp, err := fakeGrpcServer.TopRoutes(context.TODO(), &exp.req)
+			if err != exp.err {
+				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
+			}
+
+			err = exp.verifyPromQueries(mockProm)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rows := rsp.GetOk().GetRoutes()[0].Rows
+
+			if len(rows) != len(exp.expectedResponse.GetOk().GetRoutes()[0].Rows) {
+				t.Fatalf(
+					"Expected [%d] rows, got [%d].\nExpected:\n%s\nGot:\n%s",
+					len(exp.expectedResponse.GetOk().GetRoutes()[0].Rows),
+					len(rows),
+					exp.expectedResponse.GetOk().GetRoutes()[0].Rows,
+					rows,
+				)
+			}
+
+			sort.Slice(rows, func(i, j int) bool {
+				return rows[i].GetAuthority()+rows[i].GetRoute() < rows[j].GetAuthority()+rows[j].GetRoute()
+			})
+
+			for i, row := range rows {
+				expected := exp.expectedResponse.GetOk().GetRoutes()[0].Rows[i]
+				if !proto.Equal(row, expected) {
+					t.Fatalf("Expected: %+v\n Got: %+v", expected, row)
+				}
+			}
+		})
 	}
 }
 
@@ -227,6 +251,39 @@ func TestTopRoutes(t *testing.T) {
 					Outbound: &pb.TopRoutesRequest_None{
 						None: &pb.Empty{},
 					},
+				},
+				expectedResponse: GenTopRoutesResponse(routes, counts, false, "books"),
+			},
+		}
+
+		testTopRoutes(t, expectations)
+	})
+
+	t.Run("Successfully performs a routes query for a daemonset", func(t *testing.T) {
+		routes := []string{"/a"}
+		counts := []uint64{123}
+		expectations := []topRoutesExpected{
+			topRoutesExpected{
+				expectedStatRPC: expectedStatRPC{
+					err:              nil,
+					mockPromResponse: routesMetric([]string{"/a"}),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{daemonset="books", direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{daemonset="books", direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{daemonset="books", direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{daemonset="books", direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", namespace="default"}[1m])) by (rt_route, dst, classification)`,
+					},
+					k8sConfigs: booksDSConfig,
+				},
+				req: pb.TopRoutesRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "default",
+							Type:      pkgK8s.DaemonSet,
+							Name:      "books",
+						},
+					},
+					TimeWindow: "1m",
 				},
 				expectedResponse: GenTopRoutesResponse(routes, counts, false, "books"),
 			},
