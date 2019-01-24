@@ -15,7 +15,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
@@ -83,9 +82,9 @@ type installOptions struct {
 }
 
 const (
+	prometheusProxyOutboundCapacity = 10000
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
-	prometheusProxyOutboundCapacity = 10000
 
 	baseTemplateName          = "templates/base.yaml"
 	tlsTemplateName           = "templates/tls.yaml"
@@ -217,18 +216,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}, nil
 }
 
-func (options *installOptions) validate() error {
-	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
-		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
-	}
-
-	if options.proxyAutoInject && options.singleNamespace {
-		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
-	}
-
-	return options.proxyConfigOptions.validate()
-}
-
 func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(config)
@@ -239,11 +226,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
 	// Load chart files
-	files := []*chartutil.BufferedFile{}
-	files = append(files, &chartutil.BufferedFile{Name: "Chart.yaml", Data: install.Chart})
-	files = append(files, &chartutil.BufferedFile{Name: baseTemplateName, Data: install.BaseTemplate})
-	files = append(files, &chartutil.BufferedFile{Name: tlsTemplateName, Data: install.TLSTemplate})
-	files = append(files, &chartutil.BufferedFile{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate})
+	files := []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName, Data: install.Chart},
+		{Name: baseTemplateName, Data: install.BaseTemplate},
+		{Name: tlsTemplateName, Data: install.TLSTemplate},
+		{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate},
+	}
 
 	// Create chart and render templates
 	chrt, err := chartutil.LoadFiles(files)
@@ -295,4 +283,16 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
 
 	return InjectYAML(&buf, w, ioutil.Discard, injectOptions)
+}
+
+func (options *installOptions) validate() error {
+	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+	}
+
+	if options.proxyAutoInject && options.singleNamespace {
+		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
+	}
+
+	return options.proxyConfigOptions.validate()
 }

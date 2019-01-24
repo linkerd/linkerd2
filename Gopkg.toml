@@ -33,6 +33,10 @@ required = [
   version = "kubernetes-1.11.1"
 
 [[constraint]]
+  name = "k8s.io/helm"
+  version = "v2.12.2"
+
+[[constraint]]
   name = "github.com/briandowns/spinner"
   revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
 
