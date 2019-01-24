@@ -1,9 +1,11 @@
 import _compact from 'lodash/compact';
 import _isNil from 'lodash/isNil';
 
-const topRoutesDisplayOrder = [
+const topRoutesDisplayOrder = query => _compact([
   "namespace",
-];
+  "toResource",
+  _isNil(query.to_type) ? null : "toNamespace",
+]);
 
 
 const tapDisplayOrder = query => _compact([
@@ -22,7 +24,7 @@ export const displayOrder = (cmd, query) => {
     return tapDisplayOrder(query);
   }
   if (cmd === "routes") {
-    return topRoutesDisplayOrder;
+    return topRoutesDisplayOrder(query);
   }
   return [];
 };

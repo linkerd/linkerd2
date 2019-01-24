@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -29,6 +30,7 @@ type (
 		k8sAPI              *k8s.API
 		controllerNamespace string
 		ignoredNamespaces   []string
+		singleNamespace     bool
 	}
 )
 
@@ -51,6 +53,7 @@ func newGrpcServer(
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
+	singleNamespace bool,
 ) *grpcServer {
 	return &grpcServer{
 		prometheusAPI:       promAPI,
@@ -58,6 +61,7 @@ func newGrpcServer(
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 		ignoredNamespaces:   ignoredNamespaces,
+		singleNamespace:     singleNamespace,
 	}
 }
 
@@ -72,9 +76,21 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	// report from that instance and its process start time
 	reports := make(map[string]podReport)
 
+	if req.GetNamespace() != "" && req.GetSelector() != nil {
+		return nil, errors.New("cannot set both namespace and resource in the request. These are mutually exclusive")
+	}
+
 	nsQuery := ""
+	namespace := ""
 	if req.GetNamespace() != "" {
-		nsQuery = fmt.Sprintf("namespace=\"%s\"", req.GetNamespace())
+		namespace = req.GetNamespace()
+	} else if req.GetSelector().GetResource().GetNamespace() != "" {
+		namespace = req.GetSelector().GetResource().GetNamespace()
+	} else if req.GetSelector().GetResource().GetType() == pkgK8s.Namespace {
+		namespace = req.GetSelector().GetResource().GetName()
+	}
+	if namespace != "" {
+		nsQuery = fmt.Sprintf("namespace=\"%s\"", namespace)
 	}
 	processStartTimeQuery := fmt.Sprintf(podQuery, nsQuery)
 
@@ -94,7 +110,6 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	}
 
 	var pods []*k8sV1.Pod
-	namespace := req.GetNamespace()
 	if namespace != "" {
 		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
 	} else {

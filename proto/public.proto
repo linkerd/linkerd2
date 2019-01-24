@@ -28,7 +28,8 @@ message Service {
 }
 
 message ListPodsRequest {
-  string namespace = 1;
+  string namespace = 1 [deprecated=true];
+  ResourceSelection selector = 2;
 }
 message ListPodsResponse {
   repeated Pod pods = 1;

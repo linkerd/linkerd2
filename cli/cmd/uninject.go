@@ -144,7 +144,7 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 	volumes := []v1.Volume{}
 	for _, volume := range t.Volumes {
 		// TODO: move those strings to constants
-		if volume.Name != "linkerd-trust-anchors" && volume.Name != "linkerd-secrets" {
+		if volume.Name != k8s.TLSTrustAnchorVolumeName && volume.Name != k8s.TLSSecretsVolumeName {
 			volumes = append(volumes, volume)
 		}
 	}

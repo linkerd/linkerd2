@@ -1,6 +1,6 @@
 
-⚠ known 3rd party sidecar detected in deployment/contour
-⚠ no supported objects found
+‼ known 3rd party sidecar detected in deployment/contour
+‼ no supported objects found
 
 deployment "contour" skipped
 

@@ -1,5 +1,5 @@
 import 'whatwg-fetch';
-import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { emptyMetric, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
 import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
@@ -71,10 +71,8 @@ export class ResourceDetailBase extends React.Component {
       pollingInterval: 2000,
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
-      neighborMetrics: {
-        upstream: [],
-        downstream: []
-      },
+      upstreamMetrics: {}, // metrics for resources who send traffic to this resource
+      downstreamMetrics: {}, // metrics for resources who this resouce sends traffic to
       unmeshedSources: {},
       resourceIsMeshed: true,
       pendingRequests: false,
@@ -102,6 +100,21 @@ export class ResourceDetailBase extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  getDisplayMetrics(metricsByResource) {
+    // if we're displaying a pod detail page, only display pod metrics
+    // if we're displaying another type of resource page, display metrics for
+    // rcs, deploys, replicasets, etc but not pods or authorities
+    let shouldExclude = this.state.resourceType === "pod" ?
+      r => r !== "pod" :
+      r => r === "pod" || r === "authority"  || r === "service";
+    return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
+      if (shouldExclude(resource)) {
+        return mem;
+      }
+      return mem.concat(resourceMetrics);
+    }, []);
+  }
+
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -123,11 +136,11 @@ export class ResourceDetailBase extends React.Component {
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type)}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
+        `${this.api.urlsForResource("all")}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
       ),
       // downstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type)}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
+        `${this.api.urlsForResource("all")}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
       )
     ]);
 
@@ -135,8 +148,8 @@ export class ResourceDetailBase extends React.Component {
       .then(([resourceRsp, podListRsp, podMetricsRsp, upstreamRsp, downstreamRsp]) => {
         let resourceMetrics = processSingleResourceRollup(resourceRsp);
         let podMetrics = processSingleResourceRollup(podMetricsRsp);
-        let upstreamMetrics = processSingleResourceRollup(upstreamRsp);
-        let downstreamMetrics = processSingleResourceRollup(downstreamRsp);
+        let upstreamMetrics = processMultiResourceRollup(upstreamRsp);
+        let downstreamMetrics = processMultiResourceRollup(downstreamRsp);
 
         // INEFFICIENT: get metrics for all the pods belonging to this resource.
         // Do this by querying for metrics for all pods in this namespace and then filtering
@@ -165,10 +178,8 @@ export class ResourceDetailBase extends React.Component {
           resourceMetrics,
           resourceIsMeshed,
           podMetrics: podMetricsForResource,
-          neighborMetrics: {
-            upstream: upstreamMetrics,
-            downstream: downstreamMetrics
-          },
+          upstreamMetrics,
+          downstreamMetrics,
           lastMetricReceivedTime,
           loaded: true,
           pendingRequests: false,
@@ -217,7 +228,6 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics,
       unmeshedSources,
       resourceIsMeshed,
-      neighborMetrics,
       lastMetricReceivedTime
     } = this.state;
 
@@ -227,7 +237,7 @@ export class ResourceDetailBase extends React.Component {
       namespace
     };
 
-    let unmeshed = _filter(unmeshedSources, d => d.type === resourceType)
+    let unmeshed = _filter(unmeshedSources, d => d.type !== "pod")
       .map(d => _merge({}, emptyMetric, d, {
         unmeshed: true,
         pods: {
@@ -236,7 +246,10 @@ export class ResourceDetailBase extends React.Component {
         }
       }));
 
-    let upstreams = neighborMetrics.upstream.concat(unmeshed);
+    let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
+    let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
+
+    let upstreams = upstreamMetrics.concat(unmeshed);
 
     let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
@@ -268,7 +281,7 @@ export class ResourceDetailBase extends React.Component {
 
         <Octopus
           resource={resourceMetrics[0]}
-          neighbors={neighborMetrics}
+          neighbors={{ upstream: upstreamMetrics, downstream: downstreamMetrics }}
           unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
@@ -282,18 +295,18 @@ export class ResourceDetailBase extends React.Component {
           <React.Fragment>
             <Typography variant="h5">Inbound</Typography>
             <MetricsTable
-              resource={this.state.resource.type}
-              metrics={upstreams} />
+              resource="multi_resource"
+              metrics={upstreamMetrics} />
           </React.Fragment>
           )
         }
 
-        { _isEmpty(this.state.neighborMetrics.downstream) ? null : (
+        { _isEmpty(this.state.downstreamMetrics) ? null : (
           <React.Fragment>
             <Typography variant="h5">Outbound</Typography>
             <MetricsTable
-              resource={this.state.resource.type}
-              metrics={this.state.neighborMetrics.downstream} />
+              resource="multi_resource"
+              metrics={downstreamMetrics} />
           </React.Fragment>
           )
         }

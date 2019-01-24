@@ -86,7 +86,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   type: ClusterIP
   selector:
@@ -105,7 +105,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   type: ClusterIP
   selector:
@@ -120,7 +120,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: controller
@@ -132,8 +132,8 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
@@ -147,7 +147,7 @@ spec:
         - -controller-namespace=linkerd
         - -single-namespace=false
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -179,7 +179,7 @@ spec:
         - -enable-tls=false
         - -enable-h2-upgrade=true
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -208,7 +208,7 @@ spec:
         - -controller-namespace=linkerd
         - -single-namespace=false
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:undefined
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -253,7 +253,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -288,7 +288,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -309,7 +309,7 @@ metadata:
   name: serviceprofiles.linkerd.io
   namespace: linkerd
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -408,7 +408,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: web
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   type: ClusterIP
   selector:
@@ -426,7 +426,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: web
@@ -438,8 +438,8 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
@@ -454,7 +454,7 @@ spec:
         - -controller-namespace=linkerd
         - -single-namespace=false
         - -log-level=info
-        image: gcr.io/linkerd-io/web:undefined
+        image: gcr.io/linkerd-io/web:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -499,7 +499,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -534,7 +534,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -557,7 +557,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   type: ClusterIP
   selector:
@@ -572,7 +572,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: prometheus
@@ -584,8 +584,8 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
@@ -650,7 +650,7 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -685,7 +685,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -714,7 +714,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   prometheus.yml: |-
     global:
@@ -812,7 +812,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   type: ClusterIP
   selector:
@@ -827,7 +827,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: grafana
@@ -839,8 +839,8 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/created-by: linkerd/cli undefined
-        linkerd.io/proxy-version: undefined
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana
@@ -851,7 +851,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:undefined
+        image: gcr.io/linkerd-io/grafana:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -899,7 +899,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: gcr.io/linkerd-io/proxy:undefined
+        image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -934,7 +934,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:undefined
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -970,7 +970,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   grafana.ini: |-
     instance_name = linkerd-grafana

@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -41,24 +42,27 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+
+	var spClient *spclient.Clientset
 	restrictToNamespace := ""
+	resources := []k8s.APIResource{k8s.Deploy, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc}
+
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
+	} else {
+		spClient, err = k8s.NewSpClientSet(*kubeConfigPath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		resources = append(resources, k8s.SP)
 	}
+
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
 		spClient,
 		restrictToNamespace,
-		k8s.Deploy,
-		k8s.Pod,
-		k8s.RC,
-		k8s.RS,
-		k8s.SP,
-		k8s.Svc,
+		resources...,
 	)
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
@@ -73,6 +77,7 @@ func main() {
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
+		*singleNamespace,
 	)
 
 	k8sAPI.Sync() // blocks until caches are synced

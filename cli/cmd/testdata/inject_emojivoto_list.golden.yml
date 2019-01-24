@@ -15,7 +15,7 @@ items:
     template:
       metadata:
         annotations:
-          linkerd.io/created-by: linkerd/cli undefined
+          linkerd.io/created-by: linkerd/cli dev-undefined
           linkerd.io/proxy-version: testinjectversion
         creationTimestamp: null
         labels:
@@ -120,7 +120,7 @@ items:
     template:
       metadata:
         annotations:
-          linkerd.io/created-by: linkerd/cli undefined
+          linkerd.io/created-by: linkerd/cli dev-undefined
           linkerd.io/proxy-version: testinjectversion
         creationTimestamp: null
         labels:

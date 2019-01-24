@@ -33,6 +33,8 @@ type installConfig struct {
 	CreatedByAnnotation              string
 	ProxyAPIPort                     uint
 	EnableTLS                        bool
+	TLSTrustAnchorVolumeName         string
+	TLSSecretsVolumeName             string
 	TLSTrustAnchorConfigMapName      string
 	ProxyContainerName               string
 	TLSTrustAnchorFileName           string
@@ -175,6 +177,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		CreatedByAnnotation:              k8s.CreatedByAnnotation,
 		ProxyAPIPort:                     options.proxyAPIPort,
 		EnableTLS:                        options.enableTLS(),
+		TLSTrustAnchorVolumeName:         k8s.TLSTrustAnchorVolumeName,
+		TLSSecretsVolumeName:             k8s.TLSSecretsVolumeName,
 		TLSTrustAnchorConfigMapName:      k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:               k8s.ProxyContainerName,
 		TLSTrustAnchorFileName:           k8s.TLSTrustAnchorFileName,

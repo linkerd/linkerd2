@@ -923,7 +923,7 @@ spec:
         - name: proxy-injector
           containerPort: 8443
         volumeMounts:
-        - name: linkerd-trust-anchors
+        - name: {{.TLSTrustAnchorVolumeName}}
           mountPath: /var/linkerd-io/trust-anchors
           readOnly: true
         - name: webhook-secrets
@@ -1118,18 +1118,18 @@ data:
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
     - mountPath: /var/linkerd-io/trust-anchors
-      name: linkerd-trust-anchors
+      name: {{.TLSTrustAnchorVolumeName}}
       readOnly: true
     - mountPath: /var/linkerd-io/identity
-      name: linkerd-secrets
+      name: {{.TLSSecretsVolumeName}}
       readOnly: true
   {{.TLSTrustAnchorVolumeSpecFileName}}: |
-    name: linkerd-trust-anchors
+    name: {{.TLSTrustAnchorVolumeName}}
     configMap:
       name: {{.TLSTrustAnchorConfigMapName}}
       optional: true
   {{.TLSIdentityVolumeSpecFileName}}: |
-    name: linkerd-secrets
+    name: {{.TLSSecretsVolumeName}}
     secret:
       secretName: "" # this value will be computed by the webhook
       optional: true

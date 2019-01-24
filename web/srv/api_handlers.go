@@ -71,7 +71,11 @@ func (h *handler) handleAPIVersion(w http.ResponseWriter, req *http.Request, p h
 
 func (h *handler) handleAPIPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	pods, err := h.apiClient.ListPods(req.Context(), &pb.ListPodsRequest{
-		Namespace: req.FormValue("namespace"),
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: req.FormValue("namespace"),
+			},
+		},
 	})
 
 	if err != nil {
@@ -148,6 +152,9 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 			ResourceType: req.FormValue("resource_type"),
 			Namespace:    req.FormValue("namespace"),
 		},
+		ToName:      req.FormValue("to_name"),
+		ToType:      req.FormValue("to_type"),
+		ToNamespace: req.FormValue("to_namespace"),
 	}
 
 	topReq, err := util.BuildTopRoutesRequest(requestParams)

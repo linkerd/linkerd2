@@ -22,17 +22,22 @@ const (
 	lineWidth        = 80
 )
 
-var okStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u2714")    // ✔
-var warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u26A0") // ⚠
-var failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u2718")    // ✘
-
-var controlPlaneNamespace string
-var apiAddr string // An empty value means "use the Kubernetes configuration"
-var kubeconfigPath string
-var kubeContext string
-var verbose bool
-
 var (
+	// special handling for Windows, on all other platforms these resolve to
+	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
+	stdout = color.Output
+	stderr = color.Error
+
+	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
+	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
+	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	controlPlaneNamespace string
+	apiAddr               string // An empty value means "use the Kubernetes configuration"
+	kubeconfigPath        string
+	kubeContext           string
+	verbose               bool
+
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
 	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")

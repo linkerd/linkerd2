@@ -21,7 +21,7 @@ const routesColumns = [
     }
   },
   {
-    title: "Authority",
+    title: "Service",
     tooltip: "hostname:port used when communicating with this target",
     dataIndex: "authority",
     sorter: (a, b) => (a.authority).localeCompare(b.authority)

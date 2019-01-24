@@ -95,7 +95,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := uninjectAndInject(in, os.Stderr, os.Stdout, options)
+			exitCode := uninjectAndInject(in, stderr, stdout, options)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -276,7 +276,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		yes := true
 
 		configMapVolume := v1.Volume{
-			Name: "linkerd-trust-anchors",
+			Name: k8s.TLSTrustAnchorVolumeName,
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
@@ -285,7 +285,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 		secretVolume := v1.Volume{
-			Name: "linkerd-secrets",
+			Name: k8s.TLSSecretsVolumeName,
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: identity.ToSecretName(),
