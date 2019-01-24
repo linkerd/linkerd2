@@ -610,7 +610,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			checkResult.Err = errors.New("waiting for check to complete")
-			log.Debugf("Retrying on error: %s", err.Error())
+			log.Debugf("Retrying on error: %s", err)
 
 			observer(checkResult)
 			time.Sleep(retryWindow)
