@@ -121,7 +121,7 @@ func TestRender(t *testing.T) {
 	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectOptions.proxyConfigOptions.tls = "optional"
+	noInitContainerWithProxyAutoInjectOptions.tls = "optional"
 	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
 	noInitContainerWithProxyAutoInjectConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 

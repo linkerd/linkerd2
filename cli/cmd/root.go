@@ -216,64 +216,6 @@ func getPercentTLS(stats *pb.BasicStats) float64 {
 	return float64(stats.TlsRequestCount) / float64(reqTotal)
 }
 
-type cniPluginOptions struct {
-	linkerdVersion      string
-	dockerRegistry      string
-	proxyControlPort    uint
-	proxyMetricsPort    uint
-	inboundPort         uint
-	outboundPort        uint
-	ignoreInboundPorts  []uint
-	ignoreOutboundPorts []uint
-	proxyUID            int64
-	cniPluginImage      string
-	logLevel            string
-}
-
-func newCNIPluginOptions() *cniPluginOptions {
-	return &cniPluginOptions{
-		linkerdVersion:      version.Version,
-		dockerRegistry:      defaultDockerRegistry,
-		proxyControlPort:    4190,
-		proxyMetricsPort:    4191,
-		inboundPort:         4143,
-		outboundPort:        4140,
-		ignoreInboundPorts:  nil,
-		ignoreOutboundPorts: nil,
-		proxyUID:            2102,
-		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
-		logLevel:            "info",
-	}
-}
-
-func (options *cniPluginOptions) validate() error {
-	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
-		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
-	}
-
-	if !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
-	}
-
-	found := false
-	allowedLogLevels := [...]string{"trace", "debug", "info", "warn", "error", "fatal", "panic"}
-	for _, level := range allowedLogLevels {
-		if level == options.logLevel {
-			found = true
-		}
-	}
-	if !found {
-		fmt.Printf("%s is not a valid log level for the linkerd-cni plugin so defaulting to warn. Must be one of [trace, debug, info, warn, error, fatal, panic]", options.dockerRegistry)
-	}
-
-	return nil
-}
-
-func (options *cniPluginOptions) taggedCNIPluginImage() string {
-	image := strings.Replace(options.cniPluginImage, defaultDockerRegistry, options.dockerRegistry, 1)
-	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
-}
-
 type proxyConfigOptions struct {
 	linkerdVersion          string
 	proxyImage              string
@@ -295,6 +237,7 @@ type proxyConfigOptions struct {
 	proxyOutboundCapacity   map[string]uint
 	tls                     string
 	disableExternalProfiles bool
+	noInitContainer         bool
 }
 
 const (
@@ -324,6 +267,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyMemoryRequest:      "",
 		tls:                     "",
 		disableExternalProfiles: false,
+		noInitContainer:         false,
 	}
 }
 
@@ -397,4 +341,5 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
+	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "no-init-container", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
 }

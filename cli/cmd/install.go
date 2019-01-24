@@ -73,7 +73,6 @@ type installOptions struct {
 	highAvailability   bool
 	controllerUID      int64
 	disableH2Upgrade   bool
-	noInitContainer    bool
 	*proxyConfigOptions
 }
 
@@ -93,7 +92,6 @@ func newInstallOptions() *installOptions {
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
 		proxyConfigOptions: newProxyConfigOptions(),
-		noInitContainer:    false,
 	}
 }
 
@@ -122,7 +120,6 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
 	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
 	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 ugprading")
-	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "no-init-container", options.noInitContainer, "Installs the control plane without reliance on an initContainer. Requires the linkerd-cni DaemonSet to be deployed to be useful.")
 	return cmd
 }
 
@@ -245,7 +242,6 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	injectOptions := newInjectOptions()
 	injectOptions.proxyConfigOptions = options.proxyConfigOptions
-	injectOptions.noInitContainer = options.noInitContainer
 
 	// Special case for linkerd-proxy running in the Prometheus pod.
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity

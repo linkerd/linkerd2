@@ -1,7 +1,7 @@
-package installcniplugin
+package install
 
-// Template provides the base template for the `linkerd install-cni-plugin` command.
-const Template = `# Copyright 2017 CNI authors
+// CNITemplate provides the base template for the `linkerd install-cni-plugin` command.
+const CNITemplate = `# Copyright 2017 CNI authors
 # Modifications copyright (c) Nordstrom, Inc
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");

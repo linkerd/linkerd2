@@ -20,8 +20,6 @@ jobs:
   include:
 
     - language: go
-      services:
-          - docker
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
       go: "1.10.3"

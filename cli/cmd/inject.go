@@ -37,7 +37,6 @@ const (
 )
 
 type injectOptions struct {
-	noInitContainer bool
 	*proxyConfigOptions
 }
 
@@ -59,7 +58,6 @@ type objMeta struct {
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
-		noInitContainer:    false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -104,7 +102,6 @@ sub-folders, or coming from stdin.`,
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "no-init-container", options.noInitContainer, "Injects the pod without reliance on an initContainer. Requires the linkerd-cni DaemonSet to be deployed to be useful.")
 
 	return cmd
 }

@@ -8,7 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	installcniplugin "github.com/linkerd/linkerd2/cli/cmd/install-cni-plugin"
+	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -23,14 +24,73 @@ type installCNIPluginConfig struct {
 	ProxyUID            int64
 }
 
+type cniPluginOptions struct {
+	linkerdVersion      string
+	dockerRegistry      string
+	proxyControlPort    uint
+	proxyMetricsPort    uint
+	inboundPort         uint
+	outboundPort        uint
+	ignoreInboundPorts  []uint
+	ignoreOutboundPorts []uint
+	proxyUID            int64
+	cniPluginImage      string
+	logLevel            string
+}
+
+func newCNIPluginOptions() *cniPluginOptions {
+	return &cniPluginOptions{
+		linkerdVersion:      version.Version,
+		dockerRegistry:      defaultDockerRegistry,
+		proxyControlPort:    4190,
+		proxyMetricsPort:    4191,
+		inboundPort:         4143,
+		outboundPort:        4140,
+		ignoreInboundPorts:  nil,
+		ignoreOutboundPorts: nil,
+		proxyUID:            2102,
+		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
+		logLevel:            "info",
+	}
+}
+
+func (options *cniPluginOptions) validate() error {
+	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
+		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
+	}
+
+	if !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
+		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
+	}
+
+	found := false
+	allowedLogLevels := [...]string{"trace", "debug", "info", "warn", "error", "fatal", "panic"}
+	for _, level := range allowedLogLevels {
+		if level == options.logLevel {
+			found = true
+		}
+	}
+	if !found {
+		fmt.Printf("%s is not a valid log level for the linkerd-cni plugin so defaulting to warn. Must be one of [trace, debug, info, warn, error, fatal, panic]", options.dockerRegistry)
+	}
+
+	return nil
+}
+
+func (options *cniPluginOptions) taggedCNIPluginImage() string {
+	image := strings.Replace(options.cniPluginImage, defaultDockerRegistry, options.dockerRegistry, 1)
+	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
+}
+
 func newCmdInstallCNIPlugin() *cobra.Command {
 	options := newCNIPluginOptions()
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
 		Short: "Output Kubernetes configs to install the Linkerd CNI Plugin",
-		Long: `Output Kubernetes configs to install the Linkerd CNI Plugin.",
-This command installs a Daemonset into the Linkerd control plane. The Daemonset
+		Long: `Output Kubernetes configs to install the Linkerd CNI Plugin."
+
+This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
 assumes that the 'linkerd install' command will be executed with the '--no-init-container'
 flag. This command needs to be executed before the 'linkerd install --no-init-container'
@@ -89,7 +149,7 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 }
 
 func renderCNIPlugin(w io.Writer, config *installCNIPluginConfig) error {
-	template, err := template.New("linkerd-cni").Parse(installcniplugin.Template)
+	template, err := template.New("linkerd-cni").Parse(install.CNITemplate)
 	if err != nil {
 		return err
 	}
