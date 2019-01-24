@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -608,6 +609,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 
 		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
+			checkResult.Err = errors.New("waiting for check to complete")
+			log.Debugf("Retrying on error: %s", err.Error())
+
 			observer(checkResult)
 			time.Sleep(retryWindow)
 			continue
