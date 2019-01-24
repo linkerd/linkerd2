@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"github.com/golang/protobuf/ptypes/duration"
 	"reflect"
 	"testing"
 
@@ -134,6 +135,9 @@ var (
 				IsFailure: true,
 			},
 		},
+		Timeout: &duration.Duration{
+			Seconds: 1,
+		},
 	}
 
 	route2 = &sp.RouteSpec{
@@ -157,6 +161,9 @@ var (
 				Condition: pbFiveXXfourTwenty,
 				IsFailure: true,
 			},
+		},
+		Timeout: &duration.Duration{
+			Seconds: 1,
 		},
 	}
 
@@ -222,6 +229,9 @@ var (
 					"route": "multipleRequestMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{},
+				Timeout: &duration.Duration{
+					Seconds: 1,
+				},
 			},
 		},
 		RetryBudget: &profiles.DefaultRetryBudget,
@@ -310,6 +320,9 @@ var (
 							},
 						},
 					},
+				},
+				Timeout: &duration.Duration{
+					Seconds: 1,
 				},
 			},
 		},
