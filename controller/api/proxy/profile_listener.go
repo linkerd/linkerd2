@@ -40,12 +40,14 @@ func (l *profileListener) Stop() {
 }
 
 func (l *profileListener) Update(profile *sp.ServiceProfile) {
-	if profile != nil {
-		destinationProfile, err := profiles.ToServiceProfile(&profile.Spec)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		l.stream.Send(destinationProfile)
+	if profile == nil {
+		l.stream.Send(&profiles.DefaultServiceProfile)
+		return
 	}
+	destinationProfile, err := profiles.ToServiceProfile(&profile.Spec)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	l.stream.Send(destinationProfile)
 }
