@@ -114,7 +114,7 @@ If the --open-api flag is specified, it reads the given OpenAPI
 specification file and outputs a corresponding service profile.
 
 Example:
-	linkerd profile --tap deploy/books --tap-duration 10s books | book-svc-profile.yaml
+	linkerd profile --tap deploy/books --tap-duration 10s books > book-svc-profile.yaml
 	# (edit book-svc-profile.yaml manualy)
 	kubectl apply -f book-svc-profile.yaml
 
@@ -166,7 +166,7 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 		},
 	}
 
-	log.Debug("Running `linkerd tap %s --namespace %s`", options.tap, options.namespace)
+	log.Debugf("Running `linkerd tap %s --namespace %s`", options.tap, options.namespace)
 	client := cliPublicAPIClient()
 	requestParams := util.TapRequestParams{
 		Resource:  options.tap,
