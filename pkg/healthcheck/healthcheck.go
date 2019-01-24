@@ -297,14 +297,14 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can create Roles",
 					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "Role")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
 					hintURL:     "https://linkerd.io/2/getting-started/#step-0-setup",
 					check: func() error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
 				},
 			},
