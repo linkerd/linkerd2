@@ -18,7 +18,6 @@ import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
 import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
-import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 // if there has been no traffic for some time, show a warning
@@ -202,11 +201,8 @@ export class ResourceDetailBase extends React.Component {
     });
   }
 
-  updateNeighborsFromTapData = (source, sourceLabels) => {
-    // store this outside of state, as updating the state upon every websocket event received
-    // is very costly and causes the page to freeze up
-    this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, this.state.resource.type);
-    return this.unmeshedSources;
+  updateUnmeshedSources = obj => {
+    this.unmeshedSources = obj;
   }
 
   banner = () => {
@@ -289,7 +285,7 @@ export class ResourceDetailBase extends React.Component {
         <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
-          updateNeighborsFromTapData={this.updateNeighborsFromTapData}
+          updateUnmeshedSources={this.updateUnmeshedSources}
           disableTop={!resourceIsMeshed} />
 
         { _isEmpty(upstreams) ? null : (

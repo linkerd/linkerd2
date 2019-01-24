@@ -1,4 +1,4 @@
-import { processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { processNeighborData, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import Percentage from './util/Percentage.js';
@@ -27,8 +27,8 @@ class TopModule extends React.Component {
       resource: PropTypes.string
     }),
     startTap: PropTypes.bool.isRequired,
-    updateNeighbors: PropTypes.func,
-    updateTapClosingState: PropTypes.func
+    updateTapClosingState: PropTypes.func,
+    updateUnmeshedSources: PropTypes.func
   }
 
   static defaultProps = {
@@ -38,8 +38,8 @@ class TopModule extends React.Component {
     // - un-ended tap results, pre-aggregation into the top counts
     // - aggregated top rows
     maxRowsToStore: 50,
-    updateNeighbors: _noop,
     updateTapClosingState: _noop,
+    updateUnmeshedSources: _noop,
     query: {
       resource: ""
     }
@@ -51,6 +51,7 @@ class TopModule extends React.Component {
     this.topEventIndex = {};
     this.throttledWebsocketRecvHandler = _throttle(this.updateTapEventIndexState, 500);
     this.updateTapClosingState = this.props.updateTapClosingState;
+    this.unmeshedSources = {};
 
     this.state = {
       error: null,
@@ -97,7 +98,6 @@ class TopModule extends React.Component {
 
   onWebsocketRecv = e => {
     this.indexTapResult(e.data);
-    this.props.updateNeighbors(e.data);
     this.throttledWebsocketRecvHandler();
   }
 
@@ -239,8 +239,13 @@ class TopModule extends React.Component {
     }
 
     if (d.base.proxyDirection === "INBOUND") {
-      let unmeshedSources = this.props.updateNeighbors(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"), null);
-      topResults[eventKey].meshed = !_has(unmeshedSources, d.base.source.owner);
+      this.updateNeighborsFromTapData(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"));
+      let isPod = this.props.query.resource.split("/")[0] === "pod";
+      if (isPod) {
+        topResults[eventKey].meshed = !_has(this.unmeshedSources, "pod/" + d.base.source.pod);
+      } else {
+        topResults[eventKey].meshed = !_has(this.unmeshedSources, d.base.source.owner);
+      }
     }
 
     return topResults;
@@ -254,6 +259,14 @@ class TopModule extends React.Component {
     this.setState({
       topEventIndex: this.topEventIndex
     });
+  }
+
+  updateNeighborsFromTapData = (source, sourceLabels) => {
+    // store this outside of state, as updating the state upon every websocket event received
+    // is very costly and causes the page to freeze up
+    let resourceType = _isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
+    this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, resourceType);
+    if (this.props.updateUnmeshedSources) {this.props.updateUnmeshedSources(this.unmeshedSources);}
   }
 
   indexTapResult = data => {
