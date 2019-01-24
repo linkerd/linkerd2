@@ -177,6 +177,11 @@ var (
 		RetryBudget: &profiles.DefaultRetryBudget,
 	}
 
+	defaultPbProfile = &pb.DestinationProfile{
+		Routes:      []*pb.Route{},
+		RetryBudget: &profiles.DefaultRetryBudget,
+	}
+
 	multipleRequestMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
@@ -519,6 +524,25 @@ func TestProfileListener(t *testing.T) {
 
 		if !c {
 			t.Fatalf("Expected function to be completed after the cancel()")
+		}
+	})
+
+	t.Run("Sends empty update", func(t *testing.T) {
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+
+		listener := &profileListener{
+			stream: mockGetProfileServer,
+		}
+
+		listener.Update(nil)
+
+		numProfiles := len(mockGetProfileServer.profilesReceived)
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
+		}
+		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		if !reflect.DeepEqual(actualPbProfile, defaultPbProfile) {
+			t.Fatalf("Expected profile sent to be [%v] but was [%v]", defaultPbProfile, actualPbProfile)
 		}
 	})
 }

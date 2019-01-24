@@ -20,14 +20,21 @@ type profileTemplateConfig struct {
 	ClusterZone           string
 }
 
-// DefaultRetryBudget is used for routes which do not specify one.
-var DefaultRetryBudget = pb.RetryBudget{
-	MinRetriesPerSecond: 10,
-	RetryRatio:          0.2,
-	Ttl: &duration.Duration{
-		Seconds: 10,
-	},
-}
+var (
+	// DefaultRetryBudget is used for routes which do not specify one.
+	DefaultRetryBudget = pb.RetryBudget{
+		MinRetriesPerSecond: 10,
+		RetryRatio:          0.2,
+		Ttl: &duration.Duration{
+			Seconds: 10,
+		},
+	}
+	// DefaultServiceProfile is used for services with no service profile.
+	DefaultServiceProfile = pb.DestinationProfile{
+		Routes:      []*pb.Route{},
+		RetryBudget: &DefaultRetryBudget,
+	}
+)
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
