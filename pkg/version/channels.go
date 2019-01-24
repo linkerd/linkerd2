@@ -12,7 +12,7 @@ import (
 
 // Channels provides an interface to interact with a set of release channels.
 // This module is also responsible for online retrieval of the latest release
-// versions. It depends only on channelVersion in the version package.
+// versions.
 type Channels struct {
 	array []channelVersion
 }

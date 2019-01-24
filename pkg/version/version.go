@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-// This module depends only on channelVersion in the version package.
-
 // Version is updated automatically as part of the build process, and is the
 // ground source of truth for the current process's build version.
 //
