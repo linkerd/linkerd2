@@ -174,12 +174,15 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 		Namespace: options.namespace,
 	}
 	req, err := util.BuildTapByResourceRequest(requestParams)
+	if err != nil {
+		return err
+	}
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
 	}
 
-	routes := routeSpecFromTap(w, rsp, options.tapDuration, int(options.routeLimit))
+	routes := routeSpecFromTap(rsp, options.tapDuration, int(options.routeLimit))
 
 	profile.Spec.Routes = routes
 	output, err := yaml.Marshal(profile)
@@ -190,7 +193,7 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 	return nil
 }
 
-func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {
+func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
 	routesMap := make(map[string]*sp.RouteSpec)
 
