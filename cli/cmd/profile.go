@@ -167,12 +167,23 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 		},
 	}
 
-	log.Debugf("Running `linkerd tap %s --namespace %s`", options.tap, options.namespace)
 	client := cliPublicAPIClient()
-	requestParams := util.TapRequestParams{
-		Resource:  options.tap,
-		Namespace: options.namespace,
+	res, err := util.BuildResource(options.namespace, options.tap)
+	if err != nil {
+		return err
 	}
+
+	// there is kind of a duplication of param parsing, because we need to reformulate
+	// a request like linkerd profile --tap deploy/web to run the tap
+	// linkerd tap deploy --to deploy/web
+	requestParams := util.TapRequestParams{
+		Resource:    res.Type,
+		Namespace:   options.namespace,
+		ToResource:  options.tap,
+		ToNamespace: options.namespace,
+	}
+	log.Debugf("Running `linkerd tap %s  --namespace %s --to %s --to-namespace %s`", res.Type, options.namespace, options.tap, options.namespace)
+
 	req, err := util.BuildTapByResourceRequest(requestParams)
 	if err != nil {
 		return err
