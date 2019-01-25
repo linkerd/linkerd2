@@ -1,0 +1,113 @@
+{{ if .Values.EnableTLS }}
+### Service Account CA ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: {{.Values.Namespace}}
+
+### CA RBAC ###
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-ca
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.Values.TLSTrustAnchorConfigMapName}}]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
+{{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
+  verbs: ["list", "get", "watch"]
+{{- end }}
+
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-ca
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-ca
+subjects:
+- kind: ServiceAccount
+  name: linkerd-ca
+  namespace: {{.Values.Namespace}}
+
+### CA ###
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-ca
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: ca
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.Values.ControllerComponentLabel}}: ca
+      annotations:
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-ca
+      containers:
+      - name: ca
+        ports:
+        - name: admin-http
+          containerPort: 9997
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "ca"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        {{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
+        - "-proxy-auto-inject={{ .Values.ProxyAutoInjectEnabled }}"
+        {{- end }}
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9997
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}
+{{ end }}

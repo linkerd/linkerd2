@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/gobuffalo/packr/v2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -86,6 +86,7 @@ const (
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
 
+	chartPath                 = "../Chart"
 	baseTemplateName          = "templates/base.yaml"
 	tlsTemplateName           = "templates/tls.yaml"
 	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
@@ -220,17 +221,35 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(config)
 	if err != nil {
-		return err
+		log.Fatalf("Could not marshal `config` into JSON: %s", err)
 	}
 
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
+	chrtBox := packr.New("Chart Box", chartPath)
+	chrtTmpl, err := chrtBox.Find(chartutil.ChartfileName)
+	if err != nil {
+		log.Fatalf("Could not find '%s' in box: %s", chartutil.ChartfileName, err)
+	}
+	baseTmpl, err := chrtBox.Find(baseTemplateName)
+	if err != nil {
+		log.Fatalf("Could not find '%s' in box: %s", baseTemplateName, err)
+	}
+	tlsTmpl, err := chrtBox.Find(tlsTemplateName)
+	if err != nil {
+		log.Fatalf("Could not find '%s' in box: %s", tlsTemplateName, err)
+	}
+	proxyInjectorTmpl, err := chrtBox.Find(proxyInjectorTemplateName)
+	if err != nil {
+		log.Fatalf("Could not find '%s' in box: %s", proxyInjectorTemplateName, err)
+	}
+
 	// Load chart files
 	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: install.Chart},
-		{Name: baseTemplateName, Data: install.BaseTemplate},
-		{Name: tlsTemplateName, Data: install.TLSTemplate},
-		{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate},
+		{Name: chartutil.ChartfileName, Data: chrtTmpl},
+		{Name: baseTemplateName, Data: baseTmpl},
+		{Name: tlsTemplateName, Data: tlsTmpl},
+		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
 	}
 
 	// Create chart and render templates
