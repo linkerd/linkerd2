@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"os"
+<<<<<<< HEAD
 	"regexp"
 	"sort"
 	"time"
@@ -17,10 +15,12 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+=======
+
+>>>>>>> master
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -31,9 +31,8 @@ type templateConfig struct {
 	ClusterZone           string
 }
 
-var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
-
 type profileOptions struct {
+<<<<<<< HEAD
 	name        string
 	namespace   string
 	template    bool
@@ -41,10 +40,18 @@ type profileOptions struct {
 	tap         string
 	tapDuration time.Duration
 	routeLimit  uint
+=======
+	name      string
+	namespace string
+	template  bool
+	openAPI   string
+	proto     string
+>>>>>>> master
 }
 
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
+<<<<<<< HEAD
 		name:        "",
 		namespace:   "default",
 		template:    false,
@@ -52,6 +59,13 @@ func newProfileOptions() *profileOptions {
 		tap:         "",
 		tapDuration: 5 * time.Second,
 		routeLimit:  20,
+=======
+		name:      "",
+		namespace: "default",
+		template:  false,
+		openAPI:   "",
+		proto:     "",
+>>>>>>> master
 	}
 }
 
@@ -63,11 +77,19 @@ func (options *profileOptions) validate() error {
 	if options.openAPI != "" {
 		outputs++
 	}
+<<<<<<< HEAD
 	if options.tap != "" {
 		outputs++
 	}
 	if outputs != 1 {
 		return errors.New("You must specify exactly one of --template or --open-api or --tap")
+=======
+	if options.proto != "" {
+		outputs++
+	}
+	if outputs != 1 {
+		return errors.New("You must specify exactly one of --template, --open-api, or --proto")
+>>>>>>> master
 	}
 
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
@@ -85,31 +107,38 @@ func (options *profileOptions) validate() error {
 	return nil
 }
 
+// NewCmdProfile creates a new cobra command for the Profile subcommand which
+// generates Linkerd service profiles.
 func newCmdProfile() *cobra.Command {
-
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] (--template | --open-api file | --tap resource) (SERVICE)",
+		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long: `Output service profile config for Kubernetes.
 
 This outputs a service profile for the given service.
 
-If the --template flag is specified, it outputs a service profile template.
-Edit the template and then apply it with kubectl to add a service profile to
-a service.
+Examples:
+  If the --template flag is specified, it outputs a service profile template.
+  Edit the template and then apply it with kubectl to add a service profile to
+  a service:
 
-If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
-and creates a profile for the SERVICE based on the requests seen in that window
+  If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
+  and creates a profile for the SERVICE based on the requests seen in that window
 
 Example:
   linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
   # (edit web-svc-profile.yaml manually)
   kubectl apply -f web-svc-profile.yaml
 
-If the --open-api flag is specified, it reads the given OpenAPI
-specification file and outputs a corresponding service profile.
+  If the --open-api flag is specified, it reads the given OpenAPI
+  specification file and outputs a corresponding service profile:
+
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -
+
+  If the --proto flag is specified, it reads the given protobuf definition file
+  and outputs a corresponding service profile:
 
 Example:
 	linkerd profile --tap deploy/books --tap-duration 10s books > book-svc-profile.yaml
@@ -122,7 +151,8 @@ For high RPS, high-route-cardinality services, use route-limit to limit the numb
 routes in the output profile.
 
 Example:
-  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -`,
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -,
+  linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
@@ -135,9 +165,11 @@ Example:
 			if options.template {
 				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.openAPI != "" {
-				return renderOpenAPI(options, os.Stdout)
+				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.tap != "" {
 				return renderTapOutputProfile(options, controlPlaneNamespace, os.Stdout)
+			} else if options.proto != "" {
+				return profiles.RenderProto(options.proto, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
 
 			// we should never get here
@@ -151,6 +183,7 @@ Example:
 	cmd.PersistentFlags().DurationVar(&options.tapDuration, "tap-duration", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
 	cmd.PersistentFlags().UintVar(&options.routeLimit, "route-limit", options.routeLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
+	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 
 	return cmd
 }

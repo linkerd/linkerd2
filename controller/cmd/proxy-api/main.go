@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/proxy"
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -32,33 +33,27 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	var k8sAPI *k8s.API
+	var spClient *spclient.Clientset
+	restrictToNamespace := ""
+	resources := []k8s.APIResource{k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc}
+
 	if *singleNamespace {
-		k8sAPI = k8s.NewAPI(
-			k8sClient,
-			nil,
-			*controllerNamespace,
-			k8s.Endpoint,
-			k8s.Pod,
-			k8s.RS,
-			k8s.Svc,
-		)
+		restrictToNamespace = *controllerNamespace
 	} else {
-		spClient, err := k8s.NewSpClientSet(*kubeConfigPath)
+		spClient, err = k8s.NewSpClientSet(*kubeConfigPath)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		k8sAPI = k8s.NewAPI(
-			k8sClient,
-			spClient,
-			"",
-			k8s.Endpoint,
-			k8s.Pod,
-			k8s.RS,
-			k8s.Svc,
-			k8s.SP,
-		)
+
+		resources = append(resources, k8s.SP)
 	}
+
+	k8sAPI := k8s.NewAPI(
+		k8sClient,
+		spClient,
+		restrictToNamespace,
+		resources...,
+	)
 
 	done := make(chan struct{})
 

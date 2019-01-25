@@ -49,7 +49,7 @@ func TestProfileFromTap(t *testing.T) {
 }
 func TestValidateOptions(t *testing.T) {
 	options := newProfileOptions()
-	exp := errors.New("You must specify exactly one of --template or --open-api or --tap")
+	exp := errors.New("You must specify exactly one of --template, --open-api, --proto or --tap")
 	err := options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -58,7 +58,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.openAPI = "openAPI"
-	exp = errors.New("You must specify exactly one of --template or --open-api or --tap")
+	exp = errors.New("You must specify exactly one of --template, --open-api, --proto or --tap")
 	err = options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
