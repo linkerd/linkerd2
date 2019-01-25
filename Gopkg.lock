@@ -589,6 +589,22 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:c756d63fd19d7a0addad30ecb77014fbe82b428c34bdd4142177d0a3d8e77095"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["vfsutil"]
+  pruneopts = ""
+  revision = "74dc9339e414ad069a8d04bba7e7aafd08043a25"
+
+[[projects]]
+  branch = "master"
+  digest = "1:516000eb63bb341737069fafcb705951091b713d2359f84eec58df4347461cd7"
+  name = "github.com/shurcooL/vfsgen"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
+
+[[projects]]
   digest = "1:42a42c4bc67bed17f40fddf0f24d4403e25e7b96488456cf4248e6d16659d370"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -1253,6 +1269,7 @@
     "github.com/prometheus/common/model",
     "github.com/satori/go.uuid",
     "github.com/sergi/go-diff/diffmatchpatch",
+    "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/wercker/stern/stern",
