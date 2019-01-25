@@ -155,6 +155,7 @@ class NamespaceLanding extends React.Component {
         <Grid item>{ noMetrics ? <div>No resources detected.</div> : null}</Grid>
 
         {this.renderResourceSection("deployment", metrics.deployment)}
+        {this.renderResourceSection("daemonset", metrics.daemonset)}
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("pod", metrics.pod)}
         {this.renderResourceSection("authority", metrics.authority)}

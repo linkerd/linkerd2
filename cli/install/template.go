@@ -32,7 +32,7 @@ metadata:
   {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]
@@ -1054,8 +1054,6 @@ data:
     env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
-    - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: {{.ProxyBindTimeout}}
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
