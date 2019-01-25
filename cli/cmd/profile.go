@@ -199,11 +199,11 @@ func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDura
 	routesMap := make(map[string]*sp.RouteSpec)
 
 	tapEventChannel := make(chan *pb.TapEvent, 10)
-	timerChannel := make(chan string, 1)
+	timerChannel := make(chan struct{}, 1)
 
 	go func() {
 		time.Sleep(tapDuration)
-		timerChannel <- "done"
+		timerChannel <- struct{}{}
 	}()
 	go func() {
 		recordRoutesFromTap(tapClient, tapEventChannel)
