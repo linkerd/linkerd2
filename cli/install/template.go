@@ -977,8 +977,8 @@ spec:
         configMap:
           name: linkerd-proxy-injector-sidecar-config
 
-### Proxy Injector Service Account ###
 ---
+### Proxy Injector Service Account ###
 kind: ServiceAccount
 apiVersion: v1
 metadata:

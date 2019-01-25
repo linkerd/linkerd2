@@ -1288,6 +1288,7 @@ spec:
         name: proxy-spec
 status: {}
 ---
+### Proxy Injector Service Account ###
 kind: ServiceAccount
 apiVersion: v1
 metadata:
