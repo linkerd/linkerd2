@@ -191,7 +191,37 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 
 func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDuration time.Duration) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
-	routesMap := recordRoutesFromTap(tapClient, tapDuration)
+	routesMap := make(map[string]*sp.RouteSpec)
+
+	tapEventChannel := make(chan *pb.TapEvent, 10)
+	timerChannel := make(chan string, 1)
+
+	go func() {
+		time.Sleep(tapDuration)
+		timerChannel <- "done"
+	}()
+	go func() {
+		recordRoutesFromTap(tapClient, tapEventChannel)
+	}()
+
+	timeLimitReached := false
+	for {
+		select {
+		case <-timerChannel:
+			timeLimitReached = true
+		case event := <-tapEventChannel:
+			routeSpec := getPathDataFromTap(event)
+
+			if routeSpec != nil {
+				routesMap[routeSpec.Name] = routeSpec
+			}
+		default:
+			// do nothing
+		}
+		if timeLimitReached {
+			break
+		}
+	}
 
 	for _, path := range sortMapKeys(routesMap) {
 		routes = append(routes, routesMap[path])
@@ -199,15 +229,7 @@ func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDura
 	return routes
 }
 
-func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Duration) map[string]*sp.RouteSpec {
-	routes := make(map[string]*sp.RouteSpec)
-	timerChannel := make(chan string, 1)
-	go func() {
-		time.Sleep(tapDuration)
-		timerChannel <- "done"
-	}()
-	done := ""
-
+func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapEventChannel chan *pb.TapEvent) {
 	for {
 		log.Debug("Waiting for data...")
 		event, err := tapClient.Recv()
@@ -218,23 +240,9 @@ func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		routeSpec := getPathDataFromTap(event)
 
-		if routeSpec != nil {
-			routes[routeSpec.Name] = routeSpec
-		}
-
-		select {
-		case done = <-timerChannel:
-		default:
-			// do nothing
-		}
-		if done != "" {
-			break
-		}
+		tapEventChannel <- event
 	}
-
-	return routes
 }
 
 func sortMapKeys(m map[string]*sp.RouteSpec) (keys []string) {
