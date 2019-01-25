@@ -15,9 +15,11 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 
 os=linux
+dash_p="-p"
 exe=
 if [ "$(uname -s)" = "Darwin" ]; then
   os=darwin
+  dash_p="" # -p isn't needed on mac
 elif [ "$(uname -o)" = "Msys" ]; then
   os=windows
   exe=.exe
@@ -32,7 +34,7 @@ if [ ! -f "$depbin" ]; then
     cd "$tmp"
     curl -L --silent --fail -o depbin "$depurl"
     sha=$(curl -L --silent --fail "${depurl}.sha256" | awk '{ print $1 }')
-    (echo "$sha *depbin" | shasum -c -a 256 -p -s -) || {
+    (echo "$sha *depbin" | shasum -c -a 256 $dash_p -s -) || {
       echo "Actual digest of $(pwd)/depbin does not match expected digest."
       exit 1
     }

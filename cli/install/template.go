@@ -32,7 +32,7 @@ metadata:
   {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .SingleNamespace}}, "namespaces"{{end}}]
@@ -922,7 +922,7 @@ spec:
         - name: proxy-injector
           containerPort: 8443
         volumeMounts:
-        - name: linkerd-trust-anchors
+        - name: {{.TLSTrustAnchorVolumeName}}
           mountPath: /var/linkerd-io/trust-anchors
           readOnly: true
         - name: webhook-secrets
@@ -1054,8 +1054,6 @@ data:
     env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
-    - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: {{.ProxyBindTimeout}}
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-proxy-api.{{.Namespace}}.svc.cluster.local:{{.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -1117,18 +1115,18 @@ data:
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
     - mountPath: /var/linkerd-io/trust-anchors
-      name: linkerd-trust-anchors
+      name: {{.TLSTrustAnchorVolumeName}}
       readOnly: true
     - mountPath: /var/linkerd-io/identity
-      name: linkerd-secrets
+      name: {{.TLSSecretsVolumeName}}
       readOnly: true
   {{.TLSTrustAnchorVolumeSpecFileName}}: |
-    name: linkerd-trust-anchors
+    name: {{.TLSTrustAnchorVolumeName}}
     configMap:
       name: {{.TLSTrustAnchorConfigMapName}}
       optional: true
   {{.TLSIdentityVolumeSpecFileName}}: |
-    name: linkerd-secrets
+    name: {{.TLSSecretsVolumeName}}
     secret:
       secretName: "" # this value will be computed by the webhook
       optional: true

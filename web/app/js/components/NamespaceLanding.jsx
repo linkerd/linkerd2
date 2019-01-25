@@ -155,6 +155,7 @@ class NamespaceLanding extends React.Component {
         <Grid item>{ noMetrics ? <div>No resources detected.</div> : null}</Grid>
 
         {this.renderResourceSection("deployment", metrics.deployment)}
+        {this.renderResourceSection("daemonset", metrics.daemonset)}
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("pod", metrics.pod)}
         {this.renderResourceSection("authority", metrics.authority)}
@@ -167,7 +168,7 @@ class NamespaceLanding extends React.Component {
       let hr = (
         <Grid container justify="space-between" alignItems="center">
           <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
-          {!ns.added ? null : <Grid item><SimpleChip /></Grid> }
+          {!ns.added ? null : <Grid item><SimpleChip label="meshed" type="good" /></Grid> }
         </Grid>
       );
       return {

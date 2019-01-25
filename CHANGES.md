@@ -1,3 +1,52 @@
+## edge-19.1.3
+
+* Controller
+  * Improved API for `ListPods` (thanks @alenkacz!)
+  * Fixed `GetProfiles` API call not returning immediately when no profile
+    exists (resulting in proxies logging warnings)
+* Web UI
+  * Improved resource detail pages now show all resource types
+  * Fixed stats not appearing for routes that have service profiles installed
+* CLI
+  * Added `linkerd install-sp` command to install service profiles into the
+    Linkerd control plane
+  * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
+    commands, as the proxy no longer accepts this environment variable
+  * Improved CLI appearance on Windows systems
+  * Improved `linkerd check` output, fixed some bugs in check
+  * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
+  * Fixed panic when `linkerd routes` is called in single-namespace mode
+* Proxy
+  * Added the ability to override a proxy's normal outbound routing by adding an
+   `l5d-override-dst` header
+  * Added `LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT` environment variable to
+    customize the timeout for DNS queries to canonicalize a name
+  * Added support for route timeouts in service profiles
+  * Improved logging for gRPC errors and for malformed HTTP/2 request headers
+  * Improved log readability by moving some noisy log messages to more verbose
+    log levels
+
+## edge-19.1.2
+
+* Controller
+  * Retry support! Introduce an `isRetryable` property to service profiles to
+    enable configuring retries on a per-route basis
+* Web UI
+  * Add "meshed" and "no traffic" badges on the resource detail pages
+  * Fix `linkerd dashboard` to maintain proxy connection when browser open fails
+  * Fix JavaScript bundling to avoid serving old versions after upgrade
+* CLI
+  * Add `linkerd logs` command to surface logs from any container in the Linkerd
+    control plane (shout out to [Stern](https://github.com/wercker/stern)!)
+  * Add `linkerd uninject` command to remove the Linkerd proxy from a Kubernetes
+    config
+  * Improve `linkerd inject` to re-inject a resource that already has a Linkerd
+    proxy
+  * Improve `linkerd routes` to list all routes, including those without traffic
+  * Improve readability in `linkerd check` and `linkerd inject` outputs
+* Proxy
+  * Fix a deadlock in HTTP/2 stream reference counts
+
 ## edge-19.1.1
 
 * CLI

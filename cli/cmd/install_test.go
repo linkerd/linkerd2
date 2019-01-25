@@ -39,6 +39,8 @@ func TestRender(t *testing.T) {
 		CreatedByAnnotation:              "CreatedByAnnotation",
 		ProxyAPIPort:                     123,
 		EnableTLS:                        true,
+		TLSTrustAnchorVolumeName:         "TLSTrustAnchorVolumeName",
+		TLSSecretsVolumeName:             "TLSSecretsVolumeName",
 		TLSTrustAnchorConfigMapName:      "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:               "ProxyContainerName",
 		TLSTrustAnchorFileName:           "TLSTrustAnchorFileName",
@@ -63,7 +65,6 @@ func TestRender(t *testing.T) {
 		IgnoreOutboundPorts:              "2,3,4",
 		ProxyResourceRequestCPU:          "RequestCPU",
 		ProxyResourceRequestMemory:       "RequestMemory",
-		ProxyBindTimeout:                 "1m",
 		ProfileSuffixes:                  "suffix.",
 		EnableH2Upgrade:                  true,
 	}

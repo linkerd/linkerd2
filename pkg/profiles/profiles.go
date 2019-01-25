@@ -38,6 +38,11 @@ var (
 		APIVersion: "linkerd.io/v1alpha1",
 		Kind:       "ServiceProfile",
 	}
+	// DefaultServiceProfile is used for services with no service profile.
+	DefaultServiceProfile = pb.DestinationProfile{
+		Routes:      []*pb.Route{},
+		RetryBudget: &DefaultRetryBudget,
+	}
 )
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a

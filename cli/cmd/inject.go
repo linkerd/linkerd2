@@ -95,7 +95,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := uninjectAndInject(in, os.Stderr, os.Stdout, options)
+			exitCode := uninjectAndInject(in, stderr, stdout, options)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -251,7 +251,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		Resources: resources,
 		Env: []v1.EnvVar{
 			{Name: "LINKERD2_PROXY_LOG", Value: options.proxyLogLevel},
-			{Name: "LINKERD2_PROXY_BIND_TIMEOUT", Value: options.proxyBindTimeout},
 			{
 				Name:  "LINKERD2_PROXY_CONTROL_URL",
 				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, options.proxyAPIPort),
@@ -292,7 +291,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		yes := true
 
 		configMapVolume := v1.Volume{
-			Name: "linkerd-trust-anchors",
+			Name: k8s.TLSTrustAnchorVolumeName,
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
@@ -301,7 +300,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		}
 		secretVolume := v1.Volume{
-			Name: "linkerd-secrets",
+			Name: k8s.TLSSecretsVolumeName,
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: identity.ToSecretName(),

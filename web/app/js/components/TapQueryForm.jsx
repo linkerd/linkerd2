@@ -4,7 +4,8 @@ import {
   emptyTapQuery,
   httpMethods,
   tapQueryPropType,
-  tapQueryProps
+  tapQueryProps,
+  tapResourceTypes
 } from './util/TapUtils.jsx';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
@@ -42,14 +43,6 @@ import _upperFirst from 'lodash/upperFirst';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
 
-// you can also tap resources to tap all pods in the resource
-const resourceTypes = [
-  "deployment",
-  "daemonset",
-  "pod",
-  "replicationcontroller",
-  "statefulset"
-];
 
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _uniq(_flatten(_values(resourcesByNs)));
@@ -241,7 +234,7 @@ class TapQueryForm extends React.Component {
     let nsEmpty = _isNil(selectedNs) || _isEmpty(selectedNs);
     let { classes } = this.props;
 
-    let resourceOptions = resourceTypes.concat(
+    let resourceOptions = tapResourceTypes.concat(
       this.state.autocomplete[resourceKey] || [],
       nsEmpty ? [] : [`namespace/${selectedNs}`]
     ).sort();

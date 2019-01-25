@@ -22,17 +22,22 @@ const (
 	lineWidth        = 80
 )
 
-var okStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u2714")    // ✔
-var warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u26A0") // ⚠
-var failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u2718")    // ✘
-
-var controlPlaneNamespace string
-var apiAddr string // An empty value means "use the Kubernetes configuration"
-var kubeconfigPath string
-var kubeContext string
-var verbose bool
-
 var (
+	// special handling for Windows, on all other platforms these resolve to
+	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
+	stdout = color.Output
+	stderr = color.Error
+
+	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
+	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
+	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	controlPlaneNamespace string
+	apiAddr               string // An empty value means "use the Kubernetes configuration"
+	kubeconfigPath        string
+	kubeContext           string
+	verbose               bool
+
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
 	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
@@ -79,6 +84,7 @@ func init() {
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
+	RootCmd.AddCommand(newCmdInstallSP())
 	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdRoutes())
@@ -227,7 +233,6 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
-	proxyBindTimeout        string
 	proxyAPIPort            uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
@@ -245,25 +250,24 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyBindTimeout:        "10s",
-		proxyAPIPort:            8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyOutboundCapacity:   map[string]uint{},
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		tls:                     "",
+		linkerdVersion:        version.Version,
+		proxyImage:            defaultDockerRegistry + "/proxy",
+		initImage:             defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:        defaultDockerRegistry,
+		imagePullPolicy:       "IfNotPresent",
+		inboundPort:           4143,
+		outboundPort:          4140,
+		ignoreInboundPorts:    nil,
+		ignoreOutboundPorts:   nil,
+		proxyUID:              2102,
+		proxyLogLevel:         "warn,linkerd2_proxy=info",
+		proxyAPIPort:          8086,
+		proxyControlPort:      4190,
+		proxyMetricsPort:      4191,
+		proxyOutboundCapacity: map[string]uint{},
+		proxyCPURequest:       "",
+		proxyMemoryRequest:    "",
+		tls:                   "",
 		disableExternalProfiles: false,
 	}
 }
@@ -279,10 +283,6 @@ func (options *proxyConfigOptions) validate() error {
 
 	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
-	}
-
-	if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
-		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
 	}
 
 	if options.proxyCPURequest != "" {
@@ -326,7 +326,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().StringVar(&options.proxyBindTimeout, "proxy-bind-timeout", options.proxyBindTimeout, "Timeout the proxy will use")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")

@@ -63,6 +63,9 @@ let applicationHtml = (
                 path={`${pathPrefix}/namespaces/:namespace/pods/:pod`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/daemonsets/:daemonset`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
@@ -83,6 +86,9 @@ let applicationHtml = (
               <Route
                 path={`${pathPrefix}/deployments`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+              <Route
+                path={`${pathPrefix}/daemonsets`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="daemonset" />} />
               <Route
                 path={`${pathPrefix}/replicationcontrollers`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />

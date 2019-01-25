@@ -81,6 +81,7 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		}
 
 		rspStatTables := rsp.GetOk().StatTables
+		sort.Sort(byStatResult(rspStatTables))
 
 		if len(rspStatTables) != len(exp.expectedResponse.GetOk().StatTables) {
 			t.Fatalf(
@@ -92,7 +93,6 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			)
 		}
 
-		sort.Sort(byStatResult(rspStatTables))
 		statOkRsp := &pb.StatSummaryResponse_Ok{
 			StatTables: rspStatTables,
 		}
@@ -199,6 +199,82 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Deployment, []string{"emojivoto"}, &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 2,
+					FailedPods:  0,
+				}, true),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource type DaemonSet", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: emoji
+  namespace: emojivoto
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+  strategy: {}
+  template:
+    spec:
+      containers:
+      - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-not-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Completed
+`,
+					},
+					mockPromResponse: prometheusMetric("emoji", "daemonset", "emojivoto", "success", false),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.DaemonSet,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.DaemonSet, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
@@ -632,6 +708,13 @@ status:
 								&pb.StatTable{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
@@ -776,6 +859,7 @@ status:
 				k8sAPI,
 				"linkerd",
 				[]string{},
+				false,
 			)
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
@@ -800,6 +884,7 @@ status:
 			k8sAPI,
 			"linkerd",
 			[]string{},
+			false,
 		)
 
 		invalidRequests := []statSumExpected{

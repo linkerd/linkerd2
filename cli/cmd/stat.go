@@ -59,6 +59,7 @@ func newCmdStat() *cobra.Command {
   Examples:
   * deploy
   * deploy/my-deploy
+  * ds/my-daemonset
   * rc/my-replication-controller
   * ns/my-ns
   * authority
@@ -69,6 +70,7 @@ func newCmdStat() *cobra.Command {
   * all
 
   Valid resource types include:
+  * daemonsets
   * deployments
   * namespaces
   * pods

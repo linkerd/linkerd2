@@ -1,14 +1,14 @@
 import 'whatwg-fetch';
-
-import { emptyMetric, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { emptyMetric, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
-
 import AddResources from './AddResources.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+import Grid from '@material-ui/core/Grid';
 import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
 import Typography from '@material-ui/core/Typography';
@@ -20,6 +20,9 @@ import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { processNeighborData } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+
+// if there has been no traffic for some time, show a warning
+const showNoTrafficMsgDelayMs = 6000;
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
@@ -64,13 +67,12 @@ export class ResourceDetailBase extends React.Component {
       resourceName: resource.name,
       resourceType: resource.type,
       resource,
+      lastMetricReceivedTime: Date.now(),
       pollingInterval: 2000,
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
-      neighborMetrics: {
-        upstream: {},
-        downstream: {}
-      },
+      upstreamMetrics: {}, // metrics for resources who send traffic to this resource
+      downstreamMetrics: {}, // metrics for resources who this resouce sends traffic to
       unmeshedSources: {},
       resourceIsMeshed: true,
       pendingRequests: false,
@@ -98,6 +100,21 @@ export class ResourceDetailBase extends React.Component {
     this.api.cancelCurrentRequests();
   }
 
+  getDisplayMetrics(metricsByResource) {
+    // if we're displaying a pod detail page, only display pod metrics
+    // if we're displaying another type of resource page, display metrics for
+    // rcs, deploys, replicasets, etc but not pods or authorities
+    let shouldExclude = this.state.resourceType === "pod" ?
+      r => r !== "pod" :
+      r => r === "pod" || r === "authority"  || r === "service";
+    return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
+      if (shouldExclude(resource)) {
+        return mem;
+      }
+      return mem.concat(resourceMetrics);
+    }, []);
+  }
+
   loadFromServer() {
     if (this.state.pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
@@ -119,11 +136,11 @@ export class ResourceDetailBase extends React.Component {
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type)}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
+        `${this.api.urlsForResource("all")}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
       ),
       // downstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type)}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
+        `${this.api.urlsForResource("all")}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
       )
     ]);
 
@@ -131,8 +148,8 @@ export class ResourceDetailBase extends React.Component {
       .then(([resourceRsp, podListRsp, podMetricsRsp, upstreamRsp, downstreamRsp]) => {
         let resourceMetrics = processSingleResourceRollup(resourceRsp);
         let podMetrics = processSingleResourceRollup(podMetricsRsp);
-        let upstreamMetrics = processSingleResourceRollup(upstreamRsp);
-        let downstreamMetrics = processSingleResourceRollup(downstreamRsp);
+        let upstreamMetrics = processMultiResourceRollup(upstreamRsp);
+        let downstreamMetrics = processMultiResourceRollup(downstreamRsp);
 
         // INEFFICIENT: get metrics for all the pods belonging to this resource.
         // Do this by querying for metrics for all pods in this namespace and then filtering
@@ -152,14 +169,18 @@ export class ResourceDetailBase extends React.Component {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
+        let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
+        if (!_isEmpty(resourceMetrics[0]) && resourceMetrics[0].totalRequests !== 0) {
+          lastMetricReceivedTime = Date.now();
+        }
+
         this.setState({
           resourceMetrics,
           resourceIsMeshed,
           podMetrics: podMetricsForResource,
-          neighborMetrics: {
-            upstream: upstreamMetrics,
-            downstream: downstreamMetrics
-          },
+          upstreamMetrics,
+          downstreamMetrics,
+          lastMetricReceivedTime,
           loaded: true,
           pendingRequests: false,
           error: null,
@@ -200,14 +221,23 @@ export class ResourceDetailBase extends React.Component {
       return <Spinner />;
     }
 
-    let { resourceName, resourceType, namespace } = this.state;
+    let {
+      resourceName,
+      resourceType,
+      namespace,
+      resourceMetrics,
+      unmeshedSources,
+      resourceIsMeshed,
+      lastMetricReceivedTime
+    } = this.state;
+
     let query = {
       resourceName,
       resourceType,
       namespace
     };
 
-    let unmeshed = _filter(this.state.unmeshedSources, d => d.type === this.state.resourceType)
+    let unmeshed = _filter(unmeshedSources, d => d.type !== "pod")
       .map(d => _merge({}, emptyMetric, d, {
         unmeshed: true,
         pods: {
@@ -216,48 +246,67 @@ export class ResourceDetailBase extends React.Component {
         }
       }));
 
-    let upstreams = this.state.neighborMetrics.upstream.concat(unmeshed);
+    let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
+    let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
+
+    let upstreams = upstreamMetrics.concat(unmeshed);
+
+    let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
     return (
       <div>
+        <Grid container justify="space-between" alignItems="center">
+          <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
+          <Grid item>
+            <Grid container spacing={8}>
+              { showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null }
+              <Grid item>
+                { resourceIsMeshed ?
+                  <SimpleChip label="meshed" type="good" /> :
+                  <SimpleChip label="unmeshed" type="bad" />
+                }
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
+
         {
-          this.state.resourceIsMeshed ? null :
+          resourceIsMeshed ? null :
           <React.Fragment>
             <AddResources
-              resourceName={this.state.resourceName}
-              resourceType={this.state.resourceType} />
+              resourceName={resourceName}
+              resourceType={resourceType} />
           </React.Fragment>
         }
 
         <Octopus
-          resource={this.state.resourceMetrics[0]}
-          neighbors={this.state.neighborMetrics}
-          unmeshedSources={Object.values(this.state.unmeshedSources)}
+          resource={resourceMetrics[0]}
+          neighbors={{ upstream: upstreamMetrics, downstream: downstreamMetrics }}
+          unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
         <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
           updateNeighborsFromTapData={this.updateNeighborsFromTapData}
-          disableTop={!this.state.resourceIsMeshed} />
-
+          disableTop={!resourceIsMeshed} />
 
         { _isEmpty(upstreams) ? null : (
           <React.Fragment>
             <Typography variant="h5">Inbound</Typography>
             <MetricsTable
-              resource={this.state.resource.type}
-              metrics={upstreams} />
+              resource="multi_resource"
+              metrics={upstreamMetrics} />
           </React.Fragment>
           )
         }
 
-        { _isEmpty(this.state.neighborMetrics.downstream) ? null : (
+        { _isEmpty(this.state.downstreamMetrics) ? null : (
           <React.Fragment>
             <Typography variant="h5">Outbound</Typography>
             <MetricsTable
-              resource={this.state.resource.type}
-              metrics={this.state.neighborMetrics.downstream} />
+              resource="multi_resource"
+              metrics={downstreamMetrics} />
           </React.Fragment>
           )
         }

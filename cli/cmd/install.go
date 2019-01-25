@@ -33,6 +33,8 @@ type installConfig struct {
 	CreatedByAnnotation              string
 	ProxyAPIPort                     uint
 	EnableTLS                        bool
+	TLSTrustAnchorVolumeName         string
+	TLSSecretsVolumeName             string
 	TLSTrustAnchorConfigMapName      string
 	ProxyContainerName               string
 	TLSTrustAnchorFileName           string
@@ -56,7 +58,6 @@ type installConfig struct {
 	ProxyImage                       string
 	ProxyResourceRequestCPU          string
 	ProxyResourceRequestMemory       string
-	ProxyBindTimeout                 string
 	SingleNamespace                  bool
 	EnableHA                         bool
 	ControllerUID                    int64
@@ -174,6 +175,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		CreatedByAnnotation:              k8s.CreatedByAnnotation,
 		ProxyAPIPort:                     options.proxyAPIPort,
 		EnableTLS:                        options.enableTLS(),
+		TLSTrustAnchorVolumeName:         k8s.TLSTrustAnchorVolumeName,
+		TLSSecretsVolumeName:             k8s.TLSSecretsVolumeName,
 		TLSTrustAnchorConfigMapName:      k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:               k8s.ProxyContainerName,
 		TLSTrustAnchorFileName:           k8s.TLSTrustAnchorFileName,
@@ -197,7 +200,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyImage:                       options.taggedProxyImage(),
 		ProxyResourceRequestCPU:          options.proxyCPURequest,
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
-		ProxyBindTimeout:                 "1m",
 		SingleNamespace:                  options.singleNamespace,
 		EnableHA:                         options.highAvailability,
 		ProfileSuffixes:                  profileSuffixes,

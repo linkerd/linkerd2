@@ -104,6 +104,14 @@ const (
 	// proxy-injector ConfigMap that contains the proxy-init container spec.
 	ProxyInitSpecFileName = "proxy-init.yaml"
 
+	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
+	// used when injecting a proxy with TLS enabled.
+	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
+
+	// TLSSecretsVolumeName is the name of the volume holding the secrets,
+	// when injecting a proxy with TLS enabled.
+	TLSSecretsVolumeName = "linkerd-secrets"
+
 	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
 	// proxy-injector ConfigMap that contains the trust anchors volume spec.
 	TLSTrustAnchorVolumeSpecFileName = "linkerd-trust-anchors.yaml"
