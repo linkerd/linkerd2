@@ -13,7 +13,7 @@
   * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
     commands, as the proxy no longer accepts this environment variable
   * Improved CLI appearance on Windows systems
-  * Improved linkerd check output, fixed check bug when using
+  * Improved `linkerd check` output, fixed check bug when using
     `--single-namespace` (thanks to @djeeg for the bug report!)
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
   * Fixed panic when `linkerd routes` is called in single-namespace mode
