@@ -388,6 +388,39 @@ var (
 			},
 		},
 	}
+
+	routeWithTimeout = &sp.RouteSpec{
+		Name:            "routeWithTimeout",
+		Condition:       login,
+		ResponseClasses: []*sp.ResponseClass{},
+		Timeout:         "200ms",
+	}
+
+	profileWithTimeout = &sp.ServiceProfile{
+		Spec: sp.ServiceProfileSpec{
+			Routes: []*sp.RouteSpec{
+				routeWithTimeout,
+			},
+		},
+	}
+
+	pbRouteWithTimeout = &pb.Route{
+		MetricsLabels: map[string]string{
+			"route": "routeWithTimeout",
+		},
+		Condition:       pbLogin,
+		ResponseClasses: []*pb.ResponseClass{},
+		Timeout: &duration.Duration{
+			Nanos: 200000000, // 200ms
+		},
+	}
+
+	pbProfileWithTimeout = &pb.DestinationProfile{
+		Routes: []*pb.Route{
+			pbRouteWithTimeout,
+		},
+		RetryBudget: &profiles.DefaultRetryBudget,
+	}
 )
 
 func TestProfileListener(t *testing.T) {
@@ -532,6 +565,25 @@ func TestProfileListener(t *testing.T) {
 
 		if !c {
 			t.Fatalf("Expected function to be completed after the cancel()")
+		}
+	})
+
+	t.Run("Sends update with custom timeout", func(t *testing.T) {
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+
+		listener := &profileListener{
+			stream: mockGetProfileServer,
+		}
+
+		listener.Update(profileWithTimeout)
+
+		numProfiles := len(mockGetProfileServer.profilesReceived)
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
+		}
+		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		if !reflect.DeepEqual(actualPbProfile, pbProfileWithTimeout) {
+			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfileWithTimeout, actualPbProfile)
 		}
 	})
 }

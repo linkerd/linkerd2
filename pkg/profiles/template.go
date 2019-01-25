@@ -73,6 +73,11 @@ spec:
       # successes or failures.
       isFailure: true
 
+    # A route can definte a request timeout.  Any requests to this route that
+    # exceed the timeout will be canceled.  If unspecified, the default timeout
+    # is '1s' (one second).
+    # timeout: 250ms
+
   # A service profile can also define a retry budget.  This specifies the
   # maximum total number of retries that should be sent to this service as a
   # ratio of the original request volume.

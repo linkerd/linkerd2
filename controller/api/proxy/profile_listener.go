@@ -46,6 +46,7 @@ func (l *profileListener) Update(profile *sp.ServiceProfile) {
 			log.Error(err)
 			return
 		}
+		log.Debugf("%s: %+v", profile.GetName(), *destinationProfile)
 		l.stream.Send(destinationProfile)
 	}
 }
