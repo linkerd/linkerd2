@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
-	appinformers "k8s.io/client-go/informers/apps/v1beta2"
+	appv1informers "k8s.io/client-go/informers/apps/v1"
+	appv1beta2informers "k8s.io/client-go/informers/apps/v1beta2"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -34,6 +36,7 @@ type APIResource int
 const (
 	CM APIResource = iota
 	Deploy
+	DS
 	Endpoint
 	MWC // mutating webhook configuration
 	Pod
@@ -48,12 +51,13 @@ type API struct {
 	Client kubernetes.Interface
 
 	cm       coreinformers.ConfigMapInformer
-	deploy   appinformers.DeploymentInformer
+	deploy   appv1beta2informers.DeploymentInformer
+	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
-	rs       appinformers.ReplicaSetInformer
+	rs       appv1beta2informers.ReplicaSetInformer
 	sp       spinformers.ServiceProfileInformer
 	svc      coreinformers.ServiceInformer
 
@@ -101,6 +105,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case Deploy:
 			api.deploy = sharedInformers.Apps().V1beta2().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
+		case DS:
+			api.ds = sharedInformers.Apps().V1().DaemonSets()
+			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
@@ -144,15 +151,23 @@ func (api *API) Sync() {
 }
 
 // Deploy provides access to a shared informer and lister for Deployments.
-func (api *API) Deploy() appinformers.DeploymentInformer {
+func (api *API) Deploy() appv1beta2informers.DeploymentInformer {
 	if api.deploy == nil {
 		panic("Deploy informer not configured")
 	}
 	return api.deploy
 }
 
+// DS provides access to a shared informer and lister for Daemonsets.
+func (api *API) DS() appv1informers.DaemonSetInformer {
+	if api.ds == nil {
+		panic("DS informer not configured")
+	}
+	return api.ds
+}
+
 // RS provides access to a shared informer and lister for ReplicaSets.
-func (api *API) RS() appinformers.ReplicaSetInformer {
+func (api *API) RS() appv1beta2informers.ReplicaSetInformer {
 	if api.rs == nil {
 		panic("RS informer not configured")
 	}
@@ -223,6 +238,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 	switch restype {
 	case k8s.Namespace:
 		return api.getNamespaces(name)
+	case k8s.DaemonSet:
+		return api.getDaemonsets(namespace, name)
 	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
 	case k8s.Pod:
@@ -270,6 +287,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 	case *apiv1.Namespace:
 		namespace = typed.Name
 		selector = labels.Everything()
+
+	case *appsv1.DaemonSet:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
 	case *appsv1beta2.Deployment:
 		namespace = typed.Namespace
@@ -325,6 +346,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	switch typed := obj.(type) {
 	case *apiv1.Namespace:
 		return typed.Name, typed.Name, nil
+
+	case *appsv1.DaemonSet:
+		return typed.Name, typed.Namespace, nil
 
 	case *appsv1beta2.Deployment:
 		return typed.Name, typed.Namespace, nil
@@ -476,6 +500,32 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	objects := []runtime.Object{}
 	for _, rc := range rcs {
 		objects = append(objects, rc)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var daemonsets []*appsv1.DaemonSet
+
+	if namespace == "" {
+		daemonsets, err = api.DS().Lister().List(labels.Everything())
+	} else if name == "" {
+		daemonsets, err = api.DS().Lister().DaemonSets(namespace).List(labels.Everything())
+	} else {
+		var ds *appsv1.DaemonSet
+		ds, err = api.DS().Lister().DaemonSets(namespace).Get(name)
+		daemonsets = []*appsv1.DaemonSet{ds}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, ds := range daemonsets {
+		objects = append(objects, ds)
 	}
 
 	return objects, nil

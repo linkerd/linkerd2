@@ -22,7 +22,7 @@ metadata:
   name: linkerd-Namespace-controller
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
@@ -229,8 +229,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://localhost.:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -470,8 +468,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -614,8 +610,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -860,8 +854,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -1099,8 +1091,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -1229,8 +1219,6 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_BIND_TIMEOUT
-          value: 10s
         - name: LINKERD2_PROXY_CONTROL_URL
           value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -1394,8 +1382,6 @@ data:
     env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
-    - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: 1m
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:123
     - name: LINKERD2_PROXY_CONTROL_LISTENER

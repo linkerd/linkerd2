@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -634,6 +635,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 
 		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
+			checkResult.Err = errors.New("waiting for check to complete")
+			log.Debugf("Retrying on error: %s", err)
+
 			observer(checkResult)
 			time.Sleep(retryWindow)
 			continue
@@ -826,13 +830,17 @@ func getPodStatuses(pods []v1.Pod) map[string][]v1.ContainerStatus {
 	statuses := make(map[string][]v1.ContainerStatus)
 
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodRunning {
+		if pod.Status.Phase == v1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
-			name := strings.Join(parts[1:len(parts)-2], "-")
-			if _, found := statuses[name]; !found {
-				statuses[name] = make([]v1.ContainerStatus, 0)
+			// All control plane pods should have a name that results in at least 4
+			// substrings when string.Split on '-'
+			if len(parts) >= 4 {
+				name := strings.Join(parts[1:len(parts)-2], "-")
+				if _, found := statuses[name]; !found {
+					statuses[name] = make([]v1.ContainerStatus, 0)
+				}
+				statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 			}
-			statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 		}
 	}
 

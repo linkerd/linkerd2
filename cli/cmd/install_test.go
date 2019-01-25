@@ -65,7 +65,6 @@ func TestRender(t *testing.T) {
 		IgnoreOutboundPorts:              "2,3,4",
 		ProxyResourceRequestCPU:          "RequestCPU",
 		ProxyResourceRequestMemory:       "RequestMemory",
-		ProxyBindTimeout:                 "1m",
 		ProfileSuffixes:                  "suffix.",
 		EnableH2Upgrade:                  true,
 		NoInitContainer:                  false,

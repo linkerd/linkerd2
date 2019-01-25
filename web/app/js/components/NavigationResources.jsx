@@ -69,6 +69,7 @@ class NavigationResourcesBase extends React.Component {
       <MenuList dense component="div" disablePadding>
         <NavigationResource type="authorities" />
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />
+        <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
         <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
