@@ -503,7 +503,10 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-control",
 					warning:     true,
 					check: func() error {
-						return version.Match(hc.serverVersion, version.Version)
+						if hc.serverVersion != version.Version {
+							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
+						}
+						return nil
 					},
 				},
 			},
@@ -576,9 +579,8 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 
 						for _, pod := range pods {
-							err = version.Match(pod.ProxyVersion, version.Version)
-							if err != nil {
-								return fmt.Errorf("%s: %s", pod.Name, err)
+							if pod.ProxyVersion != version.Version {
+								return fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)
 							}
 						}
 						return nil

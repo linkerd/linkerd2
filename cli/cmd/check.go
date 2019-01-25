@@ -171,7 +171,7 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		if result.Err != nil {
 			fmt.Fprintf(w, "    %s\n", result.Err)
 			if result.HintURL != "" {
-				fmt.Fprintf(w, "    See %s for hints\n", result.HintURL)
+				fmt.Fprintf(w, "    see %s for hints\n", result.HintURL)
 			}
 		}
 	}
