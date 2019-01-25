@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-<<<<<<< HEAD
 	"regexp"
 	"sort"
 	"time"
@@ -15,9 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-=======
 
->>>>>>> master
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -32,40 +29,26 @@ type templateConfig struct {
 }
 
 type profileOptions struct {
-<<<<<<< HEAD
 	name        string
 	namespace   string
 	template    bool
 	openAPI     string
+	proto     string
 	tap         string
 	tapDuration time.Duration
 	routeLimit  uint
-=======
-	name      string
-	namespace string
-	template  bool
-	openAPI   string
-	proto     string
->>>>>>> master
 }
 
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
-<<<<<<< HEAD
 		name:        "",
 		namespace:   "default",
 		template:    false,
 		openAPI:     "",
+		proto:     "",
 		tap:         "",
 		tapDuration: 5 * time.Second,
 		routeLimit:  20,
-=======
-		name:      "",
-		namespace: "default",
-		template:  false,
-		openAPI:   "",
-		proto:     "",
->>>>>>> master
 	}
 }
 
@@ -77,19 +60,14 @@ func (options *profileOptions) validate() error {
 	if options.openAPI != "" {
 		outputs++
 	}
-<<<<<<< HEAD
+	if options.proto != "" {
+		outputs++
+	}
 	if options.tap != "" {
 		outputs++
 	}
 	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template or --open-api or --tap")
-=======
-	if options.proto != "" {
-		outputs++
-	}
-	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template, --open-api, or --proto")
->>>>>>> master
+		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	}
 
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
