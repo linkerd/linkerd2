@@ -39,7 +39,7 @@ type profileOptions struct {
 	template    bool
 	openAPI     string
 	tap         string
-	tapDuration string
+	tapDuration time.Duration
 	routeLimit  uint
 }
 
@@ -50,7 +50,7 @@ func newProfileOptions() *profileOptions {
 		template:    false,
 		openAPI:     "",
 		tap:         "",
-		tapDuration: "5s",
+		tapDuration: 5 * time.Second,
 		routeLimit:  20,
 	}
 }
@@ -80,10 +80,6 @@ func (options *profileOptions) validate() error {
 	// and must start and end with an alphanumeric character
 	if errs := validation.IsDNS1123Label(options.namespace); len(errs) != 0 {
 		return fmt.Errorf("invalid namespace %q: %v", options.namespace, errs)
-	}
-
-	if _, err := time.ParseDuration(options.tapDuration); err != nil {
-		return fmt.Errorf("invalid duration %q: %v", options.tapDuration, err)
 	}
 
 	return nil
@@ -152,7 +148,7 @@ Example:
 	cmd.PersistentFlags().BoolVar(&options.template, "template", options.template, "Output a service profile template")
 	cmd.PersistentFlags().StringVar(&options.openAPI, "open-api", options.openAPI, "Output a service profile based on the given OpenAPI spec file")
 	cmd.PersistentFlags().StringVar(&options.tap, "tap", options.tap, "Output a service profile based on tap data for the given target resource")
-	cmd.PersistentFlags().StringVarP(&options.tapDuration, "tap-duration", "t", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
+	cmd.PersistentFlags().DurationVar(&options.tapDuration, "tap-duration", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
 	cmd.PersistentFlags().UintVar(&options.routeLimit, "route-limit", options.routeLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 
@@ -182,8 +178,8 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 	if err != nil {
 		return err
 	}
-	tapDuration, _ := time.ParseDuration(options.tapDuration) // err discarded because validation has already occurred
-	routes := routeSpecFromTap(w, rsp, tapDuration, int(options.routeLimit))
+
+	routes := routeSpecFromTap(w, rsp, options.tapDuration, int(options.routeLimit))
 
 	profile.Spec.Routes = routes
 	output, err := yaml.Marshal(profile)
