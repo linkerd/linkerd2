@@ -22,6 +22,30 @@
   revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
 
 [[projects]]
+  digest = "1:e4b30804a381d7603b8a344009987c1ba351c26043501b23b8c7ce21f0b67474"
+  name = "github.com/BurntSushi/toml"
+  packages = ["."]
+  pruneopts = ""
+  revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
+  version = "v0.3.1"
+
+[[projects]]
+  digest = "1:b856d8248663c39265a764561c1a1a149783f6cc815feb54a1f3a591b91f6eca"
+  name = "github.com/Masterminds/semver"
+  packages = ["."]
+  pruneopts = ""
+  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
+  version = "v1.4.2"
+
+[[projects]]
+  digest = "1:846dde8a0ba9d0599cb4ecf300eeb8b2ae54e8905d081afc67ffe828fe7802d5"
+  name = "github.com/Masterminds/sprig"
+  packages = ["."]
+  pruneopts = ""
+  revision = "544a9b1d90f323f6509491b389714fbbd126bee3"
+  version = "v2.17.1"
+
+[[projects]]
   digest = "1:8e47871087b94913898333f37af26732faaab30cdb41571136cf7aec9921dae7"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -38,6 +62,14 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  digest = "1:debe400440582cfe5580591afd0f7fdef5b17a25945f06bd3087bc67b4b8fd03"
+  name = "github.com/aokoli/goutils"
+  packages = ["."]
+  pruneopts = ""
+  revision = "41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:0c5485088ce274fac2e931c1b979f2619345097b39d91af3239977114adf0320"
   name = "github.com/beorn7/perks"
@@ -51,6 +83,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
+
+[[projects]]
+  digest = "1:a9854984bc40330dde2125537b7f46d0a8d7860b3750de2e7cd0a6f904506212"
+  name = "github.com/cyphar/filepath-securejoin"
+  packages = ["."]
+  pruneopts = ""
+  revision = "a261ee33d7a517f054effbf451841abaafe3e0fd"
+  version = "v0.2.2"
 
 [[projects]]
   digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
@@ -135,6 +175,23 @@
   version = "v0.17.2"
 
 [[projects]]
+  digest = "1:9ab1b1c637d7c8f49e39d8538a650d7eb2137b076790cff69d160823b505964c"
+  name = "github.com/gobwas/glob"
+  packages = [
+    ".",
+    "compiler",
+    "match",
+    "syntax",
+    "syntax/ast",
+    "syntax/lexer",
+    "util/runes",
+    "util/strings",
+  ]
+  pruneopts = ""
+  revision = "5ccd90ef52e1e632236f7326478d4faa74f99438"
+  version = "v0.2.3"
+
+[[projects]]
   digest = "1:0a3f6a0c68ab8f3d455f8892295503b179e571b7fefe47cc6c556405d1f83411"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -190,6 +247,14 @@
   packages = ["."]
   pruneopts = ""
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
+
+[[projects]]
+  digest = "1:a25a2c5ae694b01713fb6cd03c3b1ac1ccc1902b9f0a922680a88ec254f968e1"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:2a131706ff80636629ab6373f2944569b8252ecc018cda8040931b05d32e3c16"
@@ -256,6 +321,14 @@
   ]
   pruneopts = ""
   revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
+
+[[projects]]
+  digest = "1:35979179658d20a73693589e67bdc3baf4dc0ef9f524b1dfd3cc55fb5f6ae384"
+  name = "github.com/huandu/xstrings"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f02667b379e2fb5916c3cda2cf31e0eb885d79f8"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:23bc0b496ba341c6e3ba24d6358ff4a40a704d9eb5f9a3bd8e8fbd57ad869013"
@@ -497,7 +570,11 @@
   branch = "master"
   digest = "1:733bbd39aeb07cba7586933ac301c66f5504f687b393529125affaf9a096d2a8"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "pbkdf2",
+    "scrypt",
+    "ssh/terminal",
+  ]
   pruneopts = ""
   revision = "d9133f5469342136e669e85192a26056b587f503"
 
@@ -986,6 +1063,24 @@
   revision = "4242d8e6c5dba56827bb7bcf14ad11cda38f3991"
 
 [[projects]]
+  digest = "1:a96ffeefef3ae5a7eb243ce0ac10a0d9b844336e8a360cc1404b2e7903166d55"
+  name = "k8s.io/helm"
+  packages = [
+    "pkg/chartutil",
+    "pkg/engine",
+    "pkg/ignore",
+    "pkg/proto/hapi/chart",
+    "pkg/proto/hapi/version",
+    "pkg/renderutil",
+    "pkg/sympath",
+    "pkg/timeconv",
+    "pkg/version",
+  ]
+  pruneopts = ""
+  revision = "7d2b0c73d734f6586ed222a567c5d103fed435be"
+  version = "v2.12.2"
+
+[[projects]]
   branch = "master"
   digest = "1:526095379da1098c3f191a0008cc59c9bf9927492e63da7689e5de424219c162"
   name = "k8s.io/kube-openapi"
@@ -1083,6 +1178,10 @@
     "k8s.io/code-generator/cmd/defaulter-gen",
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
+    "k8s.io/helm/pkg/chartutil",
+    "k8s.io/helm/pkg/proto/hapi/chart",
+    "k8s.io/helm/pkg/renderutil",
+    "k8s.io/helm/pkg/timeconv",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
