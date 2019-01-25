@@ -1,22 +1,12 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
-	"sort"
 	"time"
 
-	"github.com/ghodss/yaml"
-	"github.com/go-openapi/spec"
-	"github.com/linkerd/linkerd2/controller/api/util"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
-
 	"github.com/linkerd/linkerd2/pkg/profiles"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -33,7 +23,7 @@ type profileOptions struct {
 	namespace   string
 	template    bool
 	openAPI     string
-	proto     string
+	proto       string
 	tap         string
 	tapDuration time.Duration
 	routeLimit  uint
@@ -45,7 +35,7 @@ func newProfileOptions() *profileOptions {
 		namespace:   "default",
 		template:    false,
 		openAPI:     "",
-		proto:     "",
+		proto:       "",
 		tap:         "",
 		tapDuration: 5 * time.Second,
 		routeLimit:  20,
@@ -145,7 +135,7 @@ Example:
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.tap != "" {
-				return renderTapOutputProfile(options, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderTapOutputProfile(cliPublicAPIClient(), options.tap, options.namespace, options.name, controlPlaneNamespace, options.tapDuration, int(options.routeLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
@@ -164,277 +154,4 @@ Example:
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 
 	return cmd
-}
-
-func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace string, w io.Writer) error {
-	profile := sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", options.name, options.namespace),
-			Namespace: controlPlaneNamespace,
-		},
-		TypeMeta: meta_v1.TypeMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
-	}
-
-	client := cliPublicAPIClient()
-	res, err := util.BuildResource(options.namespace, options.tap)
-	if err != nil {
-		return err
-	}
-
-	// there is kind of a duplication of param parsing, because we need to reformulate
-	// a request like linkerd profile --tap deploy/web to run the tap
-	// linkerd tap deploy --to deploy/web
-	requestParams := util.TapRequestParams{
-		Resource:    res.Type,
-		Namespace:   options.namespace,
-		ToResource:  options.tap,
-		ToNamespace: options.namespace,
-	}
-	log.Debugf("Running `linkerd tap %s  --namespace %s --to %s --to-namespace %s`", res.Type, options.namespace, options.tap, options.namespace)
-
-	req, err := util.BuildTapByResourceRequest(requestParams)
-	if err != nil {
-		return err
-	}
-	rsp, err := client.TapByResource(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	routes := routeSpecFromTap(rsp, options.tapDuration, int(options.routeLimit))
-
-	profile.Spec.Routes = routes
-	output, err := yaml.Marshal(profile)
-	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
-	}
-	w.Write(output)
-	return nil
-}
-
-func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {
-	routes := make([]*sp.RouteSpec, 0)
-	routesMap := make(map[string]*sp.RouteSpec)
-
-	tapEventChannel := make(chan *pb.TapEvent, 10)
-	timerChannel := make(chan struct{}, 1)
-
-	go func() {
-		time.Sleep(tapDuration)
-		timerChannel <- struct{}{}
-	}()
-	go func() {
-		recordRoutesFromTap(tapClient, tapEventChannel)
-	}()
-
-	stopTap := false
-	for {
-		select {
-		case <-timerChannel:
-			stopTap = true
-		case event := <-tapEventChannel:
-			routeSpec := getPathDataFromTap(event)
-
-			if len(routesMap) > routeLimit {
-				stopTap = true
-				break
-			}
-
-			if routeSpec != nil {
-				routesMap[routeSpec.Name] = routeSpec
-			}
-		default:
-			// do nothing
-		}
-		if stopTap {
-			break
-		}
-	}
-
-	for _, path := range sortMapKeys(routesMap) {
-		routes = append(routes, routesMap[path])
-	}
-	return routes
-}
-
-func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapEventChannel chan *pb.TapEvent) {
-	for {
-		log.Debug("Waiting for data...")
-		event, err := tapClient.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			break
-		}
-
-		tapEventChannel <- event
-	}
-}
-
-func sortMapKeys(m map[string]*sp.RouteSpec) (keys []string) {
-	for key := range m {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return
-}
-
-func getPathDataFromTap(event *pb.TapEvent) *sp.RouteSpec {
-	switch ev := event.GetHttp().GetEvent().(type) {
-	case *pb.TapEvent_Http_RequestInit_:
-		path := ev.RequestInit.GetPath()
-		if path == "/" {
-			return nil
-		}
-		return mkRouteSpec(
-			path,
-			pathToRegex(path), // for now, no path consolidation
-			ev.RequestInit.GetMethod().GetRegistered().String(),
-			nil)
-	default:
-		return nil
-	}
-}
-
-func renderOpenAPI(options *profileOptions, w io.Writer) error {
-	var input io.Reader
-	if options.openAPI == "-" {
-		input = os.Stdin
-	} else {
-		var err error
-		input, err = os.Open(options.openAPI)
-		if err != nil {
-			return err
-		}
-	}
-
-	bytes, err := ioutil.ReadAll(input)
-	if err != nil {
-		return fmt.Errorf("Error reading file: %s", err)
-	}
-	json, err := yaml.YAMLToJSON(bytes)
-	if err != nil {
-		return fmt.Errorf("Error parsing yaml: %s", err)
-	}
-
-	swagger := spec.Swagger{}
-	err = swagger.UnmarshalJSON(json)
-	if err != nil {
-		return fmt.Errorf("Error parsing OpenAPI spec: %s", err)
-	}
-
-	profile := sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", options.name, options.namespace),
-			Namespace: controlPlaneNamespace,
-		},
-		TypeMeta: meta_v1.TypeMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
-	}
-
-	routes := make([]*sp.RouteSpec, 0)
-
-	paths := make([]string, 0)
-	if swagger.Paths != nil {
-		for path := range swagger.Paths.Paths {
-			paths = append(paths, path)
-		}
-		sort.Strings(paths)
-	}
-
-	for _, path := range paths {
-		item := swagger.Paths.Paths[path]
-		pathRegex := pathToRegex(path)
-		if item.Delete != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Get != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Head != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Options != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Patch != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Post != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses)
-			routes = append(routes, spec)
-		}
-		if item.Put != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses)
-			routes = append(routes, spec)
-		}
-	}
-
-	profile.Spec.Routes = routes
-	output, err := yaml.Marshal(profile)
-	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %s", err)
-	}
-	w.Write(output)
-
-	return nil
-}
-
-func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses) *sp.RouteSpec {
-	return &sp.RouteSpec{
-		Name:            fmt.Sprintf("%s %s", method, path),
-		Condition:       toReqMatch(pathRegex, method),
-		ResponseClasses: toRspClasses(responses),
-	}
-}
-
-func pathToRegex(path string) string {
-	escaped := regexp.QuoteMeta(path)
-	return pathParamRegex.ReplaceAllLiteralString(escaped, "[^/]*")
-}
-
-func toReqMatch(path string, method string) *sp.RequestMatch {
-	return &sp.RequestMatch{
-		PathRegex: path,
-		Method:    method,
-	}
-}
-
-func toRspClasses(responses *spec.Responses) []*sp.ResponseClass {
-	if responses == nil {
-		return nil
-	}
-	classes := make([]*sp.ResponseClass, 0)
-
-	statuses := make([]int, 0)
-	for status := range responses.StatusCodeResponses {
-		statuses = append(statuses, status)
-	}
-	sort.Ints(statuses)
-
-	for _, status := range statuses {
-		cond := &sp.ResponseMatch{
-			Status: &sp.Range{
-				Min: uint32(status),
-				Max: uint32(status),
-			},
-		}
-		classes = append(classes, &sp.ResponseClass{
-			Condition: cond,
-			IsFailure: status >= 500,
-		})
-	}
-	return classes
 }
