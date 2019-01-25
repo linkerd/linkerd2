@@ -119,6 +119,14 @@
   revision = "449fdfce4d962303d702fec724ef0ad181c92528"
 
 [[projects]]
+  digest = "1:c0658003778a2753077d761055d1c8b39a636c4ad14d75ab96d02188c58998dd"
+  name = "github.com/emicklei/proto"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6a34d38c8fe27a73b3adb076ab02f9614e70fff0"
+  version = "v1.6.8"
+
+[[projects]]
   digest = "1:e988ed0ca0d81f4d28772760c02ee95084961311291bdfefc1b04617c178b722"
   name = "github.com/fatih/color"
   packages = ["."]
@@ -1085,6 +1093,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/briandowns/spinner",
+    "github.com/emicklei/proto",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/go-openapi/spec",
