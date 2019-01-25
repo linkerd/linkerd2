@@ -10,6 +10,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/install"
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -63,15 +64,8 @@ func (options *cniPluginOptions) validate() error {
 		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
 	}
 
-	found := false
-	allowedLogLevels := [...]string{"trace", "debug", "info", "warn", "error", "fatal", "panic"}
-	for _, level := range allowedLogLevels {
-		if level == options.logLevel {
-			found = true
-		}
-	}
-	if !found {
-		fmt.Printf("%s is not a valid log level for the linkerd-cni plugin so defaulting to warn. Must be one of [trace, debug, info, warn, error, fatal, panic]", options.dockerRegistry)
+	if _, err := log.ParseLevel(options.logLevel); err != nil {
+		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
 	return nil

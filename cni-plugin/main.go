@@ -1,5 +1,5 @@
 // Copyright 2017 CNI authors
-// Modifications copyright (c) Nordstrom, Inc
+// Modifications copyright (c) Linkerd authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -182,15 +182,15 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 		containsLinkerdProxy := false
 		for _, container := range pod.Spec.Containers {
-			if container.Name == "linkerd-proxy" {
+			if container.Name == k8s.ProxyContainerName {
 				containsLinkerdProxy = true
 				break
 			}
 		}
 
-		containsInitContainer := true
+		containsInitContainer := false
 		for _, container := range pod.Spec.InitContainers {
-			if container.Name == "linkerd-init" {
+			if container.Name == k8s.InitContainerName {
 				containsInitContainer = true
 				break
 			}
