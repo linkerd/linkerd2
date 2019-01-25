@@ -40,6 +40,7 @@ type profileOptions struct {
 	openAPI     string
 	tap         string
 	tapDuration string
+	routeLimit  uint
 }
 
 func newProfileOptions() *profileOptions {
@@ -50,6 +51,7 @@ func newProfileOptions() *profileOptions {
 		openAPI:     "",
 		tap:         "",
 		tapDuration: "5s",
+		routeLimit:  20,
 	}
 }
 
@@ -120,6 +122,8 @@ Example:
 
 The command will run linkerd tap deploy/books for tap-duration seconds, and then create
 a service profile for the books service with routes prepopulated from the tap data.
+For high RPS, high-route-cardinality services, use route-limit to limit the number of
+routes in the output profile.
 
 Example:
   linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -`,
@@ -149,6 +153,7 @@ Example:
 	cmd.PersistentFlags().StringVar(&options.openAPI, "open-api", options.openAPI, "Output a service profile based on the given OpenAPI spec file")
 	cmd.PersistentFlags().StringVar(&options.tap, "tap", options.tap, "Output a service profile based on tap data for the given target resource")
 	cmd.PersistentFlags().StringVarP(&options.tapDuration, "tap-duration", "t", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
+	cmd.PersistentFlags().UintVar(&options.routeLimit, "route-limit", options.routeLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 
 	return cmd
@@ -178,7 +183,7 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 		return err
 	}
 	tapDuration, _ := time.ParseDuration(options.tapDuration) // err discarded because validation has already occurred
-	routes := routeSpecFromTap(w, rsp, tapDuration)
+	routes := routeSpecFromTap(w, rsp, tapDuration, int(options.routeLimit))
 
 	profile.Spec.Routes = routes
 	output, err := yaml.Marshal(profile)
@@ -189,7 +194,7 @@ func renderTapOutputProfile(options *profileOptions, controlPlaneNamespace strin
 	return nil
 }
 
-func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDuration time.Duration) []*sp.RouteSpec {
+func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
 	routesMap := make(map[string]*sp.RouteSpec)
 
@@ -204,13 +209,18 @@ func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDura
 		recordRoutesFromTap(tapClient, tapEventChannel)
 	}()
 
-	timeLimitReached := false
+	stopTap := false
 	for {
 		select {
 		case <-timerChannel:
-			timeLimitReached = true
+			stopTap = true
 		case event := <-tapEventChannel:
 			routeSpec := getPathDataFromTap(event)
+
+			if len(routesMap) > routeLimit {
+				stopTap = true
+				break
+			}
 
 			if routeSpec != nil {
 				routesMap[routeSpec.Name] = routeSpec
@@ -218,7 +228,7 @@ func routeSpecFromTap(w io.Writer, tapClient pb.Api_TapByResourceClient, tapDura
 		default:
 			// do nothing
 		}
-		if timeLimitReached {
+		if stopTap {
 			break
 		}
 	}
