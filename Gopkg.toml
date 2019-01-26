@@ -42,7 +42,7 @@ required = [
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "v1.0.3"
+  version = "v1.3.0"
 
 [[constraint]]
   name = "github.com/pkg/browser"
@@ -63,6 +63,10 @@ required = [
 [[constraint]]
   name = "github.com/go-openapi/spec"
   version = "v0.17.2"
+
+[[constraint]]
+  name = "github.com/gobuffalo/packr"
+  version = "v1.21.9"
 
 [[constraint]]
   name = "github.com/wercker/stern"
