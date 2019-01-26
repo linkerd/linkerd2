@@ -22,15 +22,15 @@ required = [
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
   name = "k8s.io/helm"
@@ -73,13 +73,5 @@ required = [
 #
 
 [[override]]
-  name = "github.com/json-iterator/go"
-  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
-
-[[override]]
   name = "github.com/Azure/go-autorest"
-  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
-
-[[override]]
-  name = "github.com/docker/spdystream"
-  revision = "449fdfce4d962303d702fec724ef0ad181c92528"
+  version = "v11.3.2"
