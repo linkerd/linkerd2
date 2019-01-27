@@ -410,7 +410,7 @@ func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, targetPort 
 			portNum = uint32(targetPort.IntVal)
 		}
 		if portNum == 0 {
-			log.Errorf("Port %v not found", targetPort)
+			log.Errorf("Port %v not found for endpoint %v", targetPort, address)
 			return addrs
 		}
 
