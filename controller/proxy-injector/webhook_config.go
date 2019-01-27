@@ -3,8 +3,9 @@ package injector
 import (
 	"bytes"
 	"encoding/base64"
-	"io/ioutil"
 	"text/template"
+
+	"github.com/linkerd/linkerd2/controller/ca"
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
@@ -27,11 +28,8 @@ type WebhookConfig struct {
 }
 
 // NewWebhookConfig returns a new instance of initiator.
-func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string, noInitContainer bool) (*WebhookConfig, error) {
-	trustAnchor, err := ioutil.ReadFile(trustAnchorFile)
-	if err != nil {
-		return nil, err
-	}
+func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string, noInitContainer bool, rootCA *ca.CA) (*WebhookConfig, error) {
+	trustAnchor := []byte(rootCA.TrustAnchorPEM())
 
 	t := template.New(k8sPkg.ProxyInjectorWebhookConfig)
 

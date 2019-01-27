@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/ca"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	injector "github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -41,7 +42,12 @@ func main() {
 		log.Fatalf("failed to mount the ca bundle: %s", err)
 	}
 
-	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, k8sPkg.MountPathTLSTrustAnchor, *noInitContainer)
+	rootCA, err := ca.NewCA()
+	if err != nil {
+		log.Fatalf("failed to create root CA: %s", err)
+	}
+
+	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, k8sPkg.MountPathTLSTrustAnchor, *noInitContainer, rootCA)
 	if err != nil {
 		log.Fatalf("failed to read the trust anchor file: %s", err)
 	}
@@ -67,7 +73,8 @@ func main() {
 		FileTLSTrustAnchorVolumeSpec: k8sPkg.MountPathTLSTrustAnchorVolumeSpec,
 		FileTLSIdentityVolumeSpec:    k8sPkg.MountPathTLSIdentityVolumeSpec,
 	}
-	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile, *noInitContainer)
+
+	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, certFile, keyFile, *noInitContainer, rootCA)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
