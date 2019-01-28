@@ -11,6 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
+	log "github.com/sirupsen/logrus"
 )
 
 type profileTemplateConfig struct {
@@ -34,6 +35,9 @@ var (
 		Routes:      []*pb.Route{},
 		RetryBudget: &DefaultRetryBudget,
 	}
+	// DefaultRouteTimeout is the default timeout for routes that do not specify
+	// one.
+	DefaultRouteTimeout = 1 * time.Second
 )
 
 func toDuration(d time.Duration) *duration.Duration {
@@ -86,7 +90,8 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	}
 	timeout, err := time.ParseDuration(route.Timeout)
 	if err != nil {
-		timeout = 1 * time.Second
+		log.Errorf("failed to parse duration for route %s: %s", route.Name, err.Error())
+		timeout = DefaultRouteTimeout
 	}
 	ret := pb.Route{
 		Condition:       cond,

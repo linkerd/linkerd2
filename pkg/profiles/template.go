@@ -73,7 +73,7 @@ spec:
       # successes or failures.
       isFailure: true
 
-    # A route can definte a request timeout.  Any requests to this route that
+    # A route can define a request timeout.  Any requests to this route that
     # exceed the timeout will be canceled.  If unspecified, the default timeout
     # is '1s' (one second).
     # timeout: 250ms
