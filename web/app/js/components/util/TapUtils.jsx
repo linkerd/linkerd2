@@ -352,16 +352,19 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
 
 export const tapLink = (d, resourceType, PrefixedLink) => {
   let namespace = d.sourceLabels.namespace;
-  let resource = "";
+  let resource;
 
   if (!d.meshed) {
-    return null;
+    namespace = "";
+    resource = "";
   } else if (_has(d.sourceLabels, resourceType)) {
     resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
   } else if (_has(d.sourceLabels, "pod")) {
     resource = `pod/${d.sourceLabels.pod}`;
   } else {
-    return null; // can't tap a resource by IP from the web UI
+    // can't tap a resource by IP from the web UI
+    namespace = "";
+    resource = "";
   }
 
   let toNamespace = "";

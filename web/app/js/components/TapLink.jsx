@@ -12,6 +12,10 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
   };
   let queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
 
+  if (resource === "") {
+    return <i className="fas fa-microscope tapGrayed" />;
+  }
+
   return (
     <PrefixedLink to={`/tap?${queryStr}`}>
       <i className="fas fa-microscope" />

@@ -266,7 +266,7 @@ class TopModule extends React.Component {
     // is very costly and causes the page to freeze up
     let resourceType = _isNil(this.props.query.resource) ? "" : this.props.query.resource.split("/")[0];
     this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, resourceType);
-    if (this.props.updateUnmeshedSources) {this.props.updateUnmeshedSources(this.unmeshedSources);}
+    this.props.updateUnmeshedSources(this.unmeshedSources);
   }
 
   indexTapResult = data => {
