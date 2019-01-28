@@ -1,4 +1,5 @@
 required = [
+  "github.com/gobuffalo/packr/v2",
   "github.com/golang/protobuf/protoc-gen-go",
   "golang.org/x/lint/golint",
   "k8s.io/code-generator/cmd/client-gen",

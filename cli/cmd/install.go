@@ -86,7 +86,8 @@ const (
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
 
-	chartPath                 = "../Chart"
+	basePath                  = "src/github.com/linkerd/linkerd2/"
+	chrtDirPath               = "cli/Chart"
 	baseTemplateName          = "templates/base.yaml"
 	tlsTemplateName           = "templates/tls.yaml"
 	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
@@ -226,7 +227,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	chrtBox := packr.New("Chart Box", chartPath)
+	cp := path.Join(os.Getenv("GOPATH"), basePath, chrtDirPath)
+	chrtBox := packr.New("Chart Box", cp)
+
 	chrtTmpl, err := chrtBox.Find(chartutil.ChartfileName)
 	if err != nil {
 		log.Fatalf("Could not find '%s' in box: %s", chartutil.ChartfileName, err)

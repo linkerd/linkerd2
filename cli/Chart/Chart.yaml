@@ -7,4 +7,3 @@ keywords:
 home: https://linkerd.io
 sources:
   - https://github.com/linkerd/linkerd2/
-# TODO: Add `appVersion` back
