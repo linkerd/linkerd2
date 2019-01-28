@@ -90,10 +90,7 @@ func GetConfig(fpath, kubeContext string) (*rest.Config, error) {
 	if fpath != "" {
 		rules.ExplicitPath = fpath
 	}
-	overrides := &clientcmd.ConfigOverrides{
-		ClusterDefaults: clientcmd.ClusterDefaults,
-		CurrentContext:  kubeContext,
-	}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: kubeContext}
 	return clientcmd.
 		NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).
 		ClientConfig()

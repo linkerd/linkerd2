@@ -67,11 +67,3 @@ required = [
 [[constraint]]
   name = "github.com/wercker/stern"
   revision = "b04b5491222d9743529cb859a20d34ce2bb763af" # pin to 1.6.0 until https://github.com/wercker/stern/issues/96 is resolved
-#
-# k8s.io/client-go dependency fixes
-# taken from https://github.com/kubernetes/client-go/blob/kubernetes-1.11.1/Godeps/Godeps.json
-#
-
-[[override]]
-  name = "github.com/Azure/go-autorest"
-  version = "v11.3.2"
