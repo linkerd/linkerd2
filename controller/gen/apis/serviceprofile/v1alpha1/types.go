@@ -28,7 +28,7 @@ type ServiceProfile struct {
 // ServiceProfileSpec specifies a ServiceProfile resource.
 type ServiceProfileSpec struct {
 	Routes      []*RouteSpec `json:"routes"`
-	RetryBudget *RetryBudget `json:"retryBudget"`
+	RetryBudget *RetryBudget `json:"retryBudget,omitempty"`
 }
 
 // RouteSpec specifies a Route resource.

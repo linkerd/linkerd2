@@ -8,12 +8,13 @@
   * Improved resource detail pages now show all resource types
   * Fixed stats not appearing for routes that have service profiles installed
 * CLI
-  * Added `linkerd install-sp` command to install service profiles into the
-    Linkerd control plane
+  * Added optional `linkerd install-sp` command to generate service profiles for
+    the control plane, providing per-route metrics for control plane components
   * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
     commands, as the proxy no longer accepts this environment variable
   * Improved CLI appearance on Windows systems
-  * Improved `linkerd check` output, fixed some bugs in check
+  * Improved `linkerd check` output, fixed check bug when using
+    `--single-namespace` (thanks to @djeeg for the bug report!)
   * Improved `linkerd stat` now supports DaemonSets (thanks @zknill!)
   * Fixed panic when `linkerd routes` is called in single-namespace mode
 * Proxy
