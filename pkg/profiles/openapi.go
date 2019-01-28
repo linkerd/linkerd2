@@ -19,7 +19,7 @@ var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 // RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
 // namespace.
-func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io.Writer) error {
+func RenderOpenAPI(fileName, namespace, name string, w io.Writer) error {
 
 	input, err := readFile(fileName)
 	if err != nil {
@@ -41,16 +41,16 @@ func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io
 		return fmt.Errorf("Error parsing OpenAPI spec: %s", err)
 	}
 
-	profile := swaggerToServiceProfile(swagger, namespace, name, controlPlaneNamespace)
+	profile := swaggerToServiceProfile(swagger, namespace, name)
 
 	return writeProfile(profile, w)
 }
 
-func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, controlPlaneNamespace string) sp.ServiceProfile {
+func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.ServiceProfile {
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		TypeMeta: ServiceProfileMeta,
 	}

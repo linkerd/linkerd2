@@ -105,11 +105,11 @@ Examples:
 			}
 
 			if options.template {
-				return profiles.RenderProfileTemplate(options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, os.Stdout)
 			} else if options.openAPI != "" {
-				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, os.Stdout)
 			} else if options.proto != "" {
-				return profiles.RenderProto(options.proto, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
+				return profiles.RenderProto(options.proto, options.namespace, options.name, os.Stdout)
 			}
 
 			// we should never get here

@@ -276,6 +276,12 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			})
 	}
 
+	sidecar.Env = append(sidecar.Env,
+		v1.EnvVar{
+			Name:  "LINKERD2_PROXY_ID",
+			Value: identity.ToDNSName(),
+		})
+
 	// Special case if the caller specifies that
 	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
 	// We key off of any container image in the pod. Ideally we would instead key
@@ -349,7 +355,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Image:                    options.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},

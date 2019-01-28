@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha1"
@@ -596,6 +597,37 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*apiv1
 		}
 	}
 	return services, nil
+}
+
+// GetServiceProfileFor returns the service profile for a given service.  We
+// first look for a matching service profile in the client's namespace.  If not
+// found, we then look in the service's namespace.  If no service profile is
+// found, we return the default service profile.
+func (api *API) GetServiceProfileFor(svc *apiv1.Service, clientNs string) *spv1alpha1.ServiceProfile {
+	dst := fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
+	// First attempt to lookup profile in client namespace
+	if clientNs != "" {
+		p, err := api.SP().Lister().ServiceProfiles(clientNs).Get(dst)
+		if err == nil {
+			return p
+		}
+	}
+	// Second, attemp to lookup profile in server namespace
+	if svc.Namespace != clientNs {
+		p, err := api.SP().Lister().ServiceProfiles(svc.Namespace).Get(dst)
+		if err == nil {
+			return p
+		}
+	}
+	// Not found; return default.
+	return &spv1alpha1.ServiceProfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: dst,
+		},
+		Spec: spv1alpha1.ServiceProfileSpec{
+			Routes: []*spv1alpha1.RouteSpec{},
+		},
+	}
 }
 
 func hasOverlap(as, bs []*apiv1.Pod) bool {

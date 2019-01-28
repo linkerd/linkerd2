@@ -248,6 +248,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-controller.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -496,6 +498,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -647,6 +651,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-prometheus.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
@@ -899,6 +905,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-grafana.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1140,6 +1148,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-ca.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1271,6 +1281,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-proxy-injector.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1440,6 +1452,8 @@ data:
       value: 10000ms
     - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
       value: 10000ms
+    - name: LINKERD2_PROXY_ID
+      value: "" # this value will be computed by the webhook
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/trust-anchors.pem
     - name: LINKERD2_PROXY_TLS_CERT

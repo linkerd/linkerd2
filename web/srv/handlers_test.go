@@ -109,7 +109,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns", "linkerd")
+	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns")
 
 	err = helpers.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {

@@ -19,10 +19,9 @@ import (
 )
 
 type profileTemplateConfig struct {
-	ControlPlaneNamespace string
-	ServiceNamespace      string
-	ServiceName           string
-	ClusterZone           string
+	ServiceNamespace string
+	ServiceName      string
+	ClusterZone      string
 }
 
 var (
@@ -393,19 +392,18 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	return nil
 }
 
-func buildConfig(namespace, service, controlPlaneNamespace string) *profileTemplateConfig {
+func buildConfig(namespace, service string) *profileTemplateConfig {
 	return &profileTemplateConfig{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		ServiceNamespace:      namespace,
-		ServiceName:           service,
-		ClusterZone:           "svc.cluster.local",
+		ServiceNamespace: namespace,
+		ServiceName:      service,
+		ClusterZone:      "svc.cluster.local",
 	}
 }
 
 // RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
 // namespace, service, and control plane namespace.
-func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
-	config := buildConfig(namespace, service, controlPlaneNamespace)
+func RenderProfileTemplate(namespace, service string, w io.Writer) error {
+	config := buildConfig(namespace, service)
 	template, err := template.New("profile").Parse(Template)
 	if err != nil {
 		return err
