@@ -267,12 +267,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}
+	}
 
-		if config.ProxyAutoInjectEnabled {
-			pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-			if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
-				return err
-			}
+	if config.ProxyAutoInjectEnabled {
+		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
+			return err
 		}
 	}
 
