@@ -14,9 +14,9 @@ import (
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
 func ConfigureAndParse() {
-	// override klog's default configuration and log to stderr instead of a file
+	// override klog's default configuration and send everything to /dev/null
 	klog.InitFlags(nil)
-	flag.Set("logtostderr", "true")
+	flag.Set("log_file", "/dev/null")
 
 	logLevel := flag.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug")
@@ -34,6 +34,12 @@ func setLogLevel(logLevel string) {
 		log.Fatalf("invalid log-level: %s", logLevel)
 	}
 	log.SetLevel(level)
+
+	// configure klog to be very verbose to stderr when debug logs are requested
+	if level == log.DebugLevel {
+		flag.Set("v", "3")
+		flag.Set("logtostderr", "true")
+	}
 }
 
 func maybePrintVersionAndExit(printVersion bool) {
