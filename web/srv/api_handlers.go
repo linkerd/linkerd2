@@ -33,7 +33,7 @@ var (
 	}
 )
 
-func renderJsonError(w http.ResponseWriter, err error, status int) {
+func renderJSONError(w http.ResponseWriter, err error, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Error(err.Error())
 	rsp, _ := json.Marshal(jsonError{Error: err.Error()})
@@ -41,64 +41,88 @@ func renderJsonError(w http.ResponseWriter, err error, status int) {
 	w.Write(rsp)
 }
 
-func renderJson(w http.ResponseWriter, resp interface{}) {
+func renderJSON(w http.ResponseWriter, resp interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 	w.Write(jsonResp)
 }
 
-func renderJsonPb(w http.ResponseWriter, msg proto.Message) {
+func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	w.Header().Set("Content-Type", "application/json")
 	pbMarshaler.Marshal(w, msg)
 }
 
-func (h *handler) handleApiVersion(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+func (h *handler) handleAPIVersion(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{})
 
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 	resp := map[string]interface{}{
 		"version": version,
 	}
-	renderJson(w, resp)
+	renderJSON(w, resp)
 }
 
-func (h *handler) handleApiPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+func (h *handler) handleAPIPods(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	pods, err := h.apiClient.ListPods(req.Context(), &pb.ListPodsRequest{
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: req.FormValue("namespace"),
+			},
+		},
+	})
+
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	renderJSONPb(w, pods)
+}
+
+func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	services, err := h.apiClient.ListServices(req.Context(), &pb.ListServicesRequest{
 		Namespace: req.FormValue("namespace"),
 	})
 
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	renderJsonPb(w, pods)
+	renderJSONPb(w, services)
 }
 
-func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	allNs := false
 	if req.FormValue("all_namespaces") == "true" {
 		allNs = true
 	}
-	requestParams := util.StatSummaryRequestParams{
-		TimeWindow:    req.FormValue("window"),
-		ResourceName:  req.FormValue("resource_name"),
-		ResourceType:  req.FormValue("resource_type"),
-		Namespace:     req.FormValue("namespace"),
+	skipStats := false
+	if req.FormValue("skip_stats") == "true" {
+		skipStats = true
+	}
+	requestParams := util.StatsSummaryRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:    req.FormValue("window"),
+			ResourceName:  req.FormValue("resource_name"),
+			ResourceType:  req.FormValue("resource_type"),
+			Namespace:     req.FormValue("namespace"),
+			AllNamespaces: allNs,
+		},
 		ToName:        req.FormValue("to_name"),
 		ToType:        req.FormValue("to_type"),
 		ToNamespace:   req.FormValue("to_namespace"),
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
-		AllNamespaces: allNs,
+		SkipStats:     skipStats,
 	}
 
 	// default to returning deployment stats
@@ -108,16 +132,44 @@ func (h *handler) handleApiStat(w http.ResponseWriter, req *http.Request, p http
 
 	statRequest, err := util.BuildStatSummaryRequest(requestParams)
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	result, err := h.apiClient.StatSummary(req.Context(), statRequest)
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
-	renderJsonPb(w, result)
+	renderJSONPb(w, result)
+}
+
+func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	requestParams := util.TopRoutesRequestParams{
+		StatsBaseRequestParams: util.StatsBaseRequestParams{
+			TimeWindow:   req.FormValue("window"),
+			ResourceName: req.FormValue("resource_name"),
+			ResourceType: req.FormValue("resource_type"),
+			Namespace:    req.FormValue("namespace"),
+		},
+		ToName:      req.FormValue("to_name"),
+		ToType:      req.FormValue("to_type"),
+		ToNamespace: req.FormValue("to_namespace"),
+	}
+
+	topReq, err := util.BuildTopRoutesRequest(requestParams)
+	if err != nil {
+		renderJSONError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.apiClient.TopRoutes(req.Context(), topReq)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	renderJSONPb(w, result)
 }
 
 func websocketError(ws *websocket.Conn, wsError int, msg string) {
@@ -126,10 +178,10 @@ func websocketError(ws *websocket.Conn, wsError int, msg string) {
 		time.Time{})
 }
 
-func (h *handler) handleApiTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	ws, err := websocketUpgrader.Upgrade(w, req, nil)
 	if err != nil {
-		renderJsonError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
 	defer ws.Close()

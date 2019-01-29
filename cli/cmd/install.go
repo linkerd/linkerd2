@@ -6,14 +6,19 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
-	"text/template"
 
+	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/cli/install"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/renderutil"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 type installConfig struct {
@@ -21,10 +26,10 @@ type installConfig struct {
 	ControllerImage                  string
 	WebImage                         string
 	PrometheusImage                  string
+	PrometheusVolumeName             string
 	GrafanaImage                     string
+	GrafanaVolumeName                string
 	ControllerReplicas               uint
-	WebReplicas                      uint
-	PrometheusReplicas               uint
 	ImagePullPolicy                  string
 	UUID                             string
 	CliVersion                       string
@@ -33,6 +38,8 @@ type installConfig struct {
 	CreatedByAnnotation              string
 	ProxyAPIPort                     uint
 	EnableTLS                        bool
+	TLSTrustAnchorVolumeName         string
+	TLSSecretsVolumeName             string
 	TLSTrustAnchorConfigMapName      string
 	ProxyContainerName               string
 	TLSTrustAnchorFileName           string
@@ -50,37 +57,49 @@ type installConfig struct {
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
 	ProxyInjectorTLSSecret           string
-	ProxyInjectorSidecarConfig       string
 	ProxySpecFileName                string
 	ProxyInitSpecFileName            string
 	ProxyInitImage                   string
 	ProxyImage                       string
 	ProxyResourceRequestCPU          string
 	ProxyResourceRequestMemory       string
-	ProxyBindTimeout                 string
 	SingleNamespace                  bool
+	EnableHA                         bool
+	ControllerUID                    int64
+	ProfileSuffixes                  string
+	EnableH2Upgrade                  bool
 }
 
 type installOptions struct {
 	controllerReplicas uint
-	webReplicas        uint
-	prometheusReplicas uint
 	controllerLogLevel string
 	proxyAutoInject    bool
 	singleNamespace    bool
+	highAvailability   bool
+	controllerUID      int64
+	disableH2Upgrade   bool
 	*proxyConfigOptions
 }
 
-const prometheusProxyOutboundCapacity = 10000
+const (
+	prometheusProxyOutboundCapacity = 10000
+	defaultControllerReplicas       = 1
+	defaultHAControllerReplicas     = 3
+
+	baseTemplateName          = "templates/base.yaml"
+	tlsTemplateName           = "templates/tls.yaml"
+	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
+)
 
 func newInstallOptions() *installOptions {
 	return &installOptions{
-		controllerReplicas: 1,
-		webReplicas:        1,
-		prometheusReplicas: 1,
+		controllerReplicas: defaultControllerReplicas,
 		controllerLogLevel: "info",
 		proxyAutoInject:    false,
 		singleNamespace:    false,
+		highAvailability:   false,
+		controllerUID:      2103,
+		disableH2Upgrade:   false,
 		proxyConfigOptions: newProxyConfigOptions(),
 	}
 }
@@ -104,12 +123,12 @@ func newCmdInstall() *cobra.Command {
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
-	cmd.PersistentFlags().UintVar(&options.webReplicas, "web-replicas", options.webReplicas, "Replicas of the web server to deploy")
-	cmd.PersistentFlags().UintVar(&options.prometheusReplicas, "prometheus-replicas", options.prometheusReplicas, "Replicas of prometheus to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
 	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Experimental: Enable proxy sidecar auto-injection webhook (default false)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
-
+	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
+	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
+	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 ugprading")
 	return cmd
 }
 
@@ -130,23 +149,43 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
 	}
 
+	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
+		options.controllerReplicas = defaultHAControllerReplicas
+	}
+
+	if options.highAvailability && options.proxyCPURequest == "" {
+		options.proxyCPURequest = "10m"
+	}
+
+	if options.highAvailability && options.proxyMemoryRequest == "" {
+		options.proxyMemoryRequest = "20Mi"
+	}
+
+	profileSuffixes := "."
+	if options.proxyConfigOptions.disableExternalProfiles {
+		profileSuffixes = "svc.cluster.local."
+	}
+
 	return &installConfig{
 		Namespace:                        controlPlaneNamespace,
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
 		PrometheusImage:                  "prom/prometheus:v2.4.0",
+		PrometheusVolumeName:             "data",
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaVolumeName:                "data",
 		ControllerReplicas:               options.controllerReplicas,
-		WebReplicas:                      options.webReplicas,
-		PrometheusReplicas:               options.prometheusReplicas,
 		ImagePullPolicy:                  options.imagePullPolicy,
 		UUID:                             uuid.NewV4().String(),
 		CliVersion:                       k8s.CreatedByAnnotationValue(),
 		ControllerLogLevel:               options.controllerLogLevel,
 		ControllerComponentLabel:         k8s.ControllerComponentLabel,
+		ControllerUID:                    options.controllerUID,
 		CreatedByAnnotation:              k8s.CreatedByAnnotation,
 		ProxyAPIPort:                     options.proxyAPIPort,
 		EnableTLS:                        options.enableTLS(),
+		TLSTrustAnchorVolumeName:         k8s.TLSTrustAnchorVolumeName,
+		TLSSecretsVolumeName:             k8s.TLSSecretsVolumeName,
 		TLSTrustAnchorConfigMapName:      k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:               k8s.ProxyContainerName,
 		TLSTrustAnchorFileName:           k8s.TLSTrustAnchorFileName,
@@ -164,45 +203,74 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,
 		ProxyInjectorTLSSecret:           k8s.ProxyInjectorTLSSecret,
-		ProxyInjectorSidecarConfig:       k8s.ProxyInjectorSidecarConfig,
 		ProxySpecFileName:                k8s.ProxySpecFileName,
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),
 		ProxyImage:                       options.taggedProxyImage(),
-		ProxyResourceRequestCPU:          options.proxyCpuRequest,
+		ProxyResourceRequestCPU:          options.proxyCPURequest,
 		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
-		ProxyBindTimeout:                 "1m",
 		SingleNamespace:                  options.singleNamespace,
+		EnableHA:                         options.highAvailability,
+		ProfileSuffixes:                  profileSuffixes,
+		EnableH2Upgrade:                  !options.disableH2Upgrade,
 	}, nil
 }
 
 func render(config installConfig, w io.Writer, options *installOptions) error {
-	template, err := template.New("linkerd").Parse(install.Template)
+	// Render raw values and create chart config
+	rawValues, err := yaml.Marshal(config)
 	if err != nil {
 		return err
 	}
-	buf := &bytes.Buffer{}
-	err = template.Execute(buf, config)
+
+	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
+
+	// Load chart files
+	files := []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName, Data: install.Chart},
+		{Name: baseTemplateName, Data: install.BaseTemplate},
+		{Name: tlsTemplateName, Data: install.TLSTemplate},
+		{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate},
+	}
+
+	// Create chart and render templates
+	chrt, err := chartutil.LoadFiles(files)
 	if err != nil {
 		return err
 	}
+
+	renderOpts := renderutil.Options{
+		ReleaseOptions: chartutil.ReleaseOptions{
+			Name:      "linkerd",
+			IsInstall: true,
+			IsUpgrade: false,
+			Time:      timeconv.Now(),
+			Namespace: controlPlaneNamespace,
+		},
+		KubeVersion: "",
+	}
+
+	renderedTemplates, err := renderutil.Render(chrt, chrtConfig, renderOpts)
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	bt := path.Join(renderOpts.ReleaseOptions.Name, baseTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[bt]); err != nil {
+		return err
+	}
+
 	if config.EnableTLS {
-		tlsTemplate, err := template.New("linkerd").Parse(install.TlsTemplate)
-		if err != nil {
-			return err
-		}
-		err = tlsTemplate.Execute(buf, config)
-		if err != nil {
+		tt := path.Join(renderOpts.ReleaseOptions.Name, tlsTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}
 
 		if config.ProxyAutoInjectEnabled {
-			proxyInjectorTemplate, err := template.New("linkerd").Parse(install.ProxyInjectorTemplate)
-			if err != nil {
-				return err
-			}
-			err = proxyInjectorTemplate.Execute(buf, config)
-			if err != nil {
+			pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
+			if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
 				return err
 			}
 		}
@@ -214,7 +282,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Special case for linkerd-proxy running in the Prometheus pod.
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
 
-	return InjectYAML(buf, w, ioutil.Discard, injectOptions)
+	return InjectYAML(&buf, w, ioutil.Discard, injectOptions)
 }
 
 func (options *installOptions) validate() error {

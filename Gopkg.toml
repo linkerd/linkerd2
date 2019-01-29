@@ -1,5 +1,6 @@
 required = [
   "github.com/golang/protobuf/protoc-gen-go",
+  "golang.org/x/lint/golint",
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/defaulter-gen",
@@ -9,7 +10,7 @@ required = [
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  version = "v0.1.2"
+  revision = "1ad70188f9a6d94e2865413713a50390456fa6b6"
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -21,19 +22,23 @@ required = [
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.13.1"
 
 [[constraint]]
-  name = "k8s.io/kubernetes"
-  version = "v1.11.1"
+  name = "k8s.io/helm"
+  version = "v2.12.2"
+
+[[constraint]]
+  name = "github.com/briandowns/spinner"
+  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -54,27 +59,11 @@ required = [
 [[constraint]]
   name = "github.com/gorilla/websocket"
   version = "1.2.0"
-#
-# k8s.io/kubernetes dependency fixes
-# taken from https://github.com/kubernetes/kubernetes/blob/master/Godeps/Godeps.json
-#
 
-[[override]]
-  name = "github.com/docker/distribution"
-  revision = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
+[[constraint]]
+  name = "github.com/go-openapi/spec"
+  version = "v0.17.2"
 
-[[override]]
-  name = "github.com/docker/docker"
-  revision = "4f3616fb1c112e206b88cb7a9922bf49067a7756"
-
-[[override]]
-	name = "github.com/russross/blackfriday"
-	revision = "300106c228d52c8941d4b3de6054a6062a86dda3"
-
-[[override]]
-  name = "github.com/json-iterator/go"
-  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
-
-[[override]]
-  name = "github.com/Azure/go-autorest"
-  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
+[[constraint]]
+  name = "github.com/wercker/stern"
+  revision = "b04b5491222d9743529cb859a20d34ce2bb763af" # pin to 1.6.0 until https://github.com/wercker/stern/issues/96 is resolved

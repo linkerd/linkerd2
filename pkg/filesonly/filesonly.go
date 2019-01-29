@@ -12,7 +12,9 @@ import (
 	"os"
 )
 
-func FileSystem(dir string) fileSystem {
+// FileSystem provides access to a collection of named files via
+// http.FileSystem, given a directory.
+func FileSystem(dir string) http.FileSystem {
 	return fileSystem{http.Dir(dir)}
 }
 

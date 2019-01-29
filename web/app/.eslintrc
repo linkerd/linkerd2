@@ -1,7 +1,8 @@
 {
   "plugins": [
     "react",
-    "promise"
+    "promise",
+    "lodash"
   ],
   "parser": "babel-eslint",
   "parserOptions": {
@@ -34,7 +35,11 @@
     "jsx-a11y/click-events-have-key-events": 0,
     "jsx-quotes": 2,
     "keyword-spacing": 2,
+    "lodash/matches-shorthand": [2, "never"],
+    "lodash/matches-prop-shorthand": [2, "never"],
+    "lodash/prop-shorthand": [2, "never"],
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
+    "no-restricted-imports": [2, "lodash"],
     "no-trailing-spaces": 2,
     "no-var": 2,
     "promise/always-return": 0,

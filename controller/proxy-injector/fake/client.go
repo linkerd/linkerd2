@@ -5,7 +5,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-// FakeClient is a fake clientset that implements the kubernetes.Interface.
+// Client is a fake clientset that implements the kubernetes.Interface.
 type Client struct {
 	kubernetes.Interface
 }

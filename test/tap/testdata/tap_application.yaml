@@ -167,7 +167,8 @@ metadata:
 spec:
   template:
     metadata:
-      name: slow-cooker
+      labels:
+        app: slow-cooker
     spec:
       containers:
       - name: slow-cooker
@@ -178,5 +179,19 @@ spec:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          slow_cooker http://gateway-svc:8080
+          slow_cooker -metric-addr 0.0.0.0:9999 http://gateway-svc:8080
+        ports:
+        - containerPort: 9999
       restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slow-cooker
+spec:
+  selector:
+    app: slow-cooker
+  ports:
+  - name: metrics
+    port: 9999
+    targetPort: 9999

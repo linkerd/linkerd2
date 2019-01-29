@@ -1,23 +1,43 @@
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
 
 import BaseTable from '../BaseTable.jsx';
+import Grid from '@material-ui/core/Grid';
+import { Link } from 'react-router-dom';
+import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _has from 'lodash/has';
+import _isEmpty from 'lodash/isEmpty';
+import _isNil from 'lodash/isNil';
+import _map from 'lodash/map';
+import _merge from 'lodash/merge';
+import _size from 'lodash/size';
+import _take from 'lodash/take';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
 export const defaultMaxRps = "100.0";
 export const setMaxRps = query => {
-  if (!_.isEmpty(query.maxRps)) {
+  if (!_isEmpty(query.maxRps)) {
     query.maxRps = parseFloat(query.maxRps);
   } else {
     query.maxRps = 0; // golang unset value for maxRps
   }
 };
+
+// resources you can tap/top to tap all pods in the resource
+export const tapResourceTypes = [
+  "deployment",
+  "daemonset",
+  "pod",
+  "replicationcontroller",
+  "statefulset"
+];
 
 // use a generator to get this object, to prevent it from being overwritten
 export const emptyTapQuery = () => ({
@@ -70,18 +90,18 @@ export const wsCloseCodes = {
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
 export const processNeighborData = (source, labels, resourceAgg, resourceType) => {
-  if (_.isEmpty(labels)) {
+  if (_isEmpty(labels)) {
     return resourceAgg;
   }
 
   let neighb = {};
-  if (_.has(labels, resourceType)) {
+  if (_has(labels, resourceType)) {
     neighb = {
       type: resourceType,
       name: labels[resourceType],
       namespace: labels.namespace
     };
-  } else if (_.has(labels, "pod")) {
+  } else if (_has(labels, "pod")) {
     neighb = {
       type: "pod",
       name: labels.pod,
@@ -101,11 +121,11 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
   }
 
   let key = neighb.type + "/" + neighb.name;
-  if (_.has(labels, "control_plane_ns")) {
+  if (_has(labels, "control_plane_ns")) {
     delete resourceAgg[key];
   } else {
-    if (_.has(resourceAgg, key)) {
-      _.merge(neighb.pods, resourceAgg[key].pods);
+    if (_has(resourceAgg, key)) {
+      _merge(neighb.pods, resourceAgg[key].pods);
     }
     resourceAgg[key] = neighb;
   }
@@ -116,35 +136,35 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 export const processTapEvent = jsonString => {
   let d = JSON.parse(jsonString);
 
-  d.source.str = publicAddressToString(_.get(d, "source.ip.ipv4"));
-  d.source.pod = _.get(d, "sourceMeta.labels.pod", null);
+  d.source.str = publicAddressToString(_get(d, "source.ip.ipv4"));
+  d.source.pod = _get(d, "sourceMeta.labels.pod", null);
   d.source.owner = extractPodOwner(d.sourceMeta.labels);
-  d.source.namespace = _.get(d, "sourceMeta.labels.namespace", null);
+  d.source.namespace = _get(d, "sourceMeta.labels.namespace", null);
 
-  d.destination.str = publicAddressToString(_.get(d, "destination.ip.ipv4"));
-  d.destination.pod = _.get(d, "destinationMeta.labels.pod", null);
+  d.destination.str = publicAddressToString(_get(d, "destination.ip.ipv4"));
+  d.destination.pod = _get(d, "destinationMeta.labels.pod", null);
   d.destination.owner = extractPodOwner(d.destinationMeta.labels);
-  d.destination.namespace = _.get(d, "destinationMeta.labels.namespace", null);
+  d.destination.namespace = _get(d, "destinationMeta.labels.namespace", null);
 
   switch (d.proxyDirection) {
     case "INBOUND":
-      d.tls = _.get(d, "sourceMeta.labels.tls", "");
+      d.tls = _get(d, "sourceMeta.labels.tls", "");
       break;
     case "OUTBOUND":
-      d.tls = _.get(d, "destinationMeta.labels.tls", "");
+      d.tls = _get(d, "destinationMeta.labels.tls", "");
       break;
     default:
       // too old for TLS
   }
 
-  if (_.isNil(d.http)) {
+  if (_isNil(d.http)) {
     this.setState({ error: "Undefined request type"});
   } else {
-    if (!_.isNil(d.http.requestInit)) {
+    if (!_isNil(d.http.requestInit)) {
       d.eventType = "requestInit";
-    } else if (!_.isNil(d.http.responseInit)) {
+    } else if (!_isNil(d.http.responseInit)) {
       d.eventType = "responseInit";
-    } else if (!_.isNil(d.http.responseEnd)) {
+    } else if (!_isNil(d.http.responseEnd)) {
       d.eventType = "responseEnd";
     }
     d.id = tapEventKey(d, d.eventType);
@@ -159,7 +179,7 @@ export const processTapEvent = jsonString => {
   current key: (src, dst, stream)
 */
 const tapEventKey = (d, eventType) => {
-  return `${d.source.str},${d.destination.str},${_.get(d, ["http", eventType, "id", "stream"])}`;
+  return `${d.source.str},${d.destination.str},${_get(d, ["http", eventType, "id", "stream"])}`;
 };
 
 /*
@@ -195,9 +215,9 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: "Source", key: "source", render: d => d.source },
+  { title: "Source", dataIndex: "source" },
   { title: "", key: "arrow", render: () => <i className="fas fa-long-arrow-alt-right" /> },
-  { title: "Destination", key: "destination", render: d => d.destination }
+  { title: "Destination", dataIndex: "destination" }
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -220,11 +240,11 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
     if (endpoint.pod) {
       podList = resourceShortLink("pod", { pod: endpoint.pod, namespace: labels.namespace }, ResourceLink);
     }
-  } else if (!_.isEmpty(display.pods)) {
+  } else if (!_isEmpty(display.pods)) {
     podList = (
       <React.Fragment>
         {
-            _.map(display.pods, (namespace, pod, i) => {
+            _map(display.pods, (namespace, pod, i) => {
               if (i > displayLimit) {
                 return null;
               } else {
@@ -232,7 +252,7 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
               }
             })
           }
-        { (_.size(display.pods) > displayLimit ? "..." : "") }
+        { (_size(display.pods) > displayLimit ? "..." : "") }
       </React.Fragment>
     );
   }
@@ -243,13 +263,13 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
 const getIpList = (endpoint, display) => {
   let ipList = endpoint.str;
   if (display) {
-    ipList = _(display.ips).keys().take(displayLimit).value().join(", ") +
-    (_.size(display.ips) > displayLimit ? "..." : "");
+    ipList = _take(Object.keys(display.ips), displayLimit).join(", ") +
+    (_size(display.ips) > displayLimit ? "..." : "");
   }
   return <div className="popover-td">{ipList}</div>;
 };
 
-const popoverResourceTable = (d, ResourceLink) => {
+const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-unused-vars
   let tableData = [
     {
       source: getPodOwner(d.sourceLabels, ResourceLink),
@@ -278,8 +298,8 @@ const popoverResourceTable = (d, ResourceLink) => {
 
 export const extractPodOwner = labels => {
   let podOwner = "";
-  _.each(labels, (labelVal, labelName) => {
-    if (_.has(podOwnerLookup, labelName)) {
+  _each(labels, (labelVal, labelName) => {
+    if (_has(podOwnerLookup, labelName)) {
       podOwner = labelName + "/" + labelVal;
     }
   });
@@ -293,6 +313,7 @@ export const directionColumn = d => (
 );
 
 export const srcDstColumn = (d, resourceType, ResourceLink) => {
+
   let display = {};
   let labels = {};
 
@@ -304,16 +325,37 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     labels = d.destinationLabels;
   }
 
+  let link = (
+    !_isEmpty(labels[resourceType]) ?
+      resourceShortLink(resourceType, labels, ResourceLink) :
+      display.str
+  );
+
+  const linkFn = e => {
+    e.preventDefault();
+  };
+
   let baseContent = (
-    <div className="src-dst-name">
-      { !_.isEmpty(labels[resourceType]) ? resourceShortLink(resourceType, labels, ResourceLink) : display.str }
-    </div>
+    <Link to="#" onClick={linkFn}>
+      <OpenInNewIcon fontSize="small" />
+    </Link>
   );
 
   return (
-    <Popover
-      popoverContent={popoverResourceTable(d, ResourceLink)}
-      baseContent={baseContent} />
+    <Grid
+      container
+      direction="row"
+      alignItems="center"
+      spacing={8}>
+      <Grid item>
+        {link}
+      </Grid>
+      <Grid item>
+        <Popover
+          popoverContent={(popoverResourceTable(d, ResourceLink))}
+          baseContent={baseContent} />
+      </Grid>
+    </Grid>
   );
 };
 
@@ -321,9 +363,9 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
   let namespace = d.sourceLabels.namespace;
   let resource = "";
 
-  if (_.has(d.sourceLabels, resourceType)) {
+  if (_has(d.sourceLabels, resourceType)) {
     resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
-  } else if (_.has(d.sourceLabels, "pod")) {
+  } else if (_has(d.sourceLabels, "pod")) {
     resource = `pod/${d.sourceLabels.pod}`;
   } else {
     return null; // can't tap a resource by IP from the web UI
@@ -332,10 +374,10 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
   let toNamespace = "";
   let toResource = "";
 
-  if (_.has(d.destinationLabels, resourceType)) {
+  if (_has(d.destinationLabels, resourceType)) {
     toNamespace = d.destinationLabels.namespace,
     toResource = `${resourceType}/${d.destinationLabels[resourceType]}`;
-  } else if (_.has(d.destinationLabels, "pod")) {
+  } else if (_has(d.destinationLabels, "pod")) {
     toNamespace = d.destinationLabels.namespace,
     toResource = `${resourceType}/${d.destinationLabels.pod}`;
   }

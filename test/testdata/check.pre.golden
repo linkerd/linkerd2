@@ -1,15 +1,30 @@
-kubernetes-api: can initialize the client..................................[ok]
-kubernetes-api: can query the Kubernetes API...............................[ok]
-kubernetes-api: is running the minimum Kubernetes API version..............[ok]
-kubernetes-setup: control plane namespace does not already exist...........[ok]
-kubernetes-setup: can create Namespaces....................................[ok]
-kubernetes-setup: can create ClusterRoles..................................[ok]
-kubernetes-setup: can create ClusterRoleBindings...........................[ok]
-kubernetes-setup: can create ServiceAccounts...............................[ok]
-kubernetes-setup: can create Services......................................[ok]
-kubernetes-setup: can create Deployments...................................[ok]
-kubernetes-setup: can create ConfigMaps....................................[ok]
-linkerd-version: can determine the latest version..........................[ok]
-linkerd-version: cli is up-to-date.........................................[ok]
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
 
-Status check results are [ok]
+kubernetes-version
+------------------
+√ is running the minimum Kubernetes API version
+
+pre-kubernetes-cluster-setup
+----------------------------
+√ control plane namespace does not already exist
+√ can create Namespaces
+√ can create ClusterRoles
+√ can create ClusterRoleBindings
+√ can create CustomResourceDefinitions
+
+pre-kubernetes-setup
+--------------------
+√ can create ServiceAccounts
+√ can create Services
+√ can create Deployments
+√ can create ConfigMaps
+
+linkerd-version
+---------------
+√ can determine the latest version
+√ cli is up-to-date
+
+Status check results are √

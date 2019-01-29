@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -30,6 +31,7 @@ type topOptions struct {
 	authority   string
 	path        string
 	hideSources bool
+	routes      bool
 }
 
 type topRequest struct {
@@ -49,9 +51,25 @@ func (id topRequestID) String() string {
 	return fmt.Sprintf("%s->%s(%d)", id.src, id.dst, id.stream)
 }
 
+type tableColumn struct {
+	header string
+	width  int
+	// Columns with key=true will be treated as the primary key for the table.
+	// In other words, if two rows have equal values for the key=true columns
+	// then those rows will be merged.
+	key bool
+	// If true, render this column.
+	display bool
+	// If true, set the width to the widest value in this column.
+	flexible   bool
+	rightAlign bool
+	value      func(tableRow) string
+}
+
 type tableRow struct {
-	by          string
+	path        string
 	method      string
+	route       string
 	source      string
 	destination string
 	count       int
@@ -62,11 +80,176 @@ type tableRow struct {
 	failures    int
 }
 
-const headerHeight = 3
+func (r tableRow) merge(other tableRow) tableRow {
+	r.count += other.count
+	if other.best.Nanoseconds() < r.best.Nanoseconds() {
+		r.best = other.best
+	}
+	if other.worst.Nanoseconds() > r.worst.Nanoseconds() {
+		r.worst = other.worst
+	}
+	r.last = other.last
+	r.successes += other.successes
+	r.failures += other.failures
+	return r
+}
 
-var (
-	columnNames  = []string{"Source", "Destination", "Method", "Path", "Count", "Best", "Worst", "Last", "Success Rate"}
-	columnWidths = []int{23, 23, 10, 37, 6, 6, 6, 6, 3}
+type column int
+
+const (
+	sourceColumn column = iota
+	destinationColumn
+	methodColumn
+	pathColumn
+	routeColumn
+	countColumn
+	bestColumn
+	worstColumn
+	lastColumn
+	successRateColumn
+
+	columnCount
+)
+
+type topTable struct {
+	columns [columnCount]tableColumn
+	rows    []tableRow
+}
+
+func newTopTable() *topTable {
+	table := topTable{}
+
+	table.columns[sourceColumn] =
+		tableColumn{
+			header:   "Source",
+			width:    23,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.source
+			},
+		}
+
+	table.columns[destinationColumn] =
+		tableColumn{
+			header:   "Destination",
+			width:    23,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.destination
+			},
+		}
+
+	table.columns[methodColumn] =
+		tableColumn{
+			header:   "Method",
+			width:    10,
+			key:      true,
+			display:  true,
+			flexible: false,
+			value: func(r tableRow) string {
+				return r.method
+			},
+		}
+
+	table.columns[pathColumn] =
+		tableColumn{
+			header:   "Path",
+			width:    37,
+			key:      true,
+			display:  true,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.path
+			},
+		}
+
+	table.columns[routeColumn] =
+		tableColumn{
+			header:   "Route",
+			width:    47,
+			key:      false,
+			display:  false,
+			flexible: true,
+			value: func(r tableRow) string {
+				return r.route
+			},
+		}
+
+	table.columns[countColumn] =
+		tableColumn{
+			header:     "Count",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return strconv.Itoa(r.count)
+			},
+		}
+
+	table.columns[bestColumn] =
+		tableColumn{
+			header:     "Best",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.best)
+			},
+		}
+
+	table.columns[worstColumn] =
+		tableColumn{
+			header:     "Worst",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.worst)
+			},
+		}
+
+	table.columns[lastColumn] =
+		tableColumn{
+			header:     "Last",
+			width:      6,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return formatDuration(r.last)
+			},
+		}
+
+	table.columns[successRateColumn] =
+		tableColumn{
+			header:     "Success Rate",
+			width:      12,
+			key:        false,
+			display:    true,
+			flexible:   false,
+			rightAlign: true,
+			value: func(r tableRow) string {
+				return fmt.Sprintf("%.2f%%", 100.0*float32(r.successes)/float32(r.successes+r.failures))
+			},
+		}
+
+	return &table
+}
+
+const (
+	headerHeight  = 3
+	columnSpacing = 2
 )
 
 func newTopOptions() *topOptions {
@@ -80,11 +263,14 @@ func newTopOptions() *topOptions {
 		authority:   "",
 		path:        "",
 		hideSources: false,
+		routes:      false,
 	}
 }
 
 func newCmdTop() *cobra.Command {
 	options := newTopOptions()
+
+	table := newTopTable()
 
 	cmd := &cobra.Command{
 		Use:   "top [flags] (RESOURCE)",
@@ -98,15 +284,17 @@ func newCmdTop() *cobra.Command {
   * deploy
   * deploy/my-deploy
   * deploy my-deploy
+  * ds/my-daemonset
   * ns/my-ns
 
   Valid resource types include:
-
+  * daemonsets
   * deployments
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported as a "--to" resource)`,
+  * services (only supported as a --to resource)
+  * jobs (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
   linkerd top deploy/web
 
@@ -127,12 +315,26 @@ func newCmdTop() *cobra.Command {
 				Path:        options.path,
 			}
 
+			if options.hideSources {
+				table.columns[sourceColumn].key = false
+				table.columns[sourceColumn].display = false
+			}
+
+			if options.routes {
+				table.columns[methodColumn].key = false
+				table.columns[methodColumn].display = false
+				table.columns[pathColumn].key = false
+				table.columns[pathColumn].display = false
+				table.columns[routeColumn].key = true
+				table.columns[routeColumn].display = true
+			}
+
 			req, err := util.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, validatedPublicAPIClient(time.Time{}), req, options)
+			return getTrafficByResourceFromAPI(os.Stdout, cliPublicAPIClient(), req, table)
 		},
 	}
 
@@ -153,11 +355,12 @@ func newCmdTop() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().BoolVar(&options.hideSources, "hide-sources", options.hideSources, "Hide the source column")
+	cmd.PersistentFlags().BoolVar(&options.routes, "routes", options.routes, "Display data per route instead of per path")
 
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, options *topOptions) error {
+func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
@@ -175,7 +378,7 @@ func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapBy
 	go recvEvents(rsp, requestCh, done)
 	go pollInput(done)
 
-	renderTable(requestCh, done, !options.hideSources)
+	renderTable(table, requestCh, done)
 
 	return nil
 }
@@ -239,27 +442,31 @@ func pollInput(done chan<- struct{}) {
 	}
 }
 
-func renderTable(requestCh <-chan topRequest, done <-chan struct{}, withSource bool) {
+func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}) {
 	ticker := time.NewTicker(100 * time.Millisecond)
-	var table []tableRow
 
 	for {
 		select {
 		case <-done:
 			return
 		case req := <-requestCh:
-			tableInsert(&table, req, withSource)
+			table.insert(req)
 		case <-ticker.C:
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			renderHeaders(withSource)
-			renderTableBody(&table, withSource)
+			table.adjustColumnWidths()
+			table.renderHeaders()
+			table.renderBody()
 			termbox.Flush()
 		}
 	}
 }
 
-func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
-	by := req.reqInit.GetPath()
+func newRow(req topRequest) (tableRow, error) {
+	path := req.reqInit.GetPath()
+	route := req.event.GetRouteMeta().GetLabels()["route"]
+	if route == "" {
+		route = public.DefaultRouteName
+	}
 	method := req.reqInit.GetMethod().GetRegistered().String()
 	source := stripPort(addr.PublicAddressToString(req.event.GetSource()))
 	if pod := req.event.SourceMeta.Labels["pod"]; pod != "" {
@@ -272,9 +479,10 @@ func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 
 	latency, err := ptypes.Duration(req.rspEnd.GetSinceRequestInit())
 	if err != nil {
-		log.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
-		return
+		return tableRow{}, fmt.Errorf("error parsing duration %v: %s", req.rspEnd.GetSinceRequestInit(), err)
 	}
+	// TODO: Once tap events have a classification field, we should use that field
+	// instead of determining success here.
 	success := req.rspInit.GetHttpStatus() < 500
 	if success {
 		switch eos := req.rspEnd.GetEos().GetEnd().(type) {
@@ -286,47 +494,57 @@ func tableInsert(table *[]tableRow, req topRequest, withSource bool) {
 		}
 	}
 
-	found := false
-	for i, row := range *table {
-		if row.by == by && row.method == method && row.destination == destination && (row.source == source || !withSource) {
-			(*table)[i].count++
-			if latency.Nanoseconds() < row.best.Nanoseconds() {
-				(*table)[i].best = latency
-			}
-			if latency.Nanoseconds() > row.worst.Nanoseconds() {
-				(*table)[i].worst = latency
-			}
-			(*table)[i].last = latency
-			if success {
-				(*table)[i].successes++
-			} else {
-				(*table)[i].failures++
-			}
-			found = true
-		}
+	successes := 0
+	failures := 0
+	if success {
+		successes = 1
+	} else {
+		failures = 1
 	}
 
+	return tableRow{
+		path:        path,
+		method:      method,
+		route:       route,
+		source:      source,
+		destination: destination,
+		best:        latency,
+		worst:       latency,
+		last:        latency,
+		count:       1,
+		successes:   successes,
+		failures:    failures,
+	}, nil
+}
+
+func (t *topTable) insert(req topRequest) {
+	insert, err := newRow(req)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	found := false
+	// Search for a matching row
+	for i, row := range t.rows {
+		match := true
+		// If the rows have equal values in all of the key columns, merge them.
+		for _, col := range t.columns {
+			if col.key {
+				if col.value(row) != col.value(insert) {
+					match = false
+					break
+				}
+			}
+		}
+		if match {
+			found = true
+			t.rows[i] = t.rows[i].merge(insert)
+			break
+		}
+	}
 	if !found {
-		successes := 0
-		failures := 0
-		if success {
-			successes++
-		} else {
-			failures++
-		}
-		row := tableRow{
-			by:          by,
-			method:      method,
-			source:      source,
-			destination: destination,
-			count:       1,
-			best:        latency,
-			worst:       latency,
-			last:        latency,
-			successes:   successes,
-			failures:    failures,
-		}
-		*table = append(*table, row)
+		t.rows = append(t.rows, insert)
 	}
 }
 
@@ -334,17 +552,19 @@ func stripPort(address string) string {
 	return strings.Split(address, ":")[0]
 }
 
-func renderHeaders(withSource bool) {
+func (t *topTable) renderHeaders() {
 	tbprint(0, 0, "(press q to quit)")
 	x := 0
-	for i, header := range columnNames {
-		if i == 0 && !withSource {
+	for _, col := range t.columns {
+		if !col.display {
 			continue
 		}
-		width := columnWidths[i]
-		padded := fmt.Sprintf("%-"+strconv.Itoa(width)+"s ", header)
-		tbprintBold(x, 2, padded)
-		x += width + 1
+		padding := 0
+		if col.rightAlign {
+			padding = col.width - runewidth.StringWidth(col.header)
+		}
+		tbprintBold(x+padding, headerHeight-1, col.header)
+		x += col.width + columnSpacing
 	}
 }
 
@@ -355,39 +575,41 @@ func max(i, j int) int {
 	return j
 }
 
-func renderTableBody(table *[]tableRow, withSource bool) {
-	sort.SliceStable(*table, func(i, j int) bool {
-		return (*table)[i].count > (*table)[j].count
-	})
-	adjustedColumnWidths := columnWidths
-	for _, row := range *table {
-		adjustedColumnWidths[0] = max(adjustedColumnWidths[0], runewidth.StringWidth(row.source))
-		adjustedColumnWidths[1] = max(adjustedColumnWidths[1], runewidth.StringWidth(row.destination))
-		adjustedColumnWidths[3] = max(adjustedColumnWidths[3], runewidth.StringWidth(row.by))
-
-	}
-	for i, row := range *table {
-		x := 0
-		if withSource {
-			tbprint(x, i+headerHeight, row.source)
-			x += adjustedColumnWidths[0] + 1
+func (t *topTable) adjustColumnWidths() {
+	for i, col := range t.columns {
+		if !col.flexible {
+			continue
 		}
-		tbprint(x, i+headerHeight, row.destination)
-		x += adjustedColumnWidths[1] + 1
-		tbprint(x, i+headerHeight, row.method)
-		x += adjustedColumnWidths[2] + 1
-		tbprint(x, i+headerHeight, row.by)
-		x += adjustedColumnWidths[3] + 1
-		tbprint(x, i+headerHeight, strconv.Itoa(row.count))
-		x += adjustedColumnWidths[4] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.best))
-		x += adjustedColumnWidths[5] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.worst))
-		x += adjustedColumnWidths[6] + 1
-		tbprint(x, i+headerHeight, formatDuration(row.last))
-		x += adjustedColumnWidths[7] + 1
-		successRate := fmt.Sprintf("%.2f%%", 100.0*float32(row.successes)/float32(row.successes+row.failures))
-		tbprint(x, i+headerHeight, successRate)
+		t.columns[i].width = runewidth.StringWidth(col.header)
+		for _, row := range t.rows {
+			cellWidth := runewidth.StringWidth(col.value(row))
+			if cellWidth > t.columns[i].width {
+				t.columns[i].width = cellWidth
+			}
+		}
+	}
+}
+
+func (t *topTable) renderBody() {
+	sort.SliceStable(t.rows, func(i, j int) bool {
+		return t.rows[i].count > t.rows[j].count
+	})
+
+	for i, row := range t.rows {
+		x := 0
+
+		for _, col := range t.columns {
+			if !col.display {
+				continue
+			}
+			value := col.value(row)
+			padding := 0
+			if col.rightAlign {
+				padding = col.width - runewidth.StringWidth(value)
+			}
+			tbprint(x+padding, i+headerHeight, value)
+			x += col.width + columnSpacing
+		}
 	}
 }
 

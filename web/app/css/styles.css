@@ -3,27 +3,8 @@
 @import url("https://fonts.googleapis.com/css?family=Montserrat:400,700|Roboto:100,300,400");
 
 :root {
-  --white: #fff;
-  --header-black: #1e2322;
-  --sider-black: #343838;
-  --royalblue: #2F80ED;
   --linkblue: #2196f3;
-  --darkblue: #071E3C;
-  --curiousblue: #2D9CDB;
-  --pictonblue: #56CCF2;
-  --warmgrey: #f6f6f6;
-  --coldgrey: #c9c9c9;
-  --neutralgrey: #828282;
-  --graphgrey: #E0E0E0;
-  --silver: #BDBDBD;
-  --green: #26E99D;
-  --red: #FF4D2B;
-  --orange: #ffae4b;
-  --latency-p99: var(--royalblue);
-  --latency-p95: var(--curiousblue);
-  --latency-p50: var(--pictonblue);
   --font-stack: 'Roboto', 'Lato', helvetica, arial, sans-serif;
-  --base-width: 8px;
 }
 
 body {
@@ -36,58 +17,11 @@ body {
 a {
   text-decoration: none;
   color: var(--linkblue);
-
-  &:focus, &:hover, &:visited, &:link, &:active {
-    text-decoration: none;
-  }
 }
-
-.metric-table {
-  & .metric-table-sr {
-    padding-right: 6px;
-  }
-}
-
-/* Colored dot for indicating statuses */
-div.status-table-dot {
-  width: calc(2 * var(--base-width));
-  height: calc(2 * var(--base-width));
-  min-width: calc(2 * var(--base-width));
-  border-radius: 50%;
-}
-
-div.success-rate-dot {
-  width: calc(1 * var(--base-width));
-  height: calc(1 * var(--base-width));
-  min-width: calc(1 * var(--base-width));
-  border-radius: 50%;
-}
-
-.status-dot {
-  &.status-dot-good {
-    background-color: var(--green);
-  }
-  &.status-dot-poor {
-    background-color: var(--red);
-  }
-  &.status-dot-neutral {
-    background-color: var(--orange);
-  }
-  &.status-dot-default {
-    background-color: #E0E0E0;
-  }
+a:focus, a:hover, a:visited, a:link, a:active {
+  text-decoration: none;
 }
 
 .breadcrumb-link a {
   color: white;
-}
-
-.version {
-  max-width: 250px;
-  padding: 24px;
-  font-size: 12px;
-
-  & .new-version-text {
-    margin-bottom: 12px;
-  }
 }

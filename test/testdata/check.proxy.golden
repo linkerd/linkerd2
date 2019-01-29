@@ -1,18 +1,41 @@
-kubernetes-api: can initialize the client..................................[ok]
-kubernetes-api: can query the Kubernetes API...............................[ok]
-kubernetes-api: is running the minimum Kubernetes API version..............[ok]
-linkerd-api: control plane namespace exists................................[ok]
-linkerd-api: control plane pods are ready..................................[ok]
-linkerd-api: can initialize the client.....................................[ok]
-linkerd-api: can query the control plane API...............................[ok]
-linkerd-api[kubernetes]: control plane can talk to Kubernetes..............[ok]
-linkerd-api[prometheus]: control plane can talk to Prometheus..............[ok]
-linkerd-api: no invalid service profiles...................................[ok]
-linkerd-data-plane: data plane namespace exists............................[ok]
-linkerd-data-plane: data plane proxies are ready...........................[ok]
-linkerd-data-plane: data plane proxy metrics are present in Prometheus.....[ok]
-linkerd-version: can determine the latest version..........................[ok]
-linkerd-version: cli is up-to-date.........................................[ok]
-linkerd-version: data plane is up-to-date..................................[ok]
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
 
-Status check results are [ok]
+kubernetes-version
+------------------
+√ is running the minimum Kubernetes API version
+
+linkerd-existence
+-----------------
+√ control plane namespace exists
+√ controller pod is running
+√ can initialize the client
+√ can query the control plane API
+
+linkerd-api
+-----------
+√ control plane pods are ready
+√ can query the control plane API
+√ [kubernetes] control plane can talk to Kubernetes
+√ [prometheus] control plane can talk to Prometheus
+
+linkerd-service-profile
+-----------------------
+√ no invalid service profiles
+
+linkerd-version
+---------------
+√ can determine the latest version
+√ cli is up-to-date
+
+linkerd-data-plane
+------------------
+√ data plane namespace exists
+√ data plane proxies are ready
+√ data plane proxy metrics are present in Prometheus
+√ data plane is up-to-date
+√ data plane and cli versions match
+
+Status check results are √

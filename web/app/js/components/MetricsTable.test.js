@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import { routerWrap } from '../../test/testHelpers.jsx';
@@ -10,7 +10,7 @@ describe('Tests for <MetricsTable>', () => {
   };
 
   it('renders the table with all columns', () => {
-    let extraProps = _.merge({}, defaultProps, {
+    let extraProps = _merge({}, defaultProps, {
       metrics: [{
         name: 'web',
         namespace: 'default',
@@ -29,7 +29,7 @@ describe('Tests for <MetricsTable>', () => {
   });
 
   it('omits the namespace column for the namespace resource', () => {
-    let extraProps = _.merge({}, defaultProps, { metrics: [], resource: "namespace"});
+    let extraProps = _merge({}, defaultProps, { metrics: [], resource: "namespace"});
     const component = mount(routerWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
@@ -39,7 +39,7 @@ describe('Tests for <MetricsTable>', () => {
   });
 
   it('omits the namespace column when showNamespaceColumn is false', () => {
-    let extraProps = _.merge({}, defaultProps, {
+    let extraProps = _merge({}, defaultProps, {
       metrics: [],
       resource: "deployment",
       showNamespaceColumn: false
@@ -52,13 +52,13 @@ describe('Tests for <MetricsTable>', () => {
     expect(table.props().tableColumns).toHaveLength(9);
   });
 
-  it('omits meshed column and grafana column for authority resource', () => {
-    let extraProps = _.merge({}, defaultProps, { metrics: [], resource: "authority"});
+  it('omits meshed column for an authority resource', () => {
+    let extraProps = _merge({}, defaultProps, { metrics: [], resource: "authority"});
     const component = mount(routerWrap(MetricsTable, extraProps));
 
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(8);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 });

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -20,19 +21,25 @@ const (
 
 	// showURL displays dashboard URLs without opening a browser.
 	showURL = "url"
+
+	// webDeployment is the name of the web deployment in cli/install/template.go
+	webDeployment = "linkerd-web"
+
+	// webPort is the http port from the web pod spec in cli/install/template.go
+	webPort = 8084
 )
 
 type dashboardOptions struct {
-	dashboardProxyPort int
-	dashboardShow      string
-	wait               time.Duration
+	port int
+	show string
+	wait time.Duration
 }
 
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
-		dashboardProxyPort: 0,
-		dashboardShow:      showLinkerd,
-		wait:               300 * time.Second,
+		port: 0,
+		show: showLinkerd,
+		wait: 300 * time.Second,
 	}
 }
 
@@ -43,75 +50,89 @@ func newCmdDashboard() *cobra.Command {
 		Use:   "dashboard [flags]",
 		Short: "Open the Linkerd dashboard in a web browser",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if options.dashboardProxyPort < 0 {
-				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.dashboardProxyPort)
+			if options.port < 0 {
+				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.port)
 			}
 
-			if options.dashboardShow != showLinkerd && options.dashboardShow != showGrafana && options.dashboardShow != showURL {
+			if options.show != showLinkerd && options.show != showGrafana && options.show != showURL {
 				return fmt.Errorf("unknown value for 'show' param, was: %s, must be one of: %s, %s, %s",
-					options.dashboardShow, showLinkerd, showGrafana, showURL)
-			}
-
-			kubernetesProxy, err := k8s.NewProxy(kubeconfigPath, kubeContext, options.dashboardProxyPort)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to initialize proxy: %s\n", err)
-				os.Exit(1)
-			}
-
-			url, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/web:http/proxy/")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to generate URL for dashboard: %s\n", err)
-				os.Exit(1)
-			}
-
-			grafanaUrl, err := kubernetesProxy.URLFor(controlPlaneNamespace, "/services/grafana:http/proxy/")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to generate URL for Grafana: %s\n", err)
-				os.Exit(1)
+					options.show, showLinkerd, showGrafana, showURL)
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			validatedPublicAPIClient(time.Now().Add(options.wait))
+			validatedPublicAPIClient(time.Now().Add(options.wait), true)
 
-			fmt.Printf("Linkerd dashboard available at:\n%s\n", url.String())
-			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaUrl.String())
+			wait := make(chan struct{}, 1)
+			signals := make(chan os.Signal, 1)
+			signal.Notify(signals, os.Interrupt)
+			defer signal.Stop(signals)
 
-			switch options.dashboardShow {
+			portforward, err := k8s.NewPortForward(
+				kubeconfigPath,
+				kubeContext,
+				controlPlaneNamespace,
+				webDeployment,
+				options.port,
+				webPort,
+				verbose,
+			)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to initialize port-forward: %s\n", err)
+				os.Exit(1)
+			}
+
+			go func() {
+				err := portforward.Run()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+					os.Exit(1)
+				}
+				close(wait)
+			}()
+
+			go func() {
+				<-signals
+				portforward.Stop()
+			}()
+
+			<-portforward.Ready()
+
+			webURL := portforward.URLFor("")
+			grafanaURL := portforward.URLFor("/grafana")
+
+			fmt.Printf("Linkerd dashboard available at:\n%s\n", webURL)
+			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL)
+
+			switch options.show {
 			case showLinkerd:
 				fmt.Println("Opening Linkerd dashboard in the default browser")
 
-				err = browser.OpenURL(url.String())
+				err = browser.OpenURL(webURL)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to open Linkerd URL %s in the default browser: %s", url, err)
-					os.Exit(1)
+					fmt.Fprintln(os.Stderr, "Failed to open Linkerd dashboard automatically")
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", webURL)
 				}
 			case showGrafana:
 				fmt.Println("Opening Grafana dashboard in the default browser")
 
-				err = browser.OpenURL(grafanaUrl.String())
+				err = browser.OpenURL(grafanaURL)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to open Grafana URL %s in the default browser: %s", grafanaUrl, err)
-					os.Exit(1)
+					fmt.Fprintln(os.Stderr, "Failed to open Grafana dashboard automatically")
+					fmt.Fprintf(os.Stderr, "Visit %s in your browser to view the dashboard\n", grafanaURL)
 				}
 			case showURL:
 				// no-op, we already printed the URLs
 			}
 
-			// blocks until killed
-			err = kubernetesProxy.Run()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error running proxy: %s", err)
-				os.Exit(1)
-			}
-
+			<-wait
 			return nil
 		},
 	}
 
 	cmd.Args = cobra.NoArgs
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
-	cmd.PersistentFlags().IntVarP(&options.dashboardProxyPort, "port", "p", options.dashboardProxyPort, "The port on which to run the proxy (when set to 0, a random port will be used)")
-	cmd.PersistentFlags().StringVar(&options.dashboardShow, "show", options.dashboardShow, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
+	cmd.PersistentFlags().IntVarP(&options.port, "port", "p", options.port, "The local port on which to serve requests (when set to 0, a random port will be used)")
+	cmd.PersistentFlags().StringVar(&options.show, "show", options.show, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Wait for dashboard to become available if it's not available when the command is run")
 
 	return cmd

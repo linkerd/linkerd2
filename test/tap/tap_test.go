@@ -85,16 +85,14 @@ func TestCliTap(t *testing.T) {
 	}
 
 	// wait for deployments to start
-	err = TestHelper.RetryFor(30*time.Second, func() error {
-		for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
-			if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {
-				return fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err)
-			}
+	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
+		if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+			t.Error(err)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Error(err)
+
+		if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {
+			t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err))
+		}
 	}
 
 	t.Run("tap a deployment", func(t *testing.T) {
@@ -184,13 +182,13 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 		return nil, err
 	}
 
-	tapEventById := make(map[string]*tapEvent)
+	tapEventByID := make(map[string]*tapEvent)
 	for _, line := range outputLines {
 		fields := toFieldMap(line)
-		obj, ok := tapEventById[fields["id"]]
+		obj, ok := tapEventByID[fields["id"]]
 		if !ok {
 			obj = &tapEvent{}
-			tapEventById[fields["id"]] = obj
+			tapEventByID[fields["id"]] = obj
 		}
 		obj.lineCount++
 
@@ -207,7 +205,7 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 	}
 
 	output := make([]*tapEvent, 0)
-	for _, obj := range tapEventById {
+	for _, obj := range tapEventByID {
 		if obj.lineCount == 3 { // filter out incomplete events
 			output = append(output, obj)
 		}

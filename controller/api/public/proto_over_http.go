@@ -17,7 +17,7 @@ import (
 
 const (
 	errorHeader                = "linkerd-error"
-	defaultHttpErrorStatusCode = http.StatusInternalServerError
+	defaultHTTPErrorStatusCode = http.StatusInternalServerError
 	contentTypeHeader          = "Content-Type"
 	protobufContentType        = "application/octet-stream"
 	numBytesForMessageLength   = 4
@@ -57,8 +57,8 @@ func httpRequestToProto(req *http.Request, protoRequestOut proto.Message) error 
 	return nil
 }
 
-func writeErrorToHttpResponse(w http.ResponseWriter, errorObtained error) {
-	statusCode := defaultHttpErrorStatusCode
+func writeErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
+	statusCode := defaultHTTPErrorStatusCode
 	errorToReturn := errorObtained
 
 	if httpErr, ok := errorObtained.(httpError); ok {
@@ -75,14 +75,14 @@ func writeErrorToHttpResponse(w http.ResponseWriter, errorObtained error) {
 
 	errorAsProto := &pb.ApiError{Error: errorMessageToReturn}
 
-	err := writeProtoToHttpResponse(w, errorAsProto)
+	err := writeProtoToHTTPResponse(w, errorAsProto)
 	if err != nil {
 		log.Errorf("Error writing error to http response: %v", err)
 		w.Header().Set(errorHeader, err.Error())
 	}
 }
 
-func writeProtoToHttpResponse(w http.ResponseWriter, msg proto.Message) error {
+func writeProtoToHTTPResponse(w http.ResponseWriter, msg proto.Message) error {
 	w.Header().Set(contentTypeHeader, protobufContentType)
 	marshalledProtobufMessage, err := proto.Marshal(msg)
 	if err != nil {

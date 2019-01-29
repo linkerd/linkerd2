@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -34,10 +33,10 @@ var (
 	}
 
 	linkerdPods = map[string]int{
-		"grafana":    1,
-		"web":        1,
-		"prometheus": 1,
-		"controller": 1,
+		"linkerd-grafana":    1,
+		"linkerd-web":        1,
+		"linkerd-prometheus": 1,
+		"linkerd-controller": 1,
 	}
 )
 
@@ -68,16 +67,10 @@ func TestCliGet(t *testing.T) {
 	}
 
 	// wait for pods to start
-	err = TestHelper.RetryFor(30*time.Second, func() error {
-		for deploy, replicas := range deployReplicas {
-			if err := TestHelper.CheckPods(prefixedNs, deploy, replicas); err != nil {
-				return fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err)
-			}
+	for deploy, replicas := range deployReplicas {
+		if err := TestHelper.CheckPods(prefixedNs, deploy, replicas); err != nil {
+			t.Error(fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
 		}
-		return nil
-	})
-	if err != nil {
-		t.Error(err)
 	}
 
 	t.Run("get pods from --all-namespaces", func(t *testing.T) {

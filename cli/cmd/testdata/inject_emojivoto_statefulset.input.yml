@@ -10,7 +10,7 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
+  serviceName: ""
   template:
     metadata:
       creationTimestamp: null
@@ -33,4 +33,6 @@ spec:
         - containerPort: 80
           name: http
         resources: {}
-status: {}
+  updateStrategy: {}
+status:
+  replicas: 0

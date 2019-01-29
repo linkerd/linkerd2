@@ -18,6 +18,7 @@ func toRuntimeObject(config string) (runtime.Object, error) {
 	return obj, err
 }
 
+// NewFakeAPI provides a mock Kubernetes API for testing.
 func NewFakeAPI(namespace string, configs ...string) (*API, error) {
 	objs := []runtime.Object{}
 	spObjs := []runtime.Object{}
@@ -41,6 +42,7 @@ func NewFakeAPI(namespace string, configs ...string) (*API, error) {
 		namespace,
 		CM,
 		Deploy,
+		DS,
 		Endpoint,
 		Pod,
 		RC,

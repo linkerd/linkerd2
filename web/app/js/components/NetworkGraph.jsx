@@ -1,13 +1,32 @@
 import 'whatwg-fetch';
-
-import * as d3 from 'd3';
-
+import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
+import { select, selectAll } from 'd3-selection';
 import PropTypes from 'prop-types';
 import React from 'react';
-import _ from 'lodash';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _map from 'lodash/map';
+import _uniq from 'lodash/uniq';
+import { drag } from 'd3-drag';
+import { format } from 'd3-format';
 import { metricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
+
+// create a Object with only the subset of functions/submodules/plugins that we need
+const d3 = Object.assign(
+  {},
+  {
+    drag,
+    forceCenter,
+    forceLink,
+    forceManyBody,
+    forceSimulation,
+    select,
+    selectAll,
+    format,
+  }
+);
 
 const defaultSvgWidth = 524;
 const defaultSvgHeight = 325;
@@ -34,6 +53,9 @@ export class NetworkGraphBase extends React.Component {
 
   constructor(props) {
     super(props);
+
+    // https://github.com/d3/d3-zoom/issues/32
+    d3.getEvent = (() => require("d3-selection").event).bind(this);
   }
 
   componentDidMount() {
@@ -59,10 +81,10 @@ export class NetworkGraphBase extends React.Component {
     let links = [];
     let nodeList = [];
 
-    _.map(data, (resp, i) => {
-      let rows = _.get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
+    _map(data, (resp, i) => {
+      let rows = _get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
       let dst = this.props.deployments[i].name;
-      _.map(rows, row => {
+      _map(rows, row => {
         links.push({
           source: row.resource.name,
           target: dst,
@@ -72,7 +94,7 @@ export class NetworkGraphBase extends React.Component {
       });
     });
 
-    let nodes = _.map(_.uniq(nodeList), n => ({ id: n }));
+    let nodes = _map(_uniq(nodeList), n => ({ id: n }));
     return {
       links,
       nodes
@@ -90,7 +112,7 @@ export class NetworkGraphBase extends React.Component {
   }
 
   drawGraphComponents(links, nodes) {
-    if (_.isEmpty(nodes)) {
+    if (_isEmpty(nodes)) {
       d3.select(".network-graph-container").select("svg").attr("height", 0);
       return;
     } else {
@@ -161,7 +183,7 @@ export class NetworkGraphBase extends React.Component {
   }
 
   dragstarted = d => {
-    if (!d3.event.active) {
+    if (!d3.getEvent().active) {
       simulation.alphaTarget(0.3).restart();
     }
     d.fx = d.x;
@@ -169,12 +191,12 @@ export class NetworkGraphBase extends React.Component {
   }
 
   dragged = d => {
-    d.fx = d3.event.x;
-    d.fy = d3.event.y;
+    d.fx = d3.getEvent().x;
+    d.fy = d3.getEvent().y;
   }
 
   dragended = d => {
-    if (!d3.event.active) {
+    if (!d3.getEvent().active) {
       simulation.alphaTarget(0);
     }
     d.fx = null;
@@ -193,7 +215,7 @@ export class NetworkGraphBase extends React.Component {
 export default withREST(
   withContext(NetworkGraphBase),
   ({api, namespace, deployments}) =>
-    _.map(deployments, d => {
+    _map(deployments, d => {
       return api.fetchMetrics(api.urlsForResource("deployment", namespace) + "&to_name=" + d.name);
     }),
   {

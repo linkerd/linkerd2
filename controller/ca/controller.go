@@ -18,6 +18,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+// CertificateController listens for added and updated meshed pods, and then
+// provides certificates in the form of secrets.
 type CertificateController struct {
 	namespace   string
 	k8sAPI      *k8s.API
@@ -32,6 +34,8 @@ type CertificateController struct {
 	queue workqueue.RateLimitingInterface
 }
 
+// NewCertificateController initializes a CertificateController and its
+// internal Certificate Authority.
 func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxyAutoInject bool) (*CertificateController, error) {
 	ca, err := NewCA()
 	if err != nil {
@@ -67,11 +71,10 @@ func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxy
 	return c, nil
 }
 
-func (c *CertificateController) Run(readyCh <-chan struct{}, stopCh <-chan struct{}) {
+// Run kicks off CertificateController queue processing.
+func (c *CertificateController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	defer c.queue.ShutDown()
-
-	<-readyCh
 
 	log.Info("starting certificate controller")
 	defer log.Info("shutting down certificate controller")

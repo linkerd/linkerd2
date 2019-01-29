@@ -19,11 +19,11 @@ import (
 
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	addr := flag.String("addr", ":443", "address to serve on")
+	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	volumeMountsWaitTime := flag.Duration("volume-mounts-wait", 3*time.Minute, "maximum wait time for the secret volumes to mount before the timeout expires")
-	webhookServiceName := flag.String("webhook-service", "proxy-injector.linkerd.io", "name of the admission webhook")
+	webhookServiceName := flag.String("webhook-service", "linkerd-proxy-injector.linkerd.io", "name of the admission webhook")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -80,7 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	go admin.StartServer(*metricsAddr, nil)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 	log.Info("shutting down webhook server")
@@ -101,7 +101,7 @@ func waitForMounts(timeout time.Duration, paths ...string) error {
 				return
 			}
 
-			ready += 1
+			ready++
 			log.Infof("mount ready: %s", file)
 			if ready == len(paths) {
 				break

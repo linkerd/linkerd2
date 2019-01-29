@@ -203,7 +203,8 @@ func makeByResourceMatch(match *public.TapByResourceRequest_Match) (*proxy.Obser
 func destinationLabels(resource *public.Resource) map[string]string {
 	dstLabels := map[string]string{}
 	if resource.Name != "" {
-		dstLabels[resource.Type] = resource.Name
+		l5dLabel := pkgK8s.KindToL5DLabel(resource.Type)
+		dstLabels[l5dLabel] = resource.Name
 	}
 	if resource.Type != pkgK8s.Namespace && resource.Namespace != "" {
 		dstLabels["namespace"] = resource.Namespace
@@ -425,14 +426,26 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
+	sourceLabels := orig.GetSourceMeta().GetLabels()
+	if sourceLabels == nil {
+		sourceLabels = make(map[string]string)
+	}
+	destinationLabels := orig.GetDestinationMeta().GetLabels()
+	if destinationLabels == nil {
+		destinationLabels = make(map[string]string)
+	}
+
 	ev := &public.TapEvent{
 		Source: tcp(orig.GetSource()),
 		SourceMeta: &public.TapEvent_EndpointMeta{
-			Labels: orig.GetSourceMeta().GetLabels(),
+			Labels: sourceLabels,
 		},
 		Destination: tcp(orig.GetDestination()),
 		DestinationMeta: &public.TapEvent_EndpointMeta{
-			Labels: orig.GetDestinationMeta().GetLabels(),
+			Labels: destinationLabels,
+		},
+		RouteMeta: &public.TapEvent_RouteMeta{
+			Labels: orig.GetRouteMeta().GetLabels(),
 		},
 		ProxyDirection: direction(orig.GetProxyDirection()),
 		Event:          event(orig.GetHttp()),
@@ -482,7 +495,7 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
 func (s *server) hydrateEventLabels(ev *public.TapEvent) {
-	err := s.hydrateIPLabels(ev.Source.Ip, ev.SourceMeta.Labels)
+	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
 	}
@@ -491,7 +504,7 @@ func (s *server) hydrateEventLabels(ev *public.TapEvent) {
 		// Events emitted by an inbound proxies don't have destination labels,
 		// since the inbound proxy _is_ the destination, and proxies don't know
 		// their own labels.
-		err = s.hydrateIPLabels(ev.Destination.Ip, ev.DestinationMeta.Labels)
+		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), ev.GetDestinationMeta().GetLabels())
 		if err != nil {
 			log.Warnf("error hydrating destination labels: %s", err)
 		}

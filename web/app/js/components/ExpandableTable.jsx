@@ -13,7 +13,6 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
-import _ from 'lodash';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -47,7 +46,7 @@ class ExpandableTable extends React.Component {
 
   render() {
     const { expandedRowRender, classes, tableRows, tableColumns, tableClassName } = this.props;
-    let columns = _.concat([{
+    let columns = [{
       title: " ",
       key: "expansion",
       render: d => {
@@ -55,15 +54,17 @@ class ExpandableTable extends React.Component {
           <IconButton onClick={this.handleDialogOpen(d)}><ExpandMoreIcon /></IconButton>
         );
       }
-    }], tableColumns);
+    }].concat(tableColumns);
 
     return (
       <Paper className={classes.root}>
-        <Table className={`${classes.table} ${tableClassName}`}>
+        <Table
+          className={`${classes.table} ${tableClassName}`}
+          padding="dense">
           <TableHead>
             <TableRow>
               {
-                _.map(columns, c => (
+                columns.map(c => (
                   <TableCell
                     key={c.key}
                     numeric={c.isNumeric}>{c.title}
@@ -74,7 +75,7 @@ class ExpandableTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            { _.map(tableRows, d => {
+            { tableRows.map(d => {
                 return (
                   <React.Fragment key={"frag-" + d.key}>
                     <TableRow
@@ -84,7 +85,7 @@ class ExpandableTable extends React.Component {
                         this.container = ref;
                       }}>
                       {
-                        _.map(columns, c => (
+                        columns.map(c => (
                           <TableCell
                             key={`table-${d.key}-${c.key}`}
                             numeric={c.isNumeric}>

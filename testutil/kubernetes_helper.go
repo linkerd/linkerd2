@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	coreV1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
 	// Loads the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
@@ -20,10 +22,11 @@ import (
 // Kubernetes API using the environment's configured kubeconfig file.
 type KubernetesHelper struct {
 	clientset *kubernetes.Clientset
+	retryFor  func(time.Duration, func() error) error
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
-func NewKubernetesHelper() (*KubernetesHelper, error) {
+func NewKubernetesHelper(retryFor func(time.Duration, func() error) error) (*KubernetesHelper, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	overrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
@@ -39,6 +42,7 @@ func NewKubernetesHelper() (*KubernetesHelper, error) {
 
 	return &KubernetesHelper{
 		clientset: clientset,
+		retryFor:  retryFor,
 	}, nil
 }
 
@@ -101,68 +105,68 @@ func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, err
 // CheckDeployment checks that a deployment in a namespace contains the expected
 // number of replicas.
 func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName string, replicas int) error {
-	deploys, err := h.getDeployments(namespace)
-	if err != nil {
-		return err
-	}
+	return h.retryFor(30*time.Second, func() error {
+		deploys, err := h.getDeployments(namespace)
+		if err != nil {
+			return err
+		}
 
-	count, ok := deploys[deploymentName]
-	if !ok {
-		return fmt.Errorf("Deployment [%s] in namespace [%s] not found",
-			deploymentName, namespace)
-	}
+		count, ok := deploys[deploymentName]
+		if !ok {
+			return fmt.Errorf("Deployment [%s] in namespace [%s] not found",
+				deploymentName, namespace)
+		}
 
-	if count != replicas {
-		return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] replicas, but found [%d]",
-			deploymentName, namespace, replicas, count)
-	}
+		if count != replicas {
+			return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] replicas, but found [%d]",
+				deploymentName, namespace, replicas, count)
+		}
 
-	return nil
-}
-
-// getPods gets all pods with their pod status in the specified namespace.
-func (h *KubernetesHelper) getPods(namespace string) (map[string]coreV1.PodPhase, error) {
-	pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	podData := make(map[string]coreV1.PodPhase)
-	for _, pod := range pods.Items {
-		podData[pod.GetName()] = pod.Status.Phase
-	}
-	return podData, nil
+		return nil
+	})
 }
 
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
-	podData, err := h.getPods(namespace)
-	if err != nil {
-		return err
-	}
+	return h.retryFor(3*time.Minute, func() error {
+		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
 
-	var runningPods []string
-	for name, status := range podData {
-		if strings.Contains(name, deploymentName) {
-			if status == "Running" {
-				runningPods = append(runningPods, name)
+		var deploymentReplicas int
+		for _, pod := range pods.Items {
+			if strings.HasPrefix(pod.Name, deploymentName) {
+				deploymentReplicas++
+				if pod.Status.Phase != "Running" {
+					return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
+						pod.Name, pod.Namespace)
+				}
+				for _, container := range pod.Status.ContainerStatuses {
+					if !container.Ready {
+						return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] is not running",
+							container.Name, pod.Name, pod.Namespace)
+					}
+				}
 			}
 		}
-	}
 
-	if len(runningPods) != replicas {
-		return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] running pods, but found [%d]",
-			deploymentName, namespace, replicas, len(runningPods))
-	}
+		if deploymentReplicas != replicas {
+			return fmt.Errorf("Expected deployment [%s] in namespace [%s] to have [%d] running pods, but found [%d]",
+				deploymentName, namespace, replicas, deploymentReplicas)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // CheckService checks that a service exists in a namespace.
 func (h *KubernetesHelper) CheckService(namespace string, serviceName string) error {
-	_, err := h.clientset.CoreV1().Services(namespace).Get(serviceName, metav1.GetOptions{})
-	return err
+	return h.retryFor(10*time.Second, func() error {
+		_, err := h.clientset.CoreV1().Services(namespace).Get(serviceName, metav1.GetOptions{})
+		return err
+	})
 }
 
 // GetPodsForDeployment returns all pods for the given deployment
@@ -199,21 +203,17 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 	return matches[0][1], matches[0][2], nil
 }
 
-// ProxyURLFor creates a kubernetes proxy, runs it, and returns the URL that
-// tests can use for access to the given service. Note that the proxy remains
-// running for the duration of the test.
-func (h *KubernetesHelper) ProxyURLFor(namespace, service, port string) (string, error) {
-	proxy, err := k8s.NewProxy("", "", 0)
+// URLFor creates a kubernetes port-forward, runs it, and returns the URL that
+// tests can use for access to the given deployment. Note that the port-forward
+// remains running for the duration of the test.
+func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) (string, error) {
+	pf, err := k8s.NewPortForward("", "", namespace, deployName, 0, remotePort, false)
 	if err != nil {
 		return "", err
 	}
 
-	url, err := proxy.URLFor(namespace, fmt.Sprintf("/services/%s:%s/proxy/", service, port))
-	if err != nil {
-		return "", err
-	}
+	go pf.Run()
+	<-pf.Ready()
 
-	go proxy.Run()
-
-	return url.String(), nil
+	return pf.URLFor(""), nil
 }

@@ -2,28 +2,17 @@ package public
 
 import (
 	"context"
-	"fmt"
-	"math"
-	"time"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
-	log "github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-type promType string
-type promResult struct {
-	prom promType
-	vec  model.Vector
-	err  error
-}
 
 type resourceResult struct {
 	res *pb.StatTable
@@ -44,17 +33,7 @@ type rKey struct {
 const (
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
-
-	promRequests   = promType("QUERY_REQUESTS")
-	promLatencyP50 = promType("0.5")
-	promLatencyP95 = promType("0.95")
-	promLatencyP99 = promType("0.99")
-
-	namespaceLabel    = model.LabelName("namespace")
-	dstNamespaceLabel = model.LabelName("dst_namespace")
 )
-
-var promTypes = []promType{promRequests, promLatencyP50, promLatencyP95, promLatencyP99}
 
 type podStats struct {
 	inMesh uint64
@@ -71,7 +50,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// special case to check for services as outbound only
-	if isInvalidServiceRequest(req) {
+	if isInvalidServiceRequest(req.Selector, req.GetFromResource()) {
 		return statSummaryError(req, "service only supported as a target on 'from' queries, or as a destination on 'to' queries"), nil
 	}
 
@@ -130,6 +109,14 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	return &rsp, nil
 }
 
+func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
+	if fromResource != nil {
+		return fromResource.Type == k8s.Service
+	}
+
+	return selector.Resource.Type == k8s.Service
+}
+
 func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummaryResponse {
 	return &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Error{
@@ -181,9 +168,12 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		return resourceResult{res: nil, err: err}
 	}
 
-	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
+	var requestMetrics map[rKey]*pb.BasicStats
+	if !req.SkipStats {
+		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
 	}
 
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
@@ -226,9 +216,13 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 }
 
 func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	requestMetrics, err := s.getPrometheusMetrics(ctx, req, req.TimeWindow)
-	if err != nil {
-		return resourceResult{res: nil, err: err}
+	var requestMetrics map[rKey]*pb.BasicStats
+	if !req.SkipStats {
+		var err error
+		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
 	}
 	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
@@ -284,75 +278,6 @@ func getResultKeys(
 	return keys
 }
 
-// add filtering by resource type
-// note that metricToKey assumes the label ordering (namespace, name)
-func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{namespaceLabel}
-
-	if resource.Type != k8s.Namespace {
-		names = append(names, promResourceType(resource))
-	}
-	return names
-}
-
-// add filtering by resource type
-// note that metricToKey assumes the label ordering (namespace, name)
-func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
-	names := model.LabelNames{dstNamespaceLabel}
-
-	if isNonK8sResourceQuery(resource.GetType()) {
-		names = append(names, promResourceType(resource))
-	} else if resource.Type != k8s.Namespace {
-		names = append(names, "dst_"+promResourceType(resource))
-	}
-	return names
-}
-
-// query a named resource
-func promQueryLabels(resource *pb.Resource) model.LabelSet {
-	set := model.LabelSet{}
-	if resource.Name != "" {
-		set[promResourceType(resource)] = model.LabelValue(resource.Name)
-	}
-	if shouldAddNamespaceLabel(resource) {
-		set[namespaceLabel] = model.LabelValue(resource.Namespace)
-	}
-	return set
-}
-
-// query a named resource
-func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
-	set := model.LabelSet{}
-	if resource.Name != "" {
-		if isNonK8sResourceQuery(resource.GetType()) {
-			set[promResourceType(resource)] = model.LabelValue(resource.Name)
-		} else {
-			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
-			if shouldAddNamespaceLabel(resource) {
-				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
-			}
-		}
-	}
-
-	return set
-}
-
-// determine if we should add "namespace=<namespace>" to a named query
-func shouldAddNamespaceLabel(resource *pb.Resource) bool {
-	return resource.Type != k8s.Namespace && resource.Namespace != ""
-}
-
-// query for inbound or outbound requests
-func promDirectionLabels(direction string) model.LabelSet {
-	return model.LabelSet{
-		model.LabelName("direction"): model.LabelValue(direction),
-	}
-}
-
-func promResourceType(resource *pb.Resource) model.LabelName {
-	return model.LabelName(resource.Type)
-}
-
 func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
 	// labelNames: the group by in the prometheus query
 	// labels: the labels for the resource we want to query for
@@ -369,6 +294,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
 
 		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
@@ -381,48 +307,10 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 	return
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, error) {
+func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
-	resultChan := make(chan promResult)
+	results, err := s.getPrometheusMetrics(ctx, map[promType]string{promRequests: reqQuery}, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 
-	// kick off 4 asynchronous queries: 1 request volume + 3 latency
-	go func() {
-		// success/failure counts
-		requestsQuery := fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy)
-		resultVector, err := s.queryProm(ctx, requestsQuery)
-
-		resultChan <- promResult{
-			prom: promRequests,
-			vec:  resultVector,
-			err:  err,
-		}
-	}()
-
-	for _, quantile := range []promType{promLatencyP50, promLatencyP95, promLatencyP99} {
-		go func(quantile promType) {
-			latencyQuery := fmt.Sprintf(latencyQuantileQuery, quantile, reqLabels, timeWindow, groupBy)
-			latencyResult, err := s.queryProm(ctx, latencyQuery)
-
-			resultChan <- promResult{
-				prom: quantile,
-				vec:  latencyResult,
-				err:  err,
-			}
-		}(quantile)
-	}
-
-	// process results, receive one message per prometheus query type
-	var err error
-	results := []promResult{}
-	for i := 0; i < len(promTypes); i++ {
-		result := <-resultChan
-		if result.err != nil {
-			log.Errorf("queryProm failed with: %s", result.err)
-			err = result.err
-		} else {
-			results = append(results, result)
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -466,14 +354,6 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 	}
 
 	return basicStats
-}
-
-func extractSampleValue(sample *model.Sample) uint64 {
-	value := uint64(0)
-	if !math.IsNaN(float64(sample.Value)) {
-		value = uint64(math.Round(float64(sample.Value)))
-	}
-	return value
 }
 
 func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) rKey {
@@ -556,33 +436,4 @@ func checkContainerErrors(containerStatuses []apiv1.ContainerStatus, containerNa
 		}
 	}
 	return errors
-}
-
-func isInvalidServiceRequest(req *pb.StatSummaryRequest) bool {
-	fromResource := req.GetFromResource()
-	if fromResource != nil {
-		return fromResource.Type == k8s.Service
-	} else {
-		return req.Selector.Resource.Type == k8s.Service
-	}
-}
-
-func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
-	log.Debugf("Query request:\n\t%+v", query)
-
-	// single data point (aka summary) query
-	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
-	if err != nil {
-		log.Errorf("Query(%+v) failed with: %+v", query, err)
-		return nil, err
-	}
-	log.Debugf("Query response:\n\t%+v", res)
-
-	if res.Type() != model.ValVector {
-		err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
-		log.Error(err)
-		return nil, err
-	}
-
-	return res.(model.Vector), nil
 }

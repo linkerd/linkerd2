@@ -13,7 +13,7 @@ import (
 )
 
 func TestHandleApiVersion(t *testing.T) {
-	mockApiClient := &public.MockApiClient{
+	mockAPIClient := &public.MockAPIClient{
 		VersionInfoToReturn: &pb.VersionInfo{
 			GoVersion:      "the best one",
 			BuildDate:      "never",
@@ -24,12 +24,12 @@ func TestHandleApiVersion(t *testing.T) {
 
 	handler := &handler{
 		render:    server.RenderTemplate,
-		apiClient: mockApiClient,
+		apiClient: mockAPIClient,
 	}
 
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/version", nil)
-	handler.handleApiVersion(recorder, req, httprouter.Params{})
+	handler.handleAPIVersion(recorder, req, httprouter.Params{})
 
 	if recorder.Code != http.StatusOK {
 		t.Errorf("Incorrect StatusCode: %+v", recorder.Code)
@@ -45,11 +45,11 @@ func TestHandleApiVersion(t *testing.T) {
 	}
 
 	jsonResult := recorder.Body.String()
-	expectedVersionJson := "{\"version\":{\"goVersion\":\"the best one\",\"buildDate\":\"never\",\"releaseVersion\":\"0.3.3\"}}"
+	expectedVersionJSON := "{\"version\":{\"goVersion\":\"the best one\",\"buildDate\":\"never\",\"releaseVersion\":\"0.3.3\"}}"
 
-	if !strings.Contains(jsonResult, expectedVersionJson) {
+	if !strings.Contains(jsonResult, expectedVersionJSON) {
 		t.Errorf("incorrect api result")
 		t.Errorf("Got: %+v", jsonResult)
-		t.Errorf("Expected to find: %+v", expectedVersionJson)
+		t.Errorf("Expected to find: %+v", expectedVersionJSON)
 	}
 }

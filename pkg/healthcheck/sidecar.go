@@ -7,7 +7,7 @@ import (
 )
 
 // HasExistingSidecars returns true if the pod spec already has the proxy init
-// and sidecar cntainers injected. Otherwise, it returns false.
+// and sidecar containers injected. Otherwise, it returns false.
 func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
 	for _, container := range podSpec.Containers {
 		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||

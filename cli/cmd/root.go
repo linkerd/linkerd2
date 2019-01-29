@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -17,19 +19,25 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
-
-	lineWidth  = 80
-	okStatus   = "[ok]"
-	warnStatus = "[warn]"
+	lineWidth        = 80
 )
 
-var controlPlaneNamespace string
-var apiAddr string // An empty value means "use the Kubernetes configuration"
-var kubeconfigPath string
-var kubeContext string
-var verbose bool
-
 var (
+	// special handling for Windows, on all other platforms these resolve to
+	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
+	stdout = color.Output
+	stderr = color.Error
+
+	okStatus   = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A")  // √
+	warnStatus = color.New(color.FgYellow, color.Bold).SprintFunc()("\u203C") // ‼
+	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
+
+	controlPlaneNamespace string
+	apiAddr               string // An empty value means "use the Kubernetes configuration"
+	kubeconfigPath        string
+	kubeContext           string
+	verbose               bool
+
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
 	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
@@ -37,6 +45,7 @@ var (
 	alphaNumDashDotSlashColon = regexp.MustCompile("^[\\./a-zA-Z0-9-:]+$")
 )
 
+// RootCmd represents the root Cobra command
 var RootCmd = &cobra.Command{
 	Use:   "linkerd",
 	Short: "linkerd manages the Linkerd service mesh",
@@ -75,24 +84,39 @@ func init() {
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
+	RootCmd.AddCommand(newCmdInstallSP())
+	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdProfile())
+	RootCmd.AddCommand(newCmdRoutes())
 	RootCmd.AddCommand(newCmdStat())
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
+	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdVersion())
+}
+
+// cliPublicAPIClient builds a new public API client and executes default status
+// checks to determine if the client can successfully perform cli commands. If the
+// checks fail, then CLI will print an error and exit.
+func cliPublicAPIClient() pb.ApiClient {
+	return validatedPublicAPIClient(time.Time{}, false)
 }
 
 // validatedPublicAPIClient builds a new public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
-// checks fail, then CLI will print an error and exit. If the shouldRetry param
-// is specified, then the CLI will print a message to stderr and retry.
-func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
-	checks := []healthcheck.Checks{
+// checks fail, then CLI will print an error and exit. If the retryDeadline
+// param is specified, then the CLI will print a message to stderr and retry.
+func validatedPublicAPIClient(retryDeadline time.Time, apiChecks bool) pb.ApiClient {
+	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
 	}
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
+	if apiChecks {
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
+	}
+
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
@@ -106,12 +130,14 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 			return
 		}
 
-		if result.Err != nil {
+		if result.Err != nil && !result.Warning {
 			var msg string
 			switch result.Category {
-			case healthcheck.KubernetesAPICategory:
+			case healthcheck.KubernetesAPIChecks:
 				msg = "Cannot connect to Kubernetes"
-			case healthcheck.LinkerdAPICategory:
+			case healthcheck.LinkerdControlPlaneExistenceChecks:
+				msg = "Cannot find Linkerd"
+			case healthcheck.LinkerdAPIChecks:
 				msg = "Cannot connect to Linkerd"
 			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
@@ -130,26 +156,91 @@ func validatedPublicAPIClient(retryDeadline time.Time) pb.ApiClient {
 	return hc.PublicAPIClient()
 }
 
+type statOptionsBase struct {
+	namespace    string
+	timeWindow   string
+	outputFormat string
+}
+
+func newStatOptionsBase() *statOptionsBase {
+	return &statOptionsBase{
+		namespace:    "default",
+		timeWindow:   "1m",
+		outputFormat: "",
+	}
+}
+
+func (o *statOptionsBase) validateOutputFormat() error {
+	switch o.outputFormat {
+	case "table", "json", "":
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports table and json")
+	}
+}
+
+func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
+	var out string
+	switch options.outputFormat {
+	case "json":
+		out = string(buffer.Bytes())
+	default:
+		// strip left padding on the first column
+		out = string(buffer.Bytes()[padding:])
+		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+	}
+
+	return out
+}
+
+// getRequestRate calculates request rate from Public API BasicStats.
+func getRequestRate(success, failure uint64, timeWindow string) float64 {
+	windowLength, err := time.ParseDuration(timeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(success+failure) / windowLength.Seconds()
+}
+
+// getSuccessRate calculates success rate from Public API BasicStats.
+func getSuccessRate(success, failure uint64) float64 {
+	if success+failure == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(success+failure)
+}
+
+// getPercentTLS calculates the percent of traffic that is TLS, from Public API
+// BasicStats.
+func getPercentTLS(stats *pb.BasicStats) float64 {
+	reqTotal := stats.SuccessCount + stats.FailureCount
+	if reqTotal == 0 {
+		return 0.0
+	}
+	return float64(stats.TlsRequestCount) / float64(reqTotal)
+}
+
 type proxyConfigOptions struct {
-	linkerdVersion        string
-	proxyImage            string
-	initImage             string
-	dockerRegistry        string
-	imagePullPolicy       string
-	inboundPort           uint
-	outboundPort          uint
-	ignoreInboundPorts    []uint
-	ignoreOutboundPorts   []uint
-	proxyUID              int64
-	proxyLogLevel         string
-	proxyBindTimeout      string
-	proxyAPIPort          uint
-	proxyControlPort      uint
-	proxyMetricsPort      uint
-	proxyCpuRequest       string
-	proxyMemoryRequest    string
-	proxyOutboundCapacity map[string]uint
-	tls                   string
+	linkerdVersion          string
+	proxyImage              string
+	initImage               string
+	dockerRegistry          string
+	imagePullPolicy         string
+	inboundPort             uint
+	outboundPort            uint
+	ignoreInboundPorts      []uint
+	ignoreOutboundPorts     []uint
+	proxyUID                int64
+	proxyLogLevel           string
+	proxyAPIPort            uint
+	proxyControlPort        uint
+	proxyMetricsPort        uint
+	proxyCPURequest         string
+	proxyMemoryRequest      string
+	proxyOutboundCapacity   map[string]uint
+	tls                     string
+	disableExternalProfiles bool
 }
 
 const (
@@ -170,14 +261,14 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		ignoreOutboundPorts:   nil,
 		proxyUID:              2102,
 		proxyLogLevel:         "warn,linkerd2_proxy=info",
-		proxyBindTimeout:      "10s",
 		proxyAPIPort:          8086,
 		proxyControlPort:      4190,
 		proxyMetricsPort:      4191,
 		proxyOutboundCapacity: map[string]uint{},
-		proxyCpuRequest:       "",
+		proxyCPURequest:       "",
 		proxyMemoryRequest:    "",
 		tls:                   "",
+		disableExternalProfiles: false,
 	}
 }
 
@@ -194,13 +285,9 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
 
-	if _, err := time.ParseDuration(options.proxyBindTimeout); err != nil {
-		return fmt.Errorf("Invalid duration '%s' for --proxy-bind-timeout flag", options.proxyBindTimeout)
-	}
-
-	if options.proxyCpuRequest != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyCpuRequest); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCpuRequest)
+	if options.proxyCPURequest != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyCPURequest); err != nil {
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCPURequest)
 		}
 	}
 
@@ -239,15 +326,15 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().StringVar(&options.proxyBindTimeout, "proxy-bind-timeout", options.proxyBindTimeout, "Timeout the proxy will use")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
-	cmd.PersistentFlags().StringVar(&options.proxyCpuRequest, "proxy-cpu", options.proxyCpuRequest, "Amount of CPU units that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
+	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 }

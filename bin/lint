@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -eu
+
+cd "$(pwd -P)"
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+
+cd "$rootdir"
+
+# install golint from vendor
+go install ./vendor/golang.org/x/lint/golint
+
+# use `go list` to exclude packages in vendor
+out=$(go list ./... | xargs golint) || true
+
+if [ -n "$out" ]; then
+  echo "$out"
+  exit 1
+fi
+
+echo "all clean!"

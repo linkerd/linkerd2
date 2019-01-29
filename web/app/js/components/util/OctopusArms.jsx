@@ -1,66 +1,87 @@
 import React from 'react';
+import grey from '@material-ui/core/colors/grey';
 
-const stroke = "#000000";
-const strokeOpacity = "0.2";
+const strokeOpacity = "0.7";
+const arrowColor = grey[500];
 
-const svgArrow = (x1, y1, width, height, direction) => {
-  let segmentWidth = width / 2 - 10;
+export const baseHeight = 220; // the height of the neighbor node box
+const halfBoxHeight = baseHeight / 2;
+const controlPoint = 10; // width and height of the control points for the bezier curves
+const inboundAlignment = controlPoint * 2;
 
-  let x2 = x1 + segmentWidth + 10;
-  let y2 = y1 + 10;
+const generateSvgComponents = (y1, width, height) => {
+  let segmentWidth = width / 2 - controlPoint; // width of each horizontal arrow segment
 
-  let x3 = x2 + 10;
-  let y3 = y2 + height + 10;
+  let x1 = 0;
 
-  let horizLine1 = `M ${x1},${y1} L ${x1+segmentWidth},${y1}`;
-  let curve1 = `C ${x1+segmentWidth+7},${y1} ${x2},${y1+3} ${x2},${y2}`;
-  let verticalLine = `L ${x2}, ${y2+height}`;
-  let curve2 = `C ${x2},${y2+height+6} ${x2+2},${y3} ${x3},${y3}`;
-  let horizLine2 = `L ${x3 + segmentWidth},${y3}`;
-  let arrow = `${horizLine1} ${curve1} ${verticalLine} ${curve2} ${horizLine2}`;
+  let x2 = x1 + segmentWidth;
+  let x3 = x2 + controlPoint;
+
+  let y2 = y1 - controlPoint;
+  let y3 = y2 - height;
+  let y4 = y3 - controlPoint;
+
+  let x4 = x3 + controlPoint;
+  let x5 = x4 + segmentWidth;
+
+  let start = `M ${x1},${y1}`;
+  let horizLine1 = `L ${x2},${y1}`;
+  let curve1 = `C ${x3},${y1} ${x3},${y1}`;
+  let curve1End = `${x3},${y2}`;
+  let verticalLineEnd = `L ${x3},${y3}`;
+  let curve2 = `C ${x3},${y4} ${x3},${y4}`;
+  let curve2End = `${x4},${y4}`;
+  let horizLine2 = `L ${x5},${y4}`;
+
+  let arrowPath = [start, horizLine1, curve1, curve1End, verticalLineEnd, curve2, curve2End, horizLine2].join(" ");
 
   let arrowEndX = width;
-  let arrowEndY = direction === "up" ? y1 : y3;
+  let arrowEndY = y4;
   let arrowHead = `${arrowEndX - 4} ${arrowEndY - 4} ${arrowEndX} ${arrowEndY} ${arrowEndX - 4} ${arrowEndY + 4}`;
 
-  let circle = {
-    cx: x1,
-    cy: direction === "up" ? y3 : y1
-  };
+  let circle = { cx: x1, cy: y1 };
 
   return {
-    arrow,
-    arrowHead,
-    circle
+    arrowPath,
+    circle,
+    arrowHead
   };
 };
 
-const up = (width, svgHeight, arrowHeight, isOutbound) => {
-  let height = (svgHeight / 2) - arrowHeight;
-
-  let x1 = 0;
-  let y1;
-
-  if (isOutbound) {
-    y1 = arrowHeight - 20; // I don't know where we intoduced that 20 but we need to match the other arrow
-  } else {
-    y1 = svgHeight / 2 ;
-  }
-
-  let svgPaths = svgArrow(x1, y1, width, height, "up");
-
+const arrowG = (id, arm, transform) => {
   return (
-    <g key={`up-arrow-${height}`} id="downstream-up" fill="none" stroke="none" strokeWidth="1">
+    <g key={id} id={id} fill="none" strokeWidth="1">
       <path
-        d={svgPaths.arrow}
-        stroke={stroke}
-        strokeOpacity={strokeOpacity}
-        transform="translate(31, 54) scale(-1, 1) translate(-44, -54) " />
-      <circle cx={svgPaths.circle.cx} cy={svgPaths.circle.cy} fill="#CCCCCC" r="4" />
-      <polyline points={svgPaths.arrowHead} stroke="#CCCCCC" strokeLinecap="round" />
+        d={arm.arrowPath}
+        stroke={arrowColor}
+        transform={transform}
+        strokeOpacity={strokeOpacity} />
+      <circle
+        cx={arm.circle.cx}
+        cy={arm.circle.cy}
+        transform={transform}
+        fill={arrowColor}
+        r="4" />
+      <polyline
+        points={arm.arrowHead}
+        stroke={arrowColor}
+        strokeLinecap="round"
+        transform={transform} />
     </g>
-
   );
+};
+
+const up = (width, svgHeight, arrowHeight, isOutbound, isEven) => {
+  let height = arrowHeight + (isEven ? 0 : halfBoxHeight);
+
+  // up arrows start and the center of the middle node for outbound arms,
+  // and at the noce position for inbound arms
+  let y1 = isOutbound ? svgHeight / 2 : arrowHeight;
+  let arm = generateSvgComponents(y1, width, height);
+
+  let translate = isOutbound ? null : `translate(0, ${svgHeight / 2 + (isEven ? 0 : halfBoxHeight) + inboundAlignment})`;
+
+  return arrowG(`up-arrow-${height}`, arm, translate);
 };
 
 const flat = (width, height) => {
@@ -72,10 +93,10 @@ const flat = (width, height) => {
     <g key="flat-arrow" id="downstream-flat" fill="none" stroke="none" strokeWidth="1">
       <path
         d={`M0,${arrowY} L${arrowEndX},${arrowY}`}
-        stroke={stroke}
+        stroke={arrowColor}
         strokeOpacity={strokeOpacity} />
-      <circle cx="0" cy={arrowY} fill="#CCCCCC" r="4" />
-      <polyline points={polylinePoints} stroke="#CCCCCC" strokeLinecap="round" />
+      <circle cx="0" cy={arrowY} fill={arrowColor} r="4" />
+      <polyline points={polylinePoints} stroke={arrowColor} strokeLinecap="round" />
     </g>
   );
 };
@@ -85,36 +106,21 @@ const down = (width, svgHeight, arrowHeight, isOutbound) => {
   // have end of block n at (1/2 block height) + (block height * n-1)
   let height = (svgHeight / 2) - arrowHeight;
 
-  let x1 = 0;
-  let y1;
-
   // inbound arrows start at the offset of the card, and end in the center of the middle card
   // outbound arrows start in the center of the middle card, and end at the card's height
-  if (isOutbound) {
-    y1 = svgHeight / 2;
-  } else {
-    y1 = arrowHeight - 20; // I don't know where we intoduced that 20 but we need to match the other arrow
-  }
+  let y1 = isOutbound ? svgHeight / 2 : halfBoxHeight;
 
-  let svg = svgArrow(x1, y1, width, height, "down");
+  let arm = generateSvgComponents(y1, width, height);
 
-  return (
-    <g key={`down-arrow-${height}`} id="downstream-down" fill="none" stroke="none" strokeWidth="1">
-      <path
-        d={svg.arrow}
-        stroke={stroke}
-        strokeOpacity={strokeOpacity} />
-      <circle cx={svg.circle.cx} cy={svg.circle.cy} fill="#CCCCCC" r="4" />
-      <polyline points={svg.arrowHead} stroke="#CCCCCC" strokeLinecap="round" />
-    </g>
+  let translate = `translate(0, ${isOutbound ? svgHeight : svgHeight / 2 - height + halfBoxHeight - inboundAlignment})`;
+  let reflect = "scale(1, -1)";
+  let transform = `${translate} ${reflect}`;
 
-  );
+  return arrowG(`down-arrow-${height}`, arm, transform);
 };
 
-const OctopusArms = {
+export const OctopusArms = {
   up,
   flat,
   down
 };
-
-export default OctopusArms;

@@ -11,11 +11,16 @@ import React from 'react';
 import Switch from '@material-ui/core/Switch';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _isEmpty from 'lodash/isEmpty';
+import _map from 'lodash/map';
+import _reduce from 'lodash/reduce';
+import _take from 'lodash/take';
 import { friendlyTitle } from './util/Utils.js';
 
 // max characters we display for error messages before truncating them
-const maxErrorLength = 50;
+const maxErrorLength = 500;
 
 class ErrorModal extends React.Component {
   state = {
@@ -38,34 +43,32 @@ class ErrorModal extends React.Component {
     });
   }
 
-  processErrorData = podErrors => {
+  processErrorData = errorsByPod => {
     let shouldTruncate = false;
-    let byPodAndContainer = _(podErrors)
-      .keys()
-      .sortBy()
-      .map(pod => {
-        let byContainer = _(podErrors[pod].errors).reduce((errors, err) => {
-          if (!_.isEmpty(err.container)) {
-            let c = err.container;
-            if (_.isEmpty(errors[c.container])) {
-              errors[c.container] = [];
-            }
 
-            let errMsg = c.message;
-            if (_.size(errMsg) > maxErrorLength) {
-              shouldTruncate = true;
-              c.truncatedMessage = _.take(errMsg, maxErrorLength).join("") + "...";
-            }
-            errors[c.container].push(c);
+    let byPodAndContainer = _map(errorsByPod, (podErrors, pod) => {
+      let byContainer = _reduce(podErrors.errors, (errors, err) => {
+        if (!_isEmpty(err.container)) {
+          let c = err.container;
+          if (_isEmpty(errors[c.container])) {
+            errors[c.container] = [];
           }
-          return errors;
-        }, {});
 
-        return {
-          pod,
-          byContainer
-        };
-      }).value();
+          let errMsg = c.message;
+          if (errMsg.length > maxErrorLength) {
+            shouldTruncate = true;
+            c.truncatedMessage = _take(errMsg, maxErrorLength).join("") + "...";
+          }
+          errors[c.container].push(c);
+        }
+        return errors;
+      }, {});
+
+      return {
+        pod,
+        byContainer
+      };
+    });
 
     return {
       byPodAndContainer,
@@ -74,12 +77,12 @@ class ErrorModal extends React.Component {
   }
 
   renderContainerErrors = (pod, errorsByContainer) => {
-    if (_.isEmpty(errorsByContainer)) {
+    if (_isEmpty(errorsByContainer)) {
       return "No messages to display";
     }
 
-    return _.map(errorsByContainer, (errors, container) => (
-      <div key={`error-${container}`} className="container-error">
+    return _map(errorsByContainer, (errors, container) => (
+      <div key={`error-${container}`}>
         <Grid
           container
           direction="row"
@@ -90,15 +93,15 @@ class ErrorModal extends React.Component {
           </Grid>
           <Grid item>
             <Typography variant="subtitle1" gutterBottom align="right">
-              {_.get(errors, [0, "image"])}
+              {_get(errors, [0, "image"])}
             </Typography>
           </Grid>
         </Grid>
 
-        <div className="error-text">
+        <div>
           {
-            _.map(errors, (er, i) => {
-                if (_.size(er.message) === 0) {
+            _map(errors, (er, i) => {
+                if (er.message.length === 0) {
                   return null;
                 }
 
@@ -119,10 +122,10 @@ class ErrorModal extends React.Component {
   };
 
   renderPodErrors = errors => {
-    return _.map(errors, err => {
+    return _map(errors, err => {
       return (
-        <div className="controller-pod-error" key={err.pod}>
-          <Typography variant="title" gutterBottom>{err.pod}</Typography>
+        <div key={err.pod}>
+          <Typography variant="h6" gutterBottom>{err.pod}</Typography>
           {this.renderContainerErrors(err.pod, err.byContainer)}
         </div>
       );
@@ -132,8 +135,8 @@ class ErrorModal extends React.Component {
   renderStatusIcon = errors => {
     let showInit = true;
 
-    _.each(errors.byPodAndContainer, container => {
-      _.each(container.byContainer, con => {
+    _each(errors.byPodAndContainer, container => {
+      _each(container.byContainer, con => {
         if (con[0].reason !== "PodInitializing") {
           showInit = false;
         }
@@ -145,7 +148,9 @@ class ErrorModal extends React.Component {
         <Tooltip title="Pods are initializing"><CircularProgress size={20} thickness={4} /></Tooltip>
       );
     } else {
-      return <ErrorIcon onClick={this.handleClickOpen} />;
+      return (
+        <ErrorIcon color="error" fontSize="small" onClick={this.handleClickOpen} />
+      );
     }
   }
 
@@ -153,7 +158,7 @@ class ErrorModal extends React.Component {
     let errors = this.processErrorData(this.props.errors);
 
     return (
-      <div>
+      <React.Fragment>
         {this.renderStatusIcon(errors)}
         <Dialog
           open={this.state.open}
@@ -183,7 +188,7 @@ class ErrorModal extends React.Component {
             <Button onClick={this.handleClose} color="primary">Close</Button>
           </DialogActions>
         </Dialog>
-      </div>
+      </React.Fragment>
     );
   }
 }

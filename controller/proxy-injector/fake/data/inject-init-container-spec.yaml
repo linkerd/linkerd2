@@ -16,4 +16,6 @@ securityContext:
     add:
     - NET_ADMIN
   privileged: false
+  runAsNonRoot: false
+  runAsUser: 0
 terminationMessagePolicy: FallbackToLogsOnError

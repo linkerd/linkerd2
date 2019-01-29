@@ -14,7 +14,8 @@ USAGE: web <command>
   * build - build the assets
   * dev - run a dev server (with live reloading). Options:
       -p $DEV_PORT
-  * port-forward - forward the controller from a running k8s cluster to localhost
+  * port-forward - setup a tunnel to a controller component and port
+      Example: port-forward controller 8085
   * run - run a local server (sans. reloading)
   * setup - get the environment setup for development
       Note: any command line options are passed on to yarn
@@ -24,9 +25,15 @@ USAGE
 }; function --help { -h ;}
 
 function check-for-linkerd {
-  pod=$(get-pod)
+  controller_pod=$(get-pod controller)
+  grafana_pod=$(get-pod grafana)
 
-  if [[ -z "${pod// }" ]]; then
+  if [[ -z "${controller_pod// }" ]]; then
+    err "Controller is not running. Have you installed Linkerd?"
+    exit 1
+  fi
+
+  if [[ -z "${grafana_pod// }" ]]; then
     err "Controller is not running. Have you installed Linkerd?"
     exit 1
   fi
@@ -41,11 +48,14 @@ function dev {
     esac
   done
 
-  check-for-linkerd && (port-forward &)
+  check-for-linkerd && (
+    port-forward controller 8085 &
+    port-forward grafana 3000 &
+  )
 
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
   cd $ROOT/web && \
-    ../bin/go-run . --webpack-dev-server=http://localhost:$DEV_PORT $*
+    ../bin/go-run . $*
 }
 
 function build {
@@ -54,21 +64,34 @@ function build {
 }
 
 function get-pod {
+  if [[ "$#" -ne 1 ]]; then
+    echo "usage: bin/web get-pod component-name" >&2
+    exit 1
+  fi
+
   kubectl --namespace=linkerd get po \
-    --selector=linkerd.io/control-plane-component=controller \
+    --selector=linkerd.io/control-plane-component=$1 \
     --field-selector='status.phase==Running' \
     -o jsonpath='{.items[*].metadata.name}'
 }
 
 function port-forward {
-  nc -z localhost 8085 || \
-    kubectl --namespace=linkerd port-forward $(get-pod) 8085:8085
+  if [[ "$#" -ne 2 ]]; then
+    echo "usage: bin/web port-forward component-name port-number" >&2
+    exit 1
+  fi
+
+  nc -z localhost "$2" || \
+    kubectl --namespace=linkerd port-forward $(get-pod $1) "$2:$2"
 }
 
 function run {
   build
 
-  check-for-linkerd && (port-forward &)
+  check-for-linkerd && (
+    port-forward controller 8085 &
+    port-forward grafana 3000 &
+  )
 
   cd $ROOT/web
   ../bin/go-run . $*

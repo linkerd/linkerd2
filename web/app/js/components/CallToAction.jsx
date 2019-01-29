@@ -5,7 +5,6 @@ import StepContent from '@material-ui/core/StepContent';
 import StepLabel from '@material-ui/core/StepLabel';
 import Stepper from '@material-ui/core/Stepper';
 import Typography from '@material-ui/core/Typography';
-import _ from 'lodash';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -34,7 +33,7 @@ class CallToAction extends React.Component {
   render() {
     const { resource, numResources } = this.props;
     const steps = getSteps(numResources, resource);
-    const lastStep = _.size(steps) - 1; // hardcode the last step as the active step
+    const lastStep = steps.length - 1; // hardcode the last step as the active step
 
     return (
       <React.Fragment>

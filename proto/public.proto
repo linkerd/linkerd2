@@ -16,8 +16,20 @@ message VersionInfo {
   string releaseVersion = 3;
 }
 
-message ListPodsRequest {
+message ListServicesRequest {
   string namespace = 1;
+}
+message ListServicesResponse {
+  repeated Service services = 1;
+}
+message Service {
+  string name = 1;
+  string namespace = 2;
+}
+
+message ListPodsRequest {
+  string namespace = 1 [deprecated=true];
+  ResourceSelection selector = 2;
 }
 message ListPodsResponse {
   repeated Pod pods = 1;
@@ -169,6 +181,8 @@ message TapEvent {
   TcpAddress   destination      = 2;
   EndpointMeta destination_meta = 4;
 
+  RouteMeta route_meta = 7;
+
   ProxyDirection proxy_direction = 6;
   enum ProxyDirection {
     UNKNOWN = 0;
@@ -181,6 +195,10 @@ message TapEvent {
   }
 
   message EndpointMeta {
+    map<string, string> labels = 1;
+  }
+
+  message RouteMeta {
     map<string, string> labels = 1;
   }
 
@@ -294,6 +312,8 @@ message StatSummaryRequest {
     Resource to_resource   = 4;
     Resource from_resource = 5;
   }
+
+  bool skip_stats = 6;  // true if we want to skip stats from Prometheus
 }
 
 message StatSummaryResponse {
@@ -314,6 +334,8 @@ message BasicStats {
   uint64 latency_ms_p95 = 4;
   uint64 latency_ms_p99 = 5;
   uint64 tls_request_count = 6;
+  uint64 actual_success_count = 7;
+  uint64 actual_failure_count = 8;
 }
 
 message StatTable {
@@ -343,10 +365,48 @@ message StatTable {
   }
 }
 
+message TopRoutesRequest {
+  ResourceSelection selector = 1;
+  string time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    Resource to_resource = 7;
+  }
+}
+
+message TopRoutesResponse {
+  oneof response {
+    ResourceError error = 2;
+    Ok ok = 3;
+  }
+
+  message Ok {
+    repeated RouteTable routes = 1;
+  }
+}
+
+message RouteTable {
+  repeated Row rows = 1;
+  string resource = 2;
+
+  message Row {
+    string route = 1;
+    string time_window = 2;
+    string authority = 6;
+
+    BasicStats stats = 5;
+  }
+}
+
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
+  rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
+
   rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
+
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }

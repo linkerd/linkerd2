@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   annotations:
-    linkerd.io/created-by: linkerd/cli undefined
+    linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/proxy-version: testinjectversion
   creationTimestamp: null
   labels:
@@ -23,10 +23,8 @@ spec:
   - env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
-    - name: LINKERD2_PROXY_BIND_TIMEOUT
-      value: 10s
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://proxy-api.linkerd.svc.cluster.local:8086
+      value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:4190
     - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -35,6 +33,8 @@ spec:
       value: tcp://127.0.0.1:4140
     - name: LINKERD2_PROXY_INBOUND_LISTENER
       value: tcp://0.0.0.0:4143
+    - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+      value: .
     - name: LINKERD2_PROXY_POD_NAMESPACE
       valueFrom:
         fieldRef:
@@ -83,6 +83,8 @@ spec:
         add:
         - NET_ADMIN
       privileged: false
+      runAsNonRoot: false
+      runAsUser: 0
     terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---

@@ -6,12 +6,13 @@ import (
 	"fmt"
 )
 
+// Supported TLS key types.
 const (
 	KeyTypeRSA   = "rsa"
 	KeyTypeECDSA = "ecdsa"
 )
 
-// PEMEncodeCertToMemory returns the PEM encoding of cert.
+// PEMEncodeCert returns the PEM encoding of cert.
 func PEMEncodeCert(cert []byte) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert})

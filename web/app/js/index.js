@@ -19,7 +19,8 @@ import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
-import green from '@material-ui/core/colors/green';
+import TopRoutes from './components/TopRoutes.jsx';
+import { dashboardTheme } from './components/util/theme.js';
 
 let appMain = document.getElementById('main');
 let appData = !appMain ? {} : appMain.dataset;
@@ -37,15 +38,7 @@ const context = {
   productName: "Linkerd"
 };
 
-const theme = createMuiTheme({
-  palette: {
-    primary: green
-  },
-  typography: {
-    useNextVariants: true,
-    suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
-  }
-});
+const theme = createMuiTheme(dashboardTheme);
 
 let applicationHtml = (
   <React.Fragment>
@@ -70,6 +63,9 @@ let applicationHtml = (
                 path={`${pathPrefix}/namespaces/:namespace/pods/:pod`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/daemonsets/:daemonset`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
@@ -82,11 +78,17 @@ let applicationHtml = (
                 path={`${pathPrefix}/top`}
                 render={props => <Navigation {...props} ChildComponent={Top} />} />
               <Route
+                path={`${pathPrefix}/routes`}
+                render={props => <Navigation {...props} ChildComponent={TopRoutes} />} />
+              <Route
                 path={`${pathPrefix}/namespaces`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="namespace" />} />
               <Route
                 path={`${pathPrefix}/deployments`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+              <Route
+                path={`${pathPrefix}/daemonsets`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="daemonset" />} />
               <Route
                 path={`${pathPrefix}/replicationcontrollers`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />

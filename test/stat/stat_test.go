@@ -44,7 +44,7 @@ type rowStat struct {
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 
-	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "prometheus")
+	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
 	if err != nil {
 		t.Fatalf("Failed to get pods for prometheus: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "controller")
+	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-controller")
 	if err != nil {
 		t.Fatalf("Failed to get pods for controller: %s", err)
 	}
@@ -62,7 +62,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	controllerPod := pods[0]
 
-	prometheusAuthority := "prometheus." + TestHelper.GetLinkerdNamespace() + ".svc.cluster.local:9090"
+	prometheusAuthority := "linkerd-prometheus." + TestHelper.GetLinkerdNamespace() + ".svc.cluster.local:9090"
 
 	for _, tt := range []struct {
 		args         []string
@@ -71,14 +71,14 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				"controller": "1/1",
-				"grafana":    "1/1",
-				"prometheus": "1/1",
-				"web":        "1/1",
+				"linkerd-controller": "1/1",
+				"linkerd-grafana":    "1/1",
+				"linkerd-prometheus": "1/1",
+				"linkerd-web":        "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/controller"},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
@@ -86,19 +86,19 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
 			expectedRows: map[string]string{
-				"controller": "1/1",
+				"linkerd-controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/controller"},
+			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
 			expectedRows: map[string]string{
-				"prometheus": "1/1",
+				"linkerd-prometheus": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "svc/prometheus"},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "svc/linkerd-prometheus"},
 			expectedRows: map[string]string{
-				"controller": "1/1",
+				"linkerd-controller": "1/1",
 			},
 		},
 		{
@@ -231,10 +231,10 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 	}
 
 	// this should be 100.00% when control plane is TLSed by default
-	expectedTlsRate := "0%"
-	if stat.tlsPercent != expectedTlsRate {
+	expectedTLSRate := "0%"
+	if stat.tlsPercent != expectedTLSRate {
 		return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
-			expectedTlsRate, name, stat.tlsPercent)
+			expectedTLSRate, name, stat.tlsPercent)
 	}
 
 	return nil

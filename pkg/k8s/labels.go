@@ -74,7 +74,7 @@ const (
 	// indicate that the sidecar auto-inject is disabled for a particular resource.
 	ProxyAutoInjectDisabled = "disabled"
 
-	// ProxyAutoInjectDisabled is assigned to the ProxyAutoInjectLabel label to
+	// ProxyAutoInjectCompleted is assigned to the ProxyAutoInjectLabel label to
 	// indicate that the sidecar auto-inject is completed for a particular resource.
 	ProxyAutoInjectCompleted = "completed"
 
@@ -90,24 +90,27 @@ const (
 
 	// ProxyInjectorTLSSecret is the name assigned to the secret containing the
 	// TLS cert and key used by the proxy-injector webhook.
-	ProxyInjectorTLSSecret = "proxy-injector-service-tls-linkerd-io"
+	ProxyInjectorTLSSecret = "linkerd-proxy-injector-service-tls-linkerd-io"
 
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
-	// ProxyInjectorSidecarConfig is the name of the config map resource that
-	// contains the specs of the proxy init container and sidecar container to be
-	// injected into a pod.
-	ProxyInjectorSidecarConfig = "proxy-injector-sidecar-config"
-
 	// ProxySpecFileName is the name (key) within the proxy-injector ConfigMap
 	// that contains the proxy container spec.
 	ProxySpecFileName = "proxy.yaml"
 
-	// ProxyInjectorInitContainerSpecFileName is the name (key) within the
+	// ProxyInitSpecFileName is the name (key) within the
 	// proxy-injector ConfigMap that contains the proxy-init container spec.
 	ProxyInitSpecFileName = "proxy-init.yaml"
+
+	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
+	// used when injecting a proxy with TLS enabled.
+	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
+
+	// TLSSecretsVolumeName is the name of the volume holding the secrets,
+	// when injecting a proxy with TLS enabled.
+	TLSSecretsVolumeName = "linkerd-secrets"
 
 	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
 	// proxy-injector ConfigMap that contains the trust anchors volume spec.
@@ -125,7 +128,12 @@ const (
 	// that contains the actual trust anchor bundle.
 	TLSTrustAnchorFileName = "trust-anchors.pem"
 
-	TLSCertFileName       = "certificate.crt"
+	// TLSCertFileName is the name (key) within proxy-injector ConfigMap that
+	// contains the TLS certificate.
+	TLSCertFileName = "certificate.crt"
+
+	// TLSPrivateKeyFileName is the name (key) within proxy-injector ConfigMap
+	// that contains the TLS private key.
 	TLSPrivateKeyFileName = "private-key.p8"
 
 	/*
@@ -135,6 +143,10 @@ const (
 	// MountPathBase is the base directory of the mount path
 	MountPathBase = "/var/linkerd-io"
 )
+
+// InjectedLabels contains the list of label keys subjected to be injected by Linkerd into resource definitions
+var InjectedLabels = []string{ControllerNSLabel, ProxyDeploymentLabel, ProxyReplicationControllerLabel,
+	ProxyReplicaSetLabel, ProxyJobLabel, ProxyDaemonSetLabel, ProxyStatefulSetLabel}
 
 var (
 	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
@@ -157,7 +169,7 @@ var (
 	// spec is mounted to the proxy-injector
 	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
 
-	// MountTLSPathTrustAnchorVolumeSpec is the path at which the trust anchor
+	// MountPathTLSTrustAnchorVolumeSpec is the path at which the trust anchor
 	// volume spec is mounted to the proxy-injector
 	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
 
@@ -175,11 +187,9 @@ func CreatedByAnnotationValue() string {
 // GetPodLabels returns the set of prometheus owner labels for a given pod
 func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]string {
 	labels := map[string]string{"pod": pod.Name}
-	if ownerKind == "job" {
-		labels["k8s_job"] = ownerName
-	} else {
-		labels[ownerKind] = ownerName
-	}
+
+	l5dLabel := KindToL5DLabel(ownerKind)
+	labels[l5dLabel] = ownerName
 
 	if controllerNS := pod.Labels[ControllerNSLabel]; controllerNS != "" {
 		labels["control_plane_ns"] = controllerNS
@@ -192,6 +202,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 	return labels
 }
 
+// IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *coreV1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
 }
@@ -214,6 +225,7 @@ type TLSIdentity struct {
 	ControllerNamespace string
 }
 
+// ToDNSName formats a TLSIdentity as a DNS name.
 func (i TLSIdentity) ToDNSName() string {
 	if i.Kind == Service {
 		return fmt.Sprintf("%s.%s.svc", i.Name, i.Namespace)
@@ -222,10 +234,13 @@ func (i TLSIdentity) ToDNSName() string {
 		i.Kind, i.Namespace, i.ControllerNamespace)
 }
 
+// ToSecretName formats a TLSIdentity as a secret name.
 func (i TLSIdentity) ToSecretName() string {
 	return fmt.Sprintf("%s-%s-tls-linkerd-io", i.Name, i.Kind)
 }
 
+// ToControllerIdentity returns the TLSIdentity of the Linkerd Controller, given
+// an arbitrary TLSIdentity.
 func (i TLSIdentity) ToControllerIdentity() TLSIdentity {
 	return TLSIdentity{
 		Name:                "controller",

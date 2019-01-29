@@ -34,7 +34,7 @@ func NewTestHelper() *TestHelper {
 	}
 
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
+	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	tls := flag.Bool("enable-tls", false, "enable TLS in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -80,7 +80,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper()
+	kubernetesHelper, err := NewKubernetesHelper(testHelper.RetryFor)
 	if err != nil {
 		exit(1, "error creating kubernetes helper: "+err.Error())
 	}

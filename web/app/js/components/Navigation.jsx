@@ -1,119 +1,129 @@
-import {
-  AppBar,
-  Collapse,
-  Divider,
-  Drawer,
-  IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  MenuList,
-  Toolbar,
-  Typography
-} from '@material-ui/core';
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
-
+import AppBar from '@material-ui/core/AppBar';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import Collapse from '@material-ui/core/Collapse';
+import Divider from '@material-ui/core/Divider';
+import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
 import HelpIcon from '@material-ui/icons/HelpOutline';
 import HomeIcon from '@material-ui/icons/Home';
+import Icon from '@material-ui/core/Icon';
+import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ListItemText from '@material-ui/core/ListItemText';
 import MenuIcon from '@material-ui/icons/Menu';
-import NavigateNextIcon from '@material-ui/icons/NavigateNext';
-import NetworkCheckIcon from '@material-ui/icons/NetworkCheck';
+import MenuItem from '@material-ui/core/MenuItem';
+import MenuList from '@material-ui/core/MenuList';
+import NavigationResources from './NavigationResources.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
+import Toolbar from '@material-ui/core/Toolbar';
+import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
-import ViewListIcon from '@material-ui/icons/ViewList';
-import VisibilityIcon from '@material-ui/icons/Visibility';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
-const drawerWidth = 250;
-const styles = theme => ({
-  root: {
-    flexGrow: 1,
-    height: "100vh",
-    width: "100%",
-    zIndex: 1,
-    overflowX: 'scroll',
-    position: 'relative',
-    display: 'flex',
-  },
-  appBar: {
-    zIndex: theme.zIndex.drawer + 1,
-    transition: theme.transitions.create(['width', 'margin'], {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-  },
-  appBarShift: {
-    marginLeft: drawerWidth,
-    width: `calc(100% - ${drawerWidth}px)`,
-    transition: theme.transitions.create(['width', 'margin'], {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  },
-  menuButton: {
-    marginLeft: 12,
-    marginRight: 36,
-  },
-  hide: {
-    display: 'none',
-  },
-  drawerPaper: {
-    position: 'relative',
-    whiteSpace: 'nowrap',
-    width: drawerWidth,
-    transition: theme.transitions.create('width', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  },
-  drawerPaperClose: {
-    overflowX: 'hidden',
-    transition: theme.transitions.create('width', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-    width: theme.spacing.unit * 7,
-    [theme.breakpoints.up('sm')]: {
-      width: theme.spacing.unit * 9,
+const styles = theme => {
+  const drawerWidth = theme.spacing.unit * 31;
+  const drawerWidthClosed = theme.spacing.unit * 9;
+  const navLogoWidth = theme.spacing.unit * 22.5;
+  const contentPadding = theme.spacing.unit * 3;
+
+  const enteringFn = prop => theme.transitions.create(prop, {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  });
+  const leavingFn = prop => theme.transitions.create(prop, {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  });
+
+  const entering = enteringFn('width');
+  const leaving = leavingFn('width');
+
+  return {
+    root: {
+      display: 'flex',
     },
-  },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    padding: '0 8px',
-    ...theme.mixins.toolbar,
-  },
-  content: {
-    flexGrow: 1,
-    width: `calc(100% - ${drawerWidth}px)`,
-    backgroundColor: theme.palette.background.default,
-    padding: theme.spacing.unit * 3,
-  },
-  linkerdLogoContainer: {
-    backgroundColor: theme.palette.primary.dark,
-  },
-  linkerdNavLogo: {
-    minWidth: "180px",
-  },
-  navMenuItem: {
-    paddingLeft: "24px",
-    paddingRight: "24px",
-  },
-});
+    appBar: {
+      position: "absolute",
+      width: `calc(100% - ${drawerWidthClosed}px)`,
+      color: 'white',
+      transition: leaving,
+    },
+    appBarShift: {
+      width: `calc(100% - ${drawerWidth}px)`,
+      transition: entering,
+    },
+    drawer: {
+      width: drawerWidth,
+      transition: entering,
+    },
+    drawerClose: {
+      width: drawerWidthClosed,
+      transition: leaving,
+    },
+    drawerPaper: {
+      overflowX: 'hidden',
+      whiteSpace: 'nowrap',
+      width: drawerWidth,
+      transition: entering,
+    },
+    drawerPaperClose: {
+      transition: leaving,
+      width: drawerWidthClosed,
+      [theme.breakpoints.up('sm')]: {
+        width: drawerWidthClosed,
+      },
+    },
+    toolbar: theme.mixins.toolbar,
+    navToolbar: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: `0 0 0 ${theme.spacing.unit*2}px`,
+      boxShadow: theme.shadows[4], // to match elevation == 4 on main AppBar
+      ...theme.mixins.toolbar,
+      backgroundColor: theme.palette.primary.main,
+    },
+    content: {
+      flexGrow: 1,
+      width: `calc(100% - ${drawerWidth}px)`,
+      backgroundColor: theme.palette.background.default,
+      padding: contentPadding,
+      transition: entering,
+    },
+    contentDrawerClose: {
+      width: `calc(100% - ${drawerWidthClosed}px)`,
+      transition: leaving,
+    },
+    linkerdNavLogo: {
+      minWidth: `${navLogoWidth}px`,
+      transition: enteringFn(['margin', 'opacity']),
+    },
+    linkerdNavLogoClose: {
+      opacity: "0",
+      marginLeft: `-${navLogoWidth+theme.spacing.unit/2}px`,
+      transition: leavingFn(['margin', 'opacity']),
+    },
+    navMenuItem: {
+      paddingLeft: `${contentPadding}px`,
+      paddingRight: `${contentPadding}px`,
+    },
+    shrinkIcon: {
+      fontSize: "18px",
+      paddingLeft: "3px",
+    }
+  };
+};
 
 class NavigationBase extends React.Component {
   constructor(props) {
@@ -127,7 +137,6 @@ class NavigationBase extends React.Component {
   getInitialState() {
     return {
       drawerOpen: true,
-      resourceMenuOpen: false,
       helpMenuOpen: false,
       latestVersion: '',
       isLatest: true,
@@ -162,16 +171,8 @@ class NavigationBase extends React.Component {
     });
   }
 
-  handleDrawerOpen = () => {
-    this.setState({ drawerOpen: true });
-  };
-
-  handleDrawerClose = () => {
-    this.setState({ drawerOpen: false });
-  };
-
-  handleResourceMenuClick = () => {
-    this.setState(state => ({ resourceMenuOpen: !state.resourceMenuOpen }));
+  handleDrawerClick = () => {
+    this.setState(state => ({ drawerOpen: !state.drawerOpen }));
   };
 
   handleHelpMenuClick = () => {
@@ -195,22 +196,13 @@ class NavigationBase extends React.Component {
     );
   }
   render() {
-    const { classes, ChildComponent } = this.props;
+    const { classes, ChildComponent, ...otherProps } = this.props;
 
     return (
       <div className={classes.root}>
         <AppBar
-          position="absolute"
           className={classNames(classes.appBar, {[classes.appBarShift]: this.state.drawerOpen} )}>
-          <Toolbar disableGutters={!this.state.drawerOpen}>
-            <IconButton
-              color="inherit"
-              aria-label="Open drawer"
-              onClick={this.handleDrawerOpen}
-              className={classNames(classes.menuButton, {[classes.hide]: this.state.drawerOpen} )}>
-              <MenuIcon />
-            </IconButton>
-
+          <Toolbar>
             <Typography variant="h6" color="inherit" noWrap>
               <BreadcrumbHeader {...this.props} />
             </Typography>
@@ -218,17 +210,18 @@ class NavigationBase extends React.Component {
         </AppBar>
 
         <Drawer
+          className={classNames(classes.drawer, {[classes.drawerClose]: !this.state.drawerOpen} )}
           variant="permanent"
           classes={{
             paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !this.state.drawerOpen} ),
           }}
           open={this.state.drawerOpen}>
-          <div className={classNames(classes.linkerdLogoContainer, classes.toolbar)}>
-            <div className={classes.linkerdNavLogo}>
+          <div className={classNames(classes.navToolbar)}>
+            <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !this.state.drawerOpen} )}>
               {linkerdWordLogo}
             </div>
-            <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClose}>
-              <ChevronLeftIcon />
+            <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClick}>
+              {this.state.drawerOpen ? <ChevronLeftIcon /> : <MenuIcon />}
             </IconButton>
           </div>
 
@@ -236,27 +229,11 @@ class NavigationBase extends React.Component {
 
           <MenuList>
             { this.menuItem("/overview", "Overview", <HomeIcon />) }
-            { this.menuItem("/tap", "Tap", <VisibilityIcon />) }
-            { this.menuItem("/top", "Top", <NetworkCheckIcon />) }
-            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon />) }
-            <MenuItem
-              className={classes.navMenuItem}
-              button
-              onClick={this.handleResourceMenuClick}>
-              <ListItemIcon><ViewListIcon /></ListItemIcon>
-              <ListItemText inset primary="Resources" />
-              {this.state.resourceMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </MenuItem>
-
-            <Collapse in={this.state.resourceMenuOpen} timeout="auto" unmountOnExit>
-              <MenuList dense component="div" disablePadding>
-                { this.menuItem("/authorities", "Authorities", <NavigateNextIcon />) }
-                { this.menuItem("/deployments", "Deployments", <NavigateNextIcon />) }
-                { this.menuItem("/namespaces", "Namespaces", <NavigateNextIcon />) }
-                { this.menuItem("/pods", "Pods", <NavigateNextIcon />) }
-                { this.menuItem("/replicationcontrollers", "Replication Controllers", <NavigateNextIcon />) }
-              </MenuList>
-            </Collapse>
+            { this.menuItem("/tap", "Tap", <Icon className={classNames("fas fa-microscope", classes.shrinkIcon)} />) }
+            { this.menuItem("/top", "Top", <Icon className={classNames("fas fa-stream", classes.shrinkIcon)} />) }
+            { this.menuItem("/routes", "Top Routes", <Icon className={classNames("fas fa-random", classes.shrinkIcon)} />) }
+            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
+            <NavigationResources />
           </MenuList>
 
           <Divider />
@@ -304,9 +281,10 @@ class NavigationBase extends React.Component {
               uuid={this.props.uuid} />
           }
         </Drawer>
-        <main className={classes.content}>
+
+        <main className={classNames(classes.content, {[classes.contentDrawerClose]: !this.state.drawerOpen})}>
           <div className={classes.toolbar} />
-          <div className="main-content"><ChildComponent {...this.props} /></div>
+          <div className="main-content"><ChildComponent {...otherProps} /></div>
         </main>
       </div>
     );
@@ -314,9 +292,7 @@ class NavigationBase extends React.Component {
 }
 
 NavigationBase.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
+  api: PropTypes.shape({}).isRequired,
   ChildComponent: PropTypes.func.isRequired,
   classes: PropTypes.shape({}).isRequired,
   location: ReactRouterPropTypes.location.isRequired,

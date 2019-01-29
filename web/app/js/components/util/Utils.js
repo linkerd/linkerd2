@@ -1,5 +1,8 @@
-import * as d3 from 'd3';
-import _ from 'lodash';
+import _has from 'lodash/has';
+import _isNil from 'lodash/isNil';
+import _lowerCase from 'lodash/lowerCase';
+import _startCase from 'lodash/startCase';
+import { format as d3Format }  from 'd3-format';
 
 /*
 * Display grid constants
@@ -10,12 +13,12 @@ export const rowGutter = 3 * baseWidth;
 /*
 * Number formatters
 */
-const successRateFormatter = d3.format(".2%");
-const commaFormatter = d3.format(",");
-const secondsFormatter = d3.format(",.3s");
+const successRateFormatter = d3Format(".2%");
+const commaFormatter = d3Format(",");
+const secondsFormatter = d3Format(",.3s");
 
 export const formatWithComma = m => {
-  if (_.isNil(m)) {
+  if (_isNil(m)) {
     return "---";
   } else {
     return commaFormatter(m);
@@ -23,7 +26,7 @@ export const formatWithComma = m => {
 };
 
 export const formatLatencyMs = m => {
-  if (_.isNil(m)) {
+  if (_isNil(m)) {
     return "---";
   } else {
     return `${formatLatencySec(m / 1000)}`;
@@ -34,7 +37,7 @@ const niceLatency = l => commaFormatter(Math.round(l));
 
 export const formatLatencySec = latency => {
   let s = parseFloat(latency);
-  if (_.isNil(s)) {
+  if (_isNil(s)) {
     return "---";
   } else if (s === parseFloat(0.0)) {
     return "0 s";
@@ -48,11 +51,11 @@ export const formatLatencySec = latency => {
 };
 
 export const metricToFormatter = {
-  "REQUEST_RATE": m => _.isNil(m) ? "---" : styleNum(m, " RPS", true),
-  "SUCCESS_RATE": m => _.isNil(m) ? "---" : successRateFormatter(m),
+  "REQUEST_RATE": m => _isNil(m) ? "---" : styleNum(m, " RPS", true),
+  "SUCCESS_RATE": m => _isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": formatLatencyMs,
   "UNTRUNCATED": m => styleNum(m, "", false),
-  "NO_UNIT": m => _.isNil(m) ? "---" : styleNum(m, "", true)
+  "NO_UNIT": m => _isNil(m) ? "---" : styleNum(m, "", true)
 };
 
 /*
@@ -108,17 +111,24 @@ export const styleNum = (number, unit = "", truncate = true) => {
 */
 export const toClassName = name => {
   if (!name) { return ""; }
-  return _.lowerCase(name).replace(/[^a-zA-Z0-9]/g, "_");
+  return _lowerCase(name).replace(/[^a-zA-Z0-9]/g, "_");
 };
+
+/*
+  Definition of sort, for numeric column sorting
+*/
+export const numericSort = (a, b) => (_isNil(a) ? -1 : a) - (_isNil(b) ? -1 : b);
 
 /*
   Nicely readable names for the stat resources
 */
 export const friendlyTitle = singularOrPluralResource => {
   let resource = singularResource(singularOrPluralResource);
-  let titleCase = _.startCase(resource);
+  let titleCase = _startCase(resource);
   if (resource === "replicationcontroller") {
-    titleCase = _.startCase("replication controller");
+    titleCase = _startCase("replication controller");
+  } else if (resource === "daemonset") {
+    titleCase = _startCase("daemon set");
   }
   let titles = { singular: titleCase };
   if (resource === "authority") {
@@ -180,7 +190,7 @@ export const displayName = resource => `${toShortResourceName(resource.type)}/${
 
 export const isResource = name => {
   let singularResourceName = singularResource(name);
-  return _.has(shortNameLookup, singularResourceName);
+  return _has(shortNameLookup, singularResourceName);
 };
 
 /*

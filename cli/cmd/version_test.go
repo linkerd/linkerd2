@@ -1,39 +1,80 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/version"
 )
 
-func TestGetServerVersion(t *testing.T) {
-	t.Run("Returns existing version from server", func(t *testing.T) {
-		expectedServerVersion := "1.2.3"
-		mockClient := &public.MockApiClient{}
-		mockClient.VersionInfoToReturn = &pb.VersionInfo{
-			ReleaseVersion: expectedServerVersion,
-		}
+func mkMockClient(version string, err error) func() (pb.ApiClient, error) {
+	return func() (pb.ApiClient, error) {
+		return &public.MockAPIClient{
+			ErrorToReturn: err,
+			VersionInfoToReturn: &pb.VersionInfo{
+				ReleaseVersion: version,
+			},
+		}, nil
+	}
+}
 
-		version := getServerVersion(mockClient)
+func TestConfigureAndRunVersion(t *testing.T) {
+	testCases := []struct {
+		options  *versionOptions
+		mkClient func() (pb.ApiClient, error)
+		out      string
+		err      string
+	}{
+		{
+			newVersionOptions(),
+			mkMockClient("server-version", nil),
+			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, "server-version"),
+			"",
+		},
+		{
+			&versionOptions{false, true},
+			mkMockClient("", nil),
+			fmt.Sprintf("Client version: %s\n", version.Version),
+			"",
+		},
+		{
+			&versionOptions{true, true},
+			mkMockClient("", nil),
+			fmt.Sprintf("%s\n", version.Version),
+			"",
+		},
+		{
+			&versionOptions{true, false},
+			mkMockClient("server-version", nil),
+			fmt.Sprintf("%s\n%s\n", version.Version, "server-version"),
+			"",
+		},
+		{
+			newVersionOptions(),
+			mkMockClient("", errors.New("bad client")),
+			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, defaultVersionString),
+			"",
+		},
+	}
 
-		if version != expectedServerVersion {
-			t.Fatalf("Expected server version to be [%s], was [%s]",
-				expectedServerVersion, version)
-		}
-	})
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("test %d TestConfigureAndRunVersion()", i), func(t *testing.T) {
+			wout := bytes.NewBufferString("")
+			werr := bytes.NewBufferString("")
 
-	t.Run("Returns unavailable when cannot get server version", func(t *testing.T) {
-		expectedServerVersion := "unavailable"
-		mockClient := &public.MockApiClient{}
-		mockClient.ErrorToReturn = errors.New("expected")
+			configureAndRunVersion(tc.options, wout, werr, tc.mkClient)
 
-		version := getServerVersion(mockClient)
+			if tc.out != wout.String() {
+				t.Fatalf("Expected output: \"%s\", got: \"%s\"", tc.out, wout)
+			}
 
-		if version != expectedServerVersion {
-			t.Fatalf("Expected server version to be [%s], was [%s]",
-				expectedServerVersion, version)
-		}
-	})
+			if tc.err != werr.String() {
+				t.Fatalf("Expected output: \"%s\", got: \"%s\"", tc.err, werr)
+			}
+		})
+	}
 }

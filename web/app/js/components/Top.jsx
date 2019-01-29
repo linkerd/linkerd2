@@ -3,7 +3,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
-import _ from 'lodash';
+import _each from 'lodash/each';
+import _get from 'lodash/get';
+import _reduce from 'lodash/reduce';
 import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
@@ -41,10 +43,10 @@ class Top extends React.Component {
   }
 
   getResourcesByNs(rsp) {
-    let statTables = _.get(rsp, [0, "ok", "statTables"]);
+    let statTables = _get(rsp, [0, "ok", "statTables"]);
     let authoritiesByNs = {};
-    let resourcesByNs = _.reduce(statTables, (mem, table) => {
-      _.each(table.podGroup.rows, row => {
+    let resourcesByNs = _reduce(statTables, (mem, table) => {
+      _each(table.podGroup.rows, row => {
         if (row.meshedPodCount === "0") {
           return;
         }
@@ -155,6 +157,7 @@ class Top extends React.Component {
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
         <TapQueryForm
           enableAdvancedForm={false}
+          cmdName="top"
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           handleTapClear={this.handleTapClear}

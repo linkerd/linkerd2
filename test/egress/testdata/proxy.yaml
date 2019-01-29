@@ -165,7 +165,7 @@ spec:
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: egress-test-http-get
+  name: egress-test-not-www-get
 spec:
   replicas: 1
   selector:

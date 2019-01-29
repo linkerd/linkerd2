@@ -37,6 +37,12 @@ To analyze the Go code without running tests, run:
 go vet ./...
 ```
 
+To lint the Go code using golint, run:
+
+```bash
+bin/lint
+```
+
 ## Javascript
 
 Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
@@ -89,7 +95,7 @@ cluster. Prior to running the test suite, verify that:
   accessible to the Kubernetes cluster to which you are deploying
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
 - The namespace where the tests will install Linkerd does not already exist;
-  by default the namespace `linkerd` is used
+  by default the namespace `l5d-integration` is used
 - The repo's Go dependencies have been downloaded by running `bin/dep ensure`
 
 ## Running tests
@@ -173,18 +179,17 @@ $ bin/test-run `pwd`/bin/linkerd
 That will create multiple namespaces in your Kubernetes cluster:
 
 ```bash
-$ kubectl get ns | grep linkerd
-NAME                  STATUS    AGE
-linkerd               Active    4m
-linkerd-egress-test   Active    4m
-linkerd-get-test      Active    3m
+$ kubectl get ns | grep l5d-integration
+l5d-integration                  Active    4m
+l5d-integration-egress-test      Active    2m
+l5d-integration-get-test         Active    1m
 ...
 ```
 
 To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup linkerd
+$ bin/test-cleanup
 ```
 
 ## Writing tests

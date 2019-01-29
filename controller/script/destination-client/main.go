@@ -8,9 +8,9 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/destination"
 	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
 // This is a throwaway script for testing the destination service
@@ -18,12 +18,12 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	addr := flag.String("addr", ":8089", "address of destination service")
+	addr := flag.String("addr", ":8086", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	method := flag.String("method", "get", "which gRPC method to invoke")
 	flag.Parse()
 
-	client, conn, err := destination.NewClient(*addr)
+	client, conn, err := newClient(*addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -42,6 +42,16 @@ func main() {
 	default:
 		log.Fatalf("Unknown method: %s; supported methods: get, getProfile", *method)
 	}
+}
+
+// newClient creates a new gRPC client to the Destination service.
+func newClient(addr string) (pb.DestinationClient, *grpc.ClientConn, error) {
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pb.NewDestinationClient(conn), conn, nil
 }
 
 func get(client pb.DestinationClient, req *pb.GetDestination) {

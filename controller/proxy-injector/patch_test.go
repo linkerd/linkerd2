@@ -1,7 +1,6 @@
 package injector
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -36,13 +35,12 @@ func TestPatch(t *testing.T) {
 	var (
 		controllerNamespace = "linkerd"
 		createdBy           = "linkerd/cli v18.8.4"
-		initContainerIndex  = 5
 	)
 
 	actual := NewPatch()
 	actual.addContainer(sidecar)
 	actual.addInitContainerRoot()
-	actual.addInitContainer(init, initContainerIndex)
+	actual.addInitContainer(init)
 	actual.addVolumeRoot()
 	actual.addVolume(trustAnchors)
 	actual.addVolume(secrets)
@@ -62,7 +60,7 @@ func TestPatch(t *testing.T) {
 	expected.patchOps = []*patchOp{
 		&patchOp{Op: "add", Path: patchPathContainer, Value: sidecar},
 		&patchOp{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
-		&patchOp{Op: "add", Path: fmt.Sprintf(patchPathInitContainer, initContainerIndex), Value: init},
+		&patchOp{Op: "add", Path: patchPathInitContainer, Value: init},
 		&patchOp{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: trustAnchors},
 		&patchOp{Op: "add", Path: patchPathVolume, Value: secrets},

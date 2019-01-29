@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import deployRollupFixtures from '../../../test/fixtures/deployRollup.json';
 import multiDeployRollupFixtures from '../../../test/fixtures/multiDeployRollup.json';
 import multiResourceRollupFixtures from '../../../test/fixtures/allRollup.json';
@@ -54,7 +53,7 @@ describe('MetricUtils', () => {
   describe('processMultiResourceRollup', () => {
     it('Extracts metrics and groups them by resource type', () => {
       let result = processMultiResourceRollup(multiResourceRollupFixtures);
-      expect(_.size(result)).toEqual(2);
+      expect(Object.keys(result)).toHaveLength(2);
 
       expect(result["deployment"]).toHaveLength(1);
       expect(result["pod"]).toHaveLength(4);

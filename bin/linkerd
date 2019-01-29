@@ -18,7 +18,7 @@ fi
 
 # build linkerd executable if it does not exist
 if [ ! -f $bin ]; then
-  $bindir/docker-build-cli-bin >/dev/null
+  $bindir/build-cli-bin >/dev/null
 fi
 
 exec $bin "$@"

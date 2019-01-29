@@ -32,11 +32,8 @@ written in Go. The dashboard UI is a React application.
 - [`cli`](cli): Command-line `linkerd` utility, view and drive the control
   plane.
 - [`controller`](controller)
-  - [`destination`](controller/destination): Serves service discovery
-    information to the `proxy`.
   - [`proxy-api`](controller/api/proxy): Accepts requests from `proxy`
-    instances and forwards those requests to the appropriate controller
-    service.
+    instances and serves information such as service discovery.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
     Linkerd2 service mesh.
@@ -66,7 +63,6 @@ linkerd2_components
     node [style=filled, shape=rect];
 
     "cli" [color=lightblue];
-    "destination" [color=lightblue];
     "proxy-api" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
@@ -88,9 +84,7 @@ linkerd2_components
 
     "proxy" -> "proxy-api";
 
-    "proxy-api" -> "destination";
-
-    "destination" -> "kubernetes api";
+    "proxy-api" -> "kubernetes api";
 
     "grafana" -> "prometheus";
     "prometheus" -> "kubernetes api";
@@ -119,7 +113,7 @@ These commands assume a working
 
 ```bash
 # build all docker images, using minikube as our docker repo
-DOCKER_TRACE=1 bin/mkube bin/fast-build
+DOCKER_TRACE=1 bin/mkube bin/docker-build
 
 # install linkerd
 bin/linkerd install | kubectl apply -f -
@@ -171,12 +165,24 @@ That is equivalent to running `linkerd check` using the code on your branch.
 
 When Linkerd2's CLI is built using `bin/docker-build` it always creates binaries
 for all three platforms. For local development and a faster edit-build-test
-cycle you might want to avoid that. For those situations you can use the
-`bin/fast-build` script, which builds the CLI using the local Go toolchain
+cycle you might want to avoid that. For those situations you can set
+`LINKERD_LOCAL_BUILD_CLI=1`, which builds the CLI using the local Go toolchain
 outside of Docker.
 
 ```bash
-bin/fast-build
+LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
+```
+
+To build only the cli (locally):
+
+```bash
+bin/build-cli-bin
+```
+
+For repeated cli builds that do not require Go Dep changes:
+
+```bash
+LINKERD_SKIP_DEP=1 bin/build-cli-bin
 ```
 
 ### Running the control plane for development
@@ -186,13 +192,13 @@ these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
-to run the destination service locally, run:
+to run the proxy-api service locally, run:
 
 ```bash
-bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+bin/go-run controller/cmd/proxy-api -kubeconfig ~/.kube/config -log-level debug
 ```
 
-You can send test requests to the destination service using the
+You can send test requests to the proxy-api service using the
 `destination-client` in the `controller/script` directory. For instance:
 
 ```bash
@@ -257,6 +263,13 @@ DOCKER_TRACE=1 bin/docker-build-proxy
 
 # Dependencies
 
+## Updating protobuf dependencies
+ If you make Protobuf changes, run:
+ ```bash
+bin/dep ensure
+bin/protoc-go.sh
+```
+
 ## Updating Docker dependencies
 
 The go Docker images rely on base dependency images with
@@ -291,15 +304,17 @@ build_architecture
     "proxy-init/integration_test/run_tests.sh" -> "proxy-init/integration_test/iptables/Dockerfile-tester";
 
     "_docker.sh" -> "_log.sh";
-
     "_gcp.sh";
     "_log.sh";
-    "_tag.sh";
+    "_tag.sh" -> "Dockerfile-go-deps";
 
-    "linkerd" -> "docker-build-cli-bin";
+    "build-cli-bin" -> "_tag.sh";
+    "build-cli-bin" -> "dep";
+    "build-cli-bin" -> "root-tag";
 
     "dep";
 
+    "docker-build" -> "build-cli-bin";
     "docker-build" -> "docker-build-cli-bin";
     "docker-build" -> "docker-build-controller";
     "docker-build" -> "docker-build-grafana";
@@ -364,6 +379,10 @@ build_architecture
     "go-run" -> ".gorun";
     "go-run" -> "root-tag";
 
+    "linkerd" -> "build-cli-bin";
+
+    "lint";
+
     "minikube-start-hyperv.bat";
 
     "mkube";
@@ -387,13 +406,17 @@ build_architecture
     ".travis.yml" -> "docker-push";
     ".travis.yml" -> "docker-push-deps";
     ".travis.yml" -> "docker-retag-all";
+    ".travis.yml" -> "lint";
     ".travis.yml" -> "protoc-go.sh";
 
     "update-go-deps-shas" -> "_tag.sh";
     "update-go-deps-shas" -> "cli/Dockerfile-bin";
     "update-go-deps-shas" -> "controller/Dockerfile";
+    "update-go-deps-shas" -> "grafana/Dockerfile";
     "update-go-deps-shas" -> "proxy-init/Dockerfile";
     "update-go-deps-shas" -> "web/Dockerfile";
+
+    "web" -> "go-run";
   }
 build_architecture
 </details>

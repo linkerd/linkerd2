@@ -1,25 +1,21 @@
 package version
 
 import (
-	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
-	"strings"
-	"time"
-
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
+// Version is updated automatically as part of the build process, and is the
+// ground source of truth for the current process's build version.
+//
 // DO NOT EDIT
-// This var is updated automatically as part of the build process
 var Version = undefinedVersion
 
 const (
-	undefinedVersion = "undefined"
-	versionCheckURL  = "https://versioncheck.linkerd.io/version.json?version=%s&uuid=%s&source=%s"
+	// undefinedVersion should take the form `channel-version` to conform to
+	// channelVersion functions.
+	undefinedVersion = "dev-undefined"
 )
 
 func init() {
@@ -36,98 +32,31 @@ func init() {
 	}
 }
 
-func CheckClientVersion(expectedVersion string) error {
-	if Version != expectedVersion {
-		return versionMismatchError(expectedVersion, Version)
+// Match compares two versions and returns success if they match, or an error
+// with a contextual message if they do not.
+func Match(expectedVersion, actualVersion string) error {
+	if expectedVersion == "" {
+		return errors.New("expected version is empty")
+	} else if actualVersion == "" {
+		return errors.New("actual version is empty")
+	} else if actualVersion == expectedVersion {
+		return nil
 	}
 
-	return nil
-}
-
-func CheckServerVersion(apiClient pb.ApiClient, expectedVersion string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	rsp, err := apiClient.Version(ctx, &pb.Empty{})
+	actual, err := parseChannelVersion(actualVersion)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse actual version: %s", err)
 	}
-
-	if v := rsp.GetReleaseVersion(); v != expectedVersion {
-		return versionMismatchError(expectedVersion, v)
-	}
-
-	return nil
-}
-
-func GetLatestVersion(uuid string, source string) (string, error) {
-	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
-	req, err := http.NewRequest("GET", url, nil)
+	expected, err := parseChannelVersion(expectedVersion)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to parse expected version: %s", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	rsp, err := http.DefaultClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return "", err
-	}
-	defer rsp.Body.Close()
-
-	if rsp.StatusCode != 200 {
-		return "", fmt.Errorf("Unexpected versioncheck response: %s", rsp.Status)
+	if actual.channel != expected.channel {
+		return fmt.Errorf("mismatched channels: running %s but retrieved %s",
+			actual, expected)
 	}
 
-	bytes, err := ioutil.ReadAll(rsp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var versionRsp map[string]string
-	err = json.Unmarshal(bytes, &versionRsp)
-	if err != nil {
-		return "", err
-	}
-
-	channel := parseChannel(Version)
-	if channel == "" {
-		return "", fmt.Errorf("Unsupported version format: %s", Version)
-	}
-
-	version, ok := versionRsp[channel]
-	if !ok {
-		return "", fmt.Errorf("Unsupported version channel: %s", channel)
-	}
-
-	return version, nil
-}
-
-func parseVersion(version string) string {
-	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
-		return parts[1]
-	}
-	return version
-}
-
-func parseChannel(version string) string {
-	if parts := strings.SplitN(version, "-", 2); len(parts) == 2 {
-		return parts[0]
-	}
-	return ""
-}
-
-func versionMismatchError(expectedVersion, actualVersion string) error {
-	channel := parseChannel(expectedVersion)
-	expectedVersionStr := parseVersion(expectedVersion)
-	actualVersionStr := parseVersion(actualVersion)
-
-	if channel != "" {
-		return fmt.Errorf("is running version %s but the latest %s version is %s",
-			actualVersionStr, channel, expectedVersionStr)
-	} else {
-		return fmt.Errorf("is running version %s but the latest version is %s",
-			actualVersionStr, expectedVersionStr)
-	}
+	return fmt.Errorf("is running version %s but the latest %s version is %s",
+		actual.version, actual.channel, expected.version)
 }

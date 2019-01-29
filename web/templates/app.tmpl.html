@@ -3,6 +3,7 @@
     data-release-version="{{.Data.ReleaseVersion}}"
     data-go-version="{{.Data.GoVersion}}"
     data-controller-namespace="{{.ControllerNamespace}}"
+    data-single-namespace="{{.SingleNamespace}}"
     data-uuid="{{.UUID}}">
     {{ if .Error }}
       <p>Failed to call public API: {{ .ErrorMessage }}</p>
@@ -12,10 +13,6 @@
 
 {{ define "script-tags" }}
   {{ if not .Contents.Error }}
-    {{ if .Context.WebpackDevServer }}
-      <script type="text/javascript" src="{{.Context.WebpackDevServer}}/dist/index_bundle.js" async></script>
-    {{else}}
-      <script type="text/javascript" src="{{.Contents.PathPrefix}}dist/index_bundle.js" async></script>
-    {{end}}
+    <script type="text/javascript" src="{{.Contents.PathPrefix}}dist/index_bundle.js" async></script>
   {{end}}
 {{end}}

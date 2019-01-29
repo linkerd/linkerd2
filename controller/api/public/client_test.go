@@ -32,7 +32,7 @@ func TestNewInternalClient(t *testing.T) {
 			StatusCode: 200,
 			Body:       ioutil.NopCloser(bufferedReader(t, &pb.Empty{})),
 		}
-		mockHttpClient := &http.Client{
+		mockHTTPClient := &http.Client{
 			Transport: mockTransport,
 		}
 
@@ -41,7 +41,7 @@ func TestNewInternalClient(t *testing.T) {
 			Host:   "some-hostname",
 			Path:   "/",
 		}
-		client, err := newClient(apiURL, mockHttpClient, "linkerd")
+		client, err := newClient(apiURL, mockHTTPClient, "linkerd")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -51,10 +51,10 @@ func TestNewInternalClient(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		expectedUrlRequested := "http://some-hostname/api/v1/Version"
-		actualUrlRequested := mockTransport.requestSent.URL.String()
-		if actualUrlRequested != expectedUrlRequested {
-			t.Fatalf("Expected request to URL [%v], but got [%v]", expectedUrlRequested, actualUrlRequested)
+		expectedURLRequested := "http://some-hostname/api/v1/Version"
+		actualURLRequested := mockTransport.requestSent.URL.String()
+		if actualURLRequested != expectedURLRequested {
+			t.Fatalf("Expected request to URL [%v], but got [%v]", expectedURLRequested, actualURLRequested)
 		}
 	})
 }

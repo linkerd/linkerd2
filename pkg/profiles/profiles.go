@@ -1,33 +1,105 @@
 package profiles
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"text/template"
+	"time"
 
+	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type profileTemplateConfig struct {
+	ControlPlaneNamespace string
+	ServiceNamespace      string
+	ServiceName           string
+	ClusterZone           string
+}
+
+var (
+	// DefaultRetryBudget is used for routes which do not specify one.
+	DefaultRetryBudget = pb.RetryBudget{
+		MinRetriesPerSecond: 10,
+		RetryRatio:          0.2,
+		Ttl: &duration.Duration{
+			Seconds: 10,
+		},
+	}
+	// ServiceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
+	ServiceProfileMeta = meta_v1.TypeMeta{
+		APIVersion: "linkerd.io/v1alpha1",
+		Kind:       "ServiceProfile",
+	}
+	// DefaultServiceProfile is used for services with no service profile.
+	DefaultServiceProfile = pb.DestinationProfile{
+		Routes:      []*pb.Route{},
+		RetryBudget: &DefaultRetryBudget,
+	}
+)
+
+// ToServiceProfile returns a Proxy API DestinationProfile, given a
+// ServiceProfile.
+func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, error) {
+	routes := make([]*pb.Route, 0)
+	for _, route := range profile.Routes {
+		pbRoute, err := ToRoute(route)
+		if err != nil {
+			return nil, err
+		}
+		routes = append(routes, pbRoute)
+	}
+	budget := DefaultRetryBudget
+	if profile.RetryBudget != nil {
+		budget.MinRetriesPerSecond = profile.RetryBudget.MinRetriesPerSecond
+		budget.RetryRatio = profile.RetryBudget.RetryRatio
+		ttl, err := time.ParseDuration(profile.RetryBudget.TTL)
+		if err != nil {
+			return nil, err
+		}
+		budget.Ttl = &duration.Duration{
+			Seconds: int64(ttl / time.Second),
+			Nanos:   int32(ttl % time.Second),
+		}
+	}
+	return &pb.DestinationProfile{
+		Routes:      routes,
+		RetryBudget: &budget,
+	}, nil
+}
+
+// ToRoute returns a Proxy API Route, given a ServiceProfile Route.
 func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	cond, err := ToRequestMatch(route.Condition)
 	if err != nil {
 		return nil, err
 	}
 	rcs := make([]*pb.ResponseClass, 0)
-	for _, rc := range route.Responses {
+	for _, rc := range route.ResponseClasses {
 		pbRc, err := ToResponseClass(rc)
 		if err != nil {
 			return nil, err
 		}
 		rcs = append(rcs, pbRc)
 	}
-	return &pb.Route{
+	ret := pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
-		// TODO: set route->name metric label.
-	}, nil
+		MetricsLabels:   map[string]string{"route": route.Name},
+		IsRetryable:     route.IsRetryable,
+	}
+	return &ret, nil
 }
 
+// ToResponseClass returns a Proxy API ResponseClass, given a ServiceProfile
+// ResponseClass.
 func ToResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 	cond, err := ToResponseMatch(rc.Condition)
 	if err != nil {
@@ -35,10 +107,12 @@ func ToResponseClass(rc *sp.ResponseClass) (*pb.ResponseClass, error) {
 	}
 	return &pb.ResponseClass{
 		Condition: cond,
-		IsFailure: !rc.IsSuccess,
+		IsFailure: rc.IsFailure,
 	}, nil
 }
 
+// ToResponseMatch returns a Proxy API ResponseMatch, given a ServiceProfile
+// ResponseMatch.
 func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	if rspMatch == nil {
 		return nil, errors.New("missing response match")
@@ -47,6 +121,9 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	matches := make([]*pb.ResponseMatch, 0)
+
 	if rspMatch.All != nil {
 		all := make([]*pb.ResponseMatch, 0)
 		for _, m := range rspMatch.All {
@@ -56,13 +133,13 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 			}
 			all = append(all, pbM)
 		}
-		return &pb.ResponseMatch{
+		matches = append(matches, &pb.ResponseMatch{
 			Match: &pb.ResponseMatch_All{
 				All: &pb.ResponseMatch_Seq{
 					Matches: all,
 				},
 			},
-		}, nil
+		})
 	}
 
 	if rspMatch.Any != nil {
@@ -74,24 +151,24 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 			}
 			any = append(any, pbM)
 		}
-		return &pb.ResponseMatch{
+		matches = append(matches, &pb.ResponseMatch{
 			Match: &pb.ResponseMatch_Any{
 				Any: &pb.ResponseMatch_Seq{
 					Matches: any,
 				},
 			},
-		}, nil
+		})
 	}
 
 	if rspMatch.Status != nil {
-		return &pb.ResponseMatch{
+		matches = append(matches, &pb.ResponseMatch{
 			Match: &pb.ResponseMatch_Status{
 				Status: &pb.HttpStatusRange{
 					Max: rspMatch.Status.Max,
 					Min: rspMatch.Status.Min,
 				},
 			},
-		}, nil
+		})
 	}
 
 	if rspMatch.Not != nil {
@@ -99,16 +176,30 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &pb.ResponseMatch{
+		matches = append(matches, &pb.ResponseMatch{
 			Match: &pb.ResponseMatch_Not{
 				Not: not,
 			},
-		}, nil
+		})
 	}
 
-	return nil, errors.New("A response match must have a field set")
+	if len(matches) == 0 {
+		return nil, errors.New("A response match must have a field set")
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	return &pb.ResponseMatch{
+		Match: &pb.ResponseMatch_All{
+			All: &pb.ResponseMatch_Seq{
+				Matches: matches,
+			},
+		},
+	}, nil
 }
 
+// ToRequestMatch returns a Proxy API RequestMatch, given a ServiceProfile
+// RequestMatch.
 func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	if reqMatch == nil {
 		return nil, errors.New("missing request match")
@@ -117,6 +208,9 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	matches := make([]*pb.RequestMatch, 0)
+
 	if reqMatch.All != nil {
 		all := make([]*pb.RequestMatch, 0)
 		for _, m := range reqMatch.All {
@@ -126,13 +220,13 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 			}
 			all = append(all, pbM)
 		}
-		return &pb.RequestMatch{
+		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_All{
 				All: &pb.RequestMatch_Seq{
 					Matches: all,
 				},
 			},
-		}, nil
+		})
 	}
 
 	if reqMatch.Any != nil {
@@ -144,21 +238,21 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 			}
 			any = append(any, pbM)
 		}
-		return &pb.RequestMatch{
+		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_Any{
 				Any: &pb.RequestMatch_Seq{
 					Matches: any,
 				},
 			},
-		}, nil
+		})
 	}
 
 	if reqMatch.Method != "" {
-		return &pb.RequestMatch{
+		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_Method{
 				Method: util.ParseMethod(reqMatch.Method),
 			},
-		}, nil
+		})
 	}
 
 	if reqMatch.Not != nil {
@@ -166,33 +260,43 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &pb.RequestMatch{
+		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_Not{
 				Not: not,
 			},
-		}, nil
+		})
 	}
 
-	if reqMatch.Path != "" {
-		return &pb.RequestMatch{
+	if reqMatch.PathRegex != "" {
+		matches = append(matches, &pb.RequestMatch{
 			Match: &pb.RequestMatch_Path{
 				Path: &pb.PathMatch{
-					Regex: reqMatch.Path,
+					Regex: reqMatch.PathRegex,
 				},
 			},
-		}, nil
+		})
 	}
 
-	return nil, errors.New("A request match must have a field set")
+	if len(matches) == 0 {
+		return nil, errors.New("A request match must have a field set")
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	return &pb.RequestMatch{
+		Match: &pb.RequestMatch_All{
+			All: &pb.RequestMatch_Seq{
+				Matches: matches,
+			},
+		},
+	}, nil
 }
 
+// ValidateRequestMatch validates whether a ServiceProfile RequestMatch has at
+// least one field set.
 func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
-	tooManyKindsErr := errors.New("A request match may not have more than two fields set")
 	matchKindSet := false
 	if reqMatch.All != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		for _, child := range reqMatch.All {
 			err := ValidateRequestMatch(child)
@@ -202,9 +306,6 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 		}
 	}
 	if reqMatch.Any != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		for _, child := range reqMatch.Any {
 			err := ValidateRequestMatch(child)
@@ -214,25 +315,16 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 		}
 	}
 	if reqMatch.Method != "" {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 	}
 	if reqMatch.Not != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		err := ValidateRequestMatch(reqMatch.Not)
 		if err != nil {
 			return err
 		}
 	}
-	if reqMatch.Path != "" {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
+	if reqMatch.PathRegex != "" {
 		matchKindSet = true
 	}
 
@@ -243,14 +335,12 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	return nil
 }
 
+// ValidateResponseMatch validates whether a ServiceProfile ResponseMatch has at
+// least one field set, and sanity checks the Status Range.
 func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
-	tooManyKindsErr := errors.New("A response match may not have more than two fields set")
 	invalidRangeErr := errors.New("Range maximum cannot be smaller than minimum")
 	matchKindSet := false
 	if rspMatch.All != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		for _, child := range rspMatch.All {
 			err := ValidateResponseMatch(child)
@@ -260,9 +350,6 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 		}
 	}
 	if rspMatch.Any != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		for _, child := range rspMatch.Any {
 			err := ValidateResponseMatch(child)
@@ -272,18 +359,12 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 		}
 	}
 	if rspMatch.Status != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		if rspMatch.Status.Max != 0 && rspMatch.Status.Min != 0 && rspMatch.Status.Max < rspMatch.Status.Min {
 			return invalidRangeErr
 		}
 		matchKindSet = true
 	}
 	if rspMatch.Not != nil {
-		if matchKindSet {
-			return tooManyKindsErr
-		}
 		matchKindSet = true
 		err := ValidateResponseMatch(rspMatch.Not)
 		if err != nil {
@@ -296,4 +377,47 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	}
 
 	return nil
+}
+
+func buildConfig(namespace, service, controlPlaneNamespace string) *profileTemplateConfig {
+	return &profileTemplateConfig{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		ServiceNamespace:      namespace,
+		ServiceName:           service,
+		ClusterZone:           "svc.cluster.local",
+	}
+}
+
+// RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
+// namespace, service, and control plane namespace.
+func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
+	config := buildConfig(namespace, service, controlPlaneNamespace)
+	template, err := template.New("profile").Parse(Template)
+	if err != nil {
+		return err
+	}
+	buf := &bytes.Buffer{}
+	err = template.Execute(buf, config)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buf.Bytes())
+	return err
+}
+
+func readFile(fileName string) (io.Reader, error) {
+	if fileName == "-" {
+		return os.Stdin, nil
+	}
+	return os.Open(fileName)
+}
+
+func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
+	output, err := yaml.Marshal(profile)
+	if err != nil {
+		return fmt.Errorf("Error writing Service Profile: %s", err)
+	}
+	_, err = w.Write(output)
+	return err
 }

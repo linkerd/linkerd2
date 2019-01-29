@@ -1,5 +1,7 @@
 package tmpl
 
+// MutatingWebhookConfigurationSpec provides a template for a
+// MutatingWebhookConfiguration.
 var MutatingWebhookConfigurationSpec = `
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -9,7 +11,7 @@ webhooks:
 - name: {{ .WebhookServiceName }}
   clientConfig:
     service:
-      name: proxy-injector
+      name: linkerd-proxy-injector
       namespace: {{ .ControllerNamespace }}
       path: "/"
     caBundle: {{ .CABundle }}

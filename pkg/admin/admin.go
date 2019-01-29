@@ -2,7 +2,6 @@ package admin
 
 import (
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -11,23 +10,14 @@ import (
 
 type handler struct {
 	promHandler http.Handler
-	ready       bool
-	sync.RWMutex
 }
 
-func StartServer(addr string, readyCh <-chan struct{}) {
+// StartServer starts an admin server listening on a given address.
+func StartServer(addr string) {
 	log.Infof("starting admin server on %s", addr)
 
 	h := &handler{
 		promHandler: promhttp.Handler(),
-		ready:       readyCh == nil,
-	}
-
-	if readyCh != nil {
-		go func() {
-			<-readyCh
-			h.setReady(true)
-		}()
 	}
 
 	s := &http.Server{
@@ -58,21 +48,5 @@ func (h *handler) servePing(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) serveReady(w http.ResponseWriter, req *http.Request) {
-	if h.getReady() {
-		w.Write([]byte("ok\n"))
-	} else {
-		http.Error(w, "unready", http.StatusServiceUnavailable)
-	}
-}
-
-func (h *handler) getReady() bool {
-	h.RLock()
-	defer h.RUnlock()
-	return h.ready
-}
-
-func (h *handler) setReady(ready bool) {
-	h.Lock()
-	defer h.Unlock()
-	h.ready = ready
+	w.Write([]byte("ok\n"))
 }

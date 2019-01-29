@@ -1,5 +1,4 @@
 /* eslint-disable */
-import _ from 'lodash';
 import 'raf/polyfill'; // the polyfill import must be first
 import ApiHelpers from './ApiHelpers.jsx';
 import { mount } from 'enzyme';
@@ -58,12 +57,12 @@ describe('ApiHelpers', () => {
 
   describe('PrefixedLink', () => {
     it('respects default values', () => {
-      api = ApiHelpers('/my/path/prefix/web:/foo');
+      api = ApiHelpers('/my/path/prefix/linkerd-web:/foo');
       let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
       let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
 
       expect(prefixedLink.find("Link")).toHaveLength(1);
-      expect(prefixedLink.find('a')).toHaveProp('href', '/my/path/prefix/web:/foo/myrelpath');
+      expect(prefixedLink.find('a')).toHaveProp('href', '/my/path/prefix/linkerd-web:/foo/myrelpath');
       expect(prefixedLink.find('a')).not.toHaveProp('target', '_blank');
       expect(prefixedLink).toIncludeText(linkProps.children[0]);
     });
@@ -85,16 +84,6 @@ describe('ApiHelpers', () => {
 
       expect(prefixedLink.find("Link")).toHaveLength(1);
       expect(prefixedLink.find('a')).toHaveProp('href', '/myrelpath');
-      expect(prefixedLink).toIncludeText(linkProps.children[0]);
-    });
-
-    it('replaces the deployment in a pathPrefix', () => {
-      api = ApiHelpers('/my/path/prefix/web:/foo');
-      let linkProps = { deployment: "mydeployment", to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).toHaveLength(1);
-      expect(prefixedLink.find('a')).toHaveProp('href', '/my/path/prefix/mydeployment:/foo/myrelpath');
       expect(prefixedLink).toIncludeText(linkProps.children[0]);
     });
 

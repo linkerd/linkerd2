@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -20,7 +21,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	prometheusUrl := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
+	prometheusURL := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -41,22 +42,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	var spClient *spclient.Clientset
 	restrictToNamespace := ""
+	resources := []k8s.APIResource{k8s.DS, k8s.Deploy, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc}
+
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
+	} else {
+		spClient, err = k8s.NewSpClientSet(*kubeConfigPath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		resources = append(resources, k8s.SP)
 	}
+
 	k8sAPI := k8s.NewAPI(
 		k8sClient,
-		nil,
+		spClient,
 		restrictToNamespace,
-		k8s.Deploy,
-		k8s.Pod,
-		k8s.RC,
-		k8s.RS,
-		k8s.Svc,
+		resources...,
 	)
 
-	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusUrl})
+	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -68,18 +77,17 @@ func main() {
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
+		*singleNamespace,
 	)
 
-	ready := make(chan struct{})
-
-	go k8sAPI.Sync(ready)
+	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
 		server.ListenAndServe()
 	}()
 
-	go admin.StartServer(*metricsAddr, ready)
+	go admin.StartServer(*metricsAddr)
 
 	<-stop
 

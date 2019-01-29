@@ -1,18 +1,16 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/spf13/cobra"
-)
-
-const (
-	retryStatus = "[retry]"
-	failStatus  = "[FAIL]"
 )
 
 type checkOptions struct {
@@ -58,8 +56,8 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunChecks(options)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return configureAndRunChecks(stdout, options)
 		},
 	}
 
@@ -78,68 +76,111 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(options *checkOptions) {
-	checks := []healthcheck.Checks{healthcheck.KubernetesAPIChecks}
-
-	if options.preInstallOnly {
-		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
-	} else if options.dataPlaneOnly {
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
-		checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
-	} else {
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
+func configureAndRunChecks(w io.Writer, options *checkOptions) error {
+	err := options.validate()
+	if err != nil {
+		return fmt.Errorf("Validation error when executing check command: %v", err)
+	}
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.KubernetesVersionChecks,
+		healthcheck.LinkerdVersionChecks,
 	}
 
-	checks = append(checks, healthcheck.LinkerdVersionChecks)
+	if options.preInstallOnly {
+		if options.singleNamespace {
+			checks = append(checks, healthcheck.LinkerdPreInstallSingleNamespaceChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdPreInstallClusterChecks)
+		}
+		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
+	} else {
+		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
+		checks = append(checks, healthcheck.LinkerdAPIChecks)
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.HealthCheckOptions{
-		ControlPlaneNamespace:          controlPlaneNamespace,
-		DataPlaneNamespace:             options.namespace,
-		TargetProxyResource:            options.targetProxyResource,
-		KubeConfig:                     kubeconfigPath,
-		KubeContext:                    kubeContext,
-		APIAddr:                        apiAddr,
-		VersionOverride:                options.versionOverride,
-		RetryDeadline:                  time.Now().Add(options.wait),
-		ShouldCheckKubeVersion:         true,
-		ShouldCheckControlPlaneVersion: !(options.preInstallOnly || options.dataPlaneOnly),
-		ShouldCheckDataPlaneVersion:    options.dataPlaneOnly,
-		SingleNamespace:                options.singleNamespace,
+		if !options.singleNamespace {
+			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
+		}
+
+		if options.dataPlaneOnly {
+			checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+		}
+	}
+
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		DataPlaneNamespace:    options.namespace,
+		KubeConfig:            kubeconfigPath,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+		VersionOverride:       options.versionOverride,
+		TargetProxyResource:   options.targetProxyResource,
+		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	success := runChecks(os.Stdout, hc)
+	success := runChecks(w, hc)
 
-	fmt.Println("")
+	// this empty line separates final results from the checks list in the output
+	fmt.Fprintln(w, "")
 
 	if !success {
-		fmt.Printf("Status check results are %s\n", failStatus)
+		fmt.Fprintf(w, "Status check results are %s\n", failStatus)
 		os.Exit(2)
 	}
 
-	fmt.Printf("Status check results are %s\n", okStatus)
+	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
+
+	return nil
+}
+
+func (o *checkOptions) validate() error {
+	if o.preInstallOnly && o.dataPlaneOnly {
+		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	return nil
 }
 
 func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
+	var lastCategory healthcheck.CategoryID
+	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	spin.Writer = w
+
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
-		checkLabel := fmt.Sprintf("%s: %s", result.Category, result.Description)
+		if lastCategory != result.Category {
+			if lastCategory != "" {
+				fmt.Fprintln(w)
+			}
 
-		filler := ""
-		lineBreak := "\n"
-		for i := 0; i < lineWidth-len(checkLabel)-len(okStatus)-len(lineBreak); i++ {
-			filler = filler + "."
+			fmt.Fprintln(w, result.Category)
+			fmt.Fprintln(w, strings.Repeat("-", len(result.Category)))
+
+			lastCategory = result.Category
 		}
 
+		spin.Stop()
 		if result.Retry {
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, retryStatus, result.Err, lineBreak)
+			spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
+			spin.Color("bold")
 			return
 		}
 
+		status := okStatus
 		if result.Err != nil {
-			fmt.Fprintf(w, "%s%s%s -- %s%s", checkLabel, filler, failStatus, result.Err, lineBreak)
-			return
+			status = failStatus
+			if result.Warning {
+				status = warnStatus
+			}
 		}
 
-		fmt.Fprintf(w, "%s%s%s%s", checkLabel, filler, okStatus, lineBreak)
+		fmt.Fprintf(w, "%s %s\n", status, result.Description)
+		if result.Err != nil {
+			fmt.Fprintf(w, "    %s\n", result.Err)
+			if result.HintURL != "" {
+				fmt.Fprintf(w, "    See %s for hints\n", result.HintURL)
+			}
+		}
 	}
 
 	return hc.RunChecks(prettyPrintResults)

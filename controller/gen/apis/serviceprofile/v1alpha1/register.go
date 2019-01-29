@@ -8,7 +8,7 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile"
 )
 
-// GroupVersion is the identifier for the API which includes
+// SchemeGroupVersion is the identifier for the API which includes
 // the name of the group and the version of the API
 var SchemeGroupVersion = schema.GroupVersion{
 	Group:   sp.GroupName,
@@ -26,8 +26,15 @@ func Resource(resource string) schema.GroupResource {
 }
 
 var (
+	// SchemeBuilder collects functions that add things to a scheme. It's to allow
+	// code to compile without explicitly referencing generated types. You should
+	// declare one in each package that will have generated deep copy or conversion
+	// functions.
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
+
+	// AddToScheme applies all the stored functions to the scheme. A non-nil error
+	// indicates that one function failed and the attempt was abandoned.
+	AddToScheme = SchemeBuilder.AddToScheme
 )
 
 // Adds the list of known types to Scheme.

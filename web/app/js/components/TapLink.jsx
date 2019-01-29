@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import _ from 'lodash';
 
 const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, path}) => {
   let params = {
@@ -11,7 +10,7 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
     toResource,
     path
   };
-  let queryStr = _.join(_.map(params, (v,k) => `${k}=${v}`), "&");
+  let queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
 
   return (
     <PrefixedLink to={`/tap?${queryStr}`}>

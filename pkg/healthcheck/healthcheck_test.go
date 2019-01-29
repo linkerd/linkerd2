@@ -18,34 +18,46 @@ import (
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(_ *CheckResult) {}
 
-	passingCheck1 := &checker{
-		category:    "cat1",
-		description: "desc1",
-		check: func() error {
-			return nil
+	passingCheck1 := category{
+		id: "cat1",
+		checkers: []checker{
+			checker{
+				description: "desc1",
+				check: func() error {
+					return nil
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	passingCheck2 := &checker{
-		category:    "cat2",
-		description: "desc2",
-		check: func() error {
-			return nil
+	passingCheck2 := category{
+		id: "cat2",
+		checkers: []checker{
+			checker{
+				description: "desc2",
+				check: func() error {
+					return nil
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	failingCheck := &checker{
-		category:    "cat3",
-		description: "desc3",
-		check: func() error {
-			return fmt.Errorf("error")
+	failingCheck := category{
+		id: "cat3",
+		checkers: []checker{
+			checker{
+				description: "desc3",
+				check: func() error {
+					return fmt.Errorf("error")
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	passingRPCClient := public.MockApiClient{
+	passingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
 				&healthcheckPb.CheckResult{
@@ -57,17 +69,21 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingRPCCheck := &checker{
-		category:    "cat4",
-		description: "desc4",
-		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-			return passingRPCClient.SelfCheck(context.Background(),
-				&healthcheckPb.SelfCheckRequest{})
+	passingRPCCheck := category{
+		id: "cat4",
+		checkers: []checker{
+			checker{
+				description: "desc4",
+				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+					return passingRPCClient.SelfCheck(context.Background(),
+						&healthcheckPb.SelfCheckRequest{})
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	failingRPCClient := public.MockApiClient{
+	failingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
 				&healthcheckPb.CheckResult{
@@ -80,36 +96,44 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingRPCCheck := &checker{
-		category:    "cat5",
-		description: "desc5",
-		checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-			return failingRPCClient.SelfCheck(context.Background(),
-				&healthcheckPb.SelfCheckRequest{})
+	failingRPCCheck := category{
+		id: "cat5",
+		checkers: []checker{
+			checker{
+				description: "desc5",
+				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+					return failingRPCClient.SelfCheck(context.Background(),
+						&healthcheckPb.SelfCheckRequest{})
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
-	fatalCheck := &checker{
-		category:    "cat6",
-		description: "desc6",
-		fatal:       true,
-		check: func() error {
-			return fmt.Errorf("fatal")
+	fatalCheck := category{
+		id: "cat6",
+		checkers: []checker{
+			checker{
+				description: "desc6",
+				fatal:       true,
+				check: func() error {
+					return fmt.Errorf("fatal")
+				},
+				retryDeadline: time.Time{},
+			},
 		},
-		retryDeadline: time.Time{},
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				passingCheck2,
-				failingCheck,
-				passingRPCCheck,
-				failingRPCCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(passingCheck2)
+		hc.addCategory(failingCheck)
+		hc.addCategory(passingRPCCheck)
+		hc.addCategory(failingRPCCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -125,9 +149,9 @@ func TestHealthChecker(t *testing.T) {
 			"cat2 desc2",
 			"cat3 desc3: error",
 			"cat4 desc4",
-			"cat4[rpc1] rpc desc1",
+			"cat4 [rpc1] rpc desc1",
 			"cat5 desc5",
-			"cat5[rpc2] rpc desc2: rpc error",
+			"cat5 [rpc2] rpc desc2: rpc error",
 		}
 
 		hc.RunChecks(observer)
@@ -138,13 +162,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is successful if all checks were successful", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				passingCheck2,
-				passingRPCCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(passingCheck2)
+		hc.addCategory(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -154,13 +178,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is not successful if one check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				failingCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(failingCheck)
+		hc.addCategory(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -170,13 +194,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Is not successful if one RPC check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				failingRPCCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(failingRPCCheck)
+		hc.addCategory(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -186,13 +210,13 @@ func TestHealthChecker(t *testing.T) {
 	})
 
 	t.Run("Does not run remaining check if fatal check fails", func(t *testing.T) {
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				fatalCheck,
-				passingCheck2,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(fatalCheck)
+		hc.addCategory(passingCheck2)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -219,25 +243,29 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := &checker{
-			category:      "cat7",
-			description:   "desc7",
-			retryDeadline: time.Now().Add(100 * time.Second),
-			check: func() error {
-				if returnError {
-					returnError = false
-					return fmt.Errorf("retry")
-				}
-				return nil
+		retryCheck := category{
+			id: "cat7",
+			checkers: []checker{
+				checker{
+					description:   "desc7",
+					retryDeadline: time.Now().Add(100 * time.Second),
+					check: func() error {
+						if returnError {
+							returnError = false
+							return fmt.Errorf("retry")
+						}
+						return nil
+					},
+				},
 			},
 		}
 
-		hc := HealthChecker{
-			checkers: []*checker{
-				passingCheck1,
-				retryCheck,
-			},
-		}
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(retryCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -250,7 +278,7 @@ func TestHealthChecker(t *testing.T) {
 
 		expectedResults := []string{
 			"cat1 desc1 retry=false",
-			"cat7 desc7 retry=true: retry",
+			"cat7 desc7 retry=true: waiting for check to complete",
 			"cat7 desc7 retry=false",
 		}
 
@@ -270,7 +298,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 				Phase: phase,
 				ContainerStatuses: []v1.ContainerStatus{
 					v1.ContainerStatus{
-						Name:  strings.Split(name, "-")[0],
+						Name:  strings.Split(name, "-")[1],
 						Ready: ready,
 					},
 				},
@@ -280,49 +308,64 @@ func TestValidateControlPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []v1.Pod{
-			pod("controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("grafana-5b7d796646-hh46d", v1.PodRunning, true),
-			pod("prometheus-74d6879cd6-bbdk6", v1.PodFailed, false),
-			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodFailed, false),
+			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No running pods for \"prometheus\"" {
+		if err.Error() != "No running pods for \"linkerd-prometheus\"" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
 
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
 		pods := []v1.Pod{
-			pod("controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("grafana-5b7d796646-hh46d", v1.PodRunning, false),
-			pod("prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
-			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, false),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"grafana\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "The \"linkerd-grafana\" pod's \"grafana\" container is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
 
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
 		pods := []v1.Pod{
-			pod("controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("grafana-5b7d796646-hh46d", v1.PodRunning, true),
-			pod("prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
-			pod("web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
+		pods := []v1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+			pod("hello-43c25d", v1.PodRunning, true),
+		}
+
+		err := validateControlPlanePods(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
 }

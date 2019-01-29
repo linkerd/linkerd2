@@ -1,0 +1,8 @@
+
+√ pods do not use host networking
+‼ known 3rd party sidecar detected in deployment/web
+‼ no supported objects found
+√ pod specs do not include UDP ports
+
+deployment "web" skipped
+

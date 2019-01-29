@@ -6,7 +6,14 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TapEventTable from './TapEventTable.jsx';
 import TapQueryForm from './TapQueryForm.jsx';
-import _ from 'lodash';
+import _cloneDeep from 'lodash/cloneDeep';
+import _each from 'lodash/each';
+import _isNil from 'lodash/isNil';
+import _orderBy from 'lodash/orderBy';
+import _size from 'lodash/size';
+import _throttle from 'lodash/throttle';
+import _values from 'lodash/values';
+import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const urlPropsQueryConfig = {
@@ -30,7 +37,7 @@ class Tap extends React.Component {
     super(props);
     this.api = this.props.api;
     this.tapResultsById = {};
-    this.throttledWebsocketRecvHandler = _.throttle(this.updateTapResults, 500);
+    this.throttledWebsocketRecvHandler = _throttle(this.updateTapResults, 500);
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
@@ -75,7 +82,7 @@ class Tap extends React.Component {
   }
 
   onWebsocketOpen = () => {
-    let query = _.cloneDeep(this.state.query);
+    let query = _cloneDeep(this.state.query);
     setMaxRps(query);
 
     this.ws.send(JSON.stringify({
@@ -116,40 +123,6 @@ class Tap extends React.Component {
     this.stopTapStreaming();
   }
 
-  getResourcesByNs(rsp) {
-    let statTables = _.get(rsp, [0, "ok", "statTables"]);
-    let authoritiesByNs = {};
-    let resourcesByNs = _.reduce(statTables, (mem, table) => {
-      _.each(table.podGroup.rows, row => {
-        // filter out resources that aren't meshed. note that authorities don't
-        // have pod counts and therefore can't be filtered out here
-        if (row.meshedPodCount === "0" && row.resource.type !== "authority") {
-          return;
-        }
-
-        if (!mem[row.resource.namespace]) {
-          mem[row.resource.namespace] = [];
-          authoritiesByNs[row.resource.namespace] = [];
-        }
-
-        switch (row.resource.type.toLowerCase()) {
-          case "service":
-            break;
-          case "authority":
-            authoritiesByNs[row.resource.namespace].push(row.resource.name);
-            break;
-          default:
-            mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
-        }
-      });
-      return mem;
-    }, {});
-    return {
-      authoritiesByNs,
-      resourcesByNs
-    };
-  }
-
   indexTapResult = data => {
     // keep an index of tap request rows by id. this allows us to collate
     // requestInit/responseInit/responseEnd into one single table row,
@@ -157,9 +130,9 @@ class Tap extends React.Component {
     let resultIndex = this.tapResultsById;
     let d = processTapEvent(data);
 
-    if (_.isNil(resultIndex[d.id])) {
+    if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
-      if (_.size(resultIndex) > this.state.maxLinesToDisplay) {
+      if (_size(resultIndex) > this.state.maxLinesToDisplay) {
         this.deleteOldestTapResult(resultIndex);
       }
 
@@ -182,7 +155,7 @@ class Tap extends React.Component {
     let oldest = Date.now();
     let oldestId = "";
 
-    _.each(resultIndex, (res, id) => {
+    _each(resultIndex, (res, id) => {
       if (res.lastUpdated < oldest) {
         oldest = res.lastUpdated;
         oldestId = id;
@@ -264,8 +237,8 @@ class Tap extends React.Component {
     let url = this.api.urlsForResource("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(rsp => {
-        let { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
+      .then(([rsp]) => {
+        let { resourcesByNs, authoritiesByNs } = groupResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
@@ -294,8 +267,7 @@ class Tap extends React.Component {
   }
 
   render() {
-    let tableRows = _(this.state.tapResultsById)
-      .values().sortBy('lastUpdated').reverse().value();
+    let tableRows = _orderBy(_values(this.state.tapResultsById), r => r.lastUpdated, "desc");
 
     return (
       <div>
@@ -303,6 +275,7 @@ class Tap extends React.Component {
         <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
 
         <TapQueryForm
+          cmdName="tap"
           tapRequestInProgress={this.state.tapRequestInProgress}
           tapIsClosing={this.state.tapIsClosing}
           handleTapStart={this.handleTapStart}

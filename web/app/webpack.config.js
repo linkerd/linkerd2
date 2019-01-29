@@ -1,14 +1,24 @@
 /* global require, module, __dirname */
 
 const path = require('path');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
+const WebpackMvPlugin = require('./webpack-mv-plugin.js');
+
+// uncomment here and in plugins to analyze webpack bundle size
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: './js/index.js',
+  devServer: {
+    writeToDisk: true
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
     publicPath: 'dist/',
-    filename: 'index_bundle.js'
+    filename: '[name].[contenthash].js'
   },
   devtool: 'cheap-module-source-map',
   externals: {
@@ -39,7 +49,6 @@ module.exports = {
         use: [
           'style-loader',
           { loader: 'css-loader', options: { importLoaders: 1, minimize: true } },
-          'postcss-loader'
         ]
       },
       {
@@ -52,23 +61,24 @@ module.exports = {
             }
           }
         ]
-      },
-      {
-        test: /\.less$/,
-        use: [
-          'style-loader',
-          'css-loader',
-          {
-            loader: 'less-loader',
-            options: {
-              modifyVars: {
-                'font-family': '\'Roboto\', \'Lato\', helvetica, arial, sans-serif'
-              },
-              javascriptEnabled: true
-            }
-          }
-        ]
       }
     ]
-  }
-}
+  },
+  plugins: [
+    // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
+    new CleanWebpackPlugin(['dist']),
+    new LodashModuleReplacementPlugin({
+      // 'chain': true,
+      'collections': true,
+      'paths': true
+    }),
+    // compile the bundle with hashed filename into index_bundle.js.out
+    new HtmlWebpackPlugin({
+      inject: false,
+      filename: "index_bundle.js.out",
+      template: 'index_bundle.js.lodash.tmpl',
+    }),
+    // move /dist/index_bundle.js.out to /dist/index_bundle.js
+    new WebpackMvPlugin()
+  ]
+};

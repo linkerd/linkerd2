@@ -2,15 +2,13 @@
 
 [![Build Status][ci-badge]][ci]
 [![GitHub license][license-badge]](LICENSE)
+[![Go Report Card][go-report-card-badge]][go-report-card]
 [![Slack Status][slack-badge]][slack]
 
 :balloon: Welcome to Linkerd! :wave:
 
-Linkerd is a *service sidecar* designed to give service owners automatic
-observability, reliability, and runtime diagnostics for their service without
-requiring configuration or code changes. Linkerd is also a *service mesh*,
-running across an entire cluster to provide platform-wide telemetry, security,
-and reliability.
+Linkerd is a *service mesh*, designed to give platform-wide observability,
+reliability, and security without requiring configuration or code changes.
 
 Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
@@ -23,8 +21,7 @@ The complete list of Linkerd repos is:
 * [linkerd2-proxy][proxy]: Linkerd 2.x data plane proxy
 * [linkerd2-proxy-api][proxy-api]: Linkerd 2.x gRPC API bindings
 * [linkerd][linkerd1]: Linkerd 1.x
-* [linkerd-website][linkerd-website]: linkerd.io website (including docs for 1.x and 2.x)
-* [linkerd-examples][linkerd-examples]: example configs and apps
+* [website][linkerd-website]: linkerd.io website (including docs for 1.x and 2.x)
 
 ## Quickstart and documentation
 
@@ -76,6 +73,8 @@ specific language governing permissions and limitations under the License.
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/
 [golang]: https://golang.org/
+[go-report-card]: https://goreportcard.com/report/github.com/linkerd/linkerd2
+[go-report-card-badge]: https://goreportcard.com/badge/github.com/linkerd/linkerd2
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [linkerd1]: https://github.com/linkerd/linkerd
 [linkerd2]: https://github.com/linkerd/linkerd2
@@ -83,7 +82,6 @@ specific language governing permissions and limitations under the License.
 [linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
 [linkerd-dev]: https://lists.cncf.io/g/cncf-linkerd-dev
 [linkerd-docs]: https://linkerd.io/2/overview/
-[linkerd-examples]: https://linkerd.io/2/overview/
 [linkerd-inject]: https://linkerd.io/2/adding-your-service/
 [linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
 [linkerd-website]: https://github.com/linkerd/website

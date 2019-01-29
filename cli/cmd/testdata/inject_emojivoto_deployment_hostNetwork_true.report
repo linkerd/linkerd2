@@ -1,8 +1,6 @@
 
-hostNetwork: pods do not use host networking...............................[warn] -- "hostNetwork: true" detected in deployment/web
-sidecar: pods do not have a proxy or initContainer already injected........[ok]
-supported: at least one resource injected..................................[warn] -- no supported objects found
-udp: pod specs do not include UDP ports....................................[ok]
+‼ "hostNetwork: true" detected in deployment/web
+‼ no supported objects found
 
-Summary: 0 of 1 YAML document(s) injected
+deployment "web" skipped
 

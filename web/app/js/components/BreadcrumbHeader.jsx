@@ -3,14 +3,16 @@ import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
 import PropTypes from "prop-types";
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
-import _ from 'lodash';
+import _chunk from 'lodash/chunk';
+import _takeWhile from 'lodash/takeWhile';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {
   "servicemesh": "Service Mesh",
   "overview": "Overview",
   "tap": "Tap",
-  "top": "Top"
+  "top": "Top",
+  "routes": "Top Routes"
 };
 
 class BreadcrumbHeader extends React.Component {
@@ -29,10 +31,10 @@ class BreadcrumbHeader extends React.Component {
 
   processResourceDetailURL(segments) {
     if (segments.length === 4) {
-      let splitSegments = _.chunk(segments, 2);
+      let splitSegments = _chunk(segments, 2);
       let resourceNameSegment = splitSegments[1];
       resourceNameSegment[0] = singularResource(resourceNameSegment[0]);
-      return _.concat(splitSegments[0], resourceNameSegment.join('/'));
+      return splitSegments[0].concat(resourceNameSegment.join('/'));
     } else {
       return segments;
     }
@@ -45,8 +47,8 @@ class BreadcrumbHeader extends React.Component {
       let segments = location.split('/').slice(1);
       let finalSegments = this.processResourceDetailURL(segments);
 
-      return _.map(finalSegments, segment => {
-        let partialUrl = _.takeWhile(segments, s => {
+      return finalSegments.map(segment => {
+        let partialUrl = _takeWhile(segments, s => {
           return s !== segment;
         });
 
@@ -88,14 +90,14 @@ class BreadcrumbHeader extends React.Component {
     let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
     let shouldPluralizeFirstSegment = breadcrumbs.length === 1;
 
-    return _.map(breadcrumbs, (pathSegment, index) => {
+    return breadcrumbs.map((pathSegment, index) => {
       return (
         <span key={pathSegment.segment} className="breadcrumb-link">
           <PrefixedLink
             to={pathSegment.link}>
             {this.renderBreadcrumbSegment(pathSegment.segment, shouldPluralizeFirstSegment && index === 0)}
           </PrefixedLink>
-          { index < _.size(breadcrumbs) - 1 ? " > " : null}
+          { index < breadcrumbs.length - 1 ? " > " : null }
         </span>
       );
     });

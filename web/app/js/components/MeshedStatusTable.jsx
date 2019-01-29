@@ -1,17 +1,18 @@
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
+import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
-import _ from 'lodash';
+import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
 
 const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
     return "poor";
   } else if (meshedPodCount === 0) {
-    return "neutral";
+    return "default";
   } else {
     return "good";
   }
@@ -20,31 +21,33 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
-    key: "namespace",
+    dataIndex: "namespace",
+    sorter: (a, b) => a.namespace.localeCompare(b.namespace),
     render: d => {
       return  (
         <React.Fragment>
-          <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>
-          { _.isEmpty(d.errors) ? null :
-          <ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" />
+          <Grid container alignItems="center" spacing={8}>
+            <Grid item><PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink></Grid>
+            { _isEmpty(d.errors) ? null :
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
+          </Grid>
         </React.Fragment>
       );
     }
   },
   {
     title: "Meshed pods",
-    key: "meshedPodsStr",
-    isNumeric: true,
-    render: d => d.meshedPodsStr
+    dataIndex: "meshedPodsStr",
+    isNumeric: true
   },
   {
     title: "Meshed Status",
     key: "meshification",
     render: row => {
       let percent = row.meshedPercent.get();
-      let barType = _.isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "poor";
+      let barType = _isEmpty(row.errors) ?
+        getClassification(row.meshedPods, row.failedPods) : "warning";
       let Progress = StyledProgress(barType);
 
       let percentMeshedMsg = "";
@@ -75,6 +78,7 @@ class MeshedStatusTable extends React.Component {
         tableClassName="metric-table mesh-completion-table"
         tableRows={this.props.tableRows}
         tableColumns={namespacesColumns(this.props.api.PrefixedLink)}
+        defaultOrderBy="namespace"
         rowKey={d => d.namespace} />
     );
   }

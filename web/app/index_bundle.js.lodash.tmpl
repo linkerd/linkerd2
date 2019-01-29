@@ -1,0 +1,20 @@
+// based on https://gist.github.com/necolas/1025811
+(function(doc, script) {
+  let js,
+    fjs = doc.getElementsByTagName(script)[0],
+    add = function(url, id) {
+      if (doc.getElementById(id)) {return;}
+      js = doc.createElement(script);
+      js.src = url;
+      id && (js.id = id);
+      fjs.parentNode.insertBefore(js, fjs);
+    };
+<% for (let chunk in htmlWebpackPlugin.files.chunks) { %>
+  <% if (compilation.compiler.outputFileSystem.constructor.name === 'MemoryFileSystem') { %>
+    add('http://localhost:8080/<%= htmlWebpackPlugin.files.chunks[chunk].entry %>');
+  <% } else { %>
+    let root = fjs.src.substring(0, fjs.src.indexOf("dist"));
+    add(root+'<%= htmlWebpackPlugin.files.chunks[chunk].entry %>');
+  <% } %>
+<% } %>
+}(document, 'script'));

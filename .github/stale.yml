@@ -8,6 +8,7 @@ exemptLabels:
   - area/security
   - area/tls
   - area/docs
+  - area/test
   - good first issue
   - benchmarking
   - help wanted

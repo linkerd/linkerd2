@@ -5,8 +5,7 @@ import { grafanaIcon } from './util/SvgWrappers.jsx';
 const GrafanaLink = ({PrefixedLink, name, namespace, resource}) => {
   return (
     <PrefixedLink
-      to={`/dashboard/db/linkerd-${resource}?var-namespace=${namespace}&var-${resource}=${name}`}
-      deployment="grafana"
+      to={`/grafana/dashboard/db/linkerd-${resource}?var-namespace=${namespace}&var-${resource}=${name}`}
       targetBlank={true}>
       &nbsp;&nbsp;
       {grafanaIcon}

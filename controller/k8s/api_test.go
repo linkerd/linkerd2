@@ -35,7 +35,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	api.Sync(nil)
+	api.Sync()
 
 	return api, k8sResults, nil
 }
@@ -129,6 +129,39 @@ apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   name: my-deploy
+  namespace: not-my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "",
+				resType:   k8s.DaemonSet,
+				name:      "",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-deploy
+  namespace: my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.DaemonSet,
+				name:      "my-ds",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-ds
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-ds
   namespace: not-my-ns`,
 				},
 			},
@@ -358,6 +391,31 @@ metadata:
 status:
   phase: Finished`,
 				},
+			},
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: emoji
+  namespace: emojivoto
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{},
 			},
 			getPodsForExpected{
 				err: nil,

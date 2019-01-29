@@ -1,7 +1,13 @@
 package main
 
-import "github.com/linkerd/linkerd2/proxy-init/cmd"
+import (
+	"os"
+
+	"github.com/linkerd/linkerd2/proxy-init/cmd"
+)
 
 func main() {
-	cmd.NewRootCmd().Execute()
+	if err := cmd.NewRootCmd().Execute(); err != nil {
+		os.Exit(1)
+	}
 }

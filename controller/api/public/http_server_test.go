@@ -24,6 +24,11 @@ func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryReq
 	return m.ResponseToReturn.(*pb.StatSummaryResponse), m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*pb.TopRoutesResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.TopRoutesResponse), m.ErrorToReturn
+}
+
 func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.VersionInfo), m.ErrorToReturn
@@ -32,6 +37,11 @@ func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.Versio
 func (m *mockGrpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.ListPodsResponse), m.ErrorToReturn
+}
+
+func (m *mockGrpcServer) ListServices(ctx context.Context, req *pb.ListServicesRequest) (*pb.ListServicesResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.ListServicesResponse), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfCheckRequest) (*healcheckPb.SelfCheckResponse, error) {

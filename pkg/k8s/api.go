@@ -17,12 +17,15 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minApiVersion = [3]int{1, 8, 0}
+var minAPIVersion = [3]int{1, 8, 0}
 
+// KubernetesAPI provides a client for accessing a Kubernetes cluster.
 type KubernetesAPI struct {
 	*rest.Config
 }
 
+// NewClient returns an http.Client configured with a Transport to connect to
+// the Kubernetes cluster.
 func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 	secureTransport, err := rest.TransportFor(kubeAPI.Config)
 	if err != nil {
@@ -34,6 +37,7 @@ func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 	}, nil
 }
 
+// GetVersionInfo returns version.Info for the Kubernetes cluster.
 func (kubeAPI *KubernetesAPI) GetVersionInfo(client *http.Client) (*version.Info, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -58,21 +62,24 @@ func (kubeAPI *KubernetesAPI) GetVersionInfo(client *http.Client) (*version.Info
 	return &versionInfo, err
 }
 
+// CheckVersion validates whether the configured Kubernetes cluster's version is
+// running a minimum Kubernetes API version.
 func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 	apiVersion, err := getK8sVersion(versionInfo.String())
 	if err != nil {
 		return err
 	}
 
-	if !isCompatibleVersion(minApiVersion, apiVersion) {
+	if !isCompatibleVersion(minAPIVersion, apiVersion) {
 		return fmt.Errorf("Kubernetes is on version [%d.%d.%d], but version [%d.%d.%d] or more recent is required",
 			apiVersion[0], apiVersion[1], apiVersion[2],
-			minApiVersion[0], minApiVersion[1], minApiVersion[2])
+			minAPIVersion[0], minAPIVersion[1], minAPIVersion[2])
 	}
 
 	return nil
 }
 
+// NamespaceExists validates whether a given namespace exists.
 func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -123,9 +130,9 @@ func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Po
 	return podList.Items, nil
 }
 
-// UrlFor generates a URL based on the Kubernetes config.
-func (kubeAPI *KubernetesAPI) UrlFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return generateKubernetesApiBaseUrlFor(kubeAPI.Host, namespace, extraPathStartingWithSlash)
+// URLFor generates a URL based on the Kubernetes config.
+func (kubeAPI *KubernetesAPI) URLFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
+	return generateKubernetesAPIBaseURLFor(kubeAPI.Host, namespace, extraPathStartingWithSlash)
 }
 
 func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {
@@ -145,7 +152,7 @@ func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Clien
 // NewAPI validates a Kubernetes config and returns a client for accessing the
 // configured cluster
 func NewAPI(configPath, kubeContext string) (*KubernetesAPI, error) {
-	config, err := getConfig(configPath, kubeContext)
+	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
