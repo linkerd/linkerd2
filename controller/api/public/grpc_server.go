@@ -72,6 +72,8 @@ func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo,
 func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
 	log.Debugf("ListPods request: %+v", req)
 
+	targetOwner := req.GetSelector().GetResource()
+
 	// Reports is a map from instance name to the absolute time of the most recent
 	// report from that instance and its process start time
 	reports := make(map[string]podReport)
@@ -80,14 +82,23 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 		return nil, errors.New("cannot set both namespace and resource in the request. These are mutually exclusive")
 	}
 
+	labelSelector := labels.Everything()
+	if s := req.GetSelector().GetLabelSelector(); s != "" {
+		var err error
+		labelSelector, err = labels.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+		}
+	}
+
 	nsQuery := ""
 	namespace := ""
 	if req.GetNamespace() != "" {
 		namespace = req.GetNamespace()
-	} else if req.GetSelector().GetResource().GetNamespace() != "" {
-		namespace = req.GetSelector().GetResource().GetNamespace()
-	} else if req.GetSelector().GetResource().GetType() == pkgK8s.Namespace {
-		namespace = req.GetSelector().GetResource().GetName()
+	} else if targetOwner.GetNamespace() != "" {
+		namespace = targetOwner.GetNamespace()
+	} else if targetOwner.GetType() == pkgK8s.Namespace {
+		namespace = targetOwner.GetName()
 	}
 	if namespace != "" {
 		nsQuery = fmt.Sprintf("namespace=\"%s\"", namespace)
@@ -111,9 +122,9 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 	var pods []*k8sV1.Pod
 	if namespace != "" {
-		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labels.Everything())
+		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labelSelector)
 	} else {
-		pods, err = s.k8sAPI.Pod().Lister().List(labels.Everything())
+		pods, err = s.k8sAPI.Pod().Lister().List(labelSelector)
 	}
 
 	if err != nil {
@@ -123,6 +134,18 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 	for _, pod := range pods {
 		if s.shouldIgnore(pod) {
+			continue
+		}
+
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+		// filter out pods without matching owner
+		if targetOwner.GetNamespace() != "" && targetOwner.GetNamespace() != pod.GetNamespace() {
+			continue
+		}
+		if targetOwner.GetType() != "" && targetOwner.GetType() != ownerKind {
+			continue
+		}
+		if targetOwner.GetName() != "" && targetOwner.GetName() != ownerName {
 			continue
 		}
 
@@ -162,7 +185,6 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			ProxyVersion:        proxyVersion,
 		}
 
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
 		namespacedOwnerName := pod.Namespace + "/" + ownerName
 
 		switch ownerKind {

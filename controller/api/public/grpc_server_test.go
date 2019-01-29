@@ -227,6 +227,166 @@ spec:
 				res:              &pb.ListPodsResponse{},
 				promReqNamespace: "testnamespace",
 			},
+			// non-matching owner type -> no pod in the result
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    pod-template-hash: hash-meshed
+  ownerReferences:
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: meshed-deployment
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+				},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Pod,
+							Name: "non-existing-pod",
+						},
+					},
+				},
+				res: &pb.ListPodsResponse{},
+			},
+			// matching owner type -> pod is part of the result
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    pod-template-hash: hash-meshed
+  ownerReferences:
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: meshed-deployment
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+				},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Type: pkgK8s.Deployment,
+							Name: "meshed-deployment",
+						},
+					},
+				},
+				res: &pb.ListPodsResponse{
+					Pods: []*pb.Pod{
+						&pb.Pod{
+							Name:            "emojivoto/emojivoto-meshed",
+							Added:           true,
+							SinceLastReport: &duration.Duration{},
+							Status:          "Running",
+							PodIP:           "1.2.3.4",
+							Owner:           &pb.Pod_Deployment{Deployment: "emojivoto/meshed-deployment"},
+						},
+					},
+				},
+			},
+			// matching label in request -> pod is in the response
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    pod-template-hash: hash-meshed
+  ownerReferences:
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: meshed-deployment
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+				},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						LabelSelector: "pod-template-hash=hash-meshed",
+					},
+				},
+				res: &pb.ListPodsResponse{
+					Pods: []*pb.Pod{
+						&pb.Pod{
+							Name:            "emojivoto/emojivoto-meshed",
+							Added:           true,
+							SinceLastReport: &duration.Duration{},
+							Status:          "Running",
+							PodIP:           "1.2.3.4",
+							Owner:           &pb.Pod_Deployment{Deployment: "emojivoto/meshed-deployment"},
+						},
+					},
+				},
+			},
+			// NOT matching label in request -> pod is NOT in the response
+			listPodsExpected{
+				err: nil,
+				promRes: model.Vector{
+					&model.Sample{
+						Metric:    model.Metric{"pod": "emojivoto-meshed"},
+						Timestamp: 456,
+					},
+				},
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    pod-template-hash: hash-meshed
+  ownerReferences:
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: meshed-deployment
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+				},
+				req: &pb.ListPodsRequest{
+					Selector: &pb.ResourceSelection{
+						LabelSelector: "non-existent-label=value",
+					},
+				},
+				res: &pb.ListPodsResponse{},
+			},
 		}
 
 		for _, exp := range expectations {
