@@ -50,7 +50,7 @@ func (c Channels) Match(actualVersion string) error {
 
 	for _, cv := range c.array {
 		if cv.channel == actual.channel {
-			return Match(cv.String(), actualVersion)
+			return match(cv.String(), actualVersion)
 		}
 	}
 
