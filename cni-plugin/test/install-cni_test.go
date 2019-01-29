@@ -275,7 +275,7 @@ func TestInstallCNI_Scenario1(t *testing.T) {
 	t.Log("Scenario 1: There isn't an existing plugin configuration in the CNI_NET_DIR.")
 	t.Log("GIVEN the CNI_NET_DIR=/etc/cni/net.d/ is empty")
 	t.Log("WHEN the install-cni.sh script is executed")
-	t.Log("THEN it should write the 01-linkerd-cni.conflist file appropriately")
+	t.Log("THEN it should write the 01-linkerd-cni.conf file appropriately")
 	t.Log("AND WHEN the container is stopped")
 	t.Log("THEN it should delete the linkerd-cni artifacts")
 
@@ -325,7 +325,7 @@ func TestInstallCNI_Scenario2(t *testing.T) {
 
 	populateTempDirs(wd, testCNINetDir, "10-host-local.conf", t)
 	populateK8sCreds(wd, testK8sSvcAcctDir, t)
-	doTest(2, wd, hostCniNetDir+"/10-host-local.conf", "10-host-local.conf", wd+"data/expected/10-host-local.conflist-1", wd+"data/expected/10-host-local.conf-1.clean", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
+	doTest(2, wd, hostCniNetDir+"/10-host-local.conf", "10-host-local.conflist", wd+"data/expected/10-host-local.conflist-1", wd+"data/expected/10-host-local.conf-1.clean", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
 }
 
 func TestInstallCNI_Scenario3(t *testing.T) {

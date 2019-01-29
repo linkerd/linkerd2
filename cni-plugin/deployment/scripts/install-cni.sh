@@ -197,7 +197,7 @@ fi
 # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
 filename=$(basename -- "${CNI_CONF_PATH}")
 extension="${filename##*.}"
-if [ "${extension}" = ".conf" ]; then
+if [ "${filename}" != "01-linkerd-cni.conf" ] && [ "${extension}" = "conf" ]; then
   echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
   CNI_CONF_PATH="${CNI_CONF_PATH}list"
 fi
