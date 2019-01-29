@@ -14,8 +14,7 @@ import (
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
 func ConfigureAndParse() {
-	// override klog's default configuration and log to stderr instead of a log
-	// file.
+	// Override klog's default configuration and log to stderr instead of a file
 	klog.InitFlags(nil)
 	flag.Set("logtostderr", "true")
 
