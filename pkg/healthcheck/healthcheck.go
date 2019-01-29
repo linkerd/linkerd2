@@ -504,7 +504,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace, hc.HealthCheckOptions.TargetProxyResource)
+						return validateDataPlanePods(pods, hc.DataPlaneNamespace, hc.Options.TargetProxyResource)
 					},
 				},
 				{
@@ -516,7 +516,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return validateDataPlanePodReporting(pods)
+						return validateDataPlanePodReporting(pods, hc.Options.TargetProxyResource)
 					},
 				},
 				{
@@ -881,6 +881,25 @@ func checkControllerRunning(pods []v1.Pod) error {
 		return errors.New("No running pods for \"linkerd-controller\"")
 	}
 	return nil
+}
+
+func filterPodsByTarget(pods []*pb.Pod, targetProxyResource string) []*pb.Pod {
+	if targetProxyResource == "" {
+		return pods
+	}
+
+	podList := make([]*pb.Pod, 0)
+	for _, pod := range pods {
+		if pod.GetDeployment() == targetProxyResource ||
+			pod.GetReplicaSet() == targetProxyResource ||
+			pod.GetReplicationController() == targetProxyResource ||
+			pod.GetStatefulSet() == targetProxyResource ||
+			pod.GetDaemonSet() == targetProxyResource ||
+			pod.GetJob() == targetProxyResource {
+			podList = append(podList, pod)
+		}
+	}
+	return podList
 }
 
 func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget string) error {
