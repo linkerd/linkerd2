@@ -1003,7 +1003,6 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
-
 ### Service Account CA ###
 ---
 kind: ServiceAccount
@@ -1324,8 +1323,8 @@ metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 
----
 ### Proxy Injector RBAC ###
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -1350,8 +1349,8 @@ roleRef:
   name: linkerd-linkerd-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 
----
 ### Proxy Injector Service ###
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -1370,8 +1369,8 @@ spec:
     port: 443
     targetPort: proxy-injector
 
----
 ### Proxy Sidecar Container Spec ###
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:

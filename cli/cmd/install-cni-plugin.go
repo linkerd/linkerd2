@@ -86,8 +86,8 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 
 This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
-assumes that the 'linkerd install' command will be executed with the '--no-init-container'
-flag. This command needs to be executed before the 'linkerd install --no-init-container'
+assumes that the 'linkerd install' command will be executed with the '--linkerd-cni-enabled'
+flag. This command needs to be executed before the 'linkerd install --linkerd-cni-enabled'
 command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := validateAndBuildCNIConfig(options)

@@ -68,7 +68,7 @@ data:
   inbound_ports_to_ignore: "{{.IgnoreInboundPorts}}"
   outbound_ports_to_ignore: "{{.IgnoreOutboundPorts}}"
   simulate: "false"
-  log_level: "debug"
+  log_level: "{{.LogLevel}}"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-

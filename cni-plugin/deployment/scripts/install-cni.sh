@@ -50,7 +50,7 @@ HOST_CNI_BIN_DIR=${CNI_BIN_DIR:-/opt/cni/bin}
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
 CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
-CNI_CONF_PATH=${CNI_CONF_PATH:-"${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conflist"}
+CNI_CONF_PATH=${CNI_CONF_PATH:-"${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conf"}
 
 KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
@@ -62,7 +62,7 @@ cleanup() {
     CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))')
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
-    if [ "${CNI_CONF_PATH}" = "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conflist" ]; then
+    if [ "${CNI_CONF_PATH}" = "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
       rm -f "${CNI_CONF_PATH}"
     fi
   fi

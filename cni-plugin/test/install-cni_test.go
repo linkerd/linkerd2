@@ -294,7 +294,7 @@ func TestInstallCNI_Scenario1(t *testing.T) {
 	defer rm(testK8sSvcAcctDir, t)
 
 	populateK8sCreds(wd, testK8sSvcAcctDir, t)
-	doTest(1, wd, "NONE", "01-linkerd-cni.conflist", wd+"data/expected/01-linkerd-cni.conflist-1", "", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
+	doTest(1, wd, "NONE", "01-linkerd-cni.conf", wd+"data/expected/01-linkerd-cni.conf-1", "", testCNINetDir, testCNIBinDir, testK8sSvcAcctDir, testWd, t)
 }
 
 func TestInstallCNI_Scenario2(t *testing.T) {
