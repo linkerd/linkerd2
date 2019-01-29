@@ -883,33 +883,6 @@ func checkControllerRunning(pods []v1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []v1.Pod) error {
-	statuses := getPodStatuses(pods)
-	if _, ok := statuses["controller"]; !ok {
-		return errors.New("No running pods for \"linkerd-controller\"")
-	}
-	return nil
-}
-
-func filterPodsByTarget(pods []*pb.Pod, targetProxyResource string) []*pb.Pod {
-	if targetProxyResource == "" {
-		return pods
-	}
-
-	podList := make([]*pb.Pod, 0)
-	for _, pod := range pods {
-		if pod.GetDeployment() == targetProxyResource ||
-			pod.GetReplicaSet() == targetProxyResource ||
-			pod.GetReplicationController() == targetProxyResource ||
-			pod.GetStatefulSet() == targetProxyResource ||
-			pod.GetDaemonSet() == targetProxyResource ||
-			pod.GetJob() == targetProxyResource {
-			podList = append(podList, pod)
-		}
-	}
-	return podList
-}
-
 func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget string) error {
 	pods = filterPodsByTarget(pods, proxyTarget)
 
