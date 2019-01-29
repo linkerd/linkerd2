@@ -56,7 +56,6 @@ type installConfig struct {
 	ProxyUID                         int64
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
-	ProxyInjectorTLSSecret           string
 	ProxySpecFileName                string
 	ProxyInitSpecFileName            string
 	ProxyInitImage                   string
@@ -203,7 +202,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyUID:                         options.proxyUID,
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,
-		ProxyInjectorTLSSecret:           k8s.ProxyInjectorTLSSecret,
 		ProxySpecFileName:                k8s.ProxySpecFileName,
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),

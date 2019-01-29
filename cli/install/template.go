@@ -879,9 +879,6 @@ spec:
         - "ca"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-single-namespace={{.Values.SingleNamespace}}"
-        {{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
-        - "-proxy-auto-inject={{ .Values.ProxyAutoInjectEnabled }}"
-        {{- end }}
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
@@ -943,12 +940,6 @@ spec:
         - name: proxy-injector
           containerPort: 8443
         volumeMounts:
-        - name: {{.Values.TLSTrustAnchorVolumeName}}
-          mountPath: /var/linkerd-io/trust-anchors
-          readOnly: true
-        - name: webhook-secrets
-          mountPath: /var/linkerd-io/identity
-          readOnly: true
         - name: proxy-spec
           mountPath: /var/linkerd-io/config
         livenessProbe:
@@ -970,10 +961,6 @@ spec:
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
       volumes:
-      - name: webhook-secrets
-        secret:
-          secretName: {{.Values.ProxyInjectorTLSSecret}}
-          optional: true
       - name: proxy-spec
         configMap:
           name: linkerd-proxy-injector-sidecar-config
