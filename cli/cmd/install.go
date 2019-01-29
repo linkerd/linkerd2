@@ -227,9 +227,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	cp := path.Join(os.Getenv("GOPATH"), basePath, chrtDirPath)
-	chrtBox := packr.New("Chart Box", cp)
-
+	chrtBox := packr.New("Chart Box", "../Chart")
 	chrtTmpl, err := chrtBox.Find(chartutil.ChartfileName)
 	if err != nil {
 		log.Fatalf("Could not find '%s' in box: %s", chartutil.ChartfileName, err)
