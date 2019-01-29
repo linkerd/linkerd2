@@ -119,7 +119,7 @@ func (c *FakeServiceProfiles) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched serviceProfile.
 func (c *FakeServiceProfiles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ServiceProfile, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(serviceprofilesResource, c.ns, name, data, subresources...), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewPatchSubresourceAction(serviceprofilesResource, c.ns, name, pt, data, subresources...), &v1alpha1.ServiceProfile{})
 
 	if obj == nil {
 		return nil, err
