@@ -7,6 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/core/v1"
@@ -23,7 +24,7 @@ import (
 type CertificateController struct {
 	namespace   string
 	k8sAPI      *k8s.API
-	ca          *CA
+	ca          *tls.CA
 	syncHandler func(key string) error
 
 	// The queue is keyed on a string. If the string doesn't contain any dots
@@ -37,7 +38,7 @@ type CertificateController struct {
 // NewCertificateController initializes a CertificateController and its
 // internal Certificate Authority.
 func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxyAutoInject bool) (*CertificateController, error) {
-	ca, err := NewCA()
+	ca, err := tls.NewCA()
 	if err != nil {
 		return nil, err
 	}

@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/ca"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	injector "github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -42,7 +42,7 @@ func main() {
 		log.Fatalf("failed to mount the ca bundle: %s", err)
 	}
 
-	rootCA, err := ca.NewCA()
+	rootCA, err := tls.NewCA()
 	if err != nil {
 		log.Fatalf("failed to create root CA: %s", err)
 	}

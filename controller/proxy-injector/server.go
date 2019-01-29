@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/linkerd/linkerd2/controller/ca"
-	pem "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
@@ -21,8 +21,8 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace, certFile, keyFile string, noInitContainer bool, rootCA *ca.CA) (*WebhookServer, error) {
-	c, err := tlsConfig(certFile, keyFile, rootCA)
+func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace, certFile, keyFile string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+	c, err := tlsConfig(certFile, keyFile, rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -77,17 +77,23 @@ func (w *WebhookServer) Shutdown() error {
 	return w.Server.Shutdown(context.Background())
 }
 
-func tlsConfig(certFile, keyFile string, rootCA *ca.CA) (*tls.Config, error) {
-	dnsName := "linkerd-proxy-injector.linkerd.svc"
+func tlsConfig(certFile, keyFile string, rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, error) {
+	tlsIdentity := k8s.TLSIdentity{
+		Name:                "linkerd-proxy-injector",
+		Kind:                k8s.Service,
+		Namespace:           controllerNamespace,
+		ControllerNamespace: controllerNamespace,
+	}
+	dnsName := tlsIdentity.ToDNSName()
 	certAndPrivateKey, err := rootCA.IssueEndEntityCertificate(dnsName)
 
-	certPEM, err := pem.PEMEncodeCert(certAndPrivateKey.Certificate)
+	certPEM, err := pkgTls.PEMEncodeCert(certAndPrivateKey.Certificate)
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf("PEM-encoded certificate: %s\n", certPEM)
 
-	keyPEM, err := pem.PEMEncodeKey(certAndPrivateKey.PrivateKey, pem.KeyTypeECDSA)
+	keyPEM, err := pkgTls.PEMEncodeKey(certAndPrivateKey.PrivateKey, pkgTls.KeyTypeECDSA)
 	if err != nil {
 		return nil, err
 	}
