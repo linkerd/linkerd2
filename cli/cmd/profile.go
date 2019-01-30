@@ -110,7 +110,7 @@ Example:
 
 Example:
 	linkerd profile --tap deploy/books --tap-duration 10s books > book-svc-profile.yaml
-	# (edit book-svc-profile.yaml manualy)
+	# (edit book-svc-profile.yaml manually)
 	kubectl apply -f book-svc-profile.yaml
 
 The command will run linkerd tap deploy/books for tap-duration seconds, and then create

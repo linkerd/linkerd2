@@ -100,13 +100,13 @@ func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Dur
 		case event := <-tapEventChannel:
 			routeSpec := getPathDataFromTap(event)
 
+			if routeSpec != nil {
+				routesMap[routeSpec.Name] = routeSpec
+			}
+
 			if len(routesMap) > routeLimit {
 				stopTap = true
 				break
-			}
-
-			if routeSpec != nil {
-				routesMap[routeSpec.Name] = routeSpec
 			}
 		default:
 			// do nothing
