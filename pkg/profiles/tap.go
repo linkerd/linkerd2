@@ -89,7 +89,7 @@ recvLoop:
 				fmt.Fprintln(os.Stderr, err)
 				break recvLoop
 			}
-			fmt.Println(event)
+
 			routeSpec := getPathDataFromTap(event)
 
 			if routeSpec != nil {
