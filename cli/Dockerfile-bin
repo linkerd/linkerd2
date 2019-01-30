@@ -27,7 +27,6 @@ RUN CGO_ENABLED=0 GOOS=linux   packr2 build -o /out/linkerd-linux   -ldflags "${
 RUN CGO_ENABLED=0 GOOS=windows packr2 build -o /out/linkerd-windows -ldflags "${GO_LDFLAGS}"
 
 ## export without sources & dependencies
-WORKDIR /go/src/github.com/linkerd/linkerd2
 FROM scratch
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /out /out

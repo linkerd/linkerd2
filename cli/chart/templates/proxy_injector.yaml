@@ -243,4 +243,4 @@ data:
     secret:
       secretName: "" # this value will be computed by the webhook
       optional: true
-{{ end }}
+{{ end -}}

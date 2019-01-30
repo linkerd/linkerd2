@@ -110,4 +110,4 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
-{{ end }}
+{{ end -}}

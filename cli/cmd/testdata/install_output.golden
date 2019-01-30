@@ -985,6 +985,7 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+
 ### Service Account CA ###
 ---
 kind: ServiceAccount
