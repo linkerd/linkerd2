@@ -7,14 +7,15 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/klog"
 )
 
-// ConfigureAndParse adds flags that are common to all go processes, and
-// overrides the default flag for glog logging, which we can't disable. This
+// ConfigureAndParse adds flags that are common to all go processes. This
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
 func ConfigureAndParse() {
-	// override glog's default configuration
+	// override klog's default configuration and log to stderr instead of a file
+	klog.InitFlags(nil)
 	flag.Set("logtostderr", "true")
 
 	logLevel := flag.String("log-level", log.InfoLevel.String(),
