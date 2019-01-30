@@ -351,20 +351,19 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
 };
 
 export const tapLink = (d, resourceType, PrefixedLink) => {
+  let disabled = false;
   let namespace = d.sourceLabels.namespace;
-  let resource;
+  let resource = "";
 
   if (!d.meshed) {
-    namespace = "";
-    resource = "";
+    disabled = true;
   } else if (_has(d.sourceLabels, resourceType)) {
     resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
   } else if (_has(d.sourceLabels, "pod")) {
     resource = `pod/${d.sourceLabels.pod}`;
   } else {
     // can't tap a resource by IP from the web UI
-    namespace = "";
-    resource = "";
+    disabled = true;
   }
 
   let toNamespace = "";
@@ -385,6 +384,7 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
       toNamespace={toNamespace}
       toResource={toResource}
       path={d.path}
-      PrefixedLink={PrefixedLink} />
+      PrefixedLink={PrefixedLink}
+      disabled={disabled} />
   );
 };

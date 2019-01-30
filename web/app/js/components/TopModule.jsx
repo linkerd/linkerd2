@@ -9,6 +9,7 @@ import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _has from 'lodash/has';
+import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
 import _isNil from 'lodash/isNil';
 import _noop from 'lodash/noop';
@@ -244,7 +245,7 @@ class TopModule extends React.Component {
       if (isPod) {
         topResults[eventKey].meshed = !_has(this.unmeshedSources, "pod/" + d.base.source.pod);
       } else {
-        topResults[eventKey].meshed = !_has(this.unmeshedSources, d.base.source.owner);
+        topResults[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
       }
     }
 
