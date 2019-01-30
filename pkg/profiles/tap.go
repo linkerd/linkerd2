@@ -18,21 +18,11 @@ import (
 )
 
 func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, controlPlaneNamespace string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
-	res, err := util.BuildResource(namespace, tapResource)
-	if err != nil {
-		return err
-	}
-
-	// there is kind of a duplication of param parsing, because we need to reformulate
-	// a request like linkerd profile --tap deploy/web to run the tap
-	// linkerd tap deploy --to deploy/web
 	requestParams := util.TapRequestParams{
-		Resource:    res.Type,
-		Namespace:   namespace,
-		ToResource:  tapResource,
-		ToNamespace: namespace,
+		Resource:  tapResource,
+		Namespace: namespace,
 	}
-	log.Debugf("Running `linkerd tap %s  --namespace %s --to %s --to-namespace %s`", res.Type, namespace, tapResource, namespace)
+	log.Debugf("Running `linkerd tap %s --namespace %s`", tapResource, namespace)
 
 	req, err := util.BuildTapByResourceRequest(requestParams)
 	if err != nil {
@@ -67,12 +57,12 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(tapDuration))
 	defer cancel()
 
-	rsp, err := client.TapByResource(context.Background(), tapReq)
+	tapClient, err := client.TapByResource(context.Background(), tapReq)
 	if err != nil {
 		return profile, err
 	}
 
-	routes := routeSpecFromTap(ctx, rsp, routeLimit)
+	routes := routeSpecFromTap(ctx, tapClient, routeLimit)
 
 	profile.Spec.Routes = routes
 
@@ -99,7 +89,7 @@ recvLoop:
 				fmt.Fprintln(os.Stderr, err)
 				break recvLoop
 			}
-
+			fmt.Println(event)
 			routeSpec := getPathDataFromTap(event)
 
 			if routeSpec != nil {
@@ -127,12 +117,17 @@ func sortMapKeys(m map[string]*sp.RouteSpec) (keys []string) {
 }
 
 func getPathDataFromTap(event *pb.TapEvent) *sp.RouteSpec {
+	if event.GetProxyDirection() != pb.TapEvent_INBOUND {
+		return nil
+	}
+
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *pb.TapEvent_Http_RequestInit_:
 		path := ev.RequestInit.GetPath()
 		if path == "/" {
 			return nil
 		}
+
 		return mkRouteSpec(
 			path,
 			pathToRegex(path), // for now, no path consolidation
