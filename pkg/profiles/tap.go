@@ -18,16 +18,6 @@ import (
 )
 
 func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, controlPlaneNamespace string, tapResourceDuration time.Duration, routeLimit int, w io.Writer) error {
-	profile := sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
-			Namespace: controlPlaneNamespace,
-		},
-		TypeMeta: meta_v1.TypeMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
-	}
 
 	res, err := util.BuildResource(namespace, tapResource)
 	if err != nil {
@@ -49,20 +39,42 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, c
 	if err != nil {
 		return err
 	}
-	rsp, err := client.TapByResource(context.Background(), req)
+
+	profile, err := tapToServiceProfile(client, req, controlPlaneNamespace, tapResourceDuration, routeLimit)
 	if err != nil {
 		return err
 	}
 
-	routes := routeSpecFromTap(rsp, tapResourceDuration, routeLimit)
-
-	profile.Spec.Routes = routes
 	output, err := yaml.Marshal(profile)
 	if err != nil {
 		return fmt.Errorf("Error writing Service Profile: %s", err)
 	}
 	w.Write(output)
 	return nil
+}
+
+func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, controlPlaneNamespace string, tapResourceDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
+	profile := sp.ServiceProfile{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", tapReq.GetTarget().GetResource().GetName(), tapReq.GetTarget().GetResource().GetNamespace()),
+			Namespace: controlPlaneNamespace,
+		},
+		TypeMeta: meta_v1.TypeMeta{
+			APIVersion: "linkerd.io/v1alpha1",
+			Kind:       "ServiceProfile",
+		},
+	}
+
+	rsp, err := client.TapByResource(context.Background(), tapReq)
+	if err != nil {
+		return profile, err
+	}
+
+	routes := routeSpecFromTap(rsp, tapResourceDuration, routeLimit)
+
+	profile.Spec.Routes = routes
+
+	return profile, nil
 }
 
 func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {

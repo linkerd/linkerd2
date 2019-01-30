@@ -32,7 +32,7 @@ func busyTest(t *testing.T, wide bool) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	event1 := createEvent(
+	event1 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
 			Event: &pb.TapEvent_Http_RequestInit_{
 				RequestInit: &pb.TapEvent_Http_RequestInit{
@@ -49,7 +49,7 @@ func busyTest(t *testing.T, wide bool) {
 			"tls": "true",
 		},
 	)
-	event2 := createEvent(
+	event2 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
 			Event: &pb.TapEvent_Http_ResponseEnd_{
 				ResponseEnd: &pb.TapEvent_Http_ResponseEnd{
@@ -339,31 +339,4 @@ func TestEventToString(t *testing.T) {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
 		}
 	})
-}
-
-func createEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string) pb.TapEvent {
-	event := pb.TapEvent{
-		ProxyDirection: pb.TapEvent_OUTBOUND,
-		Source: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
-					Ipv4: uint32(1),
-				},
-			},
-		},
-		Destination: &pb.TcpAddress{
-			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
-					Ipv4: uint32(9),
-				},
-			},
-		},
-		Event: &pb.TapEvent_Http_{
-			Http: eventHTTP,
-		},
-		DestinationMeta: &pb.TapEvent_EndpointMeta{
-			Labels: dstMeta,
-		},
-	}
-	return event
 }

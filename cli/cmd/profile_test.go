@@ -33,23 +33,9 @@ func TestParseProfile(t *testing.T) {
 	}
 }
 
-func TestProfileFromTap(t *testing.T) {
-	var buf bytes.Buffer
-	options := newProfileOptions()
-	options.name = "service-name"
-	options.namespace = "service-namespace"
-	options.tap = "not-a-resource/web"
-
-	err := renderTapOutputProfile(options, controlPlaneNamespace, &buf)
-	exp := errors.New("target resource invalid: cannot find Kubernetes canonical name from friendly name [not-a-resource]")
-
-	if err.Error() != exp.Error() {
-		t.Fatalf("renderTapOutputProfile returned unexpected error: %s (expected: %s)", err, exp)
-	}
-}
 func TestValidateOptions(t *testing.T) {
 	options := newProfileOptions()
-	exp := errors.New("You must specify exactly one of --template, --open-api, --proto or --tap")
+	exp := errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	err := options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -58,7 +44,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.openAPI = "openAPI"
-	exp = errors.New("You must specify exactly one of --template, --open-api, --proto or --tap")
+	exp = errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	err = options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
