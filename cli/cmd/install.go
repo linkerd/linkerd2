@@ -221,7 +221,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(config)
 	if err != nil {
-		log.Fatalf("Could not marshal `config` into JSON: %s", err)
+		return err
 	}
 	chartConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
@@ -230,19 +230,19 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	chartTmpl, err := chartBox.Find(chartutil.ChartfileName)
 	if err != nil {
-		log.Fatalf("Could not find '%s' in box: %s", chartutil.ChartfileName, err)
+		return err
 	}
 	baseTmpl, err := chartBox.Find(baseTemplateName)
 	if err != nil {
-		log.Fatalf("Could not find '%s' in box: %s", baseTemplateName, err)
+		return err
 	}
 	tlsTmpl, err := chartBox.Find(tlsTemplateName)
 	if err != nil {
-		log.Fatalf("Could not find '%s' in box: %s", tlsTemplateName, err)
+		return err
 	}
 	proxyInjectorTmpl, err := chartBox.Find(proxyInjectorTemplateName)
 	if err != nil {
-		log.Fatalf("Could not find '%s' in box: %s", proxyInjectorTemplateName, err)
+		return err
 	}
 
 	// Load chart files
