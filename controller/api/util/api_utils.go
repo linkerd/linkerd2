@@ -483,7 +483,7 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-// Used to generate tap events for tests
+// CreateTapEvent generates tap events for use in tests
 func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) pb.TapEvent {
 	event := pb.TapEvent{
 		ProxyDirection: proxyDirection,
