@@ -28,7 +28,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	}
 	defer os.Remove(trustAnchorsPath)
 
-	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath)
+	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath, false)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

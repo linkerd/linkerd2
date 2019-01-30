@@ -1186,6 +1186,7 @@ spec:
         - proxy-injector
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -no-init-container=false
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

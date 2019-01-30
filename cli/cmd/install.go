@@ -68,6 +68,7 @@ type installConfig struct {
 	ControllerUID                    int64
 	ProfileSuffixes                  string
 	EnableH2Upgrade                  bool
+	NoInitContainer                  bool
 }
 
 type installOptions struct {
@@ -213,6 +214,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		EnableHA:                         options.highAvailability,
 		ProfileSuffixes:                  profileSuffixes,
 		EnableH2Upgrade:                  !options.disableH2Upgrade,
+		NoInitContainer:                  options.noInitContainer,
 	}, nil
 }
 

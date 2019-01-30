@@ -2,45 +2,45 @@ package injector
 
 import (
 	"fmt"
-	"io/ioutil"
 	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 )
 
 var (
-	webhook *Webhook
 	factory *fake.Factory
 )
 
-func init() {
-	// create a webhook which uses its fake client to seed the sidecar configmap
+func TestMutate(t *testing.T) {
 	fakeClient, err := fake.NewClient("")
 	if err != nil {
-		panic(err)
+		t.Fatal("Unexpected error: ", err)
 	}
 
-	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace)
+	defaultWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
-		panic(err)
+		t.Fatal("Unexpected error: ", err)
 	}
-	log.SetOutput(ioutil.Discard)
-}
 
-func TestMutate(t *testing.T) {
+	noInitContainerWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, true)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
 	var testCases = []struct {
+		webhook      *Webhook
 		title        string
 		requestFile  string
 		responseFile string
 	}{
-		{title: "no labels", requestFile: "inject-no-labels-request.json", responseFile: "inject-no-labels-response.yaml"},
-		{title: "inject enabled", requestFile: "inject-enabled-request.json", responseFile: "inject-enabled-response.yaml"},
-		{title: "inject disabled", requestFile: "inject-disabled-request.json", responseFile: "inject-disabled-response.yaml"},
-		{title: "inject completed", requestFile: "inject-completed-request.json", responseFile: "inject-completed-response.yaml"},
+		{defaultWebhook, "no labels", "inject-no-labels-request.json", "inject-no-labels-response.yaml"},
+		{defaultWebhook, "inject enabled", "inject-enabled-request.json", "inject-enabled-response.yaml"},
+		{defaultWebhook, "inject disabled", "inject-disabled-request.json", "inject-disabled-response.yaml"},
+		{defaultWebhook, "inject completed", "inject-completed-request.json", "inject-completed-response.yaml"},
+		{noInitContainerWebhook, "inject no-init-container", "inject-enabled-request.json", "inject-no-init-container-response.yaml"},
 	}
 
 	for _, testCase := range testCases {
@@ -55,13 +55,23 @@ func TestMutate(t *testing.T) {
 				t.Fatal("Unexpected error: ", err)
 			}
 
-			actual := webhook.Mutate(data)
+			actual := testCase.webhook.Mutate(data)
 			assertEqualAdmissionReview(t, expected, actual)
 		})
 	}
 }
 
 func TestIgnore(t *testing.T) {
+	fakeClient, err := fake.NewClient("")
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
 	t.Run("by checking labels", func(t *testing.T) {
 		var testCases = []struct {
 			filename string
@@ -100,6 +110,16 @@ func TestIgnore(t *testing.T) {
 }
 
 func TestContainersSpec(t *testing.T) {
+	fakeClient, err := fake.NewClient("")
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
 	expectedSidecar, err := factory.Container("inject-sidecar-container-spec.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -132,6 +152,16 @@ func TestContainersSpec(t *testing.T) {
 }
 
 func TestVolumesSpec(t *testing.T) {
+	fakeClient, err := fake.NewClient("")
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
 	expectedTrustAnchors, err := factory.Volume("inject-trust-anchors-volume-spec.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)

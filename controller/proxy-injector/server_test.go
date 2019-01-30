@@ -32,7 +32,7 @@ func init() {
 		FileTLSTrustAnchorVolumeSpec: fake.FileTLSTrustAnchorVolumeSpec,
 		FileTLSIdentityVolumeSpec:    fake.FileTLSIdentityVolumeSpec,
 	}
-	webhook, err = NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false)
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +100,7 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, certFile, keyFile)
+	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, certFile, keyFile, false)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

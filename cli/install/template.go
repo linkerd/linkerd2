@@ -938,6 +938,7 @@ spec:
         - "proxy-injector"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-no-init-container={{.Values.NoInitContainer }}"
         ports:
         - name: proxy-injector
           containerPort: 8443
