@@ -23,7 +23,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 	rootCA, err := tls.NewCA()
 	if err != nil {
-		log.Fatalf("failed to create root CA: %s", err)
+		t.Fatalf("failed to create root CA: %s", err)
 	}
 
 	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, false, rootCA)

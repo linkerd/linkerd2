@@ -12,12 +12,6 @@ import (
 	"time"
 )
 
-// Supported TLS key types.
-const (
-	KeyTypeRSA   = "rsa"
-	KeyTypeECDSA = "ecdsa"
-)
-
 // CA provides a certificate authority for TLS-enabled installs.
 // Issuing certificates concurrently is not supported.
 type CA struct {
