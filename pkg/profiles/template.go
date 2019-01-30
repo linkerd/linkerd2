@@ -75,7 +75,7 @@ spec:
 
     # A route can define a request timeout.  Any requests to this route that
     # exceed the timeout will be canceled.  If unspecified, the default timeout
-    # is '1s' (one second).
+    # is '10s' (ten seconds).
     # timeout: 250ms
 
   # A service profile can also define a retry budget.  This specifies the

@@ -805,6 +805,12 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 			if route.Name == "" {
 				return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", p.Name)
 			}
+			if route.Timeout != "" {
+				_, err := time.ParseDuration(route.Timeout)
+				if err != nil {
+					return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid timeout: %s", p.Name, err)
+				}
+			}
 			if route.Condition == nil {
 				return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", p.Name)
 			}

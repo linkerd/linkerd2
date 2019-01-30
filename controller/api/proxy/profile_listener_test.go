@@ -136,7 +136,7 @@ var (
 			},
 		},
 		Timeout: &duration.Duration{
-			Seconds: 1,
+			Seconds: 10,
 		},
 	}
 
@@ -163,7 +163,7 @@ var (
 			},
 		},
 		Timeout: &duration.Duration{
-			Seconds: 1,
+			Seconds: 10,
 		},
 	}
 
@@ -235,7 +235,7 @@ var (
 				},
 				ResponseClasses: []*pb.ResponseClass{},
 				Timeout: &duration.Duration{
-					Seconds: 1,
+					Seconds: 10,
 				},
 			},
 		},
@@ -327,7 +327,7 @@ var (
 					},
 				},
 				Timeout: &duration.Duration{
-					Seconds: 1,
+					Seconds: 10,
 				},
 			},
 		},

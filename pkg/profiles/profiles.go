@@ -46,7 +46,7 @@ var (
 	}
 	// DefaultRouteTimeout is the default timeout for routes that do not specify
 	// one.
-	DefaultRouteTimeout = 1 * time.Second
+	DefaultRouteTimeout = 10 * time.Second
 )
 
 func toDuration(d time.Duration) *duration.Duration {
@@ -99,7 +99,7 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	}
 	timeout, err := time.ParseDuration(route.Timeout)
 	if err != nil {
-		log.Errorf("failed to parse duration for route %s: %s", route.Name, err.Error())
+		log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
 		timeout = DefaultRouteTimeout
 	}
 	ret := pb.Route{
