@@ -25,3 +25,7 @@ a:focus, a:hover, a:visited, a:link, a:active {
 .breadcrumb-link a {
   color: white;
 }
+
+i.tapGrayed {
+  color: lightgray;
+}
