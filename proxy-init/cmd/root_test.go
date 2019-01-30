@@ -24,11 +24,11 @@ func TestBuildFirewallConfiguration(t *testing.T) {
 		}
 
 		options := newRootOptions()
-		options.incomingProxyPort = expectedIncomingProxyPort
-		options.outgoingProxyPort = expectedOutgoingProxyPort
-		options.proxyUserID = expectedProxyUserID
+		options.IncomingProxyPort = expectedIncomingProxyPort
+		options.OutgoingProxyPort = expectedOutgoingProxyPort
+		options.ProxyUserID = expectedProxyUserID
 
-		config, err := buildFirewallConfiguration(options)
+		config, err := BuildFirewallConfiguration(options)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -40,39 +40,39 @@ func TestBuildFirewallConfiguration(t *testing.T) {
 
 	t.Run("It rejects invalid config options", func(t *testing.T) {
 		for _, tt := range []struct {
-			options      *rootOptions
+			options      *RootOptions
 			errorMessage string
 		}{
 			{
-				options: &rootOptions{
-					incomingProxyPort: -1,
-					outgoingProxyPort: 1234,
+				options: &RootOptions{
+					IncomingProxyPort: -1,
+					OutgoingProxyPort: 1234,
 				},
 				errorMessage: "--incoming-proxy-port must be a valid TCP port number",
 			},
 			{
-				options: &rootOptions{
-					incomingProxyPort: 100000,
-					outgoingProxyPort: 1234,
+				options: &RootOptions{
+					IncomingProxyPort: 100000,
+					OutgoingProxyPort: 1234,
 				},
 				errorMessage: "--incoming-proxy-port must be a valid TCP port number",
 			},
 			{
-				options: &rootOptions{
-					incomingProxyPort: 1234,
-					outgoingProxyPort: -1,
+				options: &RootOptions{
+					IncomingProxyPort: 1234,
+					OutgoingProxyPort: -1,
 				},
 				errorMessage: "--outgoing-proxy-port must be a valid TCP port number",
 			},
 			{
-				options: &rootOptions{
-					incomingProxyPort: 1234,
-					outgoingProxyPort: 100000,
+				options: &RootOptions{
+					IncomingProxyPort: 1234,
+					OutgoingProxyPort: 100000,
 				},
 				errorMessage: "--outgoing-proxy-port must be a valid TCP port number",
 			},
 		} {
-			_, err := buildFirewallConfiguration(tt.options)
+			_, err := BuildFirewallConfiguration(tt.options)
 			if err == nil {
 				t.Fatalf("Expected error for config [%v], got nil", tt.options)
 			}

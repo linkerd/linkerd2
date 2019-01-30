@@ -84,6 +84,7 @@ func init() {
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
+	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdInstallSP())
 	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdProfile())
@@ -241,6 +242,7 @@ type proxyConfigOptions struct {
 	proxyOutboundCapacity   map[string]uint
 	tls                     string
 	disableExternalProfiles bool
+	noInitContainer         bool
 }
 
 const (
@@ -250,25 +252,26 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:        version.Version,
-		proxyImage:            defaultDockerRegistry + "/proxy",
-		initImage:             defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:        defaultDockerRegistry,
-		imagePullPolicy:       "IfNotPresent",
-		inboundPort:           4143,
-		outboundPort:          4140,
-		ignoreInboundPorts:    nil,
-		ignoreOutboundPorts:   nil,
-		proxyUID:              2102,
-		proxyLogLevel:         "warn,linkerd2_proxy=info",
-		proxyAPIPort:          8086,
-		proxyControlPort:      4190,
-		proxyMetricsPort:      4191,
-		proxyOutboundCapacity: map[string]uint{},
-		proxyCPURequest:       "",
-		proxyMemoryRequest:    "",
-		tls:                   "",
+		linkerdVersion:          version.Version,
+		proxyImage:              defaultDockerRegistry + "/proxy",
+		initImage:               defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:          defaultDockerRegistry,
+		imagePullPolicy:         "IfNotPresent",
+		inboundPort:             4143,
+		outboundPort:            4140,
+		ignoreInboundPorts:      nil,
+		ignoreOutboundPorts:     nil,
+		proxyUID:                2102,
+		proxyLogLevel:           "warn,linkerd2_proxy=info",
+		proxyAPIPort:            8086,
+		proxyControlPort:        4190,
+		proxyMetricsPort:        4191,
+		proxyOutboundCapacity:   map[string]uint{},
+		proxyCPURequest:         "",
+		proxyMemoryRequest:      "",
+		tls:                     "",
 		disableExternalProfiles: false,
+		noInitContainer:         false,
 	}
 }
 
@@ -337,4 +340,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
+	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
+	cmd.PersistentFlags().MarkHidden("linkerd-cni-enabled")
 }

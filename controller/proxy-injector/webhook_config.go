@@ -3,12 +3,12 @@ package injector
 import (
 	"bytes"
 	"encoding/base64"
-	"io/ioutil"
 	"text/template"
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,14 +23,12 @@ type WebhookConfig struct {
 	trustAnchor         []byte
 	configTemplate      *template.Template
 	k8sAPI              kubernetes.Interface
+	noInitContainer     bool
 }
 
 // NewWebhookConfig returns a new instance of initiator.
-func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string) (*WebhookConfig, error) {
-	trustAnchor, err := ioutil.ReadFile(trustAnchorFile)
-	if err != nil {
-		return nil, err
-	}
+func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName string, noInitContainer bool, rootCA *tls.CA) (*WebhookConfig, error) {
+	trustAnchor := []byte(rootCA.TrustAnchorPEM())
 
 	t := template.New(k8sPkg.ProxyInjectorWebhookConfig)
 
@@ -40,6 +38,7 @@ func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookS
 		trustAnchor:         trustAnchor,
 		configTemplate:      template.Must(t.Parse(tmpl.MutatingWebhookConfigurationSpec)),
 		k8sAPI:              client,
+		noInitContainer:     noInitContainer,
 	}, nil
 }
 
@@ -83,12 +82,14 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 			ControllerNamespace  string
 			CABundle             string
 			ProxyAutoInjectLabel string
+			NoInitContainer      bool
 		}{
 			WebhookConfigName:    k8sPkg.ProxyInjectorWebhookConfig,
 			WebhookServiceName:   w.webhookServiceName,
 			ControllerNamespace:  w.controllerNamespace,
 			CABundle:             base64.StdEncoding.EncodeToString(w.trustAnchor),
 			ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectLabel,
+			NoInitContainer:      w.noInitContainer,
 		}
 	)
 	if err := w.configTemplate.Execute(buf, spec); err != nil {

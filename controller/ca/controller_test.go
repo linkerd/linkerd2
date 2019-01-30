@@ -66,7 +66,7 @@ func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, 
 		return nil, nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	controller, err := NewCertificateController(controllerNS, k8sAPI, false)
+	controller, err := NewCertificateController(controllerNS, k8sAPI)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("NewCertificateController returned an error: %s", err)
 	}

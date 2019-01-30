@@ -63,6 +63,10 @@ func TestUninjectAndInject(t *testing.T) {
 	proxyRequestOptions.proxyCPURequest = "110m"
 	proxyRequestOptions.proxyMemoryRequest = "100Mi"
 
+	noInitContainerOptions := newInjectOptions()
+	noInitContainerOptions.linkerdVersion = "testinjectversion"
+	noInitContainerOptions.noInitContainer = true
+
 	testCases := []injectYAML{
 		{
 			inputFileName:     "inject_emojivoto_deployment.input.yml",
@@ -147,6 +151,12 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:    "inject_contour.input.yml",
 			reportFileName:    "inject_contour.report",
 			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_no_init_container.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment.report",
+			testInjectOptions: noInitContainerOptions,
 		},
 	}
 
