@@ -24,7 +24,7 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
 };
 
 TapLink.propTypes = {
-  disabled: PropTypes.bool.isRequired,
+  disabled: PropTypes.bool,
   namespace: PropTypes.string.isRequired,
   path: PropTypes.string.isRequired,
   PrefixedLink: PropTypes.func.isRequired,
@@ -32,5 +32,9 @@ TapLink.propTypes = {
   toNamespace: PropTypes.string.isRequired,
   toResource: PropTypes.string.isRequired,
 };
+
+TapLink.defaultProps = {
+  disabled: false
+}
 
 export default TapLink;
