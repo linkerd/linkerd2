@@ -35,22 +35,28 @@ exit_with_error() {
   exit 1
 }
 
-# The mount point of the host machine. Defaults to /host, but can be
-# overridden by setting MOUNT_POINT
-HOST_MOUNT_POINT=${MOUNT_POINT:-/host}
-
-# The directory on the host where CNI plugin configs are installed. Defaults to
-# /etc/cni/net.d, but can be overridden by setting CNI_NET_DIR.
-HOST_CNI_NET_DIR=${CNI_NET_DIR:-/etc/cni/net.d}
-# The directory on the host where the CNI binaries are installed. Defaults to
-# /opt/cni/bin, but can be overridden by setting CNI_BIN_DIR
-HOST_CNI_BIN_DIR=${CNI_BIN_DIR:-/opt/cni/bin}
+# The directory on the host where existing CNI plugin configs are installed
+# and where this script will write out its configuration through the container
+# mount point. Defaults to /etc/cni/net.d, but can be overridden by setting
+# DEST_CNI_NET_DIR.
+DEST_CNI_NET_DIR=${DEST_CNI_NET_DIR:-/etc/cni/net.d}
+# The directory on the host where existing CNI binaries are installed. Defaults to
+# /opt/cni/bin, but can be overridden by setting DEST_CNI_BIN_DIR. The linkerd-cni
+# binary will end up in this directory from the host's point of view.
+DEST_CNI_BIN_DIR=${DEST_CNI_BIN_DIR:-/opt/cni/bin}
+# The mount prefix of the host machine from the container's point of view.
+# Defaults to /host, but can be overridden by setting CONTAINER_MOUNT_PREFIX.
+CONTAINER_MOUNT_PREFIX=${CONTAINER_MOUNT_PREFIX:-/host}
+# The location in the container where the linkerd-cni binary resides. Can be
+# overridden by setting CONTAINER_CNI_BIN_DIR. The binary in this directory
+# will be copied over to the host DEST_CNI_BIN_DIR through the mount point.
+CONTAINER_CNI_BIN_DIR=${CONTAINER_CNI_BIN_DIR:-/opt/cni/bin}
 
 # Default to the first file following a find | sort since the Kubernetes CNI runtime is going
 # to look for the lexicographically first file. If the directory is empty, then use a name
 # of our choosing.
-CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
-CNI_CONF_PATH=${CNI_CONF_PATH:-"${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conf"}
+CNI_CONF_PATH=${CNI_CONF_PATH:-$(find "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)}
+CNI_CONF_PATH=${CNI_CONF_PATH:-"${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf"}
 
 KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 
@@ -62,17 +68,17 @@ cleanup() {
     CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))')
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
-    if [ "${CNI_CONF_PATH}" = "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
+    if [ "${CNI_CONF_PATH}" = "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
       rm -f "${CNI_CONF_PATH}"
     fi
   fi
-  if [ -e "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" ]; then
-    echo "Removing linkerd-cni kubeconfig: ${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-    rm -f "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+  if [ -e "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" ]; then
+    echo "Removing linkerd-cni kubeconfig: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+    rm -f "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
   fi
-  if [ -e "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}"/linkerd-cni ]; then
-    echo "Removing linkerd-cni binary: ${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd-cni"
-    rm -f "${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}/linkerd-cni"
+  if [ -e "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"/linkerd-cni ]; then
+    echo "Removing linkerd-cni binary: ${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}/linkerd-cni"
+    rm -f "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}/linkerd-cni"
   fi
   echo 'Exiting.'
 }
@@ -83,19 +89,18 @@ trap 'echo "SIGINT received, simply exiting..."; cleanup' INT
 trap 'echo "SIGTERM received, simply exiting..."; cleanup' TERM
 trap 'echo "SIGHUP received, simply exiting..."; cleanup' HUP
 
-# Place the new binaries if the directory is writeable.
-dir="${HOST_MOUNT_POINT}${HOST_CNI_BIN_DIR}"
+# Place the new binaries if the mounted directory is writeable.
+dir="${CONTAINER_MOUNT_PREFIX}${DEST_CNI_BIN_DIR}"
 if [ ! -w "${dir}" ]; then
-  echo "${dir} is non-writeable, skipping"
+  exit_with_error "${dir} is non-writeable, failure"
 fi
-for path in "${HOST_CNI_BIN_DIR}"/*;
-do
+for path in "${CONTAINER_CNI_BIN_DIR}"/*; do
   cp "${path}" "${dir}"/ || exit_with_error "Failed to copy ${path} to ${dir}."
 done
 
 echo "Wrote linkerd CNI binaries to ${dir}"
 
-TMP_CONF='/linkerd-cni.conf.default'
+TMP_CONF='/linkerd/linkerd-cni.conf.default'
 # If specified, overwrite the network configuration file.
 : "${CNI_NETWORK_CONFIG_FILE:=}"
 : "${CNI_NETWORK_CONFIG:=}"
@@ -135,9 +140,9 @@ if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
   # to skip TLS verification for now. We should eventually support
   # writing more complete kubeconfig files. This is only used
   # if the provided CNI network config references it.
-  touch "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-  chmod "${KUBECONFIG_MODE:-600}" "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
-  cat > "${HOST_MOUNT_POINT}${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" <<EOF
+  touch "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+  chmod "${KUBECONFIG_MODE:-600}" "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"
+  cat > "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}" <<EOF
 # Kubeconfig file for linkerd CNI plugin.
 apiVersion: v1
 kind: Config
@@ -168,7 +173,7 @@ sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
 sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
 
 # Use alternative command character "~", since these include a "/".
-sed -i s~__KUBECONFIG_FILEPATH__~"${HOST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
+sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
 sed -i s~__LOG_LEVEL__~"${LOG_LEVEL:-warn}"~g ${TMP_CONF}
 sed -i s~__INCOMING_PROXY_PORT__~"${INCOMING_PROXY_PORT:=-1}"~g ${TMP_CONF}
 sed -i s~__OUTGOING_PROXY_PORT__~"${OUTGOING_PROXY_PORT:=-1}"~g ${TMP_CONF}
