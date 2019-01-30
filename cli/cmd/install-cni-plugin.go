@@ -89,6 +89,7 @@ copies the necessary linkerd-cni plugin binaries and configs onto the host. It
 assumes that the 'linkerd install' command will be executed with the '--linkerd-cni-enabled'
 flag. This command needs to be executed before the 'linkerd install --linkerd-cni-enabled'
 command.`,
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := validateAndBuildCNIConfig(options)
 			if err != nil {
