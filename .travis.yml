@@ -161,7 +161,7 @@ jobs:
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
-          TAG="$(./linkerd version --client --short)" go test -race ./cni-plugin/test -integration-tests
+          TAG="$(./linkerd version --client --short)" go test -v -race ./cni-plugin/test -integration-tests
       after_script:
         - |
           # Cleanup after integration test run.
