@@ -65,39 +65,42 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, c
 		},
 	}
 
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(tapDuration))
+	defer cancel()
+
 	rsp, err := client.TapByResource(context.Background(), tapReq)
 	if err != nil {
 		return profile, err
 	}
 
-	routes := routeSpecFromTap(rsp, tapDuration, routeLimit)
+	routes := routeSpecFromTap(ctx, rsp, routeLimit)
 
 	profile.Spec.Routes = routes
 
 	return profile, nil
 }
 
-func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Duration, routeLimit int) []*sp.RouteSpec {
+func routeSpecFromTap(ctx context.Context, tapClient pb.Api_TapByResourceClient, routeLimit int) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
 	routesMap := make(map[string]*sp.RouteSpec)
 
-	tapEventChannel := make(chan *pb.TapEvent, 10)
-	timerChannel := make(chan struct{}, 1)
-
-	go func() {
-		time.Sleep(tapDuration)
-		timerChannel <- struct{}{}
-	}()
-	go func() {
-		recordRoutesFromTap(tapClient, tapEventChannel)
-	}()
-
-	stopTap := false
+recvLoop:
 	for {
 		select {
-		case <-timerChannel:
-			stopTap = true
-		case event := <-tapEventChannel:
+		case <-ctx.Done():
+			break recvLoop
+		default:
+			log.Debug("Waiting for data...")
+			event, err := tapClient.Recv()
+
+			if err == io.EOF {
+				break recvLoop
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				break recvLoop
+			}
+
 			routeSpec := getPathDataFromTap(event)
 
 			if routeSpec != nil {
@@ -105,14 +108,8 @@ func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Dur
 			}
 
 			if len(routesMap) > routeLimit {
-				stopTap = true
-				break
+				break recvLoop
 			}
-		default:
-			// do nothing
-		}
-		if stopTap {
-			break
 		}
 	}
 
@@ -120,22 +117,6 @@ func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, tapDuration time.Dur
 		routes = append(routes, routesMap[path])
 	}
 	return routes
-}
-
-func recordRoutesFromTap(tapClient pb.Api_TapByResourceClient, tapEventChannel chan *pb.TapEvent) {
-	for {
-		log.Debug("Waiting for data...")
-		event, err := tapClient.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			break
-		}
-
-		tapEventChannel <- event
-	}
 }
 
 func sortMapKeys(m map[string]*sp.RouteSpec) (keys []string) {
