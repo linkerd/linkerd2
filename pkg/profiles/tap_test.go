@@ -11,20 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// func TestProfileFromTap(t *testing.T) {
-// 	var buf bytes.Buffer
-// 	options := newProfileOptions()
-// 	options.name = "service-name"
-// 	options.namespace = "service-namespace"
-// 	options.tap = "not-a-resource/web"
-
-// 	err := renderTapOutputProfile(options, controlPlaneNamespace, &buf)
-// 	exp := errors.New("target resource invalid: cannot find Kubernetes canonical name from friendly name [not-a-resource]")
-
-// 	if err.Error() != exp.Error() {
-// 		t.Fatalf("renderTapOutputProfile returned unexpected error: %s (expected: %s)", err, exp)
-// 	}
-// }
 func TestTapToServiceProfile(t *testing.T) {
 	name := "service-name"
 	namespace := "service-namespace"
