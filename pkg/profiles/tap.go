@@ -17,6 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// RenderTapOutputProfile performs a tap on the desired resource and generates
+// a service profile with routes pre-populated from the tap data
+// Only inbound tap traffic is considered.
 func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, controlPlaneNamespace string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
 	requestParams := util.TapRequestParams{
 		Resource:  tapResource,
