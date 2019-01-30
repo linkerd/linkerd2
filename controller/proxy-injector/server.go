@@ -7,7 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	pem "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
@@ -20,8 +21,8 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace, certFile, keyFile string, noInitContainer bool) (*WebhookServer, error) {
-	c, err := tlsConfig(certFile, keyFile)
+func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -76,24 +77,23 @@ func (w *WebhookServer) Shutdown() error {
 	return w.Server.Shutdown(context.Background())
 }
 
-func tlsConfig(certFile, keyFile string) (*tls.Config, error) {
-	certBytes, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, err
+func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, error) {
+	tlsIdentity := k8s.TLSIdentity{
+		Name:                "linkerd-proxy-injector",
+		Kind:                k8s.Service,
+		Namespace:           controllerNamespace,
+		ControllerNamespace: controllerNamespace,
 	}
+	dnsName := tlsIdentity.ToDNSName()
+	certAndPrivateKey, err := rootCA.IssueEndEntityCertificate(dnsName)
 
-	keyBytes, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	certPEM, err := pem.PEMEncodeCert(certBytes)
+	certPEM, err := certAndPrivateKey.EncodedCertificate()
 	if err != nil {
 		return nil, err
 	}
 	log.Debugf("PEM-encoded certificate: %s\n", certPEM)
 
-	keyPEM, err := pem.PEMEncodeKey(keyBytes, pem.KeyTypeECDSA)
+	keyPEM, err := certAndPrivateKey.EncodedPrivateKey()
 	if err != nil {
 		return nil, err
 	}

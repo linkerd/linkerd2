@@ -1016,9 +1016,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["list", "get", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -1066,7 +1063,6 @@ spec:
         - ca
         - -controller-namespace=Namespace
         - -single-namespace=false
-        - -proxy-auto-inject=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -1207,12 +1203,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: TLSTrustAnchorVolumeName
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: webhook-secrets
-          readOnly: true
         - mountPath: /var/linkerd-io/config
           name: proxy-spec
       - env:
@@ -1280,10 +1270,6 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - name: webhook-secrets
-        secret:
-          optional: true
-          secretName: ProxyInjectorTLSSecret
       - configMap:
           name: linkerd-proxy-injector-sidecar-config
         name: proxy-spec

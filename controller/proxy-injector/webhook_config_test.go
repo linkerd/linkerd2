@@ -3,15 +3,14 @@ package injector
 import (
 	"io/ioutil"
 	"log"
-	"os"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
+	"github.com/linkerd/linkerd2/pkg/tls"
 )
 
 func TestCreateOrUpdate(t *testing.T) {
 	var (
-		factory            = fake.NewFactory()
 		namespace          = fake.DefaultControllerNamespace
 		webhookServiceName = "test.linkerd.io"
 	)
@@ -22,13 +21,12 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	trustAnchorsPath, err := factory.CATrustAnchors()
+	rootCA, err := tls.NewCA()
 	if err != nil {
-		t.Fatal("Unexpected error: ", err)
+		t.Fatalf("failed to create root CA: %s", err)
 	}
-	defer os.Remove(trustAnchorsPath)
 
-	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, trustAnchorsPath, false)
+	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, false, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

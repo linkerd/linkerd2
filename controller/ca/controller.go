@@ -7,8 +7,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ import (
 type CertificateController struct {
 	namespace   string
 	k8sAPI      *k8s.API
-	ca          *CA
+	ca          *tls.CA
 	syncHandler func(key string) error
 
 	// The queue is keyed on a string. If the string doesn't contain any dots
@@ -36,8 +36,8 @@ type CertificateController struct {
 
 // NewCertificateController initializes a CertificateController and its
 // internal Certificate Authority.
-func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxyAutoInject bool) (*CertificateController, error) {
-	ca, err := NewCA()
+func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
+	ca, err := tls.NewCA()
 	if err != nil {
 		return nil, err
 	}
@@ -56,15 +56,6 @@ func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API, proxy
 			UpdateFunc: c.handlePodUpdate,
 		},
 	)
-
-	if proxyAutoInject {
-		k8sAPI.MWC().Informer().AddEventHandler(
-			cache.ResourceEventHandlerFuncs{
-				AddFunc:    c.handleMWCAdd,
-				UpdateFunc: c.handleMWCUpdate,
-			},
-		)
-	}
 
 	c.syncHandler = c.syncObject
 
@@ -185,18 +176,4 @@ func (c *CertificateController) handlePodAdd(obj interface{}) {
 
 func (c *CertificateController) handlePodUpdate(oldObj, newObj interface{}) {
 	c.handlePodAdd(newObj)
-}
-
-func (c *CertificateController) handleMWCAdd(obj interface{}) {
-	mwc := obj.(*v1beta1.MutatingWebhookConfiguration)
-	log.Debugf("enqueuing secret write for mutating webhook configuration %q", mwc.ObjectMeta.Name)
-	for _, webhook := range mwc.Webhooks {
-		if mwc.Name == pkgK8s.ProxyInjectorWebhookConfig {
-			c.queue.Add(fmt.Sprintf("%s.%s.%s", webhook.ClientConfig.Service.Name, pkgK8s.Service, webhook.ClientConfig.Service.Namespace))
-		}
-	}
-}
-
-func (c *CertificateController) handleMWCUpdate(oldObj, newObj interface{}) {
-	c.handleMWCAdd(newObj)
 }

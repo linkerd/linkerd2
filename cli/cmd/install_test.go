@@ -58,7 +58,6 @@ func TestRender(t *testing.T) {
 		ProxyMetricsPort:                 4191,
 		ProxyInitImage:                   "ProxyInitImage",
 		ProxyImage:                       "ProxyImage",
-		ProxyInjectorTLSSecret:           "ProxyInjectorTLSSecret",
 		ProxySpecFileName:                "ProxySpecFileName",
 		ProxyInitSpecFileName:            "ProxyInitSpecFileName",
 		IgnoreInboundPorts:               "4190,4191,1,2,3",

@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -79,17 +79,10 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestNewWebhookServer(t *testing.T) {
-	certFile, err := factory.CertFile()
+	rootCA, err := tls.NewCA()
 	if err != nil {
-		t.Fatal("Unexpected error: ", err)
+		log.Fatalf("failed to create root CA: %s", err)
 	}
-	defer os.Remove(certFile)
-
-	keyFile, err := factory.PrivateKey()
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-	defer os.Remove(keyFile)
 
 	var (
 		addr       = ":7070"
@@ -100,7 +93,7 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, certFile, keyFile, false)
+	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, false, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
