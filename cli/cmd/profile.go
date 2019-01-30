@@ -19,26 +19,26 @@ type templateConfig struct {
 }
 
 type profileOptions struct {
-	name        string
-	namespace   string
-	template    bool
-	openAPI     string
-	proto       string
-	tap         string
-	tapDuration time.Duration
-	routeLimit  uint
+	name          string
+	namespace     string
+	template      bool
+	openAPI       string
+	proto         string
+	tap           string
+	tapDuration   time.Duration
+	tapRouteLimit uint
 }
 
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
-		name:        "",
-		namespace:   "default",
-		template:    false,
-		openAPI:     "",
-		proto:       "",
-		tap:         "",
-		tapDuration: 5 * time.Second,
-		routeLimit:  20,
+		name:          "",
+		namespace:     "default",
+		template:      false,
+		openAPI:       "",
+		proto:         "",
+		tap:           "",
+		tapDuration:   5 * time.Second,
+		tapRouteLimit: 20,
 	}
 }
 
@@ -135,7 +135,7 @@ Example:
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			} else if options.tap != "" {
-				return profiles.RenderTapOutputProfile(cliPublicAPIClient(), options.tap, options.namespace, options.name, controlPlaneNamespace, options.tapDuration, int(options.routeLimit), os.Stdout)
+				return profiles.RenderTapOutputProfile(cliPublicAPIClient(), options.tap, options.namespace, options.name, controlPlaneNamespace, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, controlPlaneNamespace, os.Stdout)
 			}
@@ -149,7 +149,7 @@ Example:
 	cmd.PersistentFlags().StringVar(&options.openAPI, "open-api", options.openAPI, "Output a service profile based on the given OpenAPI spec file")
 	cmd.PersistentFlags().StringVar(&options.tap, "tap", options.tap, "Output a service profile based on tap data for the given target resource")
 	cmd.PersistentFlags().DurationVar(&options.tapDuration, "tap-duration", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
-	cmd.PersistentFlags().UintVar(&options.routeLimit, "route-limit", options.routeLimit, "Max number of routes to add to the profile")
+	cmd.PersistentFlags().UintVar(&options.tapRouteLimit, "tap-route-limit", options.tapRouteLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 

@@ -17,7 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, controlPlaneNamespace string, tapResourceDuration time.Duration, routeLimit int, w io.Writer) error {
+func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, controlPlaneNamespace string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
 
 	res, err := util.BuildResource(namespace, tapResource)
 	if err != nil {
@@ -40,7 +40,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, c
 		return err
 	}
 
-	profile, err := tapToServiceProfile(client, req, controlPlaneNamespace, tapResourceDuration, routeLimit)
+	profile, err := tapToServiceProfile(client, req, controlPlaneNamespace, tapDuration, routeLimit)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, c
 	return nil
 }
 
-func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, controlPlaneNamespace string, tapResourceDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
+func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, controlPlaneNamespace string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", tapReq.GetTarget().GetResource().GetName(), tapReq.GetTarget().GetResource().GetNamespace()),
@@ -70,7 +70,7 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, c
 		return profile, err
 	}
 
-	routes := routeSpecFromTap(rsp, tapResourceDuration, routeLimit)
+	routes := routeSpecFromTap(rsp, tapDuration, routeLimit)
 
 	profile.Spec.Routes = routes
 
