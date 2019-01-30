@@ -109,14 +109,14 @@ Example:
   and outputs a corresponding service profile:
 
 Example:
-	linkerd profile --tap deploy/books --tap-duration 10s books > book-svc-profile.yaml
+	linkerd profile books --tap deploy/books --tap-duration 10s --tap-route-limit 5 > book-svc-profile.yaml
 	# (edit book-svc-profile.yaml manually)
 	kubectl apply -f book-svc-profile.yaml
 
-The command will run linkerd tap deploy/books for tap-duration seconds, and then create
-a service profile for the books service with routes prepopulated from the tap data.
-For high RPS, high-route-cardinality services, use route-limit to limit the number of
-routes in the output profile.
+	The command will run linkerd tap deploy/books for tap-duration seconds, and then create
+	a service profile for the books service with routes prepopulated from the tap data.
+	For high RPS, high-route-cardinality services, use tap-route-limit to limit the number of
+	routes in the output profile.
 
 Example:
   linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -,
