@@ -35,6 +35,6 @@ TapLink.propTypes = {
 
 TapLink.defaultProps = {
   disabled: false
-}
+};
 
 export default TapLink;
