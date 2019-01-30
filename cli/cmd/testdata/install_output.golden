@@ -1016,9 +1016,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["list", "get", "watch"]
 
 ---
 kind: ClusterRoleBinding
