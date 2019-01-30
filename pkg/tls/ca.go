@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"time"
 )
@@ -175,27 +174,17 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 	}
 }
 
-// PEMEncodeCert returns the PEM encoding of cert.
-func PEMEncodeCert(cert []byte) ([]byte, error) {
+// EncodedCertificate returns the PEM encoding of the certificate
+func (cpk *CertificateAndPrivateKey) EncodedCertificate() ([]byte, error) {
 	buf := &bytes.Buffer{}
-	err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cpk.Certificate})
 	return buf.Bytes(), err
 }
 
-// PEMEncodeKey returns the PEM encoding of key.
-func PEMEncodeKey(key []byte, keyType string) ([]byte, error) {
-	pemBlock := &pem.Block{Bytes: key}
-	switch keyType {
-	case KeyTypeRSA:
-		pemBlock.Type = "RSA PRIVATE KEY"
-	case KeyTypeECDSA:
-		pemBlock.Type = "EC PRIVATE KEY"
-	default:
-		return nil, fmt.Errorf("Unknown key type")
-	}
-
+// EncodedPrivateKey returns the PEM encoding of key.
+func (cpk *CertificateAndPrivateKey) EncodedPrivateKey() ([]byte, error) {
 	buf := &bytes.Buffer{}
-	err := pem.Encode(buf, pemBlock)
+	err := pem.Encode(buf, &pem.Block{Type: "EC PRIVATE KEY", Bytes: cpk.PrivateKey})
 	return buf.Bytes(), err
 }
 

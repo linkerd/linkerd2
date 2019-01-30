@@ -824,11 +824,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-{{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["list", "get", "watch"]
-{{- end }}
 
 ---
 kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
