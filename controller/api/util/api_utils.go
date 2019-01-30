@@ -483,9 +483,9 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string) pb.TapEvent {
+func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) pb.TapEvent {
 	event := pb.TapEvent{
-		ProxyDirection: pb.TapEvent_OUTBOUND,
+		ProxyDirection: proxyDirection,
 		Source: &pb.TcpAddress{
 			Ip: &pb.IPAddress{
 				Ip: &pb.IPAddress_Ipv4{

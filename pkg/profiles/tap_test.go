@@ -32,6 +32,7 @@ func TestTapToServiceProfile(t *testing.T) {
 	event1 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
 			Event: &pb.TapEvent_Http_RequestInit_{
+
 				RequestInit: &pb.TapEvent_Http_RequestInit{
 					Id: &pb.TapEvent_Http_StreamId{
 						Base: 1,
@@ -47,11 +48,13 @@ func TestTapToServiceProfile(t *testing.T) {
 			},
 		},
 		map[string]string{},
+		pb.TapEvent_INBOUND,
 	)
 
 	event2 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
 			Event: &pb.TapEvent_Http_RequestInit_{
+
 				RequestInit: &pb.TapEvent_Http_RequestInit{
 					Id: &pb.TapEvent_Http_StreamId{
 						Base: 2,
@@ -67,6 +70,7 @@ func TestTapToServiceProfile(t *testing.T) {
 			},
 		},
 		map[string]string{},
+		pb.TapEvent_INBOUND,
 	)
 
 	mockAPIClient := &public.MockAPIClient{}
@@ -100,7 +104,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, controlPlaneNamespace, tapDuration, int(routeLimit))
+	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, controlPlaneNamespace, tapDuration, int(routeLimit))
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

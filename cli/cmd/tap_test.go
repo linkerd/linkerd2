@@ -48,6 +48,7 @@ func busyTest(t *testing.T, wide bool) {
 			"pod": "my-pod",
 			"tls": "true",
 		},
+		pb.TapEvent_OUTBOUND,
 	)
 	event2 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
@@ -70,6 +71,7 @@ func busyTest(t *testing.T, wide bool) {
 			},
 		},
 		map[string]string{},
+		pb.TapEvent_OUTBOUND,
 	)
 	mockAPIClient := &public.MockAPIClient{}
 	mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
