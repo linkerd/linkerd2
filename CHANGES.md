@@ -1,14 +1,12 @@
 ## edge-19.1.4
 
 * Controller
-  * Added timeouts support! Configurable in the service profiles for each route
-  * Added an experimental CNI plugin to avoid requiring the NET_ADMIN capability
-    when injecting proxies (more details at https://linkerd.io/2/cni)
+  * Added support for timeouts! Configurable in the service profiles for each route
+  * Added an experimental CNI plugin to avoid requiring the NET_ADMIN capability when
+    injecting proxies (more details at https://linkerd.io/2/cni) (thanks @codeman9!)
   * Added more improvements to the API for `ListPods` (thanks @alenkacz!)
-
 * Web UI
   * Grayed-out the tap icon for requests from sources that are not meshed
-
 * CLI
   * Added the `--proto` flag to `linkerd profile` to output a service profile
     based on a Protobuf spec file
