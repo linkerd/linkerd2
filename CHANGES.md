@@ -11,16 +11,12 @@
 
 * CLI
   * Added the `--proto` flag to `linkerd profile` to output a service profile
-    based on a Protobuf spec file -- Retryable methods can be declared in the Protobuf
-    file using the `@Retryable` annotation
+    based on a Protobuf spec file
   * Fixed CLI connection failure to clusters that use self-siged certificates
   * Simplified `linkerd install` so that setting up proxy auto-injection
     (flag `--proxy-auto-inject`) no longer requires enabling TLS (flag `--tls`)
   * Added links for each `linkerd check` failure, pointing to a relevant section
     in our new FAQ page with resolution steps for each case
-
-* Proxy
-  * Removed fallback to plain-text when the TLS handshake fails
 
 ## edge-19.1.3
 
