@@ -273,14 +273,14 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can create ClusterRoles",
-					hintURL:     "https://linkerd.io/2/faq/#gke",
+					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
-					hintURL:     "https://linkerd.io/2/faq/#gke",
+					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
 					check: func() error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
@@ -306,14 +306,14 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can create Roles",
-					hintURL:     "https://linkerd.io/2/faq/#gke",
+					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
 					check: func() error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
-					hintURL:     "https://linkerd.io/2/faq/#gke",
+					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
 					check: func() error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
