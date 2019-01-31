@@ -104,6 +104,7 @@ const (
 var (
 	maxRetries        = 60
 	retryWindow       = 5 * time.Second
+	requestTimeout    = 30 * time.Second
 	clusterZoneSuffix = []string{"svc", "cluster", "local"}
 )
 
@@ -130,12 +131,12 @@ type checker struct {
 
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
-	check func() error
+	check func(context.Context) error
 
 	// checkRPC is an alternative to check that can be used to perform a remote
 	// check using the SelfCheck gRPC endpoint; check status is based on the value
 	// of the gRPC response
-	checkRPC func() (*healthcheckPb.SelfCheckResponse, error)
+	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
 }
 
 // CheckResult encapsulates a check's identifying information and output
@@ -222,22 +223,29 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can initialize the client",
 					hintURL:     "https://linkerd.io/2/faq/#k8s-api",
 					fatal:       true,
-					check: func() (err error) {
+					check: func(_ context.Context) (err error) {
 						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
-						return
+						if err != nil {
+							return err
+						}
+						// k8s' client-go doesn't support injecting context
+						// https://github.com/kubernetes/kubernetes/issues/46503
+						// but we can set the timeout manually
+						hc.kubeAPI.Timeout = requestTimeout
+						return nil
 					},
 				},
 				{
 					description: "can query the Kubernetes API",
 					hintURL:     "https://linkerd.io/2/faq/#k8s-api",
 					fatal:       true,
-					check: func() (err error) {
+					check: func(ctx context.Context) (err error) {
 						hc.httpClient, err = hc.kubeAPI.NewClient()
 						if err != nil {
-							return
+							return err
 						}
-						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(hc.httpClient)
-						return
+						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(ctx, hc.httpClient)
+						return err
 					},
 				},
 			},
@@ -248,7 +256,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintURL:     "https://linkerd.io/2/faq/#k8s-version",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
 					},
 				},
@@ -260,35 +268,35 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace does not already exist",
 					hintURL:     "https://linkerd.io/2/faq/#pre-ns",
-					check: func() error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
 					description: "can create Namespaces",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate("", "", "v1", "Namespace")
 					},
 				},
 				{
 					description: "can create ClusterRoles",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
 				},
 				{
 					description: "can create CustomResourceDefinitions",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
 					},
 				},
@@ -300,21 +308,21 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace exists",
 					hintURL:     "https://linkerd.io/2/faq/#pre-single-ns",
-					check: func() error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
 					description: "can create Roles",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
 				},
@@ -326,28 +334,28 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can create ServiceAccounts",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
 					},
 				},
 				{
 					description: "can create Services",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
 					},
 				},
 				{
 					description: "can create Deployments",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
 					},
 				},
 				{
 					description: "can create ConfigMaps",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
 					},
 				},
@@ -360,8 +368,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace exists",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-existence-ns",
 					fatal:       true,
-					check: func() error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -369,9 +377,9 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:       "https://linkerd.io/2/faq/#l5d-existence-conroller",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func() error {
+					check: func(ctx context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -382,7 +390,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can initialize the client",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-existence-client",
 					fatal:       true,
-					check: func() (err error) {
+					check: func(_ context.Context) (err error) {
 						if hc.APIAddr != "" {
 							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
@@ -396,8 +404,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:       "https://linkerd.io/2/faq/#l5d-existence-api",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func() (err error) {
-						hc.serverVersion, err = GetServerVersion(hc.apiClient)
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
 						return
 					},
 				},
@@ -411,9 +419,9 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:       "https://linkerd.io/2/faq/#l5d-api-control-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func() error {
+					check: func(ctx context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -425,9 +433,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:       "https://linkerd.io/2/faq/#l5d-api-control-api",
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
-					checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
-						ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-						defer cancel()
+					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
@@ -440,7 +446,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "no invalid service profiles",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-sp",
 					warning:     true,
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.validateServiceProfiles()
 					},
 				},
@@ -452,7 +458,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can determine the latest version",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-latest",
-					check: func() (err error) {
+					check: func(ctx context.Context) (err error) {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
@@ -472,7 +478,7 @@ func (hc *HealthChecker) allCategories() []category {
 									}
 								}
 							}
-							hc.latestVersions, err = version.GetLatestVersions(uuid, "cli")
+							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
 						return
 					},
@@ -481,7 +487,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cli is up-to-date",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-cli",
 					warning:     true,
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.latestVersions.Match(version.Version)
 					},
 				},
@@ -494,7 +500,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane is up-to-date",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-control",
 					warning:     true,
-					check: func() error {
+					check: func(_ context.Context) error {
 						return hc.latestVersions.Match(hc.serverVersion)
 					},
 				},
@@ -502,7 +508,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane and cli versions match",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-control",
 					warning:     true,
-					check: func() error {
+					check: func(_ context.Context) error {
 						if hc.serverVersion != version.Version {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
@@ -518,8 +524,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane namespace exists",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-data-plane-exists",
 					fatal:       true,
-					check: func() error {
-						return hc.checkNamespace(hc.DataPlaneNamespace, true)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -527,8 +533,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintURL:       "https://linkerd.io/2/faq/#l5d-data-plane-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
+					check: func(ctx context.Context) error {
+						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -540,8 +546,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description:   "data plane proxy metrics are present in Prometheus",
 					hintURL:       "https://linkerd.io/2/faq/#l5d-data-plane-prom",
 					retryDeadline: hc.RetryDeadline,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
+					check: func(ctx context.Context) error {
+						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -553,8 +559,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane is up-to-date",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-data-plane-version",
 					warning:     true,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
+					check: func(ctx context.Context) error {
+						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -572,8 +578,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane and cli versions match",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-data-plane-cli-version",
 					warning:     true,
-					check: func() error {
-						pods, err := hc.getDataPlanePods()
+					check: func(ctx context.Context) error {
+						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
 							return err
 						}
@@ -601,8 +607,10 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL 
 			checkers: []checker{
 				checker{
 					description: description,
-					check:       check,
-					hintURL:     hintURL,
+					check: func(_ context.Context) error {
+						return check()
+					},
+					hintURL: hintURL,
 				},
 			},
 		},
@@ -656,7 +664,9 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
 	for {
-		err := c.check()
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		err := c.check(ctx)
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
@@ -681,7 +691,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 }
 
 func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
-	checkRsp, err := c.checkRPC()
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	checkRsp, err := c.checkRPC(ctx)
 	observer(&CheckResult{
 		Category:    categoryID,
 		Description: c.description,
@@ -719,8 +731,8 @@ func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
-	exists, err := hc.kubeAPI.NamespaceExists(hc.httpClient, namespace)
+func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, shouldExist bool) error {
+	exists, err := hc.kubeAPI.NamespaceExists(ctx, hc.httpClient, namespace)
 	if err != nil {
 		return err
 	}
@@ -733,7 +745,7 @@ func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) erro
 	return nil
 }
 
-func (hc *HealthChecker) getDataPlanePods() ([]*pb.Pod, error) {
+func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
 	req := &pb.ListPodsRequest{}
 	if hc.DataPlaneNamespace != "" {
 		req.Selector = &pb.ResourceSelection{
@@ -743,7 +755,7 @@ func (hc *HealthChecker) getDataPlanePods() ([]*pb.Pod, error) {
 		}
 	}
 
-	resp, err := hc.apiClient.ListPods(context.Background(), req)
+	resp, err := hc.apiClient.ListPods(ctx, req)
 	if err != nil {
 		return nil, err
 	}
