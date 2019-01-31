@@ -23,6 +23,8 @@ type installCNIPluginConfig struct {
 	IgnoreInboundPorts  string
 	IgnoreOutboundPorts string
 	ProxyUID            int64
+	DestCNINetDir       string
+	DestCNIBinDir       string
 }
 
 type cniPluginOptions struct {
@@ -37,6 +39,8 @@ type cniPluginOptions struct {
 	proxyUID            int64
 	cniPluginImage      string
 	logLevel            string
+	destCNINetDir       string
+	destCNIBinDir       string
 }
 
 func newCNIPluginOptions() *cniPluginOptions {
@@ -52,6 +56,8 @@ func newCNIPluginOptions() *cniPluginOptions {
 		proxyUID:            2102,
 		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
 		logLevel:            "info",
+		destCNINetDir:       "/etc/cni/net.d",
+		destCNIBinDir:       "/opt/cni/bin",
 	}
 }
 
@@ -110,6 +116,8 @@ command.`,
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin.")
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin.")
+	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed.")
+	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside.")
 
 	return cmd
 }
@@ -140,6 +148,8 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 		IgnoreInboundPorts:  strings.Join(ignoreInboundPorts, ","),
 		IgnoreOutboundPorts: strings.Join(ignoreOutboundPorts, ","),
 		ProxyUID:            options.proxyUID,
+		DestCNINetDir:       options.destCNINetDir,
+		DestCNIBinDir:       options.destCNIBinDir,
 	}, nil
 }
 

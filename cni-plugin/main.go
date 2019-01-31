@@ -215,7 +215,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 			iptables.ConfigureFirewall(*firewallConfiguration)
 		} else {
-			logEntry.Infof("linkerd-cni: linkerd-init initConainer is present, skipping.")
+			if containsInitContainer {
+				logEntry.Infof("linkerd-cni: linkerd-init initContainer is present, skipping.")
+			} else {
+				logEntry.Infof("linkerd-cni: linkerd-proxy is not present, skipping.")
+			}
 		}
 	} else {
 		logEntry.Infof("linkerd-cni: no Kubernetes namespace or pod name found, skipping.")
