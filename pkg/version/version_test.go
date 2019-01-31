@@ -22,8 +22,8 @@ func TestMatch(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("test %d Match(%s, %s)", i, tc.expected, tc.actual), func(t *testing.T) {
-			err := Match(tc.expected, tc.actual)
+		t.Run(fmt.Sprintf("test %d match(%s, %s)", i, tc.expected, tc.actual), func(t *testing.T) {
+			err := match(tc.expected, tc.actual)
 			if (err == nil && tc.err != nil) ||
 				(err != nil && tc.err == nil) ||
 				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {

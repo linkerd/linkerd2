@@ -32,9 +32,9 @@ func init() {
 	}
 }
 
-// Match compares two versions and returns success if they match, or an error
+// match compares two versions and returns success if they match, or an error
 // with a contextual message if they do not.
-func Match(expectedVersion, actualVersion string) error {
+func match(expectedVersion, actualVersion string) error {
 	if expectedVersion == "" {
 		return errors.New("expected version is empty")
 	} else if actualVersion == "" {

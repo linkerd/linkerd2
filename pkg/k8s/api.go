@@ -17,7 +17,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minAPIVersion = [3]int{1, 8, 0}
+var minAPIVersion = [3]int{1, 10, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
 type KubernetesAPI struct {
