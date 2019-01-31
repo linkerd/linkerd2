@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -25,13 +26,22 @@ const (
 	apiPrefix  = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
 )
 
+// APIClient wraps two gRPC client interfaces:
+// 1) public.Api
+// 2) controller/discovery.Api
+// This aligns with Public API Server's `handler` struct supporting both gRPC
+// servers.
+type APIClient interface {
+	pb.ApiClient
+	discovery.ApiClient
+}
+
 type grpcOverHTTPClient struct {
 	serverURL             *url.URL
 	httpClient            *http.Client
 	controlPlaneNamespace string
 }
 
-// TODO: This will replace Stat, once implemented
 func (c *grpcOverHTTPClient) StatSummary(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	var msg pb.StatSummaryResponse
 	err := c.apiRequest(ctx, "StatSummary", req, &msg)
@@ -91,6 +101,12 @@ func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByRes
 	}()
 
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
+}
+
+func (c *grpcOverHTTPClient) Endpoints(ctx context.Context, req *discovery.EndpointsParams, _ ...grpc.CallOption) (*discovery.EndpointsResponse, error) {
+	var msg discovery.EndpointsResponse
+	err := c.apiRequest(ctx, "Endpoints", req, &msg)
+	return &msg, err
 }
 
 func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
@@ -174,7 +190,7 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 	return nil
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (pb.ApiClient, error) {
+func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
@@ -192,7 +208,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 
 // NewInternalClient creates a new Public API client intended to run inside a
 // Kubernetes cluster.
-func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.ApiClient, error) {
+func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APIClient, error) {
 	apiURL, err := url.Parse(fmt.Sprintf("http://%s/", kubeAPIHost))
 	if err != nil {
 		return nil, err
@@ -203,7 +219,7 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (pb.Api
 
 // NewExternalClient creates a new Public API client intended to run from
 // outside a Kubernetes cluster.
-func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (pb.ApiClient, error) {
+func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
 	apiURL, err := kubeAPI.URLFor(controlPlaneNamespace, "/services/linkerd-controller-api:http/proxy/")
 	if err != nil {
 		return nil, err

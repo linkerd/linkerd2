@@ -5,7 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"google.golang.org/grpc/metadata"
 )
@@ -84,6 +86,10 @@ func (m *mockStreamingDestinationResolver) streamProfiles(host string, listener 
 	return nil
 }
 
+func (m *mockStreamingDestinationResolver) getState() servicePorts {
+	return servicePorts{}
+}
+
 func (m *mockStreamingDestinationResolver) stop() {}
 
 func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
@@ -134,6 +140,33 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 		err := server.streamResolution(host, port, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+}
+
+func TestEndpoints(t *testing.T) {
+	k8sAPI, err := k8s.NewFakeAPI("")
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+	k8sAPI.Sync()
+
+	proxyAPIClient, gRPCServer, proxyAPIConn := InitFakeDiscoveryServer(t, k8sAPI)
+	defer gRPCServer.GracefulStop()
+	defer proxyAPIConn.Close()
+
+	t.Run("Implements the Discovery interface", func(t *testing.T) {
+		resp, err := proxyAPIClient.Endpoints(context.Background(), &discovery.EndpointsParams{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+
+		expectedResp := &discovery.EndpointsResponse{
+			ServicePorts: make(map[string]*discovery.ServicePort),
+		}
+
+		if !proto.Equal(resp, expectedResp) {
+			t.Fatalf("Unexpected response: %+v", resp)
 		}
 	})
 }

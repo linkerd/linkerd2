@@ -1,0 +1,6 @@
+NAMESPACE   IP        PORT   POD          VERSION   WEIGHT   IDENTITY
+books       1.2.3.4   8080   authors      1234      1        authors.books
+
+NAMESPACE   IP        PORT   POD          VERSION   WEIGHT   IDENTITY
+emojivoto   1.2.3.4   8080   emoji-svc    1234      1        emoji-svc.emojivoto
+emojivoto   1.2.3.4   8080   voting-svc   1234      1        voting-svc.emojivoto

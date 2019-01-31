@@ -5,15 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
@@ -55,7 +56,8 @@ func newGrpcServer(
 	ignoredNamespaces []string,
 	singleNamespace bool,
 ) *grpcServer {
-	return &grpcServer{
+
+	grpcServer := &grpcServer{
 		prometheusAPI:       promAPI,
 		tapClient:           tapClient,
 		k8sAPI:              k8sAPI,
@@ -63,6 +65,10 @@ func newGrpcServer(
 		ignoredNamespaces:   ignoredNamespaces,
 		singleNamespace:     singleNamespace,
 	}
+
+	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
+
+	return grpcServer
 }
 
 func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
@@ -151,56 +157,8 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 		updated, added := reports[pod.Name]
 
-		status := string(pod.Status.Phase)
-		if pod.DeletionTimestamp != nil {
-			status = "Terminating"
-		}
-
-		controllerComponent := pod.Labels[pkgK8s.ControllerComponentLabel]
-		controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
-
-		proxyReady := false
-		for _, container := range pod.Status.ContainerStatuses {
-			if container.Name == pkgK8s.ProxyContainerName {
-				proxyReady = container.Ready
-			}
-		}
-
-		proxyVersion := ""
-		for _, container := range pod.Spec.Containers {
-			if container.Name == pkgK8s.ProxyContainerName {
-				parts := strings.Split(container.Image, ":")
-				proxyVersion = parts[1]
-			}
-		}
-
-		item := &pb.Pod{
-			Name:                pod.Namespace + "/" + pod.Name,
-			Status:              status,
-			PodIP:               pod.Status.PodIP,
-			Added:               added,
-			ControllerNamespace: controllerNS,
-			ControlPlane:        controllerComponent != "",
-			ProxyReady:          proxyReady,
-			ProxyVersion:        proxyVersion,
-		}
-
-		namespacedOwnerName := pod.Namespace + "/" + ownerName
-
-		switch ownerKind {
-		case "deployment":
-			item.Owner = &pb.Pod_Deployment{Deployment: namespacedOwnerName}
-		case "replicaset":
-			item.Owner = &pb.Pod_ReplicaSet{ReplicaSet: namespacedOwnerName}
-		case "replicationcontroller":
-			item.Owner = &pb.Pod_ReplicationController{ReplicationController: namespacedOwnerName}
-		case "statefulset":
-			item.Owner = &pb.Pod_StatefulSet{StatefulSet: namespacedOwnerName}
-		case "daemonset":
-			item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
-		case "job":
-			item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
-		}
+		item := util.K8sPodToPublicPod(*pod, ownerKind, ownerName)
+		item.Added = added
 
 		if added {
 			since := time.Since(updated.lastReport)
@@ -215,7 +173,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			}
 		}
 
-		podList = append(podList, item)
+		podList = append(podList, &item)
 	}
 
 	rsp := pb.ListPodsResponse{Pods: podList}
