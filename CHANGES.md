@@ -10,7 +10,7 @@
 * CLI
   * Added the `--proto` flag to `linkerd profile` to output a service profile
     based on a Protobuf spec file
-  * Fixed CLI connection failure to clusters that use self-siged certificates
+  * Fixed CLI connection failure to clusters that use self-signed certificates
   * Simplified `linkerd install` so that setting up proxy auto-injection
     (flag `--proxy-auto-inject`) no longer requires enabling TLS (flag `--tls`)
   * Added links for each `linkerd check` failure, pointing to a relevant section
