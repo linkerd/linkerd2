@@ -1,4 +1,4 @@
-## edget-19.1.4
+## edge-19.1.4
 
 * Controller
   * Added timeouts support! Configurable in the service profiles for each route
