@@ -15,10 +15,11 @@ var (
 )
 
 func TestMutate(t *testing.T) {
-	fakeClient, err := fake.NewClient("")
+	ns, err := factory.Namespace("namespace-kube-public.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
+	fakeClient := fake.NewClient("", ns)
 
 	defaultWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
@@ -62,10 +63,11 @@ func TestMutate(t *testing.T) {
 }
 
 func TestIgnore(t *testing.T) {
-	fakeClient, err := fake.NewClient("")
+	ns, err := factory.Namespace("namespace-kube-public.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
+	fakeClient := fake.NewClient("", ns)
 
 	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
@@ -77,10 +79,12 @@ func TestIgnore(t *testing.T) {
 			filename string
 			expected bool
 		}{
-			{filename: "deployment-inject-status-empty.yaml", expected: false},
-			{filename: "deployment-inject-status-enabled.yaml", expected: false},
-			{filename: "deployment-inject-status-disabled.yaml", expected: true},
-			{filename: "deployment-inject-status-completed.yaml", expected: true},
+			{filename: "deployment-inject-empty.yaml", expected: false},
+			{filename: "deployment-inject-enabled.yaml", expected: false},
+			{filename: "deployment-inject-disabled.yaml", expected: true},
+			{filename: "deployment-inject-enabled-deprecated.yaml", expected: false},
+			{filename: "deployment-inject-disabled-deprecated.yaml", expected: true},
+			{filename: "deployment-inject-completed-deprecated.yaml", expected: true},
 		}
 
 		for id, testCase := range testCases {
@@ -90,8 +94,12 @@ func TestIgnore(t *testing.T) {
 					t.Fatal("Unexpected error: ", err)
 				}
 
-				if actual := webhook.ignore(deployment); actual != testCase.expected {
-					t.Errorf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, actual)
+				ignore, err := webhook.ignore(deployment)
+				if err != nil {
+					t.Fatalf("Unexpected ignore error: %s", err)
+				}
+				if ignore != testCase.expected {
+					t.Fatalf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, ignore)
 				}
 			})
 		}
@@ -103,17 +111,18 @@ func TestIgnore(t *testing.T) {
 			t.Fatal("Unexpected error: ", err)
 		}
 
-		if !webhook.ignore(deployment) {
+		ignore, err := webhook.ignore(deployment)
+		if err != nil {
+			t.Fatalf("Unexpected ignore error: %s", err)
+		}
+		if !ignore {
 			t.Errorf("Expected deployment with injected proxy to be ignored")
 		}
 	})
 }
 
 func TestContainersSpec(t *testing.T) {
-	fakeClient, err := fake.NewClient("")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
+	fakeClient := fake.NewClient("")
 
 	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
@@ -152,10 +161,7 @@ func TestContainersSpec(t *testing.T) {
 }
 
 func TestVolumesSpec(t *testing.T) {
-	fakeClient, err := fake.NewClient("")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
+	fakeClient := fake.NewClient("")
 
 	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {

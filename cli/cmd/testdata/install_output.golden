@@ -3,8 +3,8 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: Namespace
-  labels:
-    ProxyAutoInjectLabel: disabled
+  annotations:
+    ProxyInjectAnnotation: disabled
 
 ### Service Account Controller ###
 ---
@@ -1292,6 +1292,9 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["create", "update", "get", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get"]
 
 ---
 kind: ClusterRoleBinding

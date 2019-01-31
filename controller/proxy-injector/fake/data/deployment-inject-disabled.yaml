@@ -5,7 +5,6 @@ metadata:
   namespace: kube-public
   labels:
     app: nginx
-    linkerd.io/auto-inject: enabled
 spec:
   replicas: 1
   selector:
@@ -16,6 +15,7 @@ spec:
       labels:
         app: nginx
       annotations:
+        linkerd.io/inject: disabled
         created-by: isim
     spec:
       containers:

@@ -93,6 +93,12 @@ func TestUninjectAndInject(t *testing.T) {
 			testInjectOptions: defaultOptions,
 		},
 		{
+			inputFileName:     "inject_emojivoto_deployment_injectDisabled.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_injectDisabled.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_injectDisabled.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
 			inputFileName:     "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:    "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:    "inject_emojivoto_deployment_controller_name.report",

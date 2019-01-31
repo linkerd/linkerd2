@@ -1,6 +1,7 @@
 
 √ pods do not use host networking
 ‼ known 3rd party sidecar detected in deployment/web
+√ pods are not annotated to disable injection
 ‼ no supported objects found
 √ pod specs do not include UDP ports
 

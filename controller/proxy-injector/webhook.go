@@ -29,6 +29,7 @@ const (
 // requests by injecting sidecar container spec into the pod spec during pod
 // creation.
 type Webhook struct {
+	client              kubernetes.Interface
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	resources           *WebhookResources
@@ -43,6 +44,7 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 	)
 
 	return &Webhook{
+		client:              client,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
@@ -110,7 +112,12 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 	log.Infof("resource namespace: %s", ns)
 
-	if w.ignore(&deployment) {
+	ignore, err := w.ignore(&deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	if ignore {
 		log.Infof("ignoring deployment %s", deployment.ObjectMeta.Name)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
@@ -206,17 +213,49 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
-	labels := deployment.Spec.Template.ObjectMeta.GetLabels()
-	status, defined := labels[k8sPkg.ProxyAutoInjectLabel]
-	if defined {
-		switch status {
-		case k8sPkg.ProxyAutoInjectDisabled, k8sPkg.ProxyAutoInjectCompleted:
-			return true
-		}
+// ignore determines whether or not the given deployment should be injected.
+// A deployment is ignored if:
+// - [DEPRECATED] the deployment's namespace has the linkerd.io/auto-inject
+//   label set to "disabled"; or
+// - [DEPRECATED] the deployment's pod spec has the linkerd.io/auto-inject
+//   label set to "disabled" or "completed"; or
+// - the deployment's namespace has the linkerd.io/inject annotation set to
+//   "disabled", and the deployment's pod spec does not have the
+//   linkerd.io/inject annotation set to "enabled"; or
+// - the deployment's pod spec has the linkerd.io/inject annotation set to
+//   "disabled"
+func (w *Webhook) ignore(deployment *appsv1.Deployment) (bool, error) {
+	opts := metav1.GetOptions{}
+	ns, err := w.client.CoreV1().Namespaces().Get(deployment.GetNamespace(), opts)
+	if err != nil {
+		return false, err
 	}
 
-	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec)
+	// TODO remove this once the deprecated linkerd.io/auto-inject label is gone
+	nsLabels := ns.GetLabels()
+	if nsLabels[k8sPkg.DeprecatedProxyAutoInjectLabel] == k8sPkg.ProxyInjectDisabled {
+		return true, nil
+	}
+
+	// TODO remove this once the deprecated linkerd.io/auto-inject label is gone
+	podLabels := deployment.Spec.Template.GetLabels()
+	switch podLabels[k8sPkg.DeprecatedProxyAutoInjectLabel] {
+	case k8sPkg.ProxyInjectDisabled, k8sPkg.DeprecatedProxyAutoInjectCompleted:
+		return true, nil
+	}
+
+	nsAnnotation := ns.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
+	podAnnotation := deployment.Spec.Template.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
+
+	if nsAnnotation == k8sPkg.ProxyInjectDisabled && podAnnotation != k8sPkg.ProxyInjectEnabled {
+		return true, nil
+	}
+
+	if podAnnotation == k8sPkg.ProxyInjectDisabled {
+		return true, nil
+	}
+
+	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec), nil
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {

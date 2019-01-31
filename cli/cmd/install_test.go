@@ -49,7 +49,7 @@ func TestRender(t *testing.T) {
 		TLSTrustAnchorVolumeSpecFileName: "TLSTrustAnchorVolumeSpecFileName",
 		TLSIdentityVolumeSpecFileName:    "TLSIdentityVolumeSpecFileName",
 		ProxyAutoInjectEnabled:           true,
-		ProxyAutoInjectLabel:             "ProxyAutoInjectLabel",
+		ProxyInjectAnnotation:            "ProxyInjectAnnotation",
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		InboundPort:                      4143,

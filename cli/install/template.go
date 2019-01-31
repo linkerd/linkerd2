@@ -25,9 +25,9 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Values.Namespace}}
-  {{- if and .Values.EnableTLS .Values.ProxyAutoInjectEnabled }}
-  labels:
-    {{.Values.ProxyAutoInjectLabel}}: disabled
+  {{- if .Values.ProxyAutoInjectEnabled }}
+  annotations:
+    {{.Values.ProxyInjectAnnotation}}: disabled
   {{- end }}
 
 {{ end -}}
@@ -978,6 +978,9 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["create", "update", "get", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get"]
 
 ---
 kind: ClusterRoleBinding

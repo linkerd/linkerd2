@@ -35,6 +35,11 @@ func TestUninjectYAML(t *testing.T) {
 			reportFileName: "inject_emojivoto_deployment_hostNetwork_true_uninject.report",
 		},
 		{
+			inputFileName:  "inject_emojivoto_deployment_injectDisabled.golden.yml",
+			goldenFileName: "inject_emojivoto_deployment_injectDisabled.input.yml",
+			reportFileName: "inject_emojivoto_deployment_injectDisabled_uninject.report",
+		},
+		{
 			inputFileName:  "inject_emojivoto_deployment_controller_name.golden.yml",
 			goldenFileName: "inject_emojivoto_deployment_controller_name.input.yml",
 			reportFileName: "inject_emojivoto_deployment_controller_name_uninject.report",

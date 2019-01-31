@@ -21,10 +21,7 @@ var (
 
 func init() {
 	// create a webhook which uses its fake client to seed the sidecar configmap
-	fakeClient, err := fake.NewClient("")
-	if err != nil {
-		panic(err)
-	}
+	fakeClient := fake.NewClient("")
 
 	testWebhookResources = &WebhookResources{
 		FileProxySpec:                fake.FileProxySpec,
@@ -88,10 +85,7 @@ func TestNewWebhookServer(t *testing.T) {
 		addr       = ":7070"
 		kubeconfig = ""
 	)
-	fakeClient, err := fake.NewClient(kubeconfig)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
+	fakeClient := fake.NewClient(kubeconfig)
 
 	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, false, rootCA)
 	if err != nil {
