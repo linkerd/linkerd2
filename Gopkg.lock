@@ -109,6 +109,19 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:0c93b97f9166ce4302eacf73de5e80e6380c4391954518db99835f2796513206"
+  name = "github.com/containernetworking/cni"
+  packages = [
+    "pkg/skel",
+    "pkg/types",
+    "pkg/types/020",
+    "pkg/types/current",
+    "pkg/version",
+  ]
+  pruneopts = ""
+  revision = "v0.6.0"
+
+[[projects]]
   digest = "1:a9854984bc40330dde2125537b7f46d0a8d7860b3750de2e7cd0a6f904506212"
   name = "github.com/cyphar/filepath-securejoin"
   packages = ["."]
@@ -505,6 +518,14 @@
   pruneopts = ""
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
+
+[[projects]]
+  digest = "1:ee2b0c6d6510f89121be4c233754bd79fe1e04d9beebd35ccccd5b38a23412e8"
+  name = "github.com/projectcalico/libcalico-go"
+  packages = ["lib/logutils"]
+  pruneopts = ""
+  revision = "aab828ef9fd5405040c36368f866e5ec9ea314a6"
+  version = "v1.7.3"
 
 [[projects]]
   digest = "1:e76d0fea4ab688de44c38e57cc657a53aed582cdc1e67470d7f3fbbfc3afec1c"
@@ -1201,6 +1222,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/briandowns/spinner",
+    "github.com/containernetworking/cni/pkg/skel",
+    "github.com/containernetworking/cni/pkg/types",
+    "github.com/containernetworking/cni/pkg/types/current",
+    "github.com/containernetworking/cni/pkg/version",
     "github.com/emicklei/proto",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
@@ -1220,6 +1245,7 @@
     "github.com/mattn/go-runewidth",
     "github.com/nsf/termbox-go",
     "github.com/pkg/browser",
+    "github.com/projectcalico/libcalico-go/lib/logutils",
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/client_golang/api/prometheus/v1",
     "github.com/prometheus/client_golang/prometheus",

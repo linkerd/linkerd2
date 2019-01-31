@@ -32,10 +32,11 @@ type Webhook struct {
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	resources           *WebhookResources
+	noInitContainer     bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -45,6 +46,7 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
+		noInitContainer:     noInitContainer,
 	}, nil
 }
 
@@ -141,10 +143,12 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	patch := NewPatch()
 	patch.addContainer(proxy)
 
-	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
-		patch.addInitContainerRoot()
+	if !w.noInitContainer {
+		if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
+			patch.addInitContainerRoot()
+		}
+		patch.addInitContainer(proxyInit)
 	}
-	patch.addInitContainer(proxyInit)
 
 	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
 		patch.addVolumeRoot()

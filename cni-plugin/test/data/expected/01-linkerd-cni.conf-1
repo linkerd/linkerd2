@@ -1,0 +1,22 @@
+{
+    "name": "linkerd-cni",
+    "type": "linkerd-cni",
+    "log_level": "warn",
+    "policy": {
+        "type": "k8s",
+        "k8s_api_root": "https://10.110.0.1:443",
+        "k8s_auth_token": "MyAwesomeToken"
+    },
+    "kubernetes": {
+        "kubeconfig": "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig"
+    },
+    "linkerd": {
+        "incoming-proxy-port": -1,
+        "outgoing-proxy-port": -1,
+        "proxy-uid": -1,
+        "ports-to-redirect": [],
+        "inbound-ports-to-ignore": [],
+        "outbound-ports-to-ignore": [],
+        "simulate": false
+    }
+}

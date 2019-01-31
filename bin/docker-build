@@ -12,6 +12,7 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 $bindir/docker-build-controller
 $bindir/docker-build-web
 $bindir/docker-build-proxy-init
+$bindir/docker-build-cni-plugin
 if [ -z "${LINKERD_LOCAL_BUILD_CLI:-}" ]; then
     $bindir/docker-build-cli-bin
 else

@@ -56,7 +56,6 @@ type installConfig struct {
 	ProxyUID                         int64
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
-	ProxyInjectorTLSSecret           string
 	ProxySpecFileName                string
 	ProxyInitSpecFileName            string
 	ProxyInitImage                   string
@@ -68,6 +67,7 @@ type installConfig struct {
 	ControllerUID                    int64
 	ProfileSuffixes                  string
 	EnableH2Upgrade                  bool
+	NoInitContainer                  bool
 }
 
 type installOptions struct {
@@ -202,7 +202,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyUID:                         options.proxyUID,
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,
-		ProxyInjectorTLSSecret:           k8s.ProxyInjectorTLSSecret,
 		ProxySpecFileName:                k8s.ProxySpecFileName,
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),
@@ -213,6 +212,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		EnableHA:                         options.highAvailability,
 		ProfileSuffixes:                  profileSuffixes,
 		EnableH2Upgrade:                  !options.disableH2Upgrade,
+		NoInitContainer:                  options.noInitContainer,
 	}, nil
 }
 
@@ -267,12 +267,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}
+	}
 
-		if config.ProxyAutoInjectEnabled {
-			pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-			if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
-				return err
-			}
+	if config.ProxyAutoInjectEnabled {
+		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
+			return err
 		}
 	}
 

@@ -88,10 +88,6 @@ const (
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
-	// ProxyInjectorTLSSecret is the name assigned to the secret containing the
-	// TLS cert and key used by the proxy-injector webhook.
-	ProxyInjectorTLSSecret = "linkerd-proxy-injector-service-tls-linkerd-io"
-
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"

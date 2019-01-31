@@ -38,7 +38,7 @@ module.exports = {
           {
             loader: 'eslint-loader',
             options: {
-              fix: true,
+              fix: process.env.NODE_ENV === 'development',
               emitWarning: process.env.NODE_ENV === 'development'
             }
           }

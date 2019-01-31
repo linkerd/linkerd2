@@ -30,7 +30,7 @@ class TopRoutesTabs extends React.Component {
   };
 
   renderTopComponent() {
-    let { disableTop, query, pathPrefix, updateNeighborsFromTapData } = this.props;
+    let { disableTop, query, pathPrefix, updateUnmeshedSources } = this.props;
     if (disableTop) {
       return null;
     }
@@ -46,7 +46,7 @@ class TopRoutesTabs extends React.Component {
           pathPrefix={pathPrefix}
           query={topQuery}
           startTap={true}
-          updateNeighbors={updateNeighborsFromTapData}
+          updateUnmeshedSources={updateUnmeshedSources}
           maxRowsToDisplay={10} />
         <QueryToCliCmd cmdName="top" query={topQuery} resource={topQuery.resource} />
       </React.Fragment>
@@ -105,13 +105,13 @@ TopRoutesTabs.propTypes = {
   pathPrefix: PropTypes.string.isRequired,
   query: PropTypes.shape({}),
   theme: PropTypes.shape({}).isRequired,
-  updateNeighborsFromTapData: PropTypes.func
+  updateUnmeshedSources: PropTypes.func
 };
 
 TopRoutesTabs.defaultProps = {
   disableTop: false,
   query: {},
-  updateNeighborsFromTapData: _noop
+  updateUnmeshedSources: _noop
 };
 
 export default withStyles(styles, { withTheme: true })(TopRoutesTabs);
