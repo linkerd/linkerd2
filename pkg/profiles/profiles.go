@@ -14,6 +14,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
+	log "github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,7 +44,17 @@ var (
 		Routes:      []*pb.Route{},
 		RetryBudget: &DefaultRetryBudget,
 	}
+	// DefaultRouteTimeout is the default timeout for routes that do not specify
+	// one.
+	DefaultRouteTimeout = 10 * time.Second
 )
+
+func toDuration(d time.Duration) *duration.Duration {
+	return &duration.Duration{
+		Seconds: int64(d / time.Second),
+		Nanos:   int32(d % time.Second),
+	}
+}
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
@@ -64,10 +75,7 @@ func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, e
 		if err != nil {
 			return nil, err
 		}
-		budget.Ttl = &duration.Duration{
-			Seconds: int64(ttl / time.Second),
-			Nanos:   int32(ttl % time.Second),
-		}
+		budget.Ttl = toDuration(ttl)
 	}
 	return &pb.DestinationProfile{
 		Routes:      routes,
@@ -89,11 +97,17 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 		}
 		rcs = append(rcs, pbRc)
 	}
+	timeout, err := time.ParseDuration(route.Timeout)
+	if err != nil {
+		log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
+		timeout = DefaultRouteTimeout
+	}
 	ret := pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
 		MetricsLabels:   map[string]string{"route": route.Name},
 		IsRetryable:     route.IsRetryable,
+		Timeout:         toDuration(timeout),
 	}
 	return &ret, nil
 }
