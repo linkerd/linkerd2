@@ -38,9 +38,9 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
 rules:
-  - apiGroups: [""]
-    resources: ["pods", "nodes", "namespaces"]
-    verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "nodes", "namespaces"]
+  verbs: ["list", "get", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -69,6 +69,8 @@ data:
   outbound_ports_to_ignore: "{{.IgnoreOutboundPorts}}"
   simulate: "false"
   log_level: "{{.LogLevel}}"
+  dest_cni_net_dir: "{{.DestCNINetDir}}"
+  dest_cni_bin_dir: "{{.DestCNIBinDir}}"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
@@ -127,14 +129,14 @@ spec:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       tolerations:
-        # Make sure linkerd-cni gets scheduled on all nodes.
-        - effect: NoSchedule
-          operator: Exists
-        # Mark the pod as a critical add-on for rescheduling.
-        - key: CriticalAddonsOnly
-          operator: Exists
-        - effect: NoExecute
-          operator: Exists
+      # Make sure linkerd-cni gets scheduled on all nodes.
+      - effect: NoSchedule
+        operator: Exists
+      # Mark the pod as a critical add-on for rescheduling.
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
       serviceAccountName: linkerd-cni
       terminationGracePeriodSeconds: 5
       containers:
@@ -145,50 +147,71 @@ spec:
         - name: install-cni
           image: {{.CNIPluginImage}}
           env:
-            # The CNI network config to install on each node.
-            - name: CNI_NETWORK_CONFIG
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: cni_network_config
-            - name: INCOMING_PROXY_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: incoming_proxy_port
-            - name: OUTGOING_PROXY_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: outgoing_proxy_port
-            - name: PROXY_UID
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: proxy_uid
-            - name: INBOUND_PORTS_TO_IGNORE
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: inbound_ports_to_ignore
-            - name: LOG_LEVEL
-              valueFrom:
-                configMapKeyRef:
-                  name: linkerd-cni-config
-                  key: log_level
-            - name: SLEEP
-              value: "true"
+          - name: DEST_CNI_NET_DIR
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: dest_cni_net_dir
+          - name: DEST_CNI_BIN_DIR
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: dest_cni_bin_dir
+          # The CNI network config to install on each node.
+          - name: CNI_NETWORK_CONFIG
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: cni_network_config
+          - name: INCOMING_PROXY_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: incoming_proxy_port
+          - name: OUTGOING_PROXY_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: outgoing_proxy_port
+          - name: PROXY_UID
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: proxy_uid
+          - name: INBOUND_PORTS_TO_IGNORE
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: inbound_ports_to_ignore
+          - name: LOG_LEVEL
+            valueFrom:
+              configMapKeyRef:
+                name: linkerd-cni-config
+                key: log_level
+          - name: SLEEP
+            value: "true"
           volumeMounts:
-            - mountPath: /host/opt/cni/bin
-              name: cni-bin-dir
-            - mountPath: /host/etc/cni/net.d
-              name: cni-net-dir
+          {{- if ne .DestCNIBinDir .DestCNINetDir }}
+          - mountPath: /host{{.DestCNIBinDir}}
+            name: cni-bin-dir
+          - mountPath: /host{{.DestCNINetDir}}
+            name: cni-net-dir
+          {{- else }}
+          - mountPath: /host{{.DestCNINetDir}}
+            name: cni-net-dir
+          {{- end }}
       volumes:
-        # Used to install CNI.
-        - name: cni-bin-dir
-          hostPath:
-            path: /opt/cni/bin
-        - name: cni-net-dir
-          hostPath:
-            path: /etc/cni/net.d
+      # Used to install CNI.
+      {{- if ne .DestCNIBinDir .DestCNINetDir }}
+      - name: cni-bin-dir
+        hostPath:
+          path: {{.DestCNIBinDir}}
+      - name: cni-net-dir
+        hostPath:
+          path: {{.DestCNINetDir}}
+      {{- else }}
+      - name: cni-net-dir
+        hostPath:
+          path: {{.DestCNINetDir}}
+      {{- end }}
 `
