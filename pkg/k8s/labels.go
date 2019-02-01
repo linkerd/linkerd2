@@ -75,16 +75,6 @@ const (
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"
 
-	// DeprecatedProxyAutoInjectLabel indicates if sidecar auto-inject should be
-	// performed on the pod. Supported values are "enabled", "disabled" or
-	// "completed".
-	DeprecatedProxyAutoInjectLabel = "linkerd.io/auto-inject"
-
-	// DeprecatedProxyAutoInjectCompleted is assigned to the ProxyAutoInjectLabel
-	// label to indicate that the sidecar auto-inject is completed for a
-	// particular resource.
-	DeprecatedProxyAutoInjectCompleted = "completed"
-
 	/*
 	 * Component Names
 	 */

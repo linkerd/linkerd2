@@ -37,10 +37,9 @@ func TestMutate(t *testing.T) {
 		requestFile  string
 		responseFile string
 	}{
-		{defaultWebhook, "no labels", "inject-no-labels-request.json", "inject-no-labels-response.yaml"},
+		{defaultWebhook, "no labels", "inject-empty-request.json", "inject-empty-response.yaml"},
 		{defaultWebhook, "inject enabled", "inject-enabled-request.json", "inject-enabled-response.yaml"},
 		{defaultWebhook, "inject disabled", "inject-disabled-request.json", "inject-disabled-response.yaml"},
-		{defaultWebhook, "inject completed", "inject-completed-request.json", "inject-completed-response.yaml"},
 		{noInitContainerWebhook, "inject no-init-container", "inject-enabled-request.json", "inject-no-init-container-response.yaml"},
 	}
 
@@ -82,9 +81,6 @@ func TestIgnore(t *testing.T) {
 			{filename: "deployment-inject-empty.yaml", expected: false},
 			{filename: "deployment-inject-enabled.yaml", expected: false},
 			{filename: "deployment-inject-disabled.yaml", expected: true},
-			{filename: "deployment-inject-enabled-deprecated.yaml", expected: false},
-			{filename: "deployment-inject-disabled-deprecated.yaml", expected: true},
-			{filename: "deployment-inject-completed-deprecated.yaml", expected: true},
 		}
 
 		for id, testCase := range testCases {

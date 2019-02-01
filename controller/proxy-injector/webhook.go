@@ -215,10 +215,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 // ignore determines whether or not the given deployment should be injected.
 // A deployment is ignored if:
-// - [DEPRECATED] the deployment's namespace has the linkerd.io/auto-inject
-//   label set to "disabled"; or
-// - [DEPRECATED] the deployment's pod spec has the linkerd.io/auto-inject
-//   label set to "disabled" or "completed"; or
 // - the deployment's namespace has the linkerd.io/inject annotation set to
 //   "disabled", and the deployment's pod spec does not have the
 //   linkerd.io/inject annotation set to "enabled"; or
@@ -229,19 +225,6 @@ func (w *Webhook) ignore(deployment *appsv1.Deployment) (bool, error) {
 	ns, err := w.client.CoreV1().Namespaces().Get(deployment.GetNamespace(), opts)
 	if err != nil {
 		return false, err
-	}
-
-	// TODO remove this once the deprecated linkerd.io/auto-inject label is gone
-	nsLabels := ns.GetLabels()
-	if nsLabels[k8sPkg.DeprecatedProxyAutoInjectLabel] == k8sPkg.ProxyInjectDisabled {
-		return true, nil
-	}
-
-	// TODO remove this once the deprecated linkerd.io/auto-inject label is gone
-	podLabels := deployment.Spec.Template.GetLabels()
-	switch podLabels[k8sPkg.DeprecatedProxyAutoInjectLabel] {
-	case k8sPkg.ProxyInjectDisabled, k8sPkg.DeprecatedProxyAutoInjectCompleted:
-		return true, nil
 	}
 
 	nsAnnotation := ns.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
