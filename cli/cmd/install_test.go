@@ -50,6 +50,7 @@ func TestRender(t *testing.T) {
 		TLSIdentityVolumeSpecFileName:    "TLSIdentityVolumeSpecFileName",
 		ProxyAutoInjectEnabled:           true,
 		ProxyInjectAnnotation:            "ProxyInjectAnnotation",
+		ProxyInjectDisabled:              "ProxyInjectDisabled",
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		InboundPort:                      4143,

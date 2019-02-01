@@ -64,13 +64,13 @@ func TestMutate(t *testing.T) {
 func TestIgnore(t *testing.T) {
 	ns, err := factory.Namespace("namespace-kube-public.yaml")
 	if err != nil {
-		t.Fatal("Unexpected error: ", err)
+		t.Fatalf("Unexpected error: %s", err)
 	}
 	fakeClient := fake.NewClient("", ns)
 
 	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
-		t.Fatal("Unexpected error: ", err)
+		t.Fatalf("Unexpected error: %s", err)
 	}
 
 	t.Run("by checking labels", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestIgnore(t *testing.T) {
 			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 				deployment, err := factory.Deployment(testCase.filename)
 				if err != nil {
-					t.Fatal("Unexpected error: ", err)
+					t.Fatalf("Unexpected error: %s", err)
 				}
 
 				ignore, err := webhook.ignore(deployment)
@@ -104,7 +104,7 @@ func TestIgnore(t *testing.T) {
 	t.Run("by checking container spec", func(t *testing.T) {
 		deployment, err := factory.Deployment("deployment-with-injected-proxy.yaml")
 		if err != nil {
-			t.Fatal("Unexpected error: ", err)
+			t.Fatalf("Unexpected error: %s", err)
 		}
 
 		ignore, err := webhook.ignore(deployment)
@@ -112,7 +112,7 @@ func TestIgnore(t *testing.T) {
 			t.Fatalf("Unexpected ignore error: %s", err)
 		}
 		if !ignore {
-			t.Errorf("Expected deployment with injected proxy to be ignored")
+			t.Fatal("Expected deployment with injected proxy to be ignored")
 		}
 	})
 }

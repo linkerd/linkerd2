@@ -32,9 +32,9 @@ const (
 
 	hostNetworkDesc    = "pods do not use host networking"
 	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc = "pods are not annotated to disable injection"
 	unsupportedDesc    = "at least one resource injected"
 	udpDesc            = "pod specs do not include UDP ports"
-	injectDisabledDesc = "pods are not annotated to disable injection"
 )
 
 type injectOptions struct {

@@ -4,7 +4,7 @@ apiVersion: v1
 metadata:
   name: Namespace
   annotations:
-    ProxyInjectAnnotation: disabled
+    ProxyInjectAnnotation: ProxyInjectDisabled
 
 ### Service Account Controller ###
 ---

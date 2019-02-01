@@ -27,7 +27,7 @@ metadata:
   name: {{.Values.Namespace}}
   {{- if .Values.ProxyAutoInjectEnabled }}
   annotations:
-    {{.Values.ProxyInjectAnnotation}}: disabled
+    {{.Values.ProxyInjectAnnotation}}: {{.Values.ProxyInjectDisabled}}
   {{- end }}
 
 {{ end -}}
