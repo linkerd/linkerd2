@@ -30,10 +30,11 @@ const (
 
 	// for inject reports
 
-	hostNetworkDesc = "pods do not use host networking"
-	sidecarDesc     = "pods do not have a 3rd party proxy or initContainer already injected"
-	unsupportedDesc = "at least one resource injected"
-	udpDesc         = "pod specs do not include UDP ports"
+	hostNetworkDesc    = "pods do not use host networking"
+	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc = "pods are not annotated to disable injection"
+	unsupportedDesc    = "at least one resource injected"
+	udpDesc            = "pod specs do not include UDP ports"
 )
 
 type injectOptions struct {
@@ -117,7 +118,12 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, optio
 /* Given a ObjectMeta, update ObjectMeta in place with the new labels and
  * annotations.
  */
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
+func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions, report *injectReport) bool {
+	report.injectDisabled = injectDisabled(t)
+	if report.injectDisabled {
+		return false
+	}
+
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
@@ -131,6 +137,8 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	for k, v := range k8sLabels {
 		t.Labels[k] = v
 	}
+
+	return true
 }
 
 /* Given a PodSpec, update the PodSpec in place with the sidecar
@@ -374,8 +382,8 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) {
-			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
+		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) &&
+			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options, &report) {
 			var err error
 			output, err = yaml.Marshal(conf.obj)
 			if err != nil {
@@ -394,10 +402,11 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
+	injectDisabled := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range injectReports {
-		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			injected = append(injected, r)
 		}
 
@@ -413,6 +422,11 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 
 		if r.udp {
 			udp = append(udp, r.resName())
+			warningsPrinted = true
+		}
+
+		if r.injectDisabled {
+			injectDisabled = append(injectDisabled, r.resName())
 			warningsPrinted = true
 		}
 	}
@@ -434,6 +448,13 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		output.Write([]byte(fmt.Sprintf("%s known 3rd party sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, sidecarDesc)))
+	}
+
+	if len(injectDisabled) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s \"%s: %s\" annotation set on %s\n",
+			warnStatus, k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled, strings.Join(injectDisabled, ", "))))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
 	if len(injected) == 0 {
@@ -461,7 +482,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	}
 
 	for _, r := range injectReports {
-		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.kind, r.name)))
 		} else {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
@@ -482,4 +503,8 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+func injectDisabled(t *metaV1.ObjectMeta) bool {
+	return t.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 }

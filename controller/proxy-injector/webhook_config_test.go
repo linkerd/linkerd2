@@ -16,10 +16,7 @@ func TestCreateOrUpdate(t *testing.T) {
 	)
 	log.SetOutput(ioutil.Discard)
 
-	client, err := fake.NewClient("")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
+	client := fake.NewClient("")
 
 	rootCA, err := tls.NewCA()
 	if err != nil {

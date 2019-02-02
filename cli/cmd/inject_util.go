@@ -31,6 +31,7 @@ type injectReport struct {
 	sidecar             bool
 	udp                 bool // true if any port in any container has `protocol: UDP`
 	unsupportedResource bool
+	injectDisabled      bool
 }
 
 type resourceConfig struct {

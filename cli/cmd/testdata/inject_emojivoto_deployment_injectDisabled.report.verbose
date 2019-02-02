@@ -1,9 +1,9 @@
 
 √ pods do not use host networking
 √ pods do not have a 3rd party proxy or initContainer already injected
-√ pods are not annotated to disable injection
-√ at least one resource injected
+‼ "linkerd.io/inject: disabled" annotation set on deployment/web
+‼ no supported objects found
 √ pod specs do not include UDP ports
 
-deployment "nginx" injected
+deployment "web" skipped
 

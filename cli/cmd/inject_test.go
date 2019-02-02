@@ -88,8 +88,14 @@ func TestUninjectAndInject(t *testing.T) {
 		},
 		{
 			inputFileName:     "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			goldenFileName:    "inject_emojivoto_deployment_hostNetwork_true.golden.yml",
+			goldenFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			reportFileName:    "inject_emojivoto_deployment_hostNetwork_true.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_injectDisabled.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
+			reportFileName:    "inject_emojivoto_deployment_injectDisabled.report",
 			testInjectOptions: defaultOptions,
 		},
 		{

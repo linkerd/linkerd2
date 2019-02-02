@@ -45,10 +45,10 @@
           "metadata": {
             "creationTimestamp": null,
             "labels": {
-              "app": "nginx",
-              "linkerd.io/auto-inject": "enabled"
+              "app": "nginx"
             },
             "annotations": {
+              "linkerd.io/inject": "enabled",
               "created-by": "isim"
             }
           },
@@ -92,4 +92,3 @@
     "oldObject": null
   }
 }
-

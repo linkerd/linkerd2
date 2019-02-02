@@ -52,7 +52,8 @@ type installConfig struct {
 	IgnoreInboundPorts               string
 	IgnoreOutboundPorts              string
 	ProxyAutoInjectEnabled           bool
-	ProxyAutoInjectLabel             string
+	ProxyInjectAnnotation            string
+	ProxyInjectDisabled              string
 	ProxyUID                         int64
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
@@ -198,7 +199,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		IgnoreInboundPorts:               strings.Join(ignoreInboundPorts, ","),
 		IgnoreOutboundPorts:              strings.Join(ignoreOutboundPorts, ","),
 		ProxyAutoInjectEnabled:           options.proxyAutoInject,
-		ProxyAutoInjectLabel:             k8s.ProxyAutoInjectLabel,
+		ProxyInjectAnnotation:            k8s.ProxyInjectAnnotation,
+		ProxyInjectDisabled:              k8s.ProxyInjectDisabled,
 		ProxyUID:                         options.proxyUID,
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,

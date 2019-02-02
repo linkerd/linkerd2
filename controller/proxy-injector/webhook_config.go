@@ -77,19 +77,17 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 	var (
 		buf  = &bytes.Buffer{}
 		spec = struct {
-			WebhookConfigName    string
-			WebhookServiceName   string
-			ControllerNamespace  string
-			CABundle             string
-			ProxyAutoInjectLabel string
-			NoInitContainer      bool
+			WebhookConfigName   string
+			WebhookServiceName  string
+			ControllerNamespace string
+			CABundle            string
+			NoInitContainer     bool
 		}{
-			WebhookConfigName:    k8sPkg.ProxyInjectorWebhookConfig,
-			WebhookServiceName:   w.webhookServiceName,
-			ControllerNamespace:  w.controllerNamespace,
-			CABundle:             base64.StdEncoding.EncodeToString(w.trustAnchor),
-			ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectLabel,
-			NoInitContainer:      w.noInitContainer,
+			WebhookConfigName:   k8sPkg.ProxyInjectorWebhookConfig,
+			WebhookServiceName:  w.webhookServiceName,
+			ControllerNamespace: w.controllerNamespace,
+			CABundle:            base64.StdEncoding.EncodeToString(w.trustAnchor),
+			NoInitContainer:     w.noInitContainer,
 		}
 	)
 	if err := w.configTemplate.Execute(buf, spec); err != nil {

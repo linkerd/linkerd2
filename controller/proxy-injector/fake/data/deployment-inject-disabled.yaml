@@ -14,8 +14,8 @@ spec:
     metadata:
       labels:
         app: nginx
-        linkerd.io/auto-inject: completed
       annotations:
+        linkerd.io/inject: disabled
         created-by: isim
     spec:
       containers:

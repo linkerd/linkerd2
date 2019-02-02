@@ -12,6 +12,8 @@ spec:
   strategy: {}
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: disabled
       creationTimestamp: null
       labels:
         app: web-svc
@@ -33,6 +35,5 @@ spec:
           hostPort: 9100
           name: http
         resources: {}
-      hostNetwork: true
 status: {}
 ---

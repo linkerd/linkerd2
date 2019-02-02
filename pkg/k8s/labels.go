@@ -62,21 +62,18 @@ const (
 	// (e.g. v0.1.3).
 	ProxyVersionAnnotation = "linkerd.io/proxy-version"
 
-	// ProxyAutoInjectLabel indicates if sidecar auto-inject should be performed
-	// on the pod. Supported values are "enabled", "disabled" or "completed".
-	ProxyAutoInjectLabel = "linkerd.io/auto-inject"
+	// ProxyInjectAnnotation controls whether or not a pod should be injected
+	// when set on a pod spec. When set on a namespace spec, it applies to all
+	// pods in the namespace. Supported values are "enabled" or "disabled"
+	ProxyInjectAnnotation = "linkerd.io/inject"
 
-	// ProxyAutoInjectEnabled is assigned to the ProxyAutoInjectLabel label to
-	// indicate that the sidecar auto-inject is enabled for a particular resource.
-	ProxyAutoInjectEnabled = "enabled"
+	// ProxyInjectEnabled is assigned to the ProxyInjectAnnotation annotation to
+	// enable injection for a pod or namespace.
+	ProxyInjectEnabled = "enabled"
 
-	// ProxyAutoInjectDisabled is assigned to the ProxyAutoInjectLabel label to
-	// indicate that the sidecar auto-inject is disabled for a particular resource.
-	ProxyAutoInjectDisabled = "disabled"
-
-	// ProxyAutoInjectCompleted is assigned to the ProxyAutoInjectLabel label to
-	// indicate that the sidecar auto-inject is completed for a particular resource.
-	ProxyAutoInjectCompleted = "completed"
+	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
+	// disable injection for a pod or namespace.
+	ProxyInjectDisabled = "disabled"
 
 	/*
 	 * Component Names
