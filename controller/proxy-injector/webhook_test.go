@@ -90,7 +90,7 @@ func TestIgnore(t *testing.T) {
 					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				ignore, err := webhook.ignore(deployment)
+				ignore, err := webhook.ignore(ns.GetName(), deployment)
 				if err != nil {
 					t.Fatalf("Unexpected ignore error: %s", err)
 				}
@@ -107,7 +107,7 @@ func TestIgnore(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		ignore, err := webhook.ignore(deployment)
+		ignore, err := webhook.ignore(ns.GetName(), deployment)
 		if err != nil {
 			t.Fatalf("Unexpected ignore error: %s", err)
 		}

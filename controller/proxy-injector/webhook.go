@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	defaultNamespace                    = "default"
 	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
 	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
 )
@@ -108,11 +107,11 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	ns := request.Namespace
 	if ns == "" {
-		ns = defaultNamespace
+		ns = corev1.NamespaceDefault
 	}
 	log.Infof("resource namespace: %s", ns)
 
-	ignore, err := w.ignore(&deployment)
+	ignore, err := w.ignore(ns, &deployment)
 	if err != nil {
 		return nil, err
 	}
@@ -220,14 +219,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 //   linkerd.io/inject annotation set to "enabled"; or
 // - the deployment's pod spec has the linkerd.io/inject annotation set to
 //   "disabled"
-func (w *Webhook) ignore(deployment *appsv1.Deployment) (bool, error) {
-	opts := metav1.GetOptions{}
-	ns, err := w.client.CoreV1().Namespaces().Get(deployment.GetNamespace(), opts)
+func (w *Webhook) ignore(ns string, deployment *appsv1.Deployment) (bool, error) {
+	namespace, err := w.client.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
 
-	nsAnnotation := ns.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
+	nsAnnotation := namespace.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
 	podAnnotation := deployment.Spec.Template.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
 
 	if nsAnnotation == k8sPkg.ProxyInjectDisabled && podAnnotation != k8sPkg.ProxyInjectEnabled {
