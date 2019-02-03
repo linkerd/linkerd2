@@ -246,9 +246,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -489,9 +489,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -635,9 +635,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         image: gcr.io/linkerd-io/proxy:dev-undefined
@@ -883,9 +883,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1119,9 +1119,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1245,9 +1245,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 1000ms
+          value: 10000ms
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1411,9 +1411,9 @@ data:
         fieldRef:
           fieldPath: metadata.namespace
     - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-      value: 1000ms
+      value: 10000ms
     - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-      value: 1000ms
+      value: 10000ms
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/TLSTrustAnchorFileName
     - name: LINKERD2_PROXY_TLS_CERT
