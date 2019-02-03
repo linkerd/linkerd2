@@ -260,7 +260,7 @@ type servicePort struct {
 	addresses  []*updateAddress
 	podLister  corelisters.PodLister
 	// This mutex protects against concurrent modification of the listeners slice
-	// as well as prevents updates for occuring while the listeners slice is being
+	// as well as prevents updates for occurring while the listeners slice is being
 	// modified.
 	mutex sync.Mutex
 }

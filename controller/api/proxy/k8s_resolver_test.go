@@ -218,7 +218,7 @@ func assertReturnError(t *testing.T, resolver *k8sResolver, nameToExpectedError 
 	for _, name := range nameToExpectedError {
 		resolvedName, err := resolver.localKubernetesServiceIDFromDNSName(name)
 		if err == nil {
-			t.Fatalf("Expecting error, got resovled name [%s]", *resolvedName)
+			t.Fatalf("Expecting error, got resolved name [%s]", *resolvedName)
 		}
 	}
 }
