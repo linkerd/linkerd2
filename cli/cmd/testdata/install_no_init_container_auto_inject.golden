@@ -244,6 +244,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -488,6 +492,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -635,6 +643,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
@@ -883,6 +895,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1119,6 +1135,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1246,6 +1266,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 1000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 1000ms
         - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
           value: /var/linkerd-io/trust-anchors/trust-anchors.pem
         - name: LINKERD2_PROXY_TLS_CERT
@@ -1411,6 +1435,10 @@ data:
       valueFrom:
         fieldRef:
           fieldPath: metadata.namespace
+    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+      value: 1000ms
+    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+      value: 1000ms
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/trust-anchors.pem
     - name: LINKERD2_PROXY_TLS_CERT

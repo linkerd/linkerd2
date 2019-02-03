@@ -261,6 +261,21 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		ReadinessProbe: &proxyProbe,
 	}
 
+	if options.inboundAcceptKeepaliveMs != 0 {
+		sidecar.Env = append(sidecar.Env,
+			v1.EnvVar{
+				Name:  "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
+				Value: fmt.Sprintf("%dms", options.inboundAcceptKeepaliveMs),
+			})
+	}
+	if options.outboundConnectKeepaliveMs != 0 {
+		sidecar.Env = append(sidecar.Env,
+			v1.EnvVar{
+				Name:  "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
+				Value: fmt.Sprintf("%dms", options.outboundConnectKeepaliveMs),
+			})
+	}
+
 	// Special case if the caller specifies that
 	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
 	// We key off of any container image in the pod. Ideally we would instead key
