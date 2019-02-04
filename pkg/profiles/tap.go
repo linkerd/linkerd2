@@ -51,10 +51,7 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: controlPlaneNamespace,
 		},
-		TypeMeta: ServiceProfileMeta{
-			APIVersion: "linkerd.io/v1alpha1",
-			Kind:       "ServiceProfile",
-		},
+		TypeMeta: ServiceProfileMeta,
 	}
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(tapDuration))
@@ -88,6 +85,7 @@ recvLoop:
 			if err == io.EOF {
 				break recvLoop
 			}
+
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				break recvLoop
