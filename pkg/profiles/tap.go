@@ -92,6 +92,7 @@ recvLoop:
 			}
 
 			routeSpec := getPathDataFromTap(event)
+			log.Debugf("Created route spec: %v", routeSpec)
 
 			if routeSpec != nil {
 				routesMap[routeSpec.Name] = routeSpec
