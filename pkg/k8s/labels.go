@@ -236,7 +236,7 @@ func (i TLSIdentity) ToSecretName() string {
 // an arbitrary TLSIdentity.
 func (i TLSIdentity) ToControllerIdentity() TLSIdentity {
 	return TLSIdentity{
-		Name:                "controller",
+		Name:                "linkerd-controller",
 		Kind:                "deployment",
 		Namespace:           i.ControllerNamespace,
 		ControllerNamespace: i.ControllerNamespace,

@@ -255,7 +255,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -499,7 +499,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -648,7 +648,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -894,7 +894,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1130,7 +1130,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1257,7 +1257,7 @@ spec:
         - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
           value: linkerd
         - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
