@@ -102,7 +102,6 @@ const (
 )
 
 var (
-	maxRetries        = 60
 	retryWindow       = 5 * time.Second
 	requestTimeout    = 30 * time.Second
 	clusterZoneSuffix = []string{"svc", "cluster", "local"}
@@ -223,16 +222,16 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can initialize the client",
 					hintURL:     "https://linkerd.io/2/faq/#k8s-api",
 					fatal:       true,
-					check: func(_ context.Context) (err error) {
+					check: func(context.Context) (err error) {
 						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
 						if err != nil {
-							return err
+							return
 						}
 						// k8s' client-go doesn't support injecting context
 						// https://github.com/kubernetes/kubernetes/issues/46503
 						// but we can set the timeout manually
 						hc.kubeAPI.Timeout = requestTimeout
-						return nil
+						return
 					},
 				},
 				{
@@ -242,10 +241,10 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(ctx context.Context) (err error) {
 						hc.httpClient, err = hc.kubeAPI.NewClient()
 						if err != nil {
-							return err
+							return
 						}
 						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(ctx, hc.httpClient)
-						return err
+						return
 					},
 				},
 			},
@@ -256,7 +255,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintURL:     "https://linkerd.io/2/faq/#k8s-version",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
 					},
 				},
@@ -275,28 +274,28 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can create Namespaces",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate("", "", "v1", "Namespace")
 					},
 				},
 				{
 					description: "can create ClusterRoles",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
 				},
 				{
 					description: "can create CustomResourceDefinitions",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
 					},
 				},
@@ -315,14 +314,14 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can create Roles",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s-cluster-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
 				},
@@ -334,28 +333,28 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can create ServiceAccounts",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
 					},
 				},
 				{
 					description: "can create Services",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
 					},
 				},
 				{
 					description: "can create Deployments",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
 					},
 				},
 				{
 					description: "can create ConfigMaps",
 					hintURL:     "https://linkerd.io/2/faq/#pre-k8s",
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
 					},
 				},
@@ -390,7 +389,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can initialize the client",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-existence-client",
 					fatal:       true,
-					check: func(_ context.Context) (err error) {
+					check: func(context.Context) (err error) {
 						if hc.APIAddr != "" {
 							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
@@ -446,7 +445,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "no invalid service profiles",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-sp",
 					warning:     true,
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.validateServiceProfiles()
 					},
 				},
@@ -487,7 +486,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cli is up-to-date",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-cli",
 					warning:     true,
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.latestVersions.Match(version.Version)
 					},
 				},
@@ -500,7 +499,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane is up-to-date",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-control",
 					warning:     true,
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						return hc.latestVersions.Match(hc.serverVersion)
 					},
 				},
@@ -508,7 +507,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane and cli versions match",
 					hintURL:     "https://linkerd.io/2/faq/#l5d-version-control",
 					warning:     true,
-					check: func(_ context.Context) error {
+					check: func(context.Context) error {
 						if hc.serverVersion != version.Version {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
@@ -600,17 +599,15 @@ func (hc *HealthChecker) allCategories() []category {
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHeathChecker.
-func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL string, check func() error) {
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL string, check func(context.Context) error) {
 	hc.addCategory(
 		category{
 			id: categoryID,
 			checkers: []checker{
 				checker{
 					description: description,
-					check: func(_ context.Context) error {
-						return check()
-					},
-					hintURL: hintURL,
+					check:       check,
+					hintURL:     hintURL,
 				},
 			},
 		},
