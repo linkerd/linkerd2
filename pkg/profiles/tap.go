@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -62,43 +63,38 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 		return profile, err
 	}
 
-	routes := routeSpecFromTap(ctx, tapClient, routeLimit)
+	routes := routeSpecFromTap(tapClient, routeLimit)
 
 	profile.Spec.Routes = routes
 
 	return profile, nil
 }
 
-func routeSpecFromTap(ctx context.Context, tapClient pb.Api_TapByResourceClient, routeLimit int) []*sp.RouteSpec {
+func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, routeLimit int) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
 	routesMap := make(map[string]*sp.RouteSpec)
 
-recvLoop:
 	for {
-		select {
-		case <-ctx.Done():
-			break recvLoop
-		default:
-			log.Debug("Waiting for data...")
-			event, err := tapClient.Recv()
+		log.Debug("Waiting for data...")
+		event, err := tapClient.Recv()
 
-			if err == io.EOF {
-				break recvLoop
-			}
-
-			if err != nil {
+		if err != nil {
+			// expected errors when hitting the tapDuration deadline
+			if err != io.EOF &&
+				!strings.HasSuffix(err.Error(), context.DeadlineExceeded.Error()) &&
+				!strings.HasSuffix(err.Error(), "http2: response body closed") {
 				fmt.Fprintln(os.Stderr, err)
-				break recvLoop
 			}
+			break
+		}
 
-			routeSpec := getPathDataFromTap(event)
-			log.Debugf("Created route spec: %v", routeSpec)
+		routeSpec := getPathDataFromTap(event)
+		log.Debugf("Created route spec: %v", routeSpec)
 
-			if routeSpec != nil {
-				routesMap[routeSpec.Name] = routeSpec
-				if len(routesMap) > routeLimit {
-					break recvLoop
-				}
+		if routeSpec != nil {
+			routesMap[routeSpec.Name] = routeSpec
+			if len(routesMap) > routeLimit {
+				break
 			}
 		}
 	}
