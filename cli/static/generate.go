@@ -3,7 +3,7 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/shurcooL/vfsgen"
