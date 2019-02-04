@@ -108,7 +108,6 @@ Example:
   If the --proto flag is specified, it reads the given protobuf definition file
   and outputs a corresponding service profile:
 
-Example:
   linkerd profile books --tap deploy/books --tap-duration 10s --tap-route-limit 5 > book-svc-profile.yaml
   # (edit book-svc-profile.yaml manually)
   kubectl apply -f book-svc-profile.yaml
@@ -118,7 +117,6 @@ Example:
   For high RPS, high-route-cardinality services, use tap-route-limit to limit the number of
   routes in the output profile.
 
-Example:
   linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -,
   linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -`,
 		Args: cobra.ExactArgs(1),
