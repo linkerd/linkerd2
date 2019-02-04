@@ -366,7 +366,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "controller pod is running",
-					hintURL:       "https://linkerd.io/2/faq/#l5d-existence-conroller",
+					hintURL:       "https://linkerd.io/2/faq/#l5d-existence-controller",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func() error {
