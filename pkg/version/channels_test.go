@@ -1,12 +1,14 @@
 package version
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestGetLatestVersions(t *testing.T) {
@@ -68,7 +70,9 @@ func TestGetLatestVersions(t *testing.T) {
 			)
 			defer ts.Close()
 
-			latest, err := getLatestVersions(ts.Client(), ts.URL, "uuid", "source")
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			latest, err := getLatestVersions(ctx, ts.Client(), ts.URL, "uuid", "source")
 			if (err == nil && tc.err != nil) ||
 				(err != nil && tc.err == nil) ||
 				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {

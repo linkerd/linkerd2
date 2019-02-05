@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -65,7 +67,9 @@ func configureAndRunVersion(
 			os.Exit(1)
 		}
 
-		serverVersion, err := healthcheck.GetServerVersion(client)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		serverVersion, err := healthcheck.GetServerVersion(ctx, client)
 		if err != nil {
 			serverVersion = defaultVersionString
 		}

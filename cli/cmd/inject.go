@@ -256,31 +256,13 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				Name:      PodNamespaceEnvVarName,
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
+			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_ID", Value: identity.ToDNSName()},
 		},
 		LivenessProbe:  &proxyProbe,
 		ReadinessProbe: &proxyProbe,
 	}
-
-	if options.inboundAcceptKeepaliveMs != 0 {
-		sidecar.Env = append(sidecar.Env,
-			v1.EnvVar{
-				Name:  "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
-				Value: fmt.Sprintf("%dms", options.inboundAcceptKeepaliveMs),
-			})
-	}
-	if options.outboundConnectKeepaliveMs != 0 {
-		sidecar.Env = append(sidecar.Env,
-			v1.EnvVar{
-				Name:  "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
-				Value: fmt.Sprintf("%dms", options.outboundConnectKeepaliveMs),
-			})
-	}
-
-	sidecar.Env = append(sidecar.Env,
-		v1.EnvVar{
-			Name:  "LINKERD2_PROXY_ID",
-			Value: identity.ToDNSName(),
-		})
 
 	// Special case if the caller specifies that
 	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
@@ -355,7 +337,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Image:                    options.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},

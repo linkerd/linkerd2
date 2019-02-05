@@ -73,6 +73,11 @@ type installConfig struct {
 	NoInitContainer                  bool
 }
 
+// installOptions holds values for command line flags that apply to the install
+// command. All fields in this struct should have corresponding flags added in
+// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
+// in order to hold values for command line flags that apply to both inject and
+// install.
 type installOptions struct {
 	controllerReplicas uint
 	controllerLogLevel string
@@ -200,8 +205,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		OutboundPort:                     options.outboundPort,
 		IgnoreInboundPorts:               strings.Join(ignoreInboundPorts, ","),
 		IgnoreOutboundPorts:              strings.Join(ignoreOutboundPorts, ","),
-		InboundAcceptKeepaliveMs:         options.proxyConfigOptions.inboundAcceptKeepaliveMs,
-		OutboundConnectKeepaliveMs:       options.proxyConfigOptions.inboundAcceptKeepaliveMs,
+		InboundAcceptKeepaliveMs:         defaultKeepaliveMs,
+		OutboundConnectKeepaliveMs:       defaultKeepaliveMs,
 		ProxyAutoInjectEnabled:           options.proxyAutoInject,
 		ProxyInjectAnnotation:            k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:              k8s.ProxyInjectDisabled,
