@@ -73,16 +73,7 @@ func generateKubernetesAPIBaseURLFor(schemeHostAndPort string, namespace string,
 }
 
 func generateBaseKubernetesAPIURL(schemeHostAndPort string) (*url.URL, error) {
-	u, err := url.Parse("/api/v1/")
-	if err != nil {
-		return nil, err
-	}
-	base, err := url.Parse(schemeHostAndPort)
-	if err != nil {
-		return nil, fmt.Errorf("error generating base URL for Kubernetes API from [%s]", schemeHostAndPort)
-	}
-	url := base.ResolveReference(u)
-	return url, nil
+	return BuildURL(schemeHostAndPort, "/api/v1/")
 }
 
 // GetConfig returns kubernetes config based on the current environment.
@@ -174,4 +165,20 @@ func KindToL5DLabel(k8sKind string) string {
 		return l5dJob
 	}
 	return k8sKind
+}
+
+// BuildURL returns an abosolute URL from a reference URL. It parses a base
+// rawurl and reference rawurl. Then, it tries to resolve the reference from
+// the absolute base.
+func BuildURL(base string, ref string) (*url.URL, error) {
+	u, err := url.Parse(ref)
+	if err != nil {
+		return nil, fmt.Errorf("error generating reference URL for endpoint from [%s]", base)
+	}
+	b, err := url.Parse(base)
+	if err != nil {
+		return nil, fmt.Errorf("error generating base URL for endpoint from [%s]", base)
+	}
+	url := b.ResolveReference(u)
+	return url, nil
 }
