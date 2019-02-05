@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,10 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 
 	tapClient, err := client.TapByResource(ctx, tapReq)
 	if err != nil {
+		if strings.HasSuffix(err.Error(), context.DeadlineExceeded.Error()) {
+			// return a more user friendly error if we've exceeded the specified duration
+			return profile, errors.New("Tap duration exceeded, try increasing --tap-duration")
+		}
 		return profile, err
 	}
 
