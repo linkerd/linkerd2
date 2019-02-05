@@ -46,6 +46,7 @@ const (
 	RS
 	SP
 	Svc
+	SS
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -55,6 +56,7 @@ type API struct {
 	cm       coreinformers.ConfigMapInformer
 	deploy   appv1beta2informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
+	ss       appv1informers.StatefulSetInformer
 	endpoint coreinformers.EndpointsInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
@@ -110,6 +112,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case DS:
 			api.ds = sharedInformers.Apps().V1().DaemonSets()
 			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
+		case SS:
+			api.ss = sharedInformers.Apps().V1().StatefulSets()
+			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
@@ -166,6 +171,14 @@ func (api *API) DS() appv1informers.DaemonSetInformer {
 		panic("DS informer not configured")
 	}
 	return api.ds
+}
+
+// SS provides access to a shared informer and lister for Statefulsets.
+func (api *API) SS() appv1informers.StatefulSetInformer {
+	if api.ss == nil {
+		panic("SS informer not configured")
+	}
+	return api.ss
 }
 
 // RS provides access to a shared informer and lister for ReplicaSets.
@@ -242,6 +255,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getNamespaces(name)
 	case k8s.DaemonSet:
 		return api.getDaemonsets(namespace, name)
+	case k8s.StatefulSet:
+		return api.getStatefulsets(namespace, name)
 	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
 	case k8s.Pod:
@@ -291,6 +306,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		selector = labels.Everything()
 
 	case *appsv1.DaemonSet:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+
+	case *appsv1.StatefulSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
@@ -353,6 +372,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 		return typed.Name, typed.Name, nil
 
 	case *appsv1.DaemonSet:
+		return typed.Name, typed.Namespace, nil
+
+	case *appsv1.StatefulSet:
 		return typed.Name, typed.Namespace, nil
 
 	case *appsv1beta2.Deployment:
@@ -531,6 +553,32 @@ func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) 
 	objects := []runtime.Object{}
 	for _, ds := range daemonsets {
 		objects = append(objects, ds)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var statefulsets []*appsv1.StatefulSet
+
+	if namespace == "" {
+		statefulsets, err = api.SS().Lister().List(labels.Everything())
+	} else if name == "" {
+		statefulsets, err = api.SS().Lister().StatefulSets(namespace).List(labels.Everything())
+	} else {
+		var ss *appsv1.StatefulSet
+		ss, err = api.SS().Lister().StatefulSets(namespace).Get(name)
+		statefulsets = []*appsv1.StatefulSet{ss}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, ss := range statefulsets {
+		objects = append(objects, ss)
 	}
 
 	return objects, nil

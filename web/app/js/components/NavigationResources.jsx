@@ -70,6 +70,7 @@ class NavigationResourcesBase extends React.Component {
         <NavigationResource type="authorities" />
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />
         <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
+        <NavigationResource type="statefulsets" metrics={allMetrics.statefulset} />
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
         <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />

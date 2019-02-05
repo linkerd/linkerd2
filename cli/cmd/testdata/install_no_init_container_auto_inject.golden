@@ -22,7 +22,7 @@ metadata:
   name: linkerd-linkerd-controller
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["daemonsets", "deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]

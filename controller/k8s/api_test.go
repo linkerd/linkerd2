@@ -169,6 +169,39 @@ metadata:
 			getObjectsExpected{
 				err:       nil,
 				namespace: "",
+				resType:   k8s.StatefulSet,
+				name:      "",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-deploy
+  namespace: my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.StatefulSet,
+				name:      "my-ss",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-ss
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-ss
+  namespace: not-my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "",
 				resType:   k8s.Namespace,
 				name:      "",
 				k8sResResults: []string{`

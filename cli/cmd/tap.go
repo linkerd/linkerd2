@@ -59,10 +59,13 @@ func newCmdTap() *cobra.Command {
   * deploy/my-deploy
   * deploy my-deploy
   * ds/my-daemonset
+  * statefulset
+  * statefulset/my-statefulset
   * ns/my-ns
 
   Valid resource types include:
   * daemonsets
+  * statefulsets
   * deployments
   * namespaces
   * pods

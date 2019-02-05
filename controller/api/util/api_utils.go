@@ -29,6 +29,7 @@ var (
 	ValidTargets = []string{
 		k8s.Authority,
 		k8s.DaemonSet,
+		k8s.StatefulSet,
 		k8s.Deployment,
 		k8s.Namespace,
 		k8s.Pod,
@@ -39,6 +40,7 @@ var (
 	// destination resource on an outbound 'to' query
 	ValidTapDestinations = []string{
 		k8s.DaemonSet,
+		k8s.StatefulSet,
 		k8s.Deployment,
 		k8s.Job,
 		k8s.Namespace,
