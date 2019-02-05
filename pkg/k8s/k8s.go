@@ -73,11 +73,15 @@ func generateKubernetesAPIBaseURLFor(schemeHostAndPort string, namespace string,
 }
 
 func generateBaseKubernetesAPIURL(schemeHostAndPort string) (*url.URL, error) {
-	urlString := fmt.Sprintf("%s/api/v1/", schemeHostAndPort)
-	url, err := url.Parse(urlString)
+	u, err := url.Parse("/api/v1/")
 	if err != nil {
-		return nil, fmt.Errorf("error generating base URL for Kubernetes API from [%s]", urlString)
+		return nil, err
 	}
+	base, err := url.Parse(schemeHostAndPort)
+	if err != nil {
+		return nil, fmt.Errorf("error generating base URL for Kubernetes API from [%s]", schemeHostAndPort)
+	}
+	url := base.ResolveReference(u)
 	return url, nil
 }
 

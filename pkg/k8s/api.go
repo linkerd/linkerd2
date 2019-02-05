@@ -136,10 +136,15 @@ func (kubeAPI *KubernetesAPI) URLFor(namespace string, extraPathStartingWithSlas
 }
 
 func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {
-	endpoint, err := url.Parse(kubeAPI.Host + path)
+	u, err := url.Parse(path)
 	if err != nil {
 		return nil, err
 	}
+	base, err := url.Parse(kubeAPI.Host)
+	if err != nil {
+		return nil, err
+	}
+	endpoint := base.ResolveReference(u)
 
 	req, err := http.NewRequest("GET", endpoint.String(), nil)
 	if err != nil {
