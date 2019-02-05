@@ -48,11 +48,27 @@ func newEndpointsOptions() *endpointsOptions {
 func newCmdEndpoints() *cobra.Command {
 	options := newEndpointsOptions()
 
+	example := `  # get all endpoints
+  linkerd endpoints
+
+  # get endpoints in the emojivoto namespace
+  linkerd endpoints -n emojivoto
+
+  # get all endpoints in json
+  linkerd endpoints -o json`
+
 	cmd := &cobra.Command{
 		Use:   "endpoints [flags]",
-		Short: "Display service discovery endpoints state",
-		Long:  `Display service discovery endpoints state.`,
-		Args:  cobra.NoArgs,
+		Short: "Introspect Linkerd's service discovery state",
+		Long: `Introspect Linkerd's service discovery state.
+
+This command provides debug information about the internal state of the
+control-plane's proxy-api container. Note that this cache of service discovery
+information is populated on-demand via linkerd-proxy requests. This command
+will return "No endpoints found." until a linker-proxy begins routing
+requests.`,
+		Example: example,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := options.validate()
 			if err != nil {

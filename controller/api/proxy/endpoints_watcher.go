@@ -22,6 +22,7 @@ const (
 )
 
 // TODO: prom metrics for all the queues/caches
+// https://github.com/linkerd/linkerd2/issues/2204
 
 // a map of service -> service port -> servicePort
 type servicePorts map[serviceID]map[uint32]*servicePort
