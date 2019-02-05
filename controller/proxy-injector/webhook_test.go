@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -61,26 +62,58 @@ func TestMutate(t *testing.T) {
 	}
 }
 
-func TestIgnore(t *testing.T) {
-	ns, err := factory.Namespace("namespace-kube-public.yaml")
+func TestShouldInject(t *testing.T) {
+	nsEnabled, err := factory.Namespace("namespace-kube-public.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	fakeClient := fake.NewClient("", ns)
+	nsDisabled, err := factory.Namespace("namespace-linkerd.yaml")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	fakeClient := fake.NewClient("", nsEnabled, nsDisabled)
 
 	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	t.Run("by checking labels", func(t *testing.T) {
+	t.Run("by checking annotations", func(t *testing.T) {
 		var testCases = []struct {
 			filename string
+			ns       *corev1.Namespace
 			expected bool
 		}{
-			{filename: "deployment-inject-empty.yaml", expected: false},
-			{filename: "deployment-inject-enabled.yaml", expected: false},
-			{filename: "deployment-inject-disabled.yaml", expected: true},
+			{
+				filename: "deployment-inject-empty.yaml",
+				ns:       nsEnabled,
+				expected: true,
+			},
+			{
+				filename: "deployment-inject-enabled.yaml",
+				ns:       nsEnabled,
+				expected: true,
+			},
+			{
+				filename: "deployment-inject-disabled.yaml",
+				ns:       nsEnabled,
+				expected: false,
+			},
+			{
+				filename: "deployment-inject-empty.yaml",
+				ns:       nsDisabled,
+				expected: false,
+			},
+			{
+				filename: "deployment-inject-enabled.yaml",
+				ns:       nsDisabled,
+				expected: true,
+			},
+			{
+				filename: "deployment-inject-disabled.yaml",
+				ns:       nsDisabled,
+				expected: false,
+			},
 		}
 
 		for id, testCase := range testCases {
@@ -90,12 +123,12 @@ func TestIgnore(t *testing.T) {
 					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				ignore, err := webhook.ignore(ns.GetName(), deployment)
+				inject, err := webhook.shouldInject(testCase.ns.GetName(), deployment)
 				if err != nil {
-					t.Fatalf("Unexpected ignore error: %s", err)
+					t.Fatalf("Unexpected shouldInject error: %s", err)
 				}
-				if ignore != testCase.expected {
-					t.Fatalf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, ignore)
+				if inject != testCase.expected {
+					t.Fatalf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, inject)
 				}
 			})
 		}
@@ -107,12 +140,12 @@ func TestIgnore(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		ignore, err := webhook.ignore(ns.GetName(), deployment)
+		inject, err := webhook.shouldInject(nsEnabled.GetName(), deployment)
 		if err != nil {
-			t.Fatalf("Unexpected ignore error: %s", err)
+			t.Fatalf("Unexpected shouldInject error: %s", err)
 		}
-		if !ignore {
-			t.Fatal("Expected deployment with injected proxy to be ignored")
+		if inject {
+			t.Fatal("Expected deployment with injected proxy to be skipped")
 		}
 	})
 }
