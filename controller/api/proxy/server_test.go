@@ -151,12 +151,12 @@ func TestEndpoints(t *testing.T) {
 	}
 	k8sAPI.Sync()
 
-	proxyAPIClient, gRPCServer, proxyAPIConn := InitFakeDiscoveryServer(t, k8sAPI)
+	discoveryClient, gRPCServer, proxyAPIConn := InitFakeDiscoveryServer(t, k8sAPI)
 	defer gRPCServer.GracefulStop()
 	defer proxyAPIConn.Close()
 
 	t.Run("Implements the Discovery interface", func(t *testing.T) {
-		resp, err := proxyAPIClient.Endpoints(context.Background(), &discovery.EndpointsParams{})
+		resp, err := discoveryClient.Endpoints(context.Background(), &discovery.EndpointsParams{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}

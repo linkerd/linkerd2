@@ -46,7 +46,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	defer proxyAPIConn.Close()
-	proxyAPIClient := discovery.NewApiClient(proxyAPIConn)
+	discoveryClient := discovery.NewApiClient(proxyAPIConn)
 
 	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
@@ -84,7 +84,7 @@ func main() {
 		*addr,
 		prometheusClient,
 		tapClient,
-		proxyAPIClient,
+		discoveryClient,
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),

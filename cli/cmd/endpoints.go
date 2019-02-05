@@ -23,6 +23,10 @@ type endpointsOptions struct {
 	outputFormat string
 }
 
+var (
+	podHeader = "POD"
+)
+
 // validate performs all validation on the command-line options.
 // It returns the first error encountered, or `nil` if the options are valid.
 func (o *endpointsOptions) validate() error {
@@ -33,10 +37,6 @@ func (o *endpointsOptions) validate() error {
 
 	return errors.New("--output currently only supports table and json")
 }
-
-var (
-	podHeader = "POD"
-)
 
 func newEndpointsOptions() *endpointsOptions {
 	return &endpointsOptions{

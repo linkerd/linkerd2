@@ -135,10 +135,9 @@ func (s *server) Endpoints(ctx context.Context, params *discovery.EndpointsParam
 			discoverySP.PortEndpoints[port] = &podAddrs
 		}
 
+		s.log.Debugf("ServicePorts[%s]: %+v", serviceID, discoverySP)
 		rsp.ServicePorts[serviceID.String()] = &discoverySP
 	}
-
-	s.log.Debugf("Endpoints(%+v): %+v", params, rsp)
 
 	return &rsp, nil
 }

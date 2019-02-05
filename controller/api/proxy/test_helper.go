@@ -166,7 +166,7 @@ func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.ApiClient
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	proxyAPIClient := discovery.NewApiClient(proxyAPIConn)
+	discoveryClient := discovery.NewApiClient(proxyAPIConn)
 
-	return proxyAPIClient, gRPCServer, proxyAPIConn
+	return discoveryClient, gRPCServer, proxyAPIConn
 }
