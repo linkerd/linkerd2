@@ -1076,6 +1076,14 @@ data:
       valueFrom:
         fieldRef:
           fieldPath: metadata.namespace
+    {{- if .Values.InboundAcceptKeepaliveMs }}
+    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+      value: {{.Values.InboundAcceptKeepaliveMs}}ms
+    {{- end}}
+    {{- if .Values.OutboundConnectKeepaliveMs }}
+    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+      value: {{.Values.OutboundConnectKeepaliveMs}}ms
+    {{- end}}
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/{{.Values.TLSTrustAnchorFileName}}
     - name: LINKERD2_PROXY_TLS_CERT

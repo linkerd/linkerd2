@@ -223,26 +223,28 @@ func getPercentTLS(stats *pb.BasicStats) float64 {
 }
 
 type proxyConfigOptions struct {
-	linkerdVersion          string
-	proxyImage              string
-	initImage               string
-	dockerRegistry          string
-	imagePullPolicy         string
-	inboundPort             uint
-	outboundPort            uint
-	ignoreInboundPorts      []uint
-	ignoreOutboundPorts     []uint
-	proxyUID                int64
-	proxyLogLevel           string
-	proxyAPIPort            uint
-	proxyControlPort        uint
-	proxyMetricsPort        uint
-	proxyCPURequest         string
-	proxyMemoryRequest      string
-	proxyOutboundCapacity   map[string]uint
-	tls                     string
-	disableExternalProfiles bool
-	noInitContainer         bool
+	linkerdVersion             string
+	proxyImage                 string
+	initImage                  string
+	dockerRegistry             string
+	imagePullPolicy            string
+	inboundPort                uint
+	outboundPort               uint
+	inboundAcceptKeepaliveMs   uint
+	outboundConnectKeepaliveMs uint
+	ignoreInboundPorts         []uint
+	ignoreOutboundPorts        []uint
+	proxyUID                   int64
+	proxyLogLevel              string
+	proxyAPIPort               uint
+	proxyControlPort           uint
+	proxyMetricsPort           uint
+	proxyCPURequest            string
+	proxyMemoryRequest         string
+	proxyOutboundCapacity      map[string]uint
+	tls                        string
+	disableExternalProfiles    bool
+	noInitContainer            bool
 }
 
 const (
@@ -252,26 +254,28 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyAPIPort:            8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyOutboundCapacity:   map[string]uint{},
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		tls:                     "",
-		disableExternalProfiles: false,
-		noInitContainer:         false,
+		linkerdVersion:             version.Version,
+		proxyImage:                 defaultDockerRegistry + "/proxy",
+		initImage:                  defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:             defaultDockerRegistry,
+		imagePullPolicy:            "IfNotPresent",
+		inboundPort:                4143,
+		outboundPort:               4140,
+		ignoreInboundPorts:         nil,
+		ignoreOutboundPorts:        nil,
+		inboundAcceptKeepaliveMs:   10000,
+		outboundConnectKeepaliveMs: 10000,
+		proxyUID:                   2102,
+		proxyLogLevel:              "warn,linkerd2_proxy=info",
+		proxyAPIPort:               8086,
+		proxyControlPort:           4190,
+		proxyMetricsPort:           4191,
+		proxyOutboundCapacity:      map[string]uint{},
+		proxyCPURequest:            "",
+		proxyMemoryRequest:         "",
+		tls:                        "",
+		disableExternalProfiles:    false,
+		noInitContainer:            false,
 	}
 }
 
