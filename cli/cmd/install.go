@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -228,15 +228,31 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	if err != nil {
 		return err
 	}
-
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	// Load chart files
+	// Read templates into bytes
+	chartTmpl, err := readIntoBytes(chartutil.ChartfileName)
+	if err != nil {
+		return err
+	}
+	baseTmpl, err := readIntoBytes(baseTemplateName)
+	if err != nil {
+		return err
+	}
+	tlsTmpl, err := readIntoBytes(tlsTemplateName)
+	if err != nil {
+		return err
+	}
+	proxyInjectorTmpl, err := readIntoBytes(proxyInjectorTemplateName)
+	if err != nil {
+		return err
+	}
+
 	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: install.Chart},
-		{Name: baseTemplateName, Data: install.BaseTemplate},
-		{Name: tlsTemplateName, Data: install.TLSTemplate},
-		{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate},
+		{Name: chartutil.ChartfileName, Data: chartTmpl},
+		{Name: baseTemplateName, Data: baseTmpl},
+		{Name: tlsTemplateName, Data: tlsTmpl},
+		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
 	}
 
 	// Create chart and render templates
@@ -301,4 +317,17 @@ func (options *installOptions) validate() error {
 	}
 
 	return options.proxyConfigOptions.validate()
+}
+
+func readIntoBytes(filename string) ([]byte, error) {
+	file, err := static.Templates.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(file)
+
+	return buf.Bytes(), nil
 }

@@ -1,0 +1,9 @@
+apiVersion: "v1"
+name: "linkerd"
+version: 0.1.0
+description: Linkerd gives you observability, reliability, and security for your microservices — with no code change required.
+keywords:
+  - service-mesh
+home: https://linkerd.io
+sources:
+  - https://github.com/linkerd/linkerd2/
