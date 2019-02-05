@@ -612,7 +612,7 @@ func (api *API) GetServiceProfileFor(svc *apiv1.Service, clientNs string) *spv1a
 			return p
 		}
 	}
-	// Second, attemp to lookup profile in server namespace
+	// Second, attempt to lookup profile in server namespace
 	if svc.Namespace != clientNs {
 		p, err := api.SP().Lister().ServiceProfiles(svc.Namespace).Get(dst)
 		if err == nil {
