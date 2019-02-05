@@ -5,8 +5,7 @@
     "port": 8080,
     "pod": "authors",
     "version": "1234",
-    "weight": 1,
-    "identity": "authors.books"
+    "service": "authors.books"
   },
   {
     "namespace": "emojivoto",
@@ -14,8 +13,7 @@
     "port": 8080,
     "pod": "emoji-svc",
     "version": "1234",
-    "weight": 1,
-    "identity": "emoji-svc.emojivoto"
+    "service": "emoji-svc.emojivoto"
   },
   {
     "namespace": "emojivoto",
@@ -23,7 +21,6 @@
     "port": 8080,
     "pod": "voting-svc",
     "version": "1234",
-    "weight": 1,
-    "identity": "voting-svc.emojivoto"
+    "service": "voting-svc.emojivoto"
   }
 ]

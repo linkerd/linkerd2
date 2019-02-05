@@ -112,8 +112,7 @@ type rowEndpoint struct {
 	Port      uint32 `json:"port"`
 	Pod       string `json:"pod"`
 	Version   string `json:"version"`
-	Weight    uint32 `json:"weight"`
-	Identity  string `json:"identity"`
+	Service   string `json:"service"`
 }
 
 func writeEndpointsToBuffer(endpoints *discovery.EndpointsResponse, w *tabwriter.Writer, options *endpointsOptions) {
@@ -146,8 +145,7 @@ func writeEndpointsToBuffer(endpoints *discovery.EndpointsResponse, w *tabwriter
 					Port:      port,
 					Pod:       name,
 					Version:   pod.GetResourceVersion(),
-					Weight:    addr.DefaultWeight,
-					Identity:  serviceID,
+					Service:   serviceID,
 				}
 
 				endpointsTables[namespace] = append(endpointsTables[namespace], row)
@@ -161,7 +159,7 @@ func writeEndpointsToBuffer(endpoints *discovery.EndpointsResponse, w *tabwriter
 			}
 
 			sort.Slice(endpointsTables[namespace], func(i, j int) bool {
-				return endpointsTables[namespace][i].Identity < endpointsTables[namespace][j].Identity
+				return endpointsTables[namespace][i].Service < endpointsTables[namespace][j].Service
 			})
 		}
 	}
@@ -192,7 +190,7 @@ func printEndpointsTables(endpointsTables map[string][]rowEndpoint, w *tabwriter
 
 func printEndpointsTable(namespace string, rows []rowEndpoint, w *tabwriter.Writer, options *endpointsOptions, maxPodLength int, maxNamespaceLength int) {
 	headers := make([]string, 0)
-	templateString := "%s\t%d\t%s\t%s\t%d\t%s\n"
+	templateString := "%s\t%d\t%s\t%s\t%s\n"
 
 	if options.namespace == "" {
 		headers = append(headers, namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
@@ -204,8 +202,7 @@ func printEndpointsTable(namespace string, rows []rowEndpoint, w *tabwriter.Writ
 		"PORT",
 		podHeader + strings.Repeat(" ", maxPodLength-len(podHeader)),
 		"VERSION",
-		"WEIGHT",
-		"IDENTITY",
+		"SERVICE",
 	}...)
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
@@ -221,8 +218,7 @@ func printEndpointsTable(namespace string, rows []rowEndpoint, w *tabwriter.Writ
 			row.Port,
 			row.Pod,
 			row.Version,
-			row.Weight,
-			row.Identity,
+			row.Service,
 		}...)
 
 		fmt.Fprintf(w, templateString, values...)

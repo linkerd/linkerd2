@@ -252,6 +252,8 @@ func (e *endpointsWatcher) updateEndpoints(oldObj, newObj interface{}) {
 	e.addEndpoints(newObj)
 }
 
+// getState claims the read mutex for endpointsWatcher.servicePorts and makes a
+// deep copy.
 func (e *endpointsWatcher) getState() servicePorts {
 	state := make(servicePorts)
 
