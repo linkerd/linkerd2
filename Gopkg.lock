@@ -417,7 +417,8 @@
     "go/tap",
   ]
   pruneopts = ""
-  revision = "69aa1c7565ce17c3693e53508f251f0b851404dd"
+  revision = "ff6064f88ecdcbc6f8a4284f4a0f8c49f184897a"
+  version = "v0.1.6"
 
 [[projects]]
   branch = "master"
