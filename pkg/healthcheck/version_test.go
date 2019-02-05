@@ -1,8 +1,10 @@
 package healthcheck
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -24,7 +26,9 @@ func TestGetServerVersion(t *testing.T) {
 			ReleaseVersion: expectedServerVersion,
 		}
 
-		version, err := GetServerVersion(mockClient)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		version, err := GetServerVersion(ctx, mockClient)
 		if err != nil {
 			t.Fatalf("GetServerVersion returned unexpected error: %s", err)
 		}
@@ -39,7 +43,9 @@ func TestGetServerVersion(t *testing.T) {
 		mockClient := &public.MockAPIClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 
-		_, err := GetServerVersion(mockClient)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err := GetServerVersion(ctx, mockClient)
 		if err != mockClient.ErrorToReturn {
 			t.Fatalf("GetServerVersion returned unexpected error: %s", err)
 		}

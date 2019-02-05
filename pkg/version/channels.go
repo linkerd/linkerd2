@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 // Channels provides an interface to interact with a set of release channels.
@@ -59,19 +58,16 @@ func (c Channels) Match(actualVersion string) error {
 
 // GetLatestVersions performs an online request to check for the latest Linkerd
 // release channels.
-func GetLatestVersions(uuid string, source string) (Channels, error) {
+func GetLatestVersions(ctx context.Context, uuid string, source string) (Channels, error) {
 	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
-	return getLatestVersions(http.DefaultClient, url, uuid, source)
+	return getLatestVersions(ctx, http.DefaultClient, url, uuid, source)
 }
 
-func getLatestVersions(client *http.Client, url string, uuid string, source string) (Channels, error) {
+func getLatestVersions(ctx context.Context, client *http.Client, url string, uuid string, source string) (Channels, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return Channels{}, err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
