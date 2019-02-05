@@ -92,10 +92,6 @@ Examples:
   Edit the template and then apply it with kubectl to add a service profile to
   a service:
 
-  If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
-  and creates a profile for the SERVICE based on the requests seen in that window
-
-Example:
   linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
   # (edit web-svc-profile.yaml manually)
   kubectl apply -f web-svc-profile.yaml
@@ -107,6 +103,9 @@ Example:
 
   If the --proto flag is specified, it reads the given protobuf definition file
   and outputs a corresponding service profile:
+
+  If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
+  and creates a profile for the SERVICE based on the requests seen in that window:
 
   linkerd profile books --tap deploy/books --tap-duration 10s --tap-route-limit 5 > book-svc-profile.yaml
   # (edit book-svc-profile.yaml manually)
