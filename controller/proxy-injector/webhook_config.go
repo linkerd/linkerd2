@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"text/template"
 
-	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -14,6 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 // WebhookConfig creates the MutatingWebhookConfiguration of the webhook.

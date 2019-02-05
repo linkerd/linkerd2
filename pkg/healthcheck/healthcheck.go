@@ -102,9 +102,8 @@ const (
 )
 
 var (
-	retryWindow       = 5 * time.Second
-	requestTimeout    = 30 * time.Second
-	clusterZoneSuffix = []string{"svc", "cluster", "local"}
+	retryWindow    = 5 * time.Second
+	requestTimeout = 30 * time.Second
 )
 
 type checker struct {
@@ -827,47 +826,19 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	}
 
 	for _, p := range svcProfiles.Items {
-		nameParts := strings.Split(p.Name, ".")
-		if len(nameParts) != 2+len(clusterZoneSuffix) {
-			return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", p.Name)
+		service, namespace, err := profiles.ValidateName(p.Name)
+		if err != nil {
+			return err
 		}
-		for i, part := range nameParts[2:] {
-			if part != clusterZoneSuffix[i] {
-				return fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", p.Name)
-			}
-		}
-		service := nameParts[0]
-		namespace := nameParts[1]
-		_, err := hc.clientset.Core().Services(namespace).Get(service, meta_v1.GetOptions{})
+
+		_, err = hc.clientset.Core().Services(namespace).Get(service, meta_v1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
 		}
-		for _, route := range p.Spec.Routes {
-			if route.Name == "" {
-				return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", p.Name)
-			}
-			if route.Timeout != "" {
-				_, err := time.ParseDuration(route.Timeout)
-				if err != nil {
-					return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid timeout: %s", p.Name, err)
-				}
-			}
-			if route.Condition == nil {
-				return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", p.Name)
-			}
-			err = profiles.ValidateRequestMatch(route.Condition)
-			if err != nil {
-				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", p.Name, err)
-			}
-			for _, rc := range route.ResponseClasses {
-				if rc.Condition == nil {
-					return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", p.Name)
-				}
-				err = profiles.ValidateResponseMatch(rc.Condition)
-				if err != nil {
-					return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", p.Name, err)
-				}
-			}
+
+		err = profiles.ValidateSP(p)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

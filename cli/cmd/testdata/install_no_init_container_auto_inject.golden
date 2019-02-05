@@ -325,6 +325,15 @@ spec:
           required:
           - routes
           properties:
+            retryBudget:
+              type: object
+              properties:
+                retryRatio:
+                  type: number
+                minRetriesPerSecond:
+                  type: integer
+                ttl:
+                  type: string
             routes:
               type: array
               items:
@@ -334,6 +343,8 @@ spec:
                 - condition
                 properties:
                   name:
+                    type: string
+                  timeout:
                     type: string
                   condition:
                     type: object

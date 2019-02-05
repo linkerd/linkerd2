@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
@@ -19,6 +18,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/timeconv"
+	"sigs.k8s.io/yaml"
 )
 
 type installConfig struct {
