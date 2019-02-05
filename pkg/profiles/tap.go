@@ -98,7 +98,7 @@ func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, routeLimit int) []*s
 
 		if routeSpec != nil {
 			routesMap[routeSpec.Name] = routeSpec
-			if len(routesMap) > routeLimit {
+			if len(routesMap) >= routeLimit {
 				break
 			}
 		}
