@@ -104,6 +104,8 @@ Examples:
   If the --proto flag is specified, it reads the given protobuf definition file
   and outputs a corresponding service profile:
 
+  linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -
+
   If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
   and creates a profile for the SERVICE based on the requests seen in that window:
 
@@ -114,10 +116,7 @@ Examples:
   The command will run linkerd tap deploy/books for tap-duration seconds, and then create
   a service profile for the books service with routes prepopulated from the tap data.
   For high RPS, high-route-cardinality services, use tap-route-limit to limit the number of
-  routes in the output profile.
-
-  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -,
-  linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -`,
+  routes in the output profile.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
