@@ -40,41 +40,28 @@ function log(){
     printf "${WHITE}${msg}${NORMAL}\n"
 }
 
-echo "CNI_TEST_FUNCTION = $CNI_TEST_FUNCTION"
-echo "CNI_LAB_YAML_FILE = $CNI_LAB_YAML_FILE"
-
 TESTER_JOB_NAME=cni-iptables-tester
 
+REDIRECTS_ALL_FILE=iptables/redirect-all-iptablestest-lab.yaml
+NO_RULES_FILE=iptables/no-rules-iptablestest-lab.yaml
+
 header "Deleting any existing objects from previous test runs..."
-kubectl delete -f ${CNI_LAB_YAML_FILE}
-kubectl delete  jobs/${TESTER_JOB_NAME}
+kubectl delete -f ${REDIRECTS_ALL_FILE}
+kubectl delete -f ${NO_RULES_FILE}
+kubectl delete jobs/${TESTER_JOB_NAME}
 
 header "Building the image used in tests..."
 docker build . -f iptables/Dockerfile-tester --tag buoyantio/cni-iptables-tester:v1
 sleep 10
 
-header "Creating the test lab...and injecting linkerd proxy"
-cat ${CNI_LAB_YAML_FILE} | ./../../target/cli/darwin/linkerd inject --linkerd-cni-enabled - | kubectl apply -f -
+header "Creating the test lab... redirects-all pod with linkerd injection and no-rules pod"
+cat ${REDIRECTS_ALL_FILE} | ./../../target/cli/darwin/linkerd inject --linkerd-cni-enabled - | kubectl apply -f -
+kubectl apply -f ${NO_RULES_FILE}
 
-# Testing validity of input arguments
-if [ $CNI_TEST_FUNCTION = "TestPodWithNoRules" ]
-then
-  POD_WITH_NO_RULES_IP=$(get_ip_for_pod "pod-with-no-rules")
-  log "POD_WITH_NO_RULES_OP=${POD_WITH_NO_RULES_IP}"
-elif [ $CNI_TEST_FUNCTION = "TestPodRedirectsAllPorts" ]
-then
-  POD_REDIRECTS_ALL_PORTS_IP=$(get_ip_for_pod "pod-redirects-all-ports")
-  log "POD_REDIRECTS_ALL_PORTS_IP=${POD_REDIRECTS_ALL_PORTS_IP}"
-else
-  log "Please choose CNI_TEST_FUNCTION=TestPodWithNoRules or TestPodRedirectsAllPorts"
-  exit 1
-fi
-
-if [ $CNI_LAB_YAML_FILE = "" ]
-then
-  log "Please choose CNI_LAB_YAML_FILE=iptables/no-rules-iptablestest-lab.yaml or iptables/redirect-all-iptablestest-lab.yaml"
-  exit 1
-fi
+POD_WITH_NO_RULES_IP=$(get_ip_for_pod "pod-with-no-rules")
+log "POD_WITH_NO_RULES_OP=${POD_WITH_NO_RULES_IP}"
+POD_REDIRECTS_ALL_PORTS_IP=$(get_ip_for_pod "pod-redirects-all-ports")
+log "POD_REDIRECTS_ALL_PORTS_IP=${POD_REDIRECTS_ALL_PORTS_IP}"
 
 header "Running tester..."
 cat <<EOF | kubectl create -f -
@@ -95,7 +82,7 @@ spec:
             value: ${POD_REDIRECTS_ALL_PORTS_IP}
           - name: POD_WITH_NO_RULES_IP
             value: ${POD_WITH_NO_RULES_IP}
-        command: ["sh", "-c", "cd /go && (go test cni_rules_test.go -run ${CNI_TEST_FUNCTION} -v -integration-tests; echo \"status:$?\")"]
+        command: ["sh", "-c", "cd /go && (go test cni_rules_test.go -v -integration-tests; echo \"status:$?\")"]
       restartPolicy: Never
 EOF
 
