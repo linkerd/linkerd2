@@ -831,7 +831,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 			return err
 		}
 
-		_, err = hc.clientset.Core().Services(namespace).Get(service, meta_v1.GetOptions{})
+		_, err = hc.clientset.CoreV1().Services(namespace).Get(service, meta_v1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
 		}
