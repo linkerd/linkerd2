@@ -65,7 +65,7 @@ func newCmdEndpoints() *cobra.Command {
 This command provides debug information about the internal state of the
 control-plane's proxy-api container. Note that this cache of service discovery
 information is populated on-demand via linkerd-proxy requests. This command
-will return "No endpoints found." until a linker-proxy begins routing
+will return "No endpoints found." until a linkerd-proxy begins routing
 requests.`,
 		Example: example,
 		Args:    cobra.NoArgs,
