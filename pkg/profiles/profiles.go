@@ -373,7 +373,7 @@ func Validate(data []byte) error {
 	rb := serviceProfile.Spec.RetryBudget
 	if rb != nil {
 		if rb.RetryRatio < 0 {
-			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget RetryRatio must be greater than zero: %f", serviceProfile.Name, rb.RetryRatio)
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget RetryRatio must be non-negative: %f", serviceProfile.Name, rb.RetryRatio)
 		}
 
 		if rb.TTL == "" {

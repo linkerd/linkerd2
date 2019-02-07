@@ -384,7 +384,7 @@ spec:
       pathRegex: /route-1`,
 		},
 		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget RetryRatio must be greater than zero: -0.200000"),
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget RetryRatio must be non-negative: -0.200000"),
 			sp: `apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
