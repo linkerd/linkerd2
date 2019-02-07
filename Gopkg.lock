@@ -1336,6 +1336,7 @@
     "k8s.io/helm/pkg/renderutil",
     "k8s.io/helm/pkg/timeconv",
     "k8s.io/klog",
+    "sigs.k8s.io/yaml",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

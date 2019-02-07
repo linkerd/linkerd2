@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 type resourceTransformerUninject struct{}

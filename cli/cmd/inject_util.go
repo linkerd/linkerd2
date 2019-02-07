@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
@@ -17,6 +16,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 type resourceTransformer interface {

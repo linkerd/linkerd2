@@ -285,6 +285,19 @@ spec:
           required:
           - routes
           properties:
+            retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
+              properties:
+                minRetriesPerSecond:
+                  type: integer
+                retryRatio:
+                  type: number
+                ttl:
+                  type: string
             routes:
               type: array
               items:
@@ -294,6 +307,8 @@ spec:
                 - condition
                 properties:
                   name:
+                    type: string
+                  timeout:
                     type: string
                   condition:
                     type: object
