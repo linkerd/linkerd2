@@ -4,23 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
-	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type spByteExp struct {
+type spExp struct {
 	err error
 	sp  string
 }
 
-type spExp struct {
-	err error
-	sp  v1alpha1.ServiceProfile
-}
-
 func TestValidate(t *testing.T) {
-	expectations := []spByteExp{
+	expectations := []spExp{
 		{
 			err: nil,
 			sp: `apiVersion: linkerd.io/v1alpha1
@@ -43,6 +35,10 @@ metadata:
   name: name.ns.svc.cluster.local
   namespace: linkerd-ns
 spec:
+  retryBudget:
+    minRetriesPerSecond: 5
+    retryRatio: 0.2
+    ttl: 10ms
   routes:
   - name: name-1
     condition:
@@ -352,103 +348,46 @@ spec:
             status:
               min: false`,
 		},
+		{
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget missing fields (requires minRetriesPerSecond, retryRatio, ttl)"),
+			sp: `apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  retryBudget:
+    minRetriesPerSecond: 5
+    retryRatio: 0.2
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1`,
+		},
+		{
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget: time: invalid duration foo"),
+			sp: `apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  retryBudget:
+    minRetriesPerSecond: 5
+    retryRatio: 0.2
+    ttl: foo
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1`,
+		},
 	}
 
 	for id, exp := range expectations {
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			err := Validate([]byte(exp.sp))
-			if err != nil || exp.err != nil {
-				if (err == nil && exp.err != nil) ||
-					(err != nil && exp.err == nil) ||
-					(err.Error() != exp.err.Error()) {
-					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp.err, err)
-				}
-			}
-		})
-	}
-}
-
-func TestValidateSP(t *testing.T) {
-	expectations := []spExp{
-		{
-			err: nil,
-			sp: v1alpha1.ServiceProfile{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "name.ns.svc.cluster.local",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.ServiceProfileSpec{
-					Routes: []*v1alpha1.RouteSpec{
-						&v1alpha1.RouteSpec{
-							Name: "route1",
-							Condition: &v1alpha1.RequestMatch{
-								Method: "GET",
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			err: nil,
-			sp: v1alpha1.ServiceProfile{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "name.ns.svc.cluster.local",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.ServiceProfileSpec{
-					Routes: []*v1alpha1.RouteSpec{
-						&v1alpha1.RouteSpec{
-							Name: "route1",
-							Condition: &v1alpha1.RequestMatch{
-								All: []*v1alpha1.RequestMatch{
-									&v1alpha1.RequestMatch{
-										Method: "GET",
-									},
-									&v1alpha1.RequestMatch{
-										Not: &v1alpha1.RequestMatch{
-											PathRegex: "/private/.*",
-										},
-									},
-								},
-							},
-							ResponseClasses: []*v1alpha1.ResponseClass{
-								&v1alpha1.ResponseClass{
-									Condition: &v1alpha1.ResponseMatch{
-										Status: &v1alpha1.Range{
-											Min: 500,
-											Max: 599,
-										},
-									},
-									IsFailure: true,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" has a route with no condition"),
-			sp: v1alpha1.ServiceProfile{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "name.ns.svc.cluster.local",
-					Namespace: "ns",
-				},
-				Spec: v1alpha1.ServiceProfileSpec{
-					Routes: []*v1alpha1.RouteSpec{
-						&v1alpha1.RouteSpec{
-							Name: "route1",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for id, exp := range expectations {
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			err := ValidateSP(exp.sp)
 			if err != nil || exp.err != nil {
 				if (err == nil && exp.err != nil) ||
 					(err != nil && exp.err == nil) ||

@@ -318,12 +318,16 @@ spec:
           - routes
           properties:
             retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
               type: object
               properties:
-                retryRatio:
-                  type: number
                 minRetriesPerSecond:
                   type: integer
+                retryRatio:
+                  type: number
                 ttl:
                   type: string
             routes:

@@ -315,16 +315,6 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	}, nil
 }
 
-// ValidateSP takes a v1alpha1.ServiceProfile object, marshals to bytes, and
-// wraps `Validate`.
-func ValidateSP(serviceProfile sp.ServiceProfile) error {
-	data, err := yaml.Marshal(serviceProfile)
-	if err != nil {
-		return fmt.Errorf("failed to marshall ServiceProfile [%+v]: %s", serviceProfile, err)
-	}
-	return Validate(data)
-}
-
 // Validate validates the structure of a ServiceProfile. This code is a superset
 // of the validation provided by the `openAPIV3Schema`, defined in the
 // ServiceProfile CRD.
@@ -377,6 +367,18 @@ func Validate(data []byte) error {
 			if err != nil {
 				return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", serviceProfile.Name, err)
 			}
+		}
+	}
+
+	rb := serviceProfile.Spec.RetryBudget
+	if rb != nil {
+		if rb.MinRetriesPerSecond == 0 || rb.RetryRatio == 0 || rb.TTL == "" {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget missing fields (requires minRetriesPerSecond, retryRatio, ttl)", serviceProfile.Name)
+		}
+
+		_, err := time.ParseDuration(rb.TTL)
+		if err != nil {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget: %s", serviceProfile.Name, err)
 		}
 	}
 

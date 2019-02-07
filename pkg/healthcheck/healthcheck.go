@@ -837,7 +837,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		}
 
 		// TODO: remove this check once we implement ServiceProfile validation via a
-		// ValidatingAdmissionWebhook (or simply call `profiles.ValidateSP(p)`).
+		// ValidatingAdmissionWebhook
 		result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
 		raw, err := result.Raw()
 		if err != nil {
@@ -845,7 +845,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		}
 		err = profiles.Validate(raw)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s: %s", p.Name, err)
 		}
 	}
 	return nil
