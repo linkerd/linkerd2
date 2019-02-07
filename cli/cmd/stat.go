@@ -376,7 +376,7 @@ func namespaceName(resourceType string, key string) (string, string) {
 	return namespace, name
 }
 
-// Using pointers there where the value is NA and the corresponding json is null
+// Using pointers where the value is NA and the corresponding json is null
 type jsonStats struct {
 	Namespace    string   `json:"namespace"`
 	Kind         string   `json:"kind"`

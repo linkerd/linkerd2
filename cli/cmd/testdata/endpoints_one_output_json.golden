@@ -1,0 +1,18 @@
+[
+  {
+    "namespace": "emojivoto",
+    "ip": "1.2.3.4",
+    "port": 8080,
+    "pod": "emoji-svc",
+    "version": "1234",
+    "service": "emoji-svc.emojivoto"
+  },
+  {
+    "namespace": "emojivoto",
+    "ip": "1.2.3.4",
+    "port": 8080,
+    "pod": "voting-svc",
+    "version": "1234",
+    "service": "voting-svc.emojivoto"
+  }
+]

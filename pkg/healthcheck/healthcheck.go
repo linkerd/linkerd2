@@ -180,7 +180,7 @@ type HealthChecker struct {
 	spClientset      *spclient.Clientset
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []v1.Pod
-	apiClient        pb.ApiClient
+	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
 }
@@ -724,7 +724,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 // PublicAPIClient returns a fully configured public API client. This client is
 // only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
 // configured and run first.
-func (hc *HealthChecker) PublicAPIClient() pb.ApiClient {
+func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 

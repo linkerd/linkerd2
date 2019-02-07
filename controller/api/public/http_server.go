@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -24,10 +25,11 @@ var (
 	listServicesPath  = fullURLPathFor("ListServices")
 	tapByResourcePath = fullURLPathFor("TapByResource")
 	selfCheckPath     = fullURLPathFor("SelfCheck")
+	endpointsPath     = fullURLPathFor("Endpoints")
 )
 
 type handler struct {
-	grpcServer pb.ApiServer
+	grpcServer APIServer
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -56,6 +58,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleTapByResource(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
+	case endpointsPath:
+		h.handleEndpoints(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -239,11 +243,25 @@ func fullURLPathFor(method string) string {
 	return apiRoot + apiPrefix + method
 }
 
+func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
+	rsp, err := h.grpcServer.Endpoints(req.Context(), &discoveryPb.EndpointsParams{})
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+	err = writeProtoToHTTPResponse(w, rsp)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+}
+
 // NewServer creates a Public API HTTP server.
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
+	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
@@ -253,6 +271,7 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
+			discoveryClient,
 			k8sAPI,
 			controllerNamespace,
 			ignoredNamespaces,
