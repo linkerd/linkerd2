@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -17,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 const (

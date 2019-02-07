@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/profiles"
+	"sigs.k8s.io/yaml"
 )
 
 func TestParseProfile(t *testing.T) {

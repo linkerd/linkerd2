@@ -4,10 +4,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	yaml "github.com/ghodss/yaml"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 // These constants provide default, fake strings for testing proxy-injector.
