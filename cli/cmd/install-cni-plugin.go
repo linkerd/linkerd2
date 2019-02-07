@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -25,6 +26,8 @@ type installCNIPluginConfig struct {
 	ProxyUID            int64
 	DestCNINetDir       string
 	DestCNIBinDir       string
+	CreatedByAnnotation string
+	CliVersion          string
 }
 
 type cniPluginOptions struct {
@@ -150,6 +153,8 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 		ProxyUID:            options.proxyUID,
 		DestCNINetDir:       options.destCNINetDir,
 		DestCNIBinDir:       options.destCNIBinDir,
+		CreatedByAnnotation: k8s.CreatedByAnnotation,
+		CliVersion:          k8s.CreatedByAnnotationValue(),
 	}, nil
 }
 
