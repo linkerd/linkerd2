@@ -209,7 +209,7 @@ bin/go-run controller/script/destination-client -path hello.default.svc.cluster.
 
 You can also send test requests to the proxy-api's discovery interface:
 ```bash
-bin/go-run controller/script/discovery-api-client
+bin/go-run controller/script/discovery-client
 ```
 
 ## Web

@@ -29,10 +29,7 @@ var (
 )
 
 type handler struct {
-	// 1) public.Api
-	// 2) controller/discovery.Api
-	grpcServer      pb.ApiServer
-	discoveryServer discoveryPb.ApiServer
+	grpcServer APIServer
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -247,7 +244,7 @@ func fullURLPathFor(method string) string {
 }
 
 func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
-	rsp, err := h.discoveryServer.Endpoints(req.Context(), &discoveryPb.EndpointsParams{})
+	rsp, err := h.grpcServer.Endpoints(req.Context(), &discoveryPb.EndpointsParams{})
 	if err != nil {
 		writeErrorToHTTPResponse(w, err)
 		return
@@ -264,7 +261,7 @@ func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
-	discoveryClient discoveryPb.ApiClient,
+	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
@@ -274,12 +271,12 @@ func NewServer(
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
+			discoveryClient,
 			k8sAPI,
 			controllerNamespace,
 			ignoredNamespaces,
 			singleNamespace,
 		),
-		discoveryServer: newDiscoveryServer(discoveryClient),
 	}
 
 	instrumentedHandler := prometheus.WithTelemetry(baseHandler)

@@ -136,7 +136,7 @@ func makeUpdateAddress(ipStr string, portNum uint32, ns string, name string) *up
 // discovery API client, gRPC Server, and gRPC client connection.
 // The caller is responsible for calling Server.GracefulStop() and
 // ClientConn.Close().
-func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.ApiClient, *grpc.Server, *grpc.ClientConn) {
+func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.DiscoveryClient, *grpc.Server, *grpc.ClientConn) {
 	k8sAPI, err := k8s.NewFakeAPI("")
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -166,7 +166,7 @@ func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.ApiClient
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	discoveryClient := discovery.NewApiClient(proxyAPIConn)
+	discoveryClient := discovery.NewDiscoveryClient(proxyAPIConn)
 
 	return discoveryClient, gRPCServer, proxyAPIConn
 }

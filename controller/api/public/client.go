@@ -33,7 +33,7 @@ const (
 // servers.
 type APIClient interface {
 	pb.ApiClient
-	discovery.ApiClient
+	discovery.DiscoveryClient
 }
 
 type grpcOverHTTPClient struct {

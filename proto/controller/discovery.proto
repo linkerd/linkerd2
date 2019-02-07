@@ -14,7 +14,7 @@ import "public.proto";
 
 option go_package = "github.com/linkerd/linkerd2/controller/gen/controller/discovery";
 
-service Api {
+service Discovery {
   rpc Endpoints(EndpointsParams) returns (EndpointsResponse) {}
 }
 

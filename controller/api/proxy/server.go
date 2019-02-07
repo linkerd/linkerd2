@@ -65,7 +65,7 @@ func NewServer(
 	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
 	// 2) controller/discovery.Api (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
-	discovery.RegisterApiServer(s, &srv)
+	discovery.RegisterDiscoveryServer(s, &srv)
 
 	go func() {
 		<-done

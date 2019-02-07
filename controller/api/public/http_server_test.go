@@ -25,10 +25,6 @@ type mockGrpcServer struct {
 	TapStreamsToReturn []*pb.TapEvent
 }
 
-type mockDiscoveryServer struct {
-	mockServer
-}
-
 func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.StatSummaryResponse), m.ErrorToReturn
@@ -81,7 +77,7 @@ func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer p
 	return m.ErrorToReturn
 }
 
-func (m *mockDiscoveryServer) Endpoints(ctx context.Context, req *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
+func (m *mockGrpcServer) Endpoints(ctx context.Context, req *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*discovery.EndpointsResponse), m.ErrorToReturn
 }
@@ -95,7 +91,6 @@ type grpcCallTestCase struct {
 func TestServer(t *testing.T) {
 	t.Run("Delegates all non-streaming RPC messages to the underlying grpc server", func(t *testing.T) {
 		mockGrpcServer := &mockGrpcServer{}
-		mockDiscoveryServer := &mockDiscoveryServer{}
 
 		listener, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
@@ -104,8 +99,7 @@ func TestServer(t *testing.T) {
 
 		go func() {
 			handler := &handler{
-				grpcServer:      mockGrpcServer,
-				discoveryServer: mockDiscoveryServer,
+				grpcServer: mockGrpcServer,
 			}
 			err := http.Serve(listener, handler)
 			if err != nil {
@@ -156,7 +150,7 @@ func TestServer(t *testing.T) {
 			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 		for _, testCase := range []grpcCallTestCase{testEndpoints} {
-			assertCallWasForwarded(t, &mockDiscoveryServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
+			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})
 

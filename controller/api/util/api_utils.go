@@ -543,7 +543,7 @@ func K8sPodToPublicPod(pod v1.Pod, ownerKind string, ownerName string) pb.Pod {
 		ControlPlane:        controllerComponent != "",
 		ProxyReady:          proxyReady,
 		ProxyVersion:        proxyVersion,
-		ResourceVersion:     pod.GetObjectMeta().GetResourceVersion(),
+		ResourceVersion:     pod.ResourceVersion,
 	}
 
 	namespacedOwnerName := pod.Namespace + "/" + ownerName

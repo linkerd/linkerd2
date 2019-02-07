@@ -31,6 +31,30 @@ func TestNetToPublic(t *testing.T) {
 				Port: 1234,
 			},
 		},
+		addrExp{
+			proxyAddr: &proxy.TcpAddress{
+				Ip: &proxy.IPAddress{
+					Ip: &proxy.IPAddress_Ipv6{
+						Ipv6: &proxy.IPv6{
+							First: 2345,
+							Last:  6789,
+						},
+					},
+				},
+				Port: 1234,
+			},
+			publicAddress: &public.TcpAddress{
+				Ip: &public.IPAddress{
+					Ip: &public.IPAddress_Ipv6{
+						Ipv6: &public.IPv6{
+							First: 2345,
+							Last:  6789,
+						},
+					},
+				},
+				Port: 1234,
+			},
+		},
 	}
 
 	for i, exp := range expectations {

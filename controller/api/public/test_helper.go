@@ -324,6 +324,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
 		tap.NewTapClient(nil),
+		discovery.NewDiscoveryClient(nil),
 		k8sAPI,
 		"linkerd",
 		[]string{},
