@@ -5,18 +5,20 @@
     `linkerd.io/inject` annotation on the pod or namespace. More info:
     https://linkerd.io/2/proxy-injection/
   * Added `linkerd.io/created-by` annotation to the linkerd-cni DaemonSet
+    (thanks @codeman9!)
   * Added a 10 second keepalive default to resolve dropped connections in Azure
     environments
-  * Improved node selection for installing the linkerd-cni DaemonSet
+  * Improved node selection for installing the linkerd-cni DaemonSet (thanks
+    @codeman9!)
   * `ServiceProfile`s defined in the client namespace now take priority over
     ones defined in the server namespace
   * Corrected the expected controller identity when configuring pods with TLS
   * Modified klog to be verbose when controller log-level is set to `Debug`
 * CLI
-  * Added the `linkerd endpoint` command to introspect Linkerd's service
+  * Added the `linkerd endpoints` command to introspect Linkerd's service
     discovery state
-  * Added the `--tap` flag to `linkerd profile` to generate a service profile by
-    using the route results seen during the tap
+  * Added the `--tap` flag to `linkerd profile` to generate a `ServiceProfile`
+    by using the route results seen during the tap
   * Added support for the `linkerd.io/inject: disabled` annotation on pod specs
     to disable injection for specific pods when running `linkerd inject`
   * Added support for `basePath` in OpenAPI 2.0 files when running `linkerd
