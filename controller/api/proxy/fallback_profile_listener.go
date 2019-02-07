@@ -13,14 +13,17 @@ type fallbackProfileListener struct {
 	mutex      sync.Mutex
 }
 
-type primaryProfileListener struct {
+type fallbackChildListener struct {
 	state  *sp.ServiceProfile
 	parent *fallbackProfileListener
 }
 
+type primaryProfileListener struct {
+	fallbackChildListener
+}
+
 type backupProfileListener struct {
-	state  *sp.ServiceProfile
-	parent *fallbackProfileListener
+	fallbackChildListener
 }
 
 // newFallbackProfileListener takes an underlying profileUpdateListener and
@@ -36,14 +39,30 @@ func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateLi
 	}
 
 	primary := primaryProfileListener{
-		parent: &fallback,
+		fallbackChildListener{
+			parent: &fallback,
+		},
 	}
 	backup := backupProfileListener{
-		parent: &fallback,
+		fallbackChildListener{
+			parent: &fallback,
+		},
 	}
 	fallback.primary = &primary
 	fallback.backup = &backup
 	return &primary, &backup
+}
+
+func (f *fallbackChildListener) ClientClose() <-chan struct{} {
+	return f.parent.underlying.ClientClose()
+}
+
+func (f *fallbackChildListener) ServerClose() <-chan struct{} {
+	return f.parent.underlying.ServerClose()
+}
+
+func (f *fallbackChildListener) Stop() {
+	f.parent.underlying.Stop()
 }
 
 // Primary
@@ -68,18 +87,6 @@ func (p *primaryProfileListener) Update(profile *sp.ServiceProfile) {
 	p.parent.underlying.Update(nil)
 }
 
-func (p *primaryProfileListener) ClientClose() <-chan struct{} {
-	return p.parent.underlying.ClientClose()
-}
-
-func (p *primaryProfileListener) ServerClose() <-chan struct{} {
-	return p.parent.underlying.ServerClose()
-}
-
-func (p *primaryProfileListener) Stop() {
-	p.parent.underlying.Stop()
-}
-
 // Backup
 
 func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
@@ -99,16 +106,4 @@ func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
 	}
 	// Our value was cleared and there is no primary value.
 	b.parent.underlying.Update(nil)
-}
-
-func (b *backupProfileListener) ClientClose() <-chan struct{} {
-	return b.parent.underlying.ClientClose()
-}
-
-func (b *backupProfileListener) ServerClose() <-chan struct{} {
-	return b.parent.underlying.ServerClose()
-}
-
-func (b *backupProfileListener) Stop() {
-	b.parent.underlying.Stop()
 }
