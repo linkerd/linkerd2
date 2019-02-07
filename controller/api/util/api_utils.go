@@ -482,3 +482,31 @@ func contains(list []string, s string) bool {
 	}
 	return false
 }
+
+// CreateTapEvent generates tap events for use in tests
+func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) pb.TapEvent {
+	event := pb.TapEvent{
+		ProxyDirection: proxyDirection,
+		Source: &pb.TcpAddress{
+			Ip: &pb.IPAddress{
+				Ip: &pb.IPAddress_Ipv4{
+					Ipv4: uint32(1),
+				},
+			},
+		},
+		Destination: &pb.TcpAddress{
+			Ip: &pb.IPAddress{
+				Ip: &pb.IPAddress_Ipv4{
+					Ipv4: uint32(9),
+				},
+			},
+		},
+		Event: &pb.TapEvent_Http_{
+			Http: eventHTTP,
+		},
+		DestinationMeta: &pb.TapEvent_EndpointMeta{
+			Labels: dstMeta,
+		},
+	}
+	return event
+}

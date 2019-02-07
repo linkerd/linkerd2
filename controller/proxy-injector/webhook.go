@@ -112,13 +112,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 	log.Infof("resource namespace: %s", ns)
 
-	ignore, err := w.ignore(ns, &deployment)
+	inject, err := w.shouldInject(ns, &deployment)
 	if err != nil {
 		return nil, err
 	}
 
-	if ignore {
-		log.Infof("ignoring deployment %s", deployment.ObjectMeta.Name)
+	if !inject {
+		log.Infof("skipping deployment %s", deployment.GetName())
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,
@@ -213,14 +213,19 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-// ignore determines whether or not the given deployment should be injected.
-// A deployment is ignored if:
+// shouldInject determines whether or not the given deployment should be
+// injected. A deployment should be injected if it does not already contain
+// any known sidecars, and:
 // - the deployment's namespace has the linkerd.io/inject annotation set to
-//   "disabled", and the deployment's pod spec does not have the
-//   linkerd.io/inject annotation set to "enabled"; or
+//   "enabled", and the deployment's pod spec does not have the
+//   linkerd.io/inject annotation set to "disabled"; or
 // - the deployment's pod spec has the linkerd.io/inject annotation set to
-//   "disabled"
-func (w *Webhook) ignore(ns string, deployment *appsv1.Deployment) (bool, error) {
+//   "enabled"
+func (w *Webhook) shouldInject(ns string, deployment *appsv1.Deployment) (bool, error) {
+	if healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec) {
+		return false, nil
+	}
+
 	namespace, err := w.client.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
 	if err != nil {
 		return false, err
@@ -229,15 +234,11 @@ func (w *Webhook) ignore(ns string, deployment *appsv1.Deployment) (bool, error)
 	nsAnnotation := namespace.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
 	podAnnotation := deployment.Spec.Template.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
 
-	if nsAnnotation == k8sPkg.ProxyInjectDisabled && podAnnotation != k8sPkg.ProxyInjectEnabled {
+	if nsAnnotation == k8sPkg.ProxyInjectEnabled && podAnnotation != k8sPkg.ProxyInjectDisabled {
 		return true, nil
 	}
 
-	if podAnnotation == k8sPkg.ProxyInjectDisabled {
-		return true, nil
-	}
-
-	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec), nil
+	return podAnnotation == k8sPkg.ProxyInjectEnabled, nil
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {

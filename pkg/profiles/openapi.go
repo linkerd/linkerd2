@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"regexp"
 	"sort"
 
@@ -65,8 +66,9 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.Se
 		sort.Strings(paths)
 	}
 
-	for _, path := range paths {
-		item := swagger.Paths.Paths[path]
+	for _, relPath := range paths {
+		item := swagger.Paths.Paths[relPath]
+		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
 			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses)
