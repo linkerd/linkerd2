@@ -106,6 +106,8 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     k8s-app: linkerd-cni
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   selector:
     matchLabels:
@@ -118,25 +120,10 @@ spec:
     metadata:
       labels:
         k8s-app: linkerd-cni
-      annotations:
-        # This, along with the CriticalAddonsOnly toleration below,
-        # marks the pod as a critical add-on, ensuring it gets
-        # priority scheduling and that its resources are reserved
-        # if it ever gets evicted.
-        scheduler.alpha.kubernetes.io/critical-pod: ''
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
-      tolerations:
-      # Make sure linkerd-cni gets scheduled on all nodes.
-      - effect: NoSchedule
-        operator: Exists
-      # Mark the pod as a critical add-on for rescheduling.
-      - key: CriticalAddonsOnly
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
       serviceAccountName: linkerd-cni
       terminationGracePeriodSeconds: 5
       containers:
