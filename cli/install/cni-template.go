@@ -120,6 +120,8 @@ spec:
     metadata:
       labels:
         k8s-app: linkerd-cni
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
