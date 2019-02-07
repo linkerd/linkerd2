@@ -349,7 +349,7 @@ spec:
               min: false`,
 		},
 		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget missing fields (requires minRetriesPerSecond, retryRatio, ttl)"),
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget missing TTL field"),
 			sp: `apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
@@ -377,6 +377,42 @@ spec:
     minRetriesPerSecond: 5
     retryRatio: 0.2
     ttl: foo
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1`,
+		},
+		{
+			err: errors.New("ServiceProfile \"name.ns.svc.cluster.local\" RetryBudget RetryRatio must be greater than zero: -0.200000"),
+			sp: `apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  retryBudget:
+    minRetriesPerSecond: 5
+    retryRatio: -0.2
+    ttl: 10s
+  routes:
+  - name: name-1
+    condition:
+      method: GET
+      pathRegex: /route-1`,
+		},
+		{
+			err: errors.New("failed to validate ServiceProfile: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number -5 into Go struct field RetryBudget.minRetriesPerSecond of type uint32"),
+			sp: `apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name.ns.svc.cluster.local
+  namespace: linkerd-ns
+spec:
+  retryBudget:
+    minRetriesPerSecond: -5
+    retryRatio: 0.2
+    ttl: 10s
   routes:
   - name: name-1
     condition:

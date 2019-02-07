@@ -372,8 +372,12 @@ func Validate(data []byte) error {
 
 	rb := serviceProfile.Spec.RetryBudget
 	if rb != nil {
-		if rb.MinRetriesPerSecond == 0 || rb.RetryRatio == 0 || rb.TTL == "" {
-			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget missing fields (requires minRetriesPerSecond, retryRatio, ttl)", serviceProfile.Name)
+		if rb.RetryRatio < 0 {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget RetryRatio must be greater than zero: %f", serviceProfile.Name, rb.RetryRatio)
+		}
+
+		if rb.TTL == "" {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget missing TTL field", serviceProfile.Name)
 		}
 
 		_, err := time.ParseDuration(rb.TTL)
