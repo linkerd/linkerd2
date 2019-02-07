@@ -10,12 +10,12 @@ import (
 )
 
 // GenServiceProfile generates a mock ServiceProfile.
-func GenServiceProfile(service, namespace, controlPlaneNamespace string) v1alpha1.ServiceProfile {
+func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
 	return v1alpha1.ServiceProfile{
 		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      service + "." + namespace + ".svc.cluster.local",
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		Spec: v1alpha1.ServiceProfileSpec{
 			Routes: []*v1alpha1.RouteSpec{

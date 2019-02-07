@@ -246,6 +246,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-controller.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -503,6 +505,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -648,6 +652,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-prometheus.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         image: gcr.io/linkerd-io/proxy:dev-undefined
@@ -895,6 +901,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-grafana.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

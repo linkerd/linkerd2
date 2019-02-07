@@ -17,8 +17,6 @@ func TestTapToServiceProfile(t *testing.T) {
 	tapDuration := 5 * time.Second
 	routeLimit := 20
 
-	controlPlaneNamespace := "linkerd"
-
 	params := util.TapRequestParams{
 		Resource:  "deploy/" + name,
 		Namespace: namespace,
@@ -82,7 +80,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc.cluster.local",
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
@@ -104,7 +102,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, controlPlaneNamespace, tapDuration, int(routeLimit))
+	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, tapDuration, int(routeLimit))
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

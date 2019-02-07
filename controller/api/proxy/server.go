@@ -94,7 +94,14 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	listener := newProfileListener(stream)
 
-	err = s.resolver.streamProfiles(host, listener)
+	proxyID := strings.Split(dest.ProxyId, ".")
+	proxyNS := ""
+	// <deployment>.deployment.<namespace>.linkerd-managed.linkerd.svc.cluster.local
+	if len(proxyID) >= 3 {
+		proxyNS = proxyID[2]
+	}
+
+	err = s.resolver.streamProfiles(host, proxyNS, listener)
 	if err != nil {
 		s.log.Errorf("Error streaming profile for %s: %v", dest.Path, err)
 	}

@@ -6,7 +6,7 @@ apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
   name: {{.ServiceName}}.{{.ServiceNamespace}}.{{.ClusterZone}}
-  namespace: {{.ControlPlaneNamespace}}
+  namespace: {{.ServiceNamespace}}
 spec:
   # A service profile defines a list of routes.  Linkerd can aggregate metrics
   # like request volume, latency, and success rate by route.

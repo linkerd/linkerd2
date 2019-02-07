@@ -258,6 +258,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
 			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_ID", Value: identity.ToDNSName()},
 		},
 		LivenessProbe:  &proxyProbe,
 		ReadinessProbe: &proxyProbe,
@@ -336,7 +337,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Image:                    options.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},

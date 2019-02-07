@@ -22,6 +22,7 @@ import (
 const (
 	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
 	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
+	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
 )
 
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission
@@ -256,6 +257,8 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 			proxy.Env[index].Value = identity.ToDNSName()
 		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
 			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
+		} else if env.Name == envVarKeyProxyID {
+			proxy.Env[index].Value = identity.ToDNSName()
 		}
 	}
 

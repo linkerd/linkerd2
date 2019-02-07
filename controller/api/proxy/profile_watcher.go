@@ -130,7 +130,7 @@ func (p *profileWatcher) deleteProfile(obj interface{}) {
 	defer p.profilesLock.RUnlock()
 	entry, ok := p.profiles[id]
 	if ok {
-		entry.update(&sp.ServiceProfile{})
+		entry.update(nil)
 	}
 }
 

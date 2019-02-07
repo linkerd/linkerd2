@@ -60,6 +60,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: web1.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -168,6 +170,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: web2.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -276,6 +280,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: web3.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -384,6 +390,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: web4.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:

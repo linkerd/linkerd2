@@ -81,7 +81,7 @@ status:
 kind: ServiceProfile
 metadata:
   name: books.default.svc.cluster.local
-  namespace: linkerd
+  namespace: default
 spec:
   routes:
   - condition:

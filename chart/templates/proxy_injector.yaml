@@ -184,6 +184,8 @@ data:
     - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
       value: {{.Values.OutboundConnectKeepaliveMs}}ms
     {{- end}}
+    - name: LINKERD2_PROXY_ID
+      value: "" # this value will be computed by the webhook
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/{{.Values.TLSTrustAnchorFileName}}
     - name: LINKERD2_PROXY_TLS_CERT

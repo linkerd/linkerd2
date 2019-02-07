@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -616,6 +617,118 @@ metadata:
 
 		if ownerName != tt.expectedOwnerName {
 			t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+		}
+	}
+}
+
+func TestGetServiceProfileFor(t *testing.T) {
+	for _, tt := range []struct {
+		expectedRouteNames []string
+		profileConfigs     []string
+	}{
+		// No service profiles -> default service profile
+		{
+			expectedRouteNames: []string{},
+			profileConfigs:     []string{},
+		},
+		// Service profile in unrelated namespace -> default service profile
+		{
+			expectedRouteNames: []string{},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: linkerd
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+			},
+		},
+		// Uses service profile in server namespace
+		{
+			expectedRouteNames: []string{"server"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: server
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+			},
+		},
+		// Uses service profile in client namespace
+		{
+			expectedRouteNames: []string{"client"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: client
+spec:
+  routes:
+  - condition:
+      pathRegex: /client
+    name: client`,
+			},
+		},
+		// Service porfile in client namespace takes priority
+		{
+			expectedRouteNames: []string{"client"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: server
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+				`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: client
+spec:
+  routes:
+  - condition:
+      pathRegex: /client
+    name: client`,
+			},
+		},
+	} {
+		api, _, err := newAPI(tt.profileConfigs)
+		if err != nil {
+			t.Fatalf("newAPI error: %s", err)
+		}
+
+		svc := apiv1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "books",
+				Namespace: "server",
+			},
+		}
+
+		sp := api.GetServiceProfileFor(&svc, "client")
+
+		if len(sp.Spec.Routes) != len(tt.expectedRouteNames) {
+			t.Fatalf("Expected %d routes, got %d", len(tt.expectedRouteNames), len(sp.Spec.Routes))
+		}
+
+		for i, route := range sp.Spec.Routes {
+			if tt.expectedRouteNames[i] != route.Name {
+				t.Fatalf("Expected route [%s], got [%s]", tt.expectedRouteNames[i], route.Name)
+			}
 		}
 	}
 }

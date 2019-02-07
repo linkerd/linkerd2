@@ -82,7 +82,7 @@ func (m *mockStreamingDestinationResolver) streamResolution(host string, port in
 	return m.errToReturnForResolution
 }
 
-func (m *mockStreamingDestinationResolver) streamProfiles(host string, listener profileUpdateListener) error {
+func (m *mockStreamingDestinationResolver) streamProfiles(host string, clientNs string, listener profileUpdateListener) error {
 	return nil
 }
 
