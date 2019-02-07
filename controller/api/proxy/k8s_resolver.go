@@ -99,10 +99,10 @@ func (k *k8sResolver) streamProfiles(host string, clientNs string, listener prof
 		subscriptions[clientProfileID] = primaryListener
 	}
 
-	serverID, err := k.localKubernetesServiceIDFromDNSName(host)
-	if err == nil && serverID != nil {
+	serviceID, err := k.localKubernetesServiceIDFromDNSName(host)
+	if err == nil && serviceID != nil {
 		serverProfileID := profileID{
-			namespace: serverID.namespace,
+			namespace: serviceID.namespace,
 			name:      host,
 		}
 

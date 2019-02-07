@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	apiv1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -611,12 +612,18 @@ func (api *API) GetServiceProfileFor(svc *apiv1.Service, clientNs string) *spv1a
 		if err == nil {
 			return p
 		}
+		if !apierrors.IsNotFound(err) {
+			log.Errorf("error getting service profile for %s in %s namespace: %s", dst, clientNs, err)
+		}
 	}
 	// Second, attempt to lookup profile in server namespace
 	if svc.Namespace != clientNs {
 		p, err := api.SP().Lister().ServiceProfiles(svc.Namespace).Get(dst)
 		if err == nil {
 			return p
+		}
+		if !apierrors.IsNotFound(err) {
+			log.Errorf("error getting service profile for %s in %s namespace: %s", dst, svc.Namespace, err)
 		}
 	}
 	// Not found; return default.

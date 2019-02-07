@@ -8,10 +8,19 @@ import (
 
 type fallbackProfileListener struct {
 	underlying profileUpdateListener
-	state      *sp.ServiceProfile
-	primary    *fallbackProfileListener
-	backup     *fallbackProfileListener
-	mutex      *sync.Mutex
+	primary    *primaryProfileListener
+	backup     *backupProfileListener
+	mutex      sync.Mutex
+}
+
+type primaryProfileListener struct {
+	state  *sp.ServiceProfile
+	parent *fallbackProfileListener
+}
+
+type backupProfileListener struct {
+	state  *sp.ServiceProfile
+	parent *fallbackProfileListener
 }
 
 // newFallbackProfileListener takes an underlying profileUpdateListener and
@@ -21,53 +30,85 @@ type fallbackProfileListener struct {
 // the value from the secondary is used.
 func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateListener, profileUpdateListener) {
 	// Primary and secondary share a lock to ensure updates are atomic.
-	mutex := sync.Mutex{}
+	fallback := fallbackProfileListener{
+		mutex:      sync.Mutex{},
+		underlying: listener,
+	}
 
-	primary := fallbackProfileListener{
-		underlying: listener,
-		mutex:      &mutex,
+	primary := primaryProfileListener{
+		parent: &fallback,
 	}
-	secondary := fallbackProfileListener{
-		underlying: listener,
-		mutex:      &mutex,
+	backup := backupProfileListener{
+		parent: &fallback,
 	}
-	primary.backup = &secondary
-	secondary.primary = &primary
-	return &primary, &secondary
+	fallback.primary = &primary
+	fallback.backup = &backup
+	return &primary, &backup
 }
 
-func (f *fallbackProfileListener) Update(profile *sp.ServiceProfile) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+// Primary
 
-	f.state = profile
+func (p *primaryProfileListener) Update(profile *sp.ServiceProfile) {
+	p.parent.mutex.Lock()
+	defer p.parent.mutex.Unlock()
 
-	if f.primary != nil && f.primary.state != nil {
+	p.state = profile
+
+	if p.state != nil {
+		// We got a value; apply the update.
+		p.parent.underlying.Update(p.state)
+		return
+	}
+	if p.parent.backup != nil {
+		// Our value was cleared; fall back to backup.
+		p.parent.underlying.Update(p.parent.backup.state)
+		return
+	}
+	// Our value was cleared and there is no backup value.
+	p.parent.underlying.Update(nil)
+}
+
+func (p *primaryProfileListener) ClientClose() <-chan struct{} {
+	return p.parent.underlying.ClientClose()
+}
+
+func (p *primaryProfileListener) ServerClose() <-chan struct{} {
+	return p.parent.underlying.ServerClose()
+}
+
+func (p *primaryProfileListener) Stop() {
+	p.parent.underlying.Stop()
+}
+
+// Backup
+
+func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
+	b.parent.mutex.Lock()
+	defer b.parent.mutex.Unlock()
+
+	b.state = profile
+
+	if b.parent.primary != nil && b.parent.primary.state != nil {
 		// Primary has a value, so ignore this update.
 		return
 	}
-	if f.state != nil {
+	if b.state != nil {
 		// We got a value; apply the update.
-		f.underlying.Update(f.state)
+		b.parent.underlying.Update(b.state)
 		return
 	}
-	if f.backup != nil {
-		// Our value was cleared; fall back to backup.
-		f.underlying.Update(f.backup.state)
-		return
-	}
-	// Our value was cleared and there is no backup.
-	f.underlying.Update(nil)
+	// Our value was cleared and there is no primary value.
+	b.parent.underlying.Update(nil)
 }
 
-func (f fallbackProfileListener) ClientClose() <-chan struct{} {
-	return f.underlying.ClientClose()
+func (b *backupProfileListener) ClientClose() <-chan struct{} {
+	return b.parent.underlying.ClientClose()
 }
 
-func (f fallbackProfileListener) ServerClose() <-chan struct{} {
-	return f.underlying.ServerClose()
+func (b *backupProfileListener) ServerClose() <-chan struct{} {
+	return b.parent.underlying.ServerClose()
 }
 
-func (f fallbackProfileListener) Stop() {
-	f.underlying.Stop()
+func (b *backupProfileListener) Stop() {
+	b.parent.underlying.Stop()
 }
