@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	net "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -29,7 +30,18 @@ type updateAddress struct {
 }
 
 func (ua updateAddress) String() string {
-	return fmt.Sprintf("{address:%v, pod:%s.%s}", addr.ProxyAddressToString(ua.address), ua.pod.Namespace, ua.pod.Name)
+	addrStr := addr.ProxyAddressToString(ua.address)
+	if ua.pod == nil {
+		return fmt.Sprintf("{address:%v}", addrStr)
+	}
+	return fmt.Sprintf("{address:%v, pod:%s.%s}", addrStr, ua.pod.Namespace, ua.pod.Name)
+}
+
+func (ua updateAddress) clone() *updateAddress {
+	return &updateAddress{
+		pod:     ua.pod.DeepCopy(),
+		address: proto.Clone(ua.address).(*net.TcpAddress),
+	}
 }
 
 func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress, []*updateAddress) {
@@ -73,6 +85,7 @@ type endpointListener struct {
 	enableH2Upgrade  bool
 	enableTLS        bool
 	stopCh           chan struct{}
+	log              *log.Entry
 }
 
 func newEndpointListener(
@@ -87,6 +100,9 @@ func newEndpointListener(
 		enableH2Upgrade:  enableH2Upgrade,
 		enableTLS:        enableTLS,
 		stopCh:           make(chan struct{}),
+		log: log.WithFields(log.Fields{
+			"component": "endpoint-listener",
+		}),
 	}
 }
 
@@ -108,10 +124,16 @@ func (l *endpointListener) SetServiceID(id *serviceID) {
 			"namespace": id.namespace,
 			"service":   id.name,
 		}
+		l.log = l.log.WithFields(log.Fields{
+			"namespace": id.namespace,
+			"service":   id.name,
+		})
 	}
 }
 
 func (l *endpointListener) Update(add, remove []*updateAddress) {
+	l.log.Debugf("Update(%+v, %+v)", add, remove)
+
 	if len(add) > 0 {
 		update := &pb.Update{
 			Update: &pb.Update_Add{
@@ -120,7 +142,7 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 		}
 		err := l.stream.Send(update)
 		if err != nil {
-			log.Error(err)
+			l.log.Error(err)
 		}
 	}
 	if len(remove) > 0 {
@@ -131,12 +153,14 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 		}
 		err := l.stream.Send(update)
 		if err != nil {
-			log.Error(err)
+			l.log.Error(err)
 		}
 	}
 }
 
 func (l *endpointListener) NoEndpoints(exists bool) {
+	l.log.Debugf("NoEndpoints(%+v)", exists)
+
 	update := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
@@ -164,7 +188,7 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 
 	return &pb.WeightedAddr{
 		Addr:         address.address,
-		Weight:       1,
+		Weight:       addr.DefaultWeight,
 		MetricLabels: labels,
 		TlsIdentity:  tlsIdentity,
 		ProtocolHint: hint,
@@ -210,10 +234,14 @@ func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, 
 		ControllerNamespace: controllerNs,
 	}
 
+	dnsName := identity.ToDNSName()
+
+	l.log.Debugf("getAddrMetadata(%+v): Owner: %s/%s DNS Name: %s Labels: %+v", pod, ownerKind, ownerName, dnsName, labels)
+
 	return labels, hint, &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
 			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-				PodIdentity:  identity.ToDNSName(),
+				PodIdentity:  dnsName,
 				ControllerNs: controllerNs,
 			},
 		},

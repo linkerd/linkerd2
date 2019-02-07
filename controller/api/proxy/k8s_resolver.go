@@ -128,6 +128,10 @@ func (k *k8sResolver) streamProfiles(host string, clientNs string, listener prof
 	}
 }
 
+func (k *k8sResolver) getState() servicePorts {
+	return k.endpointsWatcher.getState()
+}
+
 func (k *k8sResolver) stop() {
 	k.endpointsWatcher.stop()
 	if k.profileWatcher != nil {

@@ -1,0 +1,38 @@
+// Experimental
+
+// gRPC interface, implemented by the Public and Proxy API component of the
+// control-plane. While primarily intended to be implemented by the Proxy API,
+// it is separated from `destination.Get` and related APIs, as those are
+// side-effecting and proxy-facing. Instead, this API is control-plane and
+// CLI-facing, and depends on types defined in `public.proto`.
+
+syntax = "proto3";
+
+package linkerd2.controller.discovery;
+
+import "public.proto";
+
+option go_package = "github.com/linkerd/linkerd2/controller/gen/controller/discovery";
+
+service Discovery {
+  rpc Endpoints(EndpointsParams) returns (EndpointsResponse) {}
+}
+
+message EndpointsParams {}
+
+message EndpointsResponse {
+  map<string, ServicePort> service_ports = 1;
+}
+
+message ServicePort {
+  map<uint32, PodAddresses> port_endpoints = 1;
+}
+
+message PodAddresses {
+  repeated PodAddress pod_addresses = 1;
+}
+
+message PodAddress {
+  public.TcpAddress addr = 1;
+  public.Pod pod = 2;
+}

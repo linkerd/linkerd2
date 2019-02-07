@@ -7,6 +7,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
+	pkgAddr "github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,11 +67,12 @@ func defaultOwnerKindAndName(pod *v1.Pod) (string, string) {
 func TestEndpointListener(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-
-		listener := &endpointListener{
-			stream:           mockGetServer,
-			ownerKindAndName: defaultOwnerKindAndName,
-		}
+		listener := newEndpointListener(
+			mockGetServer,
+			defaultOwnerKindAndName,
+			false,
+			false,
+		)
 
 		listener.Update(add, remove)
 
@@ -83,11 +85,12 @@ func TestEndpointListener(t *testing.T) {
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-
-		listener := &endpointListener{
-			stream:           mockGetServer,
-			ownerKindAndName: defaultOwnerKindAndName,
-		}
+		listener := newEndpointListener(
+			mockGetServer,
+			defaultOwnerKindAndName,
+			false,
+			false,
+		)
 
 		listener.Update(add, remove)
 
@@ -123,10 +126,12 @@ func TestEndpointListener(t *testing.T) {
 				contextToReturn: context,
 			},
 		}
-		listener := &endpointListener{
-			stream:           mockGetServer,
-			ownerKindAndName: defaultOwnerKindAndName,
-		}
+		listener := newEndpointListener(
+			mockGetServer,
+			defaultOwnerKindAndName,
+			false,
+			false,
+		)
 
 		completed := make(chan bool)
 		go func() {
@@ -164,13 +169,15 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-		listener := &endpointListener{
-			ownerKindAndName: ownerKindAndName,
-			labels: map[string]string{
-				"service":   expectedServiceName,
-				"namespace": expectedNamespace,
-			},
-			stream: mockGetServer,
+		listener := newEndpointListener(
+			mockGetServer,
+			ownerKindAndName,
+			false,
+			false,
+		)
+		listener.labels = map[string]string{
+			"service":   expectedServiceName,
+			"namespace": expectedNamespace,
 		}
 
 		add := []*updateAddress{
@@ -223,11 +230,12 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-		listener := &endpointListener{
-			ownerKindAndName: ownerKindAndName,
-			stream:           mockGetServer,
-			enableTLS:        true,
-		}
+		listener := newEndpointListener(
+			mockGetServer,
+			ownerKindAndName,
+			true,
+			false,
+		)
 
 		add := []*updateAddress{
 			&updateAddress{address: addedAddress1, pod: podForAddedAddress1},
@@ -270,10 +278,12 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-		listener := &endpointListener{
-			ownerKindAndName: ownerKindAndName,
-			stream:           mockGetServer,
-		}
+		listener := newEndpointListener(
+			mockGetServer,
+			ownerKindAndName,
+			false,
+			false,
+		)
 
 		add := []*updateAddress{
 			&updateAddress{address: addedAddress1, pod: podForAddedAddress1},
@@ -291,10 +301,20 @@ func TestEndpointListener(t *testing.T) {
 	})
 }
 
+func TestUpdateAddress(t *testing.T) {
+	t.Run("Correctly clones an update address", func(t *testing.T) {
+		ua := updateAddress{address: addedAddress1, pod: pod1}
+		ua2 := ua.clone()
+		if !reflect.DeepEqual(ua, *ua2) {
+			t.Fatalf("Clone failed, original: %+v, clone: %+v", ua, ua2)
+		}
+	})
+}
+
 func checkAddress(t *testing.T, addr *pb.WeightedAddr, expectedAddress *net.TcpAddress) {
 	actualAddress := addr.Addr
 	actualWeight := addr.Weight
-	expectedWeight := uint32(1)
+	expectedWeight := uint32(pkgAddr.DefaultWeight)
 
 	if !reflect.DeepEqual(actualAddress, expectedAddress) || actualWeight != expectedWeight {
 		t.Fatalf("Expected added address to be [%+v] and weight to be [%d], but it was [%+v] and [%d]", expectedAddress, expectedWeight, actualAddress, actualWeight)

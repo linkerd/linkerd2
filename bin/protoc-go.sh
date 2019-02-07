@@ -17,5 +17,6 @@ gen() {
 go install ./vendor/github.com/golang/protobuf/protoc-gen-go
 
 gen proto/common/healthcheck.proto \
-    proto/public.proto \
-    proto/controller/tap.proto
+    proto/controller/discovery.proto \
+    proto/controller/tap.proto \
+    proto/public.proto

@@ -510,3 +510,58 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 	}
 	return event
 }
+
+// K8sPodToPublicPod converts a Kubernetes Pod to a Public API Pod
+func K8sPodToPublicPod(pod v1.Pod, ownerKind string, ownerName string) pb.Pod {
+	status := string(pod.Status.Phase)
+	if pod.DeletionTimestamp != nil {
+		status = "Terminating"
+	}
+	controllerComponent := pod.Labels[k8s.ControllerComponentLabel]
+	controllerNS := pod.Labels[k8s.ControllerNSLabel]
+
+	proxyReady := false
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Name == k8s.ProxyContainerName {
+			proxyReady = container.Ready
+		}
+	}
+
+	proxyVersion := ""
+	for _, container := range pod.Spec.Containers {
+		if container.Name == k8s.ProxyContainerName {
+			parts := strings.Split(container.Image, ":")
+			proxyVersion = parts[1]
+		}
+	}
+
+	item := pb.Pod{
+		Name:                pod.Namespace + "/" + pod.Name,
+		Status:              status,
+		PodIP:               pod.Status.PodIP,
+		ControllerNamespace: controllerNS,
+		ControlPlane:        controllerComponent != "",
+		ProxyReady:          proxyReady,
+		ProxyVersion:        proxyVersion,
+		ResourceVersion:     pod.ResourceVersion,
+	}
+
+	namespacedOwnerName := pod.Namespace + "/" + ownerName
+
+	switch ownerKind {
+	case k8s.Deployment:
+		item.Owner = &pb.Pod_Deployment{Deployment: namespacedOwnerName}
+	case k8s.ReplicaSet:
+		item.Owner = &pb.Pod_ReplicaSet{ReplicaSet: namespacedOwnerName}
+	case k8s.ReplicationController:
+		item.Owner = &pb.Pod_ReplicationController{ReplicationController: namespacedOwnerName}
+	case k8s.StatefulSet:
+		item.Owner = &pb.Pod_StatefulSet{StatefulSet: namespacedOwnerName}
+	case k8s.DaemonSet:
+		item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
+	case k8s.Job:
+		item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
+	}
+
+	return item
+}

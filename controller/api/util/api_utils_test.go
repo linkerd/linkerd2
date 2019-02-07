@@ -9,15 +9,17 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/api/core/v1"
 	k8sError "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestGRPCError(t *testing.T) {
 	t.Run("Maps errors to gRPC errors", func(t *testing.T) {
 		expectations := map[error]error{
-			nil: nil,
-			errors.New("normal erro"):                                                                   errors.New("rpc error: code = Unknown desc = normal erro"),
+			nil:                       nil,
+			errors.New("normal erro"): errors.New("rpc error: code = Unknown desc = normal erro"),
 			status.Error(codes.NotFound, "grpc not found"):                                              errors.New("rpc error: code = NotFound desc = grpc not found"),
 			k8sError.NewNotFound(schema.GroupResource{Group: "foo", Resource: "bar"}, "http not found"): errors.New("rpc error: code = NotFound desc = bar.foo \"http not found\" not found"),
 			k8sError.NewServiceUnavailable("unavailable"):                                               errors.New("rpc error: code = Unavailable desc = unavailable"),
@@ -393,6 +395,77 @@ func TestBuildResources(t *testing.T) {
 
 			if !reflect.DeepEqual(exp.resource, res[0]) {
 				t.Fatalf("Expected resource to be [%+v] but was [%+v]", exp.resource, res[0])
+			}
+		}
+	})
+}
+
+func TestK8sPodToPublicPod(t *testing.T) {
+	type podExp struct {
+		k8sPod    v1.Pod
+		ownerKind string
+		ownerName string
+		publicPod pb.Pod
+	}
+
+	t.Run("Returns expected pods", func(t *testing.T) {
+		expectations := []podExp{
+			podExp{
+				k8sPod: v1.Pod{},
+				publicPod: pb.Pod{
+					Name: "/",
+				},
+			},
+			podExp{
+				k8sPod: v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:       "ns",
+						Name:            "name",
+						ResourceVersion: "resource-version",
+						Labels: map[string]string{
+							k8s.ControllerComponentLabel: "controller-component",
+							k8s.ControllerNSLabel:        "controller-ns",
+						},
+					},
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							v1.Container{
+								Name:  k8s.ProxyContainerName,
+								Image: "linkerd-proxy:test-version",
+							},
+						},
+					},
+					Status: v1.PodStatus{
+						PodIP: "pod-ip",
+						Phase: "status",
+						ContainerStatuses: []v1.ContainerStatus{
+							v1.ContainerStatus{
+								Name:  k8s.ProxyContainerName,
+								Ready: true,
+							},
+						},
+					},
+				},
+				ownerKind: k8s.Deployment,
+				ownerName: "owner-name",
+				publicPod: pb.Pod{
+					Name:                "ns/name",
+					Owner:               &pb.Pod_Deployment{Deployment: "ns/owner-name"},
+					ResourceVersion:     "resource-version",
+					ControlPlane:        true,
+					ControllerNamespace: "controller-ns",
+					Status:              "status",
+					ProxyReady:          true,
+					ProxyVersion:        "test-version",
+					PodIP:               "pod-ip",
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			res := K8sPodToPublicPod(exp.k8sPod, exp.ownerKind, exp.ownerName)
+			if !reflect.DeepEqual(exp.publicPod, res) {
+				t.Fatalf("Expected pod to be [%+v] but was [%+v]", exp.publicPod, res)
 			}
 		}
 	})
