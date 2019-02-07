@@ -362,7 +362,7 @@ func TestGetPodsFor(t *testing.T) {
 
 		// all 3 of these are used to seed the k8s client
 		k8sResInput   string   // object used as input to GetPodFor()
-		k8sResResults []string // expected results from GetPodFor
+		k8sResResults []string // expected results from GetPodsFor
 		k8sResMisc    []string // additional k8s objects for seeding the k8s client
 	}
 
@@ -391,6 +391,57 @@ metadata:
     app: emoji-svc
 status:
   phase: Finished`,
+				},
+			},
+			// Retrieve pods associated to a ClusterIP service
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-finished
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{},
+			},
+			// ExternalName services shouldn't return any pods
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+  namespace: emojivoto
+spec:
+  type: ExternalName
+  externalName: someapi.example.com`,
+				k8sResResults: []string{},
+				k8sResMisc: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-finished
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
 				},
 			},
 			getPodsForExpected{

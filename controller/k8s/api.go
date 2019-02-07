@@ -307,6 +307,9 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
 
 	case *apiv1.Service:
+		if typed.Spec.Type == apiv1.ServiceTypeExternalName {
+			return []*apiv1.Pod{}, nil
+		}
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
 
