@@ -836,7 +836,14 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
 		}
 
-		err = profiles.ValidateSP(p)
+		// TODO: remove this check once we implement ServiceProfile validation via a
+		// ValidatingAdmissionWebhook (or simply call `profiles.ValidateSP(p)`).
+		result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
+		raw, err := result.Raw()
+		if err != nil {
+			return err
+		}
+		err = profiles.Validate(raw)
 		if err != nil {
 			return err
 		}
