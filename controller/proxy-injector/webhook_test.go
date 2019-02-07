@@ -16,7 +16,7 @@ var (
 )
 
 func TestMutate(t *testing.T) {
-	ns, err := factory.Namespace("namespace-kube-public.yaml")
+	ns, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -63,11 +63,11 @@ func TestMutate(t *testing.T) {
 }
 
 func TestShouldInject(t *testing.T) {
-	nsEnabled, err := factory.Namespace("namespace-kube-public.yaml")
+	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	nsDisabled, err := factory.Namespace("namespace-linkerd.yaml")
+	nsDisabled, err := factory.Namespace("namespace-inject-disabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
