@@ -3,7 +3,6 @@ package flags
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -15,13 +14,11 @@ import (
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
 func ConfigureAndParse() {
-	// -stderrthreshold=FATAL forces klog to only log FATAL errors to stderr.
-	// -logtostderr to false to not log to stderr by default.
-	var klogFlags = flag.NewFlagSet("klog", flag.ExitOnError)
-
-	klog.InitFlags(klogFlags)
-	klogFlags.Set("stderrthreshold", "FATAL")
-	klogFlags.Set("logtostderr", "false")
+	klog.InitFlags(nil)
+	flag.Set("stderrthreshold", "FATAL")
+	flag.Set("logtostderr", "false")
+	flag.Set("log_file", "/dev/null")
+	flag.Set("v", "0")
 	logLevel := flag.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug")
 	printVersion := flag.Bool("version", false, "print version and exit")
@@ -39,11 +36,10 @@ func setLogLevel(logLevel string) {
 	}
 	log.SetLevel(level)
 
-	klog.SetOutput(ioutil.Discard)
-	// Anything lower than the INFO level according to log is sent to /dev/null
 	if level == log.DebugLevel {
-		// Set stderr to INFO severity see https://github.com/kubernetes/klog/issues/23
-		klog.SetOutputBySeverity("INFO", os.Stderr)
+		flag.Set("stderrthreshold", "INFO")
+		flag.Set("logtostderr", "true")
+		flag.Set("v", "10")
 	}
 }
 
