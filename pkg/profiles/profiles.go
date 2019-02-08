@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/yaml"
 )
 
@@ -332,9 +333,9 @@ func Validate(data []byte) error {
 		return fmt.Errorf("failed to validate ServiceProfile: %s", err)
 	}
 
-	_, _, err = ValidateName(serviceProfile.Name)
-	if err != nil {
-		return err
+	errs := validation.IsDNS1123Subdomain(serviceProfile.Name)
+	if len(errs) > 0 {
+		return fmt.Errorf("ServiceProfile \"%s\" has invalid name: %s", serviceProfile.Name, errs[0])
 	}
 
 	if len(serviceProfile.Spec.Routes) == 0 {
@@ -386,22 +387,6 @@ func Validate(data []byte) error {
 	}
 
 	return nil
-}
-
-// ValidateName validates that a ServiceProfile's name is of the form:
-// <service>.<namespace>.svc.cluster.local
-func ValidateName(name string) (string, string, error) {
-	nameParts := strings.Split(name, ".")
-	if len(nameParts) != 2+len(clusterZoneSuffix) {
-		return "", "", fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", name)
-	}
-	for i, part := range nameParts[2:] {
-		if part != clusterZoneSuffix[i] {
-			return "", "", fmt.Errorf("ServiceProfile \"%s\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")", name)
-		}
-	}
-
-	return nameParts[0], nameParts[1], nil
 }
 
 // ValidateRequestMatch validates whether a ServiceProfile RequestMatch has at

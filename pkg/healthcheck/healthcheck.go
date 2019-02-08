@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -438,17 +439,8 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdServiceProfileChecks,
-			checkers: []checker{
-				{
-					description: "no invalid service profiles",
-					hintURL:     "https://linkerd.io/2/faq/#l5d-sp",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.validateServiceProfiles()
-					},
-				},
-			},
+			id:       LinkerdServiceProfileChecks,
+			checkers: hc.makeProfileCheckers(),
 		},
 		{
 			id: LinkerdVersionChecks,
@@ -803,50 +795,87 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 	return nil
 }
 
-func (hc *HealthChecker) validateServiceProfiles() error {
-	if hc.clientset == nil {
-		var err error
-		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
-		if err != nil {
-			return err
-		}
+// makeProfileCheckers attempts to list all service profiles and returns a check
+// indicating if this was successful.  It additionally returns a check for
+// each service profile's validity.  The list check is unusual in that it
+// it must query Kubernetes when the checks are generated instead of waiting
+// until the checks are run.
+func (hc *HealthChecker) makeProfileCheckers() []checker {
+
+	svcProfiles, listChecker := hc.makeProfileListChecker()
+
+	checkers := []checker{listChecker}
+
+	if svcProfiles == nil {
+		return checkers
 	}
 
-	if hc.spClientset == nil {
-		var err error
-		hc.spClientset, err = spclient.NewForConfig(hc.kubeAPI.Config)
-		if err != nil {
-			return err
+	// This closure madness is necessary to ensure we create a new closure for
+	// each loop iteration with the service profile copied into that closure.
+	// Attempting to use a single closure here and closing over the loop variable
+	// p would cause all checks to reference the last profile in the list.
+	mkCheck := func(pp sp.ServiceProfile) func(context.Context) error {
+		return func(context.Context) error {
+			return hc.validateServiceProfile(pp)
 		}
-	}
-
-	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles(hc.ControlPlaneNamespace).List(meta_v1.ListOptions{})
-	if err != nil {
-		return err
 	}
 
 	for _, p := range svcProfiles.Items {
-		service, namespace, err := profiles.ValidateName(p.Name)
+		checkers = append(checkers, checker{
+			description: fmt.Sprintf("service profile %s in namespace %s is valid", p.Name, p.Namespace),
+			hintURL:     "https://linkerd.io/2/faq/#l5d-sp",
+			warning:     true,
+			check:       mkCheck(p),
+		})
+	}
+
+	return checkers
+}
+
+func (hc *HealthChecker) makeProfileListChecker() (*sp.ServiceProfileList, checker) {
+	listChecker := checker{
+		description: "can list service profiles",
+		hintURL:     "https://linkerd.io/2/faq/#l5d-sp",
+		warning:     true,
+		check:       func(context.Context) error { return nil },
+	}
+
+	if hc.spClientset == nil {
+		// We specifically do not use k8s.kubeAPI here because it is not initialized
+		// until the checks are run.
+		api, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
 		if err != nil {
-			return err
+			listChecker.check = func(context.Context) error { return err }
+			return nil, listChecker
 		}
 
-		_, err = hc.clientset.CoreV1().Services(namespace).Get(service, meta_v1.GetOptions{})
+		hc.spClientset, err = spclient.NewForConfig(api.Config)
 		if err != nil {
-			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
+			listChecker.check = func(context.Context) error { return err }
+			return nil, listChecker
 		}
+	}
 
-		// TODO: remove this check once we implement ServiceProfile validation via a
-		// ValidatingAdmissionWebhook
-		result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
-		raw, err := result.Raw()
-		if err != nil {
-			return err
-		}
-		err = profiles.Validate(raw)
-		if err != nil {
-			return fmt.Errorf("%s: %s", p.Name, err)
-		}
+	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles("").List(meta_v1.ListOptions{})
+	if err != nil {
+		listChecker.check = func(context.Context) error { return err }
+		return nil, listChecker
+	}
+
+	return svcProfiles, listChecker
+}
+
+func (hc *HealthChecker) validateServiceProfile(p sp.ServiceProfile) error {
+	// TODO: remove this check once we implement ServiceProfile validation via a
+	// ValidatingAdmissionWebhook
+	result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
+	raw, err := result.Raw()
+	if err != nil {
+		return err
+	}
+	err = profiles.Validate(raw)
+	if err != nil {
+		return fmt.Errorf("%s: %s", p.Name, err)
 	}
 	return nil
 }

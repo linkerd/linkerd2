@@ -66,25 +66,11 @@ spec:
               min: 503`,
 		},
 		{
-			err: errors.New("ServiceProfile \"bad.svc.cluster.local\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")"),
+			err: errors.New("ServiceProfile \"^.^\" has invalid name: a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')"),
 			sp: `apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: bad.svc.cluster.local
-  namespace: linkerd-ns
-spec:
-  routes:
-  - name: name-1
-    condition:
-      method: GET
-      pathRegex: /route-1`,
-		},
-		{
-			err: errors.New("ServiceProfile \"name.ns.svc.cluster\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")"),
-			sp: `apiVersion: linkerd.io/v1alpha1
-kind: ServiceProfile
-metadata:
-  name: name.ns.svc.cluster
+  name: ^.^
   namespace: linkerd-ns
 spec:
   routes:
@@ -424,59 +410,6 @@ spec:
 	for id, exp := range expectations {
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			err := Validate([]byte(exp.sp))
-			if err != nil || exp.err != nil {
-				if (err == nil && exp.err != nil) ||
-					(err != nil && exp.err == nil) ||
-					(err.Error() != exp.err.Error()) {
-					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp.err, err)
-				}
-			}
-		})
-	}
-}
-
-func TestValidateName(t *testing.T) {
-	expectations := []struct {
-		err       error
-		name      string
-		service   string
-		namespace string
-	}{
-		{
-			nil,
-			"service.ns.svc.cluster.local",
-			"service",
-			"ns",
-		},
-		{
-			errors.New("ServiceProfile \"bad.name\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")"),
-			"bad.name",
-			"",
-			"",
-		},
-		{
-			errors.New("ServiceProfile \"bad.svc.cluster.local\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")"),
-			"bad.svc.cluster.local",
-			"",
-			"",
-		},
-		{
-			errors.New("ServiceProfile \"service.ns.svc.cluster.foo\" has invalid name (must be \"<service>.<namespace>.svc.cluster.local\")"),
-			"service.ns.svc.cluster.foo",
-			"",
-			"",
-		},
-	}
-
-	for id, exp := range expectations {
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			service, namespace, err := ValidateName(exp.name)
-			if service != exp.service {
-				t.Fatalf("Unexpected service (Expected: %s, Got: %s)", exp.service, service)
-			}
-			if namespace != exp.namespace {
-				t.Fatalf("Unexpected namespace (Expected: %s, Got: %s)", exp.namespace, namespace)
-			}
 			if err != nil || exp.err != nil {
 				if (err == nil && exp.err != nil) ||
 					(err != nil && exp.err == nil) ||
