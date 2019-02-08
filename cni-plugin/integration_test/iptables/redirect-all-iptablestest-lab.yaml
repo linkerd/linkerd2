@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-redirects-all-ports
+  labels:
+    app: pod-redirects-all-ports
+spec:
+      containers:
+      - name: other-container
+        image: buoyantio/cni-iptables-tester:v1
+        env:
+         - name: PORT
+           value: "9090"
+        command: ["go", "run", "/go/test_service/test_service.go"]
+        ports:
+        - name: http
+          containerPort: 9090
+      - name: proxy-stub
+        image: buoyantio/cni-iptables-tester:v1
+        env:
+         - name: PORT
+           value: "8080"
+         - name: AM_I_THE_PROXY
+           value: "yes"
+        command: ["go", "run", "/go/test_service/test_service.go"]
+        securityContext:
+          privileged: false
+          runAsUser: 2102
+        ports:
+        - name: http
+          containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-pod-redirects-all-ports
+spec:
+  selector:
+    app: pod-redirects-all-ports
+  ports:
+  - name: http
+    port: 8080

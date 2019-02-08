@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-no-rules
+  labels:
+    app: pod-with-no-rules
+spec:
+      containers:
+      - name: webserver
+        image: buoyantio/cni-iptables-tester:v1
+        env:
+         - name: PORT
+           value: "8080"
+        command: ["go", "run", "/go/test_service/test_service.go"]
+        ports:
+        - name: http
+          containerPort: 8080
+      - name: other-container
+        image: buoyantio/cni-iptables-tester:v1
+        env:
+         - name: PORT
+           value: "9090"
+        command: ["go", "run", "/go/test_service/test_service.go"]
+        ports:
+        - name: http
+          containerPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-pod-with-no-rules
+spec:
+  selector:
+    app: pod-with-no-rules
+  ports:
+  - name: http
+    port: 8080
