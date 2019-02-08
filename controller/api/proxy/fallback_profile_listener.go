@@ -27,12 +27,12 @@ type backupProfileListener struct {
 }
 
 // newFallbackProfileListener takes an underlying profileUpdateListener and
-// returns two profileUpdateListeners: a primary and a secondary.  Updates to
-// the primary and secondary will propagate to the underlying with updates to
+// returns two profileUpdateListeners: a primary and a backup.  Updates to
+// the primary and backup will propagate to the underlying with updates to
 // the primary always taking priority.  If the value in the primary is cleared,
-// the value from the secondary is used.
+// the value from the backup is used.
 func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateListener, profileUpdateListener) {
-	// Primary and secondary share a lock to ensure updates are atomic.
+	// Primary and backup share a lock to ensure updates are atomic.
 	fallback := fallbackProfileListener{
 		mutex:      sync.Mutex{},
 		underlying: listener,
