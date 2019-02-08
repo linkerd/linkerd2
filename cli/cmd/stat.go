@@ -59,27 +59,27 @@ func newCmdStat() *cobra.Command {
   Examples:
   * deploy
   * deploy/my-deploy
+  * deploy/ po/
   * ds/my-daemonset
-  * statefulset/my-statefulset
-  * rc/my-replication-controller
   * ns/my-ns
-  * authority
-  * au/my-authority
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2
-  * deploy/ po/
+  * rc/my-replication-controller
+  * sts/my-statefulset
+  * authority
+  * au/my-authority
   * all
 
   Valid resource types include:
   * daemonsets
-  * statefulsets
   * deployments
   * namespaces
   * pods
   * replicationcontrollers
+  * statefulsets
   * authorities (not supported in --from)
-  * services (only supported if a --from is also specified, or as a --to)
   * jobs (only supported as a --from or --to)
+  * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
 
 This command will hide resources that have completed, such as pods that are in the Succeeded or Failed phases.

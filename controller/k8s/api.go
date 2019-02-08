@@ -45,8 +45,8 @@ const (
 	RC
 	RS
 	SP
-	Svc
 	SS
+	Svc
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -56,13 +56,13 @@ type API struct {
 	cm       coreinformers.ConfigMapInformer
 	deploy   appv1beta2informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
-	ss       appv1informers.StatefulSetInformer
 	endpoint coreinformers.EndpointsInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appv1beta2informers.ReplicaSetInformer
 	sp       spinformers.ServiceProfileInformer
+	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
 
 	syncChecks        []cache.InformerSynced
@@ -112,9 +112,6 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case DS:
 			api.ds = sharedInformers.Apps().V1().DaemonSets()
 			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
-		case SS:
-			api.ss = sharedInformers.Apps().V1().StatefulSets()
-			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
@@ -133,6 +130,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case SP:
 			api.sp = spSharedInformers.Linkerd().V1alpha1().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+		case SS:
+			api.ss = sharedInformers.Apps().V1().StatefulSets()
+			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
@@ -255,8 +255,6 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getNamespaces(name)
 	case k8s.DaemonSet:
 		return api.getDaemonsets(namespace, name)
-	case k8s.StatefulSet:
-		return api.getStatefulsets(namespace, name)
 	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
 	case k8s.Pod:
@@ -265,6 +263,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getRCs(namespace, name)
 	case k8s.Service:
 		return api.getServices(namespace, name)
+	case k8s.StatefulSet:
+		return api.getStatefulsets(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -309,10 +309,6 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
-	case *appsv1.StatefulSet:
-		namespace = typed.Namespace
-		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
-
 	case *appsv1beta2.Deployment:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
@@ -331,6 +327,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		}
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
+
+	case *appsv1.StatefulSet:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
 	case *apiv1.Pod:
 		// Special case for pods:
@@ -374,9 +374,6 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	case *appsv1.DaemonSet:
 		return typed.Name, typed.Namespace, nil
 
-	case *appsv1.StatefulSet:
-		return typed.Name, typed.Namespace, nil
-
 	case *appsv1beta2.Deployment:
 		return typed.Name, typed.Namespace, nil
 
@@ -387,6 +384,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 		return typed.Name, typed.Namespace, nil
 
 	case *apiv1.Service:
+		return typed.Name, typed.Namespace, nil
+
+	case *appsv1.StatefulSet:
 		return typed.Name, typed.Namespace, nil
 
 	case *apiv1.Pod:

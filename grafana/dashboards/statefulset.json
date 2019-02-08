@@ -20,7 +20,7 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">statefulset/$statefulset</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">sts/$statefulset</span>\n</div>",
       "gridPos": {
         "h": 2.4,
         "w": 24,
@@ -422,7 +422,7 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "statefulset/{{statefulset}}",
+          "legendFormat": "sts/{{statefulset}}",
           "refId": "A"
         }
       ],
@@ -507,14 +507,14 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls=\"true\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒statefulset/{{statefulset}}",
+          "legendFormat": "🔒sts/{{statefulset}}",
           "refId": "A"
         },
         {
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls!=\"true\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "statefulset/{{statefulset}}",
+          "legendFormat": "sts/{{statefulset}}",
           "refId": "B"
         }
       ],
@@ -599,7 +599,7 @@
           "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50 statefulset/{{statefulset}}",
+          "legendFormat": "p50 sts/{{statefulset}}",
           "refId": "A"
         },
         {
@@ -607,14 +607,14 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95 statefulset/{{statefulset}}",
+          "legendFormat": "p95 sts/{{statefulset}}",
           "refId": "B"
         },
         {
           "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p99 statefulset/{{statefulset}}",
+          "legendFormat": "p99 sts/{{statefulset}}",
           "refId": "C"
         }
       ],
@@ -940,7 +940,7 @@
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">statefulset/$inbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">sts/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -1172,21 +1172,21 @@
               "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 statefulset/{{statefulset}}",
+              "legendFormat": "P50 sts/{{statefulset}}",
               "refId": "A"
             },
             {
               "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 statefulset/{{statefulset}}",
+              "legendFormat": "P95 sts/{{statefulset}}",
               "refId": "B"
             },
             {
               "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 statefulset/{{statefulset}}",
+              "legendFormat": "P99 sts/{{statefulset}}",
               "refId": "C"
             }
           ],
@@ -1232,7 +1232,7 @@
         }
       ],
       "repeat": "inbound",
-      "title": "statefulset/$inbound",
+      "title": "sts/$inbound",
       "type": "row"
     },
     {
@@ -1304,7 +1304,7 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "statefulset/{{dst_statefulset}}",
+          "legendFormat": "sts/{{dst_statefulset}}",
           "refId": "A"
         }
       ],
@@ -1389,14 +1389,14 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒statefulset/{{dst_statefulset}}",
+          "legendFormat": "🔒sts/{{dst_statefulset}}",
           "refId": "A"
         },
         {
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "statefulset/{{dst_statefulset}}",
+          "legendFormat": "sts/{{dst_statefulset}}",
           "refId": "B"
         }
       ],
@@ -1480,7 +1480,7 @@
           "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 statefulset/{{dst_statefulset}}",
+          "legendFormat": "P95 sts/{{dst_statefulset}}",
           "refId": "A"
         }
       ],
@@ -1805,7 +1805,7 @@
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">statefulset/$outbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">sts/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -1859,7 +1859,7 @@
               "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "statefulset/{{dst_statefulset}}",
+              "legendFormat": "sts/{{dst_statefulset}}",
               "refId": "A"
             }
           ],
@@ -1944,14 +1944,14 @@
               "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "🔒statefulset/{{dst_statefulset}}",
+              "legendFormat": "🔒sts/{{dst_statefulset}}",
               "refId": "A"
             },
             {
               "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "statefulset/{{dst_statefulset}}",
+              "legendFormat": "sts/{{dst_statefulset}}",
               "refId": "B"
             }
           ],
@@ -2035,21 +2035,21 @@
               "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 statefulset/{{dst_statefulset}}",
+              "legendFormat": "P50 sts/{{dst_statefulset}}",
               "refId": "A"
             },
             {
               "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 statefulset/{{dst_statefulset}}",
+              "legendFormat": "P95 sts/{{dst_statefulset}}",
               "refId": "B"
             },
             {
               "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 statefulset/{{dst_statefulset}}",
+              "legendFormat": "P99 sts/{{dst_statefulset}}",
               "refId": "C"
             }
           ],
@@ -2095,7 +2095,7 @@
         }
       ],
       "repeat": "outbound",
-      "title": "statefulset/$outbound",
+      "title": "sts/$outbound",
       "type": "row"
     },
     {
@@ -2236,6 +2236,6 @@
   },
   "timezone": "",
   "title": "Linkerd StatefulSet",
-  "uid": "6svnwykmk",
+  "uid": "statefulset",
   "version": 1
 }

@@ -29,24 +29,24 @@ var (
 	ValidTargets = []string{
 		k8s.Authority,
 		k8s.DaemonSet,
-		k8s.StatefulSet,
 		k8s.Deployment,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,
+		k8s.StatefulSet,
 	}
 
 	// ValidTapDestinations specifies resource types allowed as a tap destination:
 	// destination resource on an outbound 'to' query
 	ValidTapDestinations = []string{
 		k8s.DaemonSet,
-		k8s.StatefulSet,
 		k8s.Deployment,
 		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,
 		k8s.Service,
+		k8s.StatefulSet,
 	}
 )
 
@@ -553,16 +553,16 @@ func K8sPodToPublicPod(pod v1.Pod, ownerKind string, ownerName string) pb.Pod {
 	switch ownerKind {
 	case k8s.Deployment:
 		item.Owner = &pb.Pod_Deployment{Deployment: namespacedOwnerName}
+	case k8s.DaemonSet:
+		item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
+	case k8s.Job:
+		item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
 	case k8s.ReplicaSet:
 		item.Owner = &pb.Pod_ReplicaSet{ReplicaSet: namespacedOwnerName}
 	case k8s.ReplicationController:
 		item.Owner = &pb.Pod_ReplicationController{ReplicationController: namespacedOwnerName}
 	case k8s.StatefulSet:
 		item.Owner = &pb.Pod_StatefulSet{StatefulSet: namespacedOwnerName}
-	case k8s.DaemonSet:
-		item.Owner = &pb.Pod_DaemonSet{DaemonSet: namespacedOwnerName}
-	case k8s.Job:
-		item.Owner = &pb.Pod_Job{Job: namespacedOwnerName}
 	}
 
 	return item

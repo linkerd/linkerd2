@@ -156,9 +156,9 @@ class NamespaceLanding extends React.Component {
 
         {this.renderResourceSection("deployment", metrics.deployment)}
         {this.renderResourceSection("daemonset", metrics.daemonset)}
-        {this.renderResourceSection("statefulset", metrics.statefulset)}
-        {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("pod", metrics.pod)}
+        {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
+        {this.renderResourceSection("statefulset", metrics.statefulset)}
         {this.renderResourceSection("authority", metrics.authority)}
       </Grid>
     );
