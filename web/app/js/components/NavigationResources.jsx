@@ -73,6 +73,7 @@ class NavigationResourcesBase extends React.Component {
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
         <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
+        <NavigationResource type="statefulsets" metrics={allMetrics.statefulset} />
       </MenuList>
     );
   }

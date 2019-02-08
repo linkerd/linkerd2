@@ -38,6 +38,7 @@ func main() {
 		nil,
 		restrictToNamespace,
 		k8s.DS,
+		k8s.SS,
 		k8s.Deploy,
 		k8s.Pod,
 		k8s.RC,

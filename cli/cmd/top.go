@@ -286,6 +286,8 @@ func newCmdTop() *cobra.Command {
   * deploy my-deploy
   * ds/my-daemonset
   * ns/my-ns
+  * sts
+  * sts/my-statefulset
 
   Valid resource types include:
   * daemonsets
@@ -293,8 +295,9 @@ func newCmdTop() *cobra.Command {
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported as a --to resource)
-  * jobs (only supported as a --to resource)`,
+  * statefulsets
+  * jobs (only supported as a --to resource),
+  * services (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
   linkerd top deploy/web
 

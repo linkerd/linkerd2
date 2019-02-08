@@ -45,6 +45,7 @@ const (
 	RC
 	RS
 	SP
+	SS
 	Svc
 )
 
@@ -61,6 +62,7 @@ type API struct {
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appv1beta2informers.ReplicaSetInformer
 	sp       spinformers.ServiceProfileInformer
+	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
 
 	syncChecks        []cache.InformerSynced
@@ -128,6 +130,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case SP:
 			api.sp = spSharedInformers.Linkerd().V1alpha1().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
+		case SS:
+			api.ss = sharedInformers.Apps().V1().StatefulSets()
+			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
@@ -166,6 +171,14 @@ func (api *API) DS() appv1informers.DaemonSetInformer {
 		panic("DS informer not configured")
 	}
 	return api.ds
+}
+
+// SS provides access to a shared informer and lister for Statefulsets.
+func (api *API) SS() appv1informers.StatefulSetInformer {
+	if api.ss == nil {
+		panic("SS informer not configured")
+	}
+	return api.ss
 }
 
 // RS provides access to a shared informer and lister for ReplicaSets.
@@ -250,6 +263,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getRCs(namespace, name)
 	case k8s.Service:
 		return api.getServices(namespace, name)
+	case k8s.StatefulSet:
+		return api.getStatefulsets(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -313,6 +328,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*apiv1.Pod
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
 
+	case *appsv1.StatefulSet:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+
 	case *apiv1.Pod:
 		// Special case for pods:
 		// GetPodsFor a pod should just return the pod itself
@@ -365,6 +384,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 		return typed.Name, typed.Namespace, nil
 
 	case *apiv1.Service:
+		return typed.Name, typed.Namespace, nil
+
+	case *appsv1.StatefulSet:
 		return typed.Name, typed.Namespace, nil
 
 	case *apiv1.Pod:
@@ -531,6 +553,32 @@ func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) 
 	objects := []runtime.Object{}
 	for _, ds := range daemonsets {
 		objects = append(objects, ds)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var statefulsets []*appsv1.StatefulSet
+
+	if namespace == "" {
+		statefulsets, err = api.SS().Lister().List(labels.Everything())
+	} else if name == "" {
+		statefulsets, err = api.SS().Lister().StatefulSets(namespace).List(labels.Everything())
+	} else {
+		var ss *appsv1.StatefulSet
+		ss, err = api.SS().Lister().StatefulSets(namespace).Get(name)
+		statefulsets = []*appsv1.StatefulSet{ss}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, ss := range statefulsets {
+		objects = append(objects, ss)
 	}
 
 	return objects, nil

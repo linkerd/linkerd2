@@ -55,7 +55,7 @@ func main() {
 
 	var spClient *spclient.Clientset
 	restrictToNamespace := ""
-	resources := []k8s.APIResource{k8s.DS, k8s.Deploy, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc}
+	resources := []k8s.APIResource{k8s.DS, k8s.Deploy, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS}
 
 	if *singleNamespace {
 		restrictToNamespace = *controllerNamespace
