@@ -94,7 +94,7 @@ func expectSuccessfulGetRequestToRetry(t *testing.T, host string, port string) s
 	targetURL := fmt.Sprintf("http://%s:%s/", host, port)
 
 	var result string = expectSuccessfulGetRequestToURLRetry(t, targetURL)
-  var count int = 0
+  var count int
 
   for result == attemptToRetry && count < retryLimit {
     fmt.Printf("Request failed. Retrying request. Attempt %d of %d\n", count+1, retryLimit)
