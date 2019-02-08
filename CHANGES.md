@@ -1,3 +1,41 @@
+## edge-19.2.1
+
+* Controller
+  * **Breaking change** Changed automatic proxy injection to be opt-in via the
+    `linkerd.io/inject` annotation on the pod or namespace. More info:
+    https://linkerd.io/2/proxy-injection/
+  * Added `linkerd.io/created-by` annotation to the linkerd-cni DaemonSet
+    (thanks @codeman9!)
+  * Added a 10 second keepalive default to resolve dropped connections in Azure
+    environments
+  * Improved node selection for installing the linkerd-cni DaemonSet (thanks
+    @codeman9!)
+  * `ServiceProfile`s defined in the client namespace now take priority over
+    ones defined in the server namespace
+  * Corrected the expected controller identity when configuring pods with TLS
+  * Modified klog to be verbose when controller log-level is set to `Debug`
+* CLI
+  * Added the `linkerd endpoints` command to introspect Linkerd's service
+    discovery state
+  * Added the `--tap` flag to `linkerd profile` to generate a `ServiceProfile`
+    by using the route results seen during the tap
+  * Added support for the `linkerd.io/inject: disabled` annotation on pod specs
+    to disable injection for specific pods when running `linkerd inject`
+  * Added support for `basePath` in OpenAPI 2.0 files when running `linkerd
+    profile --open-api`
+  * Increased `linkerd check` client timeout from 5 seconds to 30 seconds to fix
+    issues for clusters with a slower API server
+  * `linkerd routes` will no longer return rows for `ExternalName` services in
+    the namespace
+  * Broadened set of valid URLs when connecting to the Kubernetes API
+  * Improved `ServiceProfile` field validation in `linkerd check`
+* Proxy
+  * Added TCP keepalive configuration to fix environments where peers may
+    silently drop connections
+  * The `Get` and `GetProfiles` API now accept a `proxy_id` parameter in order
+    to return more tailored results
+  * Removed TLS fallback-to-plaintext if handshake fails
+
 ## edge-19.1.4
 
 * Controller
