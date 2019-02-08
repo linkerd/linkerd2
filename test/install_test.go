@@ -75,6 +75,9 @@ func TestInstall(t *testing.T) {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["linkerd-ca"] = 1
 	}
+	if TestHelper.SingleNamespace() {
+		cmd = append(cmd, "--single-namespace")
+	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
