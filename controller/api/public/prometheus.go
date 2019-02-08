@@ -22,6 +22,9 @@ type promResult struct {
 const (
 	promRequests       = promType("QUERY_REQUESTS")
 	promActualRequests = promType("QUERY_ACTUAL_REQUESTS")
+	promTcpConnections = promType("QUERY_TCP_CONNECTIONS")
+	promTcpReadBytes   = promType("QUERY_TCP_READ_BYTES")
+	promTcpWriteBytes  = promType("QUERY_TCP_WRITE_BYTES")
 	promLatencyP50     = promType("0.5")
 	promLatencyP95     = promType("0.95")
 	promLatencyP99     = promType("0.99")
@@ -136,9 +139,9 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 	// kick off asynchronous queries: request count queries + 3 latency queries
 	for pt, requestQueryTemplate := range requestQueryTemplates {
 		go func(typ promType, template string) {
-			// success/failure counts
-			requestsQuery := fmt.Sprintf(template, labels, timeWindow, groupBy)
-			resultVector, err := s.queryProm(ctx, requestsQuery)
+			query := fmt.Sprintf(template, labels, timeWindow, groupBy)
+
+			resultVector, err := s.queryProm(ctx, query)
 
 			resultChan <- promResult{
 				prom: typ,

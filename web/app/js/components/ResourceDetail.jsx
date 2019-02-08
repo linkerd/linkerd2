@@ -131,7 +131,7 @@ export class ResourceDetailBase extends React.Component {
       this.api.fetchPods(resource.namespace),
       // metrics for all pods in this namespace (hack, continued)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource("pod", resource.namespace)}`
+        `${this.api.urlsForResource("pod", resource.namespace)}&tcp_stats=true`
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
@@ -318,6 +318,14 @@ export class ResourceDetailBase extends React.Component {
             </React.Fragment>
           )
         }
+
+        <React.Fragment>
+          <Typography variant="h5">TCP</Typography>
+          <MetricsTable
+            resource="pod"
+            isTcpTable={true}
+            metrics={this.state.podMetrics} />
+        </React.Fragment>
       </div>
     );
   }

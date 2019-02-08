@@ -33,6 +33,9 @@ type rKey struct {
 const (
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
+	tcpConnectionsQuery  = "sum(increase(tcp_open_total%s[%s])) by (%s)"
+	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
+	tcpWriteBytesQuery   = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)"
 )
 
 type podStats struct {
@@ -169,8 +172,9 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	}
 
 	var requestMetrics map[rKey]*pb.BasicStats
+	var tcpMetrics map[rKey]*pb.TcpStats
 	if !req.SkipStats {
-		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -184,6 +188,14 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		if !ok {
 			continue
 		}
+
+		var tcpStats *pb.TcpStats
+		if !req.TcpStats {
+			tcpStats = nil
+		} else {
+			tcpStats = tcpMetrics[key]
+		}
+
 		k8sResource := objInfo.object
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
@@ -193,6 +205,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 			},
 			TimeWindow: req.TimeWindow,
 			Stats:      requestMetrics[key],
+			TcpStats:   tcpStats,
 		}
 
 		podStat := objInfo.podStats
@@ -219,7 +232,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 	var requestMetrics map[rKey]*pb.BasicStats
 	if !req.SkipStats {
 		var err error
-		requestMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, _, err = s.getStatMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -307,19 +320,30 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 	return
 }
 
-func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, error) {
+func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
-	results, err := s.getPrometheusMetrics(ctx, map[promType]string{promRequests: reqQuery}, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
-
-	if err != nil {
-		return nil, err
+	promQueries := map[promType]string{
+		promRequests: reqQuery,
 	}
 
-	return processPrometheusMetrics(req, results, groupBy), nil
+	if req.TcpStats {
+		promQueries[promTcpConnections] = tcpConnectionsQuery
+		promQueries[promTcpReadBytes] = tcpReadBytesQuery
+		promQueries[promTcpWriteBytes] = tcpWriteBytesQuery
+	}
+	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
+	return basicStats, tcpStats, nil
 }
 
-func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) map[rKey]*pb.BasicStats {
+func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
 	basicStats := make(map[rKey]*pb.BasicStats)
+	tcpStats := make(map[rKey]*pb.TcpStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
@@ -327,6 +351,9 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 
 			if basicStats[resource] == nil {
 				basicStats[resource] = &pb.BasicStats{}
+			}
+			if tcpStats[resource] == nil {
+				tcpStats[resource] = &pb.TcpStats{}
 			}
 
 			value := extractSampleValue(sample)
@@ -349,11 +376,18 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				basicStats[resource].LatencyMsP95 = value
 			case promLatencyP99:
 				basicStats[resource].LatencyMsP99 = value
+			case promTcpConnections:
+				tcpStats[resource].OpenConnections = value
+			case promTcpReadBytes:
+				tcpStats[resource].ReadBytesTotal = value
+			case promTcpWriteBytes:
+				tcpStats[resource].WriteBytesTotal = value
 			}
+
 		}
 	}
 
-	return basicStats
+	return basicStats, tcpStats
 }
 
 func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) rKey {
