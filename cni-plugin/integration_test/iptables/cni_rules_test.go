@@ -93,7 +93,7 @@ func expectCannotConnectGetRequestTo(t *testing.T, host string, port string) {
 func expectSuccessfulGetRequestToRetry(t *testing.T, host string, port string) string {
 	targetURL := fmt.Sprintf("http://%s:%s/", host, port)
 
-	var result string = expectSuccessfulGetRequestToURLRetry(t, targetURL)
+	var result = expectSuccessfulGetRequestToURLRetry(t, targetURL)
   var count int
 
   for result == attemptToRetry && count < retryLimit {
