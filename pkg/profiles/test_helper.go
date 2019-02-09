@@ -19,14 +19,14 @@ func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
 		},
 		Spec: v1alpha1.ServiceProfileSpec{
 			Routes: []*v1alpha1.RouteSpec{
-				&v1alpha1.RouteSpec{
+				{
 					Name: "/authors/{id}",
 					Condition: &v1alpha1.RequestMatch{
 						PathRegex: "/authors/\\d+",
 						Method:    "POST",
 					},
 					ResponseClasses: []*v1alpha1.ResponseClass{
-						&v1alpha1.ResponseClass{
+						{
 							Condition: &v1alpha1.ResponseMatch{
 								Status: &v1alpha1.Range{
 									Min: 500,

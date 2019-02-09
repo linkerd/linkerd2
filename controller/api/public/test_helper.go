@@ -201,7 +201,7 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
-					&pb.StatTable{
+					{
 						Table: &pb.StatTable_PodGroup_{
 							PodGroup: &pb.StatTable_PodGroup{
 								Rows: rows,
@@ -258,7 +258,7 @@ func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, autho
 		Response: &pb.TopRoutesResponse_Ok_{
 			Ok: &pb.TopRoutesResponse_Ok{
 				Routes: []*pb.RouteTable{
-					&pb.RouteTable{
+					{
 						Rows:     rows,
 						Resource: "deploy/foobar",
 					},
@@ -284,9 +284,9 @@ func GenEndpointsResponse(identities []string) discovery.EndpointsResponse {
 		ip, _ := addr.ParsePublicIPV4("1.2.3.4")
 		resp.ServicePorts[identity] = &discovery.ServicePort{
 			PortEndpoints: map[uint32]*discovery.PodAddresses{
-				8080: &discovery.PodAddresses{
+				8080: {
 					PodAddresses: []*discovery.PodAddress{
-						&discovery.PodAddress{
+						{
 							Addr: &pb.TcpAddress{
 								Ip:   ip,
 								Port: 8080,

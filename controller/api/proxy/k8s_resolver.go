@@ -171,7 +171,7 @@ func (k *k8sResolver) localKubernetesServiceIDFromDNSName(host string) (*service
 	// doesn't require Kubernetes to do this, but some hosting providers like
 	// GKE do it, and so we need to support it for transparency.
 	if !matched {
-		hostLabels, matched = maybeStripSuffixLabels(hostLabels, []string{"cluster", "local"})
+		hostLabels, _ = maybeStripSuffixLabels(hostLabels, []string{"cluster", "local"})
 	}
 	// TODO:
 	// ```

@@ -200,7 +200,7 @@ func TestBuildResource(t *testing.T) {
 	t.Run("Returns expected errors on invalid input", func(t *testing.T) {
 		msg := "cannot find Kubernetes canonical name from friendly name [invalid]"
 		expectations := []resourceExp{
-			resourceExp{
+			{
 				namespace: "",
 				args:      []string{"invalid"},
 			},
@@ -219,7 +219,7 @@ func TestBuildResource(t *testing.T) {
 
 	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
 		expectations := []resourceExp{
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"deployments"},
 				resource: pb.Resource{
@@ -228,7 +228,7 @@ func TestBuildResource(t *testing.T) {
 					Name:      "",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "",
 				args:      []string{"deploy/foo"},
 				resource: pb.Resource{
@@ -237,7 +237,7 @@ func TestBuildResource(t *testing.T) {
 					Name:      "foo",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"po"},
 				resource: pb.Resource{
@@ -246,7 +246,7 @@ func TestBuildResource(t *testing.T) {
 					Name:      "",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"ns"},
 				resource: pb.Resource{
@@ -255,7 +255,7 @@ func TestBuildResource(t *testing.T) {
 					Name:      "",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"ns/foo-ns2"},
 				resource: pb.Resource{
@@ -289,11 +289,11 @@ func TestBuildResources(t *testing.T) {
 	t.Run("Rejects duped resources", func(t *testing.T) {
 		msg := "cannot supply duplicate resources"
 		expectations := []resourceExp{
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"foo", "foo"},
 			},
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"all", "all"},
 			},
@@ -313,15 +313,15 @@ func TestBuildResources(t *testing.T) {
 	t.Run("Ensures 'all' can't be supplied alongside other resources", func(t *testing.T) {
 		msg := "'all' can't be supplied alongside other resources"
 		expectations := []resourceExp{
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"po", "foo", "all"},
 			},
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"foo", "all"},
 			},
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"all", "foo"},
 			},
@@ -340,7 +340,7 @@ func TestBuildResources(t *testing.T) {
 
 	t.Run("Correctly parses Kubernetes resources from the command line", func(t *testing.T) {
 		expectations := []resourceExp{
-			resourceExp{
+			{
 				namespace: "test-ns",
 				args:      []string{"deployments"},
 				resource: pb.Resource{
@@ -349,7 +349,7 @@ func TestBuildResources(t *testing.T) {
 					Name:      "",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "",
 				args:      []string{"deploy/foo"},
 				resource: pb.Resource{
@@ -358,7 +358,7 @@ func TestBuildResources(t *testing.T) {
 					Name:      "foo",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"po", "foo"},
 				resource: pb.Resource{
@@ -367,7 +367,7 @@ func TestBuildResources(t *testing.T) {
 					Name:      "foo",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"ns", "foo-ns2"},
 				resource: pb.Resource{
@@ -376,7 +376,7 @@ func TestBuildResources(t *testing.T) {
 					Name:      "foo-ns2",
 				},
 			},
-			resourceExp{
+			{
 				namespace: "foo-ns",
 				args:      []string{"ns/foo-ns2"},
 				resource: pb.Resource{
@@ -410,13 +410,13 @@ func TestK8sPodToPublicPod(t *testing.T) {
 
 	t.Run("Returns expected pods", func(t *testing.T) {
 		expectations := []podExp{
-			podExp{
+			{
 				k8sPod: v1.Pod{},
 				publicPod: pb.Pod{
 					Name: "/",
 				},
 			},
-			podExp{
+			{
 				k8sPod: v1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "ns",
@@ -429,7 +429,7 @@ func TestK8sPodToPublicPod(t *testing.T) {
 					},
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
-							v1.Container{
+							{
 								Name:  k8s.ProxyContainerName,
 								Image: "linkerd-proxy:test-version",
 							},
@@ -439,7 +439,7 @@ func TestK8sPodToPublicPod(t *testing.T) {
 						PodIP: "pod-ip",
 						Phase: "status",
 						ContainerStatuses: []v1.ContainerStatus{
-							v1.ContainerStatus{
+							{
 								Name:  k8s.ProxyContainerName,
 								Ready: true,
 							},

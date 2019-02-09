@@ -1,6 +1,5 @@
 required = [
   "github.com/golang/protobuf/protoc-gen-go",
-  "golang.org/x/lint/golint",
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/defaulter-gen",

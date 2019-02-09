@@ -36,7 +36,6 @@ jobs:
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
         - go test -race -v ./...
-        - go vet ./...
         - ./bin/lint
 
     - language: node_js

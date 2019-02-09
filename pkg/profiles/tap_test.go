@@ -84,14 +84,14 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Name: "GET /my/path/hi",
 					Condition: &sp.RequestMatch{
 						PathRegex: `/my/path/hi`,
 						Method:    "GET",
 					},
 				},
-				&sp.RouteSpec{
+				{
 					Name: "POST /emojivoto.v1.VotingService/VoteFire",
 					Condition: &sp.RequestMatch{
 						PathRegex: `/emojivoto\.v1\.VotingService/VoteFire`,
