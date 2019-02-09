@@ -620,7 +620,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: prom/prometheus:v2.4.0
+        image: prom/prometheus:v2.7.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
