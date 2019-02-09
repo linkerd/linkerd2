@@ -7,5 +7,5 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . $bindir/_docker.sh
 . $bindir/_tag.sh
 
-docker_push base         2017-10-30.01
+docker_push base         2019-02-08.01
 docker_push go-deps      "$(go_deps_sha)"

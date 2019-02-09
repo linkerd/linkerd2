@@ -1,6 +1,6 @@
-ARG RUNTIME_IMAGE=gcr.io/linkerd-io/base:2017-10-30.01
+ARG RUNTIME_IMAGE=gcr.io/linkerd-io/base:2019-02-08.01
 
-FROM gcr.io/linkerd-io/base:2017-10-30.01 as fetch
+FROM gcr.io/linkerd-io/base:2019-02-08.01 as fetch
 RUN apt-get update && apt-get install -y ca-certificates
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
