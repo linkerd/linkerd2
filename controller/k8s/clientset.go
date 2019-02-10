@@ -3,6 +3,7 @@ package k8s
 import (
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"k8s.io/client-go/kubernetes"
 
 	// Load all the auth plugins for the cloud providers.
@@ -16,6 +17,8 @@ func NewClientSet(kubeConfig string) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
+	wt := config.WrapTransport
+	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
 	return kubernetes.NewForConfig(config)
 }
 
@@ -27,5 +30,7 @@ func NewSpClientSet(kubeConfig string) (*spclient.Clientset, error) {
 		return nil, err
 	}
 
+	wt := config.WrapTransport
+	config.WrapTransport = prometheus.ClientWithTelemetry("sp", wt)
 	return spclient.NewForConfig(config)
 }
