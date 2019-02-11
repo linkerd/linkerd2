@@ -19,7 +19,7 @@ func TestCheckStatus(t *testing.T) {
 		hc.Add("category", "check1", "", func(context.Context) error {
 			return nil
 		})
-		hc.Add("category", "check2", "http://linkerd.io/hint-url", func(context.Context) error {
+		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
 			return fmt.Errorf("This should contain instructions for fail")
 		})
 
