@@ -43,8 +43,20 @@ var (
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
 	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-	alphaNumDashDot           = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
-	alphaNumDashDotSlashColon = regexp.MustCompile("^[\\./a-zA-Z0-9-:]+$")
+	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
+	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
+
+	// Full Rust log level syntax at
+	// https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging
+	r                  = strings.NewReplacer("\t", "", "\n", "")
+	validProxyLogLevel = regexp.MustCompile(r.Replace(`
+		^(
+			(
+				(trace|debug|warn|info|error)|
+				(\w|::)+|
+				((\w|::)+=(trace|debug|warn|info|error))
+			)(?:,|$)
+		)+$`))
 )
 
 // RootCmd represents the root Cobra command
@@ -313,6 +325,10 @@ func (options *proxyConfigOptions) validate() error {
 
 	if options.tls != "" && options.tls != optionalTLS {
 		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
+	}
+
+	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
+		return fmt.Errorf("%s is not a valid proxy log level", options.proxyLogLevel)
 	}
 
 	return nil
