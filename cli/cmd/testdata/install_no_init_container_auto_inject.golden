@@ -1251,6 +1251,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -no-init-container=true
+        - -tls-enabled=true
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

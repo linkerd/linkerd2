@@ -23,7 +23,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		t.Fatalf("failed to create root CA: %s", err)
 	}
 
-	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, false, rootCA)
+	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

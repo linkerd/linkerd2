@@ -22,12 +22,20 @@ func TestMutate(t *testing.T) {
 	}
 	fakeClient := fake.NewClient("", ns)
 
-	defaultWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	defaultWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	noInitContainerWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, true)
+	noInitContainerWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, true, fake.DefaultTLSEnabled)
+	if err != nil {
+		t.Fatal("Unexpected error: ", err)
+	}
+
+	tlsDisabledWebhookResources := *testWebhookResources
+	tlsDisabledWebhookResources.FileProxySpec = fake.FileProxyTLSDisabledSpec
+
+	tlsDisabledWebook, err := NewWebhook(fakeClient, &tlsDisabledWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, false)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -42,6 +50,7 @@ func TestMutate(t *testing.T) {
 		{defaultWebhook, "inject enabled", "inject-enabled-request.json", "inject-enabled-response.yaml"},
 		{defaultWebhook, "inject disabled", "inject-disabled-request.json", "inject-disabled-response.yaml"},
 		{noInitContainerWebhook, "inject no-init-container", "inject-enabled-request.json", "inject-no-init-container-response.yaml"},
+		{tlsDisabledWebook, "inject without tls", "inject-enabled-request.json", "inject-enabled-tls-disabled-response.yaml"},
 	}
 
 	for _, testCase := range testCases {
@@ -73,7 +82,7 @@ func TestShouldInject(t *testing.T) {
 	}
 	fakeClient := fake.NewClient("", nsEnabled, nsDisabled)
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -153,7 +162,7 @@ func TestShouldInject(t *testing.T) {
 func TestContainersSpec(t *testing.T) {
 	fakeClient := fake.NewClient("")
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -192,7 +201,7 @@ func TestContainersSpec(t *testing.T) {
 func TestVolumesSpec(t *testing.T) {
 	fakeClient := fake.NewClient("")
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

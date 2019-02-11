@@ -1229,6 +1229,7 @@ spec:
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -no-init-container=false
+        - -tls-enabled=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

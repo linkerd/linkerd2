@@ -31,7 +31,8 @@ spec:
         - "proxy-injector"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
-        - "-no-init-container={{.Values.NoInitContainer }}"
+        - "-no-init-container={{.Values.NoInitContainer}}"
+        - "-tls-enabled={{.Values.EnableTLS}}"
         ports:
         - name: proxy-injector
           containerPort: 8443
@@ -186,6 +187,7 @@ data:
     {{- end}}
     - name: LINKERD2_PROXY_ID
       value: "" # this value will be computed by the webhook
+    {{- if .Values.EnableTLS }}
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/{{.Values.TLSTrustAnchorFileName}}
     - name: LINKERD2_PROXY_TLS_CERT
@@ -198,6 +200,7 @@ data:
       value: {{.Values.Namespace}}
     - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
       value: "" # this value will be computed by the webhook
+    {{- end}}
     image: {{.Values.ProxyImage}}
     imagePullPolicy: IfNotPresent
     livenessProbe:
@@ -229,6 +232,7 @@ data:
     securityContext:
       runAsUser: {{.Values.ProxyUID}}
     terminationMessagePolicy: FallbackToLogsOnError
+    {{- if .Values.EnableTLS }}
     volumeMounts:
     - mountPath: /var/linkerd-io/trust-anchors
       name: {{.Values.TLSTrustAnchorVolumeName}}
@@ -236,6 +240,7 @@ data:
     - mountPath: /var/linkerd-io/identity
       name: {{.Values.TLSSecretsVolumeName}}
       readOnly: true
+    {{- end }}
   {{.Values.TLSTrustAnchorVolumeSpecFileName}}: |
     name: {{.Values.TLSTrustAnchorVolumeName}}
     configMap:
