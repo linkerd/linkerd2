@@ -4,7 +4,7 @@
   * Improved service profile validation when running `linkerd check` in order to
     validate service profiles in all namespaces
 * Controller
-  * Added stat and tap support for StatefulSets in the CLI, Grafana, and WebUI
+  * Added stat and tap support for StatefulSets in the CLI, Grafana, and web UI
   * Updated auto-injector to use the proxy log level configured at install time
   * Fixed issue with auto-injector including TLS settings in injected pods even
     when TLS was not enabled
