@@ -804,14 +804,6 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 }
 
 func (hc *HealthChecker) validateServiceProfiles() error {
-	if hc.clientset == nil {
-		var err error
-		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
-		if err != nil {
-			return err
-		}
-	}
-
 	if hc.spClientset == nil {
 		var err error
 		hc.spClientset, err = spclient.NewForConfig(hc.kubeAPI.Config)
@@ -820,22 +812,12 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		}
 	}
 
-	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles(hc.ControlPlaneNamespace).List(meta_v1.ListOptions{})
+	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles("").List(meta_v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
 	for _, p := range svcProfiles.Items {
-		service, namespace, err := profiles.ValidateName(p.Name)
-		if err != nil {
-			return err
-		}
-
-		_, err = hc.clientset.CoreV1().Services(namespace).Get(service, meta_v1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("ServiceProfile \"%s\" has unknown service: %s", p.Name, err)
-		}
-
 		// TODO: remove this check once we implement ServiceProfile validation via a
 		// ValidatingAdmissionWebhook
 		result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
