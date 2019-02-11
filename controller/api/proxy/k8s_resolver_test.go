@@ -5,6 +5,11 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/linkerd/linkerd2/controller/k8s"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func TestK8sResolver(t *testing.T) {
@@ -47,6 +52,67 @@ func TestK8sResolver(t *testing.T) {
 		}
 	})
 
+}
+
+func TestGetState(t *testing.T) {
+	k8sAPI, err := k8s.NewFakeAPI("")
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+	endpointsWatcher := newEndpointsWatcher(k8sAPI)
+
+	testCases := []struct {
+		servicePorts servicePorts
+	}{
+		{
+			servicePorts: servicePorts{},
+		},
+		{
+			servicePorts: servicePorts{
+				serviceID{namespace: "ns", name: "name"}: map[uint32]*servicePort{
+					8888: &servicePort{
+						addresses: []*updateAddress{
+							makeUpdateAddress("10.1.30.135", 7779, "ns", "world-575bf846b4-tp4hw"),
+						},
+						endpoints: &v1.Endpoints{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "world",
+								Namespace: "ns",
+							},
+							Subsets: []v1.EndpointSubset{
+								v1.EndpointSubset{
+									Addresses: []v1.EndpointAddress{
+										v1.EndpointAddress{
+											IP:        "10.1.30.135",
+											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
+										},
+									},
+									Ports: []v1.EndpointPort{v1.EndpointPort{Name: "app", Port: 7779, Protocol: "TCP"}},
+								},
+							},
+						},
+						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 1234},
+					},
+				},
+			},
+		},
+	}
+
+	for i, tt := range testCases {
+		t.Run(fmt.Sprintf("%d: returns the state of the resolve", i), func(t *testing.T) {
+			endpointsWatcher.servicePorts = tt.servicePorts
+			resolver := newK8sResolver(
+				[]string{"some", "namespace"},
+				"controller-ns",
+				endpointsWatcher,
+				newProfileWatcher(k8sAPI),
+			)
+			err := equalServicePorts(tt.servicePorts, resolver.getState())
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }
 
 func TestLocalKubernetesServiceIdFromDNSName(t *testing.T) {
@@ -218,7 +284,7 @@ func assertReturnError(t *testing.T, resolver *k8sResolver, nameToExpectedError 
 	for _, name := range nameToExpectedError {
 		resolvedName, err := resolver.localKubernetesServiceIDFromDNSName(name)
 		if err == nil {
-			t.Fatalf("Expecting error, got resovled name [%s]", *resolvedName)
+			t.Fatalf("Expecting error, got resolved name [%s]", *resolvedName)
 		}
 	}
 }

@@ -9,6 +9,10 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/public"
 )
 
+// DefaultWeight is the default address weight sent by the Destination service
+// to the Linkerd proxies.
+const DefaultWeight = 1
+
 // PublicAddressToString formats a Public API TCPAddress as a string.
 func PublicAddressToString(addr *public.TcpAddress) string {
 	octects := decodeIPToOctets(addr.GetIp().GetIpv4())
@@ -94,6 +98,35 @@ func ParsePublicIPV4(ip string) (*public.IPAddress, error) {
 		octets[i] = uint8(octet)
 	}
 	return PublicIPV4(octets[0], octets[1], octets[2], octets[3]), nil
+}
+
+// NetToPublic converts a Proxy API TCPAddress to a Public API
+// TCPAddress
+func NetToPublic(net *pb.TcpAddress) *public.TcpAddress {
+	var ip *public.IPAddress
+
+	switch i := net.GetIp().GetIp().(type) {
+	case *pb.IPAddress_Ipv6:
+		ip = &public.IPAddress{
+			Ip: &public.IPAddress_Ipv6{
+				Ipv6: &public.IPv6{
+					First: i.Ipv6.First,
+					Last:  i.Ipv6.Last,
+				},
+			},
+		}
+	case *pb.IPAddress_Ipv4:
+		ip = &public.IPAddress{
+			Ip: &public.IPAddress_Ipv4{
+				Ipv4: i.Ipv4,
+			},
+		}
+	}
+
+	return &public.TcpAddress{
+		Ip:   ip,
+		Port: net.GetPort(),
+	}
 }
 
 func decodeIPToOctets(ip uint32) [4]uint8 {

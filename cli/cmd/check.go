@@ -64,8 +64,8 @@ non-zero exit code.`,
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
-	cmd.PersistentFlags().StringVar(&options.targetProxyResource, "proxy", options.targetProxyResource, "Only run data-plane checks on a given target, to determine if the data plane is healthy. If no target is provided, all resources will be used.")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Retry and wait for some checks to succeed if they don't pass the first time")
+	cmd.PersistentFlags().BoolVar(&options.targetProxyResource, "proxy", options.targetProxyResource, "Only run data-plane checks, to determine if the data plane is healthy")
+	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
 
@@ -177,8 +177,8 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		fmt.Fprintf(w, "%s %s\n", status, result.Description)
 		if result.Err != nil {
 			fmt.Fprintf(w, "    %s\n", result.Err)
-			if result.HintURL != "" {
-				fmt.Fprintf(w, "    See %s for hints\n", result.HintURL)
+			if result.HintAnchor != "" {
+				fmt.Fprintf(w, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
 			}
 		}
 	}

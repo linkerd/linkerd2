@@ -6,7 +6,7 @@ apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
   name: {{.ServiceName}}.{{.ServiceNamespace}}.{{.ClusterZone}}
-  namespace: {{.ControlPlaneNamespace}}
+  namespace: {{.ServiceNamespace}}
 spec:
   # A service profile defines a list of routes.  Linkerd can aggregate metrics
   # like request volume, latency, and success rate by route.
@@ -72,6 +72,11 @@ spec:
       # The response class defines whether responses should be counted as
       # successes or failures.
       isFailure: true
+
+    # A route can define a request timeout.  Any requests to this route that
+    # exceed the timeout will be canceled.  If unspecified, the default timeout
+    # is '10s' (ten seconds).
+    # timeout: 250ms
 
   # A service profile can also define a retry budget.  This specifies the
   # maximum total number of retries that should be sent to this service as a

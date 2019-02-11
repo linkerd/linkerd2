@@ -6,19 +6,22 @@ import (
 	"io"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
 )
 
-// MockAPIClient satisfies the Public API's gRPC interface.
+// MockAPIClient satisfies the Public API's gRPC interfaces (public.APIClient).
 type MockAPIClient struct {
 	ErrorToReturn                  error
 	VersionInfoToReturn            *pb.VersionInfo
@@ -29,6 +32,7 @@ type MockAPIClient struct {
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
+	EndpointsResponseToReturn      *discovery.EndpointsResponse
 }
 
 // StatSummary provides a mock of a Public API method.
@@ -69,6 +73,11 @@ func (c *MockAPIClient) TapByResource(ctx context.Context, in *pb.TapByResourceR
 // SelfCheck provides a mock of a Public API method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
+}
+
+// Endpoints provides a mock of a Discovery API method.
+func (c *MockAPIClient) Endpoints(ctx context.Context, in *discovery.EndpointsParams, _ ...grpc.CallOption) (*discovery.EndpointsResponse, error) {
+	return c.EndpointsResponseToReturn, c.ErrorToReturn
 }
 
 type mockAPITapClient struct {
@@ -261,6 +270,43 @@ func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, autho
 	return resp
 }
 
+// GenEndpointsResponse generates a mock Public API Endpoints
+// object.
+// identities is a list of "pod.namespace" strings
+func GenEndpointsResponse(identities []string) discovery.EndpointsResponse {
+	resp := discovery.EndpointsResponse{
+		ServicePorts: make(map[string]*discovery.ServicePort),
+	}
+	for _, identity := range identities {
+		parts := strings.SplitN(identity, ".", 2)
+		pod := parts[0]
+		ns := parts[1]
+		ip, _ := addr.ParsePublicIPV4("1.2.3.4")
+		resp.ServicePorts[identity] = &discovery.ServicePort{
+			PortEndpoints: map[uint32]*discovery.PodAddresses{
+				8080: &discovery.PodAddresses{
+					PodAddresses: []*discovery.PodAddress{
+						&discovery.PodAddress{
+							Addr: &pb.TcpAddress{
+								Ip:   ip,
+								Port: 8080,
+							},
+							Pod: &pb.Pod{
+								Name:            ns + "/" + pod,
+								Status:          "running",
+								PodIP:           "1.2.3.4",
+								ResourceVersion: "1234",
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	return resp
+}
+
 type expectedStatRPC struct {
 	err                       error
 	k8sConfigs                []string    // k8s objects to seed the API
@@ -278,6 +324,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
 		tap.NewTapClient(nil),
+		discovery.NewDiscoveryClient(nil),
 		k8sAPI,
 		"linkerd",
 		[]string{},

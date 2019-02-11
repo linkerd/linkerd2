@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _merge from 'lodash/merge';
@@ -48,9 +47,8 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     componentDidUpdate(prevProps) {
-      const changed = _filter(
-        localOptions.resetProps,
-        prop => _get(prevProps, prop) !== _get(this.props, prop),
+      const changed = localOptions.resetProps.filter(
+        prop => _get(prevProps, prop) !== _get(this.props, prop)
       );
 
       if (_isEmpty(changed)) { return; }

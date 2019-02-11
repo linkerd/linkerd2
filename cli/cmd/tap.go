@@ -60,6 +60,8 @@ func newCmdTap() *cobra.Command {
   * deploy my-deploy
   * ds/my-daemonset
   * ns/my-ns
+  * sts
+  * sts/my-statefulset
 
   Valid resource types include:
   * daemonsets
@@ -67,8 +69,9 @@ func newCmdTap() *cobra.Command {
   * namespaces
   * pods
   * replicationcontrollers
-  * services (only supported as a --to resource)
-  * jobs (only supported as a --to resource)`,
+  * statefulsets
+  * jobs (only supported as a --to resource)
+  * services (only supported as a --to resource)`,
 		Example: `  # tap the web deployment in the default namespace
   linkerd tap deploy/web
 

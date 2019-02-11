@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
@@ -134,6 +135,9 @@ var (
 				IsFailure: true,
 			},
 		},
+		Timeout: &duration.Duration{
+			Seconds: 10,
+		},
 	}
 
 	route2 = &sp.RouteSpec{
@@ -157,6 +161,9 @@ var (
 				Condition: pbFiveXXfourTwenty,
 				IsFailure: true,
 			},
+		},
+		Timeout: &duration.Duration{
+			Seconds: 10,
 		},
 	}
 
@@ -227,6 +234,9 @@ var (
 					"route": "multipleRequestMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{},
+				Timeout: &duration.Duration{
+					Seconds: 10,
+				},
 			},
 		},
 		RetryBudget: &profiles.DefaultRetryBudget,
@@ -316,6 +326,9 @@ var (
 						},
 					},
 				},
+				Timeout: &duration.Duration{
+					Seconds: 10,
+				},
 			},
 		},
 		RetryBudget: &profiles.DefaultRetryBudget,
@@ -379,6 +392,39 @@ var (
 				},
 			},
 		},
+	}
+
+	routeWithTimeout = &sp.RouteSpec{
+		Name:            "routeWithTimeout",
+		Condition:       login,
+		ResponseClasses: []*sp.ResponseClass{},
+		Timeout:         "200ms",
+	}
+
+	profileWithTimeout = &sp.ServiceProfile{
+		Spec: sp.ServiceProfileSpec{
+			Routes: []*sp.RouteSpec{
+				routeWithTimeout,
+			},
+		},
+	}
+
+	pbRouteWithTimeout = &pb.Route{
+		MetricsLabels: map[string]string{
+			"route": "routeWithTimeout",
+		},
+		Condition:       pbLogin,
+		ResponseClasses: []*pb.ResponseClass{},
+		Timeout: &duration.Duration{
+			Nanos: 200000000, // 200ms
+		},
+	}
+
+	pbProfileWithTimeout = &pb.DestinationProfile{
+		Routes: []*pb.Route{
+			pbRouteWithTimeout,
+		},
+		RetryBudget: &profiles.DefaultRetryBudget,
 	}
 )
 
@@ -543,6 +589,25 @@ func TestProfileListener(t *testing.T) {
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
 		if !reflect.DeepEqual(actualPbProfile, defaultPbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", defaultPbProfile, actualPbProfile)
+		}
+	})
+
+	t.Run("Sends update with custom timeout", func(t *testing.T) {
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+
+		listener := &profileListener{
+			stream: mockGetProfileServer,
+		}
+
+		listener.Update(profileWithTimeout)
+
+		numProfiles := len(mockGetProfileServer.profilesReceived)
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
+		}
+		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		if !reflect.DeepEqual(actualPbProfile, pbProfileWithTimeout) {
+			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfileWithTimeout, actualPbProfile)
 		}
 	})
 }

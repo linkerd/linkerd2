@@ -109,6 +109,19 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:0c93b97f9166ce4302eacf73de5e80e6380c4391954518db99835f2796513206"
+  name = "github.com/containernetworking/cni"
+  packages = [
+    "pkg/skel",
+    "pkg/types",
+    "pkg/types/020",
+    "pkg/types/current",
+    "pkg/version",
+  ]
+  pruneopts = ""
+  revision = "v0.6.0"
+
+[[projects]]
   digest = "1:a9854984bc40330dde2125537b7f46d0a8d7860b3750de2e7cd0a6f904506212"
   name = "github.com/cyphar/filepath-securejoin"
   packages = ["."]
@@ -395,7 +408,7 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:4e1a388c562b46c42eaeefcf35ae8858df7aa6f2bda261ca1d36aa40d10f62e4"
+  digest = "1:b54147c462536e1d92f5dfd0e0c94816c4e27e5349b06524d4269aaecd387ed4"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
@@ -404,7 +417,8 @@
     "go/tap",
   ]
   pruneopts = ""
-  revision = "1ad70188f9a6d94e2865413713a50390456fa6b6"
+  revision = "ff6064f88ecdcbc6f8a4284f4a0f8c49f184897a"
+  version = "v0.1.6"
 
 [[projects]]
   branch = "master"
@@ -506,6 +520,14 @@
   version = "v0.8.1"
 
 [[projects]]
+  digest = "1:ee2b0c6d6510f89121be4c233754bd79fe1e04d9beebd35ccccd5b38a23412e8"
+  name = "github.com/projectcalico/libcalico-go"
+  packages = ["lib/logutils"]
+  pruneopts = ""
+  revision = "aab828ef9fd5405040c36368f866e5ec9ea314a6"
+  version = "v1.7.3"
+
+[[projects]]
   digest = "1:e76d0fea4ab688de44c38e57cc657a53aed582cdc1e67470d7f3fbbfc3afec1c"
   name = "github.com/prometheus/client_golang"
   packages = [
@@ -565,6 +587,22 @@
   pruneopts = ""
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c756d63fd19d7a0addad30ecb77014fbe82b428c34bdd4142177d0a3d8e77095"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["vfsutil"]
+  pruneopts = ""
+  revision = "74dc9339e414ad069a8d04bba7e7aafd08043a25"
+
+[[projects]]
+  branch = "master"
+  digest = "1:516000eb63bb341737069fafcb705951091b713d2359f84eec58df4347461cd7"
+  name = "github.com/shurcooL/vfsgen"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
 
 [[projects]]
   digest = "1:42a42c4bc67bed17f40fddf0f24d4403e25e7b96488456cf4248e6d16659d370"
@@ -803,6 +841,7 @@
     "stats",
     "status",
     "tap",
+    "test/bufconn",
     "transport",
   ]
   pruneopts = ""
@@ -1200,6 +1239,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/briandowns/spinner",
+    "github.com/containernetworking/cni/pkg/skel",
+    "github.com/containernetworking/cni/pkg/types",
+    "github.com/containernetworking/cni/pkg/types/current",
+    "github.com/containernetworking/cni/pkg/version",
     "github.com/emicklei/proto",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
@@ -1219,6 +1262,7 @@
     "github.com/mattn/go-runewidth",
     "github.com/nsf/termbox-go",
     "github.com/pkg/browser",
+    "github.com/projectcalico/libcalico-go/lib/logutils",
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/client_golang/api/prometheus/v1",
     "github.com/prometheus/client_golang/prometheus",
@@ -1226,6 +1270,7 @@
     "github.com/prometheus/common/model",
     "github.com/satori/go.uuid",
     "github.com/sergi/go-diff/diffmatchpatch",
+    "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/wercker/stern/stern",
@@ -1235,6 +1280,7 @@
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/status",
+    "google.golang.org/grpc/test/bufconn",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
@@ -1290,6 +1336,7 @@
     "k8s.io/helm/pkg/renderutil",
     "k8s.io/helm/pkg/timeconv",
     "k8s.io/klog",
+    "sigs.k8s.io/yaml",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

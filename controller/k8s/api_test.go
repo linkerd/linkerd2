@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -162,6 +163,39 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: my-ds
+  namespace: not-my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "",
+				resType:   k8s.StatefulSet,
+				name:      "",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-deploy
+  namespace: my-ns`,
+				},
+			},
+			getObjectsExpected{
+				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.StatefulSet,
+				name:      "my-ss",
+				k8sResResults: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-ss
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-ss
   namespace: not-my-ns`,
 				},
 			},
@@ -361,7 +395,7 @@ func TestGetPodsFor(t *testing.T) {
 
 		// all 3 of these are used to seed the k8s client
 		k8sResInput   string   // object used as input to GetPodFor()
-		k8sResResults []string // expected results from GetPodFor
+		k8sResResults []string // expected results from GetPodsFor
 		k8sResMisc    []string // additional k8s objects for seeding the k8s client
 	}
 
@@ -390,6 +424,57 @@ metadata:
     app: emoji-svc
 status:
   phase: Finished`,
+				},
+			},
+			// Retrieve pods associated to a ClusterIP service
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-finished
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{},
+			},
+			// ExternalName services shouldn't return any pods
+			getPodsForExpected{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+  namespace: emojivoto
+spec:
+  type: ExternalName
+  externalName: someapi.example.com`,
+				k8sResResults: []string{},
+				k8sResMisc: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-finished
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running`,
 				},
 			},
 			getPodsForExpected{
@@ -616,6 +701,118 @@ metadata:
 
 		if ownerName != tt.expectedOwnerName {
 			t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+		}
+	}
+}
+
+func TestGetServiceProfileFor(t *testing.T) {
+	for _, tt := range []struct {
+		expectedRouteNames []string
+		profileConfigs     []string
+	}{
+		// No service profiles -> default service profile
+		{
+			expectedRouteNames: []string{},
+			profileConfigs:     []string{},
+		},
+		// Service profile in unrelated namespace -> default service profile
+		{
+			expectedRouteNames: []string{},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: linkerd
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+			},
+		},
+		// Uses service profile in server namespace
+		{
+			expectedRouteNames: []string{"server"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: server
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+			},
+		},
+		// Uses service profile in client namespace
+		{
+			expectedRouteNames: []string{"client"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: client
+spec:
+  routes:
+  - condition:
+      pathRegex: /client
+    name: client`,
+			},
+		},
+		// Service porfile in client namespace takes priority
+		{
+			expectedRouteNames: []string{"client"},
+			profileConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: server
+spec:
+  routes:
+  - condition:
+      pathRegex: /server
+    name: server`,
+				`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: books.server.svc.cluster.local
+  namespace: client
+spec:
+  routes:
+  - condition:
+      pathRegex: /client
+    name: client`,
+			},
+		},
+	} {
+		api, _, err := newAPI(tt.profileConfigs)
+		if err != nil {
+			t.Fatalf("newAPI error: %s", err)
+		}
+
+		svc := apiv1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "books",
+				Namespace: "server",
+			},
+		}
+
+		sp := api.GetServiceProfileFor(&svc, "client")
+
+		if len(sp.Spec.Routes) != len(tt.expectedRouteNames) {
+			t.Fatalf("Expected %d routes, got %d", len(tt.expectedRouteNames), len(sp.Spec.Routes))
+		}
+
+		for i, route := range sp.Spec.Routes {
+			if tt.expectedRouteNames[i] != route.Name {
+				t.Fatalf("Expected route [%s], got [%s]", tt.expectedRouteNames[i], route.Name)
+			}
 		}
 	}
 }

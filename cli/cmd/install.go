@@ -9,8 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
-	"github.com/linkerd/linkerd2/cli/install"
+	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +18,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/timeconv"
+	"sigs.k8s.io/yaml"
 )
 
 type installConfig struct {
@@ -51,12 +51,14 @@ type installConfig struct {
 	OutboundPort                     uint
 	IgnoreInboundPorts               string
 	IgnoreOutboundPorts              string
+	InboundAcceptKeepaliveMs         uint
+	OutboundConnectKeepaliveMs       uint
 	ProxyAutoInjectEnabled           bool
-	ProxyAutoInjectLabel             string
+	ProxyInjectAnnotation            string
+	ProxyInjectDisabled              string
 	ProxyUID                         int64
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
-	ProxyInjectorTLSSecret           string
 	ProxySpecFileName                string
 	ProxyInitSpecFileName            string
 	ProxyInitImage                   string
@@ -68,8 +70,14 @@ type installConfig struct {
 	ControllerUID                    int64
 	ProfileSuffixes                  string
 	EnableH2Upgrade                  bool
+	NoInitContainer                  bool
 }
 
+// installOptions holds values for command line flags that apply to the install
+// command. All fields in this struct should have corresponding flags added in
+// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
+// in order to hold values for command line flags that apply to both inject and
+// install.
 type installOptions struct {
 	controllerReplicas uint
 	controllerLogLevel string
@@ -128,7 +136,7 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
 	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
 	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
-	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 ugprading")
+	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading")
 	return cmd
 }
 
@@ -197,12 +205,14 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		OutboundPort:                     options.outboundPort,
 		IgnoreInboundPorts:               strings.Join(ignoreInboundPorts, ","),
 		IgnoreOutboundPorts:              strings.Join(ignoreOutboundPorts, ","),
+		InboundAcceptKeepaliveMs:         defaultKeepaliveMs,
+		OutboundConnectKeepaliveMs:       defaultKeepaliveMs,
 		ProxyAutoInjectEnabled:           options.proxyAutoInject,
-		ProxyAutoInjectLabel:             k8s.ProxyAutoInjectLabel,
+		ProxyInjectAnnotation:            k8s.ProxyInjectAnnotation,
+		ProxyInjectDisabled:              k8s.ProxyInjectDisabled,
 		ProxyUID:                         options.proxyUID,
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,
-		ProxyInjectorTLSSecret:           k8s.ProxyInjectorTLSSecret,
 		ProxySpecFileName:                k8s.ProxySpecFileName,
 		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
 		ProxyInitImage:                   options.taggedProxyInitImage(),
@@ -213,6 +223,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		EnableHA:                         options.highAvailability,
 		ProfileSuffixes:                  profileSuffixes,
 		EnableH2Upgrade:                  !options.disableH2Upgrade,
+		NoInitContainer:                  options.noInitContainer,
 	}, nil
 }
 
@@ -222,15 +233,31 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	if err != nil {
 		return err
 	}
-
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	// Load chart files
+	// Read templates into bytes
+	chartTmpl, err := readIntoBytes(chartutil.ChartfileName)
+	if err != nil {
+		return err
+	}
+	baseTmpl, err := readIntoBytes(baseTemplateName)
+	if err != nil {
+		return err
+	}
+	tlsTmpl, err := readIntoBytes(tlsTemplateName)
+	if err != nil {
+		return err
+	}
+	proxyInjectorTmpl, err := readIntoBytes(proxyInjectorTemplateName)
+	if err != nil {
+		return err
+	}
+
 	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: install.Chart},
-		{Name: baseTemplateName, Data: install.BaseTemplate},
-		{Name: tlsTemplateName, Data: install.TLSTemplate},
-		{Name: proxyInjectorTemplateName, Data: install.ProxyInjectorTemplate},
+		{Name: chartutil.ChartfileName, Data: chartTmpl},
+		{Name: baseTemplateName, Data: baseTmpl},
+		{Name: tlsTemplateName, Data: tlsTmpl},
+		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
 	}
 
 	// Create chart and render templates
@@ -267,12 +294,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}
+	}
 
-		if config.ProxyAutoInjectEnabled {
-			pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-			if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
-				return err
-			}
+	if config.ProxyAutoInjectEnabled {
+		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
+			return err
 		}
 	}
 
@@ -295,4 +322,17 @@ func (options *installOptions) validate() error {
 	}
 
 	return options.proxyConfigOptions.validate()
+}
+
+func readIntoBytes(filename string) ([]byte, error) {
+	file, err := static.Templates.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(file)
+
+	return buf.Bytes(), nil
 }

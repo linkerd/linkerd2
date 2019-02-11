@@ -10,7 +10,7 @@ required = [
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  revision = "1ad70188f9a6d94e2865413713a50390456fa6b6"
+  version = "v0.1.6"
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -19,6 +19,10 @@ required = [
 [[constraint]]
   name = "github.com/spf13/cobra"
   revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b" # cobra has no release tags at time of writing
+
+[[constraint]]
+  name = "github.com/containernetworking/cni"
+  revision = "v0.6.0"
 
 [[constraint]]
   name = "k8s.io/client-go"

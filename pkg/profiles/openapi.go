@@ -5,13 +5,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"regexp"
 	"sort"
 
-	"github.com/ghodss/yaml"
 	"github.com/go-openapi/spec"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
@@ -19,7 +20,7 @@ var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 // RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
 // namespace.
-func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io.Writer) error {
+func RenderOpenAPI(fileName, namespace, name string, w io.Writer) error {
 
 	input, err := readFile(fileName)
 	if err != nil {
@@ -41,16 +42,16 @@ func RenderOpenAPI(fileName, namespace, name, controlPlaneNamespace string, w io
 		return fmt.Errorf("Error parsing OpenAPI spec: %s", err)
 	}
 
-	profile := swaggerToServiceProfile(swagger, namespace, name, controlPlaneNamespace)
+	profile := swaggerToServiceProfile(swagger, namespace, name)
 
 	return writeProfile(profile, w)
 }
 
-func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, controlPlaneNamespace string) sp.ServiceProfile {
+func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.ServiceProfile {
 	profile := sp.ServiceProfile{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		TypeMeta: ServiceProfileMeta,
 	}
@@ -65,8 +66,9 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, controlPlane
 		sort.Strings(paths)
 	}
 
-	for _, path := range paths {
-		item := swagger.Paths.Paths[path]
+	for _, relPath := range paths {
+		item := swagger.Paths.Paths[relPath]
+		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
 			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses)

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -15,10 +16,10 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", "", func() error {
+		hc.Add("category", "check1", "", func(context.Context) error {
 			return nil
 		})
-		hc.Add("category", "check2", "http://linkerd.io/hint-url", func() error {
+		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
 			return fmt.Errorf("This should contain instructions for fail")
 		})
 

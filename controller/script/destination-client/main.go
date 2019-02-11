@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"math/rand"
-	"time"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
@@ -16,8 +14,6 @@ import (
 // This is a throwaway script for testing the destination service
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	addr := flag.String("addr", ":8086", "address of destination service")
 	path := flag.String("path", "strest-server.default.svc.cluster.local:8888", "destination path")
 	method := flag.String("method", "get", "which gRPC method to invoke")

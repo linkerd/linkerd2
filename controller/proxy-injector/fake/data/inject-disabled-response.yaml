@@ -31,11 +31,11 @@ request:
       template:
         metadata:
           annotations:
+            linkerd.io/inject: disabled
             created-by: isim
           creationTimestamp: null
           labels:
             app: nginx
-            linkerd.io/auto-inject: disabled
         spec:
           containers:
           - image: nginx

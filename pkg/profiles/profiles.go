@@ -9,19 +9,20 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/util"
+	log "github.com/sirupsen/logrus"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"sigs.k8s.io/yaml"
 )
 
 type profileTemplateConfig struct {
-	ControlPlaneNamespace string
-	ServiceNamespace      string
-	ServiceName           string
-	ClusterZone           string
+	ServiceNamespace string
+	ServiceName      string
+	ClusterZone      string
 }
 
 var (
@@ -43,7 +44,25 @@ var (
 		Routes:      []*pb.Route{},
 		RetryBudget: &DefaultRetryBudget,
 	}
+	// DefaultRouteTimeout is the default timeout for routes that do not specify
+	// one.
+	DefaultRouteTimeout = 10 * time.Second
+
+	minStatus uint32 = 100
+	maxStatus uint32 = 599
+
+	clusterZoneSuffix = "svc.cluster.local"
+
+	errRequestMatchField  = errors.New("A request match must have a field set")
+	errResponseMatchField = errors.New("A response match must have a field set")
 )
+
+func toDuration(d time.Duration) *duration.Duration {
+	return &duration.Duration{
+		Seconds: int64(d / time.Second),
+		Nanos:   int32(d % time.Second),
+	}
+}
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
@@ -64,10 +83,7 @@ func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, e
 		if err != nil {
 			return nil, err
 		}
-		budget.Ttl = &duration.Duration{
-			Seconds: int64(ttl / time.Second),
-			Nanos:   int32(ttl % time.Second),
-		}
+		budget.Ttl = toDuration(ttl)
 	}
 	return &pb.DestinationProfile{
 		Routes:      routes,
@@ -89,11 +105,17 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 		}
 		rcs = append(rcs, pbRc)
 	}
+	timeout, err := time.ParseDuration(route.Timeout)
+	if err != nil {
+		log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
+		timeout = DefaultRouteTimeout
+	}
 	ret := pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
 		MetricsLabels:   map[string]string{"route": route.Name},
 		IsRetryable:     route.IsRetryable,
+		Timeout:         toDuration(timeout),
 	}
 	return &ret, nil
 }
@@ -184,7 +206,7 @@ func ToResponseMatch(rspMatch *sp.ResponseMatch) (*pb.ResponseMatch, error) {
 	}
 
 	if len(matches) == 0 {
-		return nil, errors.New("A response match must have a field set")
+		return nil, errResponseMatchField
 	}
 	if len(matches) == 1 {
 		return matches[0], nil
@@ -278,7 +300,7 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 	}
 
 	if len(matches) == 0 {
-		return nil, errors.New("A request match must have a field set")
+		return nil, errRequestMatchField
 	}
 	if len(matches) == 1 {
 		return matches[0], nil
@@ -290,6 +312,80 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 			},
 		},
 	}, nil
+}
+
+// Validate validates the structure of a ServiceProfile. This code is a superset
+// of the validation provided by the `openAPIV3Schema`, defined in the
+// ServiceProfile CRD.
+// openAPIV3Schema validates:
+// - types of non-recursive fields
+// - presence of required fields
+// This function validates:
+// - types of all fields
+// - presence of required fields
+// - presence of unknown fields
+// - recursive fields
+func Validate(data []byte) error {
+	var serviceProfile sp.ServiceProfile
+	err := yaml.UnmarshalStrict([]byte(data), &serviceProfile)
+	if err != nil {
+		return fmt.Errorf("failed to validate ServiceProfile: %s", err)
+	}
+
+	errs := validation.IsDNS1123Subdomain(serviceProfile.Name)
+	if len(errs) > 0 {
+		return fmt.Errorf("ServiceProfile \"%s\" has invalid name: %s", serviceProfile.Name, errs[0])
+	}
+
+	if len(serviceProfile.Spec.Routes) == 0 {
+		return fmt.Errorf("ServiceProfile \"%s\" has no routes", serviceProfile.Name)
+	}
+
+	for _, route := range serviceProfile.Spec.Routes {
+		if route.Name == "" {
+			return fmt.Errorf("ServiceProfile \"%s\" has a route with no name", serviceProfile.Name)
+		}
+		if route.Timeout != "" {
+			_, err := time.ParseDuration(route.Timeout)
+			if err != nil {
+				return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid timeout: %s", serviceProfile.Name, err)
+			}
+		}
+		if route.Condition == nil {
+			return fmt.Errorf("ServiceProfile \"%s\" has a route with no condition", serviceProfile.Name)
+		}
+		err := ValidateRequestMatch(route.Condition)
+		if err != nil {
+			return fmt.Errorf("ServiceProfile \"%s\" has a route with an invalid condition: %s", serviceProfile.Name, err)
+		}
+		for _, rc := range route.ResponseClasses {
+			if rc.Condition == nil {
+				return fmt.Errorf("ServiceProfile \"%s\" has a response class with no condition", serviceProfile.Name)
+			}
+			err = ValidateResponseMatch(rc.Condition)
+			if err != nil {
+				return fmt.Errorf("ServiceProfile \"%s\" has a response class with an invalid condition: %s", serviceProfile.Name, err)
+			}
+		}
+	}
+
+	rb := serviceProfile.Spec.RetryBudget
+	if rb != nil {
+		if rb.RetryRatio < 0 {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget RetryRatio must be non-negative: %f", serviceProfile.Name, rb.RetryRatio)
+		}
+
+		if rb.TTL == "" {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget missing TTL field", serviceProfile.Name)
+		}
+
+		_, err := time.ParseDuration(rb.TTL)
+		if err != nil {
+			return fmt.Errorf("ServiceProfile \"%s\" RetryBudget: %s", serviceProfile.Name, err)
+		}
+	}
+
+	return nil
 }
 
 // ValidateRequestMatch validates whether a ServiceProfile RequestMatch has at
@@ -329,7 +425,7 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 	}
 
 	if !matchKindSet {
-		return errors.New("A request match must have a field set")
+		return errRequestMatchField
 	}
 
 	return nil
@@ -338,7 +434,6 @@ func ValidateRequestMatch(reqMatch *sp.RequestMatch) error {
 // ValidateResponseMatch validates whether a ServiceProfile ResponseMatch has at
 // least one field set, and sanity checks the Status Range.
 func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
-	invalidRangeErr := errors.New("Range maximum cannot be smaller than minimum")
 	matchKindSet := false
 	if rspMatch.All != nil {
 		matchKindSet = true
@@ -359,8 +454,12 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 		}
 	}
 	if rspMatch.Status != nil {
-		if rspMatch.Status.Max != 0 && rspMatch.Status.Min != 0 && rspMatch.Status.Max < rspMatch.Status.Min {
-			return invalidRangeErr
+		if rspMatch.Status.Min != 0 && (rspMatch.Status.Min < minStatus || rspMatch.Status.Min > maxStatus) {
+			return fmt.Errorf("Range minimum must be between %d and %d, inclusive", minStatus, maxStatus)
+		} else if rspMatch.Status.Max != 0 && (rspMatch.Status.Max < minStatus || rspMatch.Status.Max > maxStatus) {
+			return fmt.Errorf("Range maximum must be between %d and %d, inclusive", minStatus, maxStatus)
+		} else if rspMatch.Status.Max != 0 && rspMatch.Status.Min != 0 && rspMatch.Status.Max < rspMatch.Status.Min {
+			return errors.New("Range maximum cannot be smaller than minimum")
 		}
 		matchKindSet = true
 	}
@@ -373,25 +472,24 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	}
 
 	if !matchKindSet {
-		return errors.New("A response match must have a field set")
+		return errResponseMatchField
 	}
 
 	return nil
 }
 
-func buildConfig(namespace, service, controlPlaneNamespace string) *profileTemplateConfig {
+func buildConfig(namespace, service string) *profileTemplateConfig {
 	return &profileTemplateConfig{
-		ControlPlaneNamespace: controlPlaneNamespace,
-		ServiceNamespace:      namespace,
-		ServiceName:           service,
-		ClusterZone:           "svc.cluster.local",
+		ServiceNamespace: namespace,
+		ServiceName:      service,
+		ClusterZone:      clusterZoneSuffix,
 	}
 }
 
 // RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
 // namespace, service, and control plane namespace.
-func RenderProfileTemplate(namespace, service, controlPlaneNamespace string, w io.Writer) error {
-	config := buildConfig(namespace, service, controlPlaneNamespace)
+func RenderProfileTemplate(namespace, service string, w io.Writer) error {
+	config := buildConfig(namespace, service)
 	template, err := template.New("profile").Parse(Template)
 	if err != nil {
 		return err

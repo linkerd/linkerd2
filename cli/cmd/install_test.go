@@ -49,16 +49,18 @@ func TestRender(t *testing.T) {
 		TLSTrustAnchorVolumeSpecFileName: "TLSTrustAnchorVolumeSpecFileName",
 		TLSIdentityVolumeSpecFileName:    "TLSIdentityVolumeSpecFileName",
 		ProxyAutoInjectEnabled:           true,
-		ProxyAutoInjectLabel:             "ProxyAutoInjectLabel",
+		ProxyInjectAnnotation:            "ProxyInjectAnnotation",
+		ProxyInjectDisabled:              "ProxyInjectDisabled",
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		InboundPort:                      4143,
 		OutboundPort:                     4140,
+		InboundAcceptKeepaliveMs:         10000,
+		OutboundConnectKeepaliveMs:       10000,
 		ProxyControlPort:                 4190,
 		ProxyMetricsPort:                 4191,
 		ProxyInitImage:                   "ProxyInitImage",
 		ProxyImage:                       "ProxyImage",
-		ProxyInjectorTLSSecret:           "ProxyInjectorTLSSecret",
 		ProxySpecFileName:                "ProxySpecFileName",
 		ProxyInitSpecFileName:            "ProxyInitSpecFileName",
 		IgnoreInboundPorts:               "4190,4191,1,2,3",
@@ -67,6 +69,7 @@ func TestRender(t *testing.T) {
 		ProxyResourceRequestMemory:       "RequestMemory",
 		ProfileSuffixes:                  "suffix.",
 		EnableH2Upgrade:                  true,
+		NoInitContainer:                  false,
 	}
 
 	singleNamespaceConfig := installConfig{
@@ -88,6 +91,8 @@ func TestRender(t *testing.T) {
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		EnableTLS:                        true,
+		InboundAcceptKeepaliveMs:         10000,
+		OutboundConnectKeepaliveMs:       10000,
 		TLSTrustAnchorConfigMapName:      "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:               "ProxyContainerName",
 		TLSTrustAnchorFileName:           "TLSTrustAnchorFileName",
@@ -97,6 +102,7 @@ func TestRender(t *testing.T) {
 		TLSIdentityVolumeSpecFileName:    "TLSIdentityVolumeSpecFileName",
 		SingleNamespace:                  true,
 		EnableH2Upgrade:                  true,
+		NoInitContainer:                  false,
 	}
 
 	haOptions := newInstallOptions()
@@ -112,6 +118,18 @@ func TestRender(t *testing.T) {
 	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
 	haWithOverridesConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
+	noInitContainerOptions := newInstallOptions()
+	noInitContainerOptions.noInitContainer = true
+	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
+	noInitContainerConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
+	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
+	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
+	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
+	noInitContainerWithProxyAutoInjectOptions.tls = "optional"
+	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
+	noInitContainerWithProxyAutoInjectConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+
 	testCases := []struct {
 		config                installConfig
 		options               *installOptions
@@ -123,6 +141,8 @@ func TestRender(t *testing.T) {
 		{singleNamespaceConfig, defaultOptions, singleNamespaceConfig.Namespace, "testdata/install_single_namespace_output.golden"},
 		{*haConfig, haOptions, haConfig.Namespace, "testdata/install_ha_output.golden"},
 		{*haWithOverridesConfig, haWithOverridesOptions, haWithOverridesConfig.Namespace, "testdata/install_ha_with_overrides_output.golden"},
+		{*noInitContainerConfig, noInitContainerOptions, noInitContainerConfig.Namespace, "testdata/install_no_init_container.golden"},
+		{*noInitContainerWithProxyAutoInjectConfig, noInitContainerWithProxyAutoInjectOptions, noInitContainerWithProxyAutoInjectConfig.Namespace, "testdata/install_no_init_container_auto_inject.golden"},
 	}
 
 	for i, tc := range testCases {

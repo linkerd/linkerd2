@@ -1,6 +1,7 @@
-package ca
+package tls
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -165,6 +166,20 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 		NotAfter:           notBefore.Add(ca.validity).Add(ca.clockSkewAllocance),
 		PublicKey:          publicKey,
 	}
+}
+
+// EncodedCertificate returns the PEM encoding of the certificate
+func (cpk *CertificateAndPrivateKey) EncodedCertificate() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cpk.Certificate})
+	return buf.Bytes(), err
+}
+
+// EncodedPrivateKey returns the PEM encoding of key.
+func (cpk *CertificateAndPrivateKey) EncodedPrivateKey() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	err := pem.Encode(buf, &pem.Block{Type: "EC PRIVATE KEY", Bytes: cpk.PrivateKey})
+	return buf.Bytes(), err
 }
 
 func generateKeyPair() (*ecdsa.PrivateKey, error) {

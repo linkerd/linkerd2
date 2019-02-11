@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"time"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/version"
@@ -17,7 +16,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-var minAPIVersion = [3]int{1, 8, 0}
+var minAPIVersion = [3]int{1, 10, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
 type KubernetesAPI struct {
@@ -38,10 +37,7 @@ func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 }
 
 // GetVersionInfo returns version.Info for the Kubernetes cluster.
-func (kubeAPI *KubernetesAPI) GetVersionInfo(client *http.Client) (*version.Info, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (kubeAPI *KubernetesAPI) GetVersionInfo(ctx context.Context, client *http.Client) (*version.Info, error) {
 	rsp, err := kubeAPI.getRequest(ctx, client, "/version")
 	if err != nil {
 		return nil, err
@@ -80,10 +76,7 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 }
 
 // NamespaceExists validates whether a given namespace exists.
-func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace string) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, client *http.Client, namespace string) (bool, error) {
 	rsp, err := kubeAPI.getRequest(ctx, client, "/api/v1/namespaces/"+namespace)
 	if err != nil {
 		return false, err
@@ -98,14 +91,11 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(client *http.Client, namespace str
 }
 
 // GetPodsByNamespace returns all pods in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodsByNamespace(client *http.Client, namespace string) ([]v1.Pod, error) {
-	return kubeAPI.getPods(client, "/api/v1/namespaces/"+namespace+"/pods")
+func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, client *http.Client, namespace string) ([]v1.Pod, error) {
+	return kubeAPI.getPods(ctx, client, "/api/v1/namespaces/"+namespace+"/pods")
 }
 
-func (kubeAPI *KubernetesAPI) getPods(client *http.Client, path string) ([]v1.Pod, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, path string) ([]v1.Pod, error) {
 	rsp, err := kubeAPI.getRequest(ctx, client, path)
 	if err != nil {
 		return nil, err
@@ -136,7 +126,7 @@ func (kubeAPI *KubernetesAPI) URLFor(namespace string, extraPathStartingWithSlas
 }
 
 func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {
-	endpoint, err := url.Parse(kubeAPI.Host + path)
+	endpoint, err := BuildURL(kubeAPI.Host, path)
 	if err != nil {
 		return nil, err
 	}

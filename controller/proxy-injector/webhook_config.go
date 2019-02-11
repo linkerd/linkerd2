@@ -3,17 +3,17 @@ package injector
 import (
 	"bytes"
 	"encoding/base64"
-	"io/ioutil"
 	"text/template"
 
-	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 // WebhookConfig creates the MutatingWebhookConfiguration of the webhook.
@@ -26,11 +26,8 @@ type WebhookConfig struct {
 }
 
 // NewWebhookConfig returns a new instance of initiator.
-func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName, trustAnchorFile string) (*WebhookConfig, error) {
-	trustAnchor, err := ioutil.ReadFile(trustAnchorFile)
-	if err != nil {
-		return nil, err
-	}
+func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName string, rootCA *tls.CA) (*WebhookConfig, error) {
+	trustAnchor := []byte(rootCA.TrustAnchorPEM())
 
 	t := template.New(k8sPkg.ProxyInjectorWebhookConfig)
 
@@ -78,17 +75,15 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 	var (
 		buf  = &bytes.Buffer{}
 		spec = struct {
-			WebhookConfigName    string
-			WebhookServiceName   string
-			ControllerNamespace  string
-			CABundle             string
-			ProxyAutoInjectLabel string
+			WebhookConfigName   string
+			WebhookServiceName  string
+			ControllerNamespace string
+			CABundle            string
 		}{
-			WebhookConfigName:    k8sPkg.ProxyInjectorWebhookConfig,
-			WebhookServiceName:   w.webhookServiceName,
-			ControllerNamespace:  w.controllerNamespace,
-			CABundle:             base64.StdEncoding.EncodeToString(w.trustAnchor),
-			ProxyAutoInjectLabel: k8sPkg.ProxyAutoInjectLabel,
+			WebhookConfigName:   k8sPkg.ProxyInjectorWebhookConfig,
+			WebhookServiceName:  w.webhookServiceName,
+			ControllerNamespace: w.controllerNamespace,
+			CABundle:            base64.StdEncoding.EncodeToString(w.trustAnchor),
 		}
 	)
 	if err := w.configTemplate.Execute(buf, spec); err != nil {

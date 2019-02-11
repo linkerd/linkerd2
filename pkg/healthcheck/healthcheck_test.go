@@ -16,14 +16,14 @@ import (
 )
 
 func TestHealthChecker(t *testing.T) {
-	nullObserver := func(_ *CheckResult) {}
+	nullObserver := func(*CheckResult) {}
 
 	passingCheck1 := category{
 		id: "cat1",
 		checkers: []checker{
 			checker{
 				description: "desc1",
-				check: func() error {
+				check: func(context.Context) error {
 					return nil
 				},
 				retryDeadline: time.Time{},
@@ -36,7 +36,7 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			checker{
 				description: "desc2",
-				check: func() error {
+				check: func(context.Context) error {
 					return nil
 				},
 				retryDeadline: time.Time{},
@@ -49,7 +49,7 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			checker{
 				description: "desc3",
-				check: func() error {
+				check: func(context.Context) error {
 					return fmt.Errorf("error")
 				},
 				retryDeadline: time.Time{},
@@ -74,7 +74,7 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			checker{
 				description: "desc4",
-				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 					return passingRPCClient.SelfCheck(context.Background(),
 						&healthcheckPb.SelfCheckRequest{})
 				},
@@ -101,7 +101,7 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			checker{
 				description: "desc5",
-				checkRPC: func() (*healthcheckPb.SelfCheckResponse, error) {
+				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 					return failingRPCClient.SelfCheck(context.Background(),
 						&healthcheckPb.SelfCheckRequest{})
 				},
@@ -116,7 +116,7 @@ func TestHealthChecker(t *testing.T) {
 			checker{
 				description: "desc6",
 				fatal:       true,
-				check: func() error {
+				check: func(context.Context) error {
 					return fmt.Errorf("fatal")
 				},
 				retryDeadline: time.Time{},
@@ -249,7 +249,7 @@ func TestHealthChecker(t *testing.T) {
 				checker{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
-					check: func() error {
+					check: func(context.Context) error {
 						if returnError {
 							returnError = false
 							return fmt.Errorf("retry")

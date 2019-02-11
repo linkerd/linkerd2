@@ -8,7 +8,6 @@ import (
 	"time"
 
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
-	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
@@ -283,35 +282,6 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 	}
 
-	tcp := func(orig *netPb.TcpAddress) *public.TcpAddress {
-		ip := func(orig *netPb.IPAddress) *public.IPAddress {
-			switch i := orig.GetIp().(type) {
-			case *netPb.IPAddress_Ipv6:
-				return &public.IPAddress{
-					Ip: &public.IPAddress_Ipv6{
-						Ipv6: &public.IPv6{
-							First: i.Ipv6.First,
-							Last:  i.Ipv6.Last,
-						},
-					},
-				}
-			case *netPb.IPAddress_Ipv4:
-				return &public.IPAddress{
-					Ip: &public.IPAddress_Ipv4{
-						Ipv4: i.Ipv4,
-					},
-				}
-			default:
-				return nil
-			}
-		}
-
-		return &public.TcpAddress{
-			Ip:   ip(orig.GetIp()),
-			Port: orig.GetPort(),
-		}
-	}
-
 	event := func(orig *proxy.TapEvent_Http) *public.TapEvent_Http_ {
 		id := func(orig *proxy.TapEvent_Http_StreamId) *public.TapEvent_Http_StreamId {
 			return &public.TapEvent_Http_StreamId{
@@ -436,11 +406,11 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	}
 
 	ev := &public.TapEvent{
-		Source: tcp(orig.GetSource()),
+		Source: addr.NetToPublic(orig.GetSource()),
 		SourceMeta: &public.TapEvent_EndpointMeta{
 			Labels: sourceLabels,
 		},
-		Destination: tcp(orig.GetDestination()),
+		Destination: addr.NetToPublic(orig.GetDestination()),
 		DestinationMeta: &public.TapEvent_EndpointMeta{
 			Labels: destinationLabels,
 		},

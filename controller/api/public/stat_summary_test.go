@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -107,7 +108,6 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 		if !proto.Equal(exp.expectedResponse.GetOk(), statOkRsp) {
 			t.Fatalf("Expected: %+v\n Got: %+v", &exp.expectedResponse, rsp)
 		}
-
 	}
 }
 
@@ -277,6 +277,101 @@ status:
 				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.DaemonSet, []string{"emojivoto"}, &PodCounts{
 					MeshedPods:  1,
 					RunningPods: 2,
+					FailedPods:  0,
+				}, true),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource type StatefulSet", func(t *testing.T) {
+		expectations := []statSumExpected{
+			statSumExpected{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: emojivoto
+  labels:
+    app: redis
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  replicas: 3
+  serviceName: redis
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - image: redis
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/redis
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-0
+  namespace: emojivoto
+  labels:
+    app: redis
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-1
+  namespace: emojivoto
+  labels:
+    app: redis
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-2
+  namespace: emojivoto
+  labels:
+    app: redis
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`,
+					},
+					mockPromResponse: prometheusMetric("redis", "statefulset", "emojivoto", "success", false),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.StatefulSet,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("redis", pkgK8s.StatefulSet, []string{"emojivoto"}, &PodCounts{
+					MeshedPods:  3,
+					RunningPods: 3,
 					FailedPods:  0,
 				}, true),
 			},
@@ -715,6 +810,13 @@ status:
 								&pb.StatTable{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								&pb.StatTable{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
 												&pb.StatTable_PodGroup_Row{
 													Resource: &pb.Resource{
@@ -856,6 +958,7 @@ status:
 			fakeGrpcServer := newGrpcServer(
 				&mockProm{Res: exp.mockPromResponse},
 				tap.NewTapClient(nil),
+				discovery.NewDiscoveryClient(nil),
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -881,6 +984,7 @@ status:
 		fakeGrpcServer := newGrpcServer(
 			&mockProm{Res: model.Vector{}},
 			tap.NewTapClient(nil),
+			discovery.NewDiscoveryClient(nil),
 			k8sAPI,
 			"linkerd",
 			[]string{},

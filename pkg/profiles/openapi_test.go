@@ -11,7 +11,6 @@ import (
 func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
-	controlPlaneNamespace := "linkerd"
 
 	swagger := spec.Swagger{
 		SwaggerProps: spec.SwaggerProps{
@@ -41,7 +40,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc.cluster.local",
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
@@ -67,7 +66,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile := swaggerToServiceProfile(swagger, namespace, name, controlPlaneNamespace)
+	actualServiceProfile := swaggerToServiceProfile(swagger, namespace, name)
 
 	err := ServiceProfileYamlEquals(actualServiceProfile, expectedServiceProfile)
 	if err != nil {

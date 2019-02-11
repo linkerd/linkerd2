@@ -12,7 +12,6 @@ import (
 func TestProtoToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
-	controlPlaneNamespace := "linkerd"
 
 	protobuf := `syntax = "proto3";
 
@@ -36,7 +35,7 @@ service VotingService {
 		TypeMeta: ServiceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc.cluster.local",
-			Namespace: controlPlaneNamespace,
+			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
@@ -51,7 +50,7 @@ service VotingService {
 		},
 	}
 
-	actualServiceProfile, err := protoToServiceProfile(parser, namespace, name, controlPlaneNamespace)
+	actualServiceProfile, err := protoToServiceProfile(parser, namespace, name)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

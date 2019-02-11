@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -30,10 +30,11 @@ const (
 
 	// for inject reports
 
-	hostNetworkDesc = "pods do not use host networking"
-	sidecarDesc     = "pods do not have a 3rd party proxy or initContainer already injected"
-	unsupportedDesc = "at least one resource injected"
-	udpDesc         = "pod specs do not include UDP ports"
+	hostNetworkDesc    = "pods do not use host networking"
+	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc = "pods are not annotated to disable injection"
+	unsupportedDesc    = "at least one resource injected"
+	udpDesc            = "pod specs do not include UDP ports"
 )
 
 type injectOptions struct {
@@ -102,6 +103,7 @@ sub-folders, or coming from stdin.`,
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+
 	return cmd
 }
 
@@ -116,7 +118,12 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, optio
 /* Given a ObjectMeta, update ObjectMeta in place with the new labels and
  * annotations.
  */
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
+func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions, report *injectReport) bool {
+	report.injectDisabled = injectDisabled(t)
+	if report.injectDisabled {
+		return false
+	}
+
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
@@ -130,6 +137,8 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	for k, v := range k8sLabels {
 		t.Labels[k] = v
 	}
+
+	return true
 }
 
 /* Given a PodSpec, update the PodSpec in place with the sidecar
@@ -178,23 +187,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
-	nonRoot := false
-	runAsUser := int64(0)
-	initContainer := v1.Container{
-		Name:                     k8s.InitContainerName,
-		Image:                    options.taggedProxyInitImage(),
-		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
-		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args:                     initArgs,
-		SecurityContext: &v1.SecurityContext{
-			Capabilities: &v1.Capabilities{
-				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
-			},
-			Privileged:   &f,
-			RunAsNonRoot: &nonRoot,
-			RunAsUser:    &runAsUser,
-		},
-	}
 	controlPlaneDNS := fmt.Sprintf("linkerd-proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
@@ -264,6 +256,9 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 				Name:      PodNamespaceEnvVarName,
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
+			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_ID", Value: identity.ToDNSName()},
 		},
 		LivenessProbe:  &proxyProbe,
 		ReadinessProbe: &proxyProbe,
@@ -334,7 +329,26 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	}
 
 	t.Containers = append(t.Containers, sidecar)
-	t.InitContainers = append(t.InitContainers, initContainer)
+	if !options.noInitContainer {
+		nonRoot := false
+		runAsUser := int64(0)
+		initContainer := v1.Container{
+			Name:                     k8s.InitContainerName,
+			Image:                    options.taggedProxyInitImage(),
+			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
+			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+			Args: initArgs,
+			SecurityContext: &v1.SecurityContext{
+				Capabilities: &v1.Capabilities{
+					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
+				},
+				Privileged:   &f,
+				RunAsNonRoot: &nonRoot,
+				RunAsUser:    &runAsUser,
+			},
+		}
+		t.InitContainers = append(t.InitContainers, initContainer)
+	}
 
 	return true
 }
@@ -371,8 +385,8 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) {
-			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
+		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) &&
+			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options, &report) {
 			var err error
 			output, err = yaml.Marshal(conf.obj)
 			if err != nil {
@@ -391,10 +405,11 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	hostNetwork := []string{}
 	sidecar := []string{}
 	udp := []string{}
+	injectDisabled := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range injectReports {
-		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			injected = append(injected, r)
 		}
 
@@ -410,6 +425,11 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 
 		if r.udp {
 			udp = append(udp, r.resName())
+			warningsPrinted = true
+		}
+
+		if r.injectDisabled {
+			injectDisabled = append(injectDisabled, r.resName())
 			warningsPrinted = true
 		}
 	}
@@ -431,6 +451,13 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		output.Write([]byte(fmt.Sprintf("%s known 3rd party sidecar detected in %s\n", warnStatus, strings.Join(sidecar, ", "))))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, sidecarDesc)))
+	}
+
+	if len(injectDisabled) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s \"%s: %s\" annotation set on %s\n",
+			warnStatus, k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled, strings.Join(injectDisabled, ", "))))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
 	}
 
 	if len(injected) == 0 {
@@ -458,7 +485,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	}
 
 	for _, r := range injectReports {
-		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource {
+		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.kind, r.name)))
 		} else {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
@@ -479,4 +506,8 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+func injectDisabled(t *metaV1.ObjectMeta) bool {
+	return t.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 }

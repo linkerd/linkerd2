@@ -1,13 +1,16 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/util"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -18,6 +21,7 @@ type server struct {
 	resolver        streamingDestinationResolver
 	enableH2Upgrade bool
 	enableTLS       bool
+	log             *log.Entry
 }
 
 // NewServer returns a new instance of the proxy-api server.
@@ -38,10 +42,10 @@ func NewServer(
 	enableTLS, enableH2Upgrade, singleNamespace bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
-) (*grpc.Server, net.Listener, error) {
+) (*grpc.Server, error) {
 	resolver, err := buildResolver(k8sDNSZone, controllerNamespace, k8sAPI, singleNamespace)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	srv := server{
@@ -49,26 +53,30 @@ func NewServer(
 		resolver:        resolver,
 		enableH2Upgrade: enableH2Upgrade,
 		enableTLS:       enableTLS,
-	}
-
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, nil, err
+		log: log.WithFields(log.Fields{
+			"addr":      addr,
+			"component": "server",
+		}),
 	}
 
 	s := prometheus.NewGrpcServer()
+
+	// this server satisfies 2 gRPC interfaces:
+	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
+	// 2) controller/discovery.Api (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
+	discovery.RegisterDiscoveryServer(s, &srv)
 
 	go func() {
 		<-done
 		resolver.stop()
 	}()
 
-	return s, lis, nil
+	return s, nil
 }
 
 func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) error {
-	log.Debugf("Get %v", dest)
+	s.log.Debugf("Get(%+v)", dest)
 	host, port, err := getHostAndPort(dest)
 	if err != nil {
 		return err
@@ -78,7 +86,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 }
 
 func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
-	log.Debugf("GetProfile %v", dest)
+	s.log.Debugf("GetProfile(%+v)", dest)
 	host, _, err := getHostAndPort(dest)
 	if err != nil {
 		return err
@@ -86,11 +94,59 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	listener := newProfileListener(stream)
 
-	err = s.resolver.streamProfiles(host, listener)
+	proxyID := strings.Split(dest.ProxyId, ".")
+	proxyNS := ""
+	// <deployment>.deployment.<namespace>.linkerd-managed.linkerd.svc.cluster.local
+	if len(proxyID) >= 3 {
+		proxyNS = proxyID[2]
+	}
+
+	err = s.resolver.streamProfiles(host, proxyNS, listener)
 	if err != nil {
-		log.Errorf("Error streaming profile for %s: %v", dest.Path, err)
+		s.log.Errorf("Error streaming profile for %s: %v", dest.Path, err)
 	}
 	return err
+}
+
+func (s *server) Endpoints(ctx context.Context, params *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
+	s.log.Debugf("Endpoints(%+v)", params)
+
+	servicePorts := s.resolver.getState()
+
+	rsp := discovery.EndpointsResponse{
+		ServicePorts: make(map[string]*discovery.ServicePort),
+	}
+
+	for serviceID, portMap := range servicePorts {
+		discoverySP := discovery.ServicePort{
+			PortEndpoints: make(map[uint32]*discovery.PodAddresses),
+		}
+		for port, sp := range portMap {
+			podAddrs := discovery.PodAddresses{
+				PodAddresses: []*discovery.PodAddress{},
+			}
+
+			for _, ua := range sp.addresses {
+				ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(ua.pod)
+				pod := util.K8sPodToPublicPod(*ua.pod, ownerKind, ownerName)
+
+				podAddrs.PodAddresses = append(
+					podAddrs.PodAddresses,
+					&discovery.PodAddress{
+						Addr: addr.NetToPublic(ua.address),
+						Pod:  &pod,
+					},
+				)
+			}
+
+			discoverySP.PortEndpoints[port] = &podAddrs
+		}
+
+		s.log.Debugf("ServicePorts[%s]: %+v", serviceID, discoverySP)
+		rsp.ServicePorts[serviceID.String()] = &discoverySP
+	}
+
+	return &rsp, nil
 }
 
 func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {

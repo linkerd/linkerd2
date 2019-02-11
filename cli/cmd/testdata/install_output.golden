@@ -3,8 +3,8 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: Namespace
-  labels:
-    ProxyAutoInjectLabel: disabled
+  annotations:
+    ProxyInjectAnnotation: ProxyInjectDisabled
 
 ### Service Account Controller ###
 ---
@@ -22,7 +22,7 @@ metadata:
   name: linkerd-Namespace-controller
 rules:
 - apiGroups: ["extensions", "apps"]
-  resources: ["daemonsets", "deployments", "replicasets"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
@@ -245,6 +245,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-controller.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -316,6 +322,19 @@ spec:
           required:
           - routes
           properties:
+            retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
+              properties:
+                minRetriesPerSecond:
+                  type: integer
+                retryRatio:
+                  type: number
+                ttl:
+                  type: string
             routes:
               type: array
               items:
@@ -325,6 +344,8 @@ spec:
                 - condition
                 properties:
                   name:
+                    type: string
+                  timeout:
                     type: string
                   condition:
                     type: object
@@ -484,6 +505,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -626,6 +653,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-prometheus.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         image: gcr.io/linkerd-io/proxy:dev-undefined
@@ -870,6 +903,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-grafana.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -985,6 +1024,7 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+
 ### Service Account CA ###
 ---
 kind: ServiceAccount
@@ -1016,9 +1056,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["list", "get", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -1066,7 +1103,6 @@ spec:
         - ca
         - -controller-namespace=Namespace
         - -single-namespace=false
-        - -proxy-auto-inject=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -1106,6 +1142,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-ca.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1186,6 +1228,8 @@ spec:
         - proxy-injector
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -no-init-container=false
+        - -tls-enabled=true
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1206,12 +1250,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: TLSTrustAnchorVolumeName
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: webhook-secrets
-          readOnly: true
         - mountPath: /var/linkerd-io/config
           name: proxy-spec
       - env:
@@ -1233,6 +1271,12 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_ID
+          value: linkerd-proxy-injector.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.Namespace.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1279,10 +1323,6 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - name: webhook-secrets
-        secret:
-          optional: true
-          secretName: ProxyInjectorTLSSecret
       - configMap:
           name: linkerd-proxy-injector-sidecar-config
         name: proxy-spec
@@ -1305,6 +1345,9 @@ rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
   verbs: ["create", "update", "get", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get"]
 
 ---
 kind: ClusterRoleBinding
@@ -1396,6 +1439,12 @@ data:
       valueFrom:
         fieldRef:
           fieldPath: metadata.namespace
+    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+      value: 10000ms
+    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+      value: 10000ms
+    - name: LINKERD2_PROXY_ID
+      value: "" # this value will be computed by the webhook
     - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
       value: /var/linkerd-io/trust-anchors/TLSTrustAnchorFileName
     - name: LINKERD2_PROXY_TLS_CERT

@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/profiles"
+	"sigs.k8s.io/yaml"
 )
 
 func TestParseProfile(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := profiles.RenderProfileTemplate("myns", "mysvc", "linkerd", &buf)
+	err := profiles.RenderProfileTemplate("myns", "mysvc", &buf)
 	if err != nil {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}
@@ -25,7 +25,7 @@ func TestParseProfile(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := profiles.GenServiceProfile("mysvc", "myns", "linkerd")
+	expectedServiceProfile := profiles.GenServiceProfile("mysvc", "myns")
 
 	err = profiles.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestParseProfile(t *testing.T) {
 
 func TestValidateOptions(t *testing.T) {
 	options := newProfileOptions()
-	exp := errors.New("You must specify exactly one of --template, --open-api, or --proto")
+	exp := errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	err := options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)
@@ -44,7 +44,7 @@ func TestValidateOptions(t *testing.T) {
 	options = newProfileOptions()
 	options.template = true
 	options.openAPI = "openAPI"
-	exp = errors.New("You must specify exactly one of --template, --open-api, or --proto")
+	exp = errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	err = options.validate()
 	if err == nil || err.Error() != exp.Error() {
 		t.Fatalf("validateOptions returned unexpected error: %s (expected: %s) for options: %+v", err, exp, options)

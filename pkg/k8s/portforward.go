@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -56,7 +58,9 @@ func NewPortForward(
 		return nil, err
 	}
 
-	pods, err := kubeAPI.GetPodsByNamespace(client, namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pods, err := kubeAPI.GetPodsByNamespace(ctx, client, namespace)
 	if err != nil {
 		return nil, err
 	}

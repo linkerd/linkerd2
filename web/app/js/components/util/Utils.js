@@ -129,7 +129,10 @@ export const friendlyTitle = singularOrPluralResource => {
     titleCase = _startCase("replication controller");
   } else if (resource === "daemonset") {
     titleCase = _startCase("daemon set");
+  } else if (resource === "statefulset") {
+    titleCase = _startCase("stateful set");
   }
+
   let titles = { singular: titleCase };
   if (resource === "authority") {
     titles.plural = "Authorities";

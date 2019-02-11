@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	yaml "github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -17,34 +16,41 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 const (
-	defaultNamespace                    = "default"
 	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
 	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
+	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
 )
 
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission
 // requests by injecting sidecar container spec into the pod spec during pod
 // creation.
 type Webhook struct {
+	client              kubernetes.Interface
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	resources           *WebhookResources
+	noInitContainer     bool
+	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
 	)
 
 	return &Webhook{
+		client:              client,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
+		noInitContainer:     noInitContainer,
+		tlsEnabled:          tlsEnabled,
 	}, nil
 }
 
@@ -104,24 +110,33 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	ns := request.Namespace
 	if ns == "" {
-		ns = defaultNamespace
+		ns = corev1.NamespaceDefault
 	}
 	log.Infof("resource namespace: %s", ns)
 
-	if w.ignore(&deployment) {
-		log.Infof("ignoring deployment %s", deployment.ObjectMeta.Name)
+	inject, err := w.shouldInject(ns, &deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	if !inject {
+		log.Infof("skipping deployment %s", deployment.GetName())
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,
 		}, nil
 	}
 
-	identity := &k8sPkg.TLSIdentity{
-		Name:                deployment.ObjectMeta.Name,
-		Kind:                strings.ToLower(request.Kind.Kind),
-		Namespace:           ns,
-		ControllerNamespace: w.controllerNamespace,
+	var identity *k8sPkg.TLSIdentity
+	if w.tlsEnabled {
+		identity = &k8sPkg.TLSIdentity{
+			Name:                deployment.ObjectMeta.Name,
+			Kind:                strings.ToLower(request.Kind.Kind),
+			Namespace:           ns,
+			ControllerNamespace: w.controllerNamespace,
+		}
 	}
+
 	proxy, proxyInit, err := w.containersSpec(identity)
 	if err != nil {
 		return nil, err
@@ -131,26 +146,30 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	log.Debugf("proxy container: %+v", proxy)
 	log.Debugf("init container: %+v", proxyInit)
 
-	caBundle, tlsSecrets, err := w.volumesSpec(identity)
-	if err != nil {
-		return nil, err
-	}
-	log.Debugf("ca bundle volume: %+v", caBundle)
-	log.Debugf("tls secrets volume: %+v", tlsSecrets)
-
 	patch := NewPatch()
 	patch.addContainer(proxy)
 
-	if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
-		patch.addInitContainerRoot()
+	if !w.noInitContainer {
+		if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
+			patch.addInitContainerRoot()
+		}
+		patch.addInitContainer(proxyInit)
 	}
-	patch.addInitContainer(proxyInit)
 
-	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
-		patch.addVolumeRoot()
+	if w.tlsEnabled {
+		caBundle, tlsSecrets, err := w.volumesSpec(identity)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("ca bundle volume: %+v", caBundle)
+		log.Debugf("tls secrets volume: %+v", tlsSecrets)
+
+		if len(deployment.Spec.Template.Spec.Volumes) == 0 {
+			patch.addVolumeRoot()
+		}
+		patch.addVolume(caBundle)
+		patch.addVolume(tlsSecrets)
 	}
-	patch.addVolume(caBundle)
-	patch.addVolume(tlsSecrets)
 
 	if deployment.Spec.Template.Labels == nil {
 		deployment.Spec.Template.Labels = map[string]string{}
@@ -202,17 +221,32 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-func (w *Webhook) ignore(deployment *appsv1.Deployment) bool {
-	labels := deployment.Spec.Template.ObjectMeta.GetLabels()
-	status, defined := labels[k8sPkg.ProxyAutoInjectLabel]
-	if defined {
-		switch status {
-		case k8sPkg.ProxyAutoInjectDisabled, k8sPkg.ProxyAutoInjectCompleted:
-			return true
-		}
+// shouldInject determines whether or not the given deployment should be
+// injected. A deployment should be injected if it does not already contain
+// any known sidecars, and:
+// - the deployment's namespace has the linkerd.io/inject annotation set to
+//   "enabled", and the deployment's pod spec does not have the
+//   linkerd.io/inject annotation set to "disabled"; or
+// - the deployment's pod spec has the linkerd.io/inject annotation set to
+//   "enabled"
+func (w *Webhook) shouldInject(ns string, deployment *appsv1.Deployment) (bool, error) {
+	if healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec) {
+		return false, nil
 	}
 
-	return healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec)
+	namespace, err := w.client.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	nsAnnotation := namespace.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
+	podAnnotation := deployment.Spec.Template.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
+
+	if nsAnnotation == k8sPkg.ProxyInjectEnabled && podAnnotation != k8sPkg.ProxyInjectDisabled {
+		return true, nil
+	}
+
+	return podAnnotation == k8sPkg.ProxyInjectEnabled, nil
 }
 
 func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {
@@ -226,11 +260,15 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 		return nil, nil, err
 	}
 
-	for index, env := range proxy.Env {
-		if env.Name == envVarKeyProxyTLSPodIdentity {
-			proxy.Env[index].Value = identity.ToDNSName()
-		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
-			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
+	if identity != nil {
+		for index, env := range proxy.Env {
+			if env.Name == envVarKeyProxyTLSPodIdentity {
+				proxy.Env[index].Value = identity.ToDNSName()
+			} else if env.Name == envVarKeyProxyTLSControllerIdentity {
+				proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
+			} else if env.Name == envVarKeyProxyID {
+				proxy.Env[index].Value = identity.ToDNSName()
+			}
 		}
 	}
 

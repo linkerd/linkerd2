@@ -141,6 +141,8 @@ bin/linkerd -n emojivoto stat deployments
 bin/linkerd -n emojivoto tap deploy voting
 ```
 
+## Go
+
 ### A note about Go run
 
 Our instructions use a [`bin/go-run`](bin/go-run) script in lieu `go run`.
@@ -203,6 +205,11 @@ You can send test requests to the proxy-api service using the
 
 ```bash
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
+```
+
+You can also send test requests to the proxy-api's discovery interface:
+```bash
+bin/go-run controller/script/discovery-client
 ```
 
 ## Web

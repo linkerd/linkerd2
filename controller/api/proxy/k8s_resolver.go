@@ -71,7 +71,7 @@ func (k *k8sResolver) streamResolution(host string, port int, listener endpointU
 	return k.resolveKubernetesService(id, port, listener)
 }
 
-func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener) error {
+func (k *k8sResolver) streamProfiles(host string, clientNs string, listener profileUpdateListener) error {
 	// In single namespace mode, we'll close the stream immediately and the proxy
 	// will reissue the request after 3 seconds. If we wanted to be more
 	// sophisticated about this in the future, we could leave the stream open
@@ -81,23 +81,55 @@ func (k *k8sResolver) streamProfiles(host string, listener profileUpdateListener
 		return nil
 	}
 
-	id := profileID{
-		namespace: k.controllerNamespace,
-		name:      host,
+	subscriptions := map[profileID]profileUpdateListener{}
+
+	primaryListener, secondaryListener := newFallbackProfileListener(listener)
+
+	if clientNs != "" {
+		clientProfileID := profileID{
+			namespace: clientNs,
+			name:      host,
+		}
+
+		err := k.profileWatcher.subscribeToProfile(clientProfileID, primaryListener)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		subscriptions[clientProfileID] = primaryListener
 	}
 
-	err := k.profileWatcher.subscribeToProfile(id, listener)
-	if err != nil {
-		log.Error(err)
-		return err
+	serviceID, err := k.localKubernetesServiceIDFromDNSName(host)
+	if err == nil && serviceID != nil {
+		serverProfileID := profileID{
+			namespace: serviceID.namespace,
+			name:      host,
+		}
+
+		err := k.profileWatcher.subscribeToProfile(serverProfileID, secondaryListener)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		subscriptions[serverProfileID] = secondaryListener
 	}
 
 	select {
 	case <-listener.ClientClose():
-		return k.profileWatcher.unsubscribeToProfile(id, listener)
+		for id, listener := range subscriptions {
+			err = k.profileWatcher.unsubscribeToProfile(id, listener)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	case <-listener.ServerClose():
 		return nil
 	}
+}
+
+func (k *k8sResolver) getState() servicePorts {
+	return k.endpointsWatcher.getState()
 }
 
 func (k *k8sResolver) stop() {

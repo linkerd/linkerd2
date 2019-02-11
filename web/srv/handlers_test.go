@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	helpers "github.com/linkerd/linkerd2/pkg/profiles"
+	"sigs.k8s.io/yaml"
 )
 
 func TestHandleIndex(t *testing.T) {
@@ -109,7 +109,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns", "linkerd")
+	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns")
 
 	err = helpers.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {
