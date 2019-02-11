@@ -97,6 +97,7 @@ func init() {
 	RootCmd.AddCommand(newCmdTop())
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdVersion())
+	RootCmd.AddCommand(newCmdDoc())
 }
 
 // cliPublicAPIClient builds a new public API client and executes default status
