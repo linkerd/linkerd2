@@ -5,9 +5,9 @@ RUN apt-get update && apt-get install -y ca-certificates
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 ARG PROXY_VERSION
-RUN (proxy=$(bin/fetch-proxy $PROXY_VERSION); \
-    version=$(basename "$proxy" | sed 's/linkerd2-proxy-//'); \
-    mv "$proxy" linkerd2-proxy; \
+RUN (proxy=$(bin/fetch-proxy $PROXY_VERSION) && \
+    version=$(basename "$proxy" | sed 's/linkerd2-proxy-//') && \
+    mv "$proxy" linkerd2-proxy && \
     echo "$version" >version.txt)
 
 FROM $RUNTIME_IMAGE as runtime
