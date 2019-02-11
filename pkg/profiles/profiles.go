@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"text/template"
 	"time"
 
@@ -52,7 +51,7 @@ var (
 	minStatus uint32 = 100
 	maxStatus uint32 = 599
 
-	clusterZoneSuffix = []string{"svc", "cluster", "local"}
+	clusterZoneSuffix = "svc.cluster.local"
 
 	errRequestMatchField  = errors.New("A request match must have a field set")
 	errResponseMatchField = errors.New("A response match must have a field set")
@@ -483,7 +482,7 @@ func buildConfig(namespace, service string) *profileTemplateConfig {
 	return &profileTemplateConfig{
 		ServiceNamespace: namespace,
 		ServiceName:      service,
-		ClusterZone:      strings.Join(clusterZoneSuffix, "."),
+		ClusterZone:      clusterZoneSuffix,
 	}
 }
 
