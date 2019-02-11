@@ -479,16 +479,4 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
-
-	t.Run("Does not fail for pod from a different owner", func(t *testing.T) {
-		pods := []*pb.Pod{
-			&pb.Pod{Name: "ns1/test1", Added: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
-			&pb.Pod{Name: "ns2/test2", Added: false, Owner: &pb.Pod_Deployment{Deployment: "yyy"}},
-		}
-
-		err := validateDataPlanePodReporting(pods, "xxx")
-		if err != nil {
-			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
-	})
 }
