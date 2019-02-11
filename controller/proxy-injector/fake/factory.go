@@ -15,10 +15,12 @@ const (
 	DefaultControllerNamespace   = "linkerd"
 	DefaultNamespace             = "default"
 	FileProxySpec                = "fake/data/config-proxy.yaml"
+	FileProxyTLSDisabledSpec     = "fake/data/config-proxy-tls-disabled.yaml"
 	FileProxyInitSpec            = "fake/data/config-proxy-init.yaml"
 	FileTLSTrustAnchorVolumeSpec = "fake/data/config-linkerd-trust-anchors.yaml"
 	FileTLSIdentityVolumeSpec    = "fake/data/config-linkerd-secrets.yaml"
 	DefaultNoInitContainer       = false
+	DefaultTLSEnabled            = true
 )
 
 // Factory is a factory that can convert in-file YAML content into Kubernetes

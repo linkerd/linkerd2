@@ -34,10 +34,11 @@ type Webhook struct {
 	controllerNamespace string
 	resources           *WebhookResources
 	noInitContainer     bool
+	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -49,6 +50,7 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
 		noInitContainer:     noInitContainer,
+		tlsEnabled:          tlsEnabled,
 	}, nil
 }
 
@@ -125,12 +127,16 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}, nil
 	}
 
-	identity := &k8sPkg.TLSIdentity{
-		Name:                deployment.ObjectMeta.Name,
-		Kind:                strings.ToLower(request.Kind.Kind),
-		Namespace:           ns,
-		ControllerNamespace: w.controllerNamespace,
+	var identity *k8sPkg.TLSIdentity
+	if w.tlsEnabled {
+		identity = &k8sPkg.TLSIdentity{
+			Name:                deployment.ObjectMeta.Name,
+			Kind:                strings.ToLower(request.Kind.Kind),
+			Namespace:           ns,
+			ControllerNamespace: w.controllerNamespace,
+		}
 	}
+
 	proxy, proxyInit, err := w.containersSpec(identity)
 	if err != nil {
 		return nil, err
@@ -139,13 +145,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	log.Infof("proxy-init image: %s", proxyInit.Image)
 	log.Debugf("proxy container: %+v", proxy)
 	log.Debugf("init container: %+v", proxyInit)
-
-	caBundle, tlsSecrets, err := w.volumesSpec(identity)
-	if err != nil {
-		return nil, err
-	}
-	log.Debugf("ca bundle volume: %+v", caBundle)
-	log.Debugf("tls secrets volume: %+v", tlsSecrets)
 
 	patch := NewPatch()
 	patch.addContainer(proxy)
@@ -157,11 +156,20 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		patch.addInitContainer(proxyInit)
 	}
 
-	if len(deployment.Spec.Template.Spec.Volumes) == 0 {
-		patch.addVolumeRoot()
+	if w.tlsEnabled {
+		caBundle, tlsSecrets, err := w.volumesSpec(identity)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("ca bundle volume: %+v", caBundle)
+		log.Debugf("tls secrets volume: %+v", tlsSecrets)
+
+		if len(deployment.Spec.Template.Spec.Volumes) == 0 {
+			patch.addVolumeRoot()
+		}
+		patch.addVolume(caBundle)
+		patch.addVolume(tlsSecrets)
 	}
-	patch.addVolume(caBundle)
-	patch.addVolume(tlsSecrets)
 
 	if deployment.Spec.Template.Labels == nil {
 		deployment.Spec.Template.Labels = map[string]string{}
@@ -252,13 +260,15 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 		return nil, nil, err
 	}
 
-	for index, env := range proxy.Env {
-		if env.Name == envVarKeyProxyTLSPodIdentity {
-			proxy.Env[index].Value = identity.ToDNSName()
-		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
-			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
-		} else if env.Name == envVarKeyProxyID {
-			proxy.Env[index].Value = identity.ToDNSName()
+	if identity != nil {
+		for index, env := range proxy.Env {
+			if env.Name == envVarKeyProxyTLSPodIdentity {
+				proxy.Env[index].Value = identity.ToDNSName()
+			} else if env.Name == envVarKeyProxyTLSControllerIdentity {
+				proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
+			} else if env.Name == envVarKeyProxyID {
+				proxy.Env[index].Value = identity.ToDNSName()
+			}
 		}
 	}
 
