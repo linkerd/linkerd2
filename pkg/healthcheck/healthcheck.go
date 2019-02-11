@@ -750,7 +750,21 @@ func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, s
 
 func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error) {
 	req := &pb.ListPodsRequest{}
-	if hc.DataPlaneNamespace != "" {
+	if hc.Options.TargetProxyResource != "" {
+		parts := strings.Split(hc.Options.TargetProxyResource, "/")
+		ownerType, ownerName := parts[0], parts[1]
+		ownerKind, err := k8s.CanonicalResourceNameFromFriendlyName(ownerType)
+		if err != nil {
+			return nil, err
+		}
+		req.Selector = &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: hc.DataPlaneNamespace,
+				Type:      ownerKind,
+				Name:      ownerName,
+			},
+		}
+	} else if hc.DataPlaneNamespace != "" {
 		req.Selector = &pb.ResourceSelection{
 			Resource: &pb.Resource{
 				Namespace: hc.DataPlaneNamespace,
@@ -896,28 +910,7 @@ func checkControllerRunning(pods []v1.Pod) error {
 	return nil
 }
 
-func filterPodsByTarget(pods []*pb.Pod, targetProxyResource string) []*pb.Pod {
-	if targetProxyResource == "" {
-		return pods
-	}
-
-	podList := make([]*pb.Pod, 0)
-	for _, pod := range pods {
-		if pod.GetDeployment() == targetProxyResource ||
-			pod.GetReplicaSet() == targetProxyResource ||
-			pod.GetReplicationController() == targetProxyResource ||
-			pod.GetStatefulSet() == targetProxyResource ||
-			pod.GetDaemonSet() == targetProxyResource ||
-			pod.GetJob() == targetProxyResource {
-			podList = append(podList, pod)
-		}
-	}
-	return podList
-}
-
 func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget string) error {
-	pods = filterPodsByTarget(pods, proxyTarget)
-
 	if len(pods) == 0 {
 		msg := fmt.Sprintf("No \"%s\" containers found", k8s.ProxyContainerName)
 		if targetNamespace != "" {
@@ -946,8 +939,6 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget s
 
 func validateDataPlanePodReporting(pods []*pb.Pod, proxyTarget string) error {
 	notInPrometheus := []string{}
-
-	pods = filterPodsByTarget(pods, proxyTarget)
 
 	for _, p := range pods {
 		// the `Added` field indicates the pod was found in Prometheus

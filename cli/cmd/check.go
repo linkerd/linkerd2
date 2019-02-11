@@ -10,6 +10,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -64,7 +65,7 @@ non-zero exit code.`,
 	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
-	cmd.PersistentFlags().BoolVar(&options.targetProxyResource, "proxy", options.targetProxyResource, "Only run data-plane checks, to determine if the data plane is healthy")
+	cmd.PersistentFlags().StringVar(&options.targetProxyResource, "proxy", options.targetProxyResource, "Only run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
@@ -138,6 +139,14 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 func (o *checkOptions) validate() error {
 	if o.preInstallOnly && o.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	ownerParts := strings.Split(o.targetProxyResource, "/")
+	if len(ownerParts) != 2 {
+		return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web", o.targetProxyResource)
+	}
+	_, err := k8s.CanonicalResourceNameFromFriendlyName(ownerParts[0])
+	if err != nil {
+		return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web. Error: %s", o.targetProxyResource, err)
 	}
 	return nil
 }
