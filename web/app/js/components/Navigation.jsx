@@ -218,7 +218,7 @@ class NavigationBase extends React.Component {
           open={this.state.drawerOpen}>
           <div className={classNames(classes.navToolbar)}>
             <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !this.state.drawerOpen} )}>
-              {linkerdWordLogo}
+              <Link to="/overview">{linkerdWordLogo}</Link>
             </div>
             <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClick}>
               {this.state.drawerOpen ? <ChevronLeftIcon /> : <MenuIcon />}
