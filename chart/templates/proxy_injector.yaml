@@ -159,7 +159,7 @@ data:
   {{.Values.ProxySpecFileName}}: |
     env:
     - name: LINKERD2_PROXY_LOG
-      value: warn,linkerd2_proxy=info
+      value: {{.Values.ProxyLogLevel}}
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-proxy-api.{{.Values.Namespace}}.svc.cluster.local:{{.Values.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
