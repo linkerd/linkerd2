@@ -1,3 +1,17 @@
+## edge-19.2.2
+
+* CLI
+  * Improved service profile validation when running `linkerd check` in order to
+    validate service profiles in all namespaces
+* Controller
+  * Added stat and tap support for StatefulSets in the CLI, Grafana, and WebUI
+  * Updated auto-injector to use the proxy log level configured at install time
+  * Fixed issue with auto-injector including TLS settings in injected pods even
+    when TLS was not enabled
+* Proxy
+  * Modified the way in which canonicalization warnings are logged to reduce the
+    overall volume of error logs and make it clearer when failures occur
+
 ## edge-19.2.1
 
 * Controller
