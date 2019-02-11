@@ -1422,7 +1422,7 @@ data:
   ProxySpecFileName: |
     env:
     - name: LINKERD2_PROXY_LOG
-      value: warn,linkerd2_proxy=info
+      value: ProxyLogLevel
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:123
     - name: LINKERD2_PROXY_CONTROL_LISTENER

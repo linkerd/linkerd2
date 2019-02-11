@@ -51,6 +51,7 @@ func TestRender(t *testing.T) {
 		ProxyAutoInjectEnabled:           true,
 		ProxyInjectAnnotation:            "ProxyInjectAnnotation",
 		ProxyInjectDisabled:              "ProxyInjectDisabled",
+		ProxyLogLevel:                    "ProxyLogLevel",
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		InboundPort:                      4143,
