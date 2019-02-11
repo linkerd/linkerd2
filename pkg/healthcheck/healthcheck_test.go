@@ -429,20 +429,6 @@ func TestValidateDataPlanePods(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 	})
-
-	t.Run("Does not fail when proxy container is not ready but belongs to a different target", func(t *testing.T) {
-		pods := []*pb.Pod{
-			&pb.Pod{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
-			&pb.Pod{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: false, Owner: &pb.Pod_Deployment{Deployment: "yyy"}},
-			&pb.Pod{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
-			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true, Owner: &pb.Pod_Deployment{Deployment: "xxx"}},
-		}
-
-		err := validateDataPlanePods(pods, "emojivoto", "xxx")
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-	})
 }
 
 func TestValidateDataPlanePodReporting(t *testing.T) {
