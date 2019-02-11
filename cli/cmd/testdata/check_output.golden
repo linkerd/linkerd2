@@ -3,4 +3,4 @@ category
 √ check1
 × check2
     This should contain instructions for fail
-    see http://linkerd.io/hint-url for hints
+    see https://linkerd.io/checks/#hint-anchor for hints

@@ -101,6 +101,11 @@ const (
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 )
 
+// HintBaseURL is the base URL on the linkerd.io website that all check hints
+// point to. Each check adds its own `hintAnchor` to specify a location on the
+// page.
+const HintBaseURL = "https://linkerd.io/checks/#"
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
@@ -111,8 +116,9 @@ type checker struct {
 	// when the check is executed
 	description string
 
-	// hintURL provides a pointer to more information about the check
-	hintURL string
+	// hintAnchor, when appended to `HintBaseURL`, provides a URL to more
+	// information about the check
+	hintAnchor string
 
 	// fatal indicates that all remaining checks should be aborted if this check
 	// fails; it should only be used if subsequent checks cannot possibly succeed
@@ -141,7 +147,7 @@ type checker struct {
 type CheckResult struct {
 	Category    CategoryID
 	Description string
-	HintURL     string
+	HintAnchor  string
 	Retry       bool
 	Warning     bool
 	Err         error
@@ -209,9 +215,9 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 // category. This method is attached to the HealthChecker struct because the
 // checkers directly reference other members of the struct, such as kubeAPI,
 // controlPlanePods, etc.
-// Note that all checks should include a `hintURL` with a corresponding section
+// Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
-// https://linkerd.io/checks/
+// https://linkerd.io/checks/#
 func (hc *HealthChecker) allCategories() []category {
 	return []category{
 		{
@@ -219,7 +225,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "can initialize the client",
-					hintURL:     "https://linkerd.io/checks/#k8s-api",
+					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
 						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
@@ -235,7 +241,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can query the Kubernetes API",
-					hintURL:     "https://linkerd.io/checks/#k8s-api",
+					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						hc.httpClient, err = hc.kubeAPI.NewClient()
@@ -253,7 +259,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "is running the minimum Kubernetes API version",
-					hintURL:     "https://linkerd.io/checks/#k8s-version",
+					hintAnchor:  "k8s-version",
 					check: func(context.Context) error {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
 					},
@@ -265,35 +271,35 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "control plane namespace does not already exist",
-					hintURL:     "https://linkerd.io/checks/#pre-ns",
+					hintAnchor:  "pre-ns",
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
 					description: "can create Namespaces",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate("", "", "v1", "Namespace")
 					},
 				},
 				{
 					description: "can create ClusterRoles",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
 					},
 				},
 				{
 					description: "can create CustomResourceDefinitions",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
 					},
@@ -305,21 +311,21 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "control plane namespace exists",
-					hintURL:     "https://linkerd.io/checks/#pre-single-ns",
+					hintAnchor:  "pre-single-ns",
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
 					description: "can create Roles",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
 					},
 				},
 				{
 					description: "can create RoleBindings",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s-cluster-k8s",
+					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
 					},
@@ -331,28 +337,28 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "can create ServiceAccounts",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s",
+					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
 					},
 				},
 				{
 					description: "can create Services",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s",
+					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
 					},
 				},
 				{
 					description: "can create Deployments",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s",
+					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
 					},
 				},
 				{
 					description: "can create ConfigMaps",
-					hintURL:     "https://linkerd.io/checks/#pre-k8s",
+					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
 					},
@@ -364,7 +370,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "control plane namespace exists",
-					hintURL:     "https://linkerd.io/checks/#l5d-existence-ns",
+					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
@@ -372,7 +378,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "controller pod is running",
-					hintURL:       "https://linkerd.io/checks/#l5d-existence-controller",
+					hintAnchor:    "l5d-existence-controller",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
@@ -386,7 +392,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "can initialize the client",
-					hintURL:     "https://linkerd.io/checks/#l5d-existence-client",
+					hintAnchor:  "l5d-existence-client",
 					fatal:       true,
 					check: func(context.Context) (err error) {
 						if hc.APIAddr != "" {
@@ -399,7 +405,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "can query the control plane API",
-					hintURL:       "https://linkerd.io/checks/#l5d-existence-api",
+					hintAnchor:    "l5d-existence-api",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) (err error) {
@@ -414,7 +420,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description:   "control plane pods are ready",
-					hintURL:       "https://linkerd.io/checks/#l5d-api-control-ready",
+					hintAnchor:    "l5d-api-control-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
@@ -428,7 +434,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "can query the control plane API",
-					hintURL:       "https://linkerd.io/checks/#l5d-api-control-api",
+					hintAnchor:    "l5d-api-control-api",
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
 					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
@@ -442,7 +448,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "no invalid service profiles",
-					hintURL:     "https://linkerd.io/checks/#l5d-sp",
+					hintAnchor:  "l5d-sp",
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.validateServiceProfiles()
@@ -455,7 +461,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "can determine the latest version",
-					hintURL:     "https://linkerd.io/checks/#l5d-version-latest",
+					hintAnchor:  "l5d-version-latest",
 					check: func(ctx context.Context) (err error) {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
@@ -483,7 +489,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "cli is up-to-date",
-					hintURL:     "https://linkerd.io/checks/#l5d-version-cli",
+					hintAnchor:  "l5d-version-cli",
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.latestVersions.Match(version.Version)
@@ -496,7 +502,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "control plane is up-to-date",
-					hintURL:     "https://linkerd.io/checks/#l5d-version-control",
+					hintAnchor:  "l5d-version-control",
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.latestVersions.Match(hc.serverVersion)
@@ -504,7 +510,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "control plane and cli versions match",
-					hintURL:     "https://linkerd.io/checks/#l5d-version-control",
+					hintAnchor:  "l5d-version-control",
 					warning:     true,
 					check: func(context.Context) error {
 						if hc.serverVersion != version.Version {
@@ -520,7 +526,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "data plane namespace exists",
-					hintURL:     "https://linkerd.io/checks/#l5d-data-plane-exists",
+					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
@@ -528,7 +534,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "data plane proxies are ready",
-					hintURL:       "https://linkerd.io/checks/#l5d-data-plane-ready",
+					hintAnchor:    "l5d-data-plane-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
@@ -542,7 +548,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description:   "data plane proxy metrics are present in Prometheus",
-					hintURL:       "https://linkerd.io/checks/#l5d-data-plane-prom",
+					hintAnchor:    "l5d-data-plane-prom",
 					retryDeadline: hc.RetryDeadline,
 					check: func(ctx context.Context) error {
 						pods, err := hc.getDataPlanePods(ctx)
@@ -555,7 +561,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "data plane is up-to-date",
-					hintURL:     "https://linkerd.io/checks/#l5d-data-plane-version",
+					hintAnchor:  "l5d-data-plane-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
 						pods, err := hc.getDataPlanePods(ctx)
@@ -574,7 +580,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "data plane and cli versions match",
-					hintURL:     "https://linkerd.io/checks/#l5d-data-plane-cli-version",
+					hintAnchor:  "l5d-data-plane-cli-version",
 					warning:     true,
 					check: func(ctx context.Context) error {
 						pods, err := hc.getDataPlanePods(ctx)
@@ -598,7 +604,7 @@ func (hc *HealthChecker) allCategories() []category {
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHeathChecker.
-func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL string, check func(context.Context) error) {
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
 	hc.addCategory(
 		category{
 			id: categoryID,
@@ -606,7 +612,7 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintURL 
 				checker{
 					description: description,
 					check:       check,
-					hintURL:     hintURL,
+					hintAnchor:  hintAnchor,
 				},
 			},
 		},
@@ -666,7 +672,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
-			HintURL:     c.hintURL,
+			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
 			Err:         err,
 		}
@@ -708,7 +714,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 		observer(&CheckResult{
 			Category:    categoryID,
 			Description: fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription),
-			HintURL:     c.hintURL,
+			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
 			Err:         err,
 		})
