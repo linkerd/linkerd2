@@ -15,62 +15,6 @@ var (
 	factory *fake.Factory
 )
 
-func TestMutate(t *testing.T) {
-	ns, err := factory.Namespace("namespace-inject-enabled.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-	fakeClient := fake.NewClient("", ns)
-
-	defaultWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	noInitContainerWebhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, true, fake.DefaultTLSEnabled)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	tlsDisabledWebhookResources := *testWebhookResources
-	tlsDisabledWebhookResources.FileProxySpec = fake.FileProxyTLSDisabledSpec
-
-	tlsDisabledWebook, err := NewWebhook(fakeClient, &tlsDisabledWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, false)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	var testCases = []struct {
-		webhook      *Webhook
-		title        string
-		requestFile  string
-		responseFile string
-	}{
-		{defaultWebhook, "no labels", "inject-empty-request.json", "inject-empty-response.yaml"},
-		{defaultWebhook, "inject enabled", "inject-enabled-request.json", "inject-enabled-response.yaml"},
-		{defaultWebhook, "inject disabled", "inject-disabled-request.json", "inject-disabled-response.yaml"},
-		{noInitContainerWebhook, "inject no-init-container", "inject-enabled-request.json", "inject-no-init-container-response.yaml"},
-		{tlsDisabledWebook, "inject without tls", "inject-enabled-request.json", "inject-enabled-tls-disabled-response.yaml"},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(fmt.Sprintf("%s", testCase.title), func(t *testing.T) {
-			data, err := factory.HTTPRequestBody(testCase.requestFile)
-			if err != nil {
-				t.Fatal("Unexpected error: ", err)
-			}
-
-			expected, err := factory.AdmissionReview(testCase.responseFile)
-			if err != nil {
-				t.Fatal("Unexpected error: ", err)
-			}
-
-			actual := testCase.webhook.Mutate(data)
-			assertEqualAdmissionReview(t, expected, actual)
-		})
-	}
-}
-
 func TestShouldInject(t *testing.T) {
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
