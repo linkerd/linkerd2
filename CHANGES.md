@@ -1,3 +1,153 @@
+## stable-2.2.0
+
+This stable release introduces automatic request retries and timeouts, and
+graduates auto-inject to be a fully-supported (non-experimental) feature. It
+adds several new CLI commands, including `logs` and `endpoints`, that provide
+diagnostic visibility into Linkerd's control plane. Finally, it introduces two
+exciting experimental features: a cryptographically-secured client identity
+header, and a CNI plugin that avoids the need for `NET_ADMIN` kernel
+capabilities at deploy time.
+
+For more details, see the announcement blog post:
+https://blog.linkerd.io/2019/02/12/announcing-linkerd-2-2/
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: The default behavior for proxy auto injection and service
+profile ownership has changed as part of this release. Please see the
+[upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-2-0)
+for more details.
+
+**Special thanks to**: @alenkacz, @codeman9, @jonrichards, @radu-matei, @yeya24,
+and @zknill
+
+**Full release notes**:
+
+* CLI
+  * Improved service profile validation when running `linkerd check` in order to
+    validate service profiles in all namespaces
+  * Added the `linkerd endpoints` command to introspect Linkerd's service
+    discovery state
+  * Added the `--tap` flag to `linkerd profile` to generate service profiles
+    using the route results seen during the tap
+  * Added support for the `linkerd.io/inject: disabled` annotation on pod specs
+    to disable injection for specific pods when running `linkerd inject`
+  * Added support for `basePath` in OpenAPI 2.0 files when running `linkerd
+    profile --open-api`
+  * Increased `linkerd check` client timeout from 5 seconds to 30 seconds to fix
+    issues for clusters with slow API servers
+  * Updated `linkerd routes` to no longer return rows for `ExternalName`
+    services in the namespace
+  * Broadened the set of valid URLs when connecting to the Kubernetes API
+  * Added the `--proto` flag to `linkerd profile` to output a service profile
+    based on a Protobuf spec file
+  * Fixed CLI connection failures to clusters that use self-signed certificates
+  * Simplified `linkerd install` so that setting up proxy auto-injection
+    (flag `--proxy-auto-inject`) no longer requires enabling TLS (flag `--tls`)
+  * Added links for each `linkerd check` failure, pointing to a relevant section
+    in our new FAQ page with resolution steps for each case
+  * Added optional `linkerd install-sp` command to generate service profiles for
+    the control plane, providing per-route metrics for control plane components
+  * Removed `--proxy-bind-timeout` flag from `linkerd install` and
+    `linkerd inject`, as the proxy no longer accepts this environment variable
+  * Improved CLI appearance on Windows systems
+  * Improved `linkerd check` output, fixed bug with `--single-namespace`
+  * Fixed panic when `linkerd routes` is called in single-namespace mode
+  * Added `linkerd logs` command to surface logs from any container in the
+    Linkerd control plane
+  * Added `linkerd uninject` command to remove the Linkerd proxy from a
+    Kubernetes config
+  * Improved `linkerd inject` to re-inject a resource that already has a Linkerd
+    proxy
+  * Improved `linkerd routes` to list all routes, including those without
+    traffic
+  * Improved readability in `linkerd check` and `linkerd inject` outputs
+  * Adjusted the set of checks that are run before executing CLI commands, which
+    allows the CLI to be invoked even when the control plane is not fully ready
+  * Fixed reporting of injected resources when the `linkerd inject` command is
+    run on `List` type resources with multiple items
+  * Updated the `linkerd dashboard` command to use port-forwarding instead of
+    proxying when connecting to the web UI and Grafana
+  * Added validation for the `ServiceProfile` CRD
+  * Updated the `linkerd check` command to disallow setting both the `--pre` and
+    `--proxy` flags simultaneously
+  * Added `--routes` flag to the `linkerd top` command, for grouping table rows
+    by route instead of by path
+  * Updated Prometheus configuration to automatically load `*_rules.yml` files
+  * Removed TLS column from the `linkerd routes` command output
+  * Updated `linkerd install` output to use non-default service accounts,
+    `emptyDir` volume mounts, and non-root users
+  * Removed cluster-wide resources from single-namespace installs
+  * Fixed resource requests for proxy-injector container in `--ha` installs
+* Controller
+  * Fixed issue with auto-injector not setting the proxy ID, which is required
+    to successfully locate client service profiles
+  * Added full stat and tap support for DaemonSets and StatefulSets in the CLI,
+    Grafana, and web UI
+  * Updated auto-injector to use the proxy log level configured at install time
+  * Fixed issue with auto-injector including TLS settings in injected pods even
+    when TLS was not enabled
+  * Changed automatic proxy injection to be opt-in via the `linkerd.io/inject`
+    annotation on the pod or namespace
+  * Move service profile definitions to client and server namespaces, rather
+    than the control plane namespace
+  * Added `linkerd.io/created-by` annotation to the linkerd-cni DaemonSet
+  * Added a 10 second keepalive default to resolve dropped connections in Azure
+    environments
+  * Improved node selection for installing the linkerd-cni DaemonSet
+  * Corrected the expected controller identity when configuring pods with TLS
+  * Modified klog to be verbose when controller log-level is set to `debug`
+  * Added support for retries and timeouts, configured directly in the service
+    profile for each route
+  * Added an experimental CNI plugin to avoid requiring the NET_ADMIN capability
+    when injecting proxies
+  * Improved the API for `ListPods`
+  * Fixed `GetProfiles` API call not returning immediately when no profile
+    exists (resulting in proxies logging warnings)
+  * Blocked controller initialization until caches have synced with kube API
+  * Fixed proxy-api handling of named target ports in service configs
+  * Added parameter to stats API to skip retrieving prometheus stats
+* Web UI
+  * Updated navigation to link the Linkerd logo back to the Overview page
+  * Fixed console warnings on the Top page
+  * Grayed-out the tap icon for requests from sources that are not meshed
+  * Improved resource detail pages to show all resource types
+  * Fixed stats not appearing for routes that have service profiles installed
+  * Added "meshed" and "no traffic" badges on the resource detail pages
+  * Fixed `linkerd dashboard` to maintain proxy connection when browser open fails
+  * Fixed JavaScript bundling to avoid serving old versions after upgrade
+  * Reduced the size of the webpack JavaScript bundle by nearly 50%
+  * Fixed an indexing error on the top results page
+  * Restored unmeshed resources in the network graph on the resource detail page
+  * Adjusted label for unknown routes in route tables, added tooltip
+  * Updated Top Routes page to persist form settings in URL
+  * Added button to create new service profiles on Top Routes page
+  * Fixed CLI commands displayed when linkerd is running in non-default
+    namespace
+* Proxy
+  * Modified the way in which canonicalization warnings are logged to reduce the
+    overall volume of error logs and make it clearer when failures occur
+  * Added TCP keepalive configuration to fix environments where peers may
+    silently drop connections
+  * Updated the `Get` and `GetProfiles` APIs to accept a `proxy_id` parameter in
+    order to return more tailored results
+  * Removed TLS fallback-to-plaintext if handshake fails
+  * Added the ability to override a proxy's normal outbound routing by adding an
+   `l5d-override-dst` header
+  * Added `LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT` environment variable to
+    customize the timeout for DNS queries to canonicalize a name
+  * Added support for route timeouts in service profiles
+  * Improved logging for gRPC errors and for malformed HTTP/2 request headers
+  * Improved log readability by moving some noisy log messages to more verbose
+    log levels
+  * Fixed a deadlock in HTTP/2 stream reference counts
+  * Updated the proxy-init container to exit with a non-zero exit code if
+    initialization fails, making initialization errors much more visible
+  * Fixed a memory leak due to leaked UDP sockets for failed DNS queries
+  * Improved configuration of the PeakEwma load balancer
+  * Improved handling of ports configured to skip protocol detection when the
+    proxy is running with TLS enabled
+
 ## edge-19.2.3
 
 * Controller
