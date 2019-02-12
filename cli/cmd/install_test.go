@@ -196,7 +196,9 @@ func TestValidate(t *testing.T) {
 			{"", false},
 			{"info", true},
 			{"somemodule", true},
+			{"bad%name", false},
 			{"linkerd2_proxy=debug", true},
+			{"linkerd2%proxy=debug", false},
 			{"linkerd2_proxy=foobar", false},
 			{"linker2d_proxy,std::option", true},
 			{"warn,linkerd2_proxy=info", true},
@@ -213,8 +215,9 @@ func TestValidate(t *testing.T) {
 			if !tc.valid && err == nil {
 				t.Fatalf("Expected error string \"%s is not a valid proxy log level\", got nothing", tc.input)
 			}
-			if !tc.valid && err.Error() != fmt.Sprintf("%s is not a valid proxy log level", tc.input) {
-				t.Fatalf("Expected error string \"%s is not a valid proxy log level\", got \"%s\"", tc.input, err)
+			expectedErr := "\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging"
+			if !tc.valid && err.Error() != fmt.Sprintf(expectedErr, tc.input) {
+				t.Fatalf("Expected error string \""+expectedErr+"\"", tc.input, err)
 			}
 		}
 	})

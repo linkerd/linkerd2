@@ -42,7 +42,7 @@ var (
 
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
-	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
+	alphaNumDash              = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
 	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
 
@@ -328,7 +328,8 @@ func (options *proxyConfigOptions) validate() error {
 	}
 
 	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
-		return fmt.Errorf("%s is not a valid proxy log level", options.proxyLogLevel)
+		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
+			options.proxyLogLevel)
 	}
 
 	return nil
