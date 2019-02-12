@@ -127,14 +127,11 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}, nil
 	}
 
-	var identity *k8sPkg.TLSIdentity
-	if w.tlsEnabled {
-		identity = &k8sPkg.TLSIdentity{
-			Name:                deployment.ObjectMeta.Name,
-			Kind:                strings.ToLower(request.Kind.Kind),
-			Namespace:           ns,
-			ControllerNamespace: w.controllerNamespace,
-		}
+	identity := &k8sPkg.TLSIdentity{
+		Name:                deployment.ObjectMeta.Name,
+		Kind:                strings.ToLower(request.Kind.Kind),
+		Namespace:           ns,
+		ControllerNamespace: w.controllerNamespace,
 	}
 
 	proxy, proxyInit, err := w.containersSpec(identity)
@@ -260,15 +257,13 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 		return nil, nil, err
 	}
 
-	if identity != nil {
-		for index, env := range proxy.Env {
-			if env.Name == envVarKeyProxyTLSPodIdentity {
-				proxy.Env[index].Value = identity.ToDNSName()
-			} else if env.Name == envVarKeyProxyTLSControllerIdentity {
-				proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
-			} else if env.Name == envVarKeyProxyID {
-				proxy.Env[index].Value = identity.ToDNSName()
-			}
+	for index, env := range proxy.Env {
+		if env.Name == envVarKeyProxyTLSPodIdentity {
+			proxy.Env[index].Value = identity.ToDNSName()
+		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
+			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
+		} else if env.Name == envVarKeyProxyID {
+			proxy.Env[index].Value = identity.ToDNSName()
 		}
 	}
 
