@@ -1,13 +1,18 @@
+import InputAdornment from '@material-ui/core/InputAdornment';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Search from '@material-ui/icons/Search';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TableSortLabel from '@material-ui/core/TableSortLabel';
+import TextField from '@material-ui/core/TextField';
+import Toolbar from '@material-ui/core/Toolbar';
 import Tooltip from '@material-ui/core/Tooltip';
+import Typography from '@material-ui/core/Typography';
 import _find from 'lodash/find';
 import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
@@ -29,8 +34,10 @@ const styles = theme => ({
     opacity: 0.4,
   },
   denseTable: {
-    paddingRight: "8px",
-    paddingLeft: "8px"
+    paddingRight: "8px"
+  },
+  title: {
+    flexGrow: 1
   }
 });
 
@@ -39,8 +46,10 @@ class BaseTable extends React.Component {
     super(props);
     this.state = {
       order: this.props.defaultOrder || "asc",
-      orderBy: this.props.defaultOrderBy
+      orderBy: this.props.defaultOrderBy,
+      filterBy: ""
     };
+    this.handleFilterChange = this.handleFilterChange.bind(this);
   }
 
   createSortHandler = col => () => {
@@ -54,14 +63,37 @@ class BaseTable extends React.Component {
     this.setState({ order, orderBy });
   };
 
-  sortRows = (tableRows, tableColumns, order, orderBy) => {
-    if (!orderBy) {
+  handleFilterChange = e => {
+    let filterBy = e.target.value;
+    this.setState({ filterBy: filterBy });
+  }
+
+  generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
+    if (!orderBy && !filterBy) {
       return tableRows;
     }
 
     let col = _find(tableColumns, d => d.dataIndex === orderBy);
     let sorted = tableRows.sort(col.sorter);
-    return order === 'desc' ? sorted.reverse() : sorted;
+    if (!filterBy) {
+      return order === 'desc' ? sorted.reverse() : sorted;
+    } else {
+      let filteredRows = [];
+      let swapWildCard = /[*]/g; // replace "*"" in filterBy with wildcard
+      let regexString = new RegExp(filterBy.replace(swapWildCard, ".+"), "i");
+      let extractedTableRowText = sorted.reduce((acc, row) => {
+        if (col.filter) {
+          acc.push(col.filter(row));
+        }
+        return acc;
+      },[]);
+      extractedTableRowText.forEach((row, rowIndex) => {
+        if (row.match(regexString)) {
+          filteredRows.push(sorted[rowIndex]);
+        }
+      });
+      return order === 'desc' ? filteredRows.reverse() : filteredRows;
+    }
   }
 
   renderHeaderCell = (col, order, orderBy) => {
@@ -101,12 +133,33 @@ class BaseTable extends React.Component {
   }
 
   render() {
-    const { classes, tableRows, tableColumns, tableClassName, rowKey, padding} = this.props;
-    const {order, orderBy} = this.state;
-    const sortedTableRows = this.sortRows(tableRows, tableColumns, order, orderBy);
+    const { classes, enableFilter, tableRows, tableColumns, tableClassName, title, rowKey, padding} = this.props;
+    const {order, orderBy, filterBy} = this.state;
+    const sortedTableRows = tableRows.length > 0 ? this.generateRows(tableRows, tableColumns, order, orderBy, filterBy) : tableRows;
 
     return (
       <Paper className={classes.root}>
+        { enableFilter &&
+        <Toolbar>
+          <Typography
+            className={classes.title}
+            variant="h5">
+            {title}
+          </Typography>
+          <TextField
+            className={classes.margin}
+            id="input-with-icon-textfield"
+            onChange={this.handleFilterChange}
+            placeholder="Filter by text"
+            InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            )
+            }} />
+        </Toolbar>
+        }
         <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
           <TableHead>
             <TableRow>
@@ -147,6 +200,7 @@ BaseTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   defaultOrder: PropTypes.string,
   defaultOrderBy: PropTypes.string,
+  enableFilter: PropTypes.bool,
   padding: PropTypes.string,
   rowKey: PropTypes.func,
   tableClassName: PropTypes.string,
@@ -158,16 +212,19 @@ BaseTable.propTypes = {
     sorter: PropTypes.func,
     title: PropTypes.string
   })).isRequired,
-  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+  tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  title: PropTypes.string
 };
 
 BaseTable.defaultProps = {
   defaultOrder: "asc",
   defaultOrderBy: null,
+  enableFilter: false,
   padding: "default",
   rowKey: null,
   tableClassName: "",
   tableRows: [],
+  title: ""
 };
 
 export default withStyles(styles)(BaseTable);

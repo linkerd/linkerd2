@@ -28,6 +28,39 @@ describe('Tests for <MetricsTable>', () => {
     expect(table.props().tableColumns).toHaveLength(10);
   });
 
+  it('if enableFilter is true, user can filter rows by search term', () => {
+    let extraProps = _merge({}, defaultProps, {
+      metrics: [{
+        name: 'authors',
+        namespace: 'default',
+        key: 'authors-default-deploy',
+        totalRequests: 0,
+      }, {
+        name: 'books',
+        namespace: 'default',
+        key: 'books-default-deploy',
+        totalRequests: 0,
+      }],
+      resource: 'deployment',
+      enableFilter: true
+    });
+    const component = mount(routerWrap(MetricsTable, extraProps));
+
+    const table = component.find('BaseTable');
+
+    const enableFilter = table.prop('enableFilter');
+
+    const input = table.find('input');
+
+    expect(enableFilter).toEqual(true);
+    expect(table.html()).toContain('Filter by text');
+    expect(table.html()).toContain('books');
+    expect(table.html()).toContain('authors');
+    input.simulate('change', {target: {value: 'authors'}});
+    expect(table.html()).not.toContain('books');
+    expect(table.html()).toContain('authors');
+  });
+
   it('omits the namespace column for the namespace resource', () => {
     let extraProps = _merge({}, defaultProps, { metrics: [], resource: "namespace"});
     const component = mount(routerWrap(MetricsTable, extraProps));

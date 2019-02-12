@@ -34,6 +34,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     dataIndex: "count",
     isNumeric: true,
     defaultSortOrder: "desc",
+    filter: d => d.path + ',' + d.httpMethod,
     sorter: (a, b) => numericSort(a.count, b.count)
   },
   {
@@ -91,6 +92,7 @@ class TopEventTable extends React.Component {
     let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={tableRows}
         tableColumns={columns}
         tableClassName="metric-table"

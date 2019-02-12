@@ -42,6 +42,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
       dataIndex: "name",
       isNumeric: false,
+      filter: d => d.name + "," + d.namespace,
       render: d => {
         let nameContents;
         if (resource === "namespace") {
@@ -161,16 +162,18 @@ class MetricsTable extends React.Component {
     }).isRequired,
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
-    showNamespaceColumn: PropTypes.bool
+    showNamespaceColumn: PropTypes.bool,
+    title: PropTypes.string
   };
 
   static defaultProps = {
     showNamespaceColumn: true,
+    title: "",
     metrics: []
   };
 
   render() {
-    const {  metrics, resource, showNamespaceColumn, api } = this.props;
+    const {  metrics, resource, showNamespaceColumn, title, api } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
 
@@ -178,9 +181,11 @@ class MetricsTable extends React.Component {
     let rows = preprocessMetrics(metrics);
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={rows}
         tableColumns={columns}
         tableClassName="metric-table"
+        title={title}
         defaultOrderBy="name"
         padding="dense" />
     );

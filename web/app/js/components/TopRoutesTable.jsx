@@ -9,6 +9,7 @@ const routesColumns = [
   {
     title: "Route",
     dataIndex: "route",
+    filter: d => d.route + "," + d.authority,
     sorter: (a, b) => {
       if (a.route === DefaultRoute) {
         return 1;
@@ -76,6 +77,7 @@ export default class TopRoutesTable extends React.Component {
     const { rows } = this.props;
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={rows}
         tableColumns={routesColumns}
         tableClassName="metric-table"
