@@ -26,7 +26,7 @@ COPY web/app .
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:9c6adbc7 as golang
+FROM gcr.io/linkerd-io/go-deps:c20f2b2a as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 RUN mkdir -p web
 COPY web/main.go web
