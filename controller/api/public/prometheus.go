@@ -22,9 +22,9 @@ type promResult struct {
 const (
 	promRequests       = promType("QUERY_REQUESTS")
 	promActualRequests = promType("QUERY_ACTUAL_REQUESTS")
-	promTcpConnections = promType("QUERY_TCP_CONNECTIONS")
-	promTcpReadBytes   = promType("QUERY_TCP_READ_BYTES")
-	promTcpWriteBytes  = promType("QUERY_TCP_WRITE_BYTES")
+	promTCPConnections = promType("QUERY_TCP_CONNECTIONS")
+	promTCPReadBytes   = promType("QUERY_TCP_READ_BYTES")
+	promTCPWriteBytes  = promType("QUERY_TCP_WRITE_BYTES")
 	promLatencyP50     = promType("0.5")
 	promLatencyP95     = promType("0.95")
 	promLatencyP99     = promType("0.99")

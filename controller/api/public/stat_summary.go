@@ -327,9 +327,9 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	}
 
 	if req.TcpStats {
-		promQueries[promTcpConnections] = tcpConnectionsQuery
-		promQueries[promTcpReadBytes] = tcpReadBytesQuery
-		promQueries[promTcpWriteBytes] = tcpWriteBytesQuery
+		promQueries[promTCPConnections] = tcpConnectionsQuery
+		promQueries[promTCPReadBytes] = tcpReadBytesQuery
+		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
 	}
 	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 
@@ -376,11 +376,11 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				basicStats[resource].LatencyMsP95 = value
 			case promLatencyP99:
 				basicStats[resource].LatencyMsP99 = value
-			case promTcpConnections:
+			case promTCPConnections:
 				tcpStats[resource].OpenConnections = value
-			case promTcpReadBytes:
+			case promTCPReadBytes:
 				tcpStats[resource].ReadBytesTotal = value
-			case promTcpWriteBytes:
+			case promTCPWriteBytes:
 				tcpStats[resource].WriteBytesTotal = value
 			}
 

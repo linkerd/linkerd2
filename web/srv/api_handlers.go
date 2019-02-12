@@ -128,7 +128,7 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
 		SkipStats:     skipStats,
-		TcpStats:      tcpStats,
+		TCPStats:      tcpStats,
 	}
 
 	// default to returning deployment stats

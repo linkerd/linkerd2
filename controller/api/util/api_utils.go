@@ -71,7 +71,7 @@ type StatsSummaryRequestParams struct {
 	FromType      string
 	FromName      string
 	SkipStats     bool
-	TcpStats      bool
+	TCPStats      bool
 }
 
 // TopRoutesRequestParams contains parameters that are used to build TopRoutes
@@ -167,7 +167,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 		},
 		TimeWindow: window,
 		SkipStats:  p.SkipStats,
-		TcpStats:   p.TcpStats,
+		TcpStats:   p.TCPStats,
 	}
 
 	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
