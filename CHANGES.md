@@ -119,8 +119,7 @@ and @zknill
   * Reduced the size of the webpack JavaScript bundle by nearly 50%
   * Fixed an indexing error on the top results page
   * Restored unmeshed resources in the network graph on the resource detail page
-  * Reduced the overall size of the asset bundle for the web frontend
-  * Adjusted label for unknown routes in route tables, add tooltip
+  * Adjusted label for unknown routes in route tables, added tooltip
   * Updated Top Routes page to persist form settings in URL
   * Added button to create new service profiles on Top Routes page
   * Fixed CLI commands displayed when linkerd is running in non-default
@@ -130,7 +129,7 @@ and @zknill
     overall volume of error logs and make it clearer when failures occur
   * Added TCP keepalive configuration to fix environments where peers may
     silently drop connections
-  * Updated the `Get` and `GetProfiles` APIs ti accept a `proxy_id` parameter in
+  * Updated the `Get` and `GetProfiles` APIs to accept a `proxy_id` parameter in
     order to return more tailored results
   * Removed TLS fallback-to-plaintext if handshake fails
   * Added the ability to override a proxy's normal outbound routing by adding an
