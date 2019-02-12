@@ -18,14 +18,16 @@
   * **Breaking change** Changed automatic proxy injection to be opt-in via the
     `linkerd.io/inject` annotation on the pod or namespace. More info:
     https://linkerd.io/2/proxy-injection/
+  * **Breaking change** `ServiceProfile`s are now defined in client and server
+    namespaces, rather than the control plane namespace. `ServiceProfile`s
+    defined in the client namespace take priority over ones defined in the
+    server namespace
   * Added `linkerd.io/created-by` annotation to the linkerd-cni DaemonSet
     (thanks @codeman9!)
   * Added a 10 second keepalive default to resolve dropped connections in Azure
     environments
   * Improved node selection for installing the linkerd-cni DaemonSet (thanks
     @codeman9!)
-  * `ServiceProfile`s defined in the client namespace now take priority over
-    ones defined in the server namespace
   * Corrected the expected controller identity when configuring pods with TLS
   * Modified klog to be verbose when controller log-level is set to `Debug`
 * CLI
