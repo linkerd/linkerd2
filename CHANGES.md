@@ -1,3 +1,12 @@
+## edge-19.2.3
+
+* Controller
+  * Fixed issue with auto-injector not setting the proxy ID, which is required
+    to successfully locate client service profiles
+* Web UI
+  * Updated navigation to link the Linkerd logo back to the Overview page
+  * Fixed console warnings on the Top page
+
 ## edge-19.2.2
 
 * CLI
