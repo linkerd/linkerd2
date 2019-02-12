@@ -1,11 +1,12 @@
 ## stable-2.2.0
 
-This stable release introduces several major improvements, including support for
-timeouts and retries via service profiles, more flexible targeting for automatic
-proxy injection, and new CLI subcommands, such as `logs` and `endpoints`, that
-provide better visibility into the Linkerd control plane. It also adds support
-for some experimental features, including a Linkerd CNI plugin that subsumes the
-responsibility of proxy init containers in the data plane.
+This stable release introduces automatic request retries and timeouts, and
+graduates auto-inject to be a fully-supported (non-experimental) feature. It
+adds several new CLI commands, including `logs` and `endpoints`, that provide
+diagnostic visibility into Linkerd's control plane. Finally, it introduces two
+exciting experimental features: a cryptographically-secured client identity
+header, and a CNI plugin that avoids the need for `NET_ADMIN` kernel
+capabilities at deploy time.
 
 For more details, see the announcement blog post:
 https://blog.linkerd.io/2019/02/12/announcing-linkerd-2-2/
@@ -17,8 +18,8 @@ profile ownership has changed as part of this release. Please see the
 [upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-2-0)
 for more details.
 
-**Special thanks to**: @alenkacz, @codeman9, @jonrichards, @radu-matei, and
-@zknill
+**Special thanks to**: @alenkacz, @codeman9, @jonrichards, @radu-matei, @yeya24,
+and @zknill
 
 **Full release notes**:
 
