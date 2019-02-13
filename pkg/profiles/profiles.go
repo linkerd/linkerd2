@@ -105,10 +105,13 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 		}
 		rcs = append(rcs, pbRc)
 	}
-	timeout, err := time.ParseDuration(route.Timeout)
-	if err != nil {
-		log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
-		timeout = DefaultRouteTimeout
+	timeout := DefaultRouteTimeout
+	if route.Timeout != "" {
+		timeout, err = time.ParseDuration(route.Timeout)
+		if err != nil {
+			log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
+			timeout = DefaultRouteTimeout
+		}
 	}
 	ret := pb.Route{
 		Condition:       cond,
