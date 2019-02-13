@@ -33,7 +33,8 @@ const endpointColumns = [
   },
   {
     title: "Resource Version",
-    dataIndex: "pod.resourceVersion"
+    dataIndex: "pod.resourceVersion",
+    sorter: (a, b) => (a.pod.resourceVersion).localeCompare(b.resourceVersion)
   },
   {
     title: "Service",
@@ -106,5 +107,5 @@ class Endpoints extends React.Component {
 
 export default withREST(
   withContext(Endpoints),
-  ({api}) => [api.fetchMetrics("/api/endpoints")]
+  ({api}) => [api.fetch("/api/endpoints")]
 );
