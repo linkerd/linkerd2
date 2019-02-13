@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"reflect"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -196,6 +197,13 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 			tcpStats = tcpMetrics[key]
 		}
 
+		var basicStats *pb.BasicStats
+		if reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
+			basicStats = nil
+		} else {
+			basicStats = requestMetrics[key]
+		}
+
 		k8sResource := objInfo.object
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
@@ -204,7 +212,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 				Type:      req.GetSelector().GetResource().GetType(),
 			},
 			TimeWindow: req.TimeWindow,
-			Stats:      requestMetrics[key],
+			Stats:      basicStats,
 			TcpStats:   tcpStats,
 		}
 
