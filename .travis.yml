@@ -7,6 +7,7 @@ sudo: false
 branches:
   only:
     - master
+    - identity/master
     - /^(edge|stable)-\d+\.\d+\.[\w-]+$/ # build version tags
 
 stages:
@@ -94,9 +95,9 @@ jobs:
       before_script:
         - gcloud docker --authorize-only
         - bin/docker-pull-deps
-         # Pulling master helps with docker build cache, but may fail if we're
+         # Pulling identity-master helps with docker build cache, but may fail if we're
          # adding a new image to the mix.
-        - bin/docker-pull master || echo "docker pull failed" >&2
+        - bin/docker-pull identity-master || echo "docker pull failed" >&2
         - |
           export LINKERD_TAG=$(. bin/_tag.sh ; clean_head_root_tag)
           echo "LINKERD_TAG=${LINKERD_TAG}"
@@ -108,7 +109,7 @@ jobs:
       after_success:
         - bin/docker-push-deps
         - bin/docker-push $LINKERD_TAG
-        - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
+        - bin/docker-retag-all $LINKERD_TAG identity-master && bin/docker-push identity-master
         - target/cli/linux/linkerd install --linkerd-version=$LINKERD_TAG |tee linkerd.yml
         - kubectl -n linkerd apply -f linkerd.yml --prune --selector='linkerd.io/control-plane-component'
 
