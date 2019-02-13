@@ -15,10 +15,10 @@ import (
 var (
 	getButNotPrivate = &sp.RequestMatch{
 		All: []*sp.RequestMatch{
-			&sp.RequestMatch{
+			{
 				Method: "GET",
 			},
-			&sp.RequestMatch{
+			{
 				Not: &sp.RequestMatch{
 					PathRegex: "/private/.*",
 				},
@@ -30,7 +30,7 @@ var (
 		Match: &pb.RequestMatch_All{
 			All: &pb.RequestMatch_Seq{
 				Matches: []*pb.RequestMatch{
-					&pb.RequestMatch{
+					{
 						Match: &pb.RequestMatch_Method{
 							Method: &httpPb.HttpMethod{
 								Type: &httpPb.HttpMethod_Registered_{
@@ -39,7 +39,7 @@ var (
 							},
 						},
 					},
-					&pb.RequestMatch{
+					{
 						Match: &pb.RequestMatch_Not{
 							Not: &pb.RequestMatch{
 								Match: &pb.RequestMatch_Path{
@@ -86,7 +86,7 @@ var (
 	fiveXXfourTwenty = &sp.ResponseMatch{
 		Any: []*sp.ResponseMatch{
 			fiveXX,
-			&sp.ResponseMatch{
+			{
 				Status: &sp.Range{
 					Min: 420,
 					Max: 420,
@@ -100,7 +100,7 @@ var (
 			Any: &pb.ResponseMatch_Seq{
 				Matches: []*pb.ResponseMatch{
 					pbFiveXX,
-					&pb.ResponseMatch{
+					{
 						Match: &pb.ResponseMatch_Status{
 							Status: &pb.HttpStatusRange{
 								Min: 420,
@@ -117,7 +117,7 @@ var (
 		Name:      "route1",
 		Condition: getButNotPrivate,
 		ResponseClasses: []*sp.ResponseClass{
-			&sp.ResponseClass{
+			{
 				Condition: fiveXX,
 				IsFailure: true,
 			},
@@ -130,7 +130,7 @@ var (
 		},
 		Condition: pbGetButNotPrivate,
 		ResponseClasses: []*pb.ResponseClass{
-			&pb.ResponseClass{
+			{
 				Condition: pbFiveXX,
 				IsFailure: true,
 			},
@@ -144,7 +144,7 @@ var (
 		Name:      "route2",
 		Condition: login,
 		ResponseClasses: []*sp.ResponseClass{
-			&sp.ResponseClass{
+			{
 				Condition: fiveXXfourTwenty,
 				IsFailure: true,
 			},
@@ -157,7 +157,7 @@ var (
 		},
 		Condition: pbLogin,
 		ResponseClasses: []*pb.ResponseClass{
-			&pb.ResponseClass{
+			{
 				Condition: pbFiveXXfourTwenty,
 				IsFailure: true,
 			},
@@ -192,7 +192,7 @@ var (
 	multipleRequestMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Name: "multipleRequestMatches",
 					Condition: &sp.RequestMatch{
 						Method:    "GET",
@@ -205,12 +205,12 @@ var (
 
 	pbRequestMatchAll = &pb.DestinationProfile{
 		Routes: []*pb.Route{
-			&pb.Route{
+			{
 				Condition: &pb.RequestMatch{
 					Match: &pb.RequestMatch_All{
 						All: &pb.RequestMatch_Seq{
 							Matches: []*pb.RequestMatch{
-								&pb.RequestMatch{
+								{
 									Match: &pb.RequestMatch_Method{
 										Method: &httpPb.HttpMethod{
 											Type: &httpPb.HttpMethod_Registered_{
@@ -219,7 +219,7 @@ var (
 										},
 									},
 								},
-								&pb.RequestMatch{
+								{
 									Match: &pb.RequestMatch_Path{
 										Path: &pb.PathMatch{
 											Regex: "/my/path",
@@ -245,7 +245,7 @@ var (
 	notEnoughRequestMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Condition: &sp.RequestMatch{},
 				},
 			},
@@ -255,13 +255,13 @@ var (
 	multipleResponseMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Name: "multipleResponseMatches",
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 					},
 					ResponseClasses: []*sp.ResponseClass{
-						&sp.ResponseClass{
+						{
 							Condition: &sp.ResponseMatch{
 								Status: &sp.Range{
 									Min: 400,
@@ -282,7 +282,7 @@ var (
 
 	pbResponseMatchAll = &pb.DestinationProfile{
 		Routes: []*pb.Route{
-			&pb.Route{
+			{
 				Condition: &pb.RequestMatch{
 					Match: &pb.RequestMatch_Method{
 						Method: &httpPb.HttpMethod{
@@ -296,12 +296,12 @@ var (
 					"route": "multipleResponseMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{
-					&pb.ResponseClass{
+					{
 						Condition: &pb.ResponseMatch{
 							Match: &pb.ResponseMatch_All{
 								All: &pb.ResponseMatch_Seq{
 									Matches: []*pb.ResponseMatch{
-										&pb.ResponseMatch{
+										{
 											Match: &pb.ResponseMatch_Status{
 												Status: &pb.HttpStatusRange{
 													Min: 400,
@@ -309,7 +309,7 @@ var (
 												},
 											},
 										},
-										&pb.ResponseMatch{
+										{
 											Match: &pb.ResponseMatch_Not{
 												Not: &pb.ResponseMatch{
 													Match: &pb.ResponseMatch_Status{
@@ -337,12 +337,12 @@ var (
 	oneSidedStatusRange = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 					},
 					ResponseClasses: []*sp.ResponseClass{
-						&sp.ResponseClass{
+						{
 							Condition: &sp.ResponseMatch{
 								Status: &sp.Range{
 									Min: 200,
@@ -358,12 +358,12 @@ var (
 	invalidStatusRange = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 					},
 					ResponseClasses: []*sp.ResponseClass{
-						&sp.ResponseClass{
+						{
 							Condition: &sp.ResponseMatch{
 								Status: &sp.Range{
 									Min: 201,
@@ -380,12 +380,12 @@ var (
 	notEnoughResponseMatches = &sp.ServiceProfile{
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Condition: &sp.RequestMatch{
 						Method: "GET",
 					},
 					ResponseClasses: []*sp.ResponseClass{
-						&sp.ResponseClass{
+						{
 							Condition: &sp.ResponseMatch{},
 						},
 					},

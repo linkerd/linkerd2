@@ -31,13 +31,7 @@ bin/dep ensure
 go test -race ./...
 ```
 
-To analyze the Go code without running tests, run:
-
-```bash
-go vet ./...
-```
-
-To lint the Go code using golint, run:
+To analyze and lint the Go code using golangci-lint, run:
 
 ```bash
 bin/lint

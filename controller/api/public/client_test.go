@@ -99,7 +99,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 			Response: &pb.StatSummaryResponse_Ok_{
 				Ok: &pb.StatSummaryResponse_Ok{
 					StatTables: []*pb.StatTable{
-						&pb.StatTable{
+						{
 							Table: &pb.StatTable_PodGroup_{
 								PodGroup: &pb.StatTable_PodGroup{
 									Rows: rows,

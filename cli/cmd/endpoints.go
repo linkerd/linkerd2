@@ -83,7 +83,7 @@ requests.`,
 			output := renderEndpoints(endpoints, options)
 			_, err = fmt.Print(output)
 
-			return nil
+			return err
 		},
 	}
 

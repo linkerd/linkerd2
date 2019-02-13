@@ -184,10 +184,8 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	deployment.Labels[k8sPkg.ProxyDeploymentLabel] = deployment.ObjectMeta.Name
 	patch.addDeploymentLabels(deployment.Labels)
 
-	var (
-		image    = strings.Split(proxy.Image, ":")
-		imageTag = ""
-	)
+	image := strings.Split(proxy.Image, ":")
+	var imageTag string
 
 	if len(image) < 2 {
 		imageTag = "latest"

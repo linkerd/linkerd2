@@ -56,19 +56,19 @@ func TestPatch(t *testing.T) {
 
 	expected := NewPatch()
 	expected.patchOps = []*patchOp{
-		&patchOp{Op: "add", Path: patchPathContainer, Value: sidecar},
-		&patchOp{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
-		&patchOp{Op: "add", Path: patchPathInitContainer, Value: init},
-		&patchOp{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
-		&patchOp{Op: "add", Path: patchPathVolume, Value: trustAnchors},
-		&patchOp{Op: "add", Path: patchPathVolume, Value: secrets},
-		&patchOp{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
+		{Op: "add", Path: patchPathContainer, Value: sidecar},
+		{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
+		{Op: "add", Path: patchPathInitContainer, Value: init},
+		{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
+		{Op: "add", Path: patchPathVolume, Value: trustAnchors},
+		{Op: "add", Path: patchPathVolume, Value: secrets},
+		{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
 			k8sPkg.ControllerNSLabel: controllerNamespace,
 		}},
-		&patchOp{Op: "add", Path: patchPathDeploymentLabels, Value: map[string]string{
+		{Op: "add", Path: patchPathDeploymentLabels, Value: map[string]string{
 			k8sPkg.ControllerNSLabel: controllerNamespace,
 		}},
-		&patchOp{Op: "add", Path: patchPathPodAnnotations, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
+		{Op: "add", Path: patchPathPodAnnotations, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
 	}
 
 	if !reflect.DeepEqual(actual, expected) {

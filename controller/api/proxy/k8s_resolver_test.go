@@ -70,7 +70,7 @@ func TestGetState(t *testing.T) {
 		{
 			servicePorts: servicePorts{
 				serviceID{namespace: "ns", name: "name"}: map[uint32]*servicePort{
-					8888: &servicePort{
+					8888: {
 						addresses: []*updateAddress{
 							makeUpdateAddress("10.1.30.135", 7779, "ns", "world-575bf846b4-tp4hw"),
 						},
@@ -80,14 +80,14 @@ func TestGetState(t *testing.T) {
 								Namespace: "ns",
 							},
 							Subsets: []v1.EndpointSubset{
-								v1.EndpointSubset{
+								{
 									Addresses: []v1.EndpointAddress{
-										v1.EndpointAddress{
+										{
 											IP:        "10.1.30.135",
 											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
 										},
 									},
-									Ports: []v1.EndpointPort{v1.EndpointPort{Name: "app", Port: 7779, Protocol: "TCP"}},
+									Ports: []v1.EndpointPort{{Name: "app", Port: 7779, Protocol: "TCP"}},
 								},
 							},
 						},
