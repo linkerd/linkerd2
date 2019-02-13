@@ -1,5 +1,6 @@
 import BaseTable from './BaseTable.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
@@ -15,6 +16,7 @@ const endpointColumns = [
   {
     title: "Namespace",
     dataIndex: "namespace",
+    render: d => <Link to={"/namespaces/" + d.namespace}>{d.namespace}</Link>,
     sorter: (a, b) => (a.namespace).localeCompare(b.namespace)
   },
   {
@@ -29,7 +31,8 @@ const endpointColumns = [
   {
     title: "Pod",
     dataIndex: "name",
-    sorter: (a, b) => (a.name).localeCompare(b.name)
+    sorter: (a, b) => (a.name).localeCompare(b.name),
+    render: d => <Link to={`/namespaces/${d.namespace}/pods/${d.name}`}>{d.name}</Link>
   },
   {
     title: "Resource Version",
