@@ -20,6 +20,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating Docker dependencies](#updating-docker-dependencies)
 - [Build Architecture](#build-architecture)
+- [Generating CLI docs](#generating-cli-docs)
 
 # Repo layout
 
@@ -427,3 +428,29 @@ build_architecture
   }
 build_architecture
 </details>
+
+# Generating CLI docs
+
+The [documentation](https://linkerd.io/2/cli/) for the `linkerd` CLI tool is partially generated from YAML files. Those YAML files can be generated using the `linkerd` CLI itself, which has a hidden `doc` command that requires you to specify an output path using the `--output` or `-o` flag. Here's an example:
+
+```bash
+mkdir /tmp/linkerd-cli-yaml-files
+linkerd doc -o /tmp/linkerd-cli-yaml-files
+```
+
+To see the resulting files:
+
+```bash
+ls /tmp/linkerd-cli-yaml-files
+linkerd.yaml
+linkerd_check.yaml
+linkerd_completion.yaml
+linkerd_dashboard.yaml
+# etc.
+```
+
+If the [website repo](https://github.com/linkerd/website) for Linkerd were at `~/linkerd/website`, for example, this command would output the YAML files in the appropriate directory:
+
+```bash
+linkerd doc -o ~/linkerd/website/linkerd.io/data/cli
+```
