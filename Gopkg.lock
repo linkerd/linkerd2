@@ -122,6 +122,14 @@
   revision = "v0.6.0"
 
 [[projects]]
+  digest = "1:982e2547680f9fd2212c6443ab73ea84eef40ee1cdcecb61d997de838445214c"
+  name = "github.com/cpuguy83/go-md2man"
+  packages = ["md2man"]
+  pruneopts = ""
+  revision = "20f5889cbdc3c73dbd2862796665e7c465ade7d1"
+  version = "v1.0.8"
+
+[[projects]]
   digest = "1:a9854984bc40330dde2125537b7f46d0a8d7860b3750de2e7cd0a6f904506212"
   name = "github.com/cyphar/filepath-securejoin"
   packages = ["."]
@@ -573,6 +581,14 @@
   revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
 
 [[projects]]
+  digest = "1:2761e287c811d0948d47d0252b82281eca3801eb3c9d5f9530956643d5b9f430"
+  name = "github.com/russross/blackfriday"
+  packages = ["."]
+  pruneopts = ""
+  revision = "05f3235734ad95d0016f6a23902f06461fcf567a"
+  version = "v1.5.2"
+
+[[projects]]
   digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
   name = "github.com/satori/go.uuid"
   packages = ["."]
@@ -615,7 +631,10 @@
 [[projects]]
   digest = "1:2208a80fc3259291e43b30f42f844d18f4218036dff510f42c653ec9890d460a"
   name = "github.com/spf13/cobra"
-  packages = ["."]
+  packages = [
+    ".",
+    "doc",
+  ]
   pruneopts = ""
   revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
 
@@ -1273,6 +1292,7 @@
     "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
+    "github.com/spf13/cobra/doc",
     "github.com/wercker/stern/stern",
     "golang.org/x/lint/golint",
     "golang.org/x/net/context",
