@@ -112,8 +112,8 @@ func ToRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 			log.Errorf(
 				"failed to parse duration for route '%s' in service profile '%s' in namespace '%s': %s",
 				route.Name,
-				profile.ObjectMeta.Name,
-				profile.ObjectMeta.Namespace,
+				profile.Name,
+				profile.Namespace,
 				err,
 			)
 			timeout = DefaultRouteTimeout
