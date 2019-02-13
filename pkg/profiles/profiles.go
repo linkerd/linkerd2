@@ -66,20 +66,20 @@ func toDuration(d time.Duration) *duration.Duration {
 
 // ToServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
-func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, error) {
+func ToServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
 	routes := make([]*pb.Route, 0)
-	for _, route := range profile.Routes {
-		pbRoute, err := ToRoute(route)
+	for _, route := range profile.Spec.Routes {
+		pbRoute, err := ToRoute(profile, route)
 		if err != nil {
 			return nil, err
 		}
 		routes = append(routes, pbRoute)
 	}
 	budget := DefaultRetryBudget
-	if profile.RetryBudget != nil {
-		budget.MinRetriesPerSecond = profile.RetryBudget.MinRetriesPerSecond
-		budget.RetryRatio = profile.RetryBudget.RetryRatio
-		ttl, err := time.ParseDuration(profile.RetryBudget.TTL)
+	if profile.Spec.RetryBudget != nil {
+		budget.MinRetriesPerSecond = profile.Spec.RetryBudget.MinRetriesPerSecond
+		budget.RetryRatio = profile.Spec.RetryBudget.RetryRatio
+		ttl, err := time.ParseDuration(profile.Spec.RetryBudget.TTL)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func ToServiceProfile(profile *sp.ServiceProfileSpec) (*pb.DestinationProfile, e
 }
 
 // ToRoute returns a Proxy API Route, given a ServiceProfile Route.
-func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
+func ToRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error) {
 	cond, err := ToRequestMatch(route.Condition)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,13 @@ func ToRoute(route *sp.RouteSpec) (*pb.Route, error) {
 	if route.Timeout != "" {
 		timeout, err = time.ParseDuration(route.Timeout)
 		if err != nil {
-			log.Errorf("failed to parse duration for route %s: %s", route.Name, err)
+			log.Errorf(
+				"failed to parse duration for route '%s' in service profile '%s' in namespace '%s': %s",
+				route.Name,
+				profile.ObjectMeta.Name,
+				profile.ObjectMeta.Namespace,
+				err,
+			)
 			timeout = DefaultRouteTimeout
 		}
 	}
