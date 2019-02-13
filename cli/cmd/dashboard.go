@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
+	lol "github.com/kris-nova/lolgopher"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -123,6 +126,35 @@ func newCmdDashboard() *cobra.Command {
 			case showURL:
 				// no-op, we already printed the URLs
 			}
+
+			l5dVer := fmt.Sprintf("Linkerd %s", version.Version)
+			tagLine := fmt.Sprintf("%s%s",
+				strings.Repeat(" ", len("    ss/  .+syyyo/:+yyyy+:`  `/oyyys+.  /ss")-len(l5dVer)),
+				l5dVer,
+			)
+			w := lol.NewLolWriter()
+			fmt.Fprintln(w)
+			fmt.Fprintln(w, "               :ohhs+:  :+shho")
+			fmt.Fprintln(w, "            .   -+syys++syys+-   .")
+			fmt.Fprintln(w, "         `+yys+-`  .:oyyyyo. `-+syy+`")
+			fmt.Fprintln(w, "    `-/.  `-/syyyo/.  `:+syyyyyys/-`  ./-`")
+			fmt.Fprintln(w, "    syyyyo:`  `:oyyys+-`  ./oyyyo/-:oyyyys")
+			fmt.Fprintln(w, "    ss++syyyo/-   -+syyyo:.  `-+syyyys++ss")
+			fmt.Fprintln(w, "    ssyyyyo+syys+:`  .:oyyys+-   ./oyyyyss")
+			fmt.Fprintln(w, "    yyy+:`  `oyyyyys/.  `-+syyyo/`  `:+yyy")
+			fmt.Fprintln(w, "    ss/  .+syyyo/:+yyyy+:`  `/oyyys+.  /ss")
+			fmt.Fprintln(w, "    ss/  /syo-`  ./oyyyyyyo/.  `-oys/  /ss")
+			fmt.Fprintln(w, "    oo:  /ss/  :syyyo:``:+syys:  /ss/  :os")
+			fmt.Fprintln(w, "    oo:  /ss/  /ssyyys+.  `+ss/  /ss/  :oo")
+			fmt.Fprintln(w, "    oo:  :oo:  /ss/-+syyyo:+ss/  :oo:  :oo")
+			fmt.Fprintln(w, "    ++:  :oo:  /ss/`  ./oyyyss/  :oo:  :++")
+			fmt.Fprintln(w, "    `-.  :oo:  :oosyo:.  `-ooo:  :oo:  .-`")
+			fmt.Fprintln(w, "         -++:  :ooooyyys+- :oo:  :++-")
+			fmt.Fprintln(w, "           ``  :oooyyyssyyyooo:  ``")
+			fmt.Fprintln(w, "               ./+so/`  `/os+/.")
+			fmt.Fprintln(w)
+			fmt.Fprintln(w, tagLine)
+			fmt.Fprintln(w)
 
 			<-wait
 			return nil

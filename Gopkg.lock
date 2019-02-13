@@ -408,6 +408,14 @@
   version = "v1.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:db3e74e12ad83aaa22a0e270573b923d8034efb6328a116c08d3e50f9f36508f"
+  name = "github.com/kris-nova/lolgopher"
+  packages = ["."]
+  pruneopts = ""
+  revision = "313b3abb0d9bb53e3c43230132061a7a9cb100fc"
+
+[[projects]]
   digest = "1:b54147c462536e1d92f5dfd0e0c94816c4e27e5349b06524d4269aaecd387ed4"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
@@ -1255,6 +1263,7 @@
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/julienschmidt/httprouter",
+    "github.com/kris-nova/lolgopher",
     "github.com/linkerd/linkerd2-proxy-api/go/destination",
     "github.com/linkerd/linkerd2-proxy-api/go/http_types",
     "github.com/linkerd/linkerd2-proxy-api/go/net",
