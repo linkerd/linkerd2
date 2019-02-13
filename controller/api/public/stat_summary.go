@@ -191,16 +191,12 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		}
 
 		var tcpStats *pb.TcpStats
-		if !req.TcpStats {
-			tcpStats = nil
-		} else {
+		if req.TcpStats {
 			tcpStats = tcpMetrics[key]
 		}
 
 		var basicStats *pb.BasicStats
-		if reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
-			basicStats = nil
-		} else {
+		if !reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
 			basicStats = requestMetrics[key]
 		}
 
