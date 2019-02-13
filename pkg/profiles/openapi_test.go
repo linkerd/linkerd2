@@ -16,14 +16,14 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 		SwaggerProps: spec.SwaggerProps{
 			Paths: &spec.Paths{
 				Paths: map[string]spec.PathItem{
-					"/authors/{id}": spec.PathItem{
+					"/authors/{id}": {
 						PathItemProps: spec.PathItemProps{
 							Post: &spec.Operation{
 								OperationProps: spec.OperationProps{
 									Responses: &spec.Responses{
 										ResponsesProps: spec.ResponsesProps{
 											StatusCodeResponses: map[int]spec.Response{
-												500: spec.Response{},
+												500: {},
 											},
 										},
 									},
@@ -44,14 +44,14 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 		},
 		Spec: sp.ServiceProfileSpec{
 			Routes: []*sp.RouteSpec{
-				&sp.RouteSpec{
+				{
 					Name: "POST /authors/{id}",
 					Condition: &sp.RequestMatch{
 						PathRegex: "/authors/[^/]*",
 						Method:    "POST",
 					},
 					ResponseClasses: []*sp.ResponseClass{
-						&sp.ResponseClass{
+						{
 							Condition: &sp.ResponseMatch{
 								Status: &sp.Range{
 									Min: 500,

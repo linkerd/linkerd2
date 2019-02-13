@@ -222,7 +222,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
@@ -258,7 +258,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
@@ -294,7 +294,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
@@ -327,7 +327,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
@@ -360,7 +360,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),
@@ -399,7 +399,7 @@ func TestTopRoutes(t *testing.T) {
 		routes := []string{"/a"}
 		counts := []uint64{123}
 		expectations := []topRoutesExpected{
-			topRoutesExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err:              nil,
 					mockPromResponse: routesMetric([]string{"/a"}),

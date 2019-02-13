@@ -51,6 +51,7 @@ func TestRender(t *testing.T) {
 		ProxyAutoInjectEnabled:           true,
 		ProxyInjectAnnotation:            "ProxyInjectAnnotation",
 		ProxyInjectDisabled:              "ProxyInjectDisabled",
+		ProxyLogLevel:                    "ProxyLogLevel",
 		ProxyUID:                         2102,
 		ControllerUID:                    2103,
 		InboundPort:                      4143,
@@ -173,17 +174,51 @@ func TestValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("Rejects invalid log level", func(t *testing.T) {
+	t.Run("Rejects invalid controller log level", func(t *testing.T) {
 		options := newInstallOptions()
 		options.controllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
 		err := options.validate()
 		if err == nil {
-			t.Fatalf("Expected error, got nothing")
+			t.Fatal("Expected error, got nothing")
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
+		}
+	})
+
+	t.Run("Properly validates proxy log level", func(t *testing.T) {
+		testCases := []struct {
+			input string
+			valid bool
+		}{
+			{"", false},
+			{"info", true},
+			{"somemodule", true},
+			{"bad%name", false},
+			{"linkerd2_proxy=debug", true},
+			{"linkerd2%proxy=debug", false},
+			{"linkerd2_proxy=foobar", false},
+			{"linker2d_proxy,std::option", true},
+			{"warn,linkerd2_proxy=info", true},
+			{"warn,linkerd2_proxy=foobar", false},
+		}
+
+		options := newInstallOptions()
+		for _, tc := range testCases {
+			options.proxyLogLevel = tc.input
+			err := options.validate()
+			if tc.valid && err != nil {
+				t.Fatalf("Error not expected: %s", err)
+			}
+			if !tc.valid && err == nil {
+				t.Fatalf("Expected error string \"%s is not a valid proxy log level\", got nothing", tc.input)
+			}
+			expectedErr := "\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging"
+			if !tc.valid && err.Error() != fmt.Sprintf(expectedErr, tc.input) {
+				t.Fatalf("Expected error string \""+expectedErr+"\"", tc.input, err)
+			}
 		}
 	})
 

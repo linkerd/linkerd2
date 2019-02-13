@@ -2,6 +2,8 @@
 
 set -eu
 
+lintversion=1.14.0
+
 cd "$(pwd -P)"
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -9,15 +11,23 @@ rootdir="$( cd $bindir/.. && pwd )"
 
 cd "$rootdir"
 
-# install golint from vendor
-go install ./vendor/golang.org/x/lint/golint
-
-# use `go list` to exclude packages in vendor
-out=$(go list ./... | xargs golint) || true
-
-if [ -n "$out" ]; then
-  echo "$out"
-  exit 1
+os=linux
+exe=
+if [ "$(uname -s)" = "Darwin" ]; then
+  os=darwin
+elif [ "$(uname -o)" = "Msys" ]; then
+  os=windows
+  exe=.exe
 fi
 
-echo "all clean!"
+lintbin="${rootdir}/.golangci-lint-${lintversion}${exe}"
+
+if [ ! -f "$lintbin" ]; then
+  curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/v$lintversion/install.sh | sh -s -- -b . v$lintversion
+  mv ./golangci-lint${exe} $lintbin
+fi
+
+$lintbin run \
+  --enable gofmt,golint \
+  --disable deadcode,errcheck,gosimple,staticcheck,structcheck,unused,varcheck \
+  "$@"

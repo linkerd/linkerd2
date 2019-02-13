@@ -35,14 +35,14 @@ spec:
 			},
 			service: profileID{namespace: "linkerd", name: "foobar.ns.svc.cluster.local"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
-				&sp.ServiceProfileSpec{
+				{
 					Routes: []*sp.RouteSpec{
-						&sp.RouteSpec{
+						{
 							Condition: &sp.RequestMatch{
 								PathRegex: "/x/y/z",
 							},
 							ResponseClasses: []*sp.ResponseClass{
-								&sp.ResponseClass{
+								{
 									Condition: &sp.ResponseMatch{
 										Status: &sp.Range{
 											Min: 500,

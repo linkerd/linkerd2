@@ -86,6 +86,9 @@ func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, erro
 	}
 	dnsName := tlsIdentity.ToDNSName()
 	certAndPrivateKey, err := rootCA.IssueEndEntityCertificate(dnsName)
+	if err != nil {
+		return nil, err
+	}
 
 	certPEM, err := certAndPrivateKey.EncodedCertificate()
 	if err != nil {

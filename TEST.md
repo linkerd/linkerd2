@@ -28,16 +28,18 @@ dependencies and run tests, run:
 
 ```bash
 bin/dep ensure
-go test -race ./...
+go test -cover -race ./...
 ```
 
-To analyze the Go code without running tests, run:
+To investigate code coverage:
 
 ```bash
-go vet ./...
+cov=`mktemp`
+go test -coverprofile=$cov ./...
+go tool cover -html=$cov
 ```
 
-To lint the Go code using golint, run:
+To analyze and lint the Go code using golangci-lint, run:
 
 ```bash
 bin/lint

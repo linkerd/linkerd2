@@ -56,6 +56,7 @@ type installConfig struct {
 	ProxyAutoInjectEnabled           bool
 	ProxyInjectAnnotation            string
 	ProxyInjectDisabled              string
+	ProxyLogLevel                    string
 	ProxyUID                         int64
 	ProxyMetricsPort                 uint
 	ProxyControlPort                 uint
@@ -178,7 +179,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		Namespace:                        controlPlaneNamespace,
 		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:                  "prom/prometheus:v2.4.0",
+		PrometheusImage:                  "prom/prometheus:v2.7.1",
 		PrometheusVolumeName:             "data",
 		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		GrafanaVolumeName:                "data",
@@ -210,6 +211,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyAutoInjectEnabled:           options.proxyAutoInject,
 		ProxyInjectAnnotation:            k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:              k8s.ProxyInjectDisabled,
+		ProxyLogLevel:                    options.proxyLogLevel,
 		ProxyUID:                         options.proxyUID,
 		ProxyMetricsPort:                 options.proxyMetricsPort,
 		ProxyControlPort:                 options.proxyControlPort,

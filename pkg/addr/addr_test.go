@@ -17,11 +17,11 @@ func TestNetToPublic(t *testing.T) {
 	}
 
 	expectations := []addrExp{
-		addrExp{
+		{
 			proxyAddr:     &proxy.TcpAddress{},
 			publicAddress: &public.TcpAddress{},
 		},
-		addrExp{
+		{
 			proxyAddr: &proxy.TcpAddress{
 				Ip:   &proxy.IPAddress{Ip: &proxy.IPAddress_Ipv4{Ipv4: 1}},
 				Port: 1234,
@@ -31,7 +31,7 @@ func TestNetToPublic(t *testing.T) {
 				Port: 1234,
 			},
 		},
-		addrExp{
+		{
 			proxyAddr: &proxy.TcpAddress{
 				Ip: &proxy.IPAddress{
 					Ip: &proxy.IPAddress_Ipv6{
