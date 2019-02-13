@@ -23,14 +23,14 @@ const TcpStatColumns = [
     sorter: (a, b) => numericSort(a.tcp.openConnections, b.tcp.openConnections)
   },
   {
-    title: "Read Bytes",
+    title: "Read Bytes / min",
     dataIndex: "tcp.readBytes",
     isNumeric: true,
     render: d => metricToFormatter["BYTES"](d.tcp.readBytes),
     sorter: (a, b) => numericSort(a.tcp.readBytes, b.tcp.readBytes)
   },
   {
-    title: "Write Bytes",
+    title: "Write Bytes / min",
     dataIndex: "tcp.writeBytes",
     isNumeric: true,
     render: d => metricToFormatter["BYTES"](d.tcp.writeBytes),
