@@ -35,7 +35,7 @@ jobs:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
-        - go test -race -v ./...
+        - go test -cover -race -v ./...
         - ./bin/lint
 
     - language: node_js
@@ -160,7 +160,7 @@ jobs:
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
-          TAG="$(./linkerd version --client --short)" go test -v -race ./cni-plugin/test -integration-tests
+          TAG="$(./linkerd version --client --short)" go test -cover -race -v ./cni-plugin/test -integration-tests
       after_script:
         - |
           # Cleanup after integration test run.
