@@ -21,12 +21,18 @@ service ConfigStore {
 
 message GlobalConfig {
   string api_addr = 1;
-  string linkerd_namespace = 2;
-  string linkerd_version = 3;
-  string cluster_domain = 4;
-  bool no_init_container = 5;
-  bool ha = 6;
-  bool auto_inject = 7;
+  string cluster_domain = 2;
+  string linkerd_namespace = 3;
+  string linkerd_version = 4;
+
+  LogLevel controller_log_level = 5;
+  int32 controller_replicas = 6;
+  int32 controller_uid = 7;
+
+  bool auto_inject = 8;
+  bool disable_h2_upgrade = 9;
+  bool ha = 10;
+  bool no_init_container = 11;
 }
 
 message ProxyConfig {
