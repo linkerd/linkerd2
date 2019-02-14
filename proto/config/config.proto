@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package linkerd2.config;
+
+option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
+
+// ConfigStore provides an abstraction over the underlying configuration storge.
+service ConfigStore {
+  // Return the JSON-serialized global config.
+  rpc GetGlobalConfig(GetParam) returns (GlobalConfig) {}
+
+  // Return the JSON-serialized proxy config.
+  rpc GetProxyConfig(GetParam) returns (ProxyConfig) {}
+
+  // Set the global config. It overwrites the existing value.
+  rpc SetGlobalConfig(GlobalConfig) returns (Result) {}
+
+  // Set the proxy config. It overwrites the existing value.
+  rpc SetProxyConfig(ProxyConfig) returns (Result) {}
+}
+
+message GlobalConfig {
+  string api_addr = 1;
+  string linkerd_namespace = 2;
+  string linkerd_version = 3;
+  string cluster_domain = 4;
+  bool no_init_container = 5;
+  bool ha = 6;
+  bool auto_inject = 7;
+}
+
+message ProxyConfig {
+  Image proxy_image = 1;
+  Image proxy_init_image = 2;
+
+  Port api_port = 3;
+  Port control_port = 4;
+  repeated Port ignore_inbound_ports = 5;
+  repeated Port ignore_outbound_ports = 6;
+  Port inbound_port = 7;
+  Port metrics_port = 8;
+  Port outbound_port = 9;
+
+  Resource resource = 10;
+
+  TLS tls = 11;
+
+  int64 proxy_uid = 12;
+  LogLevel log_level = 13;
+  bool disable_external_profiles = 14;
+  map<string, uint32> proxy_outbound_capacity = 15;
+}
+
+message Image{
+  string image_name = 1;
+  string pull_policy = 2;
+  string registry = 3;
+  string version = 4;
+}
+
+message Port {
+  uint32 port = 1;
+}
+
+message Resource {
+  float cpu = 1;
+  float memory = 2;
+}
+
+message LogLevel {
+  string level = 1;
+}
+
+enum TLS {
+  NONE = 0;
+  OPTIONAL = 1;
+}
+
+message CNI {
+  Image image = 1;
+  LogLevel log_level = 2;
+  Port control_port = 3;
+
+  string dest_cni_bin_dir = 4;
+  string dest_cni_net_dir = 5;
+
+  ProxyConfig proxy_config = 6;
+}
+
+message GetParam{}
+
+message Result {
+  string msg = 1;
+  bool is_error = 2;
+}
