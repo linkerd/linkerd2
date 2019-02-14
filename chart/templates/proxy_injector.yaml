@@ -162,7 +162,7 @@ data:
     - name: LINKERD2_PROXY_LOG
       value: {{.Values.ProxyLogLevel}}
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-proxy-api.{{.Values.Namespace}}.svc.cluster.local:{{.Values.ProxyAPIPort}}
+      value: tcp://linkerd-destination.{{.Values.Namespace}}.svc.cluster.local:{{.Values.ProxyAPIPort}}
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:{{.Values.ProxyControlPort}}
     - name: LINKERD2_PROXY_METRICS_LISTENER

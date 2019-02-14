@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/linkerd/linkerd2/controller/api/proxy"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"

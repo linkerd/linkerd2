@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// This is a throwaway script for testing the proxy-api service
+// This is a throwaway script for testing the destination service
 
 func main() {
 	addr := flag.String("addr", ":8086", "address of destination service")

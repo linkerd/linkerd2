@@ -24,9 +24,9 @@ type server struct {
 	log             *log.Entry
 }
 
-// NewServer returns a new instance of the proxy-api server.
+// NewServer returns a new instance of the destination server.
 //
-// The proxy-api server serves service discovery and other information to the
+// The destination server serves service discovery and other information to the
 // proxy.  This implementation supports the "k8s" destination scheme and expects
 // destination paths to be of the form:
 // <service>.<namespace>.svc.cluster.local:<port>
@@ -62,7 +62,7 @@ func NewServer(
 	s := prometheus.NewGrpcServer()
 
 	// this server satisfies 2 gRPC interfaces:
-	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
+	// 1) linkerd2-destination/destination.Destination (proxy-facing)
 	// 2) controller/discovery.Api (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
 	discovery.RegisterDiscoveryServer(s, &srv)

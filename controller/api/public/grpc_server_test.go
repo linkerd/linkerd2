@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/proxy"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"

@@ -33,7 +33,7 @@ written in Go. The dashboard UI is a React application.
 - [`cli`](cli): Command-line `linkerd` utility, view and drive the control
   plane.
 - [`controller`](controller)
-  - [`proxy-api`](controller/api/proxy): Accepts requests from `proxy`
+  - [`destination`](controller/api/destination): Accepts requests from `proxy`
     instances and serves information such as service discovery.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
@@ -64,7 +64,7 @@ linkerd2_components
     node [style=filled, shape=rect];
 
     "cli" [color=lightblue];
-    "proxy-api" [color=lightblue];
+    "destination" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
     "web" [color=lightblue];
@@ -83,9 +83,9 @@ linkerd2_components
     "tap" -> "kubernetes api";
     "tap" -> "proxy";
 
-    "proxy" -> "proxy-api";
+    "proxy" -> "destination";
 
-    "proxy-api" -> "kubernetes api";
+    "destination" -> "kubernetes api";
 
     "grafana" -> "prometheus";
     "prometheus" -> "kubernetes api";
@@ -195,20 +195,20 @@ these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
-to run the proxy-api service locally, run:
+to run the destination service locally, run:
 
 ```bash
-bin/go-run controller/cmd/proxy-api -kubeconfig ~/.kube/config -log-level debug
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
 ```
 
-You can send test requests to the proxy-api service using the
+You can send test requests to the destination service using the
 `destination-client` in the `controller/script` directory. For instance:
 
 ```bash
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
 
-You can also send test requests to the proxy-api's discovery interface:
+You can also send test requests to the destination's discovery interface:
 ```bash
 bin/go-run controller/script/discovery-client
 ```

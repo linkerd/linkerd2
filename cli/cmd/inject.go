@@ -187,7 +187,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
-	controlPlaneDNS := fmt.Sprintf("linkerd-proxy-api.%s.svc.cluster.local", controlPlaneNamespace)
+	controlPlaneDNS := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", controlPlaneNamespace)
 	if controlPlaneDNSNameOverride != "" {
 		controlPlaneDNS = controlPlaneDNSNameOverride
 	}

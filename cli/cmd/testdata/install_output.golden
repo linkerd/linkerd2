@@ -102,7 +102,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-api
+  name: linkerd-destination
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
@@ -172,7 +172,7 @@ spec:
         securityContext:
           runAsUser: 2103
       - args:
-        - proxy-api
+        - destination
         - -addr=:123
         - -controller-namespace=Namespace
         - -single-namespace=false
@@ -186,7 +186,7 @@ spec:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
-        name: proxy-api
+        name: destination
         ports:
         - containerPort: 123
           name: grpc
@@ -490,7 +490,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-destination.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -638,7 +638,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-destination.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -888,7 +888,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-destination.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1127,7 +1127,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-destination.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1256,7 +1256,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:8086
+          value: tcp://linkerd-destination.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1424,7 +1424,7 @@ data:
     - name: LINKERD2_PROXY_LOG
       value: ProxyLogLevel
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-proxy-api.Namespace.svc.cluster.local:123
+      value: tcp://linkerd-destination.Namespace.svc.cluster.local:123
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:4190
     - name: LINKERD2_PROXY_METRICS_LISTENER
