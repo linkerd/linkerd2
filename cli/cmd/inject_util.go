@@ -97,7 +97,11 @@ func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectO
 		out.Write(result)
 		out.Write([]byte("---\n"))
 
-		injectReports = append(injectReports, irs...)
+		for _, ir := range irs {
+			if ir.kind != "" {
+				injectReports = append(injectReports, ir)
+			}
+		}
 	}
 
 	rt.generateReport(injectReports, report)
