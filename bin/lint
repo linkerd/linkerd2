@@ -27,7 +27,4 @@ if [ ! -f "$lintbin" ]; then
   mv ./golangci-lint${exe} $lintbin
 fi
 
-$lintbin run \
-  --enable gofmt,golint \
-  --disable deadcode,errcheck,gosimple,staticcheck,structcheck,unused,varcheck \
-  "$@"
+$lintbin run "$@"

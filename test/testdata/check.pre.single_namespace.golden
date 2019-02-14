@@ -1,0 +1,28 @@
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
+
+kubernetes-version
+------------------
+√ is running the minimum Kubernetes API version
+
+pre-kubernetes-single-namespace-setup
+-------------------------------------
+√ control plane namespace exists
+√ can create Roles
+√ can create RoleBindings
+
+pre-kubernetes-setup
+--------------------
+√ can create ServiceAccounts
+√ can create Services
+√ can create Deployments
+√ can create ConfigMaps
+
+linkerd-version
+---------------
+√ can determine the latest version
+√ cli is up-to-date
+
+Status check results are √
