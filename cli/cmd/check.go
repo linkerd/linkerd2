@@ -58,7 +58,7 @@ non-zero exit code.`,
   linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, options)
+			return configureAndRunChecks(cmd, stdout, options)
 		},
 	}
 
@@ -70,14 +70,14 @@ non-zero exit code.`,
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
 
+	return cmd
+}
+
+func configureAndRunChecks(cmd *cobra.Command, w io.Writer, options *checkOptions) error {
 	if cmd.Flags().Changed("proxy") {
 		options.dataPlaneOnly = true
 	}
 
-	return cmd
-}
-
-func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -140,14 +140,17 @@ func (o *checkOptions) validate() error {
 	if o.preInstallOnly && o.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
-	ownerParts := strings.Split(o.targetProxyResource, "/")
-	if len(ownerParts) != 2 {
-		return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web", o.targetProxyResource)
+	if o.targetProxyResource != "" {
+		ownerParts := strings.Split(o.targetProxyResource, "/")
+		if len(ownerParts) != 2 {
+			return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web", o.targetProxyResource)
+		}
+		_, err := k8s.CanonicalResourceNameFromFriendlyName(ownerParts[0])
+		if err != nil {
+			return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web. Error: %s", o.targetProxyResource, err)
+		}
 	}
-	_, err := k8s.CanonicalResourceNameFromFriendlyName(ownerParts[0])
-	if err != nil {
-		return fmt.Errorf("Invalid resource name '%s'. Expecting target resource in the following format: 'type/name'. E.g. deployment/web. Error: %s", o.targetProxyResource, err)
-	}
+
 	return nil
 }
 

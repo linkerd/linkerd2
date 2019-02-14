@@ -557,7 +557,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return validateDataPlanePodReporting(pods, hc.Options.TargetProxyResource)
+						return validateDataPlanePodReporting(pods)
 					},
 				},
 				{
@@ -937,7 +937,7 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string, proxyTarget s
 	return nil
 }
 
-func validateDataPlanePodReporting(pods []*pb.Pod, proxyTarget string) error {
+func validateDataPlanePodReporting(pods []*pb.Pod) error {
 	notInPrometheus := []string{}
 
 	for _, p := range pods {

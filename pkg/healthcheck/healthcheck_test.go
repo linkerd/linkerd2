@@ -433,7 +433,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 
 func TestValidateDataPlanePodReporting(t *testing.T) {
 	t.Run("Returns success if no pods present", func(t *testing.T) {
-		err := validateDataPlanePodReporting([]*pb.Pod{}, "")
+		err := validateDataPlanePodReporting([]*pb.Pod{})
 		if err != nil {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
@@ -445,7 +445,7 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 			&pb.Pod{Name: "ns2/test2", Added: true},
 		}
 
-		err := validateDataPlanePodReporting(pods, "")
+		err := validateDataPlanePodReporting(pods)
 		if err != nil {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
@@ -457,7 +457,7 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 			&pb.Pod{Name: "ns2/test2", Added: false},
 		}
 
-		err := validateDataPlanePodReporting(pods, "")
+		err := validateDataPlanePodReporting(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
