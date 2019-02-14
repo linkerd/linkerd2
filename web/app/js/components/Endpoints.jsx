@@ -37,7 +37,7 @@ const endpointColumns = [
   {
     title: "Resource Version",
     dataIndex: "pod.resourceVersion",
-    sorter: (a, b) => (a.pod.resourceVersion).localeCompare(b.resourceVersion)
+    sorter: (a, b) => numericSort(a.pod.resourceVersion, b.pod.resourceVersion)
   },
   {
     title: "Service",
@@ -84,6 +84,7 @@ class Endpoints extends React.Component {
           let [podNamespace, podName] = podAddress.pod.name.split("/");
           podAddress.name = podName;
           podAddress.namespace = podNamespace;
+          podAddress.pod.resourceVersion = parseInt(podAddress.pod.resourceVersion, 10);
           pods.push(podAddress);
         });
       });
