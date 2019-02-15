@@ -6,10 +6,10 @@ option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 
 // ConfigStore provides an abstraction over the underlying configuration storge.
 service ConfigStore {
-  // Return the JSON-serialized global config.
+  // Return the global config.
   rpc GetGlobalConfig(GetParam) returns (GlobalConfig) {}
 
-  // Return the JSON-serialized proxy config.
+  // Return the proxy config.
   rpc GetProxyConfig(GetParam) returns (ProxyConfig) {}
 
   // Set the global config. It overwrites the existing value.
