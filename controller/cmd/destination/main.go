@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/linkerd/linkerd2/controller/api/proxy"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -63,7 +63,7 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	server, err := proxy.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
+	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}

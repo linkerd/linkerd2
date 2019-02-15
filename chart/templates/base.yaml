@@ -125,7 +125,7 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-api
+  name: linkerd-destination
   namespace: {{.Values.Namespace}}
   labels:
     {{.Values.ControllerComponentLabel}}: controller
@@ -137,8 +137,8 @@ spec:
     {{.Values.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
-    port: {{.Values.ProxyAPIPort}}
-    targetPort: {{.Values.ProxyAPIPort}}
+    port: {{.Values.DestinationAPIPort}}
+    targetPort: {{.Values.DestinationAPIPort}}
 
 ---
 kind: Deployment
@@ -193,17 +193,17 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
-      - name: proxy-api
+      - name: destination
         ports:
         - name: grpc
-          containerPort: {{.Values.ProxyAPIPort}}
+          containerPort: {{.Values.DestinationAPIPort}}
         - name: admin-http
           containerPort: 9996
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
-        - "proxy-api"
-        - "-addr=:{{.Values.ProxyAPIPort}}"
+        - "destination"
+        - "-addr=:{{.Values.DestinationAPIPort}}"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-single-namespace={{.Values.SingleNamespace}}"
         - "-enable-tls={{.Values.EnableTLS}}"

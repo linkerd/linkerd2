@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/proxy"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -549,7 +549,7 @@ func TestEndpoints(t *testing.T) {
 			}
 			k8sAPI.Sync()
 
-			discoveryClient, gRPCServer, proxyAPIConn := proxy.InitFakeDiscoveryServer(t, k8sAPI)
+			discoveryClient, gRPCServer, proxyAPIConn := destination.InitFakeDiscoveryServer(t, k8sAPI)
 			defer gRPCServer.GracefulStop()
 			defer proxyAPIConn.Close()
 

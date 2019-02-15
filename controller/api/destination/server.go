@@ -1,4 +1,4 @@
-package proxy
+package destination
 
 import (
 	"context"
@@ -24,9 +24,9 @@ type server struct {
 	log             *log.Entry
 }
 
-// NewServer returns a new instance of the proxy-api server.
+// NewServer returns a new instance of the destination server.
 //
-// The proxy-api server serves service discovery and other information to the
+// The destination server serves service discovery and other information to the
 // proxy.  This implementation supports the "k8s" destination scheme and expects
 // destination paths to be of the form:
 // <service>.<namespace>.svc.cluster.local:<port>

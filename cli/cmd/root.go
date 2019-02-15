@@ -253,7 +253,7 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
-	proxyAPIPort            uint
+	destinationAPIPort      uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
 	proxyCPURequest         string
@@ -287,7 +287,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		ignoreOutboundPorts:     nil,
 		proxyUID:                2102,
 		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyAPIPort:            8086,
+		destinationAPIPort:      8086,
 		proxyControlPort:        4190,
 		proxyMetricsPort:        4191,
 		proxyCPURequest:         "",
@@ -365,7 +365,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")
+	cmd.PersistentFlags().UintVar(&options.destinationAPIPort, "api-port", options.destinationAPIPort, "Port where the Linkerd controller's destination API is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
