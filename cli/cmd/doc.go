@@ -34,7 +34,7 @@ func newCmdDoc() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "doc",
 		Hidden: true,
-		Short:  "Generate YAML documentation for the linkerd executable",
+		Short:  "Generate YAML documentation for the Linkerd CLI",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := generateDocs(RootCmd); err != nil {
