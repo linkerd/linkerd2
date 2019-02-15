@@ -62,7 +62,7 @@ func NewServer(
 	s := prometheus.NewGrpcServer()
 
 	// this server satisfies 2 gRPC interfaces:
-	// 1) linkerd2-destination/destination.Destination (proxy-facing)
+	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
 	// 2) controller/discovery.Api (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
 	discovery.RegisterDiscoveryServer(s, &srv)

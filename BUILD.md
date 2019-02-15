@@ -34,7 +34,7 @@ written in Go. The dashboard UI is a React application.
   plane.
 - [`controller`](controller)
   - [`destination`](controller/api/destination): Accepts requests from `proxy`
-    instances and serves information such as service discovery.
+    instances and serves service discovery information.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
     Linkerd2 service mesh.
