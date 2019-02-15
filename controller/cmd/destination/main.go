@@ -21,7 +21,6 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableH2Upgrade := flag.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
-	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
@@ -63,7 +62,7 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
+	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}
