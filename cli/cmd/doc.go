@@ -28,8 +28,6 @@ type cmdDoc struct {
 	SeeAlso          []string    `yaml:"see_also,omitempty"`
 }
 
-var cmdList []cmdDoc
-
 func newCmdDoc() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "doc",
@@ -37,7 +35,8 @@ func newCmdDoc() *cobra.Command {
 		Short:  "Generate YAML documentation for the Linkerd CLI",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := generateDocs(RootCmd); err != nil {
+			cmdList, err := generateDocs(RootCmd)
+			if err != nil {
 				return err
 			}
 
@@ -46,7 +45,7 @@ func newCmdDoc() *cobra.Command {
 				return err
 			}
 
-			fmt.Println(fmt.Sprintf("%s", out))
+			fmt.Println(string(out))
 
 			return nil
 		},
@@ -57,35 +56,40 @@ func newCmdDoc() *cobra.Command {
 
 // generateDocs takes a command and recursively walks the tree of commands,
 // adding each as an item to cmdList.
-func generateDocs(cmd *cobra.Command) error {
+func generateDocs(cmd *cobra.Command) ([]cmdDoc, error) {
+	var cmdList []cmdDoc
+
 	for _, c := range cmd.Commands() {
 		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
 			continue
 		}
 
-		if err := generateDocs(c); err != nil {
-			return err
+		subList, err := generateDocs(c)
+		if err != nil {
+			return nil, err
 		}
+
+		cmdList = append(cmdList, subList...)
 	}
 
 	var buf bytes.Buffer
 
 	if err := doc.GenYaml(cmd, io.Writer(&buf)); err != nil {
-		return err
+		return nil, err
 	}
 
 	var doc cmdDoc
 	if err := yaml.Unmarshal(buf.Bytes(), &doc); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Cobra names start with linkerd, strip that off for the docs.
-	doc.Name = strings.Replace(doc.Name, "linkerd ", "", 1)
+	doc.Name = strings.TrimPrefix(doc.Name, "linkerd ")
 
 	// Don't include the root command.
 	if doc.Name != "linkerd" {
 		cmdList = append(cmdList, doc)
 	}
 
-	return nil
+	return cmdList, nil
 }
