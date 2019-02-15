@@ -4,7 +4,7 @@ set -eu
 
 gen() {
 
-    rm -rf controller/gen/common controller/gen/controller controller/gen/public
+    rm -rf controller/gen/common controller/gen/controller controller/gen/public controller/gen/config
     mkdir -p controller/gen
 
     for f in $@; do
