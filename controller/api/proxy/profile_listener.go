@@ -44,7 +44,7 @@ func (l *profileListener) Update(profile *sp.ServiceProfile) {
 		l.stream.Send(&profiles.DefaultServiceProfile)
 		return
 	}
-	destinationProfile, err := profiles.ToServiceProfile(&profile.Spec)
+	destinationProfile, err := profiles.ToServiceProfile(profile)
 	if err != nil {
 		log.Error(err)
 		return
