@@ -58,8 +58,9 @@ func newCmdEndpoints() *cobra.Command {
   linkerd endpoints -o json`
 
 	cmd := &cobra.Command{
-		Use:   "endpoints [flags]",
-		Short: "Introspect Linkerd's service discovery state",
+		Use:     "endpoints [flags]",
+		Aliases: []string{"ep"},
+		Short:   "Introspect Linkerd's service discovery state",
 		Long: `Introspect Linkerd's service discovery state.
 
 This command provides debug information about the internal state of the
