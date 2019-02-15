@@ -549,7 +549,7 @@ func TestEndpoints(t *testing.T) {
 			}
 			k8sAPI.Sync()
 
-			discoveryClient, gRPCServer, proxyAPIConn := proxy.InitFakeDiscoveryServer(t, k8sAPI)
+			discoveryClient, gRPCServer, proxyAPIConn := destination.InitFakeDiscoveryServer(t, k8sAPI)
 			defer gRPCServer.GracefulStop()
 			defer proxyAPIConn.Close()
 
