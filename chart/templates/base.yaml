@@ -137,8 +137,8 @@ spec:
     {{.Values.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
-    port: {{.Values.ProxyAPIPort}}
-    targetPort: {{.Values.ProxyAPIPort}}
+    port: {{.Values.DestinationAPIPort}}
+    targetPort: {{.Values.DestinationAPIPort}}
 
 ---
 kind: Deployment
@@ -196,14 +196,14 @@ spec:
       - name: destination
         ports:
         - name: grpc
-          containerPort: {{.Values.ProxyAPIPort}}
+          containerPort: {{.Values.DestinationAPIPort}}
         - name: admin-http
           containerPort: 9996
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "destination"
-        - "-addr=:{{.Values.ProxyAPIPort}}"
+        - "-addr=:{{.Values.DestinationAPIPort}}"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-single-namespace={{.Values.SingleNamespace}}"
         - "-enable-tls={{.Values.EnableTLS}}"

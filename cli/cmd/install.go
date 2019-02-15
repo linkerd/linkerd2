@@ -36,7 +36,7 @@ type installConfig struct {
 	ControllerLogLevel               string
 	ControllerComponentLabel         string
 	CreatedByAnnotation              string
-	ProxyAPIPort                     uint
+	DestinationAPIPort               uint
 	EnableTLS                        bool
 	TLSTrustAnchorVolumeName         string
 	TLSSecretsVolumeName             string
@@ -191,7 +191,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerComponentLabel:         k8s.ControllerComponentLabel,
 		ControllerUID:                    options.controllerUID,
 		CreatedByAnnotation:              k8s.CreatedByAnnotation,
-		ProxyAPIPort:                     options.proxyAPIPort,
+		DestinationAPIPort:               options.destinationAPIPort,
 		EnableTLS:                        options.enableTLS(),
 		TLSTrustAnchorVolumeName:         k8s.TLSTrustAnchorVolumeName,
 		TLSSecretsVolumeName:             k8s.TLSSecretsVolumeName,
