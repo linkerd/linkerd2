@@ -6,21 +6,11 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestPatch(t *testing.T) {
 	fixture := fake.NewFactory()
-
-	trustAnchors, err := fixture.Volume("inject-trust-anchors-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	secrets, err := fixture.Volume("inject-linkerd-secrets-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
 
 	sidecar, err := fixture.Container("inject-sidecar-container-spec.yaml")
 	if err != nil {
@@ -42,8 +32,6 @@ func TestPatch(t *testing.T) {
 	actual.addInitContainerRoot()
 	actual.addInitContainer(init)
 	actual.addVolumeRoot()
-	actual.addVolume(trustAnchors)
-	actual.addVolume(secrets)
 	actual.addPodLabels(map[string]string{
 		k8sPkg.ControllerNSLabel: controllerNamespace,
 	})
@@ -60,8 +48,6 @@ func TestPatch(t *testing.T) {
 		{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
 		{Op: "add", Path: patchPathInitContainer, Value: init},
 		{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
-		{Op: "add", Path: patchPathVolume, Value: trustAnchors},
-		{Op: "add", Path: patchPathVolume, Value: secrets},
 		{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
 			k8sPkg.ControllerNSLabel: controllerNamespace,
 		}},

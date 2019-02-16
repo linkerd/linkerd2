@@ -20,9 +20,7 @@ import (
 )
 
 const (
-	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
-	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
-	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
+	envVarKeyProxyID = "LINKERD2_PROXY_ID"
 )
 
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission
@@ -34,11 +32,10 @@ type Webhook struct {
 	controllerNamespace string
 	resources           *WebhookResources
 	noInitContainer     bool
-	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -50,7 +47,6 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		controllerNamespace: controllerNamespace,
 		resources:           resources,
 		noInitContainer:     noInitContainer,
-		tlsEnabled:          tlsEnabled,
 	}, nil
 }
 
@@ -127,14 +123,14 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}, nil
 	}
 
-	identity := &k8sPkg.TLSIdentity{
+	id := k8sPkg.TLSIdentity{
 		Name:                deployment.ObjectMeta.Name,
 		Kind:                strings.ToLower(request.Kind.Kind),
 		Namespace:           ns,
 		ControllerNamespace: w.controllerNamespace,
-	}
+	}.ToDNSName()
 
-	proxy, proxyInit, err := w.containersSpec(identity)
+	proxy, proxyInit, err := w.containersSpec(id)
 	if err != nil {
 		return nil, err
 	}
@@ -151,21 +147,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 			patch.addInitContainerRoot()
 		}
 		patch.addInitContainer(proxyInit)
-	}
-
-	if w.tlsEnabled {
-		caBundle, tlsSecrets, err := w.volumesSpec(identity)
-		if err != nil {
-			return nil, err
-		}
-		log.Debugf("ca bundle volume: %+v", caBundle)
-		log.Debugf("tls secrets volume: %+v", tlsSecrets)
-
-		if len(deployment.Spec.Template.Spec.Volumes) == 0 {
-			patch.addVolumeRoot()
-		}
-		patch.addVolume(caBundle)
-		patch.addVolume(tlsSecrets)
 	}
 
 	if deployment.Spec.Template.Labels == nil {
@@ -244,7 +225,7 @@ func (w *Webhook) shouldInject(ns string, deployment *appsv1.Deployment) (bool, 
 	return podAnnotation == k8sPkg.ProxyInjectEnabled, nil
 }
 
-func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {
+func (w *Webhook) containersSpec(identity string) (*corev1.Container, *corev1.Container, error) {
 	proxySpec, err := ioutil.ReadFile(w.resources.FileProxySpec)
 	if err != nil {
 		return nil, nil, err
@@ -256,12 +237,8 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 	}
 
 	for index, env := range proxy.Env {
-		if env.Name == envVarKeyProxyTLSPodIdentity {
-			proxy.Env[index].Value = identity.ToDNSName()
-		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
-			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
-		} else if env.Name == envVarKeyProxyID {
-			proxy.Env[index].Value = identity.ToDNSName()
+		if env.Name == envVarKeyProxyID {
+			proxy.Env[index].Value = identity
 		}
 	}
 
@@ -278,31 +255,6 @@ func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Containe
 	return &proxy, &proxyInit, nil
 }
 
-func (w *Webhook) volumesSpec(identity *k8sPkg.TLSIdentity) (*corev1.Volume, *corev1.Volume, error) {
-	trustAnchorVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSTrustAnchorVolumeSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var trustAnchors corev1.Volume
-	if err := yaml.Unmarshal(trustAnchorVolumeSpec, &trustAnchors); err != nil {
-		return nil, nil, err
-	}
-
-	tlsVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSIdentityVolumeSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var linkerdSecrets corev1.Volume
-	if err := yaml.Unmarshal(tlsVolumeSpec, &linkerdSecrets); err != nil {
-		return nil, nil, err
-	}
-	linkerdSecrets.VolumeSource.Secret.SecretName = identity.ToSecretName()
-
-	return &trustAnchors, &linkerdSecrets, nil
-}
-
 // WebhookResources contain paths to all the needed file resources.
 type WebhookResources struct {
 	// FileProxySpec is the path to the proxy spec.
@@ -310,10 +262,4 @@ type WebhookResources struct {
 
 	// FileProxyInitSpec is the path to the proxy-init spec.
 	FileProxyInitSpec string
-
-	// FileTLSTrustAnchorVolumeSpec is the path to the trust anchor volume spec.
-	FileTLSTrustAnchorVolumeSpec string
-
-	// FileTLSIdentityVolumeSpec is the path to the TLS identity volume spec.
-	FileTLSIdentityVolumeSpec string
 }

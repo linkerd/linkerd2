@@ -17,7 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	authorizationapi "k8s.io/api/authorization/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
@@ -864,9 +864,6 @@ func validateControlPlanePods(pods []v1.Pod) error {
 	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "prometheus", "web", "grafana"}
-	if _, found := statuses["ca"]; found {
-		names = append(names, "ca")
-	}
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
 	}

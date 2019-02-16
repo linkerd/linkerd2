@@ -54,10 +54,6 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultOptions := newInjectOptions()
 	defaultOptions.linkerdVersion = "testinjectversion"
 
-	tlsOptions := newInjectOptions()
-	tlsOptions.linkerdVersion = "testinjectversion"
-	tlsOptions.tls = "optional"
-
 	proxyRequestOptions := newInjectOptions()
 	proxyRequestOptions.linkerdVersion = "testinjectversion"
 	proxyRequestOptions.proxyCPURequest = "110m"
@@ -121,18 +117,6 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:    "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:    "inject_emojivoto_pod_with_requests.report",
 			testInjectOptions: proxyRequestOptions,
-		},
-		{
-			inputFileName:     "inject_emojivoto_deployment.input.yml",
-			goldenFileName:    "inject_emojivoto_deployment_tls.golden.yml",
-			reportFileName:    "inject_emojivoto_deployment.report",
-			testInjectOptions: tlsOptions,
-		},
-		{
-			inputFileName:     "inject_emojivoto_pod.input.yml",
-			goldenFileName:    "inject_emojivoto_pod_tls.golden.yml",
-			reportFileName:    "inject_emojivoto_pod.report",
-			testInjectOptions: tlsOptions,
 		},
 		{
 			inputFileName:     "inject_emojivoto_deployment_udp.input.yml",

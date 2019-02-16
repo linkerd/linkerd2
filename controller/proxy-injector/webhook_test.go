@@ -26,7 +26,7 @@ func TestShouldInject(t *testing.T) {
 	}
 	fakeClient := fake.NewClient("", nsEnabled, nsDisabled)
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -106,7 +106,7 @@ func TestShouldInject(t *testing.T) {
 func TestContainersSpec(t *testing.T) {
 	fakeClient := fake.NewClient("")
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -121,14 +121,14 @@ func TestContainersSpec(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	identity := &k8s.TLSIdentity{
+	id := k8s.TLSIdentity{
 		Name:                "nginx",
 		Kind:                "deployment",
 		Namespace:           fake.DefaultNamespace,
 		ControllerNamespace: fake.DefaultControllerNamespace,
-	}
+	}.ToDNSName()
 
-	actualSidecar, actualInit, err := webhook.containersSpec(identity)
+	actualSidecar, actualInit, err := webhook.containersSpec(id)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -139,45 +139,6 @@ func TestContainersSpec(t *testing.T) {
 
 	if !reflect.DeepEqual(expectedInit, actualInit) {
 		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedInit, actualInit)
-	}
-}
-
-func TestVolumesSpec(t *testing.T) {
-	fakeClient := fake.NewClient("")
-
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedTrustAnchors, err := factory.Volume("inject-trust-anchors-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedLinkerdSecrets, err := factory.Volume("inject-linkerd-secrets-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	identity := &k8s.TLSIdentity{
-		Name:                "nginx",
-		Kind:                "deployment",
-		Namespace:           fake.DefaultNamespace,
-		ControllerNamespace: fake.DefaultControllerNamespace,
-	}
-
-	actualTrustAnchors, actualLinkerdSecrets, err := webhook.volumesSpec(identity)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	if !reflect.DeepEqual(expectedTrustAnchors, actualTrustAnchors) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedTrustAnchors, actualTrustAnchors)
-	}
-
-	if !reflect.DeepEqual(expectedLinkerdSecrets, actualLinkerdSecrets) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedLinkerdSecrets, actualLinkerdSecrets)
 	}
 }
 

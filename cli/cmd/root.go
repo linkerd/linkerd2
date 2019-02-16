@@ -258,7 +258,6 @@ type proxyConfigOptions struct {
 	proxyMetricsPort        uint
 	proxyCPURequest         string
 	proxyMemoryRequest      string
-	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
 
@@ -292,7 +291,6 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyMetricsPort:        4191,
 		proxyCPURequest:         "",
 		proxyMemoryRequest:      "",
-		tls:                     "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
 		proxyOutboundCapacity:   map[string]uint{},
@@ -324,20 +322,12 @@ func (options *proxyConfigOptions) validate() error {
 		}
 	}
 
-	if options.tls != "" && options.tls != optionalTLS {
-		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
-	}
-
 	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
 			options.proxyLogLevel)
 	}
 
 	return nil
-}
-
-func (options *proxyConfigOptions) enableTLS() bool {
-	return options.tls == optionalTLS
 }
 
 func (options *proxyConfigOptions) taggedProxyImage() string {
@@ -370,7 +360,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
-	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
 	cmd.PersistentFlags().MarkHidden("linkerd-cni-enabled")

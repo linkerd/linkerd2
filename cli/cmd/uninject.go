@@ -8,7 +8,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -140,15 +140,6 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 		}
 	}
 	t.Containers = containers
-
-	volumes := []v1.Volume{}
-	for _, volume := range t.Volumes {
-		// TODO: move those strings to constants
-		if volume.Name != k8s.TLSTrustAnchorVolumeName && volume.Name != k8s.TLSSecretsVolumeName {
-			volumes = append(volumes, volume)
-		}
-	}
-	t.Volumes = volumes
 }
 
 func uninjectObjectMeta(t *metaV1.ObjectMeta) {

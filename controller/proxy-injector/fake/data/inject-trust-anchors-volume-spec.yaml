@@ -1,4 +1,0 @@
-name: linkerd-trust-anchors
-configMap:
-  name: linkerd-ca-bundle
-  optional: true

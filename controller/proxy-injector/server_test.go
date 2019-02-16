@@ -24,12 +24,10 @@ func init() {
 	fakeClient := fake.NewClient("")
 
 	testWebhookResources = &WebhookResources{
-		FileProxySpec:                fake.FileProxySpec,
-		FileProxyInitSpec:            fake.FileProxyInitSpec,
-		FileTLSTrustAnchorVolumeSpec: fake.FileTLSTrustAnchorVolumeSpec,
-		FileTLSIdentityVolumeSpec:    fake.FileTLSIdentityVolumeSpec,
+		FileProxySpec:     fake.FileProxySpec,
+		FileProxyInitSpec: fake.FileProxyInitSpec,
 	}
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false, true)
+	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false)
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +85,7 @@ func TestNewWebhookServer(t *testing.T) {
 	)
 	fakeClient := fake.NewClient(kubeconfig)
 
-	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, false, true, rootCA)
+	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, false, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

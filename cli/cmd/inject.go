@@ -282,52 +282,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		}
 	}
 
-	if options.enableTLS() {
-		yes := true
-
-		configMapVolume := v1.Volume{
-			Name: k8s.TLSTrustAnchorVolumeName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
-					Optional:             &yes,
-				},
-			},
-		}
-		secretVolume := v1.Volume{
-			Name: k8s.TLSSecretsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: identity.ToSecretName(),
-					Optional:   &yes,
-				},
-			},
-		}
-
-		base := "/var/linkerd-io"
-		configMapBase := base + "/trust-anchors"
-		secretBase := base + "/identity"
-		tlsEnvVars := []v1.EnvVar{
-			{Name: "LINKERD2_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
-			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
-			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
-			{
-				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
-				Value: identity.ToDNSName(),
-			},
-			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace},
-			{Name: "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
-		}
-
-		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
-		sidecar.VolumeMounts = []v1.VolumeMount{
-			{Name: configMapVolume.Name, MountPath: configMapBase, ReadOnly: true},
-			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
-		}
-
-		t.Volumes = append(t.Volumes, configMapVolume, secretVolume)
-	}
-
 	t.Containers = append(t.Containers, sidecar)
 	if !options.noInitContainer {
 		nonRoot := false

@@ -21,7 +21,7 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace string, noInitContainer, tlsEnabled bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
 	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, 
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(client, resources, controllerNamespace, noInitContainer, tlsEnabled)
+	webhook, err := NewWebhook(client, resources, controllerNamespace, noInitContainer)
 	if err != nil {
 		return nil, err
 	}

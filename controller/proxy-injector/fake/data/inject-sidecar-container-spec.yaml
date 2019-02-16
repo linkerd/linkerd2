@@ -23,18 +23,6 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_ID
   value: nginx.deployment.default.linkerd-managed.linkerd.svc.cluster.local
-- name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-  value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-- name: LINKERD2_PROXY_TLS_CERT
-  value: /var/linkerd-io/identity/certificate.crt
-- name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-  value: /var/linkerd-io/identity/private-key.p8
-- name: LINKERD2_PROXY_TLS_POD_IDENTITY
-  value: nginx.deployment.default.linkerd-managed.linkerd.svc.cluster.local
-- name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-  value: linkerd
-- name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-  value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
 image: gcr.io/linkerd-io/proxy:v18.8.4
 imagePullPolicy: IfNotPresent
 livenessProbe:
@@ -57,10 +45,3 @@ resources: {}
 securityContext:
   runAsUser: 2102
 terminationMessagePolicy: FallbackToLogsOnError
-volumeMounts:
-- mountPath: /var/linkerd-io/trust-anchors
-  name: linkerd-trust-anchors
-  readOnly: true
-- mountPath: /var/linkerd-io/identity
-  name: linkerd-secrets
-  readOnly: true

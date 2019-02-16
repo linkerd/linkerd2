@@ -97,38 +97,6 @@ const (
 	// proxy-injector ConfigMap that contains the proxy-init container spec.
 	ProxyInitSpecFileName = "proxy-init.yaml"
 
-	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
-	// used when injecting a proxy with TLS enabled.
-	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
-
-	// TLSSecretsVolumeName is the name of the volume holding the secrets,
-	// when injecting a proxy with TLS enabled.
-	TLSSecretsVolumeName = "linkerd-secrets"
-
-	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the trust anchors volume spec.
-	TLSTrustAnchorVolumeSpecFileName = "linkerd-trust-anchors.yaml"
-
-	// TLSIdentityVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the TLS identity secrets volume spec.
-	TLSIdentityVolumeSpecFileName = "linkerd-secrets.yaml"
-
-	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
-	// trust anchors (trusted root certificates).
-	TLSTrustAnchorConfigMapName = "linkerd-ca-bundle"
-
-	// TLSTrustAnchorFileName is the name (key) within the trust anchor ConfigMap
-	// that contains the actual trust anchor bundle.
-	TLSTrustAnchorFileName = "trust-anchors.pem"
-
-	// TLSCertFileName is the name (key) within proxy-injector ConfigMap that
-	// contains the TLS certificate.
-	TLSCertFileName = "certificate.crt"
-
-	// TLSPrivateKeyFileName is the name (key) within proxy-injector ConfigMap
-	// that contains the TLS private key.
-	TLSPrivateKeyFileName = "private-key.p8"
-
 	/*
 	 * Mount paths
 	 */
@@ -142,18 +110,6 @@ var InjectedLabels = []string{ControllerNSLabel, ProxyDeploymentLabel, ProxyRepl
 	ProxyReplicaSetLabel, ProxyJobLabel, ProxyDaemonSetLabel, ProxyStatefulSetLabel}
 
 var (
-	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
-	// mounted
-	MountPathTLSTrustAnchor = MountPathBase + "/trust-anchors/" + TLSTrustAnchorFileName
-
-	// MountPathTLSIdentityCert is the path at which the TLS identity cert file is
-	// mounted
-	MountPathTLSIdentityCert = MountPathBase + "/identity/" + TLSCertFileName
-
-	// MountPathTLSIdentityKey is the path at which the TLS identity key file is
-	// mounted
-	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
-
 	// MountPathConfigProxySpec is the path at which the proxy container spec is
 	// mounted to the proxy-injector
 	MountPathConfigProxySpec = MountPathBase + "/config/" + ProxySpecFileName
@@ -161,14 +117,6 @@ var (
 	// MountPathConfigProxyInitSpec is the path at which the proxy-init container
 	// spec is mounted to the proxy-injector
 	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
-
-	// MountPathTLSTrustAnchorVolumeSpec is the path at which the trust anchor
-	// volume spec is mounted to the proxy-injector
-	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
-
-	// MountPathTLSIdentityVolumeSpec is the path at which the TLS identity
-	// secret volume spec is mounted to the proxy-injector
-	MountPathTLSIdentityVolumeSpec = MountPathBase + "/config/" + TLSIdentityVolumeSpecFileName
 )
 
 // CreatedByAnnotationValue returns the value associated with
@@ -225,20 +173,4 @@ func (i TLSIdentity) ToDNSName() string {
 	}
 	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
 		i.Kind, i.Namespace, i.ControllerNamespace)
-}
-
-// ToSecretName formats a TLSIdentity as a secret name.
-func (i TLSIdentity) ToSecretName() string {
-	return fmt.Sprintf("%s-%s-tls-linkerd-io", i.Name, i.Kind)
-}
-
-// ToControllerIdentity returns the TLSIdentity of the Linkerd Controller, given
-// an arbitrary TLSIdentity.
-func (i TLSIdentity) ToControllerIdentity() TLSIdentity {
-	return TLSIdentity{
-		Name:                "linkerd-controller",
-		Kind:                "deployment",
-		Namespace:           i.ControllerNamespace,
-		ControllerNamespace: i.ControllerNamespace,
-	}
 }
