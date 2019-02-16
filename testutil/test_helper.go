@@ -21,7 +21,6 @@ type TestHelper struct {
 	version         string
 	namespace       string
 	singleNamespace bool
-	tls             bool
 	httpClient      http.Client
 	KubernetesHelper
 }
@@ -37,7 +36,6 @@ func NewTestHelper() *TestHelper {
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	singleNamespace := flag.Bool("single-namespace", false, "configure the control plane to only operate in the installed namespace")
-	tls := flag.Bool("enable-tls", false, "enable TLS in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -66,9 +64,6 @@ func NewTestHelper() *TestHelper {
 	}
 
 	ns := *namespace
-	if *tls {
-		ns += "-tls"
-	}
 	if *singleNamespace {
 		ns += "-single-namespace"
 	}
@@ -77,7 +72,6 @@ func NewTestHelper() *TestHelper {
 		linkerd:         *linkerd,
 		namespace:       ns,
 		singleNamespace: *singleNamespace,
-		tls:             *tls,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -119,11 +113,6 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 		return h.namespace
 	}
 	return h.namespace + "-" + testName
-}
-
-// TLS returns whether or not TLS is enabled for the given test.
-func (h *TestHelper) TLS() bool {
-	return h.tls
 }
 
 // SingleNamespace returns whether --single-namespace is enabled for the given test or not.

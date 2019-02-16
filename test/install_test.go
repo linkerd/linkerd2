@@ -81,10 +81,6 @@ func TestInstall(t *testing.T) {
 		"--proxy-log-level", "warn,linkerd2_proxy=debug",
 		"--linkerd-version", TestHelper.GetVersion(),
 	}
-	if TestHelper.TLS() {
-		cmd = append(cmd, []string{"--tls", "optional"}...)
-		linkerdDeployReplicas["linkerd-ca"] = 1
-	}
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")
 	}
@@ -183,9 +179,6 @@ func TestDashboard(t *testing.T) {
 
 func TestInject(t *testing.T) {
 	cmd := []string{"inject", "testdata/smoke_test.yaml"}
-	if TestHelper.TLS() {
-		cmd = append(cmd, []string{"--tls", "optional"}...)
-	}
 
 	out, injectReport, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
