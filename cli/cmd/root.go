@@ -348,11 +348,11 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
 			options.proxyLogLevel)
 	}
+
 	return nil
 }
 
 func (options *proxyConfigOptions) enableTLS() bool {
-
 	return options.tls == optionalTLS
 }
 
