@@ -219,8 +219,9 @@ data:
         path: /metrics
         port: {{.Values.ProxyMetricsPort}}
       initialDelaySeconds: 10
-    {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory }}
+    {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory .Values.ProxyResourceLimitCPU .Values.ProxyResourceLimitMemory  }}
     resources:
+      {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory }}
       requests:
         {{- if .Values.ProxyResourceRequestCPU }}
         cpu: {{.Values.ProxyResourceRequestCPU}}
@@ -228,6 +229,16 @@ data:
         {{- if .Values.ProxyResourceRequestMemory}}
         memory: {{.Values.ProxyResourceRequestMemory}}
         {{- end }}
+      {{- end }}
+      {{- if or .Values.ProxyResourceLimitCPU .Values.ProxyResourceLimitMemory }}
+      limits:
+        {{- if .Values.ProxyResourceLimitCPU }}
+        cpu: {{.Values.ProxyResourceLimitCPU}}
+        {{- end }}
+        {{- if .Values.ProxyResourceLimitMemory}}
+        memory: {{.Values.ProxyResourceLimitMemory}}
+        {{- end }}
+      {{- end }}
     {{- end }}
     securityContext:
       runAsUser: {{.Values.ProxyUID}}
