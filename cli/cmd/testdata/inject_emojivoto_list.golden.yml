@@ -213,6 +213,8 @@ items:
             runAsUser: 0
           terminationMessagePolicy: FallbackToLogsOnError
   status: {}
+- null
+- null
 kind: List
 metadata: {}
 ---
