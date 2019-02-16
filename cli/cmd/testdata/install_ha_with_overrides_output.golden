@@ -176,7 +176,6 @@ spec:
         - -addr=:8086
         - -controller-namespace=linkerd
         - -single-namespace=false
-        - -enable-tls=false
         - -enable-h2-upgrade=true
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined

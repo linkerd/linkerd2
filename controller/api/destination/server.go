@@ -20,7 +20,6 @@ type server struct {
 	k8sAPI          *k8s.API
 	resolver        streamingDestinationResolver
 	enableH2Upgrade bool
-	enableTLS       bool
 	log             *log.Entry
 }
 
@@ -39,7 +38,7 @@ type server struct {
 func NewServer(
 	addr, k8sDNSZone string,
 	controllerNamespace string,
-	enableTLS, enableH2Upgrade, singleNamespace bool,
+	enableH2Upgrade, singleNamespace bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
 ) (*grpc.Server, error) {
@@ -52,7 +51,6 @@ func NewServer(
 		k8sAPI:          k8sAPI,
 		resolver:        resolver,
 		enableH2Upgrade: enableH2Upgrade,
-		enableTLS:       enableTLS,
 		log: log.WithFields(log.Fields{
 			"addr":      addr,
 			"component": "server",
@@ -150,7 +148,7 @@ func (s *server) Endpoints(ctx context.Context, params *discovery.EndpointsParam
 }
 
 func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableH2Upgrade)
 
 	resolverCanResolve, err := s.resolver.canResolve(host, port)
 	if err != nil {

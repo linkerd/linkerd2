@@ -14,7 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -146,7 +146,7 @@ func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.Discovery
 	lis := bufconn.Listen(1024 * 1024)
 	gRPCServer, err := NewServer(
 		"fake-addr", "", "controller-ns",
-		false, false, false, k8sAPI, nil,
+		false, false, k8sAPI, nil,
 	)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)

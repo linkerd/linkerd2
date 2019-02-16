@@ -173,7 +173,6 @@ spec:
         - -addr=:123
         - -controller-namespace=Namespace
         - -single-namespace=true
-        - -enable-tls=true
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
         image: ControllerImage
