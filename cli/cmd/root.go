@@ -258,6 +258,8 @@ type proxyConfigOptions struct {
 	proxyMetricsPort        uint
 	proxyCPURequest         string
 	proxyMemoryRequest      string
+	proxyCPULimit           string
+	proxyMemoryLimit        string
 	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
@@ -276,23 +278,25 @@ const (
 
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		destinationAPIPort:      8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		tls:                     "",
+		linkerdVersion:      version.Version,
+		proxyImage:          defaultDockerRegistry + "/proxy",
+		initImage:           defaultDockerRegistry + "/proxy-init",
+		dockerRegistry:      defaultDockerRegistry,
+		imagePullPolicy:     "IfNotPresent",
+		inboundPort:         4143,
+		outboundPort:        4140,
+		ignoreInboundPorts:  nil,
+		ignoreOutboundPorts: nil,
+		proxyUID:            2102,
+		proxyLogLevel:       "warn,linkerd2_proxy=info",
+		destinationAPIPort:  8086,
+		proxyControlPort:    4190,
+		proxyMetricsPort:    4191,
+		proxyCPULimit:       "",
+		proxyMemoryLimit:    "",
+		proxyCPURequest:     "",
+		proxyMemoryRequest:  "",
+		tls:                 "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
 		proxyOutboundCapacity:   map[string]uint{},
@@ -303,40 +307,46 @@ func (options *proxyConfigOptions) validate() error {
 	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
 	}
-
 	if !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
 	}
-
 	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
-
 	if options.proxyCPURequest != "" {
 		if _, err := k8sResource.ParseQuantity(options.proxyCPURequest); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCPURequest)
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu-request flag", options.proxyCPURequest)
+		}
+	}
+	if options.proxyMemoryRequest != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyMemoryRequest); err != nil {
+			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory-request flag", options.proxyMemoryRequest)
+		}
+	}
+	if options.proxyCPULimit != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyCPULimit); err != nil {
+			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", options.proxyCPULimit)
 		}
 	}
 
-	if options.proxyMemoryRequest != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyMemoryRequest); err != nil {
-			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory flag", options.proxyMemoryRequest)
+	if options.proxyMemoryLimit != "" {
+		if _, err := k8sResource.ParseQuantity(options.proxyMemoryLimit); err != nil {
+			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", options.proxyMemoryLimit)
 		}
 	}
 
 	if options.tls != "" && options.tls != optionalTLS {
 		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
 	}
-
 	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
 			options.proxyLogLevel)
 	}
-
 	return nil
 }
 
 func (options *proxyConfigOptions) enableTLS() bool {
+
 	return options.tls == optionalTLS
 }
 
@@ -368,8 +378,10 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.destinationAPIPort, "api-port", options.destinationAPIPort, "Port where the Linkerd controller's destination API is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
-	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu-request", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPURequest, "Maximum amount of CPU units that the proxy sidecar can use")
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryRequest, "Maximum amount of Memory that the proxy sidecar can use")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
