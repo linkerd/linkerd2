@@ -1146,7 +1146,6 @@
     "util/integer",
     "util/jsonpath",
     "util/retry",
-    "util/workqueue",
   ]
   pruneopts = ""
   revision = "8d9ed539ba3134352c586810e749e58df4e94e4f"
@@ -1306,7 +1305,6 @@
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/validation",
-    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/version",
     "k8s.io/apimachinery/pkg/watch",
@@ -1330,7 +1328,6 @@
     "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/transport/spdy",
     "k8s.io/client-go/util/flowcontrol",
-    "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/code-generator/cmd/defaulter-gen",
