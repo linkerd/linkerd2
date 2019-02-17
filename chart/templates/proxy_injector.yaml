@@ -1,5 +1,8 @@
 {{ if .Values.ProxyAutoInjectEnabled }}
-### Proxy Injector Deployment ###
+---
+###
+### Proxy Injector
+###
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -62,14 +65,11 @@ spec:
         configMap:
           name: linkerd-proxy-injector-sidecar-config
 ---
-### Proxy Injector Service Account ###
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: {{.Values.Namespace}}
-
-### Proxy Injector RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -82,7 +82,6 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -97,8 +96,6 @@ roleRef:
   kind: ClusterRole
   name: linkerd-{{.Values.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
-
-### Proxy Injector Service ###
 ---
 kind: Service
 apiVersion: v1
@@ -117,8 +114,6 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
-
-### Proxy Sidecar Container Spec ###
 ---
 kind: ConfigMap
 apiVersion: v1

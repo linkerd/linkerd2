@@ -95,9 +95,14 @@ const (
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
 
-	baseTemplateName          = "templates/base.yaml"
-	tlsTemplateName           = "templates/tls.yaml"
-	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
+	nsTemplateName             = "templates/namespace.yaml"
+	controllerTemplateName     = "templates/controller.yaml"
+	webTemplateName            = "templates/web.yaml"
+	prometheusTemplateName     = "templates/prometheus.yaml"
+	grafanaTemplateName        = "templates/grafana.yaml"
+	serviceprofileTemplateName = "templates/serviceprofile.yaml"
+	caTemplateName             = "templates/ca.yaml"
+	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -242,11 +247,31 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	if err != nil {
 		return err
 	}
-	baseTmpl, err := readIntoBytes(baseTemplateName)
+	nsTmpl, err := readIntoBytes(nsTemplateName)
 	if err != nil {
 		return err
 	}
-	tlsTmpl, err := readIntoBytes(tlsTemplateName)
+	controllerTmpl, err := readIntoBytes(controllerTemplateName)
+	if err != nil {
+		return err
+	}
+	serviceprofileTmpl, err := readIntoBytes(serviceprofileTemplateName)
+	if err != nil {
+		return err
+	}
+	webTmpl, err := readIntoBytes(webTemplateName)
+	if err != nil {
+		return err
+	}
+	prometheusTmpl, err := readIntoBytes(prometheusTemplateName)
+	if err != nil {
+		return err
+	}
+	grafanaTmpl, err := readIntoBytes(grafanaTemplateName)
+	if err != nil {
+		return err
+	}
+	caTmpl, err := readIntoBytes(caTemplateName)
 	if err != nil {
 		return err
 	}
@@ -257,8 +282,13 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName, Data: chartTmpl},
-		{Name: baseTemplateName, Data: baseTmpl},
-		{Name: tlsTemplateName, Data: tlsTmpl},
+		{Name: nsTemplateName, Data: nsTmpl},
+		{Name: controllerTemplateName, Data: controllerTmpl},
+		{Name: serviceprofileTemplateName, Data: serviceprofileTmpl},
+		{Name: webTemplateName, Data: webTmpl},
+		{Name: prometheusTemplateName, Data: prometheusTmpl},
+		{Name: grafanaTemplateName, Data: grafanaTmpl},
+		{Name: caTemplateName, Data: caTmpl},
 		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
 	}
 
@@ -286,13 +316,35 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	bt := path.Join(renderOpts.ReleaseOptions.Name, baseTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[bt]); err != nil {
+	t := path.Join(renderOpts.ReleaseOptions.Name, nsTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+		return err
+	}
+	t = path.Join(renderOpts.ReleaseOptions.Name, controllerTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+		return err
+	}
+	if !config.SingleNamespace {
+		t = path.Join(renderOpts.ReleaseOptions.Name, serviceprofileTemplateName)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
+	}
+	t = path.Join(renderOpts.ReleaseOptions.Name, webTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+		return err
+	}
+	t = path.Join(renderOpts.ReleaseOptions.Name, prometheusTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+		return err
+	}
+	t = path.Join(renderOpts.ReleaseOptions.Name, grafanaTemplateName)
+	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 		return err
 	}
 
 	if config.EnableTLS {
-		tt := path.Join(renderOpts.ReleaseOptions.Name, tlsTemplateName)
+		tt := path.Join(renderOpts.ReleaseOptions.Name, caTemplateName)
 		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
 			return err
 		}

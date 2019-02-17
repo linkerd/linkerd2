@@ -1,0 +1,85 @@
+---
+###
+### Web
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.Namespace}}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: web
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.ControllerComponentLabel}}: web
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+  - name: admin-http
+    port: 9994
+    targetPort: 9994
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: web
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.Values.ControllerComponentLabel}}: web
+      annotations:
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    spec:
+      containers:
+      - name: web
+        ports:
+        - name: http
+          containerPort: 8084
+        - name: admin-http
+          containerPort: 9994
+        image: {{.Values.WebImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "-api-addr=linkerd-controller-api.{{.Values.Namespace}}.svc.cluster.local:8085"
+        - "-grafana-addr=linkerd-grafana.{{.Values.Namespace}}.svc.cluster.local:3000"
+        - "-uuid={{.Values.UUID}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9994
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}
+      serviceAccountName: linkerd-web
