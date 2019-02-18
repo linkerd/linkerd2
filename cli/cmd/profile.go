@@ -93,7 +93,7 @@ func newCmdProfile() *cobra.Command {
   # Generate a profile from a protobuf definition.
   linkerd profile -n emojivoto --proto Voting.proto vote-svc
 
-  # Generate a profile by watching life traffic based off tap data.
+  # Generate a profile by watching live traffic based off tap data.
   linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
 `,
 		Args: cobra.ExactArgs(1),
