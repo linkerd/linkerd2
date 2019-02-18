@@ -37,7 +37,7 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	expectedOutput := readTestdata(t, tc.goldenFileName)
 	if actualOutput != expectedOutput {
 		writeTestdataIfUpdate(t, tc.goldenFileName, output.Bytes())
-		diffCompare(t, expectedOutput, actualOutput)
+		diffCompare(t, actualOutput, expectedOutput)
 	}
 
 	actualReport := report.String()
