@@ -83,40 +83,19 @@ func newCmdProfile() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
-		Long: `Output service profile config for Kubernetes.
+		Long:  "Output service profile config for Kubernetes.",
+		Example: `  # Output a basic template to apply after modification.
+  linkerd profile -n emoijvoto --template web-svc
 
-This outputs a service profile for the given service.
+  # Generate a profile from an OpenAPI specification.
+  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc
 
-Examples:
-  If the --template flag is specified, it outputs a service profile template.
-  Edit the template and then apply it with kubectl to add a service profile to
-  a service:
+  # Generate a profile from a protobuf definition.
+  linkerd profile -n emojivoto --proto Voting.proto vote-svc
 
-  linkerd profile -n emojivoto --template web-svc > web-svc-profile.yaml
-  # (edit web-svc-profile.yaml manually)
-  kubectl apply -f web-svc-profile.yaml
-
-  If the --open-api flag is specified, it reads the given OpenAPI
-  specification file and outputs a corresponding service profile:
-
-  linkerd profile -n emojivoto --open-api web-svc.swagger web-svc | kubectl apply -f -
-
-  If the --proto flag is specified, it reads the given protobuf definition file
-  and outputs a corresponding service profile:
-
-  linkerd profile -n emojivoto --proto Voting.proto vote-svc | kubectl apply -f -
-
-  If the --tap flag is specified, it runs linkerd tap target for --tap-duration seconds,
-  and creates a profile for the SERVICE based on the requests seen in that window:
-
-  linkerd profile books --tap deploy/books --tap-duration 10s --tap-route-limit 5 > book-svc-profile.yaml
-  # (edit book-svc-profile.yaml manually)
-  kubectl apply -f book-svc-profile.yaml
-
-  The command will run linkerd tap deploy/books for tap-duration seconds, and then create
-  a service profile for the books service with routes prepopulated from the tap data.
-  For high RPS, high-route-cardinality services, use tap-route-limit to limit the number of
-  routes in the output profile.`,
+  # Generate a profile by watching life traffic based off tap data.
+  linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
+`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
