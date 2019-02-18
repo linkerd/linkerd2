@@ -2,11 +2,20 @@ package cmd
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 )
+
+var updateFixtures bool
+
+func TestMain(m *testing.M) {
+	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
+	flag.Parse()
+	os.Exit(m.Run())
+}
 
 func TestRender(t *testing.T) {
 	// The default configuration, with the random UUID overridden with a fixed
@@ -163,7 +172,7 @@ func TestRender(t *testing.T) {
 
 			actual := buf.String()
 			expected := string(goldenFileBytes)
-			if actual != expected && os.Getenv("INSTALL_TEST_OVERWRITE_GOLDEN") != "" {
+			if actual != expected && updateFixtures {
 				if err := ioutil.WriteFile(tc.goldenFileName, buf.Bytes(), 0644); err != nil {
 					t.Fatal(err)
 				}

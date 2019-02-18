@@ -443,5 +443,5 @@ YAML. When these files are changed, tests will fail until the files in
 golden files can be automatically regenerated with the command:
 
 ```sh
-INSTALL_TEST_OVERWRITE_GOLDEN=1 go test ./cli/...
+go test ./cli/... -args -update
 ```

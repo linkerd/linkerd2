@@ -38,6 +38,11 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	if expectedOutput != actualOutput {
 		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedOutput, actualOutput)
 	}
+	if actualOutput != expectedOutput && updateFixtures {
+		if err := ioutil.WriteFile(tc.goldenFileName, output.Bytes(), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	actualReport := report.String()
 	reportFileName := tc.reportFileName
