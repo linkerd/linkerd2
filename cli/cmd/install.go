@@ -95,9 +95,14 @@ const (
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
 
-	baseTemplateName          = "templates/base.yaml"
-	tlsTemplateName           = "templates/tls.yaml"
-	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
+	nsTemplateName             = "templates/namespace.yaml"
+	controllerTemplateName     = "templates/controller.yaml"
+	webTemplateName            = "templates/web.yaml"
+	prometheusTemplateName     = "templates/prometheus.yaml"
+	grafanaTemplateName        = "templates/grafana.yaml"
+	serviceprofileTemplateName = "templates/serviceprofile.yaml"
+	caTemplateName             = "templates/ca.yaml"
+	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -237,29 +242,25 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	// Read templates into bytes
-	chartTmpl, err := readIntoBytes(chartutil.ChartfileName)
-	if err != nil {
-		return err
-	}
-	baseTmpl, err := readIntoBytes(baseTemplateName)
-	if err != nil {
-		return err
-	}
-	tlsTmpl, err := readIntoBytes(tlsTemplateName)
-	if err != nil {
-		return err
-	}
-	proxyInjectorTmpl, err := readIntoBytes(proxyInjectorTemplateName)
-	if err != nil {
-		return err
+	files := []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: nsTemplateName},
+		{Name: controllerTemplateName},
+		{Name: serviceprofileTemplateName},
+		{Name: webTemplateName},
+		{Name: prometheusTemplateName},
+		{Name: grafanaTemplateName},
+		{Name: caTemplateName},
+		{Name: proxyInjectorTemplateName},
 	}
 
-	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: chartTmpl},
-		{Name: baseTemplateName, Data: baseTmpl},
-		{Name: tlsTemplateName, Data: tlsTmpl},
-		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
+	// Read templates into bytes
+	for _, f := range files {
+		data, err := readIntoBytes(f.Name)
+		if err != nil {
+			return err
+		}
+		f.Data = data
 	}
 
 	// Create chart and render templates
@@ -286,21 +287,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	bt := path.Join(renderOpts.ReleaseOptions.Name, baseTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[bt]); err != nil {
-		return err
-	}
-
-	if config.EnableTLS {
-		tt := path.Join(renderOpts.ReleaseOptions.Name, tlsTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
-			return err
-		}
-	}
-
-	if config.ProxyAutoInjectEnabled {
-		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
+	for _, tmpl := range files {
+		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return err
 		}
 	}
