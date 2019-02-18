@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -151,18 +152,23 @@ func TestRender(t *testing.T) {
 			controlPlaneNamespace = tc.controlPlaneNamespace
 
 			var buf bytes.Buffer
-			err := render(tc.config, &buf, tc.options)
-			if err != nil {
+			if err := render(tc.config, &buf, tc.options); err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			content := buf.String()
 
 			goldenFileBytes, err := ioutil.ReadFile(tc.goldenFileName)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			expectedContent := string(goldenFileBytes)
-			diffCompare(t, content, expectedContent)
+
+			actual := buf.String()
+			expected := string(goldenFileBytes)
+			if actual != expected && os.Getenv("INSTALL_TEST_OVERWRITE_GOLDEN") != "" {
+				if err := ioutil.WriteFile(tc.goldenFileName, buf.Bytes(), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			diffCompare(t, actual, expected)
 		})
 	}
 }
