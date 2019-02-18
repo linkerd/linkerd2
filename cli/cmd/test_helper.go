@@ -26,9 +26,7 @@ func diffCompare(t *testing.T, actual string, expected string) {
 	}
 }
 
-// Attempts to read a file and return the contents of that file as a string.
-// readOptionalTestFile returns an empty string if the file name parameter being passed
-// in is an empty string.
+// readTesdtata reads a file and return the contents of that file as a string.
 func readTestdata(t *testing.T, fileName string) string {
 	file, err := os.Open(filepath.Join("testdata", fileName))
 	if err != nil {
@@ -43,9 +41,8 @@ func readTestdata(t *testing.T, fileName string) string {
 	return string(fixture)
 }
 
-// Attempts to read a file and return the contents of that file as a string.
-// readOptionalTestFile returns an empty string if the file name parameter being passed
-// in is an empty string.
+// readTestdataIfFileName returns an empty string if the file name parameter being passed
+// in is an empty string, and otherwise calls readTestdata.
 func readTestdataIfFileName(t *testing.T, fileName string) string {
 	if fileName == "" {
 		return ""
