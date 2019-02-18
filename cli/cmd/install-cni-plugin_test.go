@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"testing"
 )
 
@@ -62,9 +61,9 @@ func TestRenderCNIPlugin(t *testing.T) {
 		namespace      string
 		goldenFileName string
 	}{
-		{defaultConfig, defaultControlPlaneNamespace, "testdata/install-cni-plugin_default.golden"},
-		{fullyConfiguredConfig, fullyConfiguredConfig.Namespace, "testdata/install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredConfigEqualDsts, fullyConfiguredConfigEqualDsts.Namespace, "testdata/install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{defaultConfig, defaultControlPlaneNamespace, "install-cni-plugin_default.golden"},
+		{fullyConfiguredConfig, fullyConfiguredConfig.Namespace, "install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredConfigEqualDsts, fullyConfiguredConfigEqualDsts.Namespace, "install-cni-plugin_fully_configured_equal_dsts.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -77,14 +76,13 @@ func TestRenderCNIPlugin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			content := buf.String()
+			actualContent := buf.String()
 
-			goldenFileBytes, err := ioutil.ReadFile(tc.goldenFileName)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+			expectedContent := readTestdata(t, tc.goldenFileName)
+			if actualContent != expectedContent {
+				writeTestdataIfUpdate(t, tc.goldenFileName, buf.Bytes())
+				diffCompare(t, actualContent, expectedContent)
 			}
-			expectedContent := string(goldenFileBytes)
-			diffCompare(t, content, expectedContent)
 		})
 	}
 
