@@ -242,54 +242,25 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	// Read templates into bytes
-	chartTmpl, err := readIntoBytes(chartutil.ChartfileName)
-	if err != nil {
-		return err
-	}
-	nsTmpl, err := readIntoBytes(nsTemplateName)
-	if err != nil {
-		return err
-	}
-	controllerTmpl, err := readIntoBytes(controllerTemplateName)
-	if err != nil {
-		return err
-	}
-	serviceprofileTmpl, err := readIntoBytes(serviceprofileTemplateName)
-	if err != nil {
-		return err
-	}
-	webTmpl, err := readIntoBytes(webTemplateName)
-	if err != nil {
-		return err
-	}
-	prometheusTmpl, err := readIntoBytes(prometheusTemplateName)
-	if err != nil {
-		return err
-	}
-	grafanaTmpl, err := readIntoBytes(grafanaTemplateName)
-	if err != nil {
-		return err
-	}
-	caTmpl, err := readIntoBytes(caTemplateName)
-	if err != nil {
-		return err
-	}
-	proxyInjectorTmpl, err := readIntoBytes(proxyInjectorTemplateName)
-	if err != nil {
-		return err
+	files := []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: nsTemplateName},
+		{Name: controllerTemplateName},
+		{Name: serviceprofileTemplateName},
+		{Name: webTemplateName},
+		{Name: prometheusTemplateName},
+		{Name: grafanaTemplateName},
+		{Name: caTemplateName},
+		{Name: proxyInjectorTemplateName},
 	}
 
-	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: chartTmpl},
-		{Name: nsTemplateName, Data: nsTmpl},
-		{Name: controllerTemplateName, Data: controllerTmpl},
-		{Name: serviceprofileTemplateName, Data: serviceprofileTmpl},
-		{Name: webTemplateName, Data: webTmpl},
-		{Name: prometheusTemplateName, Data: prometheusTmpl},
-		{Name: grafanaTemplateName, Data: grafanaTmpl},
-		{Name: caTemplateName, Data: caTmpl},
-		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
+	// Read templates into bytes
+	for _, f := range files {
+		data, err := readIntoBytes(f.Name)
+		if err != nil {
+			return err
+		}
+		f.Data = data
 	}
 
 	// Create chart and render templates
@@ -316,43 +287,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	t := path.Join(renderOpts.ReleaseOptions.Name, nsTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-		return err
-	}
-	t = path.Join(renderOpts.ReleaseOptions.Name, controllerTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-		return err
-	}
-	if !config.SingleNamespace {
-		t = path.Join(renderOpts.ReleaseOptions.Name, serviceprofileTemplateName)
+	for _, tmpl := range files {
+		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
-		}
-	}
-	t = path.Join(renderOpts.ReleaseOptions.Name, webTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-		return err
-	}
-	t = path.Join(renderOpts.ReleaseOptions.Name, prometheusTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-		return err
-	}
-	t = path.Join(renderOpts.ReleaseOptions.Name, grafanaTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-		return err
-	}
-
-	if config.EnableTLS {
-		tt := path.Join(renderOpts.ReleaseOptions.Name, caTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
-			return err
-		}
-	}
-
-	if config.ProxyAutoInjectEnabled {
-		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
 			return err
 		}
 	}
