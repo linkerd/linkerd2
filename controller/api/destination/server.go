@@ -63,7 +63,7 @@ func NewServer(
 
 	// this server satisfies 2 gRPC interfaces:
 	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
-	// 2) controller/discovery.Destination (controller-facing)
+	// 2) controller/discovery.Discovery (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
 	discoveryPb.RegisterDiscoveryServer(s, &srv)
 
