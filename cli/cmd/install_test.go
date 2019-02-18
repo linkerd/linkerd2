@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-var updateFixtures bool
-
 func TestMain(m *testing.M) {
 	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
 	flag.Parse()

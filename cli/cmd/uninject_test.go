@@ -104,15 +104,17 @@ func TestUninjectYAML(t *testing.T) {
 			}
 
 			actualOutput := stripDashes(output.String())
-			expectedOutput := stripDashes(readOptionalTestFile(t, tc.goldenFileName))
+			expectedOutput := stripDashes(readTestdata(t, tc.goldenFileName))
 			if expectedOutput != actualOutput {
-				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedOutput, actualOutput)
+				writeTestdataIfUpdate(t, tc.goldenFileName, output.Bytes())
+				diffCompare(t, expectedOutput, actualOutput)
 			}
 
 			actualReport := report.String()
-			expectedReport := readOptionalTestFile(t, tc.reportFileName)
+			expectedReport := readTestdata(t, tc.reportFileName)
 			if expectedReport != actualReport {
-				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedReport, actualReport)
+				writeTestdataIfUpdate(t, tc.reportFileName, report.Bytes())
+				diffCompare(t, expectedReport, actualReport)
 			}
 		})
 	}

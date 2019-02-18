@@ -443,5 +443,5 @@ YAML. When these files are changed, tests will fail until the files in
 golden files can be automatically regenerated with the command:
 
 ```sh
-go test ./cli/... -args -update
+go test ./cli/... -update
 ```
