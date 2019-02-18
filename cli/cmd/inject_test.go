@@ -48,7 +48,7 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	expectedReport := readTestdata(t, reportFileName)
 	if expectedReport != actualReport {
 		writeTestdataIfUpdate(t, reportFileName, report.Bytes())
-		diffCompare(t, expectedReport, actualReport)
+		diffCompare(t, actualReport, expectedReport)
 	}
 }
 
@@ -208,7 +208,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	expectedStdOutResult := readTestdataIfFileName(t, tc.stdOutGoldenFileName)
 	if expectedStdOutResult != actualStdOutResult {
 		writeTestdataIfUpdate(t, tc.stdOutGoldenFileName, outBuffer.Bytes())
-		diffCompare(t, expectedStdOutResult, actualStdOutResult)
+		diffCompare(t, actualStdOutResult, expectedStdOutResult)
 	}
 
 	stdErrGoldenFileName := tc.stdErrGoldenFileName
@@ -220,7 +220,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	expectedStdErrResult := readTestdataIfFileName(t, stdErrGoldenFileName)
 	if expectedStdErrResult != actualStdErrResult {
 		writeTestdataIfUpdate(t, tc.stdOutGoldenFileName, errBuffer.Bytes())
-		diffCompare(t, expectedStdErrResult, actualStdErrResult)
+		diffCompare(t, actualStdErrResult, expectedStdErrResult)
 	}
 }
 func TestRunInjectCmd(t *testing.T) {
@@ -272,7 +272,7 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	expected := readTestdata(t, tc.expectedFile)
 	if expected != actual.String() {
 		writeTestdataIfUpdate(t, tc.expectedFile, actual.Bytes())
-		diffCompare(t, expected, actual.String())
+		diffCompare(t, actual.String(), expected)
 	}
 
 	stdErrFile := tc.stdErrFile
@@ -282,8 +282,8 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	stdErr := readTestdata(t, stdErrFile)
 	if stdErr != errBuf.String() {
-		writeTestdataIfUpdate(t, stdErrFile, errBuf.Bytes())
-		diffCompare(t, stdErr, errBuf.String())
+		writeTestdataIfUpdate(t, errBuf.Bytes(), stdErr)
+		diffCompare(t, errBuf.String(), stdErr)
 	}
 }
 
@@ -300,10 +300,10 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	}
 
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
-	expected := readTestdata(t, expectedFile)
+	expected :, expectedFile= readTestdata(t)
 	if expected != actual.String() {
-		writeTestdataIfUpdate(t, expectedFile, actual.Bytes())
-		diffCompare(t, expected, actual.String())
+		writeTestdataIfUpdate(t, actual.Bytes(), expectedFile)
+		diffCompare(t, actual.String(), expected)
 	}
 
 	stdErrFileName := filepath.Join(expectedFolder, "injected_nginx_redis.stderr")
@@ -314,7 +314,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	stdErr := readTestdata(t, stdErrFileName)
 	if stdErr != errBuf.String() {
 		writeTestdataIfUpdate(t, stdErrFileName, errBuf.Bytes())
-		diffCompare(t, stdErr, errBuf.String())
+		diffCompare(t, errBuf.String(), stdErr)
 	}
 }
 
