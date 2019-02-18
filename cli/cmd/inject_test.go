@@ -300,7 +300,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	}
 
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
-	expected :, expectedFile= readTestdata(t)
+	expected := readTestdata(t, expectedFile)
 	if expected != actual.String() {
 		writeTestdataIfUpdate(t, actual.Bytes(), expectedFile)
 		diffCompare(t, actual.String(), expected)
