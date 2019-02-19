@@ -114,7 +114,7 @@ func TestUninjectYAML(t *testing.T) {
 			expectedReport := readTestdata(t, tc.reportFileName)
 			if expectedReport != actualReport {
 				writeTestdataIfUpdate(t, tc.reportFileName, report.Bytes())
-				diffCompare(t, expectedReport, actualReport)
+				diffCompare(t, actualReport, expectedReport)
 			}
 		})
 	}
