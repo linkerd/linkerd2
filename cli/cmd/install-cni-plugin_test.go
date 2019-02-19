@@ -76,13 +76,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			actualContent := buf.String()
-
-			expectedContent := readTestdata(t, tc.goldenFileName)
-			if actualContent != expectedContent {
-				writeTestdataIfUpdate(t, tc.goldenFileName, buf.Bytes())
-				diffCompare(t, actualContent, expectedContent)
-			}
+			testDiff(t, tc.goldenFileName, buf.String())
 		})
 	}
 

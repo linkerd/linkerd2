@@ -2,9 +2,20 @@ package cmd
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
+	"os"
 	"testing"
 )
+
+// TestMain parses flags before running tests
+func TestMain(m *testing.M) {
+	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
+	prettyDiff = os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
+	flag.BoolVar(&prettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
+	flag.Parse()
+	os.Exit(m.Run())
+}
 
 func TestRender(t *testing.T) {
 	// The default configuration, with the random UUID overridden with a fixed
@@ -153,13 +164,7 @@ func TestRender(t *testing.T) {
 			if err := render(tc.config, &buf, tc.options); err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-
-			actual := buf.String()
-			expected := readTestdata(t, tc.goldenFileName)
-			if actual != expected {
-				writeTestdataIfUpdate(t, tc.goldenFileName, buf.Bytes())
-				diffCompare(t, actual, expected)
-			}
+			testDiff(t, tc.goldenFileName, buf.String())
 		})
 	}
 }

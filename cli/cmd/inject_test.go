@@ -32,24 +32,13 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, tc.testInjectOptions); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
+	testDiff(t, tc.goldenFileName, output.String())
 
-	actualOutput := output.String()
-	expectedOutput := readTestdata(t, tc.goldenFileName)
-	if actualOutput != expectedOutput {
-		writeTestdataIfUpdate(t, tc.goldenFileName, output.Bytes())
-		diffCompare(t, actualOutput, expectedOutput)
-	}
-
-	actualReport := report.String()
 	reportFileName := tc.reportFileName
 	if verbose {
 		reportFileName += ".verbose"
 	}
-	expectedReport := readTestdata(t, reportFileName)
-	if expectedReport != actualReport {
-		writeTestdataIfUpdate(t, reportFileName, report.Bytes())
-		diffCompare(t, actualReport, expectedReport)
-	}
+	testDiff(t, reportFileName, report.String())
 }
 
 func TestUninjectAndInject(t *testing.T) {
@@ -203,26 +192,17 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
-
-	actualStdOutResult := outBuffer.String()
-	expectedStdOutResult := readTestdataIfFileName(t, tc.stdOutGoldenFileName)
-	if expectedStdOutResult != actualStdOutResult {
-		writeTestdataIfUpdate(t, tc.stdOutGoldenFileName, outBuffer.Bytes())
-		diffCompare(t, actualStdOutResult, expectedStdOutResult)
+	if tc.stdOutGoldenFileName != "" {
+		testDiff(t, tc.stdOutGoldenFileName, outBuffer.String())
 	}
 
 	stdErrGoldenFileName := tc.stdErrGoldenFileName
 	if verbose {
 		stdErrGoldenFileName += ".verbose"
 	}
-
-	actualStdErrResult := errBuffer.String()
-	expectedStdErrResult := readTestdataIfFileName(t, stdErrGoldenFileName)
-	if expectedStdErrResult != actualStdErrResult {
-		writeTestdataIfUpdate(t, stdErrGoldenFileName, errBuffer.Bytes())
-		diffCompare(t, actualStdErrResult, expectedStdErrResult)
-	}
+	testDiff(t, stdErrGoldenFileName, errBuffer.String())
 }
+
 func TestRunInjectCmd(t *testing.T) {
 	testCases := []injectCmd{
 		{
@@ -258,7 +238,7 @@ type injectFilePath struct {
 }
 
 func testInjectFilePath(t *testing.T, tc injectFilePath) {
-	in, err := read(tc.resourceFile)
+	in, err := read("testdata/" + tc.resourceFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -268,27 +248,17 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	if exitCode := runInjectCmd(in, errBuf, actual, newInjectOptions()); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
-
-	expected := readTestdata(t, tc.expectedFile)
-	if expected != actual.String() {
-		writeTestdataIfUpdate(t, tc.expectedFile, actual.Bytes())
-		diffCompare(t, actual.String(), expected)
-	}
+	testDiff(t, tc.expectedFile, actual.String())
 
 	stdErrFile := tc.stdErrFile
 	if verbose {
 		stdErrFile += ".verbose"
 	}
-
-	stdErr := readTestdata(t, stdErrFile)
-	if stdErr != errBuf.String() {
-		writeTestdataIfUpdate(t, stdErrFile, errBuf.Bytes())
-		diffCompare(t, errBuf.String(), stdErr)
-	}
+	testDiff(t, stdErrFile, errBuf.String())
 }
 
 func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
-	in, err := read(resourceFolder)
+	in, err := read("testdata/" + resourceFolder)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -300,27 +270,18 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	}
 
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
-	expected := readTestdata(t, expectedFile)
-	if expected != actual.String() {
-		writeTestdataIfUpdate(t, expectedFile, actual.Bytes())
-		diffCompare(t, actual.String(), expected)
-	}
+	testDiff(t, expectedFile, actual.String())
 
 	stdErrFileName := filepath.Join(expectedFolder, "injected_nginx_redis.stderr")
 	if verbose {
 		stdErrFileName += ".verbose"
 	}
-
-	stdErr := readTestdata(t, stdErrFileName)
-	if stdErr != errBuf.String() {
-		writeTestdataIfUpdate(t, stdErrFileName, errBuf.Bytes())
-		diffCompare(t, errBuf.String(), stdErr)
-	}
+	testDiff(t, stdErrFileName, errBuf.String())
 }
 
 func TestInjectFilePath(t *testing.T) {
 	var (
-		resourceFolder = filepath.Join("testdata", "inject-filepath", "resources")
+		resourceFolder = filepath.Join("inject-filepath", "resources")
 		expectedFolder = filepath.Join("inject-filepath", "expected")
 	)
 
@@ -380,10 +341,10 @@ func TestWalk(t *testing.T) {
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
-	if err := ioutil.WriteFile(file1, data, 0666); err != nil {
+	if err := ioutil.WriteFile(file1, data, 0644); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if err := ioutil.WriteFile(file2, data, 0666); err != nil {
+	if err := ioutil.WriteFile(file2, data, 0644); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
