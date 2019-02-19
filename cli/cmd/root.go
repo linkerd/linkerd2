@@ -409,8 +409,10 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	// Deprecated flags
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+
 	cmd.PersistentFlags().MarkHidden("proxy-memory")
 	cmd.PersistentFlags().MarkHidden("proxy-cpu")
+
 	cmd.PersistentFlags().MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	cmd.PersistentFlags().MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
 }

@@ -446,7 +446,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	// Warnings
 	//
 
-	// leading newline to separate from yaml output on stdout
+	// Leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
 
 	if len(hostNetwork) > 0 {
@@ -500,12 +500,12 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		}
 	}
 
-	// trailing newline to separate from kubectl output if piping
+	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
-	// check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
 		for _, port := range container.Ports {
 			if port.Protocol == v1.ProtocolUDP {
