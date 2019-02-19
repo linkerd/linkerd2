@@ -158,16 +158,20 @@ export class ResourceDetailBase extends React.Component {
         let podMetricsForResource;
 
         if (resource.type === "pod") {
+          // get only info for the pod whose ResourceDetail is being shown
+          // pod.name in podMetrics is of the form `pod-name`
           podMetricsForResource = _filter(podMetrics, pod => pod.name === resource.name);
         } else {
           let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
             if (_get(pod, resourceTypeToCamelCase(resource.type)) === resourceName) {
+              // pod.name in podListRsp is of the form `namespace/pod-name`
               mem[pod.name] = true;
             }
 
             return mem;
           }, {});
 
+          // get all pods whose owner is this resource
           podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
         }
 
