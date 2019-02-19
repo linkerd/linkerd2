@@ -77,9 +77,10 @@ func TestEgressHttp(t *testing.T) {
 			var messagePayload map[string]interface{}
 			json.Unmarshal([]byte(payloadText.(string)), &messagePayload)
 
+			expectedResponseURL := fmt.Sprintf("https://%s/%s", dnsName, strings.ToLower(methodToUse))
 			actualURL := messagePayload["url"]
-			if actualURL != expectedURL {
-				t.Fatalf("Expecting response to say egress sent [%s] request to URL [%s] but got [%s]. Response:\n%s\n", methodToUse, expectedURL, actualURL, output)
+			if actualURL != expectedResponseURL {
+				t.Fatalf("Expecting response to say egress sent [%s] request to URL [%s] but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL, actualURL, output)
 			}
 		})
 	}

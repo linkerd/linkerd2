@@ -5,7 +5,7 @@
 This document will help you build and run Linkerd2 from source. More information
 about testing from source can be found in the [TEST.md](TEST.md) guide.
 
-# Table of contents
+## Table of contents
 
 - [Repo Layout](#repo-layout)
   - [Control Plane (Go/React)](#control-plane-goreact)
@@ -20,20 +20,21 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating Docker dependencies](#updating-docker-dependencies)
 - [Build Architecture](#build-architecture)
+- [Generating CLI docs](#generating-cli-docs)
 
-# Repo layout
+## Repo layout
 
 Linkerd2 is primarily written in Rust, Go, and React. At its core is a
 high-performance data plane written in Rust. The control plane components are
 written in Go. The dashboard UI is a React application.
 
-## Control Plane (Go/React)
+### Control Plane (Go/React)
 
 - [`cli`](cli): Command-line `linkerd` utility, view and drive the control
   plane.
 - [`controller`](controller)
-  - [`proxy-api`](controller/api/proxy): Accepts requests from `proxy`
-    instances and serves information such as service discovery.
+  - [`destination`](controller/api/destination): Accepts requests from `proxy`
+    instances and serves service discovery information.
   - [`public-api`](controller/api/public): Accepts requests from API
     clients such as `cli` and `web`, provides access to and control of the
     Linkerd2 service mesh.
@@ -43,14 +44,14 @@ written in Go. The dashboard UI is a React application.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
   This component is written in Go and React.
 
-## Data Plane (Rust)
+### Data Plane (Rust)
 
 - [`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy): Rust source
   code for the proxy lives in the linkerd2-proxy repo.
 - [`linkerd2-proxy-api`](https://github.com/linkerd/linkerd2-proxy-api): Protobuf
   definitions for the data plane APIs live in the linkerd2-proxy-api repo.
 
-# Components
+## Components
 
 ![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
@@ -63,7 +64,7 @@ linkerd2_components
     node [style=filled, shape=rect];
 
     "cli" [color=lightblue];
-    "proxy-api" [color=lightblue];
+    "destination" [color=lightblue];
     "public-api" [color=lightblue];
     "tap" [color=lightblue];
     "web" [color=lightblue];
@@ -82,9 +83,9 @@ linkerd2_components
     "tap" -> "kubernetes api";
     "tap" -> "proxy";
 
-    "proxy" -> "proxy-api";
+    "proxy" -> "destination";
 
-    "proxy-api" -> "kubernetes api";
+    "destination" -> "kubernetes api";
 
     "grafana" -> "prometheus";
     "prometheus" -> "kubernetes api";
@@ -93,7 +94,7 @@ linkerd2_components
 linkerd2_components
 </details>
 
-# Development configurations
+## Development configurations
 
 Depending on use case, there are several configurations with which to develop
 and run Linkerd2:
@@ -102,7 +103,7 @@ and run Linkerd2:
   closely matches release.
 - [Web](#web): Development of the Linkerd2 Dashboard.
 
-## Comprehensive
+### Comprehensive
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
@@ -141,9 +142,9 @@ bin/linkerd -n emojivoto stat deployments
 bin/linkerd -n emojivoto tap deploy voting
 ```
 
-## Go
+### Go
 
-### A note about Go run
+#### A note about Go run
 
 Our instructions use a [`bin/go-run`](bin/go-run) script in lieu `go run`.
 This is a convenience script that leverages caching via `go build` to make your
@@ -163,7 +164,7 @@ bin/go-run cli check
 
 That is equivalent to running `linkerd check` using the code on your branch.
 
-### Building the CLI for development
+#### Building the CLI for development
 
 When Linkerd2's CLI is built using `bin/docker-build` it always creates binaries
 for all three platforms. For local development and a faster edit-build-test
@@ -187,32 +188,56 @@ For repeated cli builds that do not require Go Dep changes:
 LINKERD_SKIP_DEP=1 bin/build-cli-bin
 ```
 
-### Running the control plane for development
+#### Running the control plane for development
 
 Linkerd2's control plane is composed of several Go microservices. You can run
 these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
-to run the proxy-api service locally, run:
+to run the destination service locally, run:
 
 ```bash
-bin/go-run controller/cmd/proxy-api -kubeconfig ~/.kube/config -log-level debug
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
 ```
 
-You can send test requests to the proxy-api service using the
+You can send test requests to the destination service using the
 `destination-client` in the `controller/script` directory. For instance:
 
 ```bash
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
 
-You can also send test requests to the proxy-api's discovery interface:
+You can also send test requests to the destination's discovery interface:
 ```bash
 bin/go-run controller/script/discovery-client
 ```
 
-## Web
+#### Generating CLI docs
+
+The [documentation](https://linkerd.io/2/cli/) for the CLI
+tool is partially generated from YAML. This can be generated by running the
+`linkerd doc` command.
+
+#### Updating templates
+
+When kubernetes templates change, several test fixtures usually need to be updated (in
+`cli/cmd/testdata/*.golden`). These golden files can be automatically
+regenerated with the command:
+
+```sh
+go test ./... -update
+```
+
+##### Pretty-printed diffs for templated text
+
+
+When running `go test`, mismatched text is usually displayed as a compact
+diff. If you prefer to see the full text of the mismatch with colorized
+output, you can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or
+run `go test ./... -pretty-diff`.
+
+### Web
 
 This is a React app fronting a Go process. It uses webpack to bundle assets, and
 postcss to transform css.
@@ -220,7 +245,7 @@ postcss to transform css.
 These commands assume working [Go](https://golang.org) and
 [Yarn](https://yarnpkg.com) environments.
 
-### First time setup
+#### First time setup
 
 Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
 
@@ -229,7 +254,7 @@ brew install yarn
 bin/web setup
 ```
 
-### Run web standalone
+#### Run web standalone
 
 ```bash
 bin/web run
@@ -237,7 +262,7 @@ bin/web run
 
 The web server will be running on `localhost:8084`.
 
-### Webpack dev server
+#### Webpack dev server
 
 To develop with a webpack dev server, run:
 
@@ -254,12 +279,12 @@ cd web/app
 yarn add [dep]
 ```
 
-## Rust
+### Rust
 
 All Rust development happens in the
 [`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy) repo.
 
-### Docker
+#### Docker
 
 The `bin/docker-build-proxy` script builds the proxy by pulling a pre-published
 proxy binary:
@@ -270,14 +295,14 @@ DOCKER_TRACE=1 bin/docker-build-proxy
 
 # Dependencies
 
-## Updating protobuf dependencies
+### Updating protobuf dependencies
  If you make Protobuf changes, run:
  ```bash
 bin/dep ensure
 bin/protoc-go.sh
 ```
 
-## Updating Docker dependencies
+### Updating Docker dependencies
 
 The go Docker images rely on base dependency images with
 hard-coded SHA's:
@@ -288,7 +313,7 @@ hard-coded SHA's:
 
 `bin/update-go-deps-shas` must be run when go dependencies change.
 
-# Build Architecture
+## Build Architecture
 
 ![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 

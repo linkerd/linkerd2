@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	public "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 )
@@ -20,12 +20,12 @@ type tapExpected struct {
 func TestTapByResource(t *testing.T) {
 	t.Run("Returns expected response", func(t *testing.T) {
 		expectations := []tapExpected{
-			tapExpected{
+			{
 				msg:    "rpc error: code = InvalidArgument desc = TapByResource received nil target ResourceSelection",
 				k8sRes: []string{},
 				req:    public.TapByResourceRequest{},
 			},
-			tapExpected{
+			{
 				msg: "rpc error: code = Unimplemented desc = unexpected match specified: any:<> ",
 				k8sRes: []string{`
 apiVersion: v1
@@ -57,7 +57,7 @@ status:
 					},
 				},
 			},
-			tapExpected{
+			{
 				msg: "rpc error: code = NotFound desc = no pods found for pod/emojivoto-not-meshed",
 				k8sRes: []string{`
 apiVersion: v1
@@ -81,7 +81,7 @@ status:
 					},
 				},
 			},
-			tapExpected{
+			{
 				msg:    "rpc error: code = Unimplemented desc = unimplemented resource type: bad-type",
 				k8sRes: []string{},
 				req: public.TapByResourceRequest{
@@ -94,7 +94,7 @@ status:
 					},
 				},
 			},
-			tapExpected{
+			{
 				msg: "rpc error: code = NotFound desc = pod \"emojivoto-meshed-not-found\" not found",
 				k8sRes: []string{`
 apiVersion: v1
@@ -120,7 +120,7 @@ status:
 					},
 				},
 			},
-			tapExpected{
+			{
 				msg: "rpc error: code = NotFound desc = no pods found for pod/emojivoto-meshed",
 				k8sRes: []string{`
 apiVersion: v1
@@ -146,7 +146,7 @@ status:
 					},
 				},
 			},
-			tapExpected{
+			{
 				// indicates we will accept EOF, in addition to the deadline exceeded message
 				eofOk: true,
 				// success, underlying tap events tested in http_server_test.go

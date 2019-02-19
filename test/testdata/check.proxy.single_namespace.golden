@@ -1,0 +1,37 @@
+kubernetes-api
+--------------
+√ can initialize the client
+√ can query the Kubernetes API
+
+kubernetes-version
+------------------
+√ is running the minimum Kubernetes API version
+
+linkerd-existence
+-----------------
+√ control plane namespace exists
+√ controller pod is running
+√ can initialize the client
+√ can query the control plane API
+
+linkerd-api
+-----------
+√ control plane pods are ready
+√ can query the control plane API
+√ [kubernetes] control plane can talk to Kubernetes
+√ [prometheus] control plane can talk to Prometheus
+
+linkerd-version
+---------------
+√ can determine the latest version
+√ cli is up-to-date
+
+linkerd-data-plane
+------------------
+√ data plane namespace exists
+√ data plane proxies are ready
+√ data plane proxy metrics are present in Prometheus
+√ data plane is up-to-date
+√ data plane and cli versions match
+
+Status check results are √

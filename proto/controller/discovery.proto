@@ -1,10 +1,10 @@
 // Experimental
 
-// gRPC interface, implemented by the Public and Proxy API component of the
-// control-plane. While primarily intended to be implemented by the Proxy API,
-// it is separated from `destination.Get` and related APIs, as those are
-// side-effecting and proxy-facing. Instead, this API is control-plane and
-// CLI-facing, and depends on types defined in `public.proto`.
+// gRPC interface, implemented by the Public and Destination API components of
+// the control-plane. While primarily intended to be implemented by the
+// Destination API, it is separated from `destination.Get` and related APIs, as
+// those are side-effecting and proxy-facing. Instead, this API is control-plane
+// and CLI-facing, and depends on types defined in `public.proto`.
 
 syntax = "proto3";
 

@@ -17,11 +17,12 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	linkerd    string
-	version    string
-	namespace  string
-	tls        bool
-	httpClient http.Client
+	linkerd         string
+	version         string
+	namespace       string
+	singleNamespace bool
+	tls             bool
+	httpClient      http.Client
 	KubernetesHelper
 }
 
@@ -35,6 +36,7 @@ func NewTestHelper() *TestHelper {
 
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	singleNamespace := flag.Bool("single-namespace", false, "configure the control plane to only operate in the installed namespace")
 	tls := flag.Bool("enable-tls", false, "enable TLS in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -67,11 +69,15 @@ func NewTestHelper() *TestHelper {
 	if *tls {
 		ns += "-tls"
 	}
+	if *singleNamespace {
+		ns += "-single-namespace"
+	}
 
 	testHelper := &TestHelper{
-		linkerd:   *linkerd,
-		namespace: ns,
-		tls:       *tls,
+		linkerd:         *linkerd,
+		namespace:       ns,
+		singleNamespace: *singleNamespace,
+		tls:             *tls,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -109,12 +115,20 @@ func (h *TestHelper) GetLinkerdNamespace() string {
 // GetTestNamespace returns the namespace for the given test. The test namespace
 // is prefixed with the linkerd namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
+	if h.SingleNamespace() {
+		return h.namespace
+	}
 	return h.namespace + "-" + testName
 }
 
 // TLS returns whether or not TLS is enabled for the given test.
 func (h *TestHelper) TLS() bool {
 	return h.tls
+}
+
+// SingleNamespace returns whether --single-namespace is enabled for the given test or not.
+func (h *TestHelper) SingleNamespace() bool {
+	return h.singleNamespace
 }
 
 // CombinedOutput executes a shell command and returns the output.

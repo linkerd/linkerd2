@@ -2,6 +2,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled}) => {
+  if (disabled || namespace === "") {
+    return <i className="fas fa-microscope tapGrayed" />;
+  }
   let params = {
     autostart: "true",
     namespace,
@@ -12,10 +15,6 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
   };
   let queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
 
-  if (disabled) {
-    return <i className="fas fa-microscope tapGrayed" />;
-  }
-
   return (
     <PrefixedLink to={`/tap?${queryStr}`}>
       <i className="fas fa-microscope" />
@@ -25,7 +24,7 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
 
 TapLink.propTypes = {
   disabled: PropTypes.bool,
-  namespace: PropTypes.string.isRequired,
+  namespace: PropTypes.string,
   path: PropTypes.string.isRequired,
   PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
@@ -34,7 +33,8 @@ TapLink.propTypes = {
 };
 
 TapLink.defaultProps = {
-  disabled: false
+  disabled: false,
+  namespace: ""
 };
 
 export default TapLink;

@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -11,15 +10,24 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 
 	t.Run("Returns base config containing k8s endpoint listed in config.test", func(t *testing.T) {
 		tests := []struct {
-			server      string
 			kubeContext string
+			expected    string
 		}{
-			{"https://55.197.171.239", ""},
-			{"https://162.128.50.11", "clusterTrailingSlash"},
+			{
+				kubeContext: "",
+				expected:    "https://55.197.171.239/api/v1/namespaces/some-namespace/some/extra/path",
+			},
+			{
+				kubeContext: "clusterTrailingSlash",
+				expected:    "https://162.128.50.11/api/v1/namespaces/some-namespace/some/extra/path",
+			},
+			{
+				kubeContext: "clusterWithPath",
+				expected:    "https://162.128.50.12/k8s/clusters/c-fhjws/api/v1/namespaces/some-namespace/some/extra/path",
+			},
 		}
 
 		for _, test := range tests {
-			expected := fmt.Sprintf("%s/api/v1/namespaces/%s%s", test.server, namespace, extraPath)
 			api, err := NewAPI("testdata/config.test", test.kubeContext)
 			if err != nil {
 				t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
@@ -28,8 +36,8 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error generating URL: %+v", err)
 			}
-			if actualURL.String() != expected {
-				t.Fatalf("Expected generated URL to be [%s], but got [%s]", expected, actualURL.String())
+			if actualURL.String() != test.expected {
+				t.Fatalf("Expected generated URL to be [%s], but got [%s]", test.expected, actualURL.String())
 			}
 		}
 	})

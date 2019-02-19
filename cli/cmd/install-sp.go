@@ -18,7 +18,7 @@ func newCmdInstallSP() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install-sp [flags]",
 		Short: "Output Kubernetes configs to install Linkerd Service Profiles",
-		Long: `Output Kubernetes configs to install Linkerd Service Profiles.",
+		Long: `Output Kubernetes configs to install Linkerd Service Profiles.
 
 This command installs Service Profiles into the Linkerd control plane. A
 cluster-wide Linkerd control-plane is a prerequisite. To confirm Service Profile

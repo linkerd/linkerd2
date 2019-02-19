@@ -21,7 +21,7 @@ func TestHealthChecker(t *testing.T) {
 	passingCheck1 := category{
 		id: "cat1",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc1",
 				check: func(context.Context) error {
 					return nil
@@ -34,7 +34,7 @@ func TestHealthChecker(t *testing.T) {
 	passingCheck2 := category{
 		id: "cat2",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc2",
 				check: func(context.Context) error {
 					return nil
@@ -47,7 +47,7 @@ func TestHealthChecker(t *testing.T) {
 	failingCheck := category{
 		id: "cat3",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc3",
 				check: func(context.Context) error {
 					return fmt.Errorf("error")
@@ -60,7 +60,7 @@ func TestHealthChecker(t *testing.T) {
 	passingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
-				&healthcheckPb.CheckResult{
+				{
 					SubsystemName:    "rpc1",
 					CheckDescription: "rpc desc1",
 					Status:           healthcheckPb.CheckStatus_OK,
@@ -72,7 +72,7 @@ func TestHealthChecker(t *testing.T) {
 	passingRPCCheck := category{
 		id: "cat4",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc4",
 				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 					return passingRPCClient.SelfCheck(context.Background(),
@@ -86,7 +86,7 @@ func TestHealthChecker(t *testing.T) {
 	failingRPCClient := public.MockAPIClient{
 		SelfCheckResponseToReturn: &healthcheckPb.SelfCheckResponse{
 			Results: []*healthcheckPb.CheckResult{
-				&healthcheckPb.CheckResult{
+				{
 					SubsystemName:         "rpc2",
 					CheckDescription:      "rpc desc2",
 					Status:                healthcheckPb.CheckStatus_FAIL,
@@ -99,7 +99,7 @@ func TestHealthChecker(t *testing.T) {
 	failingRPCCheck := category{
 		id: "cat5",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc5",
 				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 					return failingRPCClient.SelfCheck(context.Background(),
@@ -113,7 +113,7 @@ func TestHealthChecker(t *testing.T) {
 	fatalCheck := category{
 		id: "cat6",
 		checkers: []checker{
-			checker{
+			{
 				description: "desc6",
 				fatal:       true,
 				check: func(context.Context) error {
@@ -246,7 +246,7 @@ func TestHealthChecker(t *testing.T) {
 		retryCheck := category{
 			id: "cat7",
 			checkers: []checker{
-				checker{
+				{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
 					check: func(context.Context) error {
@@ -297,7 +297,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			Status: v1.PodStatus{
 				Phase: phase,
 				ContainerStatuses: []v1.ContainerStatus{
-					v1.ContainerStatus{
+					{
 						Name:  strings.Split(name, "-")[1],
 						Ready: ready,
 					},
@@ -384,10 +384,10 @@ func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []*pb.Pod{
-			&pb.Pod{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "voting-65b9fffd77-rlwsd", Status: "Failed", ProxyReady: false},
-			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
+			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
+			{Name: "voting-65b9fffd77-rlwsd", Status: "Failed", ProxyReady: false},
+			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -401,10 +401,10 @@ func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []*pb.Pod{
-			&pb.Pod{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: false},
-			&pb.Pod{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
+			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: false},
+			{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
+			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -418,10 +418,10 @@ func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns nil if all pods are running and all proxy containers are ready", func(t *testing.T) {
 		pods := []*pb.Pod{
-			&pb.Pod{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
-			&pb.Pod{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
+			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
+			{Name: "vote-bot-644b8cb6b4-g8nlr", Status: "Running", ProxyReady: true},
+			{Name: "voting-65b9fffd77-rlwsd", Status: "Running", ProxyReady: true},
+			{Name: "web-6cfbccc48-5g8px", Status: "Running", ProxyReady: true},
 		}
 
 		err := validateDataPlanePods(pods, "emojivoto")
@@ -441,8 +441,8 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 
 	t.Run("Returns success if all pods are added", func(t *testing.T) {
 		pods := []*pb.Pod{
-			&pb.Pod{Name: "ns1/test1", Added: true},
-			&pb.Pod{Name: "ns2/test2", Added: true},
+			{Name: "ns1/test1", Added: true},
+			{Name: "ns2/test2", Added: true},
 		}
 
 		err := validateDataPlanePodReporting(pods)
@@ -453,8 +453,8 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 
 	t.Run("Returns an error if any of the pod was not added to Prometheus", func(t *testing.T) {
 		pods := []*pb.Pod{
-			&pb.Pod{Name: "ns1/test1", Added: true},
-			&pb.Pod{Name: "ns2/test2", Added: false},
+			{Name: "ns1/test1", Added: true},
+			{Name: "ns2/test2", Added: false},
 		}
 
 		err := validateDataPlanePodReporting(pods)

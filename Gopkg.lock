@@ -89,11 +89,11 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
-  digest = "1:453c7a777da3e9aa031a0d9b8e0c882af15afb18e6c3651de7610fcb628dbd4b"
+  digest = "1:f0ab7dd02d79e81d9037d1a9ce085f9bcc94bd4f2268e9a75d47ffefd5f884fa"
   name = "github.com/briandowns/spinner"
   packages = ["."]
   pruneopts = ""
-  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
+  revision = "5cf08d0ac778f0d708570fe143e3f82fdb9f9007"
 
 [[projects]]
   digest = "1:0b2d5839372f6dc106fcaa70b6bd5832789a633c4e470540f76c2ec6c560e1c1"
@@ -120,6 +120,14 @@
   ]
   pruneopts = ""
   revision = "v0.6.0"
+
+[[projects]]
+  digest = "1:982e2547680f9fd2212c6443ab73ea84eef40ee1cdcecb61d997de838445214c"
+  name = "github.com/cpuguy83/go-md2man"
+  packages = ["md2man"]
+  pruneopts = ""
+  revision = "20f5889cbdc3c73dbd2862796665e7c465ade7d1"
+  version = "v1.0.8"
 
 [[projects]]
   digest = "1:a9854984bc40330dde2125537b7f46d0a8d7860b3750de2e7cd0a6f904506212"
@@ -573,6 +581,14 @@
   revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
 
 [[projects]]
+  digest = "1:2761e287c811d0948d47d0252b82281eca3801eb3c9d5f9530956643d5b9f430"
+  name = "github.com/russross/blackfriday"
+  packages = ["."]
+  pruneopts = ""
+  revision = "05f3235734ad95d0016f6a23902f06461fcf567a"
+  version = "v1.5.2"
+
+[[projects]]
   digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
   name = "github.com/satori/go.uuid"
   packages = ["."]
@@ -615,7 +631,10 @@
 [[projects]]
   digest = "1:2208a80fc3259291e43b30f42f844d18f4218036dff510f42c653ec9890d460a"
   name = "github.com/spf13/cobra"
-  packages = ["."]
+  packages = [
+    ".",
+    "doc",
+  ]
   pruneopts = ""
   revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
 
@@ -672,17 +691,6 @@
   ]
   pruneopts = ""
   revision = "d9133f5469342136e669e85192a26056b587f503"
-
-[[projects]]
-  branch = "master"
-  digest = "1:053024e8981dab276218a180e58f97034d06e8c4dd2e24c9365ad489104e1d90"
-  name = "golang.org/x/lint"
-  packages = [
-    ".",
-    "golint",
-  ]
-  pruneopts = ""
-  revision = "8f45f776aaf18cebc8d65861cc70c33c60471952"
 
 [[projects]]
   branch = "master"
@@ -772,9 +780,6 @@
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
-    "go/gcexportdata",
-    "go/internal/gcimporter",
-    "go/types/typeutil",
     "imports",
     "internal/fastwalk",
   ]
@@ -1273,8 +1278,8 @@
     "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
+    "github.com/spf13/cobra/doc",
     "github.com/wercker/stern/stern",
-    "golang.org/x/lint/golint",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",

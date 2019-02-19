@@ -42,9 +42,21 @@ var (
 
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
-	alphaNumDash              = regexp.MustCompile("^[a-zA-Z0-9-]+$")
-	alphaNumDashDot           = regexp.MustCompile("^[\\.a-zA-Z0-9-]+$")
-	alphaNumDashDotSlashColon = regexp.MustCompile("^[\\./a-zA-Z0-9-:]+$")
+	alphaNumDash              = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
+	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
+
+	// Full Rust log level syntax at
+	// https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging
+	r                  = strings.NewReplacer("\t", "", "\n", "")
+	validProxyLogLevel = regexp.MustCompile(r.Replace(`
+		^(
+			(
+				(trace|debug|warn|info|error)|
+				(\w|::)+|
+				((\w|::)+=(trace|debug|warn|info|error))
+			)(?:,|$)
+		)+$`))
 )
 
 // RootCmd represents the root Cobra command
@@ -83,6 +95,7 @@ func init() {
 	RootCmd.AddCommand(newCmdCheck())
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
+	RootCmd.AddCommand(newCmdDoc())
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
@@ -240,7 +253,7 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
-	proxyAPIPort            uint
+	destinationAPIPort      uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
 	proxyCPURequest         string
@@ -274,7 +287,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		ignoreOutboundPorts:     nil,
 		proxyUID:                2102,
 		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyAPIPort:            8086,
+		destinationAPIPort:      8086,
 		proxyControlPort:        4190,
 		proxyMetricsPort:        4191,
 		proxyCPURequest:         "",
@@ -315,6 +328,11 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
 	}
 
+	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
+		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
+			options.proxyLogLevel)
+	}
+
 	return nil
 }
 
@@ -347,7 +365,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().UintVar(&options.proxyAPIPort, "api-port", options.proxyAPIPort, "Port where the Linkerd controller is running")
+	cmd.PersistentFlags().UintVar(&options.destinationAPIPort, "api-port", options.destinationAPIPort, "Port where the Linkerd controller's destination API is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
@@ -355,5 +373,4 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
-	cmd.PersistentFlags().MarkHidden("linkerd-cni-enabled")
 }

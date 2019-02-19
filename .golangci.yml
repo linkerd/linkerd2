@@ -1,0 +1,14 @@
+issues:
+  exclude-use-default: false
+linters:
+  enable:
+  - gofmt
+  - golint
+  disable:
+  - deadcode
+  - errcheck
+  - gosimple
+  - staticcheck
+  - structcheck
+  - unused
+  - varcheck

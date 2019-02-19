@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -53,7 +51,7 @@ func genEmptyResponse() pb.StatSummaryResponse {
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
-					&pb.StatTable{
+					{
 						Table: &pb.StatTable_PodGroup_{
 							PodGroup: &pb.StatTable_PodGroup{},
 						},
@@ -135,7 +133,7 @@ func (s byStatResult) Less(i, j int) bool {
 func TestStatSummary(t *testing.T) {
 	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -211,7 +209,7 @@ status:
 
 	t.Run("Successfully performs a query based on resource type DaemonSet", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -287,7 +285,7 @@ status:
 
 	t.Run("Successfully performs a query based on resource type StatefulSet", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -434,7 +432,7 @@ status:
 
 	t.Run("Queries prometheus for a specific resource if name is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -481,7 +479,7 @@ status:
 
 	t.Run("Queries prometheus for outbound metrics if from resource is specified, ignores resource name", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -531,7 +529,7 @@ status:
 
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -587,7 +585,7 @@ status:
 
 	t.Run("Queries prometheus for outbound metrics if --to resource is specified and --to-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -643,7 +641,7 @@ status:
 
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -710,7 +708,7 @@ status:
 
 	t.Run("Queries prometheus for outbound metrics if --from resource is specified and --from-namespace is different from the resource namespace", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -777,7 +775,7 @@ status:
 
 	t.Run("Successfully queries for resource type 'all'", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -845,32 +843,32 @@ status:
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 						Ok: &pb.StatSummaryResponse_Ok{
 							StatTables: []*pb.StatTable{
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{},
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
+												{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
 														Type:      pkgK8s.Authority,
@@ -889,11 +887,11 @@ status:
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
+												{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
 														Type:      pkgK8s.Deployment,
@@ -915,11 +913,11 @@ status:
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
+												{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
 														Type:      pkgK8s.Pod,
@@ -933,11 +931,11 @@ status:
 										},
 									},
 								},
-								&pb.StatTable{
+								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
-												&pb.StatTable_PodGroup_Row{
+												{
 													Resource: &pb.Resource{
 														Namespace: "emojivoto",
 														Type:      pkgK8s.Service,
@@ -968,7 +966,7 @@ status:
 		}
 
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
 				},
@@ -980,7 +978,7 @@ status:
 					},
 				},
 			},
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
 				},
@@ -992,7 +990,7 @@ status:
 					},
 				},
 			},
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
 				},
@@ -1009,8 +1007,8 @@ status:
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
 				&mockProm{Res: exp.mockPromResponse},
-				tap.NewTapClient(nil),
-				discovery.NewDiscoveryClient(nil),
+				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -1035,8 +1033,8 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&mockProm{Res: model.Vector{}},
-			tap.NewTapClient(nil),
-			discovery.NewDiscoveryClient(nil),
+			nil,
+			nil,
 			k8sAPI,
 			"linkerd",
 			[]string{},
@@ -1044,10 +1042,10 @@ status:
 		)
 
 		invalidRequests := []statSumExpected{
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{},
 			},
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -1056,7 +1054,7 @@ status:
 					},
 				},
 			},
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -1070,7 +1068,7 @@ status:
 					},
 				},
 			},
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -1095,7 +1093,7 @@ status:
 		}
 
 		validRequests := []statSumExpected{
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -1109,7 +1107,7 @@ status:
 					},
 				},
 			},
-			statSumExpected{
+			{
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
@@ -1137,7 +1135,7 @@ status:
 	t.Run("Return empty stats summary response", func(t *testing.T) {
 		t.Run("when pod phase is succeeded or failed", func(t *testing.T) {
 			expectations := []statSumExpected{
-				statSumExpected{
+				{
 					expectedStatRPC: expectedStatRPC{
 						err: nil,
 						k8sConfigs: []string{`
@@ -1188,7 +1186,7 @@ status:
 
 		t.Run("for succeeded or failed replicas of a deployment", func(t *testing.T) {
 			expectations := []statSumExpected{
-				statSumExpected{
+				{
 					expectedStatRPC: expectedStatRPC{
 						err: nil,
 						k8sConfigs: []string{`
@@ -1275,7 +1273,7 @@ status:
 
 	t.Run("Queries prometheus for authority stats", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -1319,7 +1317,7 @@ status:
 
 	t.Run("Queries prometheus for authority stats when --from deployment is used", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -1370,7 +1368,7 @@ status:
 
 	t.Run("Queries prometheus for a named authority", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
@@ -1415,7 +1413,7 @@ status:
 
 	t.Run("Stats returned are nil when SkipStats is true", func(t *testing.T) {
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`

@@ -609,7 +609,7 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnch
 		category{
 			id: categoryID,
 			checkers: []checker{
-				checker{
+				{
 					description: description,
 					check:       check,
 					hintAnchor:  hintAnchor,

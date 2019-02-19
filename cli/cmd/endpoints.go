@@ -12,7 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	pb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -58,12 +58,13 @@ func newCmdEndpoints() *cobra.Command {
   linkerd endpoints -o json`
 
 	cmd := &cobra.Command{
-		Use:   "endpoints [flags]",
-		Short: "Introspect Linkerd's service discovery state",
+		Use:     "endpoints [flags]",
+		Aliases: []string{"ep"},
+		Short:   "Introspect Linkerd's service discovery state",
 		Long: `Introspect Linkerd's service discovery state.
 
 This command provides debug information about the internal state of the
-control-plane's proxy-api container. Note that this cache of service discovery
+control-plane's destination container. Note that this cache of service discovery
 information is populated on-demand via linkerd-proxy requests. This command
 will return "No endpoints found." until a linkerd-proxy begins routing
 requests.`,
@@ -83,7 +84,7 @@ requests.`,
 			output := renderEndpoints(endpoints, options)
 			_, err = fmt.Print(output)
 
-			return nil
+			return err
 		},
 	}
 
@@ -93,11 +94,11 @@ requests.`,
 	return cmd
 }
 
-func requestEndpointsFromAPI(client public.APIClient) (*discovery.EndpointsResponse, error) {
-	return client.Endpoints(context.Background(), &discovery.EndpointsParams{})
+func requestEndpointsFromAPI(client public.APIClient) (*pb.EndpointsResponse, error) {
+	return client.Endpoints(context.Background(), &pb.EndpointsParams{})
 }
 
-func renderEndpoints(endpoints *discovery.EndpointsResponse, options *endpointsOptions) string {
+func renderEndpoints(endpoints *pb.EndpointsResponse, options *endpointsOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', 0)
 	writeEndpointsToBuffer(endpoints, w, options)
@@ -115,7 +116,7 @@ type rowEndpoint struct {
 	Service   string `json:"service"`
 }
 
-func writeEndpointsToBuffer(endpoints *discovery.EndpointsResponse, w *tabwriter.Writer, options *endpointsOptions) {
+func writeEndpointsToBuffer(endpoints *pb.EndpointsResponse, w *tabwriter.Writer, options *endpointsOptions) {
 	maxPodLength := len(podHeader)
 	maxNamespaceLength := len(namespaceHeader)
 	endpointsTables := map[string][]rowEndpoint{}

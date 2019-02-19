@@ -27,7 +27,7 @@ var (
 		"linkerd-controller-api",
 		"linkerd-grafana",
 		"linkerd-prometheus",
-		"linkerd-proxy-api",
+		"linkerd-destination",
 		"linkerd-web",
 	}
 
@@ -54,12 +54,22 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestCheckPreInstall(t *testing.T) {
-	out, _, err := TestHelper.LinkerdRun("check", "--pre", "--expected-version", TestHelper.GetVersion())
+	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
+	golden := "check.pre.golden"
+	if TestHelper.SingleNamespace() {
+		cmd = append(cmd, "--single-namespace")
+		golden = "check.pre.single_namespace.golden"
+		err := TestHelper.CreateNamespaceIfNotExists(TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("Namespace creation failed\n%s", err.Error())
+		}
+	}
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
 
-	err = TestHelper.ValidateOutput(out, "check.pre.golden")
+	err = TestHelper.ValidateOutput(out, golden)
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
@@ -74,6 +84,9 @@ func TestInstall(t *testing.T) {
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["linkerd-ca"] = 1
+	}
+	if TestHelper.SingleNamespace() {
+		cmd = append(cmd, "--single-namespace")
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -118,18 +131,19 @@ func TestVersionPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	out, _, err := TestHelper.LinkerdRun(
-		"check",
-		"--expected-version",
-		TestHelper.GetVersion(),
-		"--wait=0",
-	)
+	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
+	golden := "check.golden"
+	if TestHelper.SingleNamespace() {
+		cmd = append(cmd, "--single-namespace")
+		golden = "check.single_namespace.golden"
+	}
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
 
-	err = TestHelper.ValidateOutput(out, "check.golden")
+	err = TestHelper.ValidateOutput(out, golden)
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
@@ -215,21 +229,19 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	out, _, err := TestHelper.LinkerdRun(
-		"check",
-		"--proxy",
-		"--expected-version",
-		TestHelper.GetVersion(),
-		"--namespace",
-		prefixedNs,
-		"--wait=0",
-	)
+	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
+	golden := "check.proxy.golden"
+	if TestHelper.SingleNamespace() {
+		cmd = append(cmd, "--single-namespace")
+		golden = "check.proxy.single_namespace.golden"
+	}
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
 	}
 
-	err = TestHelper.ValidateOutput(out, "check.proxy.golden")
+	err = TestHelper.ValidateOutput(out, golden)
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}

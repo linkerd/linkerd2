@@ -1,6 +1,5 @@
 required = [
   "github.com/golang/protobuf/protoc-gen-go",
-  "golang.org/x/lint/golint",
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/defaulter-gen",
@@ -42,7 +41,7 @@ required = [
 
 [[constraint]]
   name = "github.com/briandowns/spinner"
-  revision = "195c31b675a7d5ac6859ea5371d6f3bc775f003d"
+  revision = "5cf08d0ac778f0d708570fe143e3f82fdb9f9007"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"

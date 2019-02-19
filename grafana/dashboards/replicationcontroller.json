@@ -1623,7 +1623,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{replicationcontroller!=\"\"}, namespace)",
+        "query": "label_values(process_start_time_seconds{replicationcontroller!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1643,7 +1643,7 @@
         "multi": false,
         "name": "replicationcontroller",
         "options": [],
-        "query": "label_values(request_total{namespace=\"$namespace\"}, replicationcontroller)",
+        "query": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, replicationcontroller)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1726,6 +1726,6 @@
   },
   "timezone": "",
   "title": "Linkerd ReplicationController",
-  "uid": "eIYYYkGmz",
+  "uid": "replicationcontroller",
   "version": 1
 }
