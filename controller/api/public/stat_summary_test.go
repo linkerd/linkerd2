@@ -381,7 +381,7 @@ status:
 	t.Run("Queries prometheus for TCP stats when requested", func(t *testing.T) {
 
 		expectations := []statSumExpected{
-			statSumExpected{
+			{
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
