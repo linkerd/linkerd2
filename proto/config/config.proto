@@ -46,6 +46,8 @@ message Port {
 message ResourceRequirements {
   string request_cpu = 1;
   string request_memory = 2;
+  string limit_cpu = 3;
+  string limit_memory = 4;
 }
 
 message IdentityContext {}
