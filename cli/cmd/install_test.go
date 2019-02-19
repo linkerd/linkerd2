@@ -2,17 +2,9 @@ package cmd
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
-	"os"
 	"testing"
 )
-
-func TestMain(m *testing.M) {
-	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
-	flag.Parse()
-	os.Exit(m.Run())
-}
 
 func TestRender(t *testing.T) {
 	// The default configuration, with the random UUID overridden with a fixed

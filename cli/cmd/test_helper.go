@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,20 +10,36 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-var updateFixtures bool
+var (
+	// updateFixtures is set by the `-update` flag.
+	updateFixtures bool
+
+	// prettyDiff is set by the `-verbose-diff` flag.
+	prettyDiff bool
+)
+
+// TestMain parses flags before running tests
+func TestMain(m *testing.M) {
+	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
+	prettyDiff = os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
+	flag.BoolVar(&prettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
+	flag.Parse()
+	os.Exit(m.Run())
+}
 
 func diffCompare(t *testing.T, actual string, expected string) {
 	if actual != expected {
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(expected, actual, true)
-
-		// colorized output for local testing
-		t.Fatalf("Unexpected output:\n%+v", dmp.DiffPrettyText(diffs))
-
 		diffs = dmp.DiffCleanupSemantic(diffs)
-		patches := dmp.PatchMake(diffs)
-		patchText := dmp.PatchToText(patches)
-		t.Fatalf("Unexpected output:\n%+v", patchText)
+
+		var txt string
+		if prettyDiff {
+			txt = dmp.DiffPrettyText(diffs)
+		} else {
+			txt = dmp.PatchToText(dmp.PatchMake(diffs))
+		}
+		t.Errorf("mismatch:\n%s", txt)
 	}
 }
 
