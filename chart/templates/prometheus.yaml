@@ -1,0 +1,211 @@
+---
+###
+### Prometheus
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: {{.Values.Namespace}}
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-prometheus
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-prometheus
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: {{.Values.Namespace}}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: prometheus
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.ControllerComponentLabel}}: prometheus
+  ports:
+  - name: admin-http
+    port: 9090
+    targetPort: 9090
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-prometheus
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: prometheus
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.Values.ControllerComponentLabel}}: prometheus
+      annotations:
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-prometheus
+      volumes:
+      - name: {{.Values.PrometheusVolumeName}}
+        emptyDir: {}
+      - name: prometheus-config
+        configMap:
+          name: linkerd-prometheus-config
+      containers:
+      - name: prometheus
+        ports:
+        - name: admin-http
+          containerPort: 9090
+        volumeMounts:
+        - name: {{.Values.PrometheusVolumeName}}
+          mountPath: /{{.Values.PrometheusVolumeName}}
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+          readOnly: true
+        image: {{.Values.PrometheusImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "--storage.tsdb.path=/{{.Values.PrometheusVolumeName}}"
+        - "--storage.tsdb.retention=6h"
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 300m
+            memory: 300Mi
+        {{- end }}
+        securityContext:
+          runAsUser: 65534
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus-config
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: prometheus
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+data:
+  prometheus.yml: |-
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      evaluation_interval: 10s
+
+    rule_files:
+    - /etc/prometheus/*_rules.yml
+
+    scrape_configs:
+    - job_name: 'prometheus'
+      static_configs:
+      - targets: ['localhost:9090']
+
+    - job_name: 'grafana'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ['{{.Values.Namespace}}']
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        action: keep
+        regex: ^grafana$
+
+    - job_name: 'linkerd-controller'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ['{{.Values.Namespace}}']
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: (.*);admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'linkerd-proxy'
+      kubernetes_sd_configs:
+      - role: pod
+        {{- if .Values.SingleNamespace}}
+        namespaces:
+          names: ['{{.Values.Namespace}}']
+        {{- end}}
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        - __meta_kubernetes_pod_container_port_name
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
+        action: keep
+        regex: ^{{.Values.ProxyContainerName}};linkerd-metrics;{{.Values.Namespace}}$
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod
+      # special case k8s' "job" label, to not interfere with prometheus' "job"
+      # label
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_job=foo =>
+      # k8s_job=foo
+      - source_labels: [__meta_kubernetes_pod_label_linkerd_io_proxy_job]
+        action: replace
+        target_label: k8s_job
+      # drop __meta_kubernetes_pod_label_linkerd_io_proxy_job
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_job
+      # __meta_kubernetes_pod_label_linkerd_io_proxy_deployment=foo =>
+      # deployment=foo
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+      # drop all labels that we just made copies of in the previous labelmap
+      - action: labeldrop
+        regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+      # __meta_kubernetes_pod_label_linkerd_io_foo=bar =>
+      # foo=bar
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_linkerd_io_(.+)

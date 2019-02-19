@@ -19,7 +19,11 @@ clusters:
 - cluster:
     certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
     server: https://162.128.50.11/
-    name: clusterTrailingSlash
+  name: clusterTrailingSlash
+- cluster:
+    certificate-authority-data: cXVlIHBhcmFkYSBhdHJhc2FkYQ==
+    server: https://162.128.50.12/k8s/clusters/c-fhjws
+  name: clusterWithPath
 contexts:
 - context:
     cluster: cluster3
@@ -43,9 +47,13 @@ contexts:
     user: cluster4
   name: cluster4
 - context:
-  cluster: clusterTrailingSlash
-  user: clusterTrailingSlash
+    cluster: clusterTrailingSlash
+    user: clusterTrailingSlash
   name: clusterTrailingSlash
+- context:
+    cluster: clusterWithPath
+    user: clusterWithPath
+  name: clusterWithPath
 current-context: cluster1
 kind: Config
 preferences: {}
@@ -95,6 +103,17 @@ users:
         token-key: '{.credential.access_token}'
       name: gcp
 - name: clusterTrailingSlash
+  user:
+    auth-provider:
+      config:
+        access-token: 4cc3sspassatempoq
+        cmd-args: config config-helper --format=json
+        cmd-path: /Users/bobojones/bin/google-cloud-sdk/bin/gcloud
+        expiry: 2017-11-22 22:13:05
+        expiry-key: '{.credential.token_expiry}'
+        token-key: '{.credential.access_token}'
+      name: gcp
+- name: clusterWithPath
   user:
     auth-provider:
       config:

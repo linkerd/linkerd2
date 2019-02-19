@@ -1,15 +1,19 @@
-package proxy
+package destination
 
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 type mockDestinationServer struct {
@@ -151,18 +155,41 @@ func TestEndpoints(t *testing.T) {
 	}
 	k8sAPI.Sync()
 
-	discoveryClient, gRPCServer, proxyAPIConn := InitFakeDiscoveryServer(t, k8sAPI)
+	lis := bufconn.Listen(1024 * 1024)
+	gRPCServer, err := NewServer(
+		"fake-addr", "", "controller-ns",
+		false, false, false, k8sAPI, nil,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
 	defer gRPCServer.GracefulStop()
-	defer proxyAPIConn.Close()
+	go func() { gRPCServer.Serve(lis) }()
+
+	destinationAPIConn, err := grpc.Dial(
+		"fake-buf-addr",
+		grpc.WithDialer(
+			func(string, time.Duration) (net.Conn, error) {
+				return lis.Dial()
+			},
+		),
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	defer destinationAPIConn.Close()
+
+	discoveryClient := discoveryPb.NewDiscoveryClient(destinationAPIConn)
 
 	t.Run("Implements the Discovery interface", func(t *testing.T) {
-		resp, err := discoveryClient.Endpoints(context.Background(), &discovery.EndpointsParams{})
+		resp, err := discoveryClient.Endpoints(context.Background(), &discoveryPb.EndpointsParams{})
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		expectedResp := &discovery.EndpointsResponse{
-			ServicePorts: make(map[string]*discovery.ServicePort),
+		expectedResp := &discoveryPb.EndpointsResponse{
+			ServicePorts: make(map[string]*discoveryPb.ServicePort),
 		}
 
 		if !proto.Equal(resp, expectedResp) {

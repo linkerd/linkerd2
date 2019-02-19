@@ -1,13 +1,14 @@
 {{ if .Values.EnableTLS }}
-### Service Account CA ###
+---
+###
+### CA
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-ca
   namespace: {{.Values.Namespace}}
-
-### CA RBAC ###
 ---
 kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -33,7 +34,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-
 ---
 kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -50,8 +50,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-ca
   namespace: {{.Values.Namespace}}
-
-### CA ###
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1

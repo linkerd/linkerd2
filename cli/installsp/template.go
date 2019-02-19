@@ -44,7 +44,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-proxy-api.{{.Namespace}}.svc.cluster.local
+  name: linkerd-destination.{{.Namespace}}.svc.cluster.local
   namespace: {{.Namespace}}
 spec:
   routes:

@@ -6,10 +6,10 @@ import (
 
 func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 	t.Run("Generates correct URL when all elements are present", func(t *testing.T) {
-		schemeHostAndPort := "ftp://some-server.example.com:666"
+		serverURL := "ftp://some-server.example.com:666"
 		namespace := "some-namespace"
 		extraPath := "/starts/with/slash"
-		url, err := generateKubernetesAPIBaseURLFor(schemeHostAndPort, namespace, extraPath)
+		url, err := generateKubernetesAPIURLFor(serverURL, namespace, extraPath)
 
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
@@ -22,10 +22,10 @@ func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 	})
 
 	t.Run("Return error if extra path doesn't start with slash", func(t *testing.T) {
-		schemeHostAndPort := "ftp://some-server.example.com:666"
+		serverURL := "ftp://some-server.example.com:666"
 		namespace := "some-namespace"
 		extraPath := "does-not-start/with/slash"
-		_, err := generateKubernetesAPIBaseURLFor(schemeHostAndPort, namespace, extraPath)
+		_, err := generateKubernetesAPIURLFor(serverURL, namespace, extraPath)
 
 		if err == nil {
 			t.Fatalf("Expected error when tryiong to generate URL with extra path without leading slash, got nothing")
@@ -33,11 +33,11 @@ func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 	})
 }
 
-func TestGenerateBaseKubernetesApiUrl(t *testing.T) {
+func TestGenerateBaseKubernetesUrl(t *testing.T) {
 	t.Run("Generates correct URL when all elements are present", func(t *testing.T) {
-		schemeHostAndPort := "gopher://some-server.example.com:661"
+		serverURL := "gopher://some-server.example.com:661"
 
-		url, err := generateBaseKubernetesAPIURL(schemeHostAndPort)
+		url, err := generateKubernetesURL(serverURL, "/api/v1/")
 		if err != nil {
 			t.Fatalf("Unexpected error starting proxy: %v", err)
 		}
@@ -49,11 +49,11 @@ func TestGenerateBaseKubernetesApiUrl(t *testing.T) {
 	})
 
 	t.Run("Return error if invalid host and port", func(t *testing.T) {
-		schemeHostAndPort := "ftp://some-server.exampl     e.com:666"
-		_, err := generateBaseKubernetesAPIURL(schemeHostAndPort)
+		serverURL := "ftp://some-server.exampl     e.com:666"
+		_, err := generateKubernetesURL(serverURL, "/api/v1/")
 
 		if err == nil {
-			t.Fatalf("Expected error when tryiong to generate URL with extra path without leading slash, got nothing")
+			t.Fatalf("Expected error when trying to generate URL with extra path without leading slash, got nothing")
 		}
 	})
 }

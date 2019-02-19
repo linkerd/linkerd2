@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -957,8 +955,8 @@ status:
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
 				&mockProm{Res: exp.mockPromResponse},
-				tap.NewTapClient(nil),
-				discovery.NewDiscoveryClient(nil),
+				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -983,8 +981,8 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&mockProm{Res: model.Vector{}},
-			tap.NewTapClient(nil),
-			discovery.NewDiscoveryClient(nil),
+			nil,
+			nil,
 			k8sAPI,
 			"linkerd",
 			[]string{},

@@ -3,6 +3,7 @@ package k8s
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -54,27 +55,21 @@ var StatAllResourceTypes = []string{
 	Authority,
 }
 
-func generateKubernetesAPIBaseURLFor(schemeHostAndPort string, namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	if string(extraPathStartingWithSlash[0]) != "/" {
-		return nil, fmt.Errorf("Path must start with a [/], was [%s]", extraPathStartingWithSlash)
+func generateKubernetesAPIURLFor(serverURL, namespace, path string) (*url.URL, error) {
+	if !strings.HasPrefix(path, "/") {
+		return nil, fmt.Errorf("path must start with a /, got [%s]", path)
 	}
 
-	baseURL, err := generateBaseKubernetesAPIURL(schemeHostAndPort)
-	if err != nil {
-		return nil, err
-	}
-
-	urlString := fmt.Sprintf("%snamespaces/%s%s", baseURL.String(), namespace, extraPathStartingWithSlash)
-	url, err := url.Parse(urlString)
-	if err != nil {
-		return nil, fmt.Errorf("error generating namespace URL for Kubernetes API from [%s]", urlString)
-	}
-
-	return url, nil
+	fullPath := "/api/v1/namespaces/" + namespace + path
+	return generateKubernetesURL(serverURL, fullPath)
 }
 
-func generateBaseKubernetesAPIURL(schemeHostAndPort string) (*url.URL, error) {
-	return BuildURL(schemeHostAndPort, "/api/v1/")
+func generateKubernetesURL(serverURL, path string) (*url.URL, error) {
+	if !strings.HasPrefix(path, "/") {
+		return nil, fmt.Errorf("path must start with a /, got [%s]", path)
+	}
+
+	return url.Parse(strings.TrimSuffix(serverURL, "/") + path)
 }
 
 // GetConfig returns kubernetes config based on the current environment.
@@ -166,20 +161,4 @@ func KindToL5DLabel(k8sKind string) string {
 		return l5dJob
 	}
 	return k8sKind
-}
-
-// BuildURL returns an abosolute URL from a reference URL. It parses a base
-// rawurl and reference rawurl. Then, it tries to resolve the reference from
-// the absolute base.
-func BuildURL(base string, ref string) (*url.URL, error) {
-	u, err := url.Parse(ref)
-	if err != nil {
-		return nil, fmt.Errorf("error generating reference URL for endpoint from [%s]", base)
-	}
-	b, err := url.Parse(base)
-	if err != nil {
-		return nil, fmt.Errorf("error generating base URL for endpoint from [%s]", base)
-	}
-	url := b.ResolveReference(u)
-	return url, nil
 }

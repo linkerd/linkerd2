@@ -1,4 +1,4 @@
-package proxy
+package destination
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -24,9 +24,9 @@ type server struct {
 	log             *log.Entry
 }
 
-// NewServer returns a new instance of the proxy-api server.
+// NewServer returns a new instance of the destination server.
 //
-// The proxy-api server serves service discovery and other information to the
+// The destination server serves service discovery and other information to the
 // proxy.  This implementation supports the "k8s" destination scheme and expects
 // destination paths to be of the form:
 // <service>.<namespace>.svc.cluster.local:<port>
@@ -63,9 +63,9 @@ func NewServer(
 
 	// this server satisfies 2 gRPC interfaces:
 	// 1) linkerd2-proxy-api/destination.Destination (proxy-facing)
-	// 2) controller/discovery.Api (controller-facing)
+	// 2) controller/discovery.Discovery (controller-facing)
 	pb.RegisterDestinationServer(s, &srv)
-	discovery.RegisterDiscoveryServer(s, &srv)
+	discoveryPb.RegisterDiscoveryServer(s, &srv)
 
 	go func() {
 		<-done
@@ -108,22 +108,22 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return err
 }
 
-func (s *server) Endpoints(ctx context.Context, params *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
+func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
 	s.log.Debugf("Endpoints(%+v)", params)
 
 	servicePorts := s.resolver.getState()
 
-	rsp := discovery.EndpointsResponse{
-		ServicePorts: make(map[string]*discovery.ServicePort),
+	rsp := discoveryPb.EndpointsResponse{
+		ServicePorts: make(map[string]*discoveryPb.ServicePort),
 	}
 
 	for serviceID, portMap := range servicePorts {
-		discoverySP := discovery.ServicePort{
-			PortEndpoints: make(map[uint32]*discovery.PodAddresses),
+		discoverySP := discoveryPb.ServicePort{
+			PortEndpoints: make(map[uint32]*discoveryPb.PodAddresses),
 		}
 		for port, sp := range portMap {
-			podAddrs := discovery.PodAddresses{
-				PodAddresses: []*discovery.PodAddress{},
+			podAddrs := discoveryPb.PodAddresses{
+				PodAddresses: []*discoveryPb.PodAddress{},
 			}
 
 			for _, ua := range sp.addresses {
@@ -132,7 +132,7 @@ func (s *server) Endpoints(ctx context.Context, params *discovery.EndpointsParam
 
 				podAddrs.PodAddresses = append(
 					podAddrs.PodAddresses,
-					&discovery.PodAddress{
+					&discoveryPb.PodAddress{
 						Addr: addr.NetToPublic(ua.address),
 						Pod:  &pod,
 					},

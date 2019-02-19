@@ -27,7 +27,7 @@ var (
 		"linkerd-controller-api",
 		"linkerd-grafana",
 		"linkerd-prometheus",
-		"linkerd-proxy-api",
+		"linkerd-destination",
 		"linkerd-web",
 	}
 

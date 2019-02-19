@@ -1,0 +1,205 @@
+---
+###
+### Controller
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: {{.Values.Namespace}}
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-controller
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+rules:
+- apiGroups: ["extensions", "apps"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
+  verbs: ["list", "get", "watch"]
+{{- if .Values.SingleNamespace }}
+- apiGroups: [""]
+  resources: ["namespaces"]
+  resourceNames: ["{{.Values.Namespace}}"]
+  verbs: ["list", "get", "watch"]
+{{- else }}
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
+{{- end }}
+---
+kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-controller
+  {{- if .Values.SingleNamespace}}
+  namespace: {{.Values.Namespace}}
+  {{- end}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  name: linkerd-{{.Values.Namespace}}-controller
+subjects:
+- kind: ServiceAccount
+  name: linkerd-controller
+  namespace: {{.Values.Namespace}}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-controller-api
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: controller
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.ControllerComponentLabel}}: controller
+  ports:
+  - name: http
+    port: 8085
+    targetPort: 8085
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-destination
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: controller
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.ControllerComponentLabel}}: controller
+  ports:
+  - name: grpc
+    port: {{.Values.DestinationAPIPort}}
+    targetPort: {{.Values.DestinationAPIPort}}
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-controller
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: controller
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  replicas: {{.Values.ControllerReplicas}}
+  template:
+    metadata:
+      labels:
+        {{.Values.ControllerComponentLabel}}: controller
+      annotations:
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-controller
+      containers:
+      - name: public-api
+        ports:
+        - name: http
+          containerPort: 8085
+        - name: admin-http
+          containerPort: 9995
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "public-api"
+        - "-prometheus-url=http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9995
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}
+      - name: destination
+        ports:
+        - name: grpc
+          containerPort: {{.Values.DestinationAPIPort}}
+        - name: admin-http
+          containerPort: 9996
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "destination"
+        - "-addr=:{{.Values.DestinationAPIPort}}"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-enable-tls={{.Values.EnableTLS}}"
+        - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9996
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}
+      - name: tap
+        ports:
+        - name: grpc
+          containerPort: 8088
+        - name: admin-http
+          containerPort: 9998
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "tap"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-single-namespace={{.Values.SingleNamespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9998
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}

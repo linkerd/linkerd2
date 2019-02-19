@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
@@ -173,12 +173,12 @@ func TestEndpointsRequest(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	resp, err := client.Endpoints(context.Background(), &discovery.EndpointsParams{})
+	resp, err := client.Endpoints(context.Background(), &discoveryPb.EndpointsParams{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	expectedResp := &discovery.EndpointsResponse{}
+	expectedResp := &discoveryPb.EndpointsResponse{}
 	if !proto.Equal(resp, expectedResp) {
 		t.Fatalf("Expected response [%v], got: [%v]", expectedResp, resp)
 	}

@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -28,12 +28,12 @@ const (
 
 // APIClient wraps two gRPC client interfaces:
 // 1) public.Api
-// 2) controller/discovery.Api
+// 2) controller/discovery.Discovery
 // This aligns with Public API Server's `handler` struct supporting both gRPC
 // servers.
 type APIClient interface {
 	pb.ApiClient
-	discovery.DiscoveryClient
+	discoveryPb.DiscoveryClient
 }
 
 type grpcOverHTTPClient struct {
@@ -103,8 +103,8 @@ func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByRes
 	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
 }
 
-func (c *grpcOverHTTPClient) Endpoints(ctx context.Context, req *discovery.EndpointsParams, _ ...grpc.CallOption) (*discovery.EndpointsResponse, error) {
-	var msg discovery.EndpointsResponse
+func (c *grpcOverHTTPClient) Endpoints(ctx context.Context, req *discoveryPb.EndpointsParams, _ ...grpc.CallOption) (*discoveryPb.EndpointsResponse, error) {
+	var msg discoveryPb.EndpointsResponse
 	err := c.apiRequest(ctx, "Endpoints", req, &msg)
 	return &msg, err
 }

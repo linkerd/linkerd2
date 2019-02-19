@@ -13,6 +13,6 @@ web/app/yarn-error.log
 .protoc
 .gorun
 .dep*
-.golangci*
-**.gogen*
+.golangci-lint*
+**/*.gogen*
 **/*.swp

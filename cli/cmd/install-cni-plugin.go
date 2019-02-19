@@ -90,15 +90,14 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
-		Short: "Output Kubernetes configs to install the Linkerd CNI Plugin",
-		Long: `Output Kubernetes configs to install the Linkerd CNI Plugin."
+		Short: "Output Kubernetes configs to install Linkerd CNI (experimental)",
+		Long: `Output Kubernetes configs to install Linkerd CNI (experimental).
 
 This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
-assumes that the 'linkerd install' command will be executed with the '--linkerd-cni-enabled'
-flag. This command needs to be executed before the 'linkerd install --linkerd-cni-enabled'
-command.`,
-		Hidden: true,
+assumes that the 'linkerd install' command will be executed with the
+'--linkerd-cni-enabled' flag. This command needs to be executed before the
+'linkerd install --linkerd-cni-enabled' command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := validateAndBuildCNIConfig(options)
 			if err != nil {

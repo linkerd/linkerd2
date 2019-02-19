@@ -31,8 +31,8 @@ func newCmdCompletion() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:       "completion [bash|zsh]",
-		Short:     "Shell completion",
-		Long:      "Output completion code for the specified shell (bash or zsh).",
+		Short:     "Output shell completion code for the specified shell (bash or zsh)",
+		Long:      "Output shell completion code for the specified shell (bash or zsh).",
 		Example:   example,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: []string{"bash", "zsh"},

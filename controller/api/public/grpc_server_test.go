@@ -10,9 +10,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/proxy"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	tap "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	"github.com/linkerd/linkerd2/controller/api/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -402,8 +401,8 @@ status:
 
 			fakeGrpcServer := newGrpcServer(
 				&mProm,
-				tap.NewTapClient(nil),
-				discovery.NewDiscoveryClient(nil),
+				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -462,6 +461,7 @@ func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesRespo
 
 	return true
 }
+
 func TestListServices(t *testing.T) {
 	t.Run("Successfully queryies for services", func(t *testing.T) {
 		expectations := []listServicesExpected{
@@ -504,8 +504,8 @@ metadata:
 
 			fakeGrpcServer := newGrpcServer(
 				&mockProm{},
-				tap.NewTapClient(nil),
-				discovery.NewDiscoveryClient(nil),
+				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -528,8 +528,8 @@ metadata:
 
 type endpointsExpected struct {
 	err error
-	req *discovery.EndpointsParams
-	res *discovery.EndpointsResponse
+	req *discoveryPb.EndpointsParams
+	res *discoveryPb.EndpointsResponse
 }
 
 func TestEndpoints(t *testing.T) {
@@ -537,8 +537,8 @@ func TestEndpoints(t *testing.T) {
 		expectations := []endpointsExpected{
 			{
 				err: nil,
-				req: &discovery.EndpointsParams{},
-				res: &discovery.EndpointsResponse{},
+				req: &discoveryPb.EndpointsParams{},
+				res: &discoveryPb.EndpointsResponse{},
 			},
 		}
 
@@ -549,13 +549,13 @@ func TestEndpoints(t *testing.T) {
 			}
 			k8sAPI.Sync()
 
-			discoveryClient, gRPCServer, proxyAPIConn := proxy.InitFakeDiscoveryServer(t, k8sAPI)
-			defer gRPCServer.GracefulStop()
-			defer proxyAPIConn.Close()
+			discoveryClient := &discovery.MockDiscoveryClient{
+				EndpointsResponseToReturn: exp.res,
+			}
 
 			fakeGrpcServer := newGrpcServer(
 				&mockProm{},
-				tap.NewTapClient(nil),
+				nil,
 				discoveryClient,
 				k8sAPI,
 				"linkerd",

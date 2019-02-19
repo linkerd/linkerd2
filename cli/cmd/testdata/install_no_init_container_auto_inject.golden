@@ -1,20 +1,20 @@
-### Namespace ###
+---
 kind: Namespace
 apiVersion: v1
 metadata:
   name: linkerd
   annotations:
     linkerd.io/inject: disabled
-
-### Service Account Controller ###
+---
+###
+### Controller
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: linkerd
-
-### Controller RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -30,7 +30,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -44,41 +43,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-controller
   namespace: linkerd
-
-### Service Account Prometheus ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
-
-### Prometheus RBAC ###
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
-
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-prometheus
-subjects:
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: linkerd
-
-### Controller ###
 ---
 kind: Service
 apiVersion: v1
@@ -97,12 +61,11 @@ spec:
   - name: http
     port: 8085
     targetPort: 8085
-
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-api
+  name: linkerd-destination
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: controller
@@ -116,7 +79,6 @@ spec:
   - name: grpc
     port: 8086
     targetPort: 8086
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -171,7 +133,7 @@ spec:
         securityContext:
           runAsUser: 2103
       - args:
-        - proxy-api
+        - destination
         - -addr=:8086
         - -controller-namespace=linkerd
         - -single-namespace=false
@@ -185,7 +147,7 @@ spec:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
-        name: proxy-api
+        name: destination
         ports:
         - containerPort: 8086
           name: grpc
@@ -303,6 +265,10 @@ spec:
           secretName: linkerd-controller-deployment-tls-linkerd-io
 status: {}
 ---
+###
+### Service Profile CRD
+###
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -404,16 +370,16 @@ spec:
                                 type: object
                             not:
                               type: object
-
-### Service Account Web ###
+---
+###
+### Web
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: linkerd
-
-### Web ###
 ---
 kind: Service
 apiVersion: v1
@@ -435,7 +401,6 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -494,7 +459,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -568,6 +533,38 @@ spec:
           secretName: linkerd-web-deployment-tls-linkerd-io
 status: {}
 ---
+###
+### Prometheus
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -585,7 +582,6 @@ spec:
   - name: admin-http
     port: 9090
     targetPort: 9090
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -647,7 +643,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -815,16 +811,16 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
-
-### Service Account Grafana ###
+---
+###
+### Grafana
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: linkerd
-
-### Grafana ###
 ---
 kind: Service
 apiVersion: v1
@@ -843,7 +839,6 @@ spec:
   - name: http
     port: 3000
     targetPort: 3000
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -901,7 +896,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1043,15 +1038,16 @@ data:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
 
-### Service Account CA ###
+---
+###
+### CA
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-ca
   namespace: linkerd
-
-### CA RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -1074,7 +1070,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -1088,8 +1083,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-ca
   namespace: linkerd
-
-### CA ###
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -1144,7 +1137,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1218,6 +1211,10 @@ spec:
           secretName: linkerd-ca-deployment-tls-linkerd-io
 status: {}
 ---
+###
+### Proxy Injector
+###
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1278,7 +1275,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTENER
           value: tcp://0.0.0.0:4190
         - name: LINKERD2_PROXY_METRICS_LISTENER
@@ -1355,14 +1352,11 @@ spec:
           secretName: linkerd-proxy-injector-deployment-tls-linkerd-io
 status: {}
 ---
-### Proxy Injector Service Account ###
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
-
-### Proxy Injector RBAC ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1375,7 +1369,6 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1390,8 +1383,6 @@ roleRef:
   kind: ClusterRole
   name: linkerd-linkerd-proxy-injector
   apiGroup: rbac.authorization.k8s.io
-
-### Proxy Injector Service ###
 ---
 kind: Service
 apiVersion: v1
@@ -1410,8 +1401,6 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
-
-### Proxy Sidecar Container Spec ###
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1449,7 +1438,7 @@ data:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd2_proxy=info
     - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-proxy-api.linkerd.svc.cluster.local:8086
+      value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
     - name: LINKERD2_PROXY_CONTROL_LISTENER
       value: tcp://0.0.0.0:4190
     - name: LINKERD2_PROXY_METRICS_LISTENER
