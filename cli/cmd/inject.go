@@ -488,7 +488,11 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.kind, r.name)))
 		} else {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			if r.kind != "" {
+				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			} else {
+				output.Write([]byte(fmt.Sprintf("document missing \"kind\" field, skipped\n")))
+			}
 		}
 	}
 
