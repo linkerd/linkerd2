@@ -21,12 +21,12 @@ const endpointColumns = [
   },
   {
     title: "IP",
-    dataIndex: "pod.podIP"
+    dataIndex: "ip"
   },
   {
     title: "Port",
-    dataIndex: "addr.port",
-    sorter: (a, b) => numericSort(a.addr.port, b.addr.port)
+    dataIndex: "port",
+    sorter: (a, b) => numericSort(a.port, b.port)
   },
   {
     title: "Pod",
@@ -36,8 +36,8 @@ const endpointColumns = [
   },
   {
     title: "Resource Version",
-    dataIndex: "pod.resourceVersion",
-    sorter: (a, b) => numericSort(a.pod.resourceVersion, b.pod.resourceVersion)
+    dataIndex: "resourceVersion",
+    sorter: (a, b) => numericSort(a.resourceVersion, b.resourceVersion)
   },
   {
     title: "Service",
@@ -80,12 +80,16 @@ class Endpoints extends React.Component {
       let pods = [];
       _each(svc.portEndpoints, info => {
         info.podAddresses.forEach(podAddress => {
-          podAddress.service = svcName;
           let [podNamespace, podName] = podAddress.pod.name.split("/");
-          podAddress.name = podName;
-          podAddress.namespace = podNamespace;
-          podAddress.pod.resourceVersion = parseInt(podAddress.pod.resourceVersion, 10);
-          pods.push(podAddress);
+
+          pods.push({
+            service: svcName,
+            name: podName,
+            namespace: podNamespace,
+            resourceVersion: parseInt(podAddress.pod.resourceVersion, 10),
+            ip: podAddress.pod.podIP,
+            port: podAddress.addr.port,
+          });
         });
       });
       return mem.concat(pods);
@@ -101,7 +105,7 @@ class Endpoints extends React.Component {
           tableColumns={endpointColumns}
           tableClassName="metric-table"
           defaultOrderBy="namespace"
-          rowKey={r => r.service + r.pod.name}
+          rowKey={r => r.service + r.name}
           padding="dense" />
 
       </React.Fragment>
