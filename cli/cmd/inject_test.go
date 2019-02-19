@@ -159,6 +159,18 @@ func TestUninjectAndInject(t *testing.T) {
 			testInjectOptions: defaultOptions,
 		},
 		{
+			inputFileName:     "inject_emojivoto_deployment_empty_resources.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_empty_resources.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_empty_resources.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_list_empty_resources.input.yml",
+			goldenFileName:    "inject_emojivoto_list_empty_resources.golden.yml",
+			reportFileName:    "inject_emojivoto_list_empty_resources.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
 			inputFileName:     "inject_emojivoto_deployment.input.yml",
 			goldenFileName:    "inject_emojivoto_deployment_no_init_container.golden.yml",
 			reportFileName:    "inject_emojivoto_deployment.report",

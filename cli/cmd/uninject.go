@@ -109,7 +109,11 @@ func (resourceTransformerUninject) generateReport(uninjectReports []injectReport
 		if r.sidecar {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.kind, r.name)))
 		} else {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			if r.kind != "" {
+				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			} else {
+				output.Write([]byte(fmt.Sprintf("document missing \"kind\" field, skipped\n")))
+			}
 		}
 	}
 
