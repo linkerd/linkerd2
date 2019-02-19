@@ -90,7 +90,7 @@
       "timeShift": null,
       "title": "MEMORY USAGE",
       "tooltip": {
-        "shared": false,
+        "shared": true,
         "sort": 2,
         "value_type": "individual"
       },
@@ -174,7 +174,7 @@
       "timeShift": null,
       "title": "CPU USAGE",
       "tooltip": {
-        "shared": false,
+        "shared": true,
         "sort": 2,
         "value_type": "individual"
       },
@@ -258,7 +258,7 @@
       "timeShift": null,
       "title": "OPEN FILE DESCRIPTORS",
       "tooltip": {
-        "shared": false,
+        "shared": true,
         "sort": 2,
         "value_type": "individual"
       },
