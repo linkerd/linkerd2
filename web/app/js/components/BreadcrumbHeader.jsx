@@ -13,7 +13,7 @@ const routeToCrumbTitle = {
   "tap": "Tap",
   "top": "Top",
   "routes": "Top Routes",
-  "endpoints": "Service Discovery Endpoints"
+  "debug": "Debugging"
 };
 
 class BreadcrumbHeader extends React.Component {

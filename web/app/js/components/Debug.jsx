@@ -9,6 +9,7 @@ import _get from 'lodash/get';
 import _reduce from 'lodash/reduce';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { numericSort } from './util/Utils.js';
+import Typography from '@material-ui/core/Typography';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 
@@ -45,7 +46,7 @@ const endpointColumns = [
     sorter: (a, b) => (a.service).localeCompare(b.service)
   }
 ];
-class Endpoints extends React.Component {
+class Debug extends React.Component {
   static defaultProps = {
     error: null
   }
@@ -99,6 +100,15 @@ class Endpoints extends React.Component {
       <React.Fragment>
         {this.loading()}
         {this.banner()}
+        <Typography variant="h6">Endpoints</Typography>
+        <Typography>
+        This table allow you to see Linkerd's service discovery state. It provides
+        debug information about the internal state of the
+        control-plane's proxy-api container. Note that this cache of service discovery
+        information is populated on-demand via linkerd-proxy requests. No endpoints
+        will be found  until a linkerd-proxy begins routing
+        requests.
+        </Typography>
 
         <BaseTable
           tableRows={rows}
@@ -114,6 +124,6 @@ class Endpoints extends React.Component {
 }
 
 export default withREST(
-  withContext(Endpoints),
+  withContext(Debug),
   ({api}) => [api.fetch("/api/endpoints")]
 );

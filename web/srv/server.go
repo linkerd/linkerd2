@@ -108,7 +108,7 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
-	server.router.GET("/endpoints", handler.handleIndex)
+	server.router.GET("/debug", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
 	server.router.GET("/profiles/new", handler.handleProfileDownload)
 
