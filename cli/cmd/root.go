@@ -373,5 +373,4 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
-	cmd.PersistentFlags().MarkHidden("linkerd-cni-enabled")
 }
