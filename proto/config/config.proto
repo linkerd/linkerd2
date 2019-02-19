@@ -7,7 +7,11 @@ option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 message GlobalConfig {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
-  TLS tls = 3;
+
+  // null indicates TLS is disabled.
+  // Otherwise, a non-null struct indicates the equivalence
+  // of --tls=optional.
+  IdentityContext identity_context = 3;
 }
 
 message ProxyConfig {
@@ -44,13 +48,7 @@ message ResourceRequirements {
   string request_memory = 2;
 }
 
-message LogLevel {
-  string level = 1;
-}
-
-message TLS {
-  bool enabled = 1;
-}
+message IdentityContext {}
 
 message CNI {
   Image image = 1;
@@ -63,9 +61,6 @@ message CNI {
   ProxyConfig proxy_config = 6;
 }
 
-message GetParam{}
-
-message Result {
-  string msg = 1;
-  bool is_error = 2;
+message LogLevel {
+  string level = 1;
 }

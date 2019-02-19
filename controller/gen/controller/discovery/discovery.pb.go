@@ -34,7 +34,7 @@ func (m *EndpointsParams) Reset()         { *m = EndpointsParams{} }
 func (m *EndpointsParams) String() string { return proto.CompactTextString(m) }
 func (*EndpointsParams) ProtoMessage()    {}
 func (*EndpointsParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_discovery_1291ed21e9de6976, []int{0}
+	return fileDescriptor_discovery_515e355adfdda63e, []int{0}
 }
 func (m *EndpointsParams) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EndpointsParams.Unmarshal(m, b)
@@ -65,7 +65,7 @@ func (m *EndpointsResponse) Reset()         { *m = EndpointsResponse{} }
 func (m *EndpointsResponse) String() string { return proto.CompactTextString(m) }
 func (*EndpointsResponse) ProtoMessage()    {}
 func (*EndpointsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_discovery_1291ed21e9de6976, []int{1}
+	return fileDescriptor_discovery_515e355adfdda63e, []int{1}
 }
 func (m *EndpointsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EndpointsResponse.Unmarshal(m, b)
@@ -103,7 +103,7 @@ func (m *ServicePort) Reset()         { *m = ServicePort{} }
 func (m *ServicePort) String() string { return proto.CompactTextString(m) }
 func (*ServicePort) ProtoMessage()    {}
 func (*ServicePort) Descriptor() ([]byte, []int) {
-	return fileDescriptor_discovery_1291ed21e9de6976, []int{2}
+	return fileDescriptor_discovery_515e355adfdda63e, []int{2}
 }
 func (m *ServicePort) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ServicePort.Unmarshal(m, b)
@@ -141,7 +141,7 @@ func (m *PodAddresses) Reset()         { *m = PodAddresses{} }
 func (m *PodAddresses) String() string { return proto.CompactTextString(m) }
 func (*PodAddresses) ProtoMessage()    {}
 func (*PodAddresses) Descriptor() ([]byte, []int) {
-	return fileDescriptor_discovery_1291ed21e9de6976, []int{3}
+	return fileDescriptor_discovery_515e355adfdda63e, []int{3}
 }
 func (m *PodAddresses) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PodAddresses.Unmarshal(m, b)
@@ -180,7 +180,7 @@ func (m *PodAddress) Reset()         { *m = PodAddress{} }
 func (m *PodAddress) String() string { return proto.CompactTextString(m) }
 func (*PodAddress) ProtoMessage()    {}
 func (*PodAddress) Descriptor() ([]byte, []int) {
-	return fileDescriptor_discovery_1291ed21e9de6976, []int{4}
+	return fileDescriptor_discovery_515e355adfdda63e, []int{4}
 }
 func (m *PodAddress) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PodAddress.Unmarshal(m, b)
@@ -297,10 +297,10 @@ var _Discovery_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("controller/discovery.proto", fileDescriptor_discovery_1291ed21e9de6976)
+	proto.RegisterFile("controller/discovery.proto", fileDescriptor_discovery_515e355adfdda63e)
 }
 
-var fileDescriptor_discovery_1291ed21e9de6976 = []byte{
+var fileDescriptor_discovery_515e355adfdda63e = []byte{
 	// 394 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x93, 0xcf, 0x4b, 0xc3, 0x30,
 	0x14, 0xc7, 0xed, 0xa6, 0xc2, 0x5e, 0x5b, 0x75, 0xc1, 0xc3, 0xa8, 0x08, 0xa3, 0x07, 0x99, 0x0a,
