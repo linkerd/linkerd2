@@ -2,20 +2,9 @@ package cmd
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
-	"os"
 	"testing"
 )
-
-// TestMain parses flags before running tests
-func TestMain(m *testing.M) {
-	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
-	prettyDiff = os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
-	flag.BoolVar(&prettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
-	flag.Parse()
-	os.Exit(m.Run())
-}
 
 func TestRender(t *testing.T) {
 	// The default configuration, with the random UUID overridden with a fixed

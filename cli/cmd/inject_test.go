@@ -194,6 +194,8 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	}
 	if tc.stdOutGoldenFileName != "" {
 		testDiff(t, tc.stdOutGoldenFileName, outBuffer.String())
+	} else if outBuffer.Len() != 0 {
+		t.Fatalf("Expected no standard output, but got: %s", outBuffer)
 	}
 
 	stdErrGoldenFileName := tc.stdErrGoldenFileName
