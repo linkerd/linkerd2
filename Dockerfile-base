@@ -3,7 +3,7 @@
 # This means that all Linkerd containers share a common set of tools, and furthermore, they
 # are highly cacheable at runtime.
 
-FROM debian:buster-20190204-slim
+FROM debian:stretch-20190204-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

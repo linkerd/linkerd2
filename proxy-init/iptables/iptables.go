@@ -22,11 +22,6 @@ const (
 
 	// IptablesOutputChainName specifies an iptables `OUTPUT` chain.
 	IptablesOutputChainName = "OUTPUT"
-
-	// iptablesBin defined as `iptables-legacy`, because the base Docker image,
-	// `debian:buster-20190204-slim`, uses `iptables v1.8.2 (nf_tables)`
-	// by default.
-	iptablesBin = "iptables-legacy"
 )
 
 var (
@@ -189,7 +184,7 @@ func executeCommand(firewallConfiguration FirewallConfiguration, cmd *exec.Cmd) 
 }
 
 func makeIgnoreUserID(chainName string, uid int, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-m", "owner",
@@ -200,7 +195,7 @@ func makeIgnoreUserID(chainName string, uid int, comment string) *exec.Cmd {
 }
 
 func makeCreateNewChain(name string, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-N", name,
 		"-m", "comment",
@@ -208,19 +203,19 @@ func makeCreateNewChain(name string, comment string) *exec.Cmd {
 }
 
 func makeFlushChain(name string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-F", name)
 }
 
 func makeDeleteChain(name string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-X", name)
 }
 
 func makeRedirectChainToPort(chainName string, portToRedirect int, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-p", "tcp",
@@ -231,7 +226,7 @@ func makeRedirectChainToPort(chainName string, portToRedirect int, comment strin
 }
 
 func makeIgnorePort(chainName string, portToIgnore int, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-p", "tcp",
@@ -242,7 +237,7 @@ func makeIgnorePort(chainName string, portToIgnore int, comment string) *exec.Cm
 }
 
 func makeIgnoreLoopback(chainName string, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-o", "lo",
@@ -252,7 +247,7 @@ func makeIgnoreLoopback(chainName string, comment string) *exec.Cmd {
 }
 
 func makeRedirectChainToPortBasedOnDestinationPort(chainName string, destinationPort int, portToRedirect int, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-p", "tcp",
@@ -264,7 +259,7 @@ func makeRedirectChainToPortBasedOnDestinationPort(chainName string, destination
 }
 
 func makeJumpFromChainToAnotherForAllProtocols(chainName string, targetChain string, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-j", targetChain,
@@ -273,7 +268,7 @@ func makeJumpFromChainToAnotherForAllProtocols(chainName string, targetChain str
 }
 
 func makeRedirectChainForOutgoingTraffic(chainName string, redirectChainName string, uid int, comment string) *exec.Cmd {
-	return exec.Command(iptablesBin,
+	return exec.Command("iptables",
 		"-t", "nat",
 		"-A", chainName,
 		"-m", "owner",
@@ -286,5 +281,5 @@ func makeRedirectChainForOutgoingTraffic(chainName string, redirectChainName str
 }
 
 func makeShowAllRules() *exec.Cmd {
-	return exec.Command(iptablesBin, "-t", "nat", "-vnL")
+	return exec.Command("iptables", "-t", "nat", "-vnL")
 }
