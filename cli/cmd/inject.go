@@ -218,6 +218,14 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		resources.Requests["memory"] = k8sResource.MustParse(options.proxyMemoryRequest)
 	}
 
+	if options.proxyCPULimit != "" {
+		resources.Limits["cpu"] = k8sResource.MustParse(options.proxyCPULimit)
+	}
+
+	if options.proxyMemoryLimit != "" {
+		resources.Limits["memory"] = k8sResource.MustParse(options.proxyMemoryLimit)
+	}
+
 	profileSuffixes := "."
 	if options.disableExternalProfiles {
 		profileSuffixes = "svc.cluster.local."
@@ -337,7 +345,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Image:                    options.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
