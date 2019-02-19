@@ -121,12 +121,12 @@ func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, 
 }
 
 // URLFor generates a URL based on the Kubernetes config.
-func (kubeAPI *KubernetesAPI) URLFor(namespace string, extraPathStartingWithSlash string) (*url.URL, error) {
-	return generateKubernetesAPIBaseURLFor(kubeAPI.Host, namespace, extraPathStartingWithSlash)
+func (kubeAPI *KubernetesAPI) URLFor(namespace, path string) (*url.URL, error) {
+	return generateKubernetesAPIURLFor(kubeAPI.Host, namespace, path)
 }
 
 func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {
-	endpoint, err := BuildURL(kubeAPI.Host, path)
+	endpoint, err := generateKubernetesURL(kubeAPI.Host, path)
 	if err != nil {
 		return nil, err
 	}
