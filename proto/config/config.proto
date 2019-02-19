@@ -4,25 +4,10 @@ package linkerd2.config;
 
 option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 
-// ConfigStore provides an abstraction over the underlying configuration storge.
-service ConfigStore {
-  // Return the global config.
-  rpc GetGlobalConfig(GetParam) returns (GlobalConfig) {}
-
-  // Return the proxy config.
-  rpc GetProxyConfig(GetParam) returns (ProxyConfig) {}
-
-  // Set the global config. It overwrites the existing value.
-  rpc SetGlobalConfig(GlobalConfig) returns (Result) {}
-
-  // Set the proxy config. It overwrites the existing value.
-  rpc SetProxyConfig(ProxyConfig) returns (Result) {}
-}
-
 message GlobalConfig {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
-  bool tls_enabled = 3;
+  TLS tls = 3;
 }
 
 message ProxyConfig {
@@ -39,11 +24,9 @@ message ProxyConfig {
 
   ResourceRequirements resource = 10;
 
-  TLS tls_enabled = 11;
-
-  int64 proxy_uid = 12;
-  LogLevel log_level = 13;
-  bool disable_external_profiles = 14;
+  int64 proxy_uid = 11;
+  LogLevel log_level = 12;
+  bool disable_external_profiles = 13;
 }
 
 message Image {
@@ -65,9 +48,8 @@ message LogLevel {
   string level = 1;
 }
 
-enum TLS {
-  NONE = 0;
-  OPTIONAL = 1;
+message TLS {
+  bool enabled = 1;
 }
 
 message CNI {
