@@ -14,5 +14,5 @@ web/app/yarn-error.log
 .gorun
 .dep*
 .golangci-lint*
-**.gogen*
+**/*.gogen*
 **/*.swp

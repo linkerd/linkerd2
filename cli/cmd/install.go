@@ -97,9 +97,14 @@ const (
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
 
-	baseTemplateName          = "templates/base.yaml"
-	tlsTemplateName           = "templates/tls.yaml"
-	proxyInjectorTemplateName = "templates/proxy_injector.yaml"
+	nsTemplateName             = "templates/namespace.yaml"
+	controllerTemplateName     = "templates/controller.yaml"
+	webTemplateName            = "templates/web.yaml"
+	prometheusTemplateName     = "templates/prometheus.yaml"
+	grafanaTemplateName        = "templates/grafana.yaml"
+	serviceprofileTemplateName = "templates/serviceprofile.yaml"
+	caTemplateName             = "templates/ca.yaml"
+	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -135,11 +140,11 @@ func newCmdInstall() *cobra.Command {
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
-	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Experimental: Enable proxy sidecar auto-injection webhook (default false)")
+	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Enable proxy sidecar auto-injection via a webhook (default false)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
-	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane")
+	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane (default false)")
 	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
-	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading")
+	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)")
 	return cmd
 }
 
@@ -241,29 +246,25 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
-	// Read templates into bytes
-	chartTmpl, err := readIntoBytes(chartutil.ChartfileName)
-	if err != nil {
-		return err
-	}
-	baseTmpl, err := readIntoBytes(baseTemplateName)
-	if err != nil {
-		return err
-	}
-	tlsTmpl, err := readIntoBytes(tlsTemplateName)
-	if err != nil {
-		return err
-	}
-	proxyInjectorTmpl, err := readIntoBytes(proxyInjectorTemplateName)
-	if err != nil {
-		return err
+	files := []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: nsTemplateName},
+		{Name: controllerTemplateName},
+		{Name: serviceprofileTemplateName},
+		{Name: webTemplateName},
+		{Name: prometheusTemplateName},
+		{Name: grafanaTemplateName},
+		{Name: caTemplateName},
+		{Name: proxyInjectorTemplateName},
 	}
 
-	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName, Data: chartTmpl},
-		{Name: baseTemplateName, Data: baseTmpl},
-		{Name: tlsTemplateName, Data: tlsTmpl},
-		{Name: proxyInjectorTemplateName, Data: proxyInjectorTmpl},
+	// Read templates into bytes
+	for _, f := range files {
+		data, err := readIntoBytes(f.Name)
+		if err != nil {
+			return err
+		}
+		f.Data = data
 	}
 
 	// Create chart and render templates
@@ -290,21 +291,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	bt := path.Join(renderOpts.ReleaseOptions.Name, baseTemplateName)
-	if _, err := buf.WriteString(renderedTemplates[bt]); err != nil {
-		return err
-	}
-
-	if config.EnableTLS {
-		tt := path.Join(renderOpts.ReleaseOptions.Name, tlsTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[tt]); err != nil {
-			return err
-		}
-	}
-
-	if config.ProxyAutoInjectEnabled {
-		pt := path.Join(renderOpts.ReleaseOptions.Name, proxyInjectorTemplateName)
-		if _, err := buf.WriteString(renderedTemplates[pt]); err != nil {
+	for _, tmpl := range files {
+		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return err
 		}
 	}

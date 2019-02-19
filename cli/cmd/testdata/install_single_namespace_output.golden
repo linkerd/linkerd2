@@ -1,12 +1,13 @@
-### Service Account Controller ###
+---
+###
+### Controller
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: Namespace
-
-### Controller RBAC ###
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -24,7 +25,6 @@ rules:
   resources: ["namespaces"]
   resourceNames: ["Namespace"]
   verbs: ["list", "get", "watch"]
-
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -39,43 +39,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-controller
   namespace: Namespace
-
-### Service Account Prometheus ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: Namespace
-
-### Prometheus RBAC ###
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-Namespace-prometheus
-  namespace: Namespace
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
-
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-Namespace-prometheus
-  namespace: Namespace
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: linkerd-Namespace-prometheus
-subjects:
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: Namespace
-
-### Controller ###
 ---
 kind: Service
 apiVersion: v1
@@ -94,7 +57,6 @@ spec:
   - name: http
     port: 8085
     targetPort: 8085
-
 ---
 kind: Service
 apiVersion: v1
@@ -113,7 +75,6 @@ spec:
   - name: grpc
     port: 123
     targetPort: 123
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -295,13 +256,15 @@ spec:
       serviceAccountName: linkerd-controller
 status: {}
 ---
+###
+### Web
+###
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: Namespace
-
-### Web ###
 ---
 kind: Service
 apiVersion: v1
@@ -323,7 +286,6 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -451,6 +413,40 @@ spec:
       serviceAccountName: linkerd-web
 status: {}
 ---
+###
+### Prometheus
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: Namespace
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-Namespace-prometheus
+  namespace: Namespace
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-Namespace-prometheus
+  namespace: Namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-Namespace-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: Namespace
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -468,7 +464,6 @@ spec:
   - name: admin-http
     port: 9090
     targetPort: 9090
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -696,16 +691,16 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
-
-### Service Account Grafana ###
+---
+###
+### Grafana
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: Namespace
-
-### Grafana ###
 ---
 kind: Service
 apiVersion: v1
@@ -724,7 +719,6 @@ spec:
   - name: http
     port: 3000
     targetPort: 3000
-
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -920,15 +914,16 @@ data:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
 
-### Service Account CA ###
+---
+###
+### CA
+###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-ca
   namespace: Namespace
-
-### CA RBAC ###
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -952,7 +947,6 @@ rules:
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["create", "update"]
-
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -967,8 +961,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-ca
   namespace: Namespace
-
-### CA ###
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment

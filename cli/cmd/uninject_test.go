@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -103,23 +102,8 @@ func TestUninjectYAML(t *testing.T) {
 				t.Errorf("Unexpected error uninjecting YAML: %v\n", err)
 			}
 
-			actualOutput := stripDashes(output.String())
-			expectedOutput := stripDashes(readOptionalTestFile(t, tc.goldenFileName))
-			if expectedOutput != actualOutput {
-				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedOutput, actualOutput)
-			}
-
-			actualReport := report.String()
-			expectedReport := readOptionalTestFile(t, tc.reportFileName)
-			if expectedReport != actualReport {
-				t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedReport, actualReport)
-			}
+			diffTestdata(t, tc.goldenFileName, output.String())
+			diffTestdata(t, tc.reportFileName, report.String())
 		})
 	}
-}
-
-// stripDashes removes the YAML dashes (---) found at the beginning and ending of the
-// input and golden files respectively.
-func stripDashes(str string) string {
-	return strings.Trim(str, "-\n")
 }

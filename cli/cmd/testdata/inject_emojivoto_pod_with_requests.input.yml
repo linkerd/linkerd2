@@ -17,3 +17,4 @@ spec:
     name: vote-bot
     resources: {}
 status: {}
+---
