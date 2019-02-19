@@ -154,15 +154,24 @@ export class ResourceDetailBase extends React.Component {
         // Do this by querying for metrics for all pods in this namespace and then filtering
         // out those pods whose owner is not this resource
         // TODO: fix (#1467)
-        let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
-          if (_get(pod, resourceTypeToCamelCase(resource.type)) === resource.namespace + "/" + resource.name) {
-            mem[pod.name] = true;
-          }
+        let resourceName = resource.namespace + "/" + resource.name;
+        let podMetricsForResource;
 
-          return mem;
-        }, {});
+        if (resource.type !== "pod") {
+          podMetricsForResource = _filter(podMetrics, pod => pod.name === resource.name);
+        } else {
+          let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
+            if (_get(pod, resourceTypeToCamelCase(resource.type)) === resourceName) {
+              mem[pod.name] = true;
+            }
 
-        let podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+            return mem;
+          }, {});
+
+          podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+        }
+
+
         let resourceIsMeshed = true;
         if (!_isEmpty(this.state.resourceMetrics)) {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
