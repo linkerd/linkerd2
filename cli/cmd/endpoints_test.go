@@ -66,5 +66,5 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 
 	output := renderEndpoints(endpoints, exp.options)
 
-	diffCompareFile(t, output, exp.file)
+	diffTestdata(t, exp.file, output)
 }
