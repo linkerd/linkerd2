@@ -219,7 +219,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	actualStdErrResult := errBuffer.String()
 	expectedStdErrResult := readTestdataIfFileName(t, stdErrGoldenFileName)
 	if expectedStdErrResult != actualStdErrResult {
-		writeTestdataIfUpdate(t, tc.stdOutGoldenFileName, errBuffer.Bytes())
+		writeTestdataIfUpdate(t, stdErrGoldenFileName, errBuffer.Bytes())
 		diffCompare(t, actualStdErrResult, expectedStdErrResult)
 	}
 }
