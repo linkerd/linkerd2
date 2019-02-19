@@ -108,7 +108,3 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
 status: {}
 ---
-
----
-
----

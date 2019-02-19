@@ -66,7 +66,5 @@ items:
             protocol: TCP
           resources: {}
   status: {}
-- null
-- null
 kind: List
 metadata: {}

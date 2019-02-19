@@ -62,18 +62,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_ID
           value: web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -96,13 +84,6 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -125,14 +106,9 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      volumes:
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: web-deployment-tls-linkerd-io
 status: {}
+---
+
+---
+
 ---
