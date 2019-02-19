@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,7 +18,16 @@ var (
 	prettyDiff bool
 )
 
-// readTesdtata reads a file and return the contents of that file as a string.
+// TestMain parses flags before running tests
+func TestMain(m *testing.M) {
+	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
+	prettyDiff = os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
+	flag.BoolVar(&prettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
+// readTesdtata reads a file and returns the contents of that file as a string.
 func readTestdata(t *testing.T, fileName string) string {
 	file, err := os.Open(filepath.Join("testdata", fileName))
 	if err != nil {
