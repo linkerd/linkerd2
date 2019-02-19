@@ -52,5 +52,5 @@ func testRoutesCall(exp routesParamsExp, t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	testDiff(t, exp.file, output)
+	diffTestdata(t, exp.file, output)
 }

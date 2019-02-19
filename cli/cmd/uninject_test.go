@@ -102,8 +102,8 @@ func TestUninjectYAML(t *testing.T) {
 				t.Errorf("Unexpected error uninjecting YAML: %v\n", err)
 			}
 
-			testDiff(t, tc.goldenFileName, output.String())
-			testDiff(t, tc.reportFileName, report.String())
+			diffTestdata(t, tc.goldenFileName, output.String())
+			diffTestdata(t, tc.reportFileName, report.String())
 		})
 	}
 }

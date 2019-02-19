@@ -49,7 +49,7 @@ func writeTestdata(t *testing.T, fileName string, data []byte) {
 	}
 }
 
-func testDiff(t *testing.T, path, actual string) {
+func diffTestdata(t *testing.T, path, actual string) {
 	expected := readTestdata(t, path)
 	if actual == expected {
 		return

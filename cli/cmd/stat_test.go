@@ -156,5 +156,5 @@ func testStatCall(exp paramsExp, t *testing.T) {
 	rows := respToRows(resp)
 	output := renderStatStats(rows, exp.options)
 
-	testDiff(t, exp.file, output)
+	diffTestdata(t, exp.file, output)
 }
