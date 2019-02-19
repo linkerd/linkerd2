@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
@@ -77,9 +77,9 @@ func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer p
 	return m.ErrorToReturn
 }
 
-func (m *mockGrpcServer) Endpoints(ctx context.Context, req *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
+func (m *mockGrpcServer) Endpoints(ctx context.Context, req *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
 	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*discovery.EndpointsResponse), m.ErrorToReturn
+	return m.ResponseToReturn.(*discoveryPb.EndpointsResponse), m.ErrorToReturn
 }
 
 type grpcCallTestCase struct {
@@ -139,10 +139,10 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.Version(context.TODO(), versionReq) },
 		}
 
-		endpointsReq := &discovery.EndpointsParams{}
+		endpointsReq := &discoveryPb.EndpointsParams{}
 		testEndpoints := grpcCallTestCase{
 			expectedRequest:  endpointsReq,
-			expectedResponse: &discovery.EndpointsResponse{},
+			expectedResponse: &discoveryPb.EndpointsResponse{},
 			functionCall:     func() (proto.Message, error) { return client.Endpoints(context.TODO(), endpointsReq) },
 		}
 
