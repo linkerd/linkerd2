@@ -157,7 +157,7 @@ export class ResourceDetailBase extends React.Component {
         let resourceName = resource.namespace + "/" + resource.name;
         let podMetricsForResource;
 
-        if (resource.type !== "pod") {
+        if (resource.type === "pod") {
           podMetricsForResource = _filter(podMetrics, pod => pod.name === resource.name);
         } else {
           let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
