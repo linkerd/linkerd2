@@ -208,6 +208,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 	resources := v1.ResourceRequirements{
 		Requests: v1.ResourceList{},
+		Limits:   v1.ResourceList{},
 	}
 
 	if options.proxyCPURequest != "" {
@@ -216,6 +217,14 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 	if options.proxyMemoryRequest != "" {
 		resources.Requests["memory"] = k8sResource.MustParse(options.proxyMemoryRequest)
+	}
+
+	if options.proxyCPULimit != "" {
+		resources.Limits["cpu"] = k8sResource.MustParse(options.proxyCPULimit)
+	}
+
+	if options.proxyMemoryLimit != "" {
+		resources.Limits["memory"] = k8sResource.MustParse(options.proxyMemoryLimit)
 	}
 
 	profileSuffixes := "."
@@ -438,7 +447,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	// Warnings
 	//
 
-	// leading newline to separate from yaml output on stdout
+	// Leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
 
 	if len(hostNetwork) > 0 {
@@ -496,12 +505,12 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		}
 	}
 
-	// trailing newline to separate from kubectl output if piping
+	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
-	// check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
 		for _, port := range container.Ports {
 			if port.Protocol == v1.ProtocolUDP {

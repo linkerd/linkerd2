@@ -49,10 +49,12 @@ func TestUninjectAndInject(t *testing.T) {
 	tlsOptions.linkerdVersion = "testinjectversion"
 	tlsOptions.tls = "optional"
 
-	proxyRequestOptions := newInjectOptions()
-	proxyRequestOptions.linkerdVersion = "testinjectversion"
-	proxyRequestOptions.proxyCPURequest = "110m"
-	proxyRequestOptions.proxyMemoryRequest = "100Mi"
+	proxyResourceOptions := newInjectOptions()
+	proxyResourceOptions.linkerdVersion = "testinjectversion"
+	proxyResourceOptions.proxyCPURequest = "110m"
+	proxyResourceOptions.proxyMemoryRequest = "100Mi"
+	proxyResourceOptions.proxyCPULimit = "160m"
+	proxyResourceOptions.proxyMemoryLimit = "150Mi"
 
 	noInitContainerOptions := newInjectOptions()
 	noInitContainerOptions.linkerdVersion = "testinjectversion"
@@ -111,7 +113,7 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:     "inject_emojivoto_pod_with_requests.input.yml",
 			goldenFileName:    "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:    "inject_emojivoto_pod_with_requests.report",
-			testInjectOptions: proxyRequestOptions,
+			testInjectOptions: proxyResourceOptions,
 		},
 		{
 			inputFileName:     "inject_emojivoto_deployment.input.yml",
