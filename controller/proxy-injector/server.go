@@ -85,18 +85,15 @@ func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, erro
 		ControllerNamespace: controllerNamespace,
 	}
 	dnsName := tlsIdentity.ToDNSName()
-	certAndPrivateKey, err := rootCA.IssueEndEntityCertificate(dnsName)
+	endEntity, err := rootCA.GenerateEndEntity(dnsName)
 	if err != nil {
 		return nil, err
 	}
 
-	certPEM, err := certAndPrivateKey.EncodedCertificate()
-	if err != nil {
-		return nil, err
-	}
+	certPEM := endEntity.EncodePEM()
 	log.Debugf("PEM-encoded certificate: %s\n", certPEM)
 
-	keyPEM, err := certAndPrivateKey.EncodedPrivateKey()
+	keyPEM, err := pkgTls.EncodePrivateKeyPEM(endEntity.PrivateKey)
 	if err != nil {
 		return nil, err
 	}

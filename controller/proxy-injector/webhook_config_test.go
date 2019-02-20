@@ -18,7 +18,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 	client := fake.NewClient("")
 
-	rootCA, err := tls.NewCA()
+	rootCA, err := tls.GenerateRootCA("Test CA")
 	if err != nil {
 		t.Fatalf("failed to create root CA: %s", err)
 	}

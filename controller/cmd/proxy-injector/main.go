@@ -34,7 +34,7 @@ func main() {
 		log.Fatalf("failed to initialize Kubernetes client: %s", err)
 	}
 
-	rootCA, err := tls.NewCA()
+	rootCA, err := tls.GenerateRootCA("Proxy Injector Mutating Webhook Admission Controller CA")
 	if err != nil {
 		log.Fatalf("failed to create root CA: %s", err)
 	}
