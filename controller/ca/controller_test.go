@@ -25,7 +25,7 @@ metadata:
 
 func TestCertificateController(t *testing.T) {
 	t.Run("creates new configmap on pod add", func(t *testing.T) {
-		controller, synced, stopCh, err := new(injectedNSConfig)
+		controller, synced, stopCh, err := newController(injectedNSConfig)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -60,7 +60,7 @@ func TestCertificateController(t *testing.T) {
 	})
 }
 
-func new(fixtures ...string) (*CertificateController, chan bool, chan struct{}, error) {
+func newController(fixtures ...string) (*CertificateController, chan bool, chan struct{}, error) {
 	k8sAPI, err := k8s.NewFakeAPI("", fixtures...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
