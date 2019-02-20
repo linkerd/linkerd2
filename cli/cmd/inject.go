@@ -208,6 +208,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 
 	resources := v1.ResourceRequirements{
 		Requests: v1.ResourceList{},
+		Limits:   v1.ResourceList{},
 	}
 
 	if options.proxyCPURequest != "" {

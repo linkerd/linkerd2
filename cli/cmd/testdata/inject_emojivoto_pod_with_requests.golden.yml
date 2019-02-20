@@ -64,12 +64,12 @@ spec:
         port: 4191
       initialDelaySeconds: 10
     resources:
-      requests:
-        cpu: 110m
-        memory: 100Mi
       limits:
         cpu: 160m
         memory: 150Mi
+      requests:
+        cpu: 110m
+        memory: 100Mi
     securityContext:
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError
