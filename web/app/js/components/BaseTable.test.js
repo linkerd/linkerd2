@@ -86,9 +86,9 @@ describe("Tests for <BaseTable>", () => {
 
     const enableFilter = table.prop("enableFilter");
 
-    const input = table.find("input");
+    const filterIcon = table.find("FilterListIcon");
 
     expect(enableFilter).toEqual(true);
-    expect(table.html()).toContain("Filter by text");
+    expect (filterIcon).toBeDefined();
   });
 });

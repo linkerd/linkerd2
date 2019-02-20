@@ -16,17 +16,28 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   },
   {
     title: "Name",
+    filter: d => {
+      if (d.path === "/ping") {
+        return "";
+      } else if (d.direction === "INBOUND") {
+        return "deploy/" + d.source.owner.split('/')[1];
+      } else if (d.direction === "OUTBOUND") {
+        return "deploy/" + d.destination.owner.split('/')[1];
+      }
+    },
     key: "src-dst",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Method",
     dataIndex: "httpMethod",
+    filter: d => d.httpMethod,
     sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod)
   },
   {
     title: "Path",
     dataIndex: "path",
+    filter: d => d.path,
     sorter: (a, b) => a.path.localeCompare(b.path)
   },
   {
@@ -34,7 +45,6 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     dataIndex: "count",
     isNumeric: true,
     defaultSortOrder: "desc",
-    filter: d => d.path + ',' + d.httpMethod,
     sorter: (a, b) => numericSort(a.count, b.count)
   },
   {

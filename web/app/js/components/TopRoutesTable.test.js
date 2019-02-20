@@ -58,14 +58,18 @@ describe("Tests for <TopRoutesTable>", () => {
 
     const enableFilter = table.prop("enableFilter");
 
-    const input = table.find("input");
+    const filterIcon = table.find("FilterListIcon");
 
     expect(enableFilter).toEqual(true);
-    expect(table.html()).toContain("Filter by text");
+    expect(filterIcon).toBeDefined();
     expect(table.html()).toContain("authors:7001");
     expect(table.html()).toContain("localhost");
-    input.simulate("change", {target: {value: "localhost"}});
-    expect(table.html()).not.toContain("authors:7001");
-    expect(table.html()).toContain("localhost");
+    filterIcon.simulate("click");
+    setTimeout(() => {
+      const input = table.find("input");
+      input.simulate("change", {target: {value: "localhost"}});
+      expect(table.html()).not.toContain("authors:7001");
+      expect(table.html()).toContain("localhost");
+    }, 100);
   });
 });

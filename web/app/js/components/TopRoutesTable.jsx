@@ -9,7 +9,7 @@ const routesColumns = [
   {
     title: "Route",
     dataIndex: "route",
-    filter: d => d.route + "," + d.authority,
+    filter: d => d.route,
     sorter: (a, b) => {
       if (a.route === DefaultRoute) {
         return 1;
@@ -25,6 +25,7 @@ const routesColumns = [
     title: "Service",
     tooltip: "hostname:port used when communicating with this target",
     dataIndex: "authority",
+    filter: d => d.authority,
     sorter: (a, b) => (a.authority).localeCompare(b.authority)
   },
   {

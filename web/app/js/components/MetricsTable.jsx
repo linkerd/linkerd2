@@ -23,6 +23,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
     {
       title: "Namespace",
       dataIndex: "namespace",
+      filter: d => d.namespace,
       isNumeric: false,
       render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace)
@@ -42,7 +43,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
       title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
       dataIndex: "name",
       isNumeric: false,
-      filter: d => d.name + "," + d.namespace,
+      filter: d => d.name,
       render: d => {
         let nameContents;
         if (resource === "namespace") {

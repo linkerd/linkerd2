@@ -1,8 +1,8 @@
-import InputAdornment from '@material-ui/core/InputAdornment';
+import CloseIcon from '@material-ui/icons/Close';
+import FilterListIcon from '@material-ui/icons/FilterList';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Search from '@material-ui/icons/Search';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -30,6 +30,10 @@ const styles = theme => ({
   activeSortIcon: {
     opacity: 1,
   },
+  toolbarIcon: {
+    cursor: "pointer",
+    opacity: 0.8
+  },
   inactiveSortIcon: {
     opacity: 0.4,
   },
@@ -49,7 +53,8 @@ class BaseTable extends React.Component {
       orderBy: this.props.defaultOrderBy,
       filterBy: ""
     };
-    this.handleFilterChange = this.handleFilterChange.bind(this);
+    this.handleFilterInputChange = this.handleFilterInputChange.bind(this);
+    this.handleFilterToggle = this.handleFilterToggle.bind(this);
   }
 
   createSortHandler = col => () => {
@@ -63,37 +68,44 @@ class BaseTable extends React.Component {
     this.setState({ order, orderBy });
   };
 
-  handleFilterChange = e => {
-    let filterBy = e.target.value;
-    this.setState({ filterBy: filterBy });
+  handleFilterInputChange = e => {
+    let input = e.target.value.replace(/[^A-Z0-9/.\-_]/gi, "").toLowerCase();
+    let swapWildCard = /[*]/g; // replace "*" in input with wildcard
+    let filterBy = new RegExp(input.replace(swapWildCard, ".+"), "i");
+    if (filterBy !== this.state.filterBy) {
+      this.setState({ filterBy });
+    }
+  }
+
+  handleFilterToggle = () => {
+    let newFilterStatus = !this.state.showFilter;
+    this.setState({ showFilter: newFilterStatus });
   }
 
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
-    if (!orderBy && !filterBy) {
-      return tableRows;
-    }
-
+    let rows = tableRows;
     let col = _find(tableColumns, d => d.dataIndex === orderBy);
-    let sorted = tableRows.sort(col.sorter);
-    if (!filterBy) {
-      return order === 'desc' ? sorted.reverse() : sorted;
-    } else {
+    if (orderBy) {
+      rows = tableRows.sort(col.sorter);
+    }
+    if (filterBy) {
       let filteredRows = [];
-      let swapWildCard = /[*]/g; // replace "*"" in filterBy with wildcard
-      let regexString = new RegExp(filterBy.replace(swapWildCard, ".+"), "i");
-      let extractedTableRowText = sorted.reduce((acc, row) => {
-        if (col.filter) {
-          acc.push(col.filter(row));
-        }
-        return acc;
-      },[]);
-      extractedTableRowText.forEach((row, rowIndex) => {
-        if (row.match(regexString)) {
-          filteredRows.push(sorted[rowIndex]);
+      let columnsToFilter = tableColumns.filter(col => col.filter);
+      let textToSearch = rows.map(row => {
+        let string = "";
+        columnsToFilter.forEach(col => {
+          string+= col.filter(row);
+        });
+        return string;
+      });
+      textToSearch.forEach((row, rowIndex) => {
+        if (row.match(filterBy)) {
+          filteredRows.push(rows[rowIndex]);
         }
       });
-      return order === 'desc' ? filteredRows.reverse() : filteredRows;
+      rows = filteredRows;
     }
+    return order === 'desc' ? rows.reverse() : rows;
   }
 
   renderHeaderCell = (col, order, orderBy) => {
@@ -132,6 +144,32 @@ class BaseTable extends React.Component {
     <Tooltip key={col.key || col.dataIndex} placement="top" title={col.tooltip}>{tableCell}</Tooltip>;
   }
 
+  renderToolbar = (classes, title) => {
+    let toolbar = (
+      <Toolbar>
+        <Typography
+          className={classes.title}
+          variant="h5">
+          {title}
+        </Typography>
+        {this.state.showFilter &&
+          <TextField
+            id="input-with-icon-textfield"
+            onChange={this.handleFilterInputChange}
+            placeholder="Filter by text" />}
+        {!this.state.showFilter &&
+          <FilterListIcon
+            className={classes.toolbarIcon}
+            onClick={this.handleFilterToggle} />}
+        {this.state.showFilter &&
+          <CloseIcon
+            className={classes.toolbarIcon}
+            onClick={this.handleFilterToggle} />}
+      </Toolbar>
+    );
+    return toolbar;
+  }
+
   render() {
     const { classes, enableFilter, tableRows, tableColumns, tableClassName, title, rowKey, padding} = this.props;
     const {order, orderBy, filterBy} = this.state;
@@ -139,27 +177,8 @@ class BaseTable extends React.Component {
 
     return (
       <Paper className={classes.root}>
-        { enableFilter &&
-        <Toolbar>
-          <Typography
-            className={classes.title}
-            variant="h5">
-            {title}
-          </Typography>
-          <TextField
-            className={classes.margin}
-            id="input-with-icon-textfield"
-            onChange={this.handleFilterChange}
-            placeholder="Filter by text"
-            InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            )
-            }} />
-        </Toolbar>
-        }
+        {enableFilter &&
+          this.renderToolbar(classes, title)}
         <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
           <TableHead>
             <TableRow>
