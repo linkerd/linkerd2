@@ -348,7 +348,7 @@ func (options *proxyConfigOptions) validate() error {
 		}
 		if options.proxyMemoryRequest != "" {
 			// Not checking for error because option proxyMemoryRequest was already validated
-			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.MilliValue() > memoryLimit.MilliValue() {
+			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.Value() > memoryLimit.Value() {
 				return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", options.proxyMemoryLimit, options.proxyMemoryRequest)
 			}
 		}
