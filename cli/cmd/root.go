@@ -335,7 +335,7 @@ func (options *proxyConfigOptions) validate() error {
 		}
 		if options.proxyCPURequest != "" {
 			// Not checking for error because option proxyCPURequest was already validated
-			if cpuRequest, _ := k8sResource.ParseQuantity(options.proxyCPURequest); cpuRequest.Value() > cpuLimit.Value() {
+			if cpuRequest, _ := k8sResource.ParseQuantity(options.proxyCPURequest); cpuRequest.MilliValue() > cpuLimit.MilliValue() {
 				return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", options.proxyCPULimit, options.proxyCPURequest)
 			}
 		}
@@ -348,7 +348,7 @@ func (options *proxyConfigOptions) validate() error {
 		}
 		if options.proxyMemoryRequest != "" {
 			// Not checking for error because option proxyMemoryRequest was already validated
-			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.Value() > memoryLimit.Value() {
+			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.MilliValue() > memoryLimit.MilliValue() {
 				return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", options.proxyMemoryLimit, options.proxyMemoryRequest)
 			}
 		}
