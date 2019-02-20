@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -33,9 +34,8 @@ func init() {
 		panic(err)
 	}
 	log.SetOutput(ioutil.Discard)
-	factory = fake.NewFactory()
+	factory = fake.NewFactory(filepath.Join("fake", "data"))
 
-	factory = fake.NewFactory()
 	testServer = &WebhookServer{nil, webhook}
 }
 

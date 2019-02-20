@@ -1,6 +1,8 @@
-package injector
+package inject
 
 import (
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -67,28 +69,40 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
-func (p *Patch) addPodLabels(label map[string]string) {
+func (p *Patch) addPodLabelsRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  patchPathPodLabels,
-		Value: label,
+		Value: map[string]string{},
 	})
 }
 
-func (p *Patch) addPodAnnotations(annotation map[string]string) {
+func (p *Patch) addPodLabel(key, value string) {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "add",
+		Path:  patchPathPodLabels + "/" + escapeKey(key),
+		Value: value,
+	})
+}
+
+func (p *Patch) addPodAnnotationsRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  patchPathPodAnnotations,
-		Value: annotation,
+		Value: map[string]string{},
 	})
 }
 
-func (p *Patch) addDeploymentLabels(label map[string]string) {
+func (p *Patch) addPodAnnotation(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathDeploymentLabels,
-		Value: label,
+		Path:  patchPathPodAnnotations + "/" + escapeKey(key),
+		Value: value,
 	})
+}
+
+func escapeKey(str string) string {
+	return strings.Replace(str, "/", "~1", -1)
 }
 
 // patchOp represents a RFC 6902 patch operation.
