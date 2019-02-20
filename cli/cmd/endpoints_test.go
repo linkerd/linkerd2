@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 )
 
@@ -52,11 +53,11 @@ func TestEndpoints(t *testing.T) {
 }
 
 func testEndpointsCall(exp endpointsExp, t *testing.T) {
-	mockClient := &public.MockAPIClient{}
-
-	response := public.GenEndpointsResponse(exp.identities)
-
-	mockClient.EndpointsResponseToReturn = &response
+	mockClient := &public.MockAPIClient{
+		MockDiscoveryClient: &discovery.MockDiscoveryClient{
+			EndpointsResponseToReturn: discovery.GenEndpointsResponse(exp.identities),
+		},
+	}
 
 	endpoints, err := requestEndpointsFromAPI(mockClient)
 	if err != nil {
@@ -65,5 +66,5 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 
 	output := renderEndpoints(endpoints, exp.options)
 
-	diffCompareFile(t, output, exp.file)
+	diffTestdata(t, exp.file, output)
 }

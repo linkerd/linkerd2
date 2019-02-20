@@ -329,14 +329,28 @@ func (options *proxyConfigOptions) validate() error {
 	}
 
 	if options.proxyCPULimit != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyCPULimit); err != nil {
+		cpuLimit, err := k8sResource.ParseQuantity(options.proxyCPULimit)
+		if err != nil {
 			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", options.proxyCPULimit)
+		}
+		if options.proxyCPURequest != "" {
+			// Not checking for error because option proxyCPURequest was already validated
+			if cpuRequest, _ := k8sResource.ParseQuantity(options.proxyCPURequest); cpuRequest.Value() > cpuLimit.Value() {
+				return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", options.proxyCPULimit, options.proxyCPURequest)
+			}
 		}
 	}
 
 	if options.proxyMemoryLimit != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyMemoryLimit); err != nil {
+		memoryLimit, err := k8sResource.ParseQuantity(options.proxyMemoryLimit)
+		if err != nil {
 			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", options.proxyMemoryLimit)
+		}
+		if options.proxyMemoryRequest != "" {
+			// Not checking for error because option proxyMemoryRequest was already validated
+			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.Value() > memoryLimit.Value() {
+				return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", options.proxyMemoryLimit, options.proxyMemoryRequest)
+			}
 		}
 	}
 
@@ -391,5 +405,14 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
-	cmd.PersistentFlags().MarkHidden("linkerd-cni-enabled")
+
+	// Deprecated flags
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+
+	cmd.PersistentFlags().MarkHidden("proxy-memory")
+	cmd.PersistentFlags().MarkHidden("proxy-cpu")
+
+	cmd.PersistentFlags().MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
+	cmd.PersistentFlags().MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
 }

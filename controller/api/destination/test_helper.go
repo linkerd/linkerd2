@@ -3,17 +3,10 @@ package destination
 import (
 	"context"
 	"fmt"
-	"net"
-	"testing"
-	"time"
 
 	proxyNet "github.com/linkerd/linkerd2-proxy-api/go/net"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -130,43 +123,4 @@ func makeUpdateAddress(ipStr string, portNum uint32, ns string, name string) *up
 			},
 		},
 	}
-}
-
-// InitFakeDiscoveryServer takes a Kubernetes API client and returns a fake
-// discovery API client, gRPC Server, and gRPC client connection.
-// The caller is responsible for calling Server.GracefulStop() and
-// ClientConn.Close().
-func InitFakeDiscoveryServer(t *testing.T, k8sAPI *k8s.API) (discovery.DiscoveryClient, *grpc.Server, *grpc.ClientConn) {
-	k8sAPI, err := k8s.NewFakeAPI("")
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-	k8sAPI.Sync()
-
-	lis := bufconn.Listen(1024 * 1024)
-	gRPCServer, err := NewServer(
-		"fake-addr", "", "controller-ns",
-		false, false, false, k8sAPI, nil,
-	)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	go func() { gRPCServer.Serve(lis) }()
-
-	proxyAPIConn, err := grpc.Dial(
-		"fake-buf-addr",
-		grpc.WithDialer(
-			func(string, time.Duration) (net.Conn, error) {
-				return lis.Dial()
-			},
-		),
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-
-	discoveryClient := discovery.NewDiscoveryClient(proxyAPIConn)
-
-	return discoveryClient, gRPCServer, proxyAPIConn
 }

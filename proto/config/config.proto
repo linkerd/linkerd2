@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package linkerd2.config;
+
+option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
+
+message GlobalConfig {
+  string linkerd_namespace = 1;
+  bool cni_enabled = 2;
+
+  // null indicates TLS is disabled.
+  // Otherwise, a non-null struct indicates the equivalence
+  // of --tls=optional.
+  IdentityContext identity_context = 3;
+}
+
+message ProxyConfig {
+  Image proxy_image = 1;
+  Image proxy_init_image = 2;
+
+  Port api_port = 3;
+  Port control_port = 4;
+  repeated Port ignore_inbound_ports = 5;
+  repeated Port ignore_outbound_ports = 6;
+  Port inbound_port = 7;
+  Port metrics_port = 8;
+  Port outbound_port = 9;
+
+  ResourceRequirements resource = 10;
+
+  int64 proxy_uid = 11;
+  LogLevel log_level = 12;
+  bool disable_external_profiles = 13;
+}
+
+message Image {
+  string image_name = 1;
+  string pull_policy = 2;
+  string registry = 3;
+}
+
+message Port {
+  uint32 port = 1;
+}
+
+message ResourceRequirements {
+  string request_cpu = 1;
+  string request_memory = 2;
+  string limit_cpu = 3;
+  string limit_memory = 4;
+}
+
+message IdentityContext {}
+
+message CNI {
+  Image image = 1;
+  LogLevel log_level = 2;
+  Port control_port = 3;
+
+  string dest_cni_bin_dir = 4;
+  string dest_cni_net_dir = 5;
+
+  ProxyConfig proxy_config = 6;
+}
+
+message LogLevel {
+  string level = 1;
+}

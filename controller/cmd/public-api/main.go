@@ -8,16 +8,15 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 func main() {
@@ -41,12 +40,11 @@ func main() {
 	}
 	defer tapConn.Close()
 
-	destinationAPIConn, err := grpc.Dial(*destinationAPIAddr, grpc.WithInsecure())
+	discoveryClient, discoveryConn, err := discovery.NewClient(*destinationAPIAddr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	defer destinationAPIConn.Close()
-	discoveryClient := discovery.NewDiscoveryClient(destinationAPIConn)
+	defer discoveryConn.Close()
 
 	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {

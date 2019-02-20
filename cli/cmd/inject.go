@@ -218,6 +218,14 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		resources.Requests["memory"] = k8sResource.MustParse(options.proxyMemoryRequest)
 	}
 
+	if options.proxyCPULimit != "" {
+		resources.Limits["cpu"] = k8sResource.MustParse(options.proxyCPULimit)
+	}
+
+	if options.proxyMemoryLimit != "" {
+		resources.Limits["memory"] = k8sResource.MustParse(options.proxyMemoryLimit)
+	}
+
 	profileSuffixes := "."
 	if options.disableExternalProfiles {
 		profileSuffixes = "svc.cluster.local."
@@ -337,7 +345,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			Image:                    options.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -438,7 +446,7 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	// Warnings
 	//
 
-	// leading newline to separate from yaml output on stdout
+	// Leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
 
 	if len(hostNetwork) > 0 {
@@ -488,16 +496,20 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 		if !r.hostNetwork && !r.sidecar && !r.unsupportedResource && !r.injectDisabled {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.kind, r.name)))
 		} else {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			if r.kind != "" {
+				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			} else {
+				output.Write([]byte(fmt.Sprintf("document missing \"kind\" field, skipped\n")))
+			}
 		}
 	}
 
-	// trailing newline to separate from kubectl output if piping
+	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
-	// check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
 		for _, port := range container.Ports {
 			if port.Protocol == v1.ProtocolUDP {

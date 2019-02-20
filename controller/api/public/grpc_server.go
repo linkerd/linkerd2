@@ -10,7 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -28,13 +28,13 @@ import (
 // APIServer specifies the interface the Public API server should implement
 type APIServer interface {
 	pb.ApiServer
-	discovery.DiscoveryServer
+	discoveryPb.DiscoveryServer
 }
 
 type grpcServer struct {
 	prometheusAPI       promv1.API
 	tapClient           tapPb.TapClient
-	discoveryClient     discovery.DiscoveryClient
+	discoveryClient     discoveryPb.DiscoveryClient
 	k8sAPI              *k8s.API
 	controllerNamespace string
 	ignoredNamespaces   []string
@@ -57,7 +57,7 @@ const (
 func newGrpcServer(
 	promAPI promv1.API,
 	tapClient tapPb.TapClient,
-	discoveryClient discovery.DiscoveryClient,
+	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
@@ -277,12 +277,12 @@ func (s *grpcServer) ListServices(ctx context.Context, req *pb.ListServicesReque
 	return &pb.ListServicesResponse{Services: svcs}, nil
 }
 
-func (s *grpcServer) Endpoints(ctx context.Context, params *discovery.EndpointsParams) (*discovery.EndpointsResponse, error) {
-	log.Debugf("Endpoints request %+v", params)
+func (s *grpcServer) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
+	log.Debugf("Endpoints request: %+v", params)
 
 	rsp, err := s.discoveryClient.Endpoints(ctx, params)
 	if err != nil {
-		log.Errorf("endpoints request to proxy API failed: %s", err)
+		log.Errorf("endpoints request to destination API failed: %s", err)
 		return nil, err
 	}
 

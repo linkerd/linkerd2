@@ -32,22 +32,13 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, tc.testInjectOptions); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
+	diffTestdata(t, tc.goldenFileName, output.String())
 
-	actualOutput := output.String()
-	expectedOutput := readOptionalTestFile(t, tc.goldenFileName)
-	if expectedOutput != actualOutput {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedOutput, actualOutput)
-	}
-
-	actualReport := report.String()
 	reportFileName := tc.reportFileName
 	if verbose {
 		reportFileName += ".verbose"
 	}
-	expectedReport := readOptionalTestFile(t, reportFileName)
-	if expectedReport != actualReport {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedReport, actualReport)
-	}
+	diffTestdata(t, reportFileName, report.String())
 }
 
 func TestUninjectAndInject(t *testing.T) {
@@ -58,10 +49,12 @@ func TestUninjectAndInject(t *testing.T) {
 	tlsOptions.linkerdVersion = "testinjectversion"
 	tlsOptions.tls = "optional"
 
-	proxyRequestOptions := newInjectOptions()
-	proxyRequestOptions.linkerdVersion = "testinjectversion"
-	proxyRequestOptions.proxyCPURequest = "110m"
-	proxyRequestOptions.proxyMemoryRequest = "100Mi"
+	proxyResourceOptions := newInjectOptions()
+	proxyResourceOptions.linkerdVersion = "testinjectversion"
+	proxyResourceOptions.proxyCPURequest = "110m"
+	proxyResourceOptions.proxyMemoryRequest = "100Mi"
+	proxyResourceOptions.proxyCPULimit = "160m"
+	proxyResourceOptions.proxyMemoryLimit = "150Mi"
 
 	noInitContainerOptions := newInjectOptions()
 	noInitContainerOptions.linkerdVersion = "testinjectversion"
@@ -120,7 +113,7 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:     "inject_emojivoto_pod_with_requests.input.yml",
 			goldenFileName:    "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:    "inject_emojivoto_pod_with_requests.report",
-			testInjectOptions: proxyRequestOptions,
+			testInjectOptions: proxyResourceOptions,
 		},
 		{
 			inputFileName:     "inject_emojivoto_deployment.input.yml",
@@ -156,6 +149,18 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:     "inject_contour.input.yml",
 			goldenFileName:    "inject_contour.input.yml",
 			reportFileName:    "inject_contour.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_deployment_empty_resources.input.yml",
+			goldenFileName:    "inject_emojivoto_deployment_empty_resources.golden.yml",
+			reportFileName:    "inject_emojivoto_deployment_empty_resources.report",
+			testInjectOptions: defaultOptions,
+		},
+		{
+			inputFileName:     "inject_emojivoto_list_empty_resources.input.yml",
+			goldenFileName:    "inject_emojivoto_list_empty_resources.golden.yml",
+			reportFileName:    "inject_emojivoto_list_empty_resources.report",
 			testInjectOptions: defaultOptions,
 		},
 		{
@@ -201,25 +206,19 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
-
-	actualStdOutResult := outBuffer.String()
-	expectedStdOutResult := readOptionalTestFile(t, tc.stdOutGoldenFileName)
-	if expectedStdOutResult != actualStdOutResult {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedStdOutResult, actualStdOutResult)
+	if tc.stdOutGoldenFileName != "" {
+		diffTestdata(t, tc.stdOutGoldenFileName, outBuffer.String())
+	} else if outBuffer.Len() != 0 {
+		t.Fatalf("Expected no standard output, but got: %s", outBuffer)
 	}
-
-	actualStdErrResult := errBuffer.String()
 
 	stdErrGoldenFileName := tc.stdErrGoldenFileName
 	if verbose {
 		stdErrGoldenFileName += ".verbose"
 	}
-
-	expectedStdErrResult := readOptionalTestFile(t, stdErrGoldenFileName)
-	if expectedStdErrResult != actualStdErrResult {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expectedStdErrResult, actualStdErrResult)
-	}
+	diffTestdata(t, stdErrGoldenFileName, errBuffer.String())
 }
+
 func TestRunInjectCmd(t *testing.T) {
 	testCases := []injectCmd{
 		{
@@ -255,7 +254,7 @@ type injectFilePath struct {
 }
 
 func testInjectFilePath(t *testing.T, tc injectFilePath) {
-	in, err := read(tc.resourceFile)
+	in, err := read("testdata/" + tc.resourceFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -265,25 +264,17 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	if exitCode := runInjectCmd(in, errBuf, actual, newInjectOptions()); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
-
-	expected := readOptionalTestFile(t, tc.expectedFile)
-	if expected != actual.String() {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expected, actual.String())
-	}
+	diffTestdata(t, tc.expectedFile, actual.String())
 
 	stdErrFile := tc.stdErrFile
 	if verbose {
 		stdErrFile += ".verbose"
 	}
-
-	stdErr := readOptionalTestFile(t, stdErrFile)
-	if stdErr != errBuf.String() {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", stdErr, errBuf.String())
-	}
+	diffTestdata(t, stdErrFile, errBuf.String())
 }
 
 func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
-	in, err := read(resourceFolder)
+	in, err := read("testdata/" + resourceFolder)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
@@ -294,25 +285,19 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 
-	expected := readOptionalTestFile(t, filepath.Join(expectedFolder, "injected_nginx_redis.yaml"))
-	if expected != actual.String() {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", expected, actual.String())
-	}
+	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
+	diffTestdata(t, expectedFile, actual.String())
 
 	stdErrFileName := filepath.Join(expectedFolder, "injected_nginx_redis.stderr")
 	if verbose {
 		stdErrFileName += ".verbose"
 	}
-
-	stdErr := readOptionalTestFile(t, stdErrFileName)
-	if stdErr != errBuf.String() {
-		t.Errorf("Result mismatch.\nExpected: %s\nActual: %s", stdErr, errBuf.String())
-	}
+	diffTestdata(t, stdErrFileName, errBuf.String())
 }
 
 func TestInjectFilePath(t *testing.T) {
 	var (
-		resourceFolder = filepath.Join("testdata", "inject-filepath", "resources")
+		resourceFolder = filepath.Join("inject-filepath", "resources")
 		expectedFolder = filepath.Join("inject-filepath", "expected")
 	)
 
@@ -368,14 +353,14 @@ func TestWalk(t *testing.T) {
 	defer os.RemoveAll(tmpFolderRoot)
 
 	var (
-		data  = []byte(readOptionalTestFile(t, "inject_gettest_deployment.bad.input.yml"))
+		data  = []byte(readTestdata(t, "inject_gettest_deployment.bad.input.yml"))
 		file1 = filepath.Join(tmpFolderRoot, "root.txt")
 		file2 = filepath.Join(tmpFolderData, "data.txt")
 	)
-	if err := ioutil.WriteFile(file1, data, 0666); err != nil {
+	if err := ioutil.WriteFile(file1, data, 0644); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if err := ioutil.WriteFile(file2, data, 0666); err != nil {
+	if err := ioutil.WriteFile(file2, data, 0644); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 

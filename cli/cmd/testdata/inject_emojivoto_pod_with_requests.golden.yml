@@ -67,6 +67,9 @@ spec:
       requests:
         cpu: 110m
         memory: 100Mi
+      limits:
+        cpu: 160m
+        memory: 150Mi
     securityContext:
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError

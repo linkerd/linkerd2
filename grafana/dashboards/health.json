@@ -1261,6 +1261,118 @@
       }
     },
     {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Clients/Servers</span>\n</div>",
+      "gridPos": {
+        "h": 2.2,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 625,
+      "links": [],
+      "mode": "html",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44.2
+      },
+      "id": 90,
+      "panels": [],
+      "title": "",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 45.2
+      },
+      "id": 622,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(http_server_requests_total{job=\"linkerd-controller\"}[30s])) by (component, method, code)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{component}}/{{method}}/{{code}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Server Request Rate",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "rps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -1271,7 +1383,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 36
+        "y": 45.2
       },
       "id": 12,
       "legend": {
@@ -1297,31 +1409,31 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P50 {{component}}/{{code}}",
+          "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 {{component}}/{{code}}",
+          "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P99 {{component}}/{{code}}",
+          "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
           "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "HTTP Latency",
+      "title": "HTTP Server Latency",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1359,12 +1471,376 @@
       }
     },
     {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 45.2
+      },
+      "id": 624,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "HTTP Server Response Size",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "decbytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 52.2
+      },
+      "id": 623,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(http_client_requests_total{job=\"linkerd-controller\"}[30s])) by (component, client, method, code)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{component}}/{{client}}/{{method}}/{{code}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Client Request Rate",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "rps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 52.2
+      },
+      "id": 570,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P50 {{component}}/{{client}}/{{method}}/{{code}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P95 {{component}}/{{client}}/{{method}}/{{code}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P99 {{component}}/{{client}}/{{method}}/{{code}}",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "HTTP Client Latency",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 52.2
+      },
+      "id": 621,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(http_client_in_flight_requests{job=\"linkerd-controller\"}) by (component, client)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{component}}/{{client}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Client In-Flight Requests",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 59.2
       },
       "id": 458,
       "panels": [],
@@ -1378,7 +1854,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 60.2
       },
       "id": 30,
       "links": [],
@@ -1398,7 +1874,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 46.2
+        "y": 62.400000000000006
       },
       "id": 6,
       "legend": {
@@ -1503,7 +1979,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 46.2
+        "y": 62.400000000000006
       },
       "id": 8,
       "legend": {
@@ -1601,7 +2077,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 46.2
+        "y": 62.400000000000006
       },
       "id": 14,
       "legend": {
@@ -1687,7 +2163,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53.2
+        "y": 69.4
       },
       "id": 515,
       "panels": [],
@@ -1700,7 +2176,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 54.2
+        "y": 70.4
       },
       "height": "1px",
       "id": 519,
@@ -1729,7 +2205,7 @@
         "multi": false,
         "name": "deployment",
         "options": [],
-        "query": "label_values(request_total{control_plane_component!=\"\"}, deployment)",
+        "query": "label_values(process_start_time_seconds{control_plane_component!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1769,7 +2245,7 @@
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(request_total{control_plane_ns!=\"\"},  control_plane_ns)",
+        "query": "label_values(process_start_time_seconds{control_plane_ns!=\"\"},  control_plane_ns)",
         "refresh": 2,
         "regex": "",
         "sort": 0,
@@ -1812,6 +2288,6 @@
   },
   "timezone": "",
   "title": "Linkerd Health",
-  "uid": "Og9nanzmk",
+  "uid": "linkerd-health",
   "version": 1
 }
