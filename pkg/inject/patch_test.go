@@ -1,6 +1,7 @@
-package injector
+package inject
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func TestPatch(t *testing.T) {
-	fixture := fake.NewFactory()
+	fixture := fake.NewFactory(filepath.Join("..", "..", "controller", "proxy-injector", "fake", "data"))
 
 	trustAnchors, err := fixture.Volume("inject-trust-anchors-volume-spec.yaml")
 	if err != nil {
@@ -44,15 +45,8 @@ func TestPatch(t *testing.T) {
 	actual.addVolumeRoot()
 	actual.addVolume(trustAnchors)
 	actual.addVolume(secrets)
-	actual.addPodLabels(map[string]string{
-		k8sPkg.ControllerNSLabel: controllerNamespace,
-	})
-	actual.addDeploymentLabels(map[string]string{
-		k8sPkg.ControllerNSLabel: controllerNamespace,
-	})
-	actual.addPodAnnotations(map[string]string{
-		k8sPkg.CreatedByAnnotation: createdBy,
-	})
+	actual.addPodLabel(k8sPkg.ControllerNSLabel, controllerNamespace)
+	actual.addPodAnnotation(k8sPkg.CreatedByAnnotation, createdBy)
 
 	expected := NewPatch()
 	expected.patchOps = []*patchOp{
@@ -62,13 +56,8 @@ func TestPatch(t *testing.T) {
 		{Op: "add", Path: patchPathVolumeRoot, Value: []*corev1.Volume{}},
 		{Op: "add", Path: patchPathVolume, Value: trustAnchors},
 		{Op: "add", Path: patchPathVolume, Value: secrets},
-		{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
-			k8sPkg.ControllerNSLabel: controllerNamespace,
-		}},
-		{Op: "add", Path: patchPathDeploymentLabels, Value: map[string]string{
-			k8sPkg.ControllerNSLabel: controllerNamespace,
-		}},
-		{Op: "add", Path: patchPathPodAnnotations, Value: map[string]string{k8sPkg.CreatedByAnnotation: createdBy}},
+		{Op: "add", Path: patchPathPodLabels + "/" + escapeKey(k8sPkg.ControllerNSLabel), Value: controllerNamespace},
+		{Op: "add", Path: patchPathPodAnnotations + "/" + escapeKey(k8sPkg.CreatedByAnnotation), Value: createdBy},
 	}
 
 	if !reflect.DeepEqual(actual, expected) {
