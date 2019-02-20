@@ -4,12 +4,12 @@ import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import Typography from '@material-ui/core/Typography';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _reduce from 'lodash/reduce';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { numericSort } from './util/Utils.js';
-import Typography from '@material-ui/core/Typography';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 
@@ -102,9 +102,9 @@ class Debug extends React.Component {
         {this.banner()}
         <Typography variant="h6">Endpoints</Typography>
         <Typography>
-        This table allow you to see Linkerd's service discovery state. It provides
+        This table allow you to see Linkerd&#39;s service discovery state. It provides
         debug information about the internal state of the
-        control-plane's proxy-api container. Note that this cache of service discovery
+        control-plane&#39;s proxy-api container. Note that this cache of service discovery
         information is populated on-demand via linkerd-proxy requests. No endpoints
         will be found  until a linkerd-proxy begins routing
         requests.
