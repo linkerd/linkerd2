@@ -21,7 +21,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "configmaps"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
 {{- if .Values.SingleNamespace }}
 - apiGroups: [""]
@@ -203,3 +203,22 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: controller
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+data:
+  {{- if .Values.GlobalConfig}}
+  global: |
+    {{.Values.GlobalConfig}}
+  {{- end}}
+  {{- if .Values.ProxyConfig}}
+  proxy: |
+    {{.Values.ProxyConfig}}
+  {{- end }}

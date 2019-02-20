@@ -23,7 +23,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "configmaps", "namespaces"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -256,6 +256,22 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
 status: {}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  global: |
+    {"linkerdNamespace":"linkerd"}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy:dev-undefined","pullPolicy":"IfNotPresent","registry":"gcr.io/linkerd-io"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init:dev-undefined","pullPolicy":"IfNotPresent","registry":"gcr.io/linkerd-io"},"apiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"}}
+
 ---
 ###
 ### Service Profile CRD

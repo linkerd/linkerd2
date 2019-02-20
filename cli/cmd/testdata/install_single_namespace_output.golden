@@ -19,7 +19,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers"]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "configmaps"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -255,6 +255,22 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
 status: {}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: controller
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  global: |
+    GlobalConfig
+  proxy: |
+    ProxyConfig
+
 ---
 ###
 ### Web
