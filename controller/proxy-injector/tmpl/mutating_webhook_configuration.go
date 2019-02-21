@@ -16,7 +16,7 @@ webhooks:
       path: "/"
     caBundle: {{ .CABundle }}
   rules:
-  - operations: [ "CREATE" ]
+  - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["apps", "extensions"]
     apiVersions: ["v1", "v1beta1", "v1beta2"]
     resources: ["deployments"]`
