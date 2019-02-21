@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -58,7 +59,7 @@ func NewServer(
 	controllerNamespace string,
 	singleNamespace bool,
 	reload bool,
-	apiClient pb.ApiClient,
+	apiClient public.APIClient,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
@@ -107,8 +108,10 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
+	server.router.GET("/debug", handler.handleIndex)
 	server.router.GET("/routes", handler.handleIndex)
 	server.router.GET("/profiles/new", handler.handleProfileDownload)
+
 	// add catch-all parameter to match all files in dir
 	server.router.GET("/dist/*filepath", mkStaticHandler(staticDir))
 
@@ -122,6 +125,7 @@ func NewServer(
 	server.router.GET("/api/services", handler.handleAPIServices)
 	server.router.GET("/api/tap", handler.handleAPITap)
 	server.router.GET("/api/routes", handler.handleAPITopRoutes)
+	server.router.GET("/api/endpoints", handler.handleAPIEndpoints)
 
 	// grafana proxy
 	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)
