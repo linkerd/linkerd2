@@ -1,3 +1,21 @@
+## stable-2.2.1
+
+This stable release polishes some of the CLI help text and fixes two issues that
+came up since the stable-2.2.0 release.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Full release notes**:
+
+* CLI
+  * Fixed handling of kubeconfig server urls that include paths
+  * Updated the description of the `--proxy-auto-inject` flag to indicate that
+    it is no longer experimental
+  * Updated the `profile` help text to match the other commands
+  * Added the "ep" alias for the `endpoints` command
+* Controller
+  * Stopped logging an error when a route doesn't specify a timeout
+
 ## edge-19-2.4
 
 * CLI
