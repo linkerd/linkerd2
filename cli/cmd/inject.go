@@ -100,7 +100,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, globa
 }
 
 func (resourceTransformerInject) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
-	conf, err := inject.NewResourceConfig(bytes)
+	conf, err := inject.NewResourceConfig(bytes, nil)
 	if err != nil {
 		return bytes, nil, err
 	}

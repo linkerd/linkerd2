@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ type objMeta struct {
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 }
 
+// ResourceConfig contains both the raw (bytes) and parsed information for a given workload
 type ResourceConfig struct {
 	bytes           []byte
 	obj             interface{}
@@ -56,19 +58,23 @@ type ResourceConfig struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(bytes []byte) (*ResourceConfig, error) {
+func NewResourceConfig(bytes []byte, request *admissionv1beta1.AdmissionRequest) (*ResourceConfig, error) {
 	conf := &ResourceConfig{
 		bytes:     bytes,
 		k8sLabels: map[string]string{},
 	}
-	// Unmarshal the object enough to read the Kind field
-	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
-		return nil, err
+	if request != nil {
+		conf.meta = metaV1.TypeMeta{Kind: request.Kind.Kind}
+		conf.om = objMeta{metaV1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
+	} else {
+		if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
+			return nil, err
+		}
+		if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
+			return nil, err
+		}
 	}
-	// retrieve the `metadata/name` field for reporting
-	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
-		return nil, err
-	}
+
 	return conf, nil
 }
 
