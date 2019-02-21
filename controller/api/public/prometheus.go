@@ -138,9 +138,14 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 
 	// kick off asynchronous queries: request count queries + 3 latency queries
 	for pt, requestQueryTemplate := range requestQueryTemplates {
-		go func(typ promType, template string) {
-			query := fmt.Sprintf(template, labels, timeWindow, groupBy)
+		var query string
+		if pt == promTCPConnections {
+			query = fmt.Sprintf(requestQueryTemplate, labels, groupBy)
+		} else {
+			query = fmt.Sprintf(requestQueryTemplate, labels, timeWindow, groupBy)
+		}
 
+		go func(typ promType, template string) {
 			resultVector, err := s.queryProm(ctx, query)
 
 			resultChan <- promResult{
