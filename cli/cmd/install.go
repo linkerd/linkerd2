@@ -23,6 +23,8 @@ import (
 )
 
 type installConfig struct {
+	stage string
+
 	Namespace                   string
 	ControllerImage             string
 	WebImage                    string
@@ -71,18 +73,12 @@ type installOptions struct {
 }
 
 const (
+	admin = "admin"
+	user  = "user"
+
 	prometheusProxyOutboundCapacity = 10000
 	defaultControllerReplicas       = 1
 	defaultHAControllerReplicas     = 3
-
-	nsTemplateName             = "templates/namespace.yaml"
-	controllerTemplateName     = "templates/controller.yaml"
-	webTemplateName            = "templates/web.yaml"
-	prometheusTemplateName     = "templates/prometheus.yaml"
-	grafanaTemplateName        = "templates/grafana.yaml"
-	serviceprofileTemplateName = "templates/serviceprofile.yaml"
-	caTemplateName             = "templates/ca.yaml"
-	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
 func newInstallOptions() *installOptions {
@@ -100,13 +96,30 @@ func newInstallOptions() *installOptions {
 
 func newCmdInstall() *cobra.Command {
 	options := newInstallOptions()
-
 	cmd := &cobra.Command{
-		Use:   "install [flags]",
-		Short: "Output Kubernetes configs to install Linkerd",
-		Long:  "Output Kubernetes configs to install Linkerd.",
+		Use:       "install [admin|user] [flags]",
+		Args:      cobra.OnlyValidArgs,
+		ValidArgs: []string{"admin", "user"},
+		Short:     "Output Kubernetes configs to install Linkerd",
+		Long: `Output Kubernetes configs to install Linkerd.
+
+This command provides Kubernetes configs necessary to install the Linkerd
+control-plane.`,
+		Example: `  # Default install.
+  linkerd install | kubectl apply -f -
+
+  # Installation may also be broken up into two stages by user privilege.
+  linkerd install admin | kubectl apply -f -
+  linkerd install user | kubectl apply -f -
+
+  # Install Linkerd into a non-default namespace.
+  linkerd install admin -l linkerdtest | kubectl apply -f -
+  linkerd install user -l linkerdtest | kubectl apply -f -
+
+  # Install Linkerd with only namespace-wide privileges.
+  linkerd install user --single-namespace -l myapp | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config, err := validateAndBuildConfig(options)
+			config, err := validateAndBuildConfig(args, options)
 			if err != nil {
 				return err
 			}
@@ -126,9 +139,18 @@ func newCmdInstall() *cobra.Command {
 	return cmd
 }
 
-func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
+func validateAndBuildConfig(args []string, options *installOptions) (*installConfig, error) {
 	if err := options.validate(); err != nil {
 		return nil, err
+	}
+
+	if len(args) > 1 {
+		return nil, fmt.Errorf("only zero or one argument permitted, received: %s", args)
+	}
+	stage := ""
+	if len(args) == 1 {
+		// this is guaranteed to be a valid stage via `cobra.OnlyValidArgs`
+		stage = args[0]
 	}
 
 	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
@@ -155,6 +177,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}
 
 	return &installConfig{
+		stage:                       stage,
 		Namespace:                   controlPlaneNamespace,
 		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
@@ -197,14 +220,27 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		{Name: nsTemplateName},
-		{Name: controllerTemplateName},
-		{Name: serviceprofileTemplateName},
-		{Name: webTemplateName},
-		{Name: prometheusTemplateName},
-		{Name: grafanaTemplateName},
-		{Name: caTemplateName},
-		{Name: proxyInjectorTemplateName},
+	}
+
+	if config.stage == "" || config.stage == admin {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/namespace.yaml"},
+			{Name: "templates/controller-admin.yaml"},
+			{Name: "templates/serviceprofile.yaml"},
+			{Name: "templates/prometheus-admin.yaml"},
+			{Name: "templates/ca-admin.yaml"},
+			{Name: "templates/proxy-injector-admin.yaml"},
+		}...)
+	}
+	if config.stage == "" || config.stage == user {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/controller-user.yaml"},
+			{Name: "templates/web.yaml"},
+			{Name: "templates/prometheus-user.yaml"},
+			{Name: "templates/grafana.yaml"},
+			{Name: "templates/ca-user.yaml"},
+			{Name: "templates/proxy-injector-user.yaml"},
+		}...)
 	}
 
 	// Read templates into bytes

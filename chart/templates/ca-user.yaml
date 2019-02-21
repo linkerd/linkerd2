@@ -1,7 +1,7 @@
-{{ if .Values.EnableTLS }}
+{{ if .Values.EnableTLS -}}
 ---
 ###
-### CA
+### CA (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
@@ -9,14 +9,13 @@ apiVersion: v1
 metadata:
   name: linkerd-ca
   namespace: {{.Values.Namespace}}
+{{- if .Values.SingleNamespace}}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-ca
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -35,21 +34,20 @@ rules:
   resources: ["secrets"]
   verbs: ["create", "update"]
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-ca
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  kind: Role
   name: linkerd-{{.Values.Namespace}}-ca
 subjects:
 - kind: ServiceAccount
   name: linkerd-ca
   namespace: {{.Values.Namespace}}
+{{- end}}
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -99,4 +97,4 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
-{{ end -}}
+{{- end }}

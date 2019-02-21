@@ -17,7 +17,7 @@ required = [
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b" # cobra has no release tags at time of writing
+  revision = "7547e83b2d85fd1893c7d76916f67689d761fecb" # cobra has no release tags at time of writing
 
 [[constraint]]
   name = "github.com/containernetworking/cni"

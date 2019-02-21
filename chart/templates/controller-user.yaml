@@ -1,6 +1,6 @@
 ---
 ###
-### Controller
+### Controller (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
@@ -8,14 +8,13 @@ apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: {{.Values.Namespace}}
+{{- if .Values.SingleNamespace}}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-controller
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -24,34 +23,27 @@ rules:
   resources: ["jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
-{{- if .Values.SingleNamespace }}
 - apiGroups: [""]
   resources: ["namespaces"]
   resourceNames: ["{{.Values.Namespace}}"]
   verbs: ["list", "get", "watch"]
-{{- else }}
-- apiGroups: ["linkerd.io"]
-  resources: ["serviceprofiles"]
-  verbs: ["list", "get", "watch"]
-{{- end }}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-controller
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  kind: Role
   name: linkerd-{{.Values.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
   namespace: {{.Values.Namespace}}
+{{- end}}
 ---
 kind: Service
 apiVersion: v1

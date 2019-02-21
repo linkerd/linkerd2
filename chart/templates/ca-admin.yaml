@@ -1,0 +1,43 @@
+{{ if .Values.EnableTLS -}}
+{{ if not .Values.SingleNamespace -}}
+---
+###
+### CA (cluster-wide components)
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-ca
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [{{.Values.TLSTrustAnchorConfigMapName}}]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Values.Namespace}}-ca
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-{{.Values.Namespace}}-ca
+subjects:
+- kind: ServiceAccount
+  name: linkerd-ca
+  namespace: {{.Values.Namespace}}
+{{- end }}
+{{- end }}

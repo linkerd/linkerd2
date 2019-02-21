@@ -11,7 +11,7 @@ func TestRender(t *testing.T) {
 	// value to facilitate testing.
 	defaultControlPlaneNamespace := controlPlaneNamespace
 	defaultOptions := newInstallOptions()
-	defaultConfig, err := validateAndBuildConfig(defaultOptions)
+	defaultConfig, err := validateAndBuildConfig([]string{}, defaultOptions)
 	if err != nil {
 		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRender(t *testing.T) {
 
 	haOptions := newInstallOptions()
 	haOptions.highAvailability = true
-	haConfig, _ := validateAndBuildConfig(haOptions)
+	haConfig, _ := validateAndBuildConfig([]string{}, haOptions)
 	haConfig.UUID = defaultConfig.UUID
 
 	haWithOverridesOptions := newInstallOptions()
@@ -89,19 +89,19 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
+	haWithOverridesConfig, _ := validateAndBuildConfig([]string{}, haWithOverridesOptions)
 	haWithOverridesConfig.UUID = defaultConfig.UUID
 
 	noInitContainerOptions := newInstallOptions()
 	noInitContainerOptions.noInitContainer = true
-	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
+	noInitContainerConfig, _ := validateAndBuildConfig([]string{}, noInitContainerOptions)
 	noInitContainerConfig.UUID = defaultConfig.UUID
 
 	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
 	noInitContainerWithProxyAutoInjectOptions.tls = "optional"
-	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
+	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig([]string{}, noInitContainerWithProxyAutoInjectOptions)
 	noInitContainerWithProxyAutoInjectConfig.UUID = defaultConfig.UUID
 
 	testCases := []struct {

@@ -1,18 +1,16 @@
 ---
+###
+### Control-plane namespace (cluster-wide components)
+###
+---
 kind: Namespace
 apiVersion: v1
 metadata:
   name: linkerd
 ---
 ###
-### Controller
+### Controller (cluster-wide components)
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: linkerd
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -22,9 +20,6 @@ rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
-- apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
-  verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
@@ -42,6 +37,149 @@ roleRef:
   name: linkerd-linkerd-controller
 subjects:
 - kind: ServiceAccount
+  name: linkerd-controller
+  namespace: linkerd
+---
+###
+### Service Profile CRD (cluster-wide components)
+###
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required:
+          - routes
+          properties:
+            retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
+              properties:
+                minRetriesPerSecond:
+                  type: integer
+                retryRatio:
+                  type: number
+                ttl:
+                  type: string
+            routes:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - condition
+                properties:
+                  name:
+                    type: string
+                  timeout:
+                    type: string
+                  condition:
+                    type: object
+                    minProperties: 1
+                    properties:
+                      method:
+                        type: string
+                      pathRegex:
+                        type: string
+                      all:
+                        type: array
+                        items:
+                          type: object
+                      any:
+                        type: array
+                        items:
+                          type: object
+                      not:
+                        type: object
+                  responseClasses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      properties:
+                        isFailure:
+                          type: boolean
+                        condition:
+                          type: object
+                          properties:
+                            status:
+                              type: object
+                              minProperties: 1
+                              properties:
+                                min:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                                max:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                            all:
+                              type: array
+                              items:
+                                type: object
+                            any:
+                              type: array
+                              items:
+                                type: object
+                            not:
+                              type: object
+---
+###
+### Prometheus (cluster-wide components)
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd
+
+
+---
+###
+### Controller (namespace-wide components)
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-controller
   namespace: linkerd
 ---
@@ -250,115 +388,9 @@ data:
     {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"dev-undefined","identityContext":null}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
-
 ---
 ###
-### Service Profile CRD
-###
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: serviceprofiles.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-spec:
-  group: linkerd.io
-  version: v1alpha1
-  scope: Namespaced
-  names:
-    plural: serviceprofiles
-    singular: serviceprofile
-    kind: ServiceProfile
-    shortNames:
-    - sp
-  validation:
-    openAPIV3Schema:
-      properties:
-        spec:
-          required:
-          - routes
-          properties:
-            retryBudget:
-              required:
-              - minRetriesPerSecond
-              - retryRatio
-              - ttl
-              type: object
-              properties:
-                minRetriesPerSecond:
-                  type: integer
-                retryRatio:
-                  type: number
-                ttl:
-                  type: string
-            routes:
-              type: array
-              items:
-                type: object
-                required:
-                - name
-                - condition
-                properties:
-                  name:
-                    type: string
-                  timeout:
-                    type: string
-                  condition:
-                    type: object
-                    minProperties: 1
-                    properties:
-                      method:
-                        type: string
-                      pathRegex:
-                        type: string
-                      all:
-                        type: array
-                        items:
-                          type: object
-                      any:
-                        type: array
-                        items:
-                          type: object
-                      not:
-                        type: object
-                  responseClasses:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                      - condition
-                      properties:
-                        isFailure:
-                          type: boolean
-                        condition:
-                          type: object
-                          properties:
-                            status:
-                              type: object
-                              minProperties: 1
-                              properties:
-                                min:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                                max:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                            all:
-                              type: array
-                              items:
-                                type: object
-                            any:
-                              type: array
-                              items:
-                                type: object
-                            not:
-                              type: object
----
-###
-### Web
+### Web (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
@@ -492,34 +524,12 @@ spec:
 status: {}
 ---
 ###
-### Prometheus
+### Prometheus (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-prometheus
-subjects:
-- kind: ServiceAccount
   name: linkerd-prometheus
   namespace: linkerd
 ---
@@ -745,7 +755,7 @@ data:
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
 ---
 ###
-### Grafana
+### Grafana (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
@@ -943,4 +953,5 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+
 ---

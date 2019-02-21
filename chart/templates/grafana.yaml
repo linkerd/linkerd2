@@ -1,6 +1,6 @@
 ---
 ###
-### Grafana
+### Grafana (namespace-wide components)
 ###
 ---
 kind: ServiceAccount

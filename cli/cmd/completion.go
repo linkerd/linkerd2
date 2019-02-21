@@ -34,7 +34,7 @@ func newCmdCompletion() *cobra.Command {
 		Short:     "Output shell completion code for the specified shell (bash or zsh)",
 		Long:      "Output shell completion code for the specified shell (bash or zsh).",
 		Example:   example,
-		Args:      cobra.ExactArgs(1),
+		Args:      cobra.ExactValidArgs(1),
 		ValidArgs: []string{"bash", "zsh"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out, err := getCompletion(args[0], cmd.Parent())
@@ -60,6 +60,7 @@ func getCompletion(sh string, parent *cobra.Command) (string, error) {
 	case "zsh":
 		err = parent.GenZshCompletion(&buf)
 	default:
+		// we should never get here, as it's checked by cobra.ExactValidArgs
 		err = errors.New("unsupported shell type (must be bash or zsh): " + sh)
 	}
 

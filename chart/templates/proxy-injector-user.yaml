@@ -1,7 +1,7 @@
-{{ if .Values.ProxyAutoInjectEnabled }}
+{{ if .Values.ProxyAutoInjectEnabled -}}
 ---
 ###
-### Proxy Injector
+### Proxy Injector (namespace-wide components)
 ###
 ---
 kind: Deployment
@@ -70,32 +70,6 @@ apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: {{.Values.Namespace}}
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
-rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
-subjects:
-- kind: ServiceAccount
-  name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
-  apiGroup: ""
-roleRef:
-  kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
-  apiGroup: rbac.authorization.k8s.io
 ---
 kind: Service
 apiVersion: v1

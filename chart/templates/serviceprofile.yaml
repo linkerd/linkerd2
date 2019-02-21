@@ -1,7 +1,7 @@
-{{- if not .Values.SingleNamespace }}
+{{ if not .Values.SingleNamespace -}}
 ---
 ###
-### Service Profile CRD
+### Service Profile CRD (cluster-wide components)
 ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -104,4 +104,4 @@ spec:
                                 type: object
                             not:
                               type: object
-{{- end }}
+{{- end}}

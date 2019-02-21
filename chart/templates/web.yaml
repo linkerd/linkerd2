@@ -1,6 +1,6 @@
 ---
 ###
-### Web
+### Web (namespace-wide components)
 ###
 ---
 kind: ServiceAccount

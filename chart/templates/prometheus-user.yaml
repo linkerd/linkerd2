@@ -1,6 +1,6 @@
 ---
 ###
-### Prometheus
+### Prometheus (namespace-wide components)
 ###
 ---
 kind: ServiceAccount
@@ -8,34 +8,32 @@ apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: {{.Values.Namespace}}
+{{- if .Values.SingleNamespace}}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-prometheus
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-prometheus
-  {{- if .Values.SingleNamespace}}
   namespace: {{.Values.Namespace}}
-  {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  kind: Role
   name: linkerd-{{.Values.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
   name: linkerd-prometheus
   namespace: {{.Values.Namespace}}
+{{- end}}
 ---
 kind: Service
 apiVersion: v1

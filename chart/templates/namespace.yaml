@@ -1,5 +1,9 @@
 {{ if not .Values.SingleNamespace -}}
 ---
+###
+### Control-plane namespace (cluster-wide components)
+###
+---
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -8,5 +12,4 @@ metadata:
   annotations:
     {{.Values.ProxyInjectAnnotation}}: {{.Values.ProxyInjectDisabled}}
   {{- end }}
-{{ end -}}
-
+{{- end}}
