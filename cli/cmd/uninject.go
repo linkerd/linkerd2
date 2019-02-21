@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 )
 
 type resourceTransformerUninject struct{}
@@ -18,16 +15,16 @@ type resourceTransformerUninject struct{}
 type resourceTransformerUninjectSilent struct{}
 
 // UninjectYAML processes resource definitions and outputs them after uninjection in out
-func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, options *injectOptions) error {
-	return ProcessYAML(in, out, report, options, resourceTransformerUninject{})
+func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) error {
+	return ProcessYAML(in, out, report, globalConfig, proxyConfig, resourceTransformerUninject{})
 }
 
-func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
-	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerUninject{})
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
+	return transformInput(inputs, errWriter, outWriter, globalConfig, proxyConfig, resourceTransformerUninject{})
 }
 
-func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *injectOptions) int {
-	return transformInput(inputs, errWriter, outWriter, options, resourceTransformerUninjectSilent{})
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
+	return transformInput(inputs, errWriter, outWriter, globalConfig, proxyConfig, resourceTransformerUninjectSilent{})
 }
 
 func newCmdUninject() *cobra.Command {
@@ -57,7 +54,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil)
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil, nil)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -66,51 +63,43 @@ sub-folders, or coming from stdin.`,
 	return cmd
 }
 
-func (rt resourceTransformerUninject) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
-	conf := &resourceConfig{}
-	output, reports, err := conf.parse(bytes, options, rt)
-	if output != nil || err != nil {
-		return output, reports, err
+func (resourceTransformerUninject) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
+	conf, err := inject.NewResourceConfig(bytes)
+	if err != nil {
+		return bytes, nil, err
+	}
+	if err := conf.Parse(globalConfig); err != nil {
+		return bytes, []inject.Report{}, err
 	}
 
-	report := injectReport{
-		kind: strings.ToLower(conf.meta.Kind),
-		name: conf.om.Name,
+	report := inject.NewReport(conf)
+
+	output, err := conf.Uninject(&report)
+	if err != nil {
+		return nil, nil, err
+	}
+	if output == nil {
+		output = bytes
+		report.UnsupportedResource = true
 	}
 
-	// If we don't uninject anything into the pod template then output the
-	// original serialization of the original object. Otherwise, output the
-	// serialization of the modified object.
-	output = bytes
-	if conf.podSpec != nil {
-		uninjectPodSpec(conf.podSpec, &report)
-		uninjectObjectMeta(conf.objectMeta)
-		var err error
-		output, err = yaml.Marshal(conf.obj)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		report.unsupportedResource = true
-	}
-
-	return output, []injectReport{report}, nil
+	return output, []inject.Report{report}, nil
 }
 
-func (rt resourceTransformerUninjectSilent) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
-	return resourceTransformerUninject{}.transform(bytes, options)
+func (resourceTransformerUninjectSilent) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
+	return resourceTransformerUninject{}.transform(bytes, globalConfig, proxyConfig)
 }
 
-func (resourceTransformerUninject) generateReport(uninjectReports []injectReport, output io.Writer) {
+func (resourceTransformerUninject) generateReport(reports []inject.Report, output io.Writer) {
 	// leading newline to separate from yaml output on stdout
 	output.Write([]byte("\n"))
 
-	for _, r := range uninjectReports {
-		if r.sidecar {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.kind, r.name)))
+	for _, r := range reports {
+		if r.Sidecar {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.Kind, r.Name)))
 		} else {
-			if r.kind != "" {
-				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.kind, r.name)))
+			if r.Kind != "" {
+				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
 				output.Write([]byte(fmt.Sprintf("document missing \"kind\" field, skipped\n")))
 			}
@@ -121,63 +110,5 @@ func (resourceTransformerUninject) generateReport(uninjectReports []injectReport
 	output.Write([]byte("\n"))
 }
 
-func (resourceTransformerUninjectSilent) generateReport(uninjectReports []injectReport, output io.Writer) {
-}
-
-// Given a PodSpec, update the PodSpec in place with the sidecar
-// and init-container uninjected
-func uninjectPodSpec(t *corev1.PodSpec, report *injectReport) {
-	initContainers := []corev1.Container{}
-	for _, container := range t.InitContainers {
-		if container.Name != k8s.InitContainerName {
-			initContainers = append(initContainers, container)
-		} else {
-			report.sidecar = true
-		}
-	}
-	t.InitContainers = initContainers
-
-	containers := []corev1.Container{}
-	for _, container := range t.Containers {
-		if container.Name != k8s.ProxyContainerName {
-			containers = append(containers, container)
-		}
-	}
-	t.Containers = containers
-
-	volumes := []corev1.Volume{}
-	for _, volume := range t.Volumes {
-		// TODO: move those strings to constants
-		if volume.Name != k8s.TLSTrustAnchorVolumeName && volume.Name != k8s.TLSSecretsVolumeName {
-			volumes = append(volumes, volume)
-		}
-	}
-	t.Volumes = volumes
-}
-
-func uninjectObjectMeta(t *metav1.ObjectMeta) {
-	newAnnotations := make(map[string]string)
-	for key, val := range t.Annotations {
-		if key != k8s.CreatedByAnnotation &&
-			key != k8s.ProxyVersionAnnotation &&
-			key != k8s.IdentityModeAnnotation {
-			newAnnotations[key] = val
-		}
-	}
-	t.Annotations = newAnnotations
-
-	labels := make(map[string]string)
-	for key, val := range t.Labels {
-		keep := true
-		for _, label := range k8s.InjectedLabels {
-			if key == label {
-				keep = false
-				break
-			}
-		}
-		if keep {
-			labels[key] = val
-		}
-	}
-	t.Labels = labels
+func (resourceTransformerUninjectSilent) generateReport(reports []inject.Report, output io.Writer) {
 }
