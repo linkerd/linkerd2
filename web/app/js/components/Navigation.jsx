@@ -1,6 +1,7 @@
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
+import BuildIcon from '@material-ui/icons/Build';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
 import Divider from '@material-ui/core/Divider';
@@ -230,6 +231,7 @@ class NavigationBase extends React.Component {
             { this.menuItem("/routes", "Top Routes", <Icon className={classNames("fas fa-random", classes.shrinkIcon)} />) }
             { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
+            { this.menuItem("/debug", "Debug", <BuildIcon className={classes.shrinkIcon} />) }
           </MenuList>
 
           <Divider />
