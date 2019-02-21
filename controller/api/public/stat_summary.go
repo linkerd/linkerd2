@@ -353,17 +353,22 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 		for _, sample := range result.vec {
 			resource := metricToKey(req, sample.Metric, groupBy)
 
-			if basicStats[resource] == nil {
-				basicStats[resource] = &pb.BasicStats{}
+			addBasicStats := func() {
+				if basicStats[resource] == nil {
+					basicStats[resource] = &pb.BasicStats{}
+				}
 			}
-			if tcpStats[resource] == nil {
-				tcpStats[resource] = &pb.TcpStats{}
+			addTCPStats := func() {
+				if tcpStats[resource] == nil {
+					tcpStats[resource] = &pb.TcpStats{}
+				}
 			}
 
 			value := extractSampleValue(sample)
 
 			switch result.prom {
 			case promRequests:
+				addBasicStats()
 				switch string(sample.Metric[model.LabelName("classification")]) {
 				case "success":
 					basicStats[resource].SuccessCount += value
@@ -375,16 +380,22 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 					basicStats[resource].TlsRequestCount += value
 				}
 			case promLatencyP50:
+				addBasicStats()
 				basicStats[resource].LatencyMsP50 = value
 			case promLatencyP95:
+				addBasicStats()
 				basicStats[resource].LatencyMsP95 = value
 			case promLatencyP99:
+				addBasicStats()
 				basicStats[resource].LatencyMsP99 = value
 			case promTCPConnections:
+				addTCPStats()
 				tcpStats[resource].OpenConnections = value
 			case promTCPReadBytes:
+				addTCPStats()
 				tcpStats[resource].ReadBytesTotal = value
 			case promTCPWriteBytes:
+				addTCPStats()
 				tcpStats[resource].WriteBytesTotal = value
 			}
 
