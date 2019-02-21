@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -198,7 +199,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		Namespace:                   controlPlaneNamespace,
 		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:             "prom/prometheus:v2.7.1",
+		PrometheusImage:             inject.PrometheusImage,
 		PrometheusVolumeName:        "data",
 		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		GrafanaVolumeName:           "data",
@@ -309,17 +310,18 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 
 	injectOptions := newInjectOptions()
-	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
-
-	// Special case for linkerd-proxy running in the Prometheus pod.
-	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
 
 	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
 	// Once Kubernetes supports sidecar containers, this may be removed, as that
 	// will guarantee the proxy is running prior to control-plane startup.
 	injectOptions.ignoreOutboundPorts = append(injectOptions.ignoreOutboundPorts, 443)
 
-	return InjectYAML(&buf, w, ioutil.Discard, injectOptions)
+	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
+
+	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
+	globalConfig, proxyConfig := injectOptionsToConfigs(injectOptions)
+
+	return InjectYAML(&buf, w, ioutil.Discard, globalConfig, proxyConfig)
 }
 
 func (options *installOptions) validate() error {
