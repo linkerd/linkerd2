@@ -14,7 +14,7 @@ import _isNil from 'lodash/isNil';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
-const TcpStatColumns = [
+const tcpStatColumns = [
   {
     title: "Connections",
     dataIndex: "tcp.openConnections",
@@ -157,7 +157,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
 
   let columns = [nameColumn];
   if (isTcpTable) {
-    columns = columns.concat(TcpStatColumns);
+    columns = columns.concat(tcpStatColumns);
   } else {
     columns = columns.concat(httpStatColumns);
     columns = columns.concat(grafanaColumn);
