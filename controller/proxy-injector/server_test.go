@@ -76,7 +76,7 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestNewWebhookServer(t *testing.T) {
-	rootCA, err := tls.GenerateRootCA("Test CA")
+	rootCA, err := tls.GenerateRootCAWithDefaults("Test CA")
 	if err != nil {
 		log.Fatalf("failed to create root CA: %s", err)
 	}

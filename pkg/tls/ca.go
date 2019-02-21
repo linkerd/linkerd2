@@ -23,16 +23,13 @@ type CA struct {
 	// validity.
 	validity time.Duration
 
-	// clockSkewAllocance is the maximum supported clock skew. Everything that
+	// clockSkewAllowance is the maximum supported clock skew. Everything that
 	// processes the certificates must have a system clock that is off by no
 	// more than this allowance in either direction.
-	clockSkewAllocance time.Duration
+	clockSkewAllowance time.Duration
 
-	// PrivateKey of the CA.
-	PrivateKey *ecdsa.PrivateKey
-
-	// Crt is the certificate and trust chain.
-	Crt Crt
+	// cred contains the CA's credentials.
+	cred Cred
 
 	// nextSerialNumber is the serial number of the next certificate to issue.
 	// Serial numbers must not be reused.
@@ -45,142 +42,144 @@ type CA struct {
 	nextSerialNumber uint64
 }
 
-// Crt is a certificate and trust chain.
-type Crt struct {
-	Certificate *x509.Certificate
-	TrustChain  []*x509.Certificate
+const (
+	// DefaultValidity configures certificate validity.
+	//
+	// Initially all certificates will be valid for one year.
+	//
+	// TODO: Shorten the validity duration of CA and end-entity certificates downward.
+	DefaultValidity = (24 * 365) * time.Hour
+
+	// DefaultClockSkewAllowance indicates the maximum allowed difference in clocks
+	// in the network.
+	//
+	// Allow an two hours of clock skew.
+	//
+	// TODO: decrease the default value of this and make it tunable.
+	//
+	// TODO: Reconsider how this interacts with the similar logic in the webpki
+	// verifier; since both are trying to account for clock skew, there is
+	// somewhat of an over-correction.
+	DefaultClockSkewAllowance = 2 * time.Hour
+)
+
+// SetClockSkewAllowance sets the maximum allowable time for a node's clock to skew.
+func (ca *CA) SetClockSkewAllowance(csa time.Duration) {
+	ca.clockSkewAllowance = csa
 }
 
-type EndEntity struct {
-	PrivateKey *ecdsa.PrivateKey
-	Crt
+// SetValidity sets the lifetime for cettificates issued by this CA.
+func (ca *CA) SetValidity(v time.Duration) {
+	ca.validity = v
 }
 
-func newCA() *CA {
+// NewCA initializes a new CA with default settings.
+func NewCA(cred Cred) *CA {
 	return &CA{
-		// Initially all certificates will be valid for one year. TODO: Shorten the
-		// validity duration of CA and end-entity certificates downward.
-		validity: (24 * 365) * time.Hour,
-
-		// Allow an hour of clock skew. TODO: decrease the default value of this
-		// and make it tunable. TODO: Reconsider how this interacts with the
-		// similar logic in the webpki verifier; since both are trying to account
-		// for clock skew, there is somewhat of an over-correction.
-		clockSkewAllocance: 1 * time.Hour,
-
-		nextSerialNumber: 1,
+		nextSerialNumber:   1,
+		clockSkewAllowance: DefaultClockSkewAllowance,
+		validity:           DefaultValidity,
+		cred:               cred,
 	}
 }
 
-// WithClockSkewAllowance sets the maximum allowable time for a node's clock to skew.
-func (ca *CA) WithClockSkewAllowance(v time.Duration) *CA {
-	ca.validity = v
-	return ca
-}
-
-// WithValidity sets the lifetime for ceritificates issued by this CA.
-func (ca *CA) WithValidity(v time.Duration) *CA {
-	ca.validity = v
-	return ca
-}
-
-func ReadCA(keyPath, crtPath string) (ca *CA, err error) {
-	ca = newCA()
-
-	ca.PrivateKey, err = ReadKeyPEM(keyPath)
+// GenerateRootCAWithDefaults generates a new root CA with default settings.
+func GenerateRootCAWithDefaults(name string) (ca *CA, err error) {
+	// Generate a new root key.
+	key, err := GenerateKey()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	ca.Crt, err = ReadCrtPEM(crtPath)
-	return
+	return CreateRootCA(key, name, DefaultClockSkewAllowance, DefaultValidity)
 }
 
-// GenerateRootCA is the only way to create a CA.
-func GenerateRootCA(name string) (ca *CA, err error) {
-	ca = newCA()
-
-	ca.PrivateKey, err = generateKeyPair()
-	if err != nil {
-		return
-	}
-
-	t := ca.createTemplate(&ca.PrivateKey.PublicKey)
+// CreateRootCA configures a new root CA with the given settings
+func CreateRootCA(key *ecdsa.PrivateKey, name string, clockSkewAllowance, validity time.Duration) (*CA, error) {
+	// Create a self-signed certificate with the new root key.
+	t := createTemplate(1, &key.PublicKey, DefaultClockSkewAllowance, DefaultValidity)
 	t.Subject = pkix.Name{CommonName: name}
 	t.IsCA = true
 	t.MaxPathLen = -1
 	t.BasicConstraintsValid = true
 	t.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	der, err := x509.CreateCertificate(rand.Reader, &t, &t, ca.PrivateKey.Public(), ca.PrivateKey)
-	if err != nil {
-		return
-	}
-	crt, err := x509.ParseCertificate(der)
-	if err != nil {
-		return
-	}
-
-	ca.Crt.Certificate = crt
-	return
-}
-
-// GenerateIntermediary creates a new certificate that is valid for the
-// given DNS name, generating a new keypair for it.
-func (ca *CA) GenerateIntermediary(name string, maxPathLen int) (*CA, error) {
-	privateKey, err := generateKeyPair()
+	der, err := x509.CreateCertificate(rand.Reader, t, t, key.Public(), key)
 	if err != nil {
 		return nil, err
 	}
 
-	t := ca.createTemplate(&privateKey.PublicKey)
+	c, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, err
+	}
+	// crt has an empty TrustChain because it's at the root.
+	crt := Crt{Certificate: c}
+
+	ca := NewCA(Cred{Crt: &crt, PrivateKey: key})
+	ca.SetClockSkewAllowance(clockSkewAllowance)
+	ca.SetValidity(validity)
+	return ca, nil
+}
+
+// GenerateCA generates a new intermdiary CA.
+func (ca *CA) GenerateCA(name string, maxPathLen int) (*CA, error) {
+	key, err := GenerateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	t := ca.createTemplate(&key.PublicKey)
 	t.Subject = pkix.Name{CommonName: name}
 	t.IsCA = true
 	t.MaxPathLen = maxPathLen
+	t.MaxPathLenZero = true // 0-values are actually 0
 	t.BasicConstraintsValid = true
 	t.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	crtb, err := x509.CreateCertificate(rand.Reader, &t, ca.Crt.Certificate, privateKey.Public(), ca.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	crt, err := x509.ParseCertificate(crtb)
+	crt, err := ca.cred.CreateCrt(t)
 	if err != nil {
 		return nil, err
 	}
 
-	ica := newCA()
-	ica.validity = ca.validity
-	ica.clockSkewAllocance = ca.clockSkewAllocance
-	ica.PrivateKey = privateKey
-	ica.Crt.Certificate = crt
-	ica.Crt.TrustChain = append(ca.Crt.TrustChain, ca.Crt.Certificate)
-	return ica, nil
+	ica := CA{
+		validity:           ca.validity,
+		clockSkewAllowance: ca.clockSkewAllowance,
+		cred:               Cred{Crt: crt, PrivateKey: key},
+	}
+	return &ica, nil
 }
 
-// GenerateEndEntity creates a new certificate that is valid for the
+// GenerateEndEntityCred creates a new certificate that is valid for the
 // given DNS name, generating a new keypair for it.
-func (ca *CA) GenerateEndEntity(dnsName string) (*EndEntity, error) {
-	pk, err := generateKeyPair()
+func (ca *CA) GenerateEndEntityCred(dnsName string) (*Cred, error) {
+	key, err := GenerateKey()
 	if err != nil {
 		return nil, err
 	}
-	crt, err := ca.SignEndEntity(&x509.CertificateRequest{
+
+	csr := x509.CertificateRequest{
 		Subject:   pkix.Name{CommonName: dnsName},
 		DNSNames:  []string{dnsName},
-		PublicKey: &pk.PublicKey,
-	})
-	return &EndEntity{PrivateKey: pk, Crt: crt}, err
+		PublicKey: &key.PublicKey,
+	}
+	crt, err := ca.SignEndEntityCrt(&csr)
+	if err != nil {
+		return nil, err
+	}
+
+	c := Cred{Crt: crt, PrivateKey: key}
+	return &c, nil
 }
 
-// SignEndEntity creates a new certificate that is valid for the
+// SignEndEntityCrt creates a new certificate that is valid for the
 // given DNS name, generating a new keypair for it.
-func (ca *CA) SignEndEntity(csr *x509.CertificateRequest) (Crt, error) {
+func (ca *CA) SignEndEntityCrt(csr *x509.CertificateRequest) (*Crt, error) {
 	pubkey, ok := csr.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return Crt{}, fmt.Errorf("CSR must contain an ECDSA public key: %+v", csr.PublicKey)
+		return nil, fmt.Errorf("CSR must contain an ECDSA public key: %+v", csr.PublicKey)
 	}
 
 	t := ca.createTemplate(pubkey)
-	t.Issuer = ca.Crt.Certificate.Subject
+	t.Issuer = ca.cred.Crt.Certificate.Subject
 	t.Subject = csr.Subject
 	t.Extensions = csr.Extensions
 	t.ExtraExtensions = csr.ExtraExtensions
@@ -188,25 +187,46 @@ func (ca *CA) SignEndEntity(csr *x509.CertificateRequest) (Crt, error) {
 	t.EmailAddresses = csr.EmailAddresses
 	t.IPAddresses = csr.IPAddresses
 	t.URIs = csr.URIs
+	return ca.cred.CreateCrt(t)
+}
 
-	crtb, err := x509.CreateCertificate(rand.Reader, &t, ca.Crt.Certificate, pubkey, ca.PrivateKey)
-	if err != nil {
-		return Crt{}, fmt.Errorf("Failed to create certificate: %s", err)
+// Certificate returns this CA's certificate.
+func (ca *CA) Certificate() *x509.Certificate {
+	return ca.cred.Crt.Certificate
+}
+
+// CertPool returns a CertPool containing this CA's certificate and trust chain.
+func (ca *CA) CertPool() *x509.CertPool {
+	p := x509.NewCertPool()
+	p.AddCert(ca.cred.Crt.Certificate)
+	for _, c := range ca.cred.Crt.TrustChain {
+		p.AddCert(c)
 	}
+	return p
+}
 
-	crt, err := x509.ParseCertificate(crtb)
-	if err != nil {
-		return Crt{}, fmt.Errorf("Failed to parse certificate: %s", err)
-	}
-
-	chain := append(ca.Crt.TrustChain, ca.Crt.Certificate)
-	return Crt{Certificate: crt, TrustChain: chain}, nil
+// TrustChain returns this CA's trust chain from root to leaf.
+func (ca *CA) TrustChain() []*x509.Certificate {
+	return ca.cred.Crt.TrustChain
 }
 
 // createTemplate returns a certificate t for a non-CA certificate with
 // no subject name, no subjectAltNames. The t can then be modified into
 // a (root) CA t or an end-entity t by the caller.
-func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
+func (ca *CA) createTemplate(pubkey *ecdsa.PublicKey) *x509.Certificate {
+	c := createTemplate(ca.nextSerialNumber, pubkey, ca.clockSkewAllowance, ca.validity)
+	ca.nextSerialNumber++
+	return c
+}
+
+// createTemplate returns a certificate t for a non-CA certificate with
+// no subject name, no subjectAltNames. The t can then be modified into
+// a (root) CA t or an end-entity t by the caller.
+func createTemplate(
+	serialNumber uint64,
+	pubkey *ecdsa.PublicKey,
+	clockSkewAllowance, validity time.Duration,
+) *x509.Certificate {
 	// ECDSA is used instead of RSA because ECDSA key generation is
 	// straightforward and fast whereas RSA key generation is extremely slow
 	// and error-prone.
@@ -220,17 +240,14 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 	// anyway since a P-256 scalar is only 256 bits long.
 	const SignatureAlgorithm = x509.ECDSAWithSHA256
 
-	serialNumber := big.NewInt(int64(ca.nextSerialNumber))
-	ca.nextSerialNumber++
-
 	notBefore := time.Now()
 
-	return x509.Certificate{
-		SerialNumber:       serialNumber,
+	return &x509.Certificate{
+		SerialNumber:       big.NewInt(int64(serialNumber)),
 		SignatureAlgorithm: SignatureAlgorithm,
-		NotBefore:          notBefore.Add(-ca.clockSkewAllocance),
-		NotAfter:           notBefore.Add(ca.validity).Add(ca.clockSkewAllocance),
-		PublicKey:          publicKey,
+		NotBefore:          notBefore.Add(-clockSkewAllowance),
+		NotAfter:           notBefore.Add(validity).Add(clockSkewAllowance),
+		PublicKey:          pubkey,
 		KeyUsage:           x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
@@ -239,6 +256,8 @@ func (ca *CA) createTemplate(publicKey *ecdsa.PublicKey) x509.Certificate {
 	}
 }
 
-func generateKeyPair() (*ecdsa.PrivateKey, error) {
+// GenerateKey creates a new P-256 ECDSA private key from the default random
+// source.
+func GenerateKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }

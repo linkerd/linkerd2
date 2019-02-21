@@ -37,7 +37,7 @@ type CertificateController struct {
 // NewCertificateController initializes a CertificateController and its
 // internal Certificate Authority.
 func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
-	ca, err := tls.GenerateRootCA("Cluster-local Managed Pod CA")
+	ca, err := tls.GenerateRootCAWithDefaults("Cluster-local Managed Pod CA")
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data: map[string]string{
-			pkgK8s.TLSTrustAnchorFileName: string(tls.EncodeCertificatePEM(c.ca.Crt.Certificate)),
+			pkgK8s.TLSTrustAnchorFileName: tls.EncodeCertificatesPEM(c.ca.Certificate()),
 		},
 	}
 
@@ -141,12 +141,12 @@ func (c *CertificateController) syncSecret(key string) error {
 
 	dnsName := identity.ToDNSName()
 	secretName := identity.ToSecretName()
-	endEntity, err := c.ca.GenerateEndEntity(dnsName)
+	cred, err := c.ca.GenerateEndEntityCred(dnsName)
 	if err != nil {
 		log.Errorf("Failed to issue certificate for %s", dnsName)
 		return err
 	}
-	pk, err := tls.EncodePrivateKeyP8(endEntity.PrivateKey)
+	pk, err := cred.EncodePrivateKeyP8()
 	if err != nil {
 		log.Errorf("Failed to issue certificate for %s", dnsName)
 		return err
@@ -154,7 +154,7 @@ func (c *CertificateController) syncSecret(key string) error {
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: secretName},
 		Data: map[string][]byte{
-			pkgK8s.TLSCertFileName:       endEntity.Crt.Certificate.Raw,
+			pkgK8s.TLSCertFileName:       cred.Crt.Certificate.Raw,
 			pkgK8s.TLSPrivateKeyFileName: pk,
 		},
 	}
