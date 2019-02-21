@@ -1,3 +1,42 @@
+## edge-19-2.4
+
+* CLI
+  * Implemented `--proxy-cpu-limit` and `--proxy-memory-limit` for setting the
+    proxy resources limits (`--proxy-cpu` and `--proxy-memory` were deprecated in
+    favor of `proxy-cpu-request` and `proxy-memory-request`) (thanks @TwinProduction!)
+  * Updated the `inject` and `uninject` subcommands to issue warnings when
+    resources lack a `Kind` property (thanks @Pothulapati!)
+  * Unhid the `install-cni` command and its flags, and tweaked their descriptions
+  * Fixed handling of kubeconfig server urls that include paths
+  * Updated the description of the `--proxy-auto-inject` flag to indicate that
+    it is no longer experimental
+  * Updated the `profile` help text to match the other commands
+  * Added the "ep" alias for the `endpoints` command (also @Pothulapati!)
+  * Added a validator for the `--proxy-log-level` flag
+  * Fixed sporadic (and harmless) race condition error in `linkerd check`
+* Controller
+  * Instrumented clients in the control plane connecting to Kubernetes, thus
+    providing better visibility for diagnosing potential problems with those
+    connections
+  * Stopped logging an error when a route doesn't specify a timeout
+  * Renamed the "linkerd-proxy-api" service to "linkerd-destination"
+  * Bumped Prometheus to version 2.7.1 and Grafana to version 5.4.3
+* Web UI
+  * Modified the Grafana variable queries to use a TCP-based metric, so that
+    if there is only TCP traffic then the dropdowns don't end up empty
+  * Ensured that all the tooltips in Grafana displaying the series are shared
+    across all the graphs
+* Internals
+  * Added the flags `-update` and `-pretty-diff` to tests to allow overwriting
+    fixtures and to print the full text of the fixtures upon mismatches
+  * Introduced golangci-lint tooling, using `.golangci.yml` to centralize
+    the config
+  * Added a `-cover` parameter to track code coverage in go tests
+    (more info in TEST.md)
+  * Added integration tests for `single-namespace`
+  * Renamed a function in a test that was shadowing a go built-in function
+    (thanks @huynq0911!)
+
 ## stable-2.2.0
 
 This stable release introduces automatic request retries and timeouts, and
