@@ -384,7 +384,7 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 			PullPolicy: options.imagePullPolicy,
 			Registry:   options.dockerRegistry,
 		},
-		ApiPort: &config.Port{
+		DestinationApiPort: &config.Port{
 			Port: uint32(options.destinationAPIPort),
 		},
 		ControlPort: &config.Port{
