@@ -23,6 +23,7 @@ fi
       $bindir/dep ensure -vendor-only -v
     fi
     target="target/cli/${host_platform}/linkerd"
-    CGO_ENABLED=0 go build -o $target -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
+    go generate ./cli
+    CGO_ENABLED=0 go build -o $target -tags prod -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
     echo "$target"
 )
