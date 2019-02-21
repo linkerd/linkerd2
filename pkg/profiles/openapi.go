@@ -53,7 +53,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.Se
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 	}
 
 	routes := make([]*sp.RouteSpec, 0)

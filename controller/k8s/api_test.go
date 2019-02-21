@@ -19,7 +19,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 	k8sResults := []runtime.Object{}
 
 	for _, config := range resourceConfigs {
-		obj, err := toRuntimeObject(config)
+		obj, err := k8s.ToRuntimeObject(config)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -573,7 +573,7 @@ status:
 		}
 
 		for _, exp := range expectations {
-			k8sInputObj, err := toRuntimeObject(exp.k8sResInput)
+			k8sInputObj, err := k8s.ToRuntimeObject(exp.k8sResInput)
 			if err != nil {
 				t.Fatalf("could not decode yml: %s", err)
 			}

@@ -57,7 +57,7 @@ func TestBuildResolver(t *testing.T) {
 	t.Run("Doesn't build a resolver if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolver, err := buildResolver(dsnZone, "linkerd", k8sAPI, false)
+			resolver, err := buildResolver(dsnZone, "linkerd", k8sAPI)
 			if err == nil {
 				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolver: %v", dsnZone, resolver)
 			}
@@ -158,7 +158,7 @@ func TestEndpoints(t *testing.T) {
 	lis := bufconn.Listen(1024 * 1024)
 	gRPCServer, err := NewServer(
 		"fake-addr", "", "controller-ns",
-		false, false, false, k8sAPI, nil,
+		false, false, k8sAPI, nil,
 	)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)

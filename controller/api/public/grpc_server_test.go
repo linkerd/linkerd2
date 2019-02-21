@@ -405,8 +405,6 @@ status:
 				nil,
 				k8sAPI,
 				"linkerd",
-				[]string{},
-				false,
 			)
 
 			k8sAPI.Sync()
@@ -508,8 +506,6 @@ metadata:
 				nil,
 				k8sAPI,
 				"linkerd",
-				[]string{},
-				false,
 			)
 
 			k8sAPI.Sync()
@@ -559,8 +555,6 @@ func TestEndpoints(t *testing.T) {
 				discoveryClient,
 				k8sAPI,
 				"linkerd",
-				[]string{},
-				false,
 			)
 
 			rsp, err := fakeGrpcServer.Endpoints(context.TODO(), exp.req)

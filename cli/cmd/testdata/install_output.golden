@@ -110,7 +110,6 @@ spec:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
         - -controller-namespace=Namespace
-        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -137,7 +136,6 @@ spec:
         - destination
         - -addr=:123
         - -controller-namespace=Namespace
-        - -single-namespace=false
         - -enable-tls=true
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
@@ -165,7 +163,6 @@ spec:
       - args:
         - tap
         - -controller-namespace=Namespace
-        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -444,7 +441,6 @@ spec:
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -uuid=UUID
         - -controller-namespace=Namespace
-        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy
@@ -1111,7 +1107,6 @@ spec:
       - args:
         - ca
         - -controller-namespace=Namespace
-        - -single-namespace=false
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy

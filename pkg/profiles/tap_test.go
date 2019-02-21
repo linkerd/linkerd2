@@ -77,7 +77,7 @@ func TestTapToServiceProfile(t *testing.T) {
 	}
 
 	expectedServiceProfile := sp.ServiceProfile{
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc.cluster.local",
 			Namespace: namespace,

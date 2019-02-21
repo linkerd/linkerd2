@@ -264,8 +264,6 @@ func NewServer(
 	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
-	ignoredNamespaces []string,
-	singleNamespace bool,
 ) *http.Server {
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
@@ -274,8 +272,6 @@ func NewServer(
 			discoveryClient,
 			k8sAPI,
 			controllerNamespace,
-			ignoredNamespaces,
-			singleNamespace,
 		),
 	}
 
