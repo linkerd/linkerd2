@@ -19,12 +19,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
-	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
-	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
-)
-
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission
 // requests by injecting sidecar container spec into the pod spec during pod
 // creation.
@@ -32,13 +26,12 @@ type Webhook struct {
 	client              kubernetes.Interface
 	deserializer        runtime.Decoder
 	controllerNamespace string
-	resources           *WebhookResources
 	noInitContainer     bool
 	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -48,7 +41,6 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		client:              client,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
-		resources:           resources,
 		noInitContainer:     noInitContainer,
 		tlsEnabled:          tlsEnabled,
 	}, nil
