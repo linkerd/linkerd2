@@ -115,6 +115,9 @@ const styles = theme => {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
     },
+    helpMenuItem: {
+      outline: "none",
+    },
     shrinkIcon: {
       fontSize: "18px",
       paddingLeft: "3px",
@@ -237,21 +240,21 @@ class NavigationBase extends React.Component {
           <Divider />
 
           <MenuList>
-            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank">
+            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
-            <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
+            <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon><EmailIcon /></ListItemIcon>
               <ListItemText primary="Join the Mailing List" />
             </ListItem>
 
-            <ListItem component="a" href="https://slack.linkerd.io" target="_blank">
+            <ListItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon>{slackIcon}</ListItemIcon>
               <ListItemText primary="Join us on Slack" />
             </ListItem>
 
-            <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
+            <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon>{githubIcon}</ListItemIcon>
               <ListItemText primary="File an Issue" />
             </ListItem>
