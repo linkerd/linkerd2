@@ -88,7 +88,7 @@ func (cred *Cred) CreateCrt(template *x509.Certificate) (*Crt, error) {
 		rand.Reader,
 		template,
 		cred.Crt.Certificate,
-		cred.PrivateKey.Public(),
+		template.PublicKey,
 		cred.PrivateKey,
 	)
 	if err != nil {

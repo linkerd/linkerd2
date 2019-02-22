@@ -1,6 +1,9 @@
 package tls
 
-import "testing"
+import (
+	"crypto/ecdsa"
+	"testing"
+)
 
 func newRoot(t *testing.T) CA {
 	root, err := GenerateRootCAWithDefaults(t.Name())
@@ -17,6 +20,11 @@ func TestCrtRoundtrip(t *testing.T) {
 	cred, err := root.GenerateEndEntityCred("endentity.test")
 	if err != nil {
 		t.Fatalf("failed to create end entity cred: %s", err)
+	}
+
+	pub := cred.Crt.Certificate.PublicKey.(*ecdsa.PublicKey)
+	if pub.X.Cmp(cred.PrivateKey.X) != 0 || pub.Y.Cmp(cred.PrivateKey.Y) != 0 {
+		t.Fatal("Cert's public key does not match private key")
 	}
 
 	crt, err := DecodePEMCrt(cred.Crt.EncodeCertificateAndTrustChainPEM())
