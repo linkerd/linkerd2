@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -56,9 +57,9 @@ func (crt *Crt) ExtractRaw() [][]byte {
 	return chain
 }
 
-// EncodeCertificateAndTrustChainPEM emits a certificate and trust chain as a
+// EncodePEM emits a certificate and trust chain as a
 // series of PEM-encoded certificates from leaf to root.
-func (crt *Crt) EncodeCertificateAndTrustChainPEM() string {
+func (crt *Crt) EncodePEM() string {
 	buf := bytes.Buffer{}
 	encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: crt.Certificate.Raw})
 
@@ -77,13 +78,13 @@ func (crt *Crt) EncodeCertificatePEM() string {
 }
 
 // EncodePrivateKeyPEM emits the private key as PEM-encoded text.
-func (cred *Cred) EncodePrivateKeyPEM() (string, error) {
-	der, err := x509.MarshalECPrivateKey(cred.PrivateKey)
+func (cred *Cred) EncodePrivateKeyPEM() string {
+	b, err := x509.MarshalECPrivateKey(cred.PrivateKey)
 	if err != nil {
-		return "", err
+		panic(fmt.Sprintf("Invalid elliptic curve: %s", err))
 	}
 
-	return string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})), nil
+	return string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b}))
 }
 
 // EncodePrivateKeyP8 encodes the provided key to the PKCS#8 binary form.

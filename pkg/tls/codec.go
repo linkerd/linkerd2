@@ -68,6 +68,21 @@ func DecodePEMCertificates(txt string) (certs []*x509.Certificate, err error) {
 	return
 }
 
+// DecodePEMCertPool parses a string containing PE-encoded certificates into a CertPool.
+func DecodePEMCertPool(txt string) (pool *x509.CertPool, err error) {
+	certs, err := DecodePEMCertificates(txt)
+	if err != nil {
+		return
+	}
+
+	pool = x509.NewCertPool()
+	for _, c := range certs {
+		pool.AddCert(c)
+	}
+
+	return
+}
+
 func decodeCertificatePEM(crtb []byte) (*x509.Certificate, []byte, error) {
 	block, crtb := pem.Decode(crtb)
 	if block == nil {

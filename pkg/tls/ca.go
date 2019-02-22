@@ -16,7 +16,7 @@ type (
 	// Issuing certificates concurrently is not supported.
 	CA struct {
 		// cred contains the CA's credentials.
-		cred Cred
+		Cred Cred
 
 		// Validity configures the NotBefore and NotAfter parameters for certificates
 		// issued by this CA.
@@ -76,14 +76,6 @@ const (
 	DefaultClockSkewAllowance = 2 * time.Hour
 )
 
-// DefaultValidity creates the default certificate validity
-func DefaultValidity() Validity {
-	return Validity{
-		Lifetime:           DefaultLifetime,
-		ClockSkewAllowance: DefaultClockSkewAllowance,
-	}
-}
-
 // NewCA initializes a new CA with default settings.
 func NewCA(cred Cred, validity Validity) *CA {
 	return &CA{cred, validity, uint64(1)}
@@ -134,7 +126,7 @@ func GenerateRootCAWithDefaults(name string) (*CA, error) {
 		return nil, err
 	}
 
-	return CreateRootCA(name, key, DefaultValidity())
+	return CreateRootCA(name, key, Validity{})
 }
 
 // GenerateCA generates a new intermdiary CA.
@@ -151,7 +143,7 @@ func (ca *CA) GenerateCA(name string, validity Validity, maxPathLen int) (*CA, e
 	t.MaxPathLenZero = true // 0-values are actually 0
 	t.BasicConstraintsValid = true
 	t.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	crt, err := ca.cred.SignCrt(t)
+	crt, err := ca.Cred.SignCrt(t)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +183,7 @@ func (ca *CA) SignEndEntityCrt(csr *x509.CertificateRequest) (*Crt, error) {
 	}
 
 	t := ca.createTemplate(pubkey)
-	t.Issuer = ca.cred.Crt.Certificate.Subject
+	t.Issuer = ca.Cred.Crt.Certificate.Subject
 	t.Subject = csr.Subject
 	t.Extensions = csr.Extensions
 	t.ExtraExtensions = csr.ExtraExtensions
@@ -200,12 +192,7 @@ func (ca *CA) SignEndEntityCrt(csr *x509.CertificateRequest) (*Crt, error) {
 	t.IPAddresses = csr.IPAddresses
 	t.URIs = csr.URIs
 
-	return ca.cred.SignCrt(t)
-}
-
-// Crt returns this CA's certificate and trust chain.
-func (ca *CA) Crt() *Crt {
-	return &ca.cred.Crt
+	return ca.Cred.SignCrt(t)
 }
 
 // createTemplate returns a certificate t for a non-CA certificate with
@@ -256,7 +243,15 @@ func createTemplate(
 
 // Window returns the time window for which a certificate should be valid.
 func (v *Validity) Window(t time.Time) (time.Time, time.Time) {
-	start := t.Add(-v.ClockSkewAllowance)
-	end := t.Add(v.Lifetime).Add(v.ClockSkewAllowance)
+	life := v.Lifetime
+	if life == 0 {
+		life = DefaultLifetime
+	}
+	skew := v.ClockSkewAllowance
+	if skew == 0 {
+		skew = DefaultClockSkewAllowance
+	}
+	start := t.Add(-skew)
+	end := t.Add(life).Add(skew)
 	return start, end
 }

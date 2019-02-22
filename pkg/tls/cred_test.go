@@ -14,7 +14,7 @@ func newRoot(t *testing.T) CA {
 
 func TestCrtRoundtrip(t *testing.T) {
 	root := newRoot(t)
-	rootTrust := root.Crt().CertPool()
+	rootTrust := root.Cred.Crt.CertPool()
 
 	cred, err := root.GenerateEndEntityCred("endentity.test")
 	if err != nil {
@@ -25,7 +25,7 @@ func TestCrtRoundtrip(t *testing.T) {
 		t.Fatal("Cert's public key does not match private key")
 	}
 
-	crt, err := DecodePEMCrt(cred.Crt.EncodeCertificateAndTrustChainPEM())
+	crt, err := DecodePEMCrt(cred.Crt.EncodePEM())
 	if err != nil {
 		t.Fatalf("Failed to decode PEM Crt: %s", err)
 	}
@@ -46,8 +46,8 @@ func TestCredEncodeCeritificateAndTrustChain(t *testing.T) {
 		t.Fatalf("failed to create end entity cred")
 	}
 
-	expected := EncodeCertificatesPEM(cred.Crt.Certificate, root.Crt().Certificate)
-	if cred.EncodeCertificateAndTrustChainPEM() != expected {
+	expected := EncodeCertificatesPEM(cred.Crt.Certificate, root.Cred.Crt.Certificate)
+	if cred.EncodePEM() != expected {
 		t.Errorf("Encoded Certificate And TrustChain does not match expected ouput")
 	}
 }
