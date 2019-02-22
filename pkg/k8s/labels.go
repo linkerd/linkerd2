@@ -151,6 +151,12 @@ var (
 	// MountPathTLSIdentityKey is the path at which the TLS identity key file is
 	// mounted
 	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
+
+	// MountPathGlobalConfig is the path at which the global config file is mounted
+	MountPathGlobalConfig = MountPathBase + "/config/global"
+
+	// MountPathProxyConfig is the path at which the global config file is mounted
+	MountPathProxyConfig = MountPathBase + "/config/proxy"
 )
 
 // CreatedByAnnotationValue returns the value associated with

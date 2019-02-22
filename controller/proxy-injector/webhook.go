@@ -1,8 +1,13 @@
 package injector
 
 import (
+	"bytes"
+	"io/ioutil"
+
+	"github.com/golang/protobuf/jsonpb"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -89,26 +94,26 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %v", string(request.Object.Raw))
 
-	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
-	globalConfig := &pb.GlobalConfig{
-		LinkerdNamespace: "linkerd",
-		CniEnabled:       false,
-		IdentityContext:  nil,
+	jsonUnmarshaler := jsonpb.Unmarshaler{}
+
+	globalConfigJSON, err := ioutil.ReadFile(k8s.MountPathGlobalConfig)
+	log.Debugf("globalConfig (json): %v\n", string(globalConfigJSON))
+	if err != nil {
+		return nil, err
 	}
-	proxyConfig := &pb.ProxyConfig{
-		ProxyImage:              &pb.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent", Registry: "gcr.io/linkerd-io"},
-		ProxyInitImage:          &pb.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent", Registry: "gcr.io/linkerd-io"},
-		ApiPort:                 &pb.Port{Port: 8086},
-		ControlPort:             &pb.Port{Port: 4190},
-		IgnoreInboundPorts:      []*pb.Port{},
-		IgnoreOutboundPorts:     []*pb.Port{},
-		InboundPort:             &pb.Port{Port: 4143},
-		MetricsPort:             &pb.Port{Port: 4191},
-		OutboundPort:            &pb.Port{Port: 4140},
-		Resource:                &pb.ResourceRequirements{RequestCpu: "100m", RequestMemory: "200Mi"},
-		ProxyUid:                2102,
-		LogLevel:                &pb.LogLevel{Level: "warn,linkerd2_proxy=info"},
-		DisableExternalProfiles: false,
+	globalConfig := &pb.GlobalConfig{}
+	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(globalConfigJSON), globalConfig); err != nil {
+		return nil, err
+	}
+
+	proxyConfigJSON, err := ioutil.ReadFile(k8s.MountPathProxyConfig)
+	log.Debugf("proxyConfig (json): %v\n", string(proxyConfigJSON))
+	if err != nil {
+		return nil, err
+	}
+	proxyConfig := &pb.ProxyConfig{}
+	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(proxyConfigJSON), proxyConfig); err != nil {
+		return nil, err
 	}
 
 	conf := inject.NewResourceConfig(globalConfig, proxyConfig)

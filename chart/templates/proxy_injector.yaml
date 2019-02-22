@@ -39,6 +39,9 @@ spec:
         ports:
         - name: proxy-injector
           containerPort: 8443
+        volumeMounts:
+        - name: config
+          mountPath: /var/linkerd-io/config
         livenessProbe:
           httpGet:
             path: /ping
@@ -57,6 +60,10 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
 ---
 kind: ServiceAccount
 apiVersion: v1
