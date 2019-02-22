@@ -31,7 +31,7 @@ func TestCrtRoundtrip(t *testing.T) {
 	}
 }
 
-func TestCredEncodeCeritificateAndTrustChain(t *testing.T) {
+func TestCredEncodeCertificateAndTrustChain(t *testing.T) {
 	root, err := GenerateRootCAWithDefaults("Test Root CA")
 	if err != nil {
 		t.Fatalf("failed to create CA: %s", err)

@@ -15,7 +15,7 @@ type (
 	// CA provides a certificate authority for TLS-enabled installs.
 	// Issuing certificates concurrently is not supported.
 	CA struct {
-		// cred contains the CA's credentials.
+		// Cred contains the CA's credentials.
 		Cred Cred
 
 		// Validity configures the NotBefore and NotAfter parameters for certificates
