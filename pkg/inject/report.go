@@ -20,9 +20,13 @@ type Report struct {
 // NewReport returns a new Report struct, initialized with the Kind and Name
 // from conf
 func NewReport(conf *ResourceConfig) Report {
+	var name string
+	if conf.objectMeta != nil {
+		name = conf.objectMeta.Name
+	}
 	return Report{
 		Kind: strings.ToLower(conf.meta.Kind),
-		Name: conf.om.Name,
+		Name: name,
 	}
 }
 
