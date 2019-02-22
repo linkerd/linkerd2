@@ -106,7 +106,7 @@ func CreateRootCA(
 	}
 
 	// The Crt has an empty TrustChain because it's at the root.
-	cred := Cred{Crt: Crt{Certificate: c}, PrivateKey: key}
+	cred := validCredOrPanic(key, Crt{Certificate: c})
 	ca := NewCA(cred, validity)
 	ca.nextSerialNumber++ // Because we've already created the root cert.
 	return ca, nil
@@ -148,8 +148,7 @@ func (ca *CA) GenerateCA(name string, validity Validity, maxPathLen int) (*CA, e
 		return nil, err
 	}
 
-	cred := Cred{Crt: *crt, PrivateKey: key}
-	return NewCA(cred, ca.Validity), nil
+	return NewCA(validCredOrPanic(key, *crt), ca.Validity), nil
 }
 
 // GenerateEndEntityCred creates a new certificate that is valid for the
@@ -170,7 +169,7 @@ func (ca *CA) GenerateEndEntityCred(dnsName string) (*Cred, error) {
 		return nil, err
 	}
 
-	c := Cred{Crt: *crt, PrivateKey: key}
+	c := validCredOrPanic(key, *crt)
 	return &c, nil
 }
 

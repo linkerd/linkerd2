@@ -21,10 +21,6 @@ func TestCrtRoundtrip(t *testing.T) {
 		t.Fatalf("failed to create end entity cred: %s", err)
 	}
 
-	if cred.check() {
-		t.Fatal("Cert's public key does not match private key")
-	}
-
 	crt, err := DecodePEMCrt(cred.Crt.EncodePEM())
 	if err != nil {
 		t.Fatalf("Failed to decode PEM Crt: %s", err)

@@ -11,19 +11,29 @@ import (
 	"io/ioutil"
 )
 
-// Cred is a container for a certificate, trust chain, and private key.
-type Cred struct {
-	PrivateKey *ecdsa.PrivateKey
-	Crt
-}
+type (
+	// Cred is a container for a certificate, trust chain, and private key.
+	Cred struct {
+		PrivateKey *ecdsa.PrivateKey
+		Crt
+	}
 
-// Crt is a container for a certificate and trust chain.
-//
-// The trust chain stores all issuer certificates from root at the head direct
-// issuer at the tail.
-type Crt struct {
-	Certificate *x509.Certificate
-	TrustChain  []*x509.Certificate
+	// Crt is a container for a certificate and trust chain.
+	//
+	// The trust chain stores all issuer certificates from root at the head direct
+	// issuer at the tail.
+	Crt struct {
+		Certificate *x509.Certificate
+		TrustChain  []*x509.Certificate
+	}
+)
+
+// validCredOrPanic creates a  Cred, panicking if the key does not match the certificate.
+func validCredOrPanic(k *ecdsa.PrivateKey, crt Crt) Cred {
+	if !certificateMatchesKey(crt.Certificate, k) {
+		panic("Cert's public key does not match private key")
+	}
+	return Cred{Crt: crt, PrivateKey: k}
 }
 
 // CertPool returns a CertPool containing this Crt.
@@ -92,10 +102,11 @@ func (cred *Cred) EncodePrivateKeyP8() ([]byte, error) {
 	return x509.MarshalPKCS8PrivateKey(cred.PrivateKey)
 }
 
-// check returns whether the key and certificate match.
-func (cred *Cred) check() bool {
-	pub := cred.Crt.Certificate.PublicKey.(*ecdsa.PublicKey)
-	return pub.X.Cmp(cred.PrivateKey.X) != 0 || pub.Y.Cmp(cred.PrivateKey.Y) != 0
+// certificateMatchesKey returns whether the key and certificate match.
+func certificateMatchesKey(c *x509.Certificate, k *ecdsa.PrivateKey) (ok bool) {
+	pub, ok := c.PublicKey.(*ecdsa.PublicKey)
+	ok = ok && pub.X.Cmp(k.X) == 0 && pub.Y.Cmp(k.Y) == 0
+	return
 }
 
 // SignCrt uses this Cred to sign a new certificate.
@@ -144,7 +155,9 @@ func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if !certificateMatchesKey(crt.Certificate, key) {
+		return nil, errors.New("tls: Public and private key do not match")
+	}
 	return &Cred{PrivateKey: key, Crt: *crt}, nil
 }
 
