@@ -36,7 +36,6 @@ message ProxyConfig {
 message Image {
   string image_name = 1;
   string pull_policy = 2;
-  string registry = 3;
 }
 
 message Port {

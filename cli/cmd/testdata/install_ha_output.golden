@@ -282,7 +282,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"identityContext":null}
   proxy: |
-    {"proxyImage":{"imageName":"proxy","pullPolicy":"IfNotPresent","registry":"gcr.io/linkerd-io"},"proxyInitImage":{"imageName":"proxy-init","pullPolicy":"IfNotPresent","registry":"gcr.io/linkerd-io"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"10m","requestMemory":"20Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy:dev-undefined","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init:dev-undefined","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"10m","requestMemory":"20Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 
 ---
 ###

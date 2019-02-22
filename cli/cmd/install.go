@@ -375,14 +375,12 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 
 	return &config.ProxyConfig{
 		ProxyImage: &config.Image{
-			ImageName:  k8s.ProxyImageName,
+			ImageName:  options.taggedProxyImage(),
 			PullPolicy: options.imagePullPolicy,
-			Registry:   options.dockerRegistry,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  k8s.ProxyInitImageName,
+			ImageName:  options.taggedProxyInitImage(),
 			PullPolicy: options.imagePullPolicy,
-			Registry:   options.dockerRegistry,
 		},
 		DestinationApiPort: &config.Port{
 			Port: uint32(options.destinationAPIPort),

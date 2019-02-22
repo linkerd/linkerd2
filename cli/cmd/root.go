@@ -13,7 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -280,8 +279,8 @@ const (
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
 		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/" + k8s.ProxyImageName,
-		initImage:               defaultDockerRegistry + "/" + k8s.ProxyInitImageName,
+		proxyImage:              defaultDockerRegistry + "/proxy",
+		initImage:               defaultDockerRegistry + "/proxy-init",
 		dockerRegistry:          defaultDockerRegistry,
 		imagePullPolicy:         "IfNotPresent",
 		inboundPort:             4143,
