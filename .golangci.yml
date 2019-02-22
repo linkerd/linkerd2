@@ -1,3 +1,5 @@
+run:
+  deadline: 5m
 issues:
   exclude-use-default: false
 linters:

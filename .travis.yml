@@ -22,10 +22,11 @@ jobs:
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.10.3"
+      go: "1.11.5"
       go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
+          - $HOME/.cache/go-build
           - target
           - vendor
       install:
@@ -36,7 +37,7 @@ jobs:
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
         - go test -cover -race -v ./...
-        - ./bin/lint
+        - ./bin/lint --verbose
 
     - language: node_js
       node_js:
@@ -116,7 +117,7 @@ jobs:
     - stage: integration-test
 
       language: go
-      go: "1.10.3"
+      go: "1.11.5"
       go_import_path: github.com/linkerd/linkerd2
       services:
         - docker
