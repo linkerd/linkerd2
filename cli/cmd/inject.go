@@ -28,15 +28,17 @@ type injectOptions struct {
 	*proxyConfigOptions
 }
 
-type resourceTransformerInject struct{}
-
-// InjectYAML processes resource definitions and outputs them after injection in out
-func InjectYAML(in io.Reader, out io.Writer, report io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) error {
-	return ProcessYAML(in, out, report, globalConfig, proxyConfig, resourceTransformerInject{})
+type resourceTransformerInject struct {
+	configs
 }
 
-func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
-	return transformInput(inputs, errWriter, outWriter, globalConfig, proxyConfig, resourceTransformerInject{})
+// InjectYAML processes resource definitions and outputs them after injection in out
+func InjectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
+	return ProcessYAML(in, out, report, resourceTransformerInject{conf})
+}
+
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerInject{conf})
 }
 
 func newInjectOptions() *injectOptions {
@@ -78,9 +80,9 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			globalConfig, proxyConfig := injectOptionsToConfigs(options)
+			conf := injectOptionsToConfigs(options)
 
-			exitCode := uninjectAndInject(in, stderr, stdout, globalConfig, proxyConfig)
+			exitCode := uninjectAndInject(in, stderr, stdout, conf)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -91,20 +93,17 @@ sub-folders, or coming from stdin.`,
 	return cmd
 }
 
-func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
+func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
 	var out bytes.Buffer
-	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, nil, nil); exitCode != 0 {
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, conf); exitCode != 0 {
 		return exitCode
 	}
-	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, globalConfig, proxyConfig)
+	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, conf)
 }
 
-func (resourceTransformerInject) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
-	conf, err := inject.NewResourceConfig(bytes, nil)
-	if err != nil {
-		return bytes, nil, err
-	}
-	patchJSON, reports, err := conf.Transform(globalConfig, proxyConfig)
+func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
+	conf := inject.NewResourceConfig(rt.global, rt.proxy)
+	patchJSON, reports, err := conf.PatchForYaml(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -229,7 +228,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 // TODO: this is just a temporary function to convert command-line options to GlobalConfig
 // and ProxyConfig, until we come up with an abstraction over those GRPC structs
-func injectOptionsToConfigs(options *injectOptions) (*pb.GlobalConfig, *pb.ProxyConfig) {
+func injectOptionsToConfigs(options *injectOptions) configs {
 	globalConfig := &pb.GlobalConfig{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
@@ -258,5 +257,5 @@ func injectOptionsToConfigs(options *injectOptions) (*pb.GlobalConfig, *pb.Proxy
 		LogLevel:                &pb.LogLevel{Level: options.proxyLogLevel},
 		DisableExternalProfiles: options.disableExternalProfiles,
 	}
-	return globalConfig, proxyConfig
+	return configs{globalConfig, proxyConfig}
 }

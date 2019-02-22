@@ -319,9 +319,9 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
 
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
-	globalConfig, proxyConfig := injectOptionsToConfigs(injectOptions)
+	pbConfig := injectOptionsToConfigs(injectOptions)
 
-	return InjectYAML(&buf, w, ioutil.Discard, globalConfig, proxyConfig)
+	return InjectYAML(&buf, w, ioutil.Discard, pbConfig)
 }
 
 func (options *installOptions) validate() error {

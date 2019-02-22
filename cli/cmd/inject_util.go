@@ -13,18 +13,23 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
+type configs struct {
+	global *pb.GlobalConfig
+	proxy  *pb.ProxyConfig
+}
+
 type resourceTransformer interface {
-	transform([]byte, *pb.GlobalConfig, *pb.ProxyConfig) ([]byte, []inject.Report, error)
+	transform([]byte) ([]byte, []inject.Report, error)
 	generateReport([]inject.Report, io.Writer)
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig, rt resourceTransformer) int {
+func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resourceTransformer) int {
 	postInjectBuf := &bytes.Buffer{}
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := ProcessYAML(input, postInjectBuf, reportBuf, globalConfig, proxyConfig, rt)
+		err := ProcessYAML(input, postInjectBuf, reportBuf, rt)
 		if err != nil {
 			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
 			return 1
@@ -43,7 +48,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, globalCo
 }
 
 // ProcessYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig, rt resourceTransformer) error {
+func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
@@ -59,7 +64,7 @@ func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, globalConfig *pb
 			return err
 		}
 
-		result, irs, err := rt.transform(bytes, globalConfig, proxyConfig)
+		result, irs, err := rt.transform(bytes)
 		if err != nil {
 			return err
 		}

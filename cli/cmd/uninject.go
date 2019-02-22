@@ -5,26 +5,29 @@ import (
 	"io"
 	"os"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/spf13/cobra"
 )
 
-type resourceTransformerUninject struct{}
+type resourceTransformerUninject struct {
+	configs
+}
 
-type resourceTransformerUninjectSilent struct{}
+type resourceTransformerUninjectSilent struct {
+	configs
+}
 
 // UninjectYAML processes resource definitions and outputs them after uninjection in out
-func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) error {
-	return ProcessYAML(in, out, report, globalConfig, proxyConfig, resourceTransformerUninject{})
+func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
+	return ProcessYAML(in, out, report, resourceTransformerUninject{conf})
 }
 
-func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
-	return transformInput(inputs, errWriter, outWriter, globalConfig, proxyConfig, resourceTransformerUninject{})
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{conf})
 }
 
-func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) int {
-	return transformInput(inputs, errWriter, outWriter, globalConfig, proxyConfig, resourceTransformerUninjectSilent{})
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{conf})
 }
 
 func newCmdUninject() *cobra.Command {
@@ -54,7 +57,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil, nil)
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, configs{nil, nil})
 			os.Exit(exitCode)
 			return nil
 		},
@@ -63,12 +66,9 @@ sub-folders, or coming from stdin.`,
 	return cmd
 }
 
-func (resourceTransformerUninject) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
-	conf, err := inject.NewResourceConfig(bytes, nil)
-	if err != nil {
-		return bytes, nil, err
-	}
-	if err := conf.Parse(globalConfig); err != nil {
+func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
+	conf := inject.NewResourceConfig(rt.global, rt.proxy)
+	if err := conf.ParseMetaAndYaml(bytes); err != nil {
 		return bytes, []inject.Report{}, err
 	}
 
@@ -86,8 +86,8 @@ func (resourceTransformerUninject) transform(bytes []byte, globalConfig *pb.Glob
 	return output, []inject.Report{report}, nil
 }
 
-func (resourceTransformerUninjectSilent) transform(bytes []byte, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []inject.Report, error) {
-	return resourceTransformerUninject{}.transform(bytes, globalConfig, proxyConfig)
+func (rt resourceTransformerUninjectSilent) transform(bytes []byte) ([]byte, []inject.Report, error) {
+	return resourceTransformerUninject{rt.configs}.transform(bytes)
 }
 
 func (resourceTransformerUninject) generateReport(reports []inject.Report, output io.Writer) {

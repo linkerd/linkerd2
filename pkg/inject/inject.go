@@ -12,8 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	appsV1 "k8s.io/api/apps/v1"
-	batchV1 "k8s.io/api/batch/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
@@ -45,9 +45,10 @@ type objMeta struct {
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 }
 
-// ResourceConfig contains both the raw (bytes) and parsed information for a given workload
+// ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	bytes           []byte
+	globalConfig    *pb.GlobalConfig
+	proxyConfig     *pb.ProxyConfig
 	obj             interface{}
 	om              objMeta
 	meta            metav1.TypeMeta
@@ -58,24 +59,12 @@ type ResourceConfig struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(bytes []byte, request *admissionv1beta1.AdmissionRequest) (*ResourceConfig, error) {
-	conf := &ResourceConfig{
-		bytes:     bytes,
-		k8sLabels: map[string]string{},
+func NewResourceConfig(globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) *ResourceConfig {
+	return &ResourceConfig{
+		globalConfig: globalConfig,
+		proxyConfig:  proxyConfig,
+		k8sLabels:    map[string]string{},
 	}
-	if request != nil {
-		conf.meta = metaV1.TypeMeta{Kind: request.Kind.Kind}
-		conf.om = objMeta{metaV1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
-	} else {
-		if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
-			return nil, err
-		}
-		if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
-			return nil, err
-		}
-	}
-
-	return conf, nil
 }
 
 // YamlMarshalObj returns the yaml for the workload in conf
@@ -83,15 +72,45 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.obj)
 }
 
-// Transform parses conf.bytes and (if pertinent) returns the json patch
+// PatchForYaml parses bytes and (if pertinent) returns the json patch
 // for injecting the init and proxy containers and all the necessary metadata.
 // It also returns a Report with the results of the injection.
-// Note that conf.bytes should only contain a single YAML (not multiple separated by ---)
-func (conf *ResourceConfig) Transform(globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) ([]byte, []Report, error) {
+// Note that bytes should only contain a single YAML (not multiple separated by ---)
+func (conf *ResourceConfig) PatchForYaml(bytes []byte) ([]byte, []Report, error) {
+	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
+		return nil, nil, err
+	}
+	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
+		return nil, nil, err
+	}
+	return conf.getPatch(bytes)
+}
+
+// ParseMetaAndYaml fills conf fields both the metatada and the workload contents
+func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) error {
+	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
+		return err
+	}
+	return conf.parse(bytes)
+}
+
+// PatchForAdmissionRequest parses request.ObjectRaw and (if pertinent) returns the json patch
+// for injecting the init and proxy containers and all the necessary metadata.
+func (conf *ResourceConfig) PatchForAdmissionRequest(request *admissionv1beta1.AdmissionRequest) ([]byte, error) {
+	conf.meta = metav1.TypeMeta{Kind: request.Kind.Kind}
+	conf.om = objMeta{metav1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
+	patch, _, err := conf.getPatch(request.Object.Raw)
+	return patch, err
+}
+
+func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
 	report := NewReport(conf)
 	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.om.Name)
 
-	if err := conf.Parse(globalConfig); err != nil {
+	if err := conf.parse(bytes); err != nil {
 		return nil, []Report{report}, err
 	}
 
@@ -113,11 +132,11 @@ func (conf *ResourceConfig) Transform(globalConfig *pb.GlobalConfig, proxyConfig
 			Name:                metaAccessor.GetName(),
 			Kind:                strings.ToLower(conf.meta.Kind),
 			Namespace:           "$" + PodNamespaceEnvVarName,
-			ControllerNamespace: globalConfig.GetLinkerdNamespace(),
+			ControllerNamespace: conf.globalConfig.GetLinkerdNamespace(),
 		}
 
-		if injectPodSpec(conf.podSpec, patch, identity, conf.dnsNameOverride, globalConfig, proxyConfig, &report) {
-			if err := conf.injectObjectMeta(conf.objectMeta, patch, globalConfig, proxyConfig, &report); err != nil {
+		if conf.injectPodSpec(patch, identity, &report) {
+			if err := conf.injectObjectMeta(conf.objectMeta, patch, &report); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -134,9 +153,8 @@ func (conf *ResourceConfig) Transform(globalConfig *pb.GlobalConfig, proxyConfig
 	return patchJSON, []Report{report}, nil
 }
 
-// Parse unmarshals conf.bytes and fills the other conf fields
-// (TODO: conf.bytes can't be a List resource, but I'll fix that soon)
-func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
+// TODO: bytes can't be a List resource, but I'll fix that soon)
+func (conf *ResourceConfig) parse(bytes []byte) error {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -164,11 +182,11 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 	switch conf.meta.Kind {
 	case "Deployment":
 		var deployment v1beta1.Deployment
-		if err := yaml.Unmarshal(conf.bytes, &deployment); err != nil {
+		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
 			return err
 		}
 
-		if deployment.Name == ControlPlanePodName && deployment.Namespace == globalConfig.GetLinkerdNamespace() {
+		if deployment.Name == ControlPlanePodName && deployment.Namespace == conf.globalConfig.GetLinkerdNamespace() {
 			conf.dnsNameOverride = LocalhostDNSNameOverride
 		}
 
@@ -179,7 +197,7 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 
 	case "ReplicationController":
 		var rc v1.ReplicationController
-		if err := yaml.Unmarshal(conf.bytes, &rc); err != nil {
+		if err := yaml.Unmarshal(bytes, &rc); err != nil {
 			return err
 		}
 
@@ -190,7 +208,7 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 
 	case "ReplicaSet":
 		var rs v1beta1.ReplicaSet
-		if err := yaml.Unmarshal(conf.bytes, &rs); err != nil {
+		if err := yaml.Unmarshal(bytes, &rs); err != nil {
 			return err
 		}
 
@@ -200,8 +218,8 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 		conf.objectMeta = &rs.Spec.Template.ObjectMeta
 
 	case "Job":
-		var job batchV1.Job
-		if err := yaml.Unmarshal(conf.bytes, &job); err != nil {
+		var job batchv1.Job
+		if err := yaml.Unmarshal(bytes, &job); err != nil {
 			return err
 		}
 
@@ -212,7 +230,7 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 
 	case "DaemonSet":
 		var ds v1beta1.DaemonSet
-		if err := yaml.Unmarshal(conf.bytes, &ds); err != nil {
+		if err := yaml.Unmarshal(bytes, &ds); err != nil {
 			return err
 		}
 
@@ -222,8 +240,8 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 		conf.objectMeta = &ds.Spec.Template.ObjectMeta
 
 	case "StatefulSet":
-		var statefulset appsV1.StatefulSet
-		if err := yaml.Unmarshal(conf.bytes, &statefulset); err != nil {
+		var statefulset appsv1.StatefulSet
+		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
 			return err
 		}
 
@@ -234,7 +252,7 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 
 	case "Pod":
 		var pod v1.Pod
-		if err := yaml.Unmarshal(conf.bytes, &pod); err != nil {
+		if err := yaml.Unmarshal(bytes, &pod); err != nil {
 			return err
 		}
 
@@ -249,7 +267,8 @@ func (conf *ResourceConfig) Parse(globalConfig *pb.GlobalConfig) error {
 // Given a PodSpec, update the PodSpec in place with the sidecar
 // and init-container injected. If the pod is unsuitable for having them
 // injected, return false.
-func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig, report *Report) bool {
+func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity, report *Report) bool {
+	t := conf.podSpec
 	report.HostNetwork = t.HostNetwork
 	report.Sidecar = healthcheck.HasExistingSidecars(t)
 	report.Udp = checkUDPPorts(t)
@@ -264,21 +283,21 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 	}
 
 	f := false
-	inboundSkipPorts := append(proxyConfig.GetIgnoreInboundPorts(), proxyConfig.GetControlPort(), proxyConfig.GetMetricsPort())
+	inboundSkipPorts := append(conf.proxyConfig.GetIgnoreInboundPorts(), conf.proxyConfig.GetControlPort(), conf.proxyConfig.GetMetricsPort())
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
 	for i, p := range inboundSkipPorts {
 		inboundSkipPortsStr[i] = strconv.Itoa(int(p.GetPort()))
 	}
 
-	outboundSkipPortsStr := make([]string, len(proxyConfig.GetIgnoreOutboundPorts()))
-	for i, p := range proxyConfig.GetIgnoreOutboundPorts() {
+	outboundSkipPortsStr := make([]string, len(conf.proxyConfig.GetIgnoreOutboundPorts()))
+	for i, p := range conf.proxyConfig.GetIgnoreOutboundPorts() {
 		outboundSkipPortsStr[i] = strconv.Itoa(int(p.GetPort()))
 	}
 
 	initArgs := []string{
-		"--incoming-proxy-port", fmt.Sprintf("%d", proxyConfig.GetInboundPort().GetPort()),
-		"--outgoing-proxy-port", fmt.Sprintf("%d", proxyConfig.GetOutboundPort().GetPort()),
-		"--proxy-uid", fmt.Sprintf("%d", proxyConfig.GetProxyUid()),
+		"--incoming-proxy-port", fmt.Sprintf("%d", conf.proxyConfig.GetInboundPort().GetPort()),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", conf.proxyConfig.GetOutboundPort().GetPort()),
+		"--proxy-uid", fmt.Sprintf("%d", conf.proxyConfig.GetProxyUid()),
 	}
 
 	if len(inboundSkipPortsStr) > 0 {
@@ -291,13 +310,13 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 		initArgs = append(initArgs, strings.Join(outboundSkipPortsStr, ","))
 	}
 
-	controlPlaneDNS := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", globalConfig.GetLinkerdNamespace())
-	if controlPlaneDNSNameOverride != "" {
-		controlPlaneDNS = controlPlaneDNSNameOverride
+	controlPlaneDNS := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", conf.globalConfig.GetLinkerdNamespace())
+	if conf.dnsNameOverride != "" {
+		controlPlaneDNS = conf.dnsNameOverride
 	}
 
 	metricsPort := intstr.IntOrString{
-		IntVal: int32(proxyConfig.GetMetricsPort().GetPort()),
+		IntVal: int32(conf.proxyConfig.GetMetricsPort().GetPort()),
 	}
 
 	proxyProbe := v1.Probe{
@@ -315,31 +334,31 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 		Limits:   v1.ResourceList{},
 	}
 
-	if request := proxyConfig.GetResource().GetRequestCpu(); request != "" {
+	if request := conf.proxyConfig.GetResource().GetRequestCpu(); request != "" {
 		resources.Requests["cpu"] = k8sResource.MustParse(request)
 	}
 
-	if request := proxyConfig.GetResource().GetRequestMemory(); request != "" {
+	if request := conf.proxyConfig.GetResource().GetRequestMemory(); request != "" {
 		resources.Requests["memory"] = k8sResource.MustParse(request)
 	}
 
-	if limit := proxyConfig.GetResource().GetLimitCpu(); limit != "" {
+	if limit := conf.proxyConfig.GetResource().GetLimitCpu(); limit != "" {
 		resources.Limits["cpu"] = k8sResource.MustParse(limit)
 	}
 
-	if limit := proxyConfig.GetResource().GetLimitMemory(); limit != "" {
+	if limit := conf.proxyConfig.GetResource().GetLimitMemory(); limit != "" {
 		resources.Limits["memory"] = k8sResource.MustParse(limit)
 	}
 
 	profileSuffixes := "."
-	if proxyConfig.GetDisableExternalProfiles() {
+	if conf.proxyConfig.GetDisableExternalProfiles() {
 		profileSuffixes = "svc.cluster.local."
 	}
-	proxyUid := proxyConfig.GetProxyUid()
+	proxyUid := conf.proxyConfig.GetProxyUid()
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
-		Image:                    taggedProxyImage(proxyConfig),
-		ImagePullPolicy:          v1.PullPolicy(proxyConfig.GetProxyImage().GetPullPolicy()),
+		Image:                    conf.taggedProxyImage(),
+		ImagePullPolicy:          v1.PullPolicy(conf.proxyConfig.GetProxyImage().GetPullPolicy()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{
 			RunAsUser: &proxyUid,
@@ -347,24 +366,24 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 		Ports: []v1.ContainerPort{
 			{
 				Name:          "linkerd-proxy",
-				ContainerPort: int32(proxyConfig.GetInboundPort().GetPort()),
+				ContainerPort: int32(conf.proxyConfig.GetInboundPort().GetPort()),
 			},
 			{
 				Name:          "linkerd-metrics",
-				ContainerPort: int32(proxyConfig.GetMetricsPort().GetPort()),
+				ContainerPort: int32(conf.proxyConfig.GetMetricsPort().GetPort()),
 			},
 		},
 		Resources: resources,
 		Env: []v1.EnvVar{
-			{Name: "LINKERD2_PROXY_LOG", Value: proxyConfig.GetLogLevel().GetLevel()},
+			{Name: "LINKERD2_PROXY_LOG", Value: conf.proxyConfig.GetLogLevel().GetLevel()},
 			{
 				Name:  "LINKERD2_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, proxyConfig.GetApiPort().GetPort()),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, conf.proxyConfig.GetApiPort().GetPort()),
 			},
-			{Name: "LINKERD2_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyConfig.GetControlPort().GetPort())},
-			{Name: "LINKERD2_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyConfig.GetMetricsPort().GetPort())},
-			{Name: "LINKERD2_PROXY_OUTBOUND_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", proxyConfig.GetOutboundPort().GetPort())},
-			{Name: "LINKERD2_PROXY_INBOUND_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", proxyConfig.GetInboundPort().GetPort())},
+			{Name: "LINKERD2_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetControlPort().GetPort())},
+			{Name: "LINKERD2_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetMetricsPort().GetPort())},
+			{Name: "LINKERD2_PROXY_OUTBOUND_LISTENER", Value: fmt.Sprintf("tcp://127.0.0.1:%d", conf.proxyConfig.GetOutboundPort().GetPort())},
+			{Name: "LINKERD2_PROXY_INBOUND_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetInboundPort().GetPort())},
 			{Name: "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES", Value: profileSuffixes},
 			{
 				Name:      PodNamespaceEnvVarName,
@@ -396,7 +415,7 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 		}
 	}
 
-	if globalConfig.GetIdentityContext() != nil {
+	if conf.globalConfig.GetIdentityContext() != nil {
 		yes := true
 
 		configMapVolume := &v1.Volume{
@@ -429,7 +448,7 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
 				Value: identity.ToDNSName(),
 			},
-			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: globalConfig.GetLinkerdNamespace()},
+			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: conf.globalConfig.GetLinkerdNamespace()},
 			{Name: "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
 		}
 
@@ -448,13 +467,13 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 
 	patch.addContainer(&sidecar)
 
-	if !globalConfig.GetCniEnabled() {
+	if !conf.globalConfig.GetCniEnabled() {
 		nonRoot := false
 		runAsUser := int64(0)
 		initContainer := &v1.Container{
 			Name:                     k8s.InitContainerName,
-			Image:                    taggedProxyInitImage(proxyConfig),
-			ImagePullPolicy:          v1.PullPolicy(proxyConfig.GetProxyInitImage().GetPullPolicy()),
+			Image:                    conf.taggedProxyInitImage(),
+			ImagePullPolicy:          v1.PullPolicy(conf.proxyConfig.GetProxyInitImage().GetPullPolicy()),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 			Args:                     initArgs,
 			SecurityContext: &v1.SecurityContext{
@@ -477,7 +496,7 @@ func injectPodSpec(t *v1.PodSpec, patch *Patch, identity k8s.TLSIdentity, contro
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
-func (conf *ResourceConfig) injectObjectMeta(t *metav1.ObjectMeta, patch *Patch, globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig, report *Report) error {
+func (conf *ResourceConfig) injectObjectMeta(t *metav1.ObjectMeta, patch *Patch, report *Report) error {
 	res, err := conf.shouldInject()
 	if err != nil {
 		return err
@@ -503,7 +522,7 @@ func (conf *ResourceConfig) injectObjectMeta(t *metav1.ObjectMeta, patch *Patch,
 	if len(t.Labels) == 0 {
 		patch.addPodLabelsRoot()
 	}
-	patch.addPodLabel(k8s.ControllerNSLabel, globalConfig.GetLinkerdNamespace())
+	patch.addPodLabel(k8s.ControllerNSLabel, conf.globalConfig.GetLinkerdNamespace())
 	for k, v := range conf.k8sLabels {
 		patch.addPodLabel(k, v)
 	}
@@ -523,13 +542,17 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-func taggedProxyImage(proxyConfig *pb.ProxyConfig) string {
-	image := strings.Replace(proxyConfig.GetProxyImage().GetImageName(), defaultDockerRegistry, proxyConfig.GetProxyImage().GetRegistry(), 1)
+func (conf *ResourceConfig) taggedProxyImage() string {
+	name := conf.proxyConfig.GetProxyImage().GetImageName()
+	reg := conf.proxyConfig.GetProxyImage().GetRegistry()
+	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, version.Version)
 }
 
-func taggedProxyInitImage(proxyConfig *pb.ProxyConfig) string {
-	image := strings.Replace(proxyConfig.GetProxyInitImage().GetImageName(), defaultDockerRegistry, proxyConfig.GetProxyInitImage().GetRegistry(), 1)
+func (conf *ResourceConfig) taggedProxyInitImage() string {
+	name := conf.proxyConfig.GetProxyInitImage().GetImageName()
+	reg := conf.proxyConfig.GetProxyInitImage().GetRegistry()
+	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, version.Version)
 }
 
