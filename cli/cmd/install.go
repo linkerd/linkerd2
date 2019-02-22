@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -186,7 +186,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		profileSuffixes = "svc.cluster.local."
 	}
 
-	jsonMarshaler := jsonpb.Marshaler{}
+	jsonMarshaler := jsonpb.Marshaler{EmitDefaults: true}
 	globalConfig, err := jsonMarshaler.MarshalToString(globalConfig(options))
 	if err != nil {
 		return nil, err
@@ -375,12 +375,12 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 
 	return &config.ProxyConfig{
 		ProxyImage: &config.Image{
-			ImageName:  options.taggedProxyImage(),
+			ImageName:  k8s.ProxyImageName,
 			PullPolicy: options.imagePullPolicy,
 			Registry:   options.dockerRegistry,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  options.taggedProxyInitImage(),
+			ImageName:  k8s.ProxyInitImageName,
 			PullPolicy: options.imagePullPolicy,
 			Registry:   options.dockerRegistry,
 		},

@@ -248,10 +248,8 @@
   digest = "1:0a3f6a0c68ab8f3d455f8892295503b179e571b7fefe47cc6c556405d1f83411"
   name = "github.com/gogo/protobuf"
   packages = [
-    "jsonpb",
     "proto",
     "sortkeys",
-    "types",
   ]
   pruneopts = ""
   revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
@@ -1254,7 +1252,6 @@
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/go-openapi/spec",
-    "github.com/gogo/protobuf/jsonpb",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/protoc-gen-go",

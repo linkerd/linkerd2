@@ -21,7 +21,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers", "configmaps"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
 {{- if .Values.SingleNamespace }}
 - apiGroups: [""]
