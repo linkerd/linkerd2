@@ -26,6 +26,7 @@ jobs:
       go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
+          - $HOME/.cache/go-build
           - target
           - vendor
       install:
@@ -36,7 +37,7 @@ jobs:
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
         - go test -cover -race -v ./...
-        - ./bin/lint
+        - ./bin/lint --verbose
 
     - language: node_js
       node_js:
