@@ -20,8 +20,8 @@ type (
 
 	// Crt is a container for a certificate and trust chain.
 	//
-	// The trust chain stores all issuer certificates from root at the head direct
-	// issuer at the tail.
+	// The trust chain stores all issuer certificates from the root at the head to
+	// the direct issuer at the tail.
 	Crt struct {
 		Certificate *x509.Certificate
 		TrustChain  []*x509.Certificate
