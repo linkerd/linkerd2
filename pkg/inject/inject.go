@@ -50,10 +50,9 @@ type ResourceConfig struct {
 	globalConfig    *pb.GlobalConfig
 	proxyConfig     *pb.ProxyConfig
 	obj             interface{}
-	om              objMeta
 	meta            metav1.TypeMeta
 	podSpec         *v1.PodSpec
-	objectMeta      *metav1.ObjectMeta
+	objectMeta      *objMeta
 	dnsNameOverride string
 	k8sLabels       map[string]string
 }
@@ -80,8 +79,11 @@ func (conf *ResourceConfig) PatchForYaml(bytes []byte) ([]byte, []Report, error)
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return nil, nil, err
 	}
-	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.objectMeta); err != nil {
 		return nil, nil, err
+	}
+	if conf.objectMeta == nil {
+		return nil, nil, nil
 	}
 	return conf.getPatch(bytes)
 }
@@ -91,7 +93,7 @@ func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) error {
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return err
 	}
-	if err := yaml.Unmarshal(bytes, &conf.om); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.objectMeta); err != nil {
 		return err
 	}
 	return conf.parse(bytes)
@@ -101,14 +103,14 @@ func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) error {
 // for injecting the init and proxy containers and all the necessary metadata.
 func (conf *ResourceConfig) PatchForAdmissionRequest(request *admissionv1beta1.AdmissionRequest) ([]byte, error) {
 	conf.meta = metav1.TypeMeta{Kind: request.Kind.Kind}
-	conf.om = objMeta{metav1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
+	conf.objectMeta = &objMeta{metaV1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
 	patch, _, err := conf.getPatch(request.Object.Raw)
 	return patch, err
 }
 
 func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
 	report := NewReport(conf)
-	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.om.Name)
+	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objectMeta.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, []Report{report}, err
@@ -192,8 +194,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &deployment
 		conf.k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
-		conf.podSpec = &deployment.Spec.Template.Spec
-		conf.objectMeta = &deployment.Spec.Template.ObjectMeta
+		conf.complete(deployment.Spec.Template)
 
 	case "ReplicationController":
 		var rc v1.ReplicationController
@@ -203,8 +204,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &rc
 		conf.k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
-		conf.podSpec = &rc.Spec.Template.Spec
-		conf.objectMeta = &rc.Spec.Template.ObjectMeta
+		conf.complete(*rc.Spec.Template)
 
 	case "ReplicaSet":
 		var rs v1beta1.ReplicaSet
@@ -214,8 +214,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &rs
 		conf.k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
-		conf.podSpec = &rs.Spec.Template.Spec
-		conf.objectMeta = &rs.Spec.Template.ObjectMeta
+		conf.complete(rs.Spec.Template)
 
 	case "Job":
 		var job batchv1.Job
@@ -225,8 +224,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &job
 		conf.k8sLabels[k8s.ProxyJobLabel] = job.Name
-		conf.podSpec = &job.Spec.Template.Spec
-		conf.objectMeta = &job.Spec.Template.ObjectMeta
+		conf.complete(job.Spec.Template)
 
 	case "DaemonSet":
 		var ds v1beta1.DaemonSet
@@ -236,8 +234,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &ds
 		conf.k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
-		conf.podSpec = &ds.Spec.Template.Spec
-		conf.objectMeta = &ds.Spec.Template.ObjectMeta
+		conf.complete(ds.Spec.Template)
 
 	case "StatefulSet":
 		var statefulset appsv1.StatefulSet
@@ -247,8 +244,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &statefulset
 		conf.k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
-		conf.podSpec = &statefulset.Spec.Template.Spec
-		conf.objectMeta = &statefulset.Spec.Template.ObjectMeta
+		conf.complete(statefulset.Spec.Template)
 
 	case "Pod":
 		var pod v1.Pod
@@ -258,10 +254,15 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &pod
 		conf.podSpec = &pod.Spec
-		conf.objectMeta = &pod.ObjectMeta
+		conf.objectMeta = &objMeta{pod.ObjectMeta}
 	}
 
 	return nil
+}
+
+func (conf *ResourceConfig) complete(template v1.PodTemplateSpec) {
+	conf.podSpec = &template.Spec
+	conf.objectMeta = &objMeta{template.ObjectMeta}
 }
 
 // Given a PodSpec, update the PodSpec in place with the sidecar
@@ -496,7 +497,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
-func (conf *ResourceConfig) injectObjectMeta(t *metav1.ObjectMeta, patch *Patch, report *Report) error {
+func (conf *ResourceConfig) injectObjectMeta(t *objMeta, patch *Patch, report *Report) error {
 	res, err := conf.shouldInject()
 	if err != nil {
 		return err

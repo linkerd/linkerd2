@@ -104,7 +104,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
 	patchJSON, reports, err := conf.PatchForYaml(bytes)
-	if err != nil {
+	if patchJSON == nil || err != nil {
 		return nil, nil, err
 	}
 	patch, err := jsonpatch.DecodePatch(patchJSON)
