@@ -111,7 +111,7 @@ func (c *CertificateController) syncNamespace(ns string) error {
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data: map[string]string{
-			pkgK8s.TLSTrustAnchorFileName: tls.EncodeCertificatesPEM(c.ca.Certificate()),
+			pkgK8s.TLSTrustAnchorFileName: tls.EncodeCertificatesPEM(c.ca.Crt().Certificate),
 		},
 	}
 

@@ -1,7 +1,6 @@
 package tls
 
 import (
-	"crypto/ecdsa"
 	"testing"
 )
 
@@ -15,15 +14,14 @@ func newRoot(t *testing.T) CA {
 
 func TestCrtRoundtrip(t *testing.T) {
 	root := newRoot(t)
-	rootTrust := root.CertPool()
+	rootTrust := root.Crt().CertPool()
 
 	cred, err := root.GenerateEndEntityCred("endentity.test")
 	if err != nil {
 		t.Fatalf("failed to create end entity cred: %s", err)
 	}
 
-	pub := cred.Crt.Certificate.PublicKey.(*ecdsa.PublicKey)
-	if pub.X.Cmp(cred.PrivateKey.X) != 0 || pub.Y.Cmp(cred.PrivateKey.Y) != 0 {
+	if cred.check() {
 		t.Fatal("Cert's public key does not match private key")
 	}
 
@@ -48,7 +46,7 @@ func TestCredEncodeCeritificateAndTrustChain(t *testing.T) {
 		t.Fatalf("failed to create end entity cred")
 	}
 
-	expected := EncodeCertificatesPEM(cred.Crt.Certificate, root.Certificate())
+	expected := EncodeCertificatesPEM(cred.Crt.Certificate, root.Crt().Certificate)
 	if cred.EncodeCertificateAndTrustChainPEM() != expected {
 		t.Errorf("Encoded Certificate And TrustChain does not match expected ouput")
 	}

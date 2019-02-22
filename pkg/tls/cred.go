@@ -6,13 +6,14 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"io/ioutil"
 )
 
 // Cred is a container for a certificate, trust chain, and private key.
 type Cred struct {
 	PrivateKey *ecdsa.PrivateKey
-	*Crt
+	Crt
 }
 
 // Crt is a container for a certificate and trust chain.
@@ -22,6 +23,16 @@ type Cred struct {
 type Crt struct {
 	Certificate *x509.Certificate
 	TrustChain  []*x509.Certificate
+}
+
+// CertPool returns a CertPool containing this Crt.
+func (crt *Crt) CertPool() *x509.CertPool {
+	p := x509.NewCertPool()
+	p.AddCert(crt.Certificate)
+	for _, c := range crt.TrustChain {
+		p.AddCert(c)
+	}
+	return p
 }
 
 // Verify the validity of the provided certificate
@@ -49,10 +60,10 @@ func (crt *Crt) ExtractRaw() [][]byte {
 // series of PEM-encoded certificates from leaf to root.
 func (crt *Crt) EncodeCertificateAndTrustChainPEM() string {
 	buf := bytes.Buffer{}
-	n := len(crt.TrustChain)
+	encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: crt.Certificate.Raw})
 
 	// Serialize certificates from leaf to root.
-	encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: crt.Certificate.Raw})
+	n := len(crt.TrustChain)
 	for i := n - 1; i >= 0; i-- {
 		encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: crt.TrustChain[i].Raw})
 	}
@@ -80,10 +91,16 @@ func (cred *Cred) EncodePrivateKeyP8() ([]byte, error) {
 	return x509.MarshalPKCS8PrivateKey(cred.PrivateKey)
 }
 
-// CreateCrt uses this Cred to sign a new certificate.
+// check returns whether the key and certificate match.
+func (cred *Cred) check() bool {
+	pub := cred.Crt.Certificate.PublicKey.(*ecdsa.PublicKey)
+	return pub.X.Cmp(cred.PrivateKey.X) != 0 || pub.Y.Cmp(cred.PrivateKey.Y) != 0
+}
+
+// SignCrt uses this Cred to sign a new certificate.
 //
 // This may fail if the Cred contains an end-entity certificate.
-func (cred *Cred) CreateCrt(template *x509.Certificate) (*Crt, error) {
+func (cred *Cred) SignCrt(template *x509.Certificate) (*Crt, error) {
 	crtb, err := x509.CreateCertificate(
 		rand.Reader,
 		template,
@@ -127,7 +144,7 @@ func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
 		return nil, err
 	}
 
-	return &Cred{PrivateKey: key, Crt: crt}, nil
+	return &Cred{PrivateKey: key, Crt: *crt}, nil
 }
 
 // DecodePEMCrt decodes PEM-encoded certificates from leaf to root.
@@ -136,12 +153,17 @@ func DecodePEMCrt(txt string) (*Crt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(certs) == 0 {
+		return nil, errors.New("No certificates found")
+	}
 
-	crt := Crt{Certificate: certs[0]}
-	certs = certs[1:]
+	crt := Crt{
+		Certificate: certs[0],
+		TrustChain:  make([]*x509.Certificate, len(certs)-1),
+	}
 
 	// The chain is read from Leaf to Root, but we store it from Root to Leaf.
-	crt.TrustChain = make([]*x509.Certificate, len(certs))
+	certs = certs[1:]
 	for i, c := range certs {
 		crt.TrustChain[len(certs)-i-1] = c
 	}
