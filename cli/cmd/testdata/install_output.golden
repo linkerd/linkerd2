@@ -260,6 +260,22 @@ spec:
       serviceAccountName: linkerd-controller
 status: {}
 ---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: controller
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  global: |
+    GlobalConfig
+  proxy: |
+    ProxyConfig
+
+---
 ###
 ### Service Profile CRD
 ###

@@ -70,6 +70,8 @@ func TestRender(t *testing.T) {
 		ProfileSuffixes:                  "suffix.",
 		EnableH2Upgrade:                  true,
 		NoInitContainer:                  false,
+		GlobalConfig:                     "GlobalConfig",
+		ProxyConfig:                      "ProxyConfig",
 	}
 
 	singleNamespaceConfig := installConfig{
@@ -103,6 +105,8 @@ func TestRender(t *testing.T) {
 		SingleNamespace:                  true,
 		EnableH2Upgrade:                  true,
 		NoInitContainer:                  false,
+		GlobalConfig:                     "GlobalConfig",
+		ProxyConfig:                      "ProxyConfig",
 	}
 
 	haOptions := newInstallOptions()
