@@ -101,6 +101,8 @@ func (p *Patch) addPodAnnotation(key, value string) {
 	})
 }
 
+// Slashes need to be encoded as ~1 per
+// https://tools.ietf.org/html/rfc6901#section-3
 func escapeKey(str string) string {
 	return strings.Replace(str, "/", "~1", -1)
 }

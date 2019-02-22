@@ -88,10 +88,6 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %v", string(request.Object.Raw))
-	conf, err := inject.NewResourceConfig(request.Object.Raw, request)
-	if err != nil {
-		return nil, err
-	}
 
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
 	globalConfig := &pb.GlobalConfig{
@@ -115,7 +111,8 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		DisableExternalProfiles: false,
 	}
 
-	patchJSON, _, err := conf.Transform(globalConfig, proxyConfig)
+	conf := inject.NewResourceConfig(globalConfig, proxyConfig)
+	patchJSON, err := conf.PatchForAdmissionRequest(request)
 	if err != nil {
 		return nil, err
 	}
