@@ -154,7 +154,7 @@ func (c *CertificateController) syncSecret(key string) error {
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: secretName},
 		Data: map[string][]byte{
-			pkgK8s.TLSCertFileName:       cred.Crt.Certificate.Raw,
+			pkgK8s.TLSCertFileName:       cred.Certificate.Raw,
 			pkgK8s.TLSPrivateKeyFileName: pk,
 		},
 	}
