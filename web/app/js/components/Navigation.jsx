@@ -1,15 +1,12 @@
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
+import BuildIcon from '@material-ui/icons/Build';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
-import Collapse from '@material-ui/core/Collapse';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
-import ExpandLess from '@material-ui/icons/ExpandLess';
-import ExpandMore from '@material-ui/icons/ExpandMore';
-import HelpIcon from '@material-ui/icons/HelpOutline';
 import HomeIcon from '@material-ui/icons/Home';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
@@ -117,6 +114,9 @@ const styles = theme => {
     navMenuItem: {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
+    },
+    helpMenuItem: {
+      outline: "none",
     },
     shrinkIcon: {
       fontSize: "18px",
@@ -234,42 +234,30 @@ class NavigationBase extends React.Component {
             { this.menuItem("/routes", "Top Routes", <Icon className={classNames("fas fa-random", classes.shrinkIcon)} />) }
             { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
+            { this.menuItem("/debug", "Debug", <BuildIcon className={classes.shrinkIcon} />) }
           </MenuList>
 
           <Divider />
 
           <MenuList>
-            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank">
+            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
+            <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.helpMenuItem}>
+              <ListItemIcon><EmailIcon /></ListItemIcon>
+              <ListItemText primary="Join the Mailing List" />
+            </ListItem>
 
-            <MenuItem
-              className={classes.navMenuItem}
-              button
-              onClick={this.handleHelpMenuClick}>
-              <ListItemIcon><HelpIcon /></ListItemIcon>
-              <ListItemText inset primary="Help" />
-              {this.state.helpMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </MenuItem>
-            <Collapse in={this.state.helpMenuOpen} timeout="auto" unmountOnExit>
-              <MenuList dense component="div" disablePadding>
-                <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank">
-                  <ListItemIcon><EmailIcon /></ListItemIcon>
-                  <ListItemText primary="Join the mailing list" />
-                </ListItem>
+            <ListItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.helpMenuItem}>
+              <ListItemIcon>{slackIcon}</ListItemIcon>
+              <ListItemText primary="Join us on Slack" />
+            </ListItem>
 
-                <ListItem component="a" href="https://slack.linkerd.io" target="_blank">
-                  <ListItemIcon>{slackIcon}</ListItemIcon>
-                  <ListItemText primary="Join us on slack" />
-                </ListItem>
-
-                <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank">
-                  <ListItemIcon>{githubIcon}</ListItemIcon>
-                  <ListItemText primary="File an issue" />
-                </ListItem>
-              </MenuList>
-            </Collapse>
+            <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.helpMenuItem}>
+              <ListItemIcon>{githubIcon}</ListItemIcon>
+              <ListItemText primary="File an Issue" />
+            </ListItem>
           </MenuList>
 
           {
