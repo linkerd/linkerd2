@@ -145,15 +145,14 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 			query = fmt.Sprintf(requestQueryTemplate, labels, timeWindow, groupBy)
 		}
 
-		go func(typ promType, template string) {
-			resultVector, err := s.queryProm(ctx, query)
-
+		go func(typ promType, promQuery string) {
+			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
 				prom: typ,
 				vec:  resultVector,
 				err:  err,
 			}
-		}(pt, requestQueryTemplate)
+		}(pt, query)
 	}
 
 	quantiles := []promType{promLatencyP50, promLatencyP95, promLatencyP99}
