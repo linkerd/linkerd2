@@ -236,7 +236,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 				break
 			}
 
-			if err := ws.WriteMessage(websocket.TextMessage, []byte(buf.String())); err != nil {
+			if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					log.Error(err)
 				}

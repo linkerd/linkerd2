@@ -2,7 +2,6 @@ package injector
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -92,7 +91,7 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	if server.Addr != fmt.Sprintf("%s", addr) {
+	if server.Addr != addr {
 		t.Errorf("Expected server address to be :%q", addr)
 	}
 }

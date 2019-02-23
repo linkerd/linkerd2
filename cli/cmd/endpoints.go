@@ -104,7 +104,7 @@ func renderEndpoints(endpoints *pb.EndpointsResponse, options *endpointsOptions)
 	writeEndpointsToBuffer(endpoints, w, options)
 	w.Flush()
 
-	return string(buffer.Bytes())
+	return buffer.String()
 }
 
 type rowEndpoint struct {

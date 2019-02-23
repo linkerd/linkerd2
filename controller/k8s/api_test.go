@@ -27,9 +27,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		k8sResults = append(k8sResults, obj)
 	}
 
-	for _, config := range extraConfigs {
-		k8sConfigs = append(k8sConfigs, config)
-	}
+	k8sConfigs = append(k8sConfigs, extraConfigs...)
 
 	api, err := NewFakeAPI("", k8sConfigs...)
 	if err != nil {

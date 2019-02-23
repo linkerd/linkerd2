@@ -195,7 +195,7 @@ func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName
 // that's in the format namespace/resource. If the strings is in a different
 // format it returns an error.
 func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, string, error) {
-	r := regexp.MustCompile("^(.+)\\/(.+)$")
+	r := regexp.MustCompile(`^(.+)\/(.+)$`)
 	matches := r.FindAllStringSubmatch(resource, 2)
 	if len(matches) == 0 {
 		return "", "", fmt.Errorf("string [%s] didn't contain expected format for namespace/resource, extracted: %v", resource, matches)
