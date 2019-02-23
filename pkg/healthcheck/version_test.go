@@ -10,14 +10,6 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
-func createMockPublicAPI(version string) *public.MockAPIClient {
-	return &public.MockAPIClient{
-		VersionInfoToReturn: &pb.VersionInfo{
-			ReleaseVersion: version,
-		},
-	}
-}
-
 func TestGetServerVersion(t *testing.T) {
 	t.Run("Returns existing version from server", func(t *testing.T) {
 		expectedServerVersion := "1.2.3"

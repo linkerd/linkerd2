@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	kubeSystem       = "kube-system"
-	endpointResource = "endpoints"
+	kubeSystem = "kube-system"
 )
 
 // TODO: prom metrics for all the queues/caches

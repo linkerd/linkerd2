@@ -21,7 +21,6 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
-	lineWidth        = 80
 )
 
 var (
