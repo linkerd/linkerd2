@@ -237,7 +237,7 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(30*time.Second, func() error {
+	err := h.RetryFor(time.Minute, func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err
