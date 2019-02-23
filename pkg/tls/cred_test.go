@@ -44,6 +44,6 @@ func TestCredEncodeCertificateAndTrustChain(t *testing.T) {
 
 	expected := EncodeCertificatesPEM(cred.Crt.Certificate, root.Cred.Crt.Certificate)
 	if cred.EncodePEM() != expected {
-		t.Errorf("Encoded Certificate And TrustChain does not match expected ouput")
+		t.Errorf("Encoded Certificate And TrustChain does not match expected output")
 	}
 }

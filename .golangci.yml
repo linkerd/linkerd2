@@ -9,7 +9,6 @@ linters:
   disable:
   - deadcode
   - errcheck
-  - gosimple
   - staticcheck
   - structcheck
   - unused

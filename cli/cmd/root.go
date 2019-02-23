@@ -200,7 +200,7 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	var out string
 	switch options.outputFormat {
 	case "json":
-		out = string(buffer.Bytes())
+		out = buffer.String()
 	default:
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
