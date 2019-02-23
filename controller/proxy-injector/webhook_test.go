@@ -7,7 +7,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -178,22 +177,5 @@ func TestVolumesSpec(t *testing.T) {
 
 	if !reflect.DeepEqual(expectedLinkerdSecrets, actualLinkerdSecrets) {
 		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedLinkerdSecrets, actualLinkerdSecrets)
-	}
-}
-
-func assertEqualAdmissionReview(t *testing.T, expected, actual *admissionv1beta1.AdmissionReview) {
-	if !reflect.DeepEqual(expected.Request, actual.Request) {
-		if !reflect.DeepEqual(expected.Request.Object, actual.Request.Object) {
-			t.Errorf("Request object mismatch\nExpected: %s\nActual: %s", expected.Request.Object, actual.Request.Object)
-		} else {
-			t.Errorf("Request mismatch\nExpected: %+v\nActual: %+v", expected.Request, actual.Request)
-		}
-	}
-
-	if !reflect.DeepEqual(expected.Response, actual.Response) {
-		if actual.Response.Result != nil {
-			t.Errorf("Actual response message: %s", actual.Response.Result.Message)
-		}
-		t.Errorf("Response patch mismatch\nExpected: %s\nActual: %s", expected.Response.Patch, actual.Response.Patch)
 	}
 }

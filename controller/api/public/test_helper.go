@@ -72,28 +72,6 @@ func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfChe
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 
-type mockAPITapClient struct {
-	TapEventsToReturn []pb.TapEvent
-	ErrorsToReturn    []error
-	grpc.ClientStream
-}
-
-func (a *mockAPITapClient) Recv() (*pb.TapEvent, error) {
-	var eventPopped pb.TapEvent
-	var errorPopped error
-	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
-		return nil, io.EOF
-	}
-	if len(a.TapEventsToReturn) != 0 {
-		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
-	}
-	if len(a.ErrorsToReturn) != 0 {
-		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
-	}
-
-	return &eventPopped, errorPopped
-}
-
 // MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
 type MockAPITapByResourceClient struct {
 	TapEventsToReturn []pb.TapEvent

@@ -13,10 +13,9 @@ import (
 func TestUninjectYAML(t *testing.T) {
 
 	testCases := []struct {
-		inputFileName     string
-		goldenFileName    string
-		reportFileName    string
-		testInjectOptions *injectOptions
+		inputFileName  string
+		goldenFileName string
+		reportFileName string
 	}{
 		{
 			inputFileName:  "inject_emojivoto_deployment.golden.yml",

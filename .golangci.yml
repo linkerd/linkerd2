@@ -12,5 +12,4 @@ linters:
   - gosimple
   - staticcheck
   - structcheck
-  - unused
   - varcheck

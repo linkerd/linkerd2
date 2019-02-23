@@ -131,16 +131,6 @@ type topRoutesExpected struct {
 	expectedResponse pb.TopRoutesResponse // the routes response we expect
 }
 
-func genEmptyTopRoutesResponse() pb.TopRoutesResponse {
-	return pb.TopRoutesResponse{
-		Response: &pb.TopRoutesResponse_Ok_{
-			Ok: &pb.TopRoutesResponse_Ok{
-				Routes: []*pb.RouteTable{},
-			},
-		},
-	}
-}
-
 func routesMetric(routes []string) model.Vector {
 	samples := make(model.Vector, 0)
 	for _, route := range routes {

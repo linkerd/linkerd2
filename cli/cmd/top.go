@@ -571,13 +571,6 @@ func (t *topTable) renderHeaders() {
 	}
 }
 
-func max(i, j int) int {
-	if i > j {
-		return i
-	}
-	return j
-}
-
 func (t *topTable) adjustColumnWidths() {
 	for i, col := range t.columns {
 		if !col.flexible {

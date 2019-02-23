@@ -30,8 +30,6 @@ type routeRowStats struct {
 	actualSuccessRate float64
 }
 
-const defaultRoute = "[UNKNOWN]"
-
 func newRoutesOptions() *routesOptions {
 	return &routesOptions{
 		statOptionsBase: *newStatOptionsBase(),

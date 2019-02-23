@@ -13,13 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type podExpected struct {
-	pod                   string
-	namespace             string
-	replicationController string
-	phase                 v1.PodPhase
-}
-
 var (
 	addedAddress1 = &net.TcpAddress{
 		Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 1}},
