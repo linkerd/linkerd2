@@ -17,7 +17,7 @@ linkerd-existence
 linkerd-api
 -----------
 √ control plane pods are ready
-√ can query the control plane API
+√ control plane self-check
 √ [kubernetes] control plane can talk to Kubernetes
 √ [prometheus] control plane can talk to Prometheus
 
