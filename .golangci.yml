@@ -4,11 +4,35 @@ issues:
   exclude-use-default: false
 linters:
   enable:
+  - deadcode
+  - depguard
   - gofmt
   - golint
+  - gosimple
+  - govet
+  - ineffassign
+  - misspell
+  - nakedret
+  - typecheck
+  - unused
+  - varcheck
+  # TODO: enable more linters!
+  # - dupl
+  # - gochecknoglobals
+  # - gochecknoinits
+  # - goconst
+  # - gocyclo
+  # - goimports
+  # - gosec
+  # - interfacer
+  # - lll
+  # - maligned
+  # - prealloc
+  # - scopelint
+  # - stylecheck
+  # - unconvert
+  # - unparam
   disable:
-  - deadcode
   - errcheck
   - staticcheck
   - structcheck
-  - varcheck
