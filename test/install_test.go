@@ -131,7 +131,7 @@ func TestVersionPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
+	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=1m"}
 	golden := "check.golden"
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")
@@ -229,7 +229,7 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
+	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=1m"}
 	golden := "check.proxy.golden"
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")

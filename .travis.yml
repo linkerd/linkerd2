@@ -26,9 +26,9 @@ jobs:
       go_import_path: github.com/linkerd/linkerd2
       cache:
         directories:
-          - $HOME/.cache/go-build
           - target
           - vendor
+          - "$HOME/.cache"
       install:
         - ./bin/dep ensure -vendor-only -v
         - ./bin/dep status -v
