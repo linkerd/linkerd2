@@ -9,13 +9,12 @@ branches:
     - master
     - /^(edge|stable)-\d+\.\d+\.[\w-]+$/ # build version tags
 
-# TESTING integration tests prior to master merge
 stages:
   - name: test
   - name: docker-deploy
-    # if: type != pull_request
+    if: type != pull_request
   - name: integration-test
-    # if: type != pull_request
+    if: type != pull_request
 
 jobs:
   include:
@@ -110,8 +109,7 @@ jobs:
       after_success:
         - bin/docker-push-deps
         - bin/docker-push $LINKERD_TAG
-        # TESTING integration tests prior to master merge
-        # - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
+        - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
         - target/cli/linux/linkerd install --linkerd-version=$LINKERD_TAG |tee linkerd.yml
         - kubectl -n linkerd apply -f linkerd.yml --prune --selector='linkerd.io/control-plane-component'
 
