@@ -20,7 +20,7 @@ linters:
   # - dupl
   # - gochecknoglobals
   # - gochecknoinits
-  # - goconst # TODO
+  # - goconst
   # - gocyclo
   # - goimports
   # - gosec
