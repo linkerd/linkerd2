@@ -8,8 +8,8 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -126,8 +126,8 @@ func (resourceTransformerUninjectSilent) generateReport(uninjectReports []inject
 
 // Given a PodSpec, update the PodSpec in place with the sidecar
 // and init-container uninjected
-func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
-	initContainers := []v1.Container{}
+func uninjectPodSpec(t *corev1.PodSpec, report *injectReport) {
+	initContainers := []corev1.Container{}
 	for _, container := range t.InitContainers {
 		if container.Name != k8s.InitContainerName {
 			initContainers = append(initContainers, container)
@@ -137,7 +137,7 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 	}
 	t.InitContainers = initContainers
 
-	containers := []v1.Container{}
+	containers := []corev1.Container{}
 	for _, container := range t.Containers {
 		if container.Name != k8s.ProxyContainerName {
 			containers = append(containers, container)
@@ -145,7 +145,7 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 	}
 	t.Containers = containers
 
-	volumes := []v1.Volume{}
+	volumes := []corev1.Volume{}
 	for _, volume := range t.Volumes {
 		// TODO: move those strings to constants
 		if volume.Name != k8s.TLSTrustAnchorVolumeName && volume.Name != k8s.TLSSecretsVolumeName {
@@ -155,7 +155,7 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 	t.Volumes = volumes
 }
 
-func uninjectObjectMeta(t *metaV1.ObjectMeta) {
+func uninjectObjectMeta(t *metav1.ObjectMeta) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
 		if key != k8s.CreatedByAnnotation && key != k8s.ProxyVersionAnnotation {

@@ -9,7 +9,7 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -108,7 +108,7 @@ func (c *CertificateController) syncObject(key string) error {
 
 func (c *CertificateController) syncNamespace(ns string) error {
 	log.Debugf("syncNamespace(%s)", ns)
-	configMap := &v1.ConfigMap{
+	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data: map[string]string{
 			pkgK8s.TLSTrustAnchorFileName: c.ca.Cred.EncodeCertificatePEM(),
@@ -151,7 +151,7 @@ func (c *CertificateController) syncSecret(key string) error {
 		log.Errorf("Failed to issue certificate for %s", dnsName)
 		return err
 	}
-	secret := &v1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: secretName},
 		Data: map[string][]byte{
 			pkgK8s.TLSCertFileName:       cred.Certificate.Raw,
@@ -167,7 +167,7 @@ func (c *CertificateController) syncSecret(key string) error {
 }
 
 func (c *CertificateController) handlePodAdd(obj interface{}) {
-	pod := obj.(*v1.Pod)
+	pod := obj.(*corev1.Pod)
 	if pkgK8s.IsMeshed(pod, c.namespace) {
 		log.Debugf("enqueuing update of CA bundle configmap in %s", pod.Namespace)
 		c.queue.Add(pod.Namespace)

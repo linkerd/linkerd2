@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	pkgAddr "github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,14 +31,14 @@ var (
 		Port: 100,
 	}
 
-	pod1 = &v1.Pod{
+	pod1 = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod1",
 			Namespace: "ns",
 		},
 	}
 
-	pod2 = &v1.Pod{
+	pod2 = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod2",
 			Namespace: "ns",
@@ -55,7 +55,7 @@ var (
 	}
 )
 
-func defaultOwnerKindAndName(pod *v1.Pod) (string, string) {
+func defaultOwnerKindAndName(pod *corev1.Pod) (string, string) {
 	return "", ""
 }
 
@@ -149,17 +149,17 @@ func TestEndpointListener(t *testing.T) {
 		expectedNamespace := thisNS
 		expectedReplicationControllerName := "rc-name"
 
-		podForAddedAddress1 := &v1.Pod{
+		podForAddedAddress1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedNamespace,
 			},
-			Status: v1.PodStatus{
-				Phase: v1.PodRunning,
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
 			},
 		}
 
-		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+		ownerKindAndName := func(pod *corev1.Pod) (string, string) {
 			return "replicationcontroller", expectedReplicationControllerName
 		}
 
@@ -206,7 +206,7 @@ func TestEndpointListener(t *testing.T) {
 			ControllerNs: "linkerd-namespace",
 		}
 
-		podForAddedAddress1 := &v1.Pod{
+		podForAddedAddress1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
@@ -215,12 +215,12 @@ func TestEndpointListener(t *testing.T) {
 					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},
-			Status: v1.PodStatus{
-				Phase: v1.PodRunning,
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
 			},
 		}
 
-		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+		ownerKindAndName := func(pod *corev1.Pod) (string, string) {
 			return "deployment", expectedPodDeployment
 		}
 
@@ -254,7 +254,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 
-		podForAddedAddress1 := &v1.Pod{
+		podForAddedAddress1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
@@ -263,12 +263,12 @@ func TestEndpointListener(t *testing.T) {
 					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
 				},
 			},
-			Status: v1.PodStatus{
-				Phase: v1.PodRunning,
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
 			},
 		}
 
-		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+		ownerKindAndName := func(pod *corev1.Pod) (string, string) {
 			return "deployment", expectedPodDeployment
 		}
 

@@ -14,7 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -49,7 +49,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name st
 
 func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, namespace, name string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
 	profile := sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},

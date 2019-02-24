@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -262,7 +262,7 @@ metadata:
 				t.Fatalf("expected 1 namespace, got %d", len(namespaces))
 			}
 
-			if namespaces[0].(*apiv1.Namespace).Name != "namespace1" {
+			if namespaces[0].(*corev1.Namespace).Name != "namespace1" {
 				t.Fatalf("expected namespace1, got %v", namespaces[0])
 			}
 		})
@@ -583,9 +583,9 @@ status:
 				t.Fatalf("newAPI error: %s", err)
 			}
 
-			k8sResultPods := []*apiv1.Pod{}
+			k8sResultPods := []*corev1.Pod{}
 			for _, obj := range k8sResults {
-				k8sResultPods = append(k8sResultPods, obj.(*apiv1.Pod))
+				k8sResultPods = append(k8sResultPods, obj.(*corev1.Pod))
 			}
 
 			pods, err := api.GetPodsFor(k8sInputObj, false)
@@ -690,7 +690,7 @@ metadata:
 			t.Fatalf("newAPI error: %s", err)
 		}
 
-		pod := objs[0].(*apiv1.Pod)
+		pod := objs[0].(*corev1.Pod)
 		ownerKind, ownerName := api.GetOwnerKindAndName(pod)
 
 		if ownerKind != tt.expectedOwnerKind {
@@ -794,7 +794,7 @@ spec:
 			t.Fatalf("newAPI error: %s", err)
 		}
 
-		svc := apiv1.Service{
+		svc := corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "books",
 				Namespace: "server",

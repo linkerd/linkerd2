@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -60,7 +60,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return apiUtil.GRPCError(err)
 	}
 
-	pods := []*apiv1.Pod{}
+	pods := []*corev1.Pod{}
 	for _, object := range objects {
 		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
@@ -452,7 +452,7 @@ func NewServer(
 }
 
 func indexPodByIP(obj interface{}) ([]string, error) {
-	if pod, ok := obj.(*apiv1.Pod); ok {
+	if pod, ok := obj.(*corev1.Pod); ok {
 		return []string{pod.Status.PodIP}, nil
 	}
 	return []string{""}, fmt.Errorf("object is not a pod")
@@ -513,7 +513,7 @@ func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string)
 //
 // If no pods were found for the provided IP address, it returns nil. Errors are
 // returned only in the event of an error indexing the pods list.
-func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
+func (s *server) podForIP(ip *public.IPAddress) (*corev1.Pod, error) {
 	ipStr := addr.PublicIPToString(ip)
 	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
 
@@ -526,12 +526,12 @@ func (s *server) podForIP(ip *public.IPAddress) (*apiv1.Pod, error) {
 		// It's safe to cast elements of `objs` to a `Pod`s here (and in the
 		// loop below). If the object wasn't a pod, it should never have been
 		// indexed by the indexing func in the first place.
-		return objs[0].(*apiv1.Pod), nil
+		return objs[0].(*corev1.Pod), nil
 	}
 
 	for _, obj := range objs {
-		pod := obj.(*apiv1.Pod)
-		if pod.Status.Phase == apiv1.PodRunning {
+		pod := obj.(*corev1.Pod)
+		if pod.Status.Phase == corev1.PodRunning {
 			// Found a running pod with this IP --- it's that!
 			log.Debugf("found running pod at IP %s", ipStr)
 			return pod, nil

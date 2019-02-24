@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -57,7 +57,7 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
-		ns := &coreV1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
 
 		if err != nil {
