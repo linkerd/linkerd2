@@ -69,6 +69,7 @@ func TestShouldInject(t *testing.T) {
 		}
 
 		for id, testCase := range testCases {
+			testCase := testCase // pin
 			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 				deployment, err := factory.Deployment(testCase.filename)
 				if err != nil {

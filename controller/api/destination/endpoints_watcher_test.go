@@ -7,7 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -468,6 +468,7 @@ spec:
 			},
 		},
 	} {
+		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
 			k8sAPI, err := k8s.NewFakeAPI("", tt.k8sConfigs...)
 			if err != nil {

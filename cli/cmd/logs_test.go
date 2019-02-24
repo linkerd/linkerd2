@@ -69,6 +69,7 @@ func TestNewSternConfig(t *testing.T) {
 	}
 
 	for _, tt := range flagTestCases {
+		tt := tt // pin
 		components := []string{"grafana", "prometheus", "web", "controller"}
 		containers := []string{"tap", "linkerd-proxy", "destination"}
 

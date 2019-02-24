@@ -165,6 +165,7 @@ func genDefaultRouteSample() *model.Sample {
 
 func testTopRoutes(t *testing.T, expectations []topRoutesExpected) {
 	for id, exp := range expectations {
+		exp := exp // pin
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRPC)
 			if err != nil {

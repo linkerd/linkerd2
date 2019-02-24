@@ -13,6 +13,7 @@ linters:
   - ineffassign
   - misspell
   - nakedret
+  - scopelint
   - typecheck
   - unused
   - varcheck
@@ -28,7 +29,6 @@ linters:
   # - lll
   # - maligned
   # - prealloc
-  # - scopelint
   # - stylecheck
   # - unconvert
   # - unparam
