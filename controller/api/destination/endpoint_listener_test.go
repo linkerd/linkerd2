@@ -213,7 +213,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Annotations: map[string]string{
-					pkgK8s.ProxyIdentityModeAnnotation: pkgK8s.ProxyIdentityModeOptional,
+					pkgK8s.IdentityModeAnnotation: pkgK8s.IdentityModeOptional,
 				},
 				Labels: map[string]string{
 					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
@@ -265,7 +265,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Annotations: map[string]string{
-					pkgK8s.ProxyIdentityModeAnnotation: pkgK8s.ProxyIdentityModeOptional,
+					pkgK8s.IdentityModeAnnotation: pkgK8s.IdentityModeOptional,
 				},
 				Labels: map[string]string{
 					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,

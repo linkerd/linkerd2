@@ -227,7 +227,7 @@ func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, 
 
 	var identity *pb.TlsIdentity
 	if l.enableTLS && controllerNS == l.controllerNS &&
-		pod.Annotations[pkgK8s.ProxyIdentityModeAnnotation] == pkgK8s.ProxyIdentityModeOptional {
+		pod.Annotations[pkgK8s.IdentityModeAnnotation] == pkgK8s.IdentityModeOptional {
 		name := pkgK8s.TLSIdentity{
 			Name:                ownerName,
 			Kind:                ownerKind,

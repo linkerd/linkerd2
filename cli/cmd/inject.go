@@ -139,9 +139,9 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	}
 
 	if options.enableTLS() {
-		t.Annotations[k8s.ProxyIdentityModeAnnotation] = k8s.ProxyIdentityModeOptional
+		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeOptional
 	} else {
-		t.Annotations[k8s.ProxyIdentityModeAnnotation] = k8s.ProxyIdentityModeDisabled
+		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
 	}
 
 	return true

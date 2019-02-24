@@ -167,11 +167,11 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		patch.addVolume(caBundle)
 		patch.addVolume(tlsSecrets)
 		patch.addPodAnnotations(map[string]string{
-			k8sPkg.ProxyIdentityModeAnnotation: k8sPkg.ProxyIdentityModeOptional,
+			k8sPkg.IdentityModeAnnotation: k8sPkg.IdentityModeOptional,
 		})
 	} else {
 		patch.addPodAnnotations(map[string]string{
-			k8sPkg.ProxyIdentityModeAnnotation: k8sPkg.ProxyIdentityModeDisabled,
+			k8sPkg.IdentityModeAnnotation: k8sPkg.IdentityModeDisabled,
 		})
 	}
 

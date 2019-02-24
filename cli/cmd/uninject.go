@@ -160,7 +160,7 @@ func uninjectObjectMeta(t *metaV1.ObjectMeta) {
 	for key, val := range t.Annotations {
 		if key != k8s.CreatedByAnnotation &&
 			key != k8s.ProxyVersionAnnotation &&
-			key != k8s.ProxyIdentityModeAnnotation {
+			key != k8s.IdentityModeAnnotation {
 			newAnnotations[key] = val
 		}
 	}
