@@ -120,6 +120,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 	} {
+		tt := tt // pin
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 			err := TestHelper.RetryFor(20*time.Second, func() error {
 				out, _, err := TestHelper.LinkerdRun(tt.args...)

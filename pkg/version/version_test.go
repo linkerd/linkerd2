@@ -22,6 +22,7 @@ func TestMatch(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("test %d match(%s, %s)", i, tc.expected, tc.actual), func(t *testing.T) {
 			err := match(tc.expected, tc.actual)
 			if (err == nil && tc.err != nil) ||

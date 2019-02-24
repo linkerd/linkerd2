@@ -67,6 +67,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			defer teardown(defaultControlPlaneNamespace, t)
 			controlPlaneNamespace = tc.namespace

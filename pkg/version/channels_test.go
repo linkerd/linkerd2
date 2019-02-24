@@ -57,6 +57,7 @@ func TestGetLatestVersions(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("test %d GetLatestVersions(%s, %s)", i, tc.err, tc.latest), func(t *testing.T) {
 			j, err := json.Marshal(tc.resp)
 			if err != nil {
@@ -149,8 +150,8 @@ func TestChannelsMatch(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("test %d ChannelsMatch(%s, %s)", i, tc.actualVersion, tc.err), func(t *testing.T) {
-
 			err := tc.channels.Match(tc.actualVersion)
 			if (err == nil && tc.err != nil) ||
 				(err != nil && tc.err == nil) ||
