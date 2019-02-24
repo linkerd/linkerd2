@@ -84,7 +84,7 @@ func (c *grpcOverHTTPClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...g
 
 func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
 	url := c.endpointNameToPublicAPIURL("TapByResource")
-	httpRsp, err := c.post(ctx, url, req)
+	httpRsp, err := c.post(ctx, url.String(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, re
 	url := c.endpointNameToPublicAPIURL(endpoint)
 
 	log.Debugf("Making gRPC-over-HTTP call to [%s] [%+v]", url.String(), req)
-	httpRsp, err := c.post(ctx, url, req)
+	httpRsp, err := c.post(ctx, url.String(), req)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, re
 	return fromByteStreamToProtocolBuffers(reader, protoResponse)
 }
 
-func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
+func (c *grpcOverHTTPClient) post(ctx context.Context, url string, req proto.Message) (*http.Response, error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.M
 
 	httpReq, err := http.NewRequest(
 		http.MethodPost,
-		url.String(),
+		url,
 		bytes.NewReader(reqBytes),
 	)
 	if err != nil {
@@ -145,9 +145,9 @@ func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.M
 
 	rsp, err := c.httpClient.Do(httpReq.WithContext(ctx))
 	if err != nil {
-		log.Debugf("Error invoking [%s]: %v", url.String(), err)
+		log.Debugf("Error invoking [%s]: %v", url, err)
 	} else {
-		log.Debugf("Response from [%s] had headers: %v", url.String(), rsp.Header)
+		log.Debugf("Response from [%s] had headers: %v", url, rsp.Header)
 	}
 
 	return rsp, err

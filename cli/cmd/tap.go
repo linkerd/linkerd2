@@ -161,7 +161,7 @@ func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource strin
 	return nil
 }
 
-func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer, resource string) error {
+func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w io.Writer, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event, err := tapClient.Recv()

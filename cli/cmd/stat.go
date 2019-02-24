@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -221,7 +222,7 @@ var (
 	namespaceHeader = "NAMESPACE"
 )
 
-func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
+func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w io.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
 	statTables := make(map[string]map[string]*row)
@@ -290,7 +291,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w io.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	usePrefix := false
 	if len(statTables) > 1 {
 		usePrefix = true
@@ -312,7 +313,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 	}
 }
 
-func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceType string, w io.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	headers := make([]string, 0)
 	if options.allNamespaces {
 		headers = append(headers,
@@ -392,7 +393,7 @@ type jsonStats struct {
 	TLS          *float64 `json:"tls"`
 }
 
-func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
+func printStatJSON(statTables map[string]map[string]*row, w io.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
 	for _, resourceType := range k8s.AllResources {

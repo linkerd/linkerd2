@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 )
 
 // === ENCODE ===
@@ -31,7 +32,7 @@ func EncodePrivateKeyPEM(k *ecdsa.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}), nil
 }
 
-func encode(buf *bytes.Buffer, blk *pem.Block) {
+func encode(buf io.Writer, blk *pem.Block) {
 	if err := pem.Encode(buf, blk); err != nil {
 		panic("encoding to memory must not fail")
 	}

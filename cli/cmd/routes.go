@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -101,7 +102,7 @@ func renderRouteStats(resp *pb.TopRoutesResponse, options *routesOptions) string
 	return renderStats(buffer, &options.statOptionsBase)
 }
 
-func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, options *routesOptions) {
+func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w io.Writer, options *routesOptions) {
 
 	tables := make(map[string][]*routeRowStats)
 
@@ -155,7 +156,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	}
 }
 
-func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteTable(stats []*routeRowStats, w io.Writer, options *routesOptions) {
 	// template for left-aligning the route column
 	routeTemplate := fmt.Sprintf("%%-%ds", routeWidth(stats))
 
@@ -239,7 +240,7 @@ type jsonRouteStats struct {
 	LatencyMSp99     *uint64  `json:"latency_ms_p99"`
 }
 
-func printRouteJSON(tables map[string][]*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
+func printRouteJSON(tables map[string][]*routeRowStats, w io.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := map[string][]*jsonRouteStats{}
 	for resource, table := range tables {

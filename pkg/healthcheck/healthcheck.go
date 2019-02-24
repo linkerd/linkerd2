@@ -260,7 +260,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "is running the minimum Kubernetes API version",
 					hintAnchor:  "k8s-version",
 					check: func(context.Context) error {
-						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+						return hc.kubeAPI.CheckVersion(hc.kubeVersion.String())
 					},
 				},
 			},
