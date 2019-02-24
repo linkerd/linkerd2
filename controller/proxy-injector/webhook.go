@@ -166,6 +166,13 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}
 		patch.addVolume(caBundle)
 		patch.addVolume(tlsSecrets)
+		patch.addPodAnnotations(map[string]string{
+			k8sPkg.ProxyIdentityModeAnnotation: k8sPkg.ProxyIdentityModeOptional,
+		})
+	} else {
+		patch.addPodAnnotations(map[string]string{
+			k8sPkg.ProxyIdentityModeAnnotation: k8sPkg.ProxyIdentityModeDisabled,
+		})
 	}
 
 	if deployment.Spec.Template.Labels == nil {
