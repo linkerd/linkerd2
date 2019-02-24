@@ -148,7 +148,7 @@ func testStatCall(exp paramsExp, t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	resp, err := requestStatsFromAPI(mockClient, reqs[0], exp.options)
+	resp, err := requestStatsFromAPI(mockClient, reqs[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

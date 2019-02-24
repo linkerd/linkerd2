@@ -35,18 +35,18 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "/metrics":
 		h.promHandler.ServeHTTP(w, req)
 	case "/ping":
-		h.servePing(w, req)
+		h.servePing(w)
 	case "/ready":
-		h.serveReady(w, req)
+		h.serveReady(w)
 	default:
 		http.NotFound(w, req)
 	}
 }
 
-func (h *handler) servePing(w http.ResponseWriter, req *http.Request) {
+func (h *handler) servePing(w http.ResponseWriter) {
 	w.Write([]byte("pong\n"))
 }
 
-func (h *handler) serveReady(w http.ResponseWriter, req *http.Request) {
+func (h *handler) serveReady(w http.ResponseWriter) {
 	w.Write([]byte("ok\n"))
 }

@@ -25,6 +25,7 @@ linters:
   - scopelint
   - typecheck
   - unconvert
+  - unparam
   - unused
   - varcheck
   # TODO: enable more linters!
@@ -38,7 +39,6 @@ linters:
   # - maligned
   # - prealloc
   # - stylecheck
-  # - unparam
   disable:
   - errcheck
   - staticcheck
