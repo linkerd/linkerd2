@@ -8,7 +8,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -158,7 +158,9 @@ func uninjectPodSpec(t *v1.PodSpec, report *injectReport) {
 func uninjectObjectMeta(t *metaV1.ObjectMeta) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
-		if key != k8s.CreatedByAnnotation && key != k8s.ProxyVersionAnnotation {
+		if key != k8s.CreatedByAnnotation &&
+			key != k8s.ProxyVersionAnnotation &&
+			key != k8s.ProxyIdentityModeAnnotation {
 			newAnnotations[key] = val
 		}
 	}
