@@ -21,6 +21,7 @@ type server struct {
 	resolver        streamingDestinationResolver
 	enableH2Upgrade bool
 	enableTLS       bool
+	controllerNS    string
 	log             *log.Entry
 }
 
@@ -37,13 +38,12 @@ type server struct {
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
 func NewServer(
-	addr, k8sDNSZone string,
-	controllerNamespace string,
+	addr, k8sDNSZone, controllerNS string,
 	enableTLS, enableH2Upgrade, singleNamespace bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
 ) (*grpc.Server, error) {
-	resolver, err := buildResolver(k8sDNSZone, controllerNamespace, k8sAPI, singleNamespace)
+	resolver, err := buildResolver(k8sDNSZone, controllerNS, k8sAPI, singleNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +53,7 @@ func NewServer(
 		resolver:        resolver,
 		enableH2Upgrade: enableH2Upgrade,
 		enableTLS:       enableTLS,
+		controllerNS:    controllerNS,
 		log: log.WithFields(log.Fields{
 			"addr":      addr,
 			"component": "server",
@@ -150,7 +151,7 @@ func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsPar
 }
 
 func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade, s.controllerNS)
 
 	resolverCanResolve, err := s.resolver.canResolve(host, port)
 	if err != nil {

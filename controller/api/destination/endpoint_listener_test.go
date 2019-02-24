@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	pkgAddr "github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,6 +65,7 @@ func TestEndpointListener(t *testing.T) {
 			defaultOwnerKindAndName,
 			false,
 			false,
+			"linkerd",
 		)
 
 		listener.Update(add, remove)
@@ -83,6 +84,7 @@ func TestEndpointListener(t *testing.T) {
 			defaultOwnerKindAndName,
 			false,
 			false,
+			"linkerd",
 		)
 
 		listener.Update(add, remove)
@@ -124,6 +126,7 @@ func TestEndpointListener(t *testing.T) {
 			defaultOwnerKindAndName,
 			false,
 			false,
+			"linkerd",
 		)
 
 		completed := make(chan bool)
@@ -167,6 +170,7 @@ func TestEndpointListener(t *testing.T) {
 			ownerKindAndName,
 			false,
 			false,
+			"linkerd",
 		)
 		listener.labels = map[string]string{
 			"service":   expectedServiceName,
@@ -208,6 +212,9 @@ func TestEndpointListener(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
+				Annotations: map[string]string{
+					pkgK8s.ProxyIdentityModeAnnotation: pkgK8s.ProxyIdentityModeOptional,
+				},
 				Labels: map[string]string{
 					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
 					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
@@ -228,6 +235,7 @@ func TestEndpointListener(t *testing.T) {
 			ownerKindAndName,
 			true,
 			false,
+			expectedControllerNamespace,
 		)
 
 		add := []*updateAddress{
@@ -243,6 +251,57 @@ func TestEndpointListener(t *testing.T) {
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
 		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		}
+	})
+
+	t.Run("Does not send TlsIdentity to for other meshes", func(t *testing.T) {
+		expectedPodName := "pod1"
+		expectedPodNamespace := "this-namespace"
+		expectedControllerNamespace := "other-linkerd-namespace"
+		expectedPodDeployment := "pod-deployment"
+
+		podForAddedAddress1 := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      expectedPodName,
+				Namespace: expectedPodNamespace,
+				Annotations: map[string]string{
+					pkgK8s.ProxyIdentityModeAnnotation: pkgK8s.ProxyIdentityModeOptional,
+				},
+				Labels: map[string]string{
+					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
+					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
+				},
+			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+			},
+		}
+
+		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+			return "deployment", expectedPodDeployment
+		}
+
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+		listener := newEndpointListener(
+			mockGetServer,
+			ownerKindAndName,
+			true,
+			false,
+			"linkerd-namespace",
+		)
+
+		add := []*updateAddress{
+			{address: addedAddress1, pod: podForAddedAddress1},
+		}
+		listener.Update(add, nil)
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		if addrs[0].TlsIdentity != nil {
+			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
 		}
 	})
 
@@ -276,6 +335,7 @@ func TestEndpointListener(t *testing.T) {
 			ownerKindAndName,
 			false,
 			false,
+			"linkerd",
 		)
 
 		add := []*updateAddress{
