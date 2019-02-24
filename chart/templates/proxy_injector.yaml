@@ -168,10 +168,6 @@ data:
       value: tcp://0.0.0.0:{{.Values.InboundPort}}
     - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
       value: {{.Values.ProfileSuffixes}}
-    - name: LINKERD2_PROXY_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
     {{- if .Values.InboundAcceptKeepaliveMs }}
     - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
       value: {{.Values.InboundAcceptKeepaliveMs}}ms
@@ -189,7 +185,7 @@ data:
       value: /var/linkerd-io/identity/{{.Values.TLSCertFileName}}
     - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
       value: /var/linkerd-io/identity/{{.Values.TLSPrivateKeyFileName}}
-    - name: LINKERD2_PROXY_TLS_POD_IDENTITY
+    - name: LINKERD2_PROXY_TLS_LOCAL_IDENTITY
       value: "" # this value will be computed by the webhook
     - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
       value: {{.Values.Namespace}}

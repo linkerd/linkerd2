@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
+	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_LOCAL_IDENTITY"
 	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
 	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
 )

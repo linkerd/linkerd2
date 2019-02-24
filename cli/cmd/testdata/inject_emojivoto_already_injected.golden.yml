@@ -53,7 +53,7 @@ spec:
           value: tcp://0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
+        - name: K8S_NS
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -62,7 +62,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: web1.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
+          value: web1.deployment.$(K8S_NS).linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -164,7 +164,7 @@ spec:
           value: tcp://0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
+        - name: K8S_NS
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -173,7 +173,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: web2.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
+          value: web2.deployment.$(K8S_NS).linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -275,7 +275,7 @@ spec:
           value: tcp://0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
+        - name: K8S_NS
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -284,7 +284,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: web3.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
+          value: web3.deployment.$(K8S_NS).linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -386,7 +386,7 @@ spec:
           value: tcp://0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
+        - name: K8S_NS
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
@@ -395,7 +395,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: web4.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
+          value: web4.deployment.$(K8S_NS).linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:testinjectversion
         imagePullPolicy: IfNotPresent
         livenessProbe:

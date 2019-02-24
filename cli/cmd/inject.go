@@ -24,9 +24,8 @@ const (
 	// must be in absolute form for the proxy to special-case it.
 	LocalhostDNSNameOverride = "localhost."
 	// ControlPlanePodName default control plane pod name.
-	ControlPlanePodName = "linkerd-controller"
-	// PodNamespaceEnvVarName is the name of the variable used to pass the pod's namespace.
-	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
+	ControlPlanePodName    = "linkerd-controller"
+	PodNamespaceEnvVarName = "K8S_NS"
 
 	// for inject reports
 
@@ -237,6 +236,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	if options.disableExternalProfiles {
 		profileSuffixes = "svc.cluster.local."
 	}
+	identity.Namespace = fmt.Sprintf("$(%s)", PodNamespaceEnvVarName)
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
 		Image:                    options.taggedProxyImage(),
@@ -327,7 +327,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
 			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
 			{
-				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
+				Name:  "LINKERD2_PROXY_TLS_LOCAL_IDENTITY",
 				Value: identity.ToDNSName(),
 			},
 			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: controlPlaneNamespace},
@@ -396,7 +396,6 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 		identity := k8s.TLSIdentity{
 			Name:                metaAccessor.GetName(),
 			Kind:                strings.ToLower(conf.meta.Kind),
-			Namespace:           "$" + PodNamespaceEnvVarName,
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
