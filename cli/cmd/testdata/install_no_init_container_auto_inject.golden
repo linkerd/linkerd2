@@ -97,6 +97,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -435,6 +436,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -616,6 +618,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -873,6 +876,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1117,6 +1121,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1251,6 +1256,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:

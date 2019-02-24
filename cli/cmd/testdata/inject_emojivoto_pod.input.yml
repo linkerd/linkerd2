@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: Pod
 metadata:
+  annotations:
+    linkerd.io/identity-mode: optional
   creationTimestamp: null
   labels:
     app: vote-bot

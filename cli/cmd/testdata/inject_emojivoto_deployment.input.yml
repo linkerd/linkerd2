@@ -12,6 +12,8 @@ spec:
   strategy: {}
   template:
     metadata:
+      annotations:
+        linkerd.io/identity-mode: optional
       creationTimestamp: null
       labels:
         app: web-svc
