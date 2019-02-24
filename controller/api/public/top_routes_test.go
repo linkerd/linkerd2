@@ -145,7 +145,7 @@ func genRouteSample(route string) *model.Sample {
 		Metric: model.Metric{
 			"rt_route":       model.LabelValue(route),
 			"dst":            "books.default.svc.cluster.local",
-			"classification": "success",
+			"classification": success,
 		},
 		Value:     123,
 		Timestamp: 456,
@@ -156,7 +156,7 @@ func genDefaultRouteSample() *model.Sample {
 	return &model.Sample{
 		Metric: model.Metric{
 			"dst":            "books.default.svc.cluster.local",
-			"classification": "success",
+			"classification": success,
 		},
 		Value:     123,
 		Timestamp: 456,

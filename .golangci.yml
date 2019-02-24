@@ -6,6 +6,7 @@ linters:
   enable:
   - deadcode
   - depguard
+  - goconst
   - gofmt
   - golint
   - gosimple
@@ -20,7 +21,6 @@ linters:
   # - dupl
   # - gochecknoglobals
   # - gochecknoinits
-  # - goconst
   # - gocyclo
   # - goimports
   # - gosec

@@ -185,7 +185,7 @@ status:
   phase: Completed
 `,
 					},
-					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", success, false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -261,7 +261,7 @@ status:
   phase: Completed
 `,
 					},
-					mockPromResponse: prometheusMetric("emoji", "daemonset", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("emoji", "daemonset", "emojivoto", success, false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -356,7 +356,7 @@ status:
   phase: Running
 `,
 					},
-					mockPromResponse: prometheusMetric("redis", "statefulset", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("redis", "statefulset", "emojivoto", success, false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -396,7 +396,7 @@ status:
   phase: Running
 `,
 					},
-					mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", success, false),
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
 						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -443,7 +443,7 @@ status:
   phase: Running
 `,
 					},
-					mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("emojivoto-2", "pod", "emojivoto", success, false),
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
 						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -494,7 +494,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+						genPromSample("emojivoto-1", "pod", "emojivoto", success, false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -550,7 +550,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", "success", false),
+						genPromSample("emojivoto-1", "pod", "emojivoto", success, false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
@@ -617,7 +617,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+						genPromSample("emojivoto-1", "pod", "emojivoto", success, true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -684,7 +684,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("emojivoto-1", "pod", "emojivoto", "success", true),
+						genPromSample("emojivoto-1", "pod", "emojivoto", success, true),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (le, dst_namespace, dst_pod))`,
@@ -775,7 +775,7 @@ status:
   phase: Running
 `,
 					},
-					mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", "success", false),
+					mockPromResponse: prometheusMetric("emoji-deploy", "deployment", "emojivoto", success, false),
 				},
 				req: pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
@@ -1196,7 +1196,7 @@ metadata:
 status:
   phase: Succeeded
 `},
-						mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", "success", false),
+						mockPromResponse: prometheusMetric("emoji", "deployment", "emojivoto", success, false),
 					},
 					req: pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
@@ -1238,7 +1238,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", success, false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,
@@ -1282,7 +1282,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", success, false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{deployment="emojivoto", direction="outbound"}[1m])) by (le, dst_namespace, authority))`,
@@ -1333,7 +1333,7 @@ status:
 `,
 					},
 					mockPromResponse: model.Vector{
-						genPromSample("10.1.1.239:9995", "authority", "linkerd", "success", false),
+						genPromSample("10.1.1.239:9995", "authority", "linkerd", success, false),
 					},
 					expectedPrometheusQueries: []string{
 						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (le, namespace, authority))`,

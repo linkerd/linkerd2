@@ -36,6 +36,8 @@ const (
 
 	cniConfName          = "CNI_CONF_NAME"
 	cniNetworkConfigName = "CNI_NETWORK_CONFIG"
+
+	testWd = "/tmp"
 )
 
 func env(key, fallback string) string {
@@ -281,7 +283,6 @@ func TestInstallCNI_Scenario1(t *testing.T) {
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
-	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
 	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)
@@ -311,7 +312,6 @@ func TestInstallCNI_Scenario2(t *testing.T) {
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
-	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
 	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)
@@ -342,7 +342,6 @@ func TestInstallCNI_Scenario3(t *testing.T) {
 
 	wd := pwd(t)
 	t.Logf("..setting the working directory: %v", wd)
-	testWd := "/tmp"
 	t.Logf("..setting the test working directory: %v", testWd)
 	testCNINetDir := mktemp(testWd, "linkerd-cni-confXXXXX", t)
 	t.Logf("..creating the test CNI_NET_DIR: %v", testCNINetDir)

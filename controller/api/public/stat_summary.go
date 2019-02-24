@@ -31,6 +31,9 @@ type rKey struct {
 }
 
 const (
+	success = "success"
+	failure = "failure"
+
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
 )
@@ -334,9 +337,9 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 			switch result.prom {
 			case promRequests:
 				switch string(sample.Metric[model.LabelName("classification")]) {
-				case "success":
+				case success:
 					basicStats[resource].SuccessCount += value
-				case "failure":
+				case failure:
 					basicStats[resource].FailureCount += value
 				}
 				switch string(sample.Metric[model.LabelName("tls")]) {

@@ -24,7 +24,7 @@ func TestRoutes(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns route stats (json)", func(t *testing.T) {
 		testRoutesCall(routesParamsExp{
 			routes:  []string{"/a", "/b", "/c"},
