@@ -57,6 +57,18 @@ func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
 	r.udp = checkUDPPorts(p)
 }
 
+func checkUDPPorts(t *v1.PodSpec) bool {
+	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	for _, container := range t.Containers {
+		for _, port := range container.Ports {
+			if port.Protocol == v1.ProtocolUDP {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // shouldInject returns false if the resource should not be injected.
 //
 // Injection is skipped in the following situations

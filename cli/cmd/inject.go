@@ -485,18 +485,6 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	output.Write([]byte("\n"))
 }
 
-func checkUDPPorts(t *v1.PodSpec) bool {
-	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
-	for _, container := range t.Containers {
-		for _, port := range container.Ports {
-			if port.Protocol == v1.ProtocolUDP {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func injectDisabled(t *metaV1.ObjectMeta) bool {
 	return t.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 }
