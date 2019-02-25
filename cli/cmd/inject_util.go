@@ -8,10 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	appsV1 "k8s.io/api/apps/v1"
 	batchV1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -328,4 +329,23 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
+}
+
+// updateReportAndCheck updates the report for the provided resources.
+func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
+	r.injectDisabled = injectDisabled(m)
+	r.hostNetwork = p.HostNetwork
+	r.sidecar = healthcheck.HasExistingSidecars(p)
+	r.udp = checkUDPPorts(p)
+}
+
+// shouldInject returns false if the resource should not be injected.
+//
+// Injection is skipped in the following situations
+// - Injection is disabled by annotation
+// - Pods with `hostNetwork: true` share a network namespace with the host.
+//   The init-container would destroy the iptables configuration on the host.
+// - Known 3rd party sidecars already present.
+func (r *injectReport) shouldInject() bool {
+	return !r.injectDisabled && !r.hostNetwork && !r.sidecar
 }
