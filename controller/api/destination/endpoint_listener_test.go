@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const thisNS = "this-namespace"
+
 var (
 	addedAddress1 = &net.TcpAddress{
 		Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: 1}},
@@ -143,8 +145,8 @@ func TestEndpointListener(t *testing.T) {
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		expectedServiceName := "service-name"
-		expectedPodName := "pod1"
-		expectedNamespace := "this-namespace"
+		expectedPodName := pod1.Name
+		expectedNamespace := thisNS
 		expectedReplicationControllerName := "rc-name"
 
 		podForAddedAddress1 := &v1.Pod{
@@ -195,8 +197,8 @@ func TestEndpointListener(t *testing.T) {
 	})
 
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
-		expectedPodName := "pod1"
-		expectedPodNamespace := "this-namespace"
+		expectedPodName := pod1.Name
+		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 		expectedTLSIdentity := &pb.TlsIdentity_K8SPodIdentity{
@@ -247,8 +249,8 @@ func TestEndpointListener(t *testing.T) {
 	})
 
 	t.Run("Does not send TlsIdentity when not enabled", func(t *testing.T) {
-		expectedPodName := "pod1"
-		expectedPodNamespace := "this-namespace"
+		expectedPodName := pod1.Name
+		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := "pod-deployment"
 

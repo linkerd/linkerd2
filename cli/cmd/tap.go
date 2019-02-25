@@ -105,7 +105,7 @@ func newCmdTap() *cobra.Command {
 			// TODO: support more output formats?
 			case "":
 				// default output format.
-			case "wide":
+			case wideOutput:
 				wide = true
 			default:
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)

@@ -29,7 +29,7 @@ func TestStat(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{
@@ -58,7 +58,7 @@ func TestStat(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns all namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{

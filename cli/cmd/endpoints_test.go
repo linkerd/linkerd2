@@ -24,7 +24,7 @@ func TestEndpoints(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns endpoints (json)", func(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:    options,
@@ -42,7 +42,7 @@ func TestEndpoints(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns all namespace endpoints (json)", func(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:    options,

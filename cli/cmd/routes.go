@@ -75,7 +75,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" (default), \"wide\", and \"json\" are supported")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\", \"%s\", or \"%s\"", tableOutput, wideOutput, jsonOutput))
 
 	return cmd
 }
@@ -142,7 +142,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 	sort.Strings(resources)
 
 	switch options.outputFormat {
-	case "table", "wide", "":
+	case tableOutput, wideOutput:
 		for _, resource := range resources {
 			if len(tables) > 1 {
 				fmt.Fprintf(w, "==> %s <==\t\f", resource)
@@ -150,7 +150,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 			printRouteTable(tables[resource], w, options)
 			fmt.Fprintln(w)
 		}
-	case "json":
+	case jsonOutput:
 		printRouteJSON(tables, w, options)
 	}
 }
@@ -168,7 +168,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 		fmt.Sprintf(routeTemplate, "ROUTE"),
 		authorityColumn,
 	}
-	outputActual := options.toResource != "" && options.outputFormat == "wide"
+	outputActual := options.toResource != "" && options.outputFormat == wideOutput
 	if outputActual {
 		headers = append(headers, []string{
 			"EFFECTIVE_SUCCESS",
@@ -276,15 +276,15 @@ func printRouteJSON(tables map[string][]*routeRowStats, w *tabwriter.Writer, opt
 
 func (o *routesOptions) validateOutputFormat() error {
 	switch o.outputFormat {
-	case "table", "json", "":
+	case tableOutput, jsonOutput:
 		return nil
-	case "wide":
+	case wideOutput:
 		if o.toResource == "" {
-			return errors.New("wide output is only available when --to is specified")
+			return fmt.Errorf("%s output is only available when --to is specified", wideOutput)
 		}
 		return nil
 	default:
-		return fmt.Errorf("--output currently only supports table, wide, and json")
+		return fmt.Errorf("--output currently only supports %s, %s, and %s", tableOutput, wideOutput, jsonOutput)
 	}
 }
 
