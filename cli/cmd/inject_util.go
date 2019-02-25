@@ -51,7 +51,7 @@ func (r injectReport) resName() string {
 
 // updateReportAndCheck updates the report for the provided resources.
 func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
-	r.injectDisabled = injectDisabled(m)
+	r.injectDisabled = m.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 	r.hostNetwork = p.HostNetwork
 	r.sidecar = healthcheck.HasExistingSidecars(p)
 	r.udp = checkUDPPorts(p)

@@ -484,7 +484,3 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
 }
-
-func injectDisabled(t *metaV1.ObjectMeta) bool {
-	return t.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
-}
