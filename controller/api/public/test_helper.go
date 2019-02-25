@@ -135,7 +135,7 @@ func (m *mockProm) Series(ctx context.Context, matches []string, startTime time.
 
 // GenStatSummaryResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool) pb.StatSummaryResponse {
+func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool, tcpStats bool) pb.StatSummaryResponse {
 	rows := []*pb.StatTable_PodGroup_Row{}
 	for _, ns := range resNs {
 		statTableRow := &pb.StatTable_PodGroup_Row{
@@ -155,6 +155,14 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 				LatencyMsP95:    123,
 				LatencyMsP99:    123,
 				TlsRequestCount: 123,
+			}
+		}
+
+		if tcpStats {
+			statTableRow.TcpStats = &pb.TcpStats{
+				OpenConnections: 123,
+				ReadBytesTotal:  123,
+				WriteBytesTotal: 123,
 			}
 		}
 

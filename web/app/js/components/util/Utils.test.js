@@ -91,6 +91,13 @@ describe('Utils', () => {
       expect(metricToFormatter["SUCCESS_RATE"](4)).toEqual('400.00%');
     });
 
+    it('formats bytes', () => {
+      expect(metricToFormatter["BYTES"](123)).toEqual('123B');
+      expect(metricToFormatter["BYTES"](1234)).toEqual('1.234kB');
+      expect(metricToFormatter["BYTES"](12345)).toEqual('12.345kB');
+      expect(metricToFormatter["BYTES"](1234567)).toEqual('1.235MB');
+    });
+
     it('formats latencies expressed as seconds into a more appropriate display unit', () => {
       expect(formatLatencySec("0.002837700")).toEqual("3 ms");
       expect(formatLatencySec("0.000")).toEqual("0 s");

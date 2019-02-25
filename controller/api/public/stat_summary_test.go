@@ -200,7 +200,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -276,7 +276,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 2,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -371,7 +371,59 @@ status:
 					MeshedPods:  3,
 					RunningPods: 3,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Queries prometheus for TCP stats when requested", func(t *testing.T) {
+
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`,
+					},
+					mockPromResponse: prometheusMetric("emojivoto-1", "pod", "emojivoto", "success", false),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (le, namespace, pod))`,
+						`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
+						`sum(tcp_open_connections{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}) by (namespace, pod)`,
+						`sum(increase(tcp_read_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
+					},
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Name:      "emojivoto-1",
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+					TcpStats:   true,
+				},
+				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}, true, true),
 			},
 		}
 
@@ -418,7 +470,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -524,7 +576,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -580,7 +632,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -647,7 +699,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -714,7 +766,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, true),
+				}, true, false),
 			},
 		}
 
@@ -1211,7 +1263,7 @@ status:
 						MeshedPods:  1,
 						RunningPods: 2,
 						FailedPods:  1,
-					}, true),
+					}, true, false),
 				},
 			}
 
@@ -1256,7 +1308,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true, false),
 			},
 		}
 
@@ -1307,7 +1359,7 @@ status:
 						},
 					},
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil, true),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{""}, nil, true, false),
 			},
 		}
 
@@ -1352,7 +1404,7 @@ status:
 					},
 					TimeWindow: "1m",
 				},
-				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true),
+				expectedResponse: GenStatSummaryResponse("10.1.1.239:9995", pkgK8s.Authority, []string{"linkerd"}, nil, true, false),
 			},
 		}
 
@@ -1394,7 +1446,7 @@ status:
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
-				}, false),
+				}, false, false),
 			},
 		}
 

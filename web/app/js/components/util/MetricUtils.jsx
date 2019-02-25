@@ -93,6 +93,18 @@ const getLatency = row => {
   }
 };
 
+const getTcpStats = row => {
+  if (_isEmpty(row.tcpStats)) {
+    return {};
+  } else {
+    return {
+      openConnections: parseInt(row.tcpStats.openConnections, 0),
+      readBytes: parseInt(row.tcpStats.readBytesTotal, 0),
+      writeBytes: parseInt(row.tcpStats.writeBytesTotal, 0),
+    };
+  }
+};
+
 const processStatTable = table => {
   let rows = _compact(table.podGroup.rows.map(row => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
@@ -106,6 +118,7 @@ const processStatTable = table => {
       requestRate: getRequestRate(row),
       successRate: getSuccessRate(row),
       latency: getLatency(row),
+      tcp: getTcpStats(row),
       tlsRequestPercent: getTlsRequestPercentage(row),
       added: runningPodCount > 0 && meshedPodCount > 0,
       pods: {
