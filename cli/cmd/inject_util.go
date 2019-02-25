@@ -49,7 +49,7 @@ func (r injectReport) resName() string {
 	return fmt.Sprintf("%s/%s", r.kind, r.name)
 }
 
-// updateReportAndCheck updates the report for the provided resources.
+// update updates the report for the provided resources.
 func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
 	r.injectDisabled = m.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 	r.hostNetwork = p.HostNetwork
