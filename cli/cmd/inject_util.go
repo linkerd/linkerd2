@@ -45,8 +45,27 @@ type resourceConfig struct {
 	k8sLabels       map[string]string
 }
 
-func (i injectReport) resName() string {
-	return fmt.Sprintf("%s/%s", i.kind, i.name)
+func (r injectReport) resName() string {
+	return fmt.Sprintf("%s/%s", r.kind, r.name)
+}
+
+// updateReportAndCheck updates the report for the provided resources.
+func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
+	r.injectDisabled = injectDisabled(m)
+	r.hostNetwork = p.HostNetwork
+	r.sidecar = healthcheck.HasExistingSidecars(p)
+	r.udp = checkUDPPorts(p)
+}
+
+// shouldInject returns false if the resource should not be injected.
+//
+// Injection is skipped in the following situations
+// - Injection is disabled by annotation
+// - Pods with `hostNetwork: true` share a network namespace with the host.
+//   The init-container would destroy the iptables configuration on the host.
+// - Known 3rd party sidecars already present.
+func (r *injectReport) shouldInject() bool {
+	return !r.injectDisabled && !r.hostNetwork && !r.sidecar
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
@@ -329,23 +348,4 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
-}
-
-// updateReportAndCheck updates the report for the provided resources.
-func (r *injectReport) update(m *metaV1.ObjectMeta, p *v1.PodSpec) {
-	r.injectDisabled = injectDisabled(m)
-	r.hostNetwork = p.HostNetwork
-	r.sidecar = healthcheck.HasExistingSidecars(p)
-	r.udp = checkUDPPorts(p)
-}
-
-// shouldInject returns false if the resource should not be injected.
-//
-// Injection is skipped in the following situations
-// - Injection is disabled by annotation
-// - Pods with `hostNetwork: true` share a network namespace with the host.
-//   The init-container would destroy the iptables configuration on the host.
-// - Known 3rd party sidecars already present.
-func (r *injectReport) shouldInject() bool {
-	return !r.injectDisabled && !r.hostNetwork && !r.sidecar
 }
