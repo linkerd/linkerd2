@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -99,6 +99,7 @@ func TestGetState(t *testing.T) {
 	}
 
 	for i, tt := range testCases {
+		tt := tt // pin
 		t.Run(fmt.Sprintf("%d: returns the state of the resolve", i), func(t *testing.T) {
 			endpointsWatcher.servicePorts = tt.servicePorts
 			resolver := newK8sResolver(

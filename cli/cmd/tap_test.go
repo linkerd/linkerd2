@@ -16,9 +16,10 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+const targetName = "pod-666"
+
 func busyTest(t *testing.T, wide bool) {
 	resourceType := k8s.Pod
-	targetName := "pod-666"
 	params := util.TapRequestParams{
 		Resource:  resourceType + "/" + targetName,
 		Scheme:    "https",
@@ -113,7 +114,6 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
 		resourceType := k8s.Pod
-		targetName := "pod-666"
 		params := util.TapRequestParams{
 			Resource:  resourceType + "/" + targetName,
 			Scheme:    "https",
@@ -152,7 +152,6 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should return error if stream returned error", func(t *testing.T) {
 		t.SkipNow()
 		resourceType := k8s.Pod
-		targetName := "pod-666"
 		params := util.TapRequestParams{
 			Resource:  resourceType + "/" + targetName,
 			Scheme:    "https",

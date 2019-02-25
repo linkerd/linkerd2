@@ -16,6 +16,7 @@ func TestRenderSP(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, "testdata/"+tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
 			err := renderSP(&buf, tc.controlPlaneNamespace)

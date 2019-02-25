@@ -19,6 +19,11 @@ describe('MetricUtils', () => {
           key: "emojivoto-deployment-voting",
           requestRate: 2.5,
           successRate: 0.9,
+          tcp: {
+            openConnections: 221,
+            readBytes: 4421,
+            writeBytes: 4421
+          },
           totalRequests: 150,
           tlsRequestPercent: new Percentage(100, 150),
           latency: {

@@ -315,6 +315,7 @@ message StatSummaryRequest {
   }
 
   bool skip_stats = 6;  // true if we want to skip stats from Prometheus
+  bool tcp_stats = 7;
 }
 
 message StatSummaryResponse {
@@ -339,6 +340,15 @@ message BasicStats {
   uint64 actual_failure_count = 8;
 }
 
+message TcpStats {
+  // number of currently open connections
+  uint64 open_connections = 1;
+  // total count of bytes read from peers
+  uint64 read_bytes_total = 2;
+  // total count of bytes written to peers
+  uint64 write_bytes_total = 3;
+}
+
 message StatTable {
   oneof table {
     PodGroup pod_group = 1;
@@ -359,6 +369,7 @@ message StatTable {
       uint64 failed_pod_count = 6;
 
       BasicStats stats = 5;
+      TcpStats tcp_stats = 8;
 
       // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
       map<string, PodErrors> errors_by_pod = 7;

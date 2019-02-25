@@ -636,6 +636,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
+				checker := checker // pin
 				if checker.check != nil {
 					if !hc.runCheck(c.id, &checker, observer) {
 						if !checker.warning {

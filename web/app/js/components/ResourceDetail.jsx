@@ -131,7 +131,7 @@ export class ResourceDetailBase extends React.Component {
       this.api.fetchPods(resource.namespace),
       // metrics for all pods in this namespace (hack, continued)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource("pod", resource.namespace)}`
+        `${this.api.urlsForResource("pod", resource.namespace)}&tcp_stats=true`
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
@@ -154,15 +154,28 @@ export class ResourceDetailBase extends React.Component {
         // Do this by querying for metrics for all pods in this namespace and then filtering
         // out those pods whose owner is not this resource
         // TODO: fix (#1467)
-        let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
-          if (_get(pod, resourceTypeToCamelCase(resource.type)) === resource.namespace + "/" + resource.name) {
-            mem[pod.name] = true;
-          }
+        let resourceName = resource.namespace + "/" + resource.name;
+        let podMetricsForResource;
 
-          return mem;
-        }, {});
+        if (resource.type === "pod") {
+          // get only info for the pod whose ResourceDetail is being shown
+          // pod.name in podMetrics is of the form `pod-name`
+          podMetricsForResource = _filter(podMetrics, pod => pod.name === resource.name);
+        } else {
+          let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
+            if (_get(pod, resourceTypeToCamelCase(resource.type)) === resourceName) {
+              // pod.name in podListRsp is of the form `namespace/pod-name`
+              mem[pod.name] = true;
+            }
 
-        let podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+            return mem;
+          }, {});
+
+          // get all pods whose owner is this resource
+          podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+        }
+
+
         let resourceIsMeshed = true;
         if (!_isEmpty(this.state.resourceMetrics)) {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
@@ -318,6 +331,14 @@ export class ResourceDetailBase extends React.Component {
             </React.Fragment>
           )
         }
+
+        <React.Fragment>
+          <Typography variant="h5">TCP</Typography>
+          <MetricsTable
+            resource="pod"
+            isTcpTable={true}
+            metrics={this.state.podMetrics} />
+        </React.Fragment>
       </div>
     );
   }

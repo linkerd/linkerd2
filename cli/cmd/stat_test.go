@@ -29,7 +29,7 @@ func TestStat(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{
@@ -58,7 +58,7 @@ func TestStat(t *testing.T) {
 		}, t)
 	})
 
-	options.outputFormat = "json"
+	options.outputFormat = jsonOutput
 	t.Run("Returns all namespace stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{
@@ -138,7 +138,7 @@ func TestStat(t *testing.T) {
 func testStatCall(exp paramsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
 
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true)
+	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, false)
 
 	mockClient.StatSummaryResponseToReturn = &response
 

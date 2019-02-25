@@ -3,6 +3,7 @@ package srv
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -101,21 +102,15 @@ func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p 
 }
 
 func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	allNs := false
-	if req.FormValue("all_namespaces") == "true" {
-		allNs = true
-	}
-	skipStats := false
-	if req.FormValue("skip_stats") == "true" {
-		skipStats = true
-	}
+	trueStr := fmt.Sprintf("%t", true)
+
 	requestParams := util.StatsSummaryRequestParams{
 		StatsBaseRequestParams: util.StatsBaseRequestParams{
 			TimeWindow:    req.FormValue("window"),
 			ResourceName:  req.FormValue("resource_name"),
 			ResourceType:  req.FormValue("resource_type"),
 			Namespace:     req.FormValue("namespace"),
-			AllNamespaces: allNs,
+			AllNamespaces: req.FormValue("all_namespaces") == trueStr,
 		},
 		ToName:        req.FormValue("to_name"),
 		ToType:        req.FormValue("to_type"),
@@ -123,7 +118,8 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
-		SkipStats:     skipStats,
+		SkipStats:     req.FormValue("skip_stats") == trueStr,
+		TCPStats:      req.FormValue("tcp_stats") == trueStr,
 	}
 
 	// default to returning deployment stats

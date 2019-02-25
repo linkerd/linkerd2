@@ -112,7 +112,7 @@ func TestRender(t *testing.T) {
 	haOptions := newInstallOptions()
 	haOptions.highAvailability = true
 	haConfig, _ := validateAndBuildConfig(haOptions)
-	haConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	haConfig.UUID = defaultConfig.UUID
 
 	haWithOverridesOptions := newInstallOptions()
 	haWithOverridesOptions.highAvailability = true
@@ -120,19 +120,19 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
 	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
-	haWithOverridesConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	haWithOverridesConfig.UUID = defaultConfig.UUID
 
 	noInitContainerOptions := newInstallOptions()
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
-	noInitContainerConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	noInitContainerConfig.UUID = defaultConfig.UUID
 
 	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
 	noInitContainerWithProxyAutoInjectOptions.tls = "optional"
 	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
-	noInitContainerWithProxyAutoInjectConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	noInitContainerWithProxyAutoInjectConfig.UUID = defaultConfig.UUID
 
 	testCases := []struct {
 		config                installConfig
@@ -150,6 +150,7 @@ func TestRender(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			controlPlaneNamespace = tc.controlPlaneNamespace
 

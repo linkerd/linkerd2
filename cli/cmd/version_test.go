@@ -62,6 +62,7 @@ func TestConfigureAndRunVersion(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("test %d TestConfigureAndRunVersion()", i), func(t *testing.T) {
 			wout := bytes.NewBufferString("")
 			werr := bytes.NewBufferString("")

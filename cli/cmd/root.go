@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -21,6 +20,10 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
+
+	jsonOutput  = "json"
+	tableOutput = "table"
+	wideOutput  = "wide"
 )
 
 var (
@@ -182,23 +185,23 @@ func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
 		namespace:    "default",
 		timeWindow:   "1m",
-		outputFormat: "",
+		outputFormat: tableOutput,
 	}
 }
 
 func (o *statOptionsBase) validateOutputFormat() error {
 	switch o.outputFormat {
-	case "table", "json", "":
+	case tableOutput, jsonOutput:
 		return nil
 	default:
-		return errors.New("--output currently only supports table and json")
+		return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
 	}
 }
 
 func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	var out string
 	switch options.outputFormat {
-	case "json":
+	case jsonOutput:
 		out = buffer.String()
 	default:
 		// strip left padding on the first column

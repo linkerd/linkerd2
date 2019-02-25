@@ -85,6 +85,7 @@ func TestUninjectYAML(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
 			file, err := os.Open("testdata/" + tc.inputFileName)
 			if err != nil {

@@ -18,6 +18,13 @@ type injectYAML struct {
 	testInjectOptions *injectOptions
 }
 
+func mkFilename(filename string, verbose bool) string {
+	if verbose {
+		return fmt.Sprintf("%s.verbose", filename)
+	}
+	return filename
+}
+
 func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	file, err := os.Open("testdata/" + tc.inputFileName)
 	if err != nil {
@@ -34,10 +41,7 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 	}
 	diffTestdata(t, tc.goldenFileName, output.String())
 
-	reportFileName := tc.reportFileName
-	if verbose {
-		reportFileName += ".verbose"
-	}
+	reportFileName := mkFilename(tc.reportFileName, verbose)
 	diffTestdata(t, reportFileName, report.String())
 }
 
@@ -46,18 +50,18 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultOptions.linkerdVersion = "testinjectversion"
 
 	tlsOptions := newInjectOptions()
-	tlsOptions.linkerdVersion = "testinjectversion"
+	tlsOptions.linkerdVersion = defaultOptions.linkerdVersion
 	tlsOptions.tls = "optional"
 
 	proxyResourceOptions := newInjectOptions()
-	proxyResourceOptions.linkerdVersion = "testinjectversion"
+	proxyResourceOptions.linkerdVersion = defaultOptions.linkerdVersion
 	proxyResourceOptions.proxyCPURequest = "110m"
 	proxyResourceOptions.proxyMemoryRequest = "100Mi"
 	proxyResourceOptions.proxyCPULimit = "160m"
 	proxyResourceOptions.proxyMemoryLimit = "150Mi"
 
 	noInitContainerOptions := newInjectOptions()
-	noInitContainerOptions.linkerdVersion = "testinjectversion"
+	noInitContainerOptions.linkerdVersion = defaultOptions.linkerdVersion
 	noInitContainerOptions.noInitContainer = true
 
 	testCases := []injectYAML{
@@ -172,6 +176,7 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		verbose = true
 		t.Run(fmt.Sprintf("%d: %s --verbose", i, tc.inputFileName), func(t *testing.T) {
 			testUninjectAndInject(t, tc)
@@ -212,10 +217,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Expected no standard output, but got: %s", outBuffer)
 	}
 
-	stdErrGoldenFileName := tc.stdErrGoldenFileName
-	if verbose {
-		stdErrGoldenFileName += ".verbose"
-	}
+	stdErrGoldenFileName := mkFilename(tc.stdErrGoldenFileName, verbose)
 	diffTestdata(t, stdErrGoldenFileName, errBuffer.String())
 }
 
@@ -235,6 +237,7 @@ func TestRunInjectCmd(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		verbose = true
 		t.Run(fmt.Sprintf("%d: %s --verbose", i, tc.inputFileName), func(t *testing.T) {
 			testInjectCmd(t, tc)
@@ -266,10 +269,7 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	}
 	diffTestdata(t, tc.expectedFile, actual.String())
 
-	stdErrFile := tc.stdErrFile
-	if verbose {
-		stdErrFile += ".verbose"
-	}
+	stdErrFile := mkFilename(tc.stdErrFile, verbose)
 	diffTestdata(t, stdErrFile, errBuf.String())
 }
 
@@ -288,10 +288,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	expectedFile := filepath.Join(expectedFolder, "injected_nginx_redis.yaml")
 	diffTestdata(t, expectedFile, actual.String())
 
-	stdErrFileName := filepath.Join(expectedFolder, "injected_nginx_redis.stderr")
-	if verbose {
-		stdErrFileName += ".verbose"
-	}
+	stdErrFileName := mkFilename(filepath.Join(expectedFolder, "injected_nginx_redis.stderr"), verbose)
 	diffTestdata(t, stdErrFileName, errBuf.String())
 }
 
@@ -318,6 +315,7 @@ func TestInjectFilePath(t *testing.T) {
 		}
 
 		for i, testCase := range testCases {
+			testCase := testCase // pin
 			verbose = true
 			t.Run(fmt.Sprintf("%d %s", i, testCase.resource), func(t *testing.T) {
 				testInjectFilePath(t, testCase)
