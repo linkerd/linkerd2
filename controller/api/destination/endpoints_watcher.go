@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -108,7 +108,7 @@ func (e *endpointsWatcher) subscribe(service *serviceID, port uint32, listener e
 	if !ok {
 		endpoints, err := e.getEndpoints(service)
 		if apierrors.IsNotFound(err) {
-			endpoints = &v1.Endpoints{}
+			endpoints = &corev1.Endpoints{}
 		} else if err != nil {
 			e.log.Errorf("Error getting endpoints: %s", err)
 			return err
@@ -118,7 +118,7 @@ func (e *endpointsWatcher) subscribe(service *serviceID, port uint32, listener e
 	}
 
 	exists := true
-	if svc == nil || svc.Spec.Type == v1.ServiceTypeExternalName {
+	if svc == nil || svc.Spec.Type == corev1.ServiceTypeExternalName {
 		// XXX: The proxy will use DNS to discover the service if it is told
 		// the service doesn't exist. An external service is represented in DNS
 		// as a CNAME, which the proxy will correctly resolve. Thus, there's no
@@ -159,12 +159,12 @@ func (e *endpointsWatcher) unsubscribe(service *serviceID, port uint32, listener
 	return nil
 }
 
-func (e *endpointsWatcher) getService(service *serviceID) (*v1.Service, error) {
+func (e *endpointsWatcher) getService(service *serviceID) (*corev1.Service, error) {
 	return e.serviceLister.Services(service.namespace).Get(service.name)
 }
 
 func (e *endpointsWatcher) addService(obj interface{}) {
-	service := obj.(*v1.Service)
+	service := obj.(*corev1.Service)
 	if service.Namespace == kubeSystem {
 		return
 	}
@@ -184,7 +184,7 @@ func (e *endpointsWatcher) addService(obj interface{}) {
 }
 
 func (e *endpointsWatcher) updateService(oldObj, newObj interface{}) {
-	service := newObj.(*v1.Service)
+	service := newObj.(*corev1.Service)
 	if service.Namespace == kubeSystem {
 		return
 	}
@@ -203,12 +203,12 @@ func (e *endpointsWatcher) updateService(oldObj, newObj interface{}) {
 	}
 }
 
-func (e *endpointsWatcher) getEndpoints(service *serviceID) (*v1.Endpoints, error) {
+func (e *endpointsWatcher) getEndpoints(service *serviceID) (*corev1.Endpoints, error) {
 	return e.endpointLister.Endpoints(service.namespace).Get(service.name)
 }
 
 func (e *endpointsWatcher) addEndpoints(obj interface{}) {
-	endpoints := obj.(*v1.Endpoints)
+	endpoints := obj.(*corev1.Endpoints)
 	if endpoints.Namespace == kubeSystem {
 		return
 	}
@@ -228,7 +228,7 @@ func (e *endpointsWatcher) addEndpoints(obj interface{}) {
 }
 
 func (e *endpointsWatcher) deleteEndpoints(obj interface{}) {
-	endpoints := obj.(*v1.Endpoints)
+	endpoints := obj.(*corev1.Endpoints)
 	if endpoints.Namespace == kubeSystem {
 		return
 	}
@@ -290,7 +290,7 @@ type servicePort struct {
 	port    uint32 // service port
 	// these values hold the current state of the servicePort and are mutable
 	listeners  []endpointUpdateListener
-	endpoints  *v1.Endpoints
+	endpoints  *corev1.Endpoints
 	targetPort intstr.IntOrString
 	addresses  []*updateAddress
 	podLister  corelisters.PodLister
@@ -301,7 +301,7 @@ type servicePort struct {
 	log   *log.Entry
 }
 
-func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, podLister corelisters.PodLister) *servicePort {
+func newServicePort(service *corev1.Service, endpoints *corev1.Endpoints, port uint32, podLister corelisters.PodLister) *servicePort {
 	id := serviceID{}
 	if service != nil {
 		id.namespace = service.Namespace
@@ -330,7 +330,7 @@ func newServicePort(service *v1.Service, endpoints *v1.Endpoints, port uint32, p
 	return sp
 }
 
-func (sp *servicePort) updateEndpoints(newEndpoints *v1.Endpoints) {
+func (sp *servicePort) updateEndpoints(newEndpoints *corev1.Endpoints) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -347,11 +347,11 @@ func (sp *servicePort) deleteEndpoints() {
 	for _, listener := range sp.listeners {
 		listener.NoEndpoints(false)
 	}
-	sp.endpoints = &v1.Endpoints{}
+	sp.endpoints = &corev1.Endpoints{}
 	sp.addresses = []*updateAddress{}
 }
 
-func (sp *servicePort) updateService(newService *v1.Service) {
+func (sp *servicePort) updateService(newService *corev1.Service) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -362,7 +362,7 @@ func (sp *servicePort) updateService(newService *v1.Service) {
 	}
 }
 
-func (sp *servicePort) updateAddresses(endpoints *v1.Endpoints, port intstr.IntOrString) {
+func (sp *servicePort) updateAddresses(endpoints *corev1.Endpoints, port intstr.IntOrString) {
 	newAddresses := sp.endpointsToAddresses(endpoints, port)
 	if log.GetLevel() >= log.DebugLevel {
 		var s []string
@@ -432,13 +432,13 @@ func (sp *servicePort) unsubscribeAll() {
 	}
 }
 
-func (sp *servicePort) getState() (v1.Endpoints, intstr.IntOrString, []*updateAddress) {
+func (sp *servicePort) getState() (corev1.Endpoints, intstr.IntOrString, []*updateAddress) {
 	sp.mutex.RLock()
 	defer sp.mutex.RUnlock()
 
 	endpoints := sp.endpoints.DeepCopy()
 	if endpoints == nil {
-		endpoints = &v1.Endpoints{}
+		endpoints = &corev1.Endpoints{}
 	}
 
 	addresses := []*updateAddress{}
@@ -451,7 +451,7 @@ func (sp *servicePort) getState() (v1.Endpoints, intstr.IntOrString, []*updateAd
 
 /// helpers ///
 
-func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, targetPort intstr.IntOrString) []*updateAddress {
+func (sp *servicePort) endpointsToAddresses(endpoints *corev1.Endpoints, targetPort intstr.IntOrString) []*updateAddress {
 	addrs := make([]*updateAddress, 0)
 
 	for _, subset := range endpoints.Subsets {
@@ -507,7 +507,7 @@ func (sp *servicePort) endpointsToAddresses(endpoints *v1.Endpoints, targetPort 
 // specified port and a target port configured, it returns the name of the
 // service's port (not the name of the target pod port), so that it can be
 // looked up in the the endpoints API response, which uses service port names.
-func getTargetPort(service *v1.Service, port uint32) intstr.IntOrString {
+func getTargetPort(service *corev1.Service, port uint32) intstr.IntOrString {
 	// Use the specified port as the target port by default
 	targetPort := intstr.FromInt(int(port))
 

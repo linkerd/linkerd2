@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/linkerd/linkerd2/pkg/version"
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -178,7 +178,7 @@ func CreatedByAnnotationValue() string {
 }
 
 // GetPodLabels returns the set of prometheus owner labels for a given pod
-func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]string {
+func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]string {
 	labels := map[string]string{"pod": pod.Name}
 
 	l5dLabel := KindToL5DLabel(ownerKind)
@@ -188,7 +188,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 		labels["control_plane_ns"] = controllerNS
 	}
 
-	if pth := pod.Labels[appsV1.DefaultDeploymentUniqueLabelKey]; pth != "" {
+	if pth := pod.Labels[appsv1.DefaultDeploymentUniqueLabelKey]; pth != "" {
 		labels["pod_template_hash"] = pth
 	}
 
@@ -196,7 +196,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 }
 
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
-func IsMeshed(pod *coreV1.Pod, controllerNS string) bool {
+func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
 }
 

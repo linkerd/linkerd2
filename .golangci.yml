@@ -8,6 +8,7 @@ linters:
   - depguard
   - goconst
   - gofmt
+  - goimports
   - golint
   - gosimple
   - govet
@@ -23,7 +24,6 @@ linters:
   # - gochecknoglobals
   # - gochecknoinits
   # - gocyclo
-  # - goimports
   # - gosec
   # - interfacer
   # - lll

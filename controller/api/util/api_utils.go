@@ -10,7 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -149,7 +149,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 	if p.AllNamespaces {
 		targetNamespace = ""
 	} else if p.Namespace == "" {
-		targetNamespace = v1.NamespaceDefault
+		targetNamespace = corev1.NamespaceDefault
 	}
 
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
@@ -239,7 +239,7 @@ func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, erro
 	if p.AllNamespaces {
 		targetNamespace = ""
 	} else if p.Namespace == "" {
-		targetNamespace = v1.NamespaceDefault
+		targetNamespace = corev1.NamespaceDefault
 	}
 
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
@@ -516,7 +516,7 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 }
 
 // K8sPodToPublicPod converts a Kubernetes Pod to a Public API Pod
-func K8sPodToPublicPod(pod v1.Pod, ownerKind string, ownerName string) pb.Pod {
+func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) pb.Pod {
 	status := string(pod.Status.Phase)
 	if pod.DeletionTimestamp != nil {
 		status = "Terminating"
