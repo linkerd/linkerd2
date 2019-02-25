@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -115,15 +114,8 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, optio
 	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, options)
 }
 
-/* Given a ObjectMeta, update ObjectMeta in place with the new labels and
- * annotations.
- */
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions, report *injectReport) bool {
-	report.injectDisabled = injectDisabled(t)
-	if report.injectDisabled {
-		return false
-	}
-
+// injectObjectMeta adds linkerd labels & annotations to the provided ObjectMeta.
+func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
@@ -137,27 +129,10 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	for k, v := range k8sLabels {
 		t.Labels[k] = v
 	}
-
-	return true
 }
 
-/* Given a PodSpec, update the PodSpec in place with the sidecar
- * and init-container injected. If the pod is unsuitable for having them
- * injected, return false.
- */
-func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
-	report.hostNetwork = t.HostNetwork
-	report.sidecar = healthcheck.HasExistingSidecars(t)
-	report.udp = checkUDPPorts(t)
-
-	// Skip injection if:
-	// 1) Pods with `hostNetwork: true` share a network namespace with the host.
-	//    The init-container would destroy the iptables configuration on the host.
-	// OR
-	// 2) Known 3rd party sidecars already present.
-	if report.hostNetwork || report.sidecar {
-		return false
-	}
+// injectPodSpec adds linkerd sidecars to the provided PodSpec.
+func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) {
 
 	f := false
 	inboundSkipPorts := append(options.ignoreInboundPorts, options.proxyControlPort, options.proxyMetricsPort)
@@ -358,8 +333,6 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		}
 		t.InitContainers = append(t.InitContainers, initContainer)
 	}
-
-	return true
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptions) ([]byte, []injectReport, error) {
@@ -394,8 +367,11 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 			ControllerNamespace: controlPlaneNamespace,
 		}
 
-		if injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options, &report) &&
-			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options, &report) {
+		report.update(conf.objectMeta, conf.podSpec)
+		if report.shouldInject() {
+			injectObjectMeta(conf.objectMeta, conf.k8sLabels, options)
+			injectPodSpec(conf.podSpec, identity, conf.dnsNameOverride, options)
+
 			var err error
 			output, err = yaml.Marshal(conf.obj)
 			if err != nil {
@@ -507,20 +483,4 @@ func (resourceTransformerInject) generateReport(injectReports []injectReport, ou
 
 	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
-}
-
-func checkUDPPorts(t *v1.PodSpec) bool {
-	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
-	for _, container := range t.Containers {
-		for _, port := range container.Ports {
-			if port.Protocol == v1.ProtocolUDP {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func injectDisabled(t *metaV1.ObjectMeta) bool {
-	return t.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 }
