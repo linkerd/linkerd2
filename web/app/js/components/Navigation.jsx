@@ -121,6 +121,7 @@ const styles = theme => {
     shrinkIcon: {
       fontSize: "18px",
       paddingLeft: "3px",
+      paddingRight: "3px",
     }
   };
 };
