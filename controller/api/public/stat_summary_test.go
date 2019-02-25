@@ -1011,6 +1011,7 @@ status:
 				nil,
 				k8sAPI,
 				"linkerd",
+				[]string{},
 			)
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
@@ -1035,6 +1036,7 @@ status:
 			nil,
 			k8sAPI,
 			"linkerd",
+			[]string{},
 		)
 
 		invalidRequests := []statSumExpected{

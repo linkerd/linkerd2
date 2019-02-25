@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/discovery"
@@ -25,6 +26,7 @@ func main() {
 	destinationAPIAddr := flag.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -62,6 +64,7 @@ func main() {
 		discoveryClient,
 		k8sAPI,
 		*controllerNamespace,
+		strings.Split(*ignoredNamespaces, ","),
 	)
 
 	k8sAPI.Sync() // blocks until caches are synced

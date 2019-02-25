@@ -37,6 +37,7 @@ type grpcServer struct {
 	discoveryClient     discoveryPb.DiscoveryClient
 	k8sAPI              *k8s.API
 	controllerNamespace string
+	ignoredNamespaces   []string
 }
 
 type podReport struct {
@@ -58,6 +59,7 @@ func newGrpcServer(
 	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
+	ignoredNamespaces []string,
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
@@ -66,6 +68,7 @@ func newGrpcServer(
 		discoveryClient:     discoveryClient,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
+		ignoredNamespaces:   ignoredNamespaces,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -141,6 +144,10 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 	podList := make([]*pb.Pod, 0)
 
 	for _, pod := range pods {
+		if s.shouldIgnore(pod) {
+			continue
+		}
+
 		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
 		// filter out pods without matching owner
 		if targetOwner.GetNamespace() != "" && targetOwner.GetNamespace() != pod.GetNamespace() {
