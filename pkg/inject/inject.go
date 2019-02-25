@@ -379,7 +379,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			{Name: "LINKERD2_PROXY_LOG", Value: conf.proxyConfig.GetLogLevel().GetLevel()},
 			{
 				Name:  "LINKERD2_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, conf.proxyConfig.GetApiPort().GetPort()),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, conf.proxyConfig.GetDestinationApiPort().GetPort()),
 			},
 			{Name: "LINKERD2_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetControlPort().GetPort())},
 			{Name: "LINKERD2_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetMetricsPort().GetPort())},
@@ -545,14 +545,14 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 
 func (conf *ResourceConfig) taggedProxyImage() string {
 	name := conf.proxyConfig.GetProxyImage().GetImageName()
-	reg := conf.proxyConfig.GetProxyImage().GetRegistry()
+	reg := conf.globalConfig.GetRegistry()
 	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, version.Version)
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
 	name := conf.proxyConfig.GetProxyInitImage().GetImageName()
-	reg := conf.proxyConfig.GetProxyInitImage().GetRegistry()
+	reg := conf.globalConfig.GetRegistry()
 	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, version.Version)
 }

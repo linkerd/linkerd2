@@ -372,16 +372,6 @@ func (options *proxyConfigOptions) enableTLS() bool {
 	return options.tls == optionalTLS
 }
 
-func (options *proxyConfigOptions) taggedProxyImage() string {
-	image := strings.Replace(options.proxyImage, defaultDockerRegistry, options.dockerRegistry, 1)
-	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
-}
-
-func (options *proxyConfigOptions) taggedProxyInitImage() string {
-	image := strings.Replace(options.initImage, defaultDockerRegistry, options.dockerRegistry, 1)
-	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
-}
-
 // addProxyConfigFlags adds command line flags for all fields in the
 // proxyConfigOptions struct. To keep things organized, the flags should be
 // added in the order that they're defined in the proxyConfigOptions struct.
