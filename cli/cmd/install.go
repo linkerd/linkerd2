@@ -233,8 +233,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyUID:                    options.proxyUID,
 		ProxyMetricsPort:            options.proxyMetricsPort,
 		ProxyControlPort:            options.proxyControlPort,
-		ProxyInitImage:              options.taggedProxyInitImage(),
-		ProxyImage:                  options.taggedProxyImage(),
+		ProxyInitImage:              options.initImage,
+		ProxyImage:                  options.proxyImage,
 		ProxyResourceRequestCPU:     options.proxyCPURequest,
 		ProxyResourceRequestMemory:  options.proxyMemoryRequest,
 		ProxyResourceLimitCPU:       options.proxyCPULimit,
@@ -358,6 +358,7 @@ func globalConfig(options *installOptions) *config.GlobalConfig {
 	return &config.GlobalConfig{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
+		Registry:         options.dockerRegistry,
 		IdentityContext:  identityContext,
 	}
 }
@@ -375,11 +376,11 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 
 	return &config.ProxyConfig{
 		ProxyImage: &config.Image{
-			ImageName:  options.taggedProxyImage(),
+			ImageName:  options.proxyImage,
 			PullPolicy: options.imagePullPolicy,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  options.taggedProxyInitImage(),
+			ImageName:  options.initImage,
 			PullPolicy: options.imagePullPolicy,
 		},
 		DestinationApiPort: &config.Port{

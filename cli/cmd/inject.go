@@ -232,6 +232,7 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 	globalConfig := &pb.GlobalConfig{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
+		Registry:         options.dockerRegistry,
 		IdentityContext:  nil,
 	}
 	var ignoreInboundPorts []*pb.Port
@@ -243,9 +244,9 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.Port{Port: uint32(port)})
 	}
 	proxyConfig := &pb.ProxyConfig{
-		ProxyImage:              &pb.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy, Registry: options.dockerRegistry},
-		ProxyInitImage:          &pb.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy, Registry: options.dockerRegistry},
-		ApiPort:                 &pb.Port{Port: uint32(options.destinationAPIPort)},
+		ProxyImage:              &pb.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
+		ProxyInitImage:          &pb.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
+		DestinationApiPort:      &pb.Port{Port: uint32(options.destinationAPIPort)},
 		ControlPort:             &pb.Port{Port: uint32(options.proxyControlPort)},
 		IgnoreInboundPorts:      ignoreInboundPorts,
 		IgnoreOutboundPorts:     ignoreOutboundPorts,
