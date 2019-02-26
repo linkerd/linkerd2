@@ -144,6 +144,10 @@ func (l *endpointListener) SetServiceID(id *serviceID) {
 
 // Update is called with lists of newly added and/or removed pods in a service
 // and address updates on the listener's gRPC response stream.
+//
+// N.B. that pod is nil on remove addresses.
+//
+// TODO change the type signature to use more precise types.
 func (l *endpointListener) Update(add, remove []*updateAddress) {
 	l.log.Debugf("Update: add=%d; remove=%d", len(add), len(remove))
 
