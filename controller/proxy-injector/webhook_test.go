@@ -15,13 +15,13 @@ import (
 
 var (
 	factory      *fake.Factory
-	globalConfig = &config.GlobalConfig{
+	globalConfig = &config.Global{
 		LinkerdNamespace: "linkerd",
 		CniEnabled:       false,
 		Registry:         "gcr.io/linkerd-io",
 		IdentityContext:  nil,
 	}
-	proxyConfig = &config.ProxyConfig{
+	proxyConfig = &config.Proxy{
 		ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
 		ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
 		DestinationApiPort:      &config.Port{Port: 8086},

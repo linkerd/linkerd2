@@ -349,13 +349,13 @@ func readIntoBytes(filename string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func globalConfig(options *installOptions) *config.GlobalConfig {
+func globalConfig(options *installOptions) *config.Global {
 	var identityContext *config.IdentityContext
 	if options.enableTLS() {
 		identityContext = &config.IdentityContext{}
 	}
 
-	return &config.GlobalConfig{
+	return &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Registry:         options.dockerRegistry,
@@ -364,7 +364,7 @@ func globalConfig(options *installOptions) *config.GlobalConfig {
 	}
 }
 
-func proxyConfig(options *installOptions) *config.ProxyConfig {
+func proxyConfig(options *installOptions) *config.Proxy {
 	ignoreInboundPorts := []*config.Port{}
 	for _, port := range options.ignoreInboundPorts {
 		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
@@ -375,7 +375,7 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
 	}
 
-	return &config.ProxyConfig{
+	return &config.Proxy{
 		ProxyImage: &config.Image{
 			ImageName:  options.proxyImage,
 			PullPolicy: options.imagePullPolicy,

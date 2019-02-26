@@ -8,14 +8,14 @@ import (
 	"os"
 	"path/filepath"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 type configs struct {
-	global *pb.GlobalConfig
-	proxy  *pb.ProxyConfig
+	global *config.Global
+	proxy  *config.Proxy
 }
 
 type resourceTransformer interface {

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/golang/protobuf/jsonpb"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -101,7 +101,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	globalConfig := &pb.GlobalConfig{}
+	globalConfig := &config.Global{}
 	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(globalConfigJSON), globalConfig); err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	proxyConfig := &pb.ProxyConfig{}
+	proxyConfig := &config.Proxy{}
 	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(proxyConfigJSON), proxyConfig); err != nil {
 		return nil, err
 	}

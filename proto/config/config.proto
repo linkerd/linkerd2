@@ -4,7 +4,7 @@ package linkerd2.config;
 
 option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 
-message GlobalConfig {
+message Global {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
   string registry = 3;
@@ -16,7 +16,7 @@ message GlobalConfig {
   IdentityContext identity_context = 5;
 }
 
-message ProxyConfig {
+message Proxy {
   Image proxy_image = 1;
   Image proxy_init_image = 2;
 
