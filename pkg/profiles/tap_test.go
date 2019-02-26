@@ -102,7 +102,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, tapDuration, int(routeLimit))
+	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, tapDuration, routeLimit)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

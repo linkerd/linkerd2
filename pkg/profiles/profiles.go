@@ -336,7 +336,7 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 // - recursive fields
 func Validate(data []byte) error {
 	var serviceProfile sp.ServiceProfile
-	err := yaml.UnmarshalStrict([]byte(data), &serviceProfile)
+	err := yaml.UnmarshalStrict(data, &serviceProfile)
 	if err != nil {
 		return fmt.Errorf("failed to validate ServiceProfile: %s", err)
 	}
