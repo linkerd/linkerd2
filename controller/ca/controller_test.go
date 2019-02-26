@@ -7,8 +7,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -31,8 +31,8 @@ func TestCertificateController(t *testing.T) {
 		}
 		defer close(stopCh)
 
-		controller.handlePodUpdate(nil, &v1.Pod{
-			ObjectMeta: meta.ObjectMeta{
+		controller.handlePodUpdate(nil, &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      injectedPodName,
 				Namespace: injectedNS,
 				Labels: map[string]string{

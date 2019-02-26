@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type endpointUpdateListener interface {
@@ -21,12 +21,12 @@ type endpointUpdateListener interface {
 	Stop()
 }
 
-type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
+type ownerKindAndNameFn func(*corev1.Pod) (string, string)
 
 // updateAddress is a pairing of TCP address to Kubernetes pod object
 type updateAddress struct {
 	address *net.TcpAddress
-	pod     *coreV1.Pod
+	pod     *corev1.Pod
 }
 
 func (ua updateAddress) String() string {
@@ -206,7 +206,7 @@ func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
 	return &pb.AddrSet{Addrs: addrs}
 }
 
-func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
+func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
 	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)

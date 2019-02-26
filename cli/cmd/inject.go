@@ -10,10 +10,10 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
@@ -53,7 +53,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, options *i
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
 type objMeta struct {
-	metaV1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 }
 
 func newInjectOptions() *injectOptions {
@@ -115,7 +115,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, optio
 }
 
 // injectObjectMeta adds linkerd labels & annotations to the provided ObjectMeta.
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
+func injectObjectMeta(t *metav1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
@@ -138,7 +138,7 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) {
+func injectPodSpec(t *corev1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) {
 
 	f := false
 	inboundSkipPorts := append(options.ignoreInboundPorts, options.proxyControlPort, options.proxyMetricsPort)
@@ -177,9 +177,9 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		IntVal: int32(options.proxyMetricsPort),
 	}
 
-	proxyProbe := v1.Probe{
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
+	proxyProbe := corev1.Probe{
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
 				Path: "/metrics",
 				Port: metricsPort,
 			},
@@ -187,9 +187,9 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		InitialDelaySeconds: 10,
 	}
 
-	resources := v1.ResourceRequirements{
-		Requests: v1.ResourceList{},
-		Limits:   v1.ResourceList{},
+	resources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{},
+		Limits:   corev1.ResourceList{},
 	}
 
 	if options.proxyCPURequest != "" {
@@ -212,15 +212,15 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	if options.disableExternalProfiles {
 		profileSuffixes = "svc.cluster.local."
 	}
-	sidecar := v1.Container{
+	sidecar := corev1.Container{
 		Name:                     k8s.ProxyContainerName,
 		Image:                    options.taggedProxyImage(),
-		ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
-		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		SecurityContext: &v1.SecurityContext{
+		ImagePullPolicy:          corev1.PullPolicy(options.imagePullPolicy),
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &options.proxyUID,
 		},
-		Ports: []v1.ContainerPort{
+		Ports: []corev1.ContainerPort{
 			{
 				Name:          "linkerd-proxy",
 				ContainerPort: int32(options.inboundPort),
@@ -231,7 +231,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			},
 		},
 		Resources: resources,
-		Env: []v1.EnvVar{
+		Env: []corev1.EnvVar{
 			{Name: "LINKERD2_PROXY_LOG", Value: options.proxyLogLevel},
 			{
 				Name:  "LINKERD2_PROXY_CONTROL_URL",
@@ -244,7 +244,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 			{Name: "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES", Value: profileSuffixes},
 			{
 				Name:      PodNamespaceEnvVarName,
-				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
+				ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
 			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
@@ -263,7 +263,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	for _, container := range t.Containers {
 		if capacity, ok := options.proxyOutboundCapacity[container.Image]; ok {
 			sidecar.Env = append(sidecar.Env,
-				v1.EnvVar{
+				corev1.EnvVar{
 					Name:  "LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY",
 					Value: fmt.Sprintf("%d", capacity),
 				},
@@ -275,19 +275,19 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	if options.enableTLS() {
 		yes := true
 
-		configMapVolume := v1.Volume{
+		configMapVolume := corev1.Volume{
 			Name: k8s.TLSTrustAnchorVolumeName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
 					Optional:             &yes,
 				},
 			},
 		}
-		secretVolume := v1.Volume{
+		secretVolume := corev1.Volume{
 			Name: k8s.TLSSecretsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: identity.ToSecretName(),
 					Optional:   &yes,
 				},
@@ -297,7 +297,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		base := "/var/linkerd-io"
 		configMapBase := base + "/trust-anchors"
 		secretBase := base + "/identity"
-		tlsEnvVars := []v1.EnvVar{
+		tlsEnvVars := []corev1.EnvVar{
 			{Name: "LINKERD2_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
 			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
 			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
@@ -310,7 +310,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		}
 
 		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
-		sidecar.VolumeMounts = []v1.VolumeMount{
+		sidecar.VolumeMounts = []corev1.VolumeMount{
 			{Name: configMapVolume.Name, MountPath: configMapBase, ReadOnly: true},
 			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
 		}
@@ -322,15 +322,15 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 	if !options.noInitContainer {
 		nonRoot := false
 		runAsUser := int64(0)
-		initContainer := v1.Container{
+		initContainer := corev1.Container{
 			Name:                     k8s.InitContainerName,
 			Image:                    options.taggedProxyInitImage(),
-			ImagePullPolicy:          v1.PullPolicy(options.imagePullPolicy),
-			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+			ImagePullPolicy:          corev1.PullPolicy(options.imagePullPolicy),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			Args:                     initArgs,
-			SecurityContext: &v1.SecurityContext{
-				Capabilities: &v1.Capabilities{
-					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
+			SecurityContext: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Add: []corev1.Capability{corev1.Capability("NET_ADMIN")},
 				},
 				Privileged:   &f,
 				RunAsNonRoot: &nonRoot,

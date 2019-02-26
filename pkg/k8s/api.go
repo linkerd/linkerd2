@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/rest"
 
@@ -91,11 +91,11 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, client *http.
 }
 
 // GetPodsByNamespace returns all pods in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, client *http.Client, namespace string) ([]v1.Pod, error) {
+func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, client *http.Client, namespace string) ([]corev1.Pod, error) {
 	return kubeAPI.getPods(ctx, client, "/api/v1/namespaces/"+namespace+"/pods")
 }
 
-func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, path string) ([]v1.Pod, error) {
+func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, path string) ([]corev1.Pod, error) {
 	rsp, err := kubeAPI.getRequest(ctx, client, path)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, 
 		return nil, err
 	}
 
-	var podList v1.PodList
+	var podList corev1.PodList
 	err = json.Unmarshal(bytes, &podList)
 	if err != nil {
 		return nil, err

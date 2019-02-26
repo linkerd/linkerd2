@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -49,7 +49,7 @@ func RenderOpenAPI(fileName, namespace, name string, w io.Writer) error {
 
 func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.ServiceProfile {
 	profile := sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},

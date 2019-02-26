@@ -13,7 +13,7 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/prometheus/client_golang/api/prometheus/v1"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
 )
@@ -120,7 +120,7 @@ func (m *mockProm) Query(ctx context.Context, query string, ts time.Time) (model
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
-func (m *mockProm) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, error) {
+func (m *mockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
