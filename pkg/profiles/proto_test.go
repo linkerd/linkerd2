@@ -32,7 +32,7 @@ service VotingService {
 	parser := proto.NewParser(strings.NewReader(protobuf))
 
 	expectedServiceProfile := sp.ServiceProfile{
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "." + namespace + ".svc.cluster.local",
 			Namespace: namespace,

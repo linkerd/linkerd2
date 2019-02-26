@@ -35,7 +35,7 @@ type (
 		Data                pb.VersionInfo
 		UUID                string
 		ControllerNamespace string
-		SingleNamespace     bool
+		ServiceProfiles     bool
 		Error               bool
 		ErrorMessage        string
 		PathPrefix          string
@@ -57,7 +57,7 @@ func NewServer(
 	staticDir string,
 	uuid string,
 	controllerNamespace string,
-	singleNamespace bool,
+	serviceProfiles bool,
 	reload bool,
 	apiClient public.APIClient,
 ) *http.Server {
@@ -78,7 +78,7 @@ func NewServer(
 		render:              server.RenderTemplate,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
-		singleNamespace:     singleNamespace,
+		serviceProfiles:     serviceProfiles,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 

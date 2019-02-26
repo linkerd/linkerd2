@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	net "github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -25,6 +27,11 @@ type ownerKindAndNameFn func(*corev1.Pod) (string, string)
 type updateAddress struct {
 	address *net.TcpAddress
 	pod     *corev1.Pod
+}
+
+// String is used by tests for comparison and logging.
+func (ua *updateAddress) String() string {
+	return fmt.Sprintf("{address=%s, pod=%s, ns=%s}", ua.Address(), ua.Name(), ua.Namespace())
 }
 
 func (ua *updateAddress) Address() string {

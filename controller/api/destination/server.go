@@ -11,6 +11,7 @@ import (
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -38,12 +39,13 @@ type server struct {
 // Addresses for the given destination are fetched from the Kubernetes Endpoints
 // API.
 func NewServer(
-	addr, k8sDNSZone, controllerNS string,
-	enableTLS, enableH2Upgrade, singleNamespace bool,
+	addr, k8sDNSZone string,
+	controllerNS string,
+	enableTLS, enableH2Upgrade bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
 ) (*grpc.Server, error) {
-	resolver, err := buildResolver(k8sDNSZone, controllerNS, k8sAPI, singleNamespace)
+	resolver, err := buildResolver(k8sDNSZone, controllerNS, k8sAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +192,8 @@ func getHostAndPort(dest *pb.GetDestination) (string, int, error) {
 }
 
 func buildResolver(
-	k8sDNSZone, controllerNamespace string,
+	k8sDNSZone, controllerNS string,
 	k8sAPI *k8s.API,
-	singleNamespace bool,
 ) (streamingDestinationResolver, error) {
 	var k8sDNSZoneLabels []string
 	if k8sDNSZone == "" {
@@ -206,11 +207,15 @@ func buildResolver(
 	}
 
 	var pw *profileWatcher
-	if !singleNamespace {
+	serviceProfiles, err := pkgK8s.ServiceProfilesAccess(k8sAPI.Client)
+	if err != nil {
+		return nil, err
+	}
+	if serviceProfiles {
 		pw = newProfileWatcher(k8sAPI)
 	}
 
-	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNamespace, newEndpointsWatcher(k8sAPI), pw)
+	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNS, newEndpointsWatcher(k8sAPI), pw)
 
 	log.Infof("Built k8s name resolver")
 

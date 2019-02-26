@@ -38,7 +38,6 @@ type grpcServer struct {
 	k8sAPI              *k8s.API
 	controllerNamespace string
 	ignoredNamespaces   []string
-	singleNamespace     bool
 }
 
 type podReport struct {
@@ -61,7 +60,6 @@ func newGrpcServer(
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
-	singleNamespace bool,
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
@@ -71,7 +69,6 @@ func newGrpcServer(
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 		ignoredNamespaces:   ignoredNamespaces,
-		singleNamespace:     singleNamespace,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)

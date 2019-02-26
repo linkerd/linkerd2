@@ -53,7 +53,7 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 	}
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(tapDuration))

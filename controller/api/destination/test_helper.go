@@ -102,14 +102,8 @@ func equalServicePorts(servicePorts1, servicePorts2 servicePorts) error {
 				return fmt.Errorf("servicePort endpoints mismatch: [%s] != [%s]", sp1.endpoints, sp2.endpoints)
 			}
 			for i := range sp1.addresses {
-				if sp1.addresses[i].Address() != sp2.addresses[i].Address() {
-					return fmt.Errorf("servicePort address mismatch: [%s] != [%s]", sp1.addresses[i].Address(), sp2.addresses[i].Address())
-				}
-				if sp1.addresses[i].Name() != sp2.addresses[i].Name() {
-					return fmt.Errorf("servicePort name mismatch: [%s] != [%s]", sp1.addresses[i].Name(), sp2.addresses[i].Name())
-				}
-				if sp1.addresses[i].Namespace() != sp2.addresses[i].Namespace() {
-					return fmt.Errorf("servicePort namespace mismatch: [%s] != [%s]", sp1.addresses[i].Namespace(), sp2.addresses[i].Namespace())
+				if sp1.addresses[i].String() != sp2.addresses[i].String() {
+					return fmt.Errorf("servicePort address mismatch: [%s] != [%s]", sp1.addresses[i], sp2.addresses[i])
 				}
 			}
 		}
