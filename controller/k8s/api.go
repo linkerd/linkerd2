@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
-	corev1 "k8s.io/api/core/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,8 +26,8 @@ import (
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	appv1beta2informers "k8s.io/client-go/informers/apps/v1beta2"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -67,7 +67,7 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	job		 batchv1informers.JobInformer
+	job      batchv1informers.JobInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -75,13 +75,64 @@ type API struct {
 	namespace         string
 }
 
-// NewAPI takes a Kubernetes client and returns an initialized API
+// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+func InitializeAPI(kubeConfig string, namespace string, resources ...APIResource) (*API, error) {
+	k8sClient, err := NewClientSet(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// check for cluster-wide vs. namespace-wide access
+	clusterAccess, err := k8s.ClusterAccess(k8sClient, namespace)
+	if err != nil {
+		return nil, err
+	}
+	restrictToNamespace := ""
+	if !clusterAccess {
+		log.Warnf("Not authorized for cluster-wide access, limiting access to \"%s\" namespace", namespace)
+		restrictToNamespace = namespace
+	}
+
+	// check for need and access to ServiceProfiles
+	var spClient *spclient.Clientset
+	idxSP := 0
+	needSP := false
+	for i := range resources {
+		if resources[i] == SP {
+			needSP = true
+			idxSP = i
+			break
+		}
+	}
+	if needSP {
+		serviceProfiles, err := k8s.ServiceProfilesAccess(k8sClient)
+		if err != nil {
+			return nil, err
+		}
+		if serviceProfiles {
+			spClient, err = NewSpClientSet(kubeConfig)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			log.Warn("ServiceProfiles not available")
+			// remove SP from resources list
+			resources = append(resources[:idxSP], resources[idxSP+1:]...)
+		}
+	}
+
+	return NewAPI(k8sClient, spClient, restrictToNamespace, resources...), nil
+}
+
+// NewAPI takes a Kubernetes client and returns an initialized API.
 func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...APIResource) *API {
 	var sharedInformers informers.SharedInformerFactory
 	var spSharedInformers sp.SharedInformerFactory
 	if namespace == "" {
 		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
-		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
+		if spClient != nil {
+			spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
+		}
 	} else {
 		sharedInformers = informers.NewFilteredSharedInformerFactory(
 			k8sClient,
@@ -89,12 +140,14 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 			namespace,
 			nil,
 		)
-		spSharedInformers = sp.NewFilteredSharedInformerFactory(
-			spClient,
-			10*time.Minute,
-			namespace,
-			nil,
-		)
+		if spClient != nil {
+			spSharedInformers = sp.NewFilteredSharedInformerFactory(
+				spClient,
+				10*time.Minute,
+				namespace,
+				nil,
+			)
+		}
 	}
 
 	api := &API{
@@ -259,6 +312,12 @@ func (api *API) Job() batchv1informers.JobInformer {
 		panic("Job informer not configured")
 	}
 	return api.job
+}
+
+// SPAvailable informs the caller whether this API is configured to retrieve
+// ServiceProfiles
+func (api *API) SPAvailable() bool {
+	return api.sp != nil
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.

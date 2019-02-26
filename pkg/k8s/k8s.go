@@ -24,6 +24,9 @@ const (
 	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
 
+	ServiceProfileAPIVersion = "linkerd.io/v1alpha1"
+	ServiceProfileKind       = "ServiceProfile"
+
 	// special case k8s job label, to not conflict with Prometheus' job label
 	l5dJob = "k8s_job"
 )

@@ -10,7 +10,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
-	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -27,7 +26,6 @@ func main() {
 	destinationAPIAddr := flag.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
@@ -46,32 +44,13 @@ func main() {
 	}
 	defer discoveryConn.Close()
 
-	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	var spClient *spclient.Clientset
-	restrictToNamespace := ""
-	resources := []k8s.APIResource{k8s.DS, k8s.Deploy, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.Job}
-
-	if *singleNamespace {
-		restrictToNamespace = *controllerNamespace
-	} else {
-		spClient, err = k8s.NewSpClientSet(*kubeConfigPath)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		resources = append(resources, k8s.SP)
-	}
-
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		spClient,
-		restrictToNamespace,
-		resources...,
+	k8sAPI, err := k8s.InitializeAPI(
+		*kubeConfigPath, *controllerNamespace,
+		k8s.DS, k8s.Deploy, k8s.Job, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP,
 	)
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
 
 	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
 	if err != nil {
@@ -86,7 +65,6 @@ func main() {
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),
-		*singleNamespace,
 	)
 
 	k8sAPI.Sync() // blocks until caches are synced

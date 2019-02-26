@@ -64,7 +64,7 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name string) (*sp.Se
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 		Spec: sp.ServiceProfileSpec{
 			Routes: routes,
 		},

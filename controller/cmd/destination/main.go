@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/destination"
-	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -23,38 +22,18 @@ func main() {
 	enableH2Upgrade := flag.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	enableTLS := flag.Bool("enable-tls", false, "Enable TLS connections among pods in the service mesh")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	var spClient *spclient.Clientset
-	restrictToNamespace := ""
-	resources := []k8s.APIResource{k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc}
-
-	if *singleNamespace {
-		restrictToNamespace = *controllerNamespace
-	} else {
-		spClient, err = k8s.NewSpClientSet(*kubeConfigPath)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		resources = append(resources, k8s.SP)
-	}
-
-	k8sAPI := k8s.NewAPI(
-		k8sClient,
-		spClient,
-		restrictToNamespace,
-		resources...,
+	k8sAPI, err := k8s.InitializeAPI(
+		*kubeConfigPath, *controllerNamespace,
+		k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP,
 	)
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
 
 	done := make(chan struct{})
 
@@ -63,7 +42,7 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, *singleNamespace, k8sAPI, done)
+	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableTLS, *enableH2Upgrade, k8sAPI, done)
 	if err != nil {
 		log.Fatal(err)
 	}
