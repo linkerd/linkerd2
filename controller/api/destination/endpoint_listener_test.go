@@ -14,7 +14,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const thisNS = "this-namespace"
+const (
+	deploymentKind = "deployment"
+	podDeployment  = "pod-deployment"
+	thisNS         = "this-namespace"
+)
 
 var (
 	addedAddress1 = &net.TcpAddress{
@@ -205,7 +209,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedPodName := pod1.Name
 		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "linkerd-namespace"
-		expectedPodDeployment := "pod-deployment"
+		expectedPodDeployment := podDeployment
 		expectedTLSIdentity := &pb.TlsIdentity_K8SPodIdentity{
 			PodIdentity:  "pod-deployment.deployment.this-namespace.linkerd-managed.linkerd-namespace.svc.cluster.local",
 			ControllerNs: "linkerd-namespace",
@@ -229,7 +233,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		ownerKindAndName := func(pod *corev1.Pod) (string, string) {
-			return "deployment", expectedPodDeployment
+			return deploymentKind, expectedPodDeployment
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
@@ -259,9 +263,9 @@ func TestEndpointListener(t *testing.T) {
 
 	t.Run("Does not send TlsIdentity to for other meshes", func(t *testing.T) {
 		expectedPodName := "pod1"
-		expectedPodNamespace := "this-namespace"
+		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "other-linkerd-namespace"
-		expectedPodDeployment := "pod-deployment"
+		expectedPodDeployment := podDeployment
 
 		podForAddedAddress1 := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -281,7 +285,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		ownerKindAndName := func(pod *v1.Pod) (string, string) {
-			return "deployment", expectedPodDeployment
+			return deploymentKind, expectedPodDeployment
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
@@ -312,7 +316,7 @@ func TestEndpointListener(t *testing.T) {
 		expectedPodName := pod1.Name
 		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "linkerd-namespace"
-		expectedPodDeployment := "pod-deployment"
+		expectedPodDeployment := podDeployment
 
 		podForAddedAddress1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -329,7 +333,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 
 		ownerKindAndName := func(pod *corev1.Pod) (string, string) {
-			return "deployment", expectedPodDeployment
+			return deploymentKind, expectedPodDeployment
 		}
 
 		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
