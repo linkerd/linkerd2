@@ -49,14 +49,14 @@ func testUninjectAndInject(t *testing.T, tc injectYAML) {
 
 func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := newConfig()
-	defaultConfig.global.Version = defaultOptions.linkerdVersion
+	defaultConfig.global.Version = "testinjectversion"
 
 	tlsConfig := newConfig()
 	tlsConfig.global.IdentityContext = &config.IdentityContext{}
-	tlsConfig.global.Version = defaultOptions.linkerdVersion
+	tlsConfig.global.Version = defaultConfig.global.Version
 
 	proxyResourceConfig := newConfig()
-	proxyResourceConfig.global.Version = defaultOptions.linkerdVersion
+	proxyResourceConfig.global.Version = defaultConfig.global.Version
 	proxyResourceConfig.proxy.Resource = &config.ResourceRequirements{
 		RequestCpu:    "110m",
 		RequestMemory: "100Mi",
@@ -65,7 +65,7 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	noInitContainerConfig := newConfig()
-	noInitContainerConfig.global.Version = defaultOptions.linkerdVersion
+	noInitContainerConfig.global.Version = defaultConfig.global.Version
 	noInitContainerConfig.global.CniEnabled = true
 
 	testCases := []injectYAML{
