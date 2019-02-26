@@ -81,10 +81,7 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 // It also returns a Report with the results of the injection.
 // Note that bytes should only contain a single YAML (not multiple separated by ---)
 func (conf *ResourceConfig) PatchForYaml(bytes []byte) ([]byte, []Report, error) {
-	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
-		return nil, nil, err
-	}
-	if err := yaml.Unmarshal(bytes, &conf.objectMeta); err != nil {
+	if err := conf.parseMeta(bytes); err != nil {
 		return nil, nil, err
 	}
 	if conf.objectMeta.ObjectMeta == nil {
@@ -96,14 +93,18 @@ func (conf *ResourceConfig) PatchForYaml(bytes []byte) ([]byte, []Report, error)
 
 // ParseMetaAndYaml fills conf fields both the metatada and the workload contents
 func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
-	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
-		return nil, err
-	}
-	if err := yaml.Unmarshal(bytes, &conf.objectMeta); err != nil {
+	if err := conf.parseMeta(bytes); err != nil {
 		return nil, err
 	}
 	r := NewReport(conf)
 	return &r, conf.parse(bytes)
+}
+
+func (conf *ResourceConfig) parseMeta(bytes []byte) error {
+	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
+		return err
+	}
+	return yaml.Unmarshal(bytes, &conf.objectMeta)
 }
 
 // PatchForAdmissionRequest parses request.ObjectRaw and (if pertinent) returns the json patch
@@ -155,7 +156,7 @@ func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
 			return nil, nil, err
 		}
 		if shouldInject {
-			conf.injectPodSpec(patch, identity, &report)
+			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(conf.objectMeta, patch)
 		}
 	} else {
@@ -282,7 +283,7 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity, report *Report) {
+func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) {
 	t := conf.podSpec
 	f := false
 	inboundSkipPorts := append(conf.proxyConfig.GetIgnoreInboundPorts(), conf.proxyConfig.GetControlPort(), conf.proxyConfig.GetMetricsPort())
