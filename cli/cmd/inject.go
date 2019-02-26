@@ -114,43 +114,8 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, optio
 	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, options)
 }
 
-<<<<<<< HEAD
-func updateReportWithPod(t *v1.PodSpec, report *injectReport) bool {
-	report.hostNetwork = t.HostNetwork
-	report.sidecar = healthcheck.HasExistingSidecars(t)
-	report.udp = checkUDPPorts(t)
-
-	report.injectDisabled = injectDisabled(t.)
-	if report.injectDisabled {
-		return false
-	}
-
-	// Skip injection if:
-	// 1) Pods with `hostNetwork: true` share a network namespace with the host.
-	//    The init-container would destroy the iptables configuration on the host.
-	// OR
-	// 2) Known 3rd party sidecars already present.
-	return !report.hostNetwork && !report.sidecar
-}
-
-/* Given a ObjectMeta, update ObjectMeta in place with the new labels and
- * annotations.
- */
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) bool {
-||||||| merged common ancestors
-/* Given a ObjectMeta, update ObjectMeta in place with the new labels and
- * annotations.
- */
-func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions, report *injectReport) bool {
-	report.injectDisabled = injectDisabled(t)
-	if report.injectDisabled {
-		return false
-	}
-
-=======
 // injectObjectMeta adds linkerd labels & annotations to the provided ObjectMeta.
 func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options *injectOptions) {
->>>>>>> master
 	if t.Annotations == nil {
 		t.Annotations = make(map[string]string)
 	}
@@ -164,52 +129,17 @@ func injectObjectMeta(t *metaV1.ObjectMeta, k8sLabels map[string]string, options
 	for k, v := range k8sLabels {
 		t.Labels[k] = v
 	}
-<<<<<<< HEAD
 
-	if options.enableTLS() && t.Annotations[k8s.IdentityModeAnnotation] != k8s.IdentityModeDisabled {
+	if options.enableTLS() {
 		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeOptional
 	} else {
 		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
 	}
-
-	return true
-||||||| merged common ancestors
-
-	return true
-=======
->>>>>>> master
 }
 
-<<<<<<< HEAD
-/* Given a PodSpec, update the PodSpec in place with the sidecar
- * and init-container injected. If the pod is unsuitable for having them
- * injected, return false.
- */
-func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) {
-||||||| merged common ancestors
-/* Given a PodSpec, update the PodSpec in place with the sidecar
- * and init-container injected. If the pod is unsuitable for having them
- * injected, return false.
- */
-func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions, report *injectReport) bool {
-	report.hostNetwork = t.HostNetwork
-	report.sidecar = healthcheck.HasExistingSidecars(t)
-	report.udp = checkUDPPorts(t)
-
-	// Skip injection if:
-	// 1) Pods with `hostNetwork: true` share a network namespace with the host.
-	//    The init-container would destroy the iptables configuration on the host.
-	// OR
-	// 2) Known 3rd party sidecars already present.
-	if report.hostNetwork || report.sidecar {
-		return false
-	}
-
-=======
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameOverride string, options *injectOptions) {
 
->>>>>>> master
 	f := false
 	inboundSkipPorts := append(options.ignoreInboundPorts, options.proxyControlPort, options.proxyMetricsPort)
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
@@ -342,9 +272,7 @@ func injectPodSpec(t *v1.PodSpec, identity k8s.TLSIdentity, controlPlaneDNSNameO
 		}
 	}
 
-	// set by injectObjectMeta
-	tlsEnabled := t.ObjectMeta.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeOptional
-	if tlsEnabled {
+	if options.enableTLS() {
 		yes := true
 
 		configMapVolume := v1.Volume{
@@ -455,7 +383,6 @@ func (rt resourceTransformerInject) transform(bytes []byte, options *injectOptio
 			if err != nil {
 				return nil, nil, err
 			}
-			output = o
 		}
 	} else {
 		report.unsupportedResource = true

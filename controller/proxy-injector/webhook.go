@@ -153,6 +153,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		patch.addInitContainer(proxyInit)
 	}
 
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = map[string]string{}
+	}
 	if w.tlsEnabled {
 		caBundle, tlsSecrets, err := w.volumesSpec(identity)
 		if err != nil {
@@ -166,13 +169,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}
 		patch.addVolume(caBundle)
 		patch.addVolume(tlsSecrets)
-		patch.addPodAnnotations(map[string]string{
-			k8sPkg.IdentityModeAnnotation: k8sPkg.IdentityModeOptional,
-		})
+		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeOptional
 	} else {
-		patch.addPodAnnotations(map[string]string{
-			k8sPkg.IdentityModeAnnotation: k8sPkg.IdentityModeDisabled,
-		})
+		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeDisabled
 	}
 
 	if deployment.Spec.Template.Labels == nil {
