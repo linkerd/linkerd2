@@ -16,24 +16,16 @@ import (
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":9997", "address to serve scrapable metrics on")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	k8sAPI, err := k8s.InitializeAPI(*kubeConfigPath, *controllerNamespace, k8s.Pod, k8s.RS)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
-
-	restrictToNamespace := ""
-	if *singleNamespace {
-		restrictToNamespace = *controllerNamespace
-	}
-
-	k8sAPI := k8s.NewAPI(k8sClient, nil, restrictToNamespace, k8s.Pod, k8s.RS)
 
 	controller, err := ca.NewCertificateController(*controllerNamespace, k8sAPI)
 	if err != nil {

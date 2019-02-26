@@ -41,8 +41,8 @@ type resourceTable struct {
 func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*pb.TopRoutesResponse, error) {
 	log.Debugf("TopRoutes request: %+v", req)
 
-	if s.singleNamespace {
-		return topRoutesError(req, "Routes are not available in single-namespace mode"), nil
+	if !s.k8sAPI.SPAvailable() {
+		return topRoutesError(req, "Routes are not available"), nil
 	}
 
 	errRsp := validateRequest(req)

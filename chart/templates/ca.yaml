@@ -80,7 +80,6 @@ spec:
         args:
         - "ca"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-single-namespace={{.Values.SingleNamespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:

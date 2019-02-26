@@ -139,8 +139,7 @@ class ConfigureProfilesMsg extends React.Component {
 
   render() {
     const { showAsIcon } = this.props;
-
-    if (this.props.singleNamespace === "true") {
+    if (this.props.serviceProfiles === "false") {
       return null;
     } else if (showAsIcon) {
       return this.renderDownloadProfileForm();
@@ -163,8 +162,8 @@ ConfigureProfilesMsg.propTypes = {
     prefixedUrl: PropTypes.func.isRequired,
   }).isRequired,
   classes: PropTypes.shape({}).isRequired,
+  serviceProfiles: PropTypes.string.isRequired,
   showAsIcon: PropTypes.bool,
-  singleNamespace: PropTypes.string.isRequired,
 };
 
 ConfigureProfilesMsg.defaultProps = {
