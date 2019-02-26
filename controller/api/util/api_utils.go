@@ -34,6 +34,7 @@ var (
 		k8s.Pod,
 		k8s.ReplicationController,
 		k8s.StatefulSet,
+		k8s.Job,
 	}
 
 	// ValidTapDestinations specifies resource types allowed as a tap destination:

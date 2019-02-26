@@ -17,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,6 +27,7 @@ import (
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	appv1beta2informers "k8s.io/client-go/informers/apps/v1beta2"
 	coreinformers "k8s.io/client-go/informers/core/v1"
+	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -47,6 +49,7 @@ const (
 	SP
 	SS
 	Svc
+	Job
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -64,6 +67,7 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
+	job		 batchv1informers.JobInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -135,6 +139,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
+			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+		case Job:
+			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		}
 	}
@@ -246,6 +253,14 @@ func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
 	return api.mwc
 }
 
+//Job provides access to a shared informer and lister for Jobs.
+func (api *API) Job() batchv1informers.JobInformer {
+	if api.job == nil {
+		panic("Job informer not configured")
+	}
+	return api.job
+}
+
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
@@ -265,6 +280,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getServices(namespace, name)
 	case k8s.StatefulSet:
 		return api.getStatefulsets(namespace, name)
+	case k8s.Job:
+		return api.getJobs(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -332,6 +349,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
+	case *batchv1.Job:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+
 	case *corev1.Pod:
 		// Special case for pods:
 		// GetPodsFor a pod should just return the pod itself
@@ -387,6 +408,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 		return typed.Name, typed.Namespace, nil
 
 	case *appsv1.StatefulSet:
+		return typed.Name, typed.Namespace, nil
+
+	case *batchv1.Job:
 		return typed.Name, typed.Namespace, nil
 
 	case *corev1.Pod:
@@ -579,6 +603,32 @@ func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error
 	objects := []runtime.Object{}
 	for _, ss := range statefulsets {
 		objects = append(objects, ss)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getJobs(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var jobs []*batchv1.Job
+
+	if namespace == "" {
+		jobs, err = api.job.Lister().List(labels.Everything())
+	} else if name == "" {
+		jobs, err = api.job.Lister().Jobs(namespace).List(labels.Everything())
+	} else {
+		var job *batchv1.Job
+		job, err = api.job.Lister().Jobs(namespace).Get(name)
+		jobs = []*batchv1.Job{job}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, job := range jobs {
+		objects = append(objects, job)
 	}
 
 	return objects, nil
