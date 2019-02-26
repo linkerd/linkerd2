@@ -199,9 +199,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		imageTag = image[1]
 	}
 
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = map[string]string{}
-	}
 	deployment.Spec.Template.Annotations[k8sPkg.CreatedByAnnotation] = fmt.Sprintf("linkerd/proxy-injector %s", imageTag)
 	deployment.Spec.Template.Annotations[k8sPkg.ProxyVersionAnnotation] = imageTag
 	patch.addPodAnnotations(deployment.Spec.Template.Annotations)
