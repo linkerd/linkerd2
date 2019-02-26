@@ -105,7 +105,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
 	patchJSON, reports, err := conf.PatchForYaml(bytes)
 	if patchJSON == nil || err != nil {
-		return nil, nil, err
+		return bytes, reports, err
 	}
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
@@ -229,11 +229,16 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 // TODO: this is just a temporary function to convert command-line options to GlobalConfig
 // and ProxyConfig, until we come up with an abstraction over those GRPC structs
 func injectOptionsToConfigs(options *injectOptions) configs {
+	var idContext *pb.IdentityContext
+	if options.tls == "optional" {
+		idContext = &pb.IdentityContext{}
+	}
 	globalConfig := &pb.GlobalConfig{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Registry:         options.dockerRegistry,
-		IdentityContext:  nil,
+		Version:          options.linkerdVersion,
+		IdentityContext:  idContext,
 	}
 	var ignoreInboundPorts []*pb.Port
 	for _, port := range options.ignoreInboundPorts {
@@ -244,16 +249,21 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.Port{Port: uint32(port)})
 	}
 	proxyConfig := &pb.ProxyConfig{
-		ProxyImage:              &pb.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
-		ProxyInitImage:          &pb.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
-		DestinationApiPort:      &pb.Port{Port: uint32(options.destinationAPIPort)},
-		ControlPort:             &pb.Port{Port: uint32(options.proxyControlPort)},
-		IgnoreInboundPorts:      ignoreInboundPorts,
-		IgnoreOutboundPorts:     ignoreOutboundPorts,
-		InboundPort:             &pb.Port{Port: uint32(options.inboundPort)},
-		MetricsPort:             &pb.Port{Port: uint32(options.proxyMetricsPort)},
-		OutboundPort:            &pb.Port{Port: uint32(options.outboundPort)},
-		Resource:                &pb.ResourceRequirements{RequestCpu: options.proxyCPURequest, RequestMemory: options.proxyMemoryRequest},
+		ProxyImage:          &pb.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
+		ProxyInitImage:      &pb.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
+		DestinationApiPort:  &pb.Port{Port: uint32(options.destinationAPIPort)},
+		ControlPort:         &pb.Port{Port: uint32(options.proxyControlPort)},
+		IgnoreInboundPorts:  ignoreInboundPorts,
+		IgnoreOutboundPorts: ignoreOutboundPorts,
+		InboundPort:         &pb.Port{Port: uint32(options.inboundPort)},
+		MetricsPort:         &pb.Port{Port: uint32(options.proxyMetricsPort)},
+		OutboundPort:        &pb.Port{Port: uint32(options.outboundPort)},
+		Resource: &pb.ResourceRequirements{
+			RequestCpu:    options.proxyCPURequest,
+			RequestMemory: options.proxyMemoryRequest,
+			LimitCpu:      options.proxyCPULimit,
+			LimitMemory:   options.proxyMemoryLimit,
+		},
 		ProxyUid:                options.proxyUID,
 		LogLevel:                &pb.LogLevel{Level: options.proxyLogLevel},
 		DisableExternalProfiles: options.disableExternalProfiles,

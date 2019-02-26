@@ -7,32 +7,53 @@ import (
 )
 
 const (
-	patchPathContainer         = "/spec/template/spec/containers/-"
-	patchPathInitContainerRoot = "/spec/template/spec/initContainers"
-	patchPathInitContainer     = "/spec/template/spec/initContainers/-"
-	patchPathVolumeRoot        = "/spec/template/spec/volumes"
-	patchPathVolume            = "/spec/template/spec/volumes/-"
-	patchPathDeploymentLabels  = "/metadata/labels"
-	patchPathPodLabels         = "/spec/template/metadata/labels"
-	patchPathPodAnnotations    = "/spec/template/metadata/annotations"
+	patchPathDeploymentLabels = "/metadata/labels"
 )
 
 // Patch represents a RFC 6902 patch document.
 type Patch struct {
-	patchOps []*patchOp
+	patchOps                   []*patchOp
+	patchPathContainer         string
+	patchPathInitContainerRoot string
+	patchPathInitContainer     string
+	patchPathVolumeRoot        string
+	patchPathVolume            string
+	patchPathPodLabels         string
+	patchPathPodAnnotations    string
 }
 
-// NewPatch returns a new instance of PodPatch.
-func NewPatch() *Patch {
+// NewPatchDeployment returns a new instance of Patch for Deployment-like workloads
+func NewPatchDeployment() *Patch {
 	return &Patch{
-		patchOps: []*patchOp{},
+		patchOps:                   []*patchOp{},
+		patchPathContainer:         "/spec/template/spec/containers/-",
+		patchPathInitContainerRoot: "/spec/template/spec/initContainers",
+		patchPathInitContainer:     "/spec/template/spec/initContainers/-",
+		patchPathVolumeRoot:        "/spec/template/spec/volumes",
+		patchPathVolume:            "/spec/template/spec/volumes/-",
+		patchPathPodLabels:         "/spec/template/metadata/labels",
+		patchPathPodAnnotations:    "/spec/template/metadata/annotations",
+	}
+}
+
+// NewPatchPod returns a new instance of Patch for Pod workloads
+func NewPatchPod() *Patch {
+	return &Patch{
+		patchOps:                   []*patchOp{},
+		patchPathContainer:         "/spec/containers/-",
+		patchPathInitContainerRoot: "/spec/initContainers",
+		patchPathInitContainer:     "/spec/initContainers/-",
+		patchPathVolumeRoot:        "/spec/volumes",
+		patchPathVolume:            "/spec/volumes/-",
+		patchPathPodLabels:         "/metadata/labels",
+		patchPathPodAnnotations:    "/metadata/annotations",
 	}
 }
 
 func (p *Patch) addContainer(container *corev1.Container) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathContainer,
+		Path:  p.patchPathContainer,
 		Value: container,
 	})
 }
@@ -40,7 +61,7 @@ func (p *Patch) addContainer(container *corev1.Container) {
 func (p *Patch) addInitContainerRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathInitContainerRoot,
+		Path:  p.patchPathInitContainerRoot,
 		Value: []*corev1.Container{},
 	})
 }
@@ -48,7 +69,7 @@ func (p *Patch) addInitContainerRoot() {
 func (p *Patch) addInitContainer(container *corev1.Container) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathInitContainer,
+		Path:  p.patchPathInitContainer,
 		Value: container,
 	})
 }
@@ -56,7 +77,7 @@ func (p *Patch) addInitContainer(container *corev1.Container) {
 func (p *Patch) addVolumeRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathVolumeRoot,
+		Path:  p.patchPathVolumeRoot,
 		Value: []*corev1.Volume{},
 	})
 }
@@ -64,7 +85,7 @@ func (p *Patch) addVolumeRoot() {
 func (p *Patch) addVolume(volume *corev1.Volume) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathVolume,
+		Path:  p.patchPathVolume,
 		Value: volume,
 	})
 }
@@ -72,7 +93,7 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 func (p *Patch) addPodLabelsRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodLabels,
+		Path:  p.patchPathPodLabels,
 		Value: map[string]string{},
 	})
 }
@@ -80,7 +101,7 @@ func (p *Patch) addPodLabelsRoot() {
 func (p *Patch) addPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodLabels + "/" + escapeKey(key),
+		Path:  p.patchPathPodLabels + "/" + escapeKey(key),
 		Value: value,
 	})
 }
@@ -88,7 +109,7 @@ func (p *Patch) addPodLabel(key, value string) {
 func (p *Patch) addPodAnnotationsRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodAnnotations,
+		Path:  p.patchPathPodAnnotations,
 		Value: map[string]string{},
 	})
 }
@@ -96,7 +117,7 @@ func (p *Patch) addPodAnnotationsRoot() {
 func (p *Patch) addPodAnnotation(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
-		Path:  patchPathPodAnnotations + "/" + escapeKey(key),
+		Path:  p.patchPathPodAnnotations + "/" + escapeKey(key),
 		Value: value,
 	})
 }

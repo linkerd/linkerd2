@@ -1,20 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: nginx
 spec:
   selector:
     matchLabels:
       app: nginx
-  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         app: nginx
         linkerd.io/control-plane-ns: linkerd
@@ -26,7 +23,6 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -96,5 +92,4 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-status: {}
 ---

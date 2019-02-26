@@ -3,14 +3,14 @@
 ### Controller
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-controller
   namespace: Namespace
 ---
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
 metadata:
   name: linkerd-Namespace-controller
   namespace: Namespace
@@ -29,8 +29,8 @@ rules:
   resourceNames: ["Namespace"]
   verbs: ["list", "get", "watch"]
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
 metadata:
   name: linkerd-Namespace-controller
   namespace: Namespace
@@ -43,55 +43,53 @@ subjects:
   name: linkerd-controller
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-controller-api
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: controller
+  name: linkerd-controller-api
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 8085
     targetPort: 8085
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-destination
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
-  annotations:
-    CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
   selector:
     ControllerComponentLabel: controller
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: controller
+  name: linkerd-destination
+  namespace: Namespace
+spec:
   ports:
   - name: grpc
     port: 123
     targetPort: 123
+  selector:
+    ControllerComponentLabel: controller
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
   name: linkerd-controller
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -99,7 +97,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
         linkerd.io/control-plane-ns: Namespace
@@ -129,7 +126,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -157,7 +153,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -182,7 +177,6 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -257,47 +251,42 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
   global: |
     GlobalConfig
   proxy: |
     ProxyConfig
-
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: controller
+  name: linkerd-config
+  namespace: Namespace
 ---
 ###
 ### Web
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-web
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-web
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: web
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: web
+  name: linkerd-web
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 8084
@@ -305,20 +294,21 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
+  selector:
+    ControllerComponentLabel: web
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: web
   name: linkerd-web
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -326,7 +316,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: web
         linkerd.io/control-plane-ns: Namespace
@@ -357,7 +346,6 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -432,30 +420,34 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-web
-status: {}
 ---
 ###
 ### Prometheus
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-prometheus
   namespace: Namespace
 ---
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
 metadata:
   name: linkerd-Namespace-prometheus
   namespace: Namespace
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
 metadata:
   name: linkerd-Namespace-prometheus
   namespace: Namespace
@@ -468,37 +460,35 @@ subjects:
   name: linkerd-prometheus
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-prometheus
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: prometheus
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: prometheus
+  name: linkerd-prometheus
+  namespace: Namespace
+spec:
   ports:
   - name: admin-http
     port: 9090
     targetPort: 9090
+  selector:
+    ControllerComponentLabel: prometheus
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
   name: linkerd-prometheus
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -506,7 +496,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
         linkerd.io/control-plane-ns: Namespace
@@ -517,7 +506,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: PrometheusImage
+        image: prom/prometheus:v2.7.1
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
@@ -535,7 +524,6 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources: {}
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -624,17 +612,8 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-prometheus-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: prometheus
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
   prometheus.yml: |-
     global:
@@ -715,48 +694,54 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: prometheus
+  name: linkerd-prometheus-config
+  namespace: Namespace
 ---
 ###
 ### Grafana
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-grafana
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-grafana
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: grafana
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: grafana
+  name: linkerd-grafana
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 3000
     targetPort: 3000
+  selector:
+    ControllerComponentLabel: grafana
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
   name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -764,7 +749,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
         linkerd.io/control-plane-ns: Namespace
@@ -789,7 +773,6 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources: {}
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -883,18 +866,34 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-grafana-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: grafana
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: linkerd-top-line
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
   grafana.ini: |-
     instance_name = linkerd-grafana
 
@@ -913,70 +912,72 @@ data:
 
     [analytics]
     check_for_updates = false
-
-  datasources.yaml: |-
-    apiVersion: 1
-    datasources:
-    - name: prometheus
-      type: prometheus
-      access: proxy
-      orgId: 1
-      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
-      isDefault: true
-      jsonData:
-        timeInterval: "5s"
-      version: 1
-      editable: true
-
-  dashboards.yaml: |-
-    apiVersion: 1
-    providers:
-    - name: 'default'
-      orgId: 1
-      folder: ''
-      type: file
-      disableDeletion: true
-      editable: true
-      options:
-        path: /var/lib/grafana/dashboards
-        homeDashboardId: linkerd-top-line
-
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: grafana
+  name: linkerd-grafana-config
+  namespace: Namespace
 ---
 ###
 ### CA
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-ca
   namespace: Namespace
 ---
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
 metadata:
   name: linkerd-Namespace-ca
   namespace: Namespace
 rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["configmaps"]
-  resourceNames: [TLSTrustAnchorConfigMapName]
-  verbs: ["update"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["extensions", "apps"]
-  resources: ["replicasets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["create", "update"]
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resourceNames:
+  - TLSTrustAnchorConfigMapName
+  resources:
+  - configmaps
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
 metadata:
   name: linkerd-Namespace-ca
   namespace: Namespace
@@ -994,14 +995,12 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: ca
   name: linkerd-ca
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -1009,7 +1008,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: ca
         linkerd.io/control-plane-ns: Namespace
@@ -1036,7 +1034,6 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -1111,5 +1108,4 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-ca
-status: {}
 ---
