@@ -1,8 +1,6 @@
 package destination
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	net "github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -29,15 +27,25 @@ type updateAddress struct {
 	pod     *corev1.Pod
 }
 
-func (ua updateAddress) String() string {
-	addrStr := addr.ProxyAddressToString(ua.address)
-	if ua.pod == nil {
-		return fmt.Sprintf("{address:%v}", addrStr)
-	}
-	return fmt.Sprintf("{address:%v, pod:%s.%s}", ua.pod.Status.PodIP, ua.pod.Namespace, ua.pod.Name)
+func (ua *updateAddress) Address() string {
+	return addr.ProxyAddressToString(ua.address)
 }
 
-func (ua updateAddress) clone() *updateAddress {
+func (ua *updateAddress) Name() string {
+	if ua.pod == nil {
+		return ""
+	}
+	return ua.pod.Name
+}
+
+func (ua *updateAddress) Namespace() string {
+	if ua.pod == nil {
+		return ""
+	}
+	return ua.pod.Namespace
+}
+
+func (ua *updateAddress) clone() *updateAddress {
 	return &updateAddress{
 		pod:     ua.pod.DeepCopy(),
 		address: proto.Clone(ua.address).(*net.TcpAddress),
@@ -144,7 +152,7 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 		set := &pb.WeightedAddrSet{MetricLabels: l.labels}
 		for _, a := range add {
 			w := l.toWeightedAddr(a)
-			l.log.Debugf("Update: add: pod=%s; addr=%s; %+v", a.pod.Name, a.pod.Status.PodIP, w)
+			l.log.Debugf("Update: add: addr=%s; pod=%s; %+v", a.Address(), a.Name(), w)
 			set.Addrs = append(set.Addrs, w)
 		}
 
@@ -158,7 +166,7 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 		// If pods were removed, send the list of IP addresses.
 		set := &pb.AddrSet{}
 		for _, a := range remove {
-			l.log.Debugf("Update: remove: pod=%s; addr=%s", a.pod.Name, a.pod.Status.PodIP)
+			l.log.Debugf("Update: remove: addr=%s pod=%s;", a.Address(), a.Name())
 			set.Addrs = append(set.Addrs, a.address)
 		}
 
