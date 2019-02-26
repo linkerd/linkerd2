@@ -184,14 +184,16 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 func (l *endpointListener) NoEndpoints(exists bool) {
 	l.log.Debugf("NoEndpoints(%+v)", exists)
 
-	update := &pb.Update{
+	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
 				Exists: exists,
 			},
 		},
 	}
-	l.stream.Send(update)
+	if err := l.stream.Send(u); err != nil {
+		l.log.Errorf("Failed to send address update: %s", err)
+	}
 }
 
 func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAddr {
