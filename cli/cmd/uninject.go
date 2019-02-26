@@ -68,13 +68,13 @@ sub-folders, or coming from stdin.`,
 
 func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
-	if err := conf.ParseMetaAndYaml(bytes); err != nil {
+
+	report, err := conf.ParseMetaAndYaml(bytes)
+	if err != nil {
 		return bytes, []inject.Report{}, err
 	}
 
-	report := inject.NewReport(conf)
-
-	output, err := conf.Uninject(&report)
+	output, err := conf.Uninject(report)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,7 +83,7 @@ func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.
 		report.UnsupportedResource = true
 	}
 
-	return output, []inject.Report{report}, nil
+	return output, []inject.Report{*report}, nil
 }
 
 func (rt resourceTransformerUninjectSilent) transform(bytes []byte) ([]byte, []inject.Report, error) {

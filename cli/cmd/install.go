@@ -359,6 +359,7 @@ func globalConfig(options *installOptions) *config.GlobalConfig {
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Registry:         options.dockerRegistry,
+		Version:          options.linkerdVersion,
 		IdentityContext:  identityContext,
 	}
 }

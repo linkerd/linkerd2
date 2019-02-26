@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -278,6 +279,7 @@ const (
 	defaultKeepaliveMs    = 10000
 )
 
+// Deprecated. Use newConfig
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
 		linkerdVersion:          version.Version,
@@ -303,6 +305,32 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		noInitContainer:         false,
 		proxyOutboundCapacity:   map[string]uint{},
 	}
+}
+
+func newConfig() configs {
+	globalConfig := &config.GlobalConfig{
+		LinkerdNamespace: defaultNamespace,
+		CniEnabled:       false,
+		Registry:         defaultDockerRegistry,
+		Version:          version.Version,
+		IdentityContext:  nil,
+	}
+	proxyConfig := &config.ProxyConfig{
+		ProxyImage:              &config.Image{ImageName: defaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
+		ProxyInitImage:          &config.Image{ImageName: defaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
+		DestinationApiPort:      &config.Port{Port: 8086},
+		ControlPort:             &config.Port{Port: 4190},
+		IgnoreInboundPorts:      nil,
+		IgnoreOutboundPorts:     nil,
+		InboundPort:             &config.Port{Port: 4143},
+		MetricsPort:             &config.Port{Port: 4191},
+		OutboundPort:            &config.Port{Port: 4140},
+		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
+		ProxyUid:                2102,
+		LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
+		DisableExternalProfiles: false,
+	}
+	return configs{globalConfig, proxyConfig}
 }
 
 func (options *proxyConfigOptions) validate() error {

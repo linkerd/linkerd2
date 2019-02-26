@@ -1,38 +1,60 @@
----
-kind: Namespace
 apiVersion: v1
+kind: Namespace
 metadata:
-  name: Namespace
   annotations:
     ProxyInjectAnnotation: ProxyInjectDisabled
+  name: Namespace
 ---
 ###
 ### Controller
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-controller
   namespace: Namespace
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
   name: linkerd-Namespace-controller
 rules:
-- apiGroups: ["extensions", "apps"]
-  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["linkerd.io"]
-  resources: ["serviceprofiles"]
-  verbs: ["list", "get", "watch"]
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - services
+  - replicationcontrollers
+  - namespaces
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - linkerd.io
+  resources:
+  - serviceprofiles
+  verbs:
+  - list
+  - get
+  - watch
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
 metadata:
   name: linkerd-Namespace-controller
 roleRef:
@@ -44,55 +66,53 @@ subjects:
   name: linkerd-controller
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-controller-api
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: controller
+  name: linkerd-controller-api
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 8085
     targetPort: 8085
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-destination
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
-  annotations:
-    CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
   selector:
     ControllerComponentLabel: controller
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: controller
+  name: linkerd-destination
+  namespace: Namespace
+spec:
   ports:
   - name: grpc
     port: 123
     targetPort: 123
+  selector:
+    ControllerComponentLabel: controller
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
   name: linkerd-controller
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -100,7 +120,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
         linkerd.io/control-plane-ns: Namespace
@@ -130,7 +149,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -158,7 +176,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -183,7 +200,6 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -258,23 +274,21 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
   global: |
     GlobalConfig
   proxy: |
     ProxyConfig
-
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: controller
+  name: linkerd-config
+  namespace: Namespace
 ---
 ###
 ### Service Profile CRD
@@ -283,32 +297,25 @@ data:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: serviceprofiles.linkerd.io
   annotations:
     CreatedByAnnotation: CliVersion
+  name: serviceprofiles.linkerd.io
+  namespace: Namespace
 spec:
   group: linkerd.io
-  version: v1alpha1
-  scope: Namespaced
   names:
-    plural: serviceprofiles
-    singular: serviceprofile
     kind: ServiceProfile
+    plural: serviceprofiles
     shortNames:
     - sp
+    singular: serviceprofile
+  scope: Namespaced
   validation:
     openAPIV3Schema:
       properties:
         spec:
-          required:
-          - routes
           properties:
             retryBudget:
-              required:
-              - minRetriesPerSecond
-              - retryRatio
-              - ttl
-              type: object
               properties:
                 minRetriesPerSecond:
                   type: integer
@@ -316,94 +323,99 @@ spec:
                   type: number
                 ttl:
                   type: string
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
             routes:
-              type: array
               items:
-                type: object
+                properties:
+                  condition:
+                    minProperties: 1
+                    properties:
+                      all:
+                        items:
+                          type: object
+                        type: array
+                      any:
+                        items:
+                          type: object
+                        type: array
+                      method:
+                        type: string
+                      not:
+                        type: object
+                      pathRegex:
+                        type: string
+                    type: object
+                  name:
+                    type: string
+                  responseClasses:
+                    items:
+                      properties:
+                        condition:
+                          properties:
+                            all:
+                              items:
+                                type: object
+                              type: array
+                            any:
+                              items:
+                                type: object
+                              type: array
+                            not:
+                              type: object
+                            status:
+                              minProperties: 1
+                              properties:
+                                max:
+                                  maximum: 599
+                                  minimum: 100
+                                  type: integer
+                                min:
+                                  maximum: 599
+                                  minimum: 100
+                                  type: integer
+                              type: object
+                          type: object
+                        isFailure:
+                          type: boolean
+                      required:
+                      - condition
+                      type: object
+                    type: array
+                  timeout:
+                    type: string
                 required:
                 - name
                 - condition
-                properties:
-                  name:
-                    type: string
-                  timeout:
-                    type: string
-                  condition:
-                    type: object
-                    minProperties: 1
-                    properties:
-                      method:
-                        type: string
-                      pathRegex:
-                        type: string
-                      all:
-                        type: array
-                        items:
-                          type: object
-                      any:
-                        type: array
-                        items:
-                          type: object
-                      not:
-                        type: object
-                  responseClasses:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                      - condition
-                      properties:
-                        isFailure:
-                          type: boolean
-                        condition:
-                          type: object
-                          properties:
-                            status:
-                              type: object
-                              minProperties: 1
-                              properties:
-                                min:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                                max:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                            all:
-                              type: array
-                              items:
-                                type: object
-                            any:
-                              type: array
-                              items:
-                                type: object
-                            not:
-                              type: object
+                type: object
+              type: array
+          required:
+          - routes
+  version: v1alpha1
 ---
 ###
 ### Web
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-web
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-web
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: web
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: web
+  name: linkerd-web
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 8084
@@ -411,20 +423,21 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
+  selector:
+    ControllerComponentLabel: web
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: web
   name: linkerd-web
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -432,7 +445,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: web
         linkerd.io/control-plane-ns: Namespace
@@ -463,7 +475,6 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -538,29 +549,33 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-web
-status: {}
 ---
 ###
 ### Prometheus
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-prometheus
   namespace: Namespace
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
   name: linkerd-Namespace-prometheus
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
 metadata:
   name: linkerd-Namespace-prometheus
 roleRef:
@@ -572,37 +587,35 @@ subjects:
   name: linkerd-prometheus
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-prometheus
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: prometheus
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: prometheus
+  name: linkerd-prometheus
+  namespace: Namespace
+spec:
   ports:
   - name: admin-http
     port: 9090
     targetPort: 9090
+  selector:
+    ControllerComponentLabel: prometheus
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
   name: linkerd-prometheus
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -610,7 +623,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
         linkerd.io/control-plane-ns: Namespace
@@ -621,7 +633,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: PrometheusImage
+        image: prom/prometheus:v2.7.1
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
@@ -639,7 +651,6 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources: {}
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -728,17 +739,8 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-prometheus-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: prometheus
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
   prometheus.yml: |-
     global:
@@ -817,48 +819,54 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: prometheus
+  name: linkerd-prometheus-config
+  namespace: Namespace
 ---
 ###
 ### Grafana
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-grafana
   namespace: Namespace
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: linkerd-grafana
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: grafana
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: grafana
+  name: linkerd-grafana
+  namespace: Namespace
+spec:
   ports:
   - name: http
     port: 3000
     targetPort: 3000
+  selector:
+    ControllerComponentLabel: grafana
+  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
   name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -866,7 +874,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
         linkerd.io/control-plane-ns: Namespace
@@ -891,7 +898,6 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources: {}
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -985,18 +991,34 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-status: {}
 ---
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: linkerd-grafana-config
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: grafana
-  annotations:
-    CreatedByAnnotation: CliVersion
 data:
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: linkerd-top-line
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
   grafana.ini: |-
     instance_name = linkerd-grafana
 
@@ -1015,69 +1037,71 @@ data:
 
     [analytics]
     check_for_updates = false
-
-  datasources.yaml: |-
-    apiVersion: 1
-    datasources:
-    - name: prometheus
-      type: prometheus
-      access: proxy
-      orgId: 1
-      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
-      isDefault: true
-      jsonData:
-        timeInterval: "5s"
-      version: 1
-      editable: true
-
-  dashboards.yaml: |-
-    apiVersion: 1
-    providers:
-    - name: 'default'
-      orgId: 1
-      folder: ''
-      type: file
-      disableDeletion: true
-      editable: true
-      options:
-        path: /var/lib/grafana/dashboards
-        homeDashboardId: linkerd-top-line
-
+kind: ConfigMap
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  labels:
+    ControllerComponentLabel: grafana
+  name: linkerd-grafana-config
+  namespace: Namespace
 ---
 ###
 ### CA
 ###
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-ca
   namespace: Namespace
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
   name: linkerd-Namespace-ca
 rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["configmaps"]
-  resourceNames: [TLSTrustAnchorConfigMapName]
-  verbs: ["update"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["extensions", "apps"]
-  resources: ["replicasets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["create", "update"]
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resourceNames:
+  - TLSTrustAnchorConfigMapName
+  resources:
+  - configmaps
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
 metadata:
   name: linkerd-Namespace-ca
 roleRef:
@@ -1094,14 +1118,12 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: ca
   name: linkerd-ca
   namespace: Namespace
 spec:
   replicas: 1
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -1109,7 +1131,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: ca
         linkerd.io/control-plane-ns: Namespace
@@ -1136,7 +1157,6 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -1211,7 +1231,6 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-ca
-status: {}
 ---
 ###
 ### Proxy Injector
@@ -1222,7 +1241,6 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-  creationTimestamp: null
   labels:
     ControllerComponentLabel: proxy-injector
   name: linkerd-proxy-injector
@@ -1232,7 +1250,6 @@ spec:
   selector:
     matchLabels:
       ControllerComponentLabel: proxy-injector
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -1240,7 +1257,6 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
       labels:
         ControllerComponentLabel: proxy-injector
         linkerd.io/control-plane-ns: Namespace
@@ -1269,12 +1285,11 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources: {}
         securityContext:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/linkerd-io/config
-          name: proxy-spec
+          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1349,171 +1364,65 @@ spec:
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
-          name: linkerd-proxy-injector-sidecar-config
-        name: proxy-spec
-status: {}
+          name: linkerd-config
+        name: config
 ---
-kind: ServiceAccount
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: linkerd-proxy-injector
   namespace: Namespace
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
 metadata:
   name: linkerd-Namespace-proxy-injector
 rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "update", "get", "watch"]
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get"]
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - create
+  - update
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
 metadata:
   name: linkerd-Namespace-proxy-injector
-subjects:
-- kind: ServiceAccount
-  name: linkerd-proxy-injector
-  namespace: Namespace
-  apiGroup: ""
 roleRef:
+  apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: linkerd-Namespace-proxy-injector
-  apiGroup: rbac.authorization.k8s.io
----
-kind: Service
-apiVersion: v1
-metadata:
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
   name: linkerd-proxy-injector
   namespace: Namespace
-  labels:
-    ControllerComponentLabel: proxy-injector
+---
+apiVersion: v1
+kind: Service
+metadata:
   annotations:
     CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
+  labels:
     ControllerComponentLabel: proxy-injector
+  name: linkerd-proxy-injector
+  namespace: Namespace
+spec:
   ports:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector-sidecar-config
-  namespace: Namespace
-  labels:
+  selector:
     ControllerComponentLabel: proxy-injector
-  annotations:
-    CreatedByAnnotation: CliVersion
-data:
-  ProxyInitSpecFileName: |
-    args:
-    - --incoming-proxy-port
-    - 4143
-    - --outgoing-proxy-port
-    - 4140
-    - --proxy-uid
-    - 2102
-    - --inbound-ports-to-ignore
-    - 4190,4191,1,2,3
-    - --outbound-ports-to-ignore
-    - 2,3,4
-    image: ProxyInitImage
-    imagePullPolicy: IfNotPresent
-    name: linkerd-init
-    securityContext:
-      capabilities:
-        add:
-        - NET_ADMIN
-      privileged: false
-      runAsNonRoot: false
-      runAsUser: 0
-    terminationMessagePolicy: FallbackToLogsOnError
-  ProxySpecFileName: |
-    env:
-    - name: LINKERD2_PROXY_LOG
-      value: ProxyLogLevel
-    - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-destination.Namespace.svc.cluster.local:123
-    - name: LINKERD2_PROXY_CONTROL_LISTENER
-      value: tcp://0.0.0.0:4190
-    - name: LINKERD2_PROXY_METRICS_LISTENER
-      value: tcp://0.0.0.0:4191
-    - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-      value: tcp://127.0.0.1:4140
-    - name: LINKERD2_PROXY_INBOUND_LISTENER
-      value: tcp://0.0.0.0:4143
-    - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-      value: suffix.
-    - name: LINKERD2_PROXY_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-      value: 10000ms
-    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-      value: 10000ms
-    - name: LINKERD2_PROXY_ID
-      value: "" # this value will be computed by the webhook
-    - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-      value: /var/linkerd-io/trust-anchors/TLSTrustAnchorFileName
-    - name: LINKERD2_PROXY_TLS_CERT
-      value: /var/linkerd-io/identity/TLSCertFileName
-    - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-      value: /var/linkerd-io/identity/TLSPrivateKeyFileName
-    - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-      value: "" # this value will be computed by the webhook
-    - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-      value: Namespace
-    - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-      value: "" # this value will be computed by the webhook
-    image: ProxyImage
-    imagePullPolicy: IfNotPresent
-    livenessProbe:
-      httpGet:
-        path: /metrics
-        port: 4191
-      initialDelaySeconds: 10
-    name: linkerd-proxy
-    ports:
-    - containerPort: 4143
-      name: linkerd-proxy
-    - containerPort: 4191
-      name: linkerd-metrics
-    readinessProbe:
-      httpGet:
-        path: /metrics
-        port: 4191
-      initialDelaySeconds: 10
-    resources:
-      requests:
-        cpu: RequestCPU
-        memory: RequestMemory
-    securityContext:
-      runAsUser: 2102
-    terminationMessagePolicy: FallbackToLogsOnError
-    volumeMounts:
-    - mountPath: /var/linkerd-io/trust-anchors
-      name: TLSTrustAnchorVolumeName
-      readOnly: true
-    - mountPath: /var/linkerd-io/identity
-      name: TLSSecretsVolumeName
-      readOnly: true
-  TLSTrustAnchorVolumeSpecFileName: |
-    name: TLSTrustAnchorVolumeName
-    configMap:
-      name: TLSTrustAnchorConfigMapName
-      optional: true
-  TLSIdentityVolumeSpecFileName: |
-    name: TLSSecretsVolumeName
-    secret:
-      secretName: "" # this value will be computed by the webhook
-      optional: true
+  type: ClusterIP
 ---
