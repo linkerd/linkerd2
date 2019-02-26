@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -44,8 +44,8 @@ type objMeta struct {
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	globalConfig    *pb.GlobalConfig
-	proxyConfig     *pb.ProxyConfig
+	globalConfig    *config.Global
+	proxyConfig     *config.Proxy
 	obj             interface{}
 	meta            metav1.TypeMeta
 	podSpec         *v1.PodSpec
@@ -56,7 +56,7 @@ type ResourceConfig struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(globalConfig *pb.GlobalConfig, proxyConfig *pb.ProxyConfig) *ResourceConfig {
+func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *ResourceConfig {
 	return &ResourceConfig{
 		globalConfig: globalConfig,
 		proxyConfig:  proxyConfig,

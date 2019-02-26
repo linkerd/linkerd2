@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -229,43 +229,43 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 // TODO: this is just a temporary function to convert command-line options to GlobalConfig
 // and ProxyConfig, until we come up with an abstraction over those GRPC structs
 func injectOptionsToConfigs(options *injectOptions) configs {
-	var idContext *pb.IdentityContext
+	var idContext *config.IdentityContext
 	if options.tls == "optional" {
-		idContext = &pb.IdentityContext{}
+		idContext = &config.IdentityContext{}
 	}
-	globalConfig := &pb.GlobalConfig{
+	globalConfig := &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Registry:         options.dockerRegistry,
 		Version:          options.linkerdVersion,
 		IdentityContext:  idContext,
 	}
-	var ignoreInboundPorts []*pb.Port
+	var ignoreInboundPorts []*config.Port
 	for _, port := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, &pb.Port{Port: uint32(port)})
+		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
 	}
-	var ignoreOutboundPorts []*pb.Port
+	var ignoreOutboundPorts []*config.Port
 	for _, port := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.Port{Port: uint32(port)})
+		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
 	}
-	proxyConfig := &pb.ProxyConfig{
-		ProxyImage:          &pb.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
-		ProxyInitImage:      &pb.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
-		DestinationApiPort:  &pb.Port{Port: uint32(options.destinationAPIPort)},
-		ControlPort:         &pb.Port{Port: uint32(options.proxyControlPort)},
+	proxyConfig := &config.Proxy{
+		ProxyImage:          &config.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
+		ProxyInitImage:      &config.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
+		DestinationApiPort:  &config.Port{Port: uint32(options.destinationAPIPort)},
+		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
 		IgnoreInboundPorts:  ignoreInboundPorts,
 		IgnoreOutboundPorts: ignoreOutboundPorts,
-		InboundPort:         &pb.Port{Port: uint32(options.inboundPort)},
-		MetricsPort:         &pb.Port{Port: uint32(options.proxyMetricsPort)},
-		OutboundPort:        &pb.Port{Port: uint32(options.outboundPort)},
-		Resource: &pb.ResourceRequirements{
+		InboundPort:         &config.Port{Port: uint32(options.inboundPort)},
+		MetricsPort:         &config.Port{Port: uint32(options.proxyMetricsPort)},
+		OutboundPort:        &config.Port{Port: uint32(options.outboundPort)},
+		Resource: &config.ResourceRequirements{
 			RequestCpu:    options.proxyCPURequest,
 			RequestMemory: options.proxyMemoryRequest,
 			LimitCpu:      options.proxyCPULimit,
 			LimitMemory:   options.proxyMemoryLimit,
 		},
 		ProxyUid:                options.proxyUID,
-		LogLevel:                &pb.LogLevel{Level: options.proxyLogLevel},
+		LogLevel:                &config.LogLevel{Level: options.proxyLogLevel},
 		DisableExternalProfiles: options.disableExternalProfiles,
 	}
 	return configs{globalConfig, proxyConfig}

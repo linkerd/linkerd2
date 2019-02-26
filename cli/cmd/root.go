@@ -308,14 +308,14 @@ func newProxyConfigOptions() *proxyConfigOptions {
 }
 
 func newConfig() configs {
-	globalConfig := &config.GlobalConfig{
+	globalConfig := &config.Global{
 		LinkerdNamespace: defaultNamespace,
 		CniEnabled:       false,
 		Registry:         defaultDockerRegistry,
 		Version:          version.Version,
 		IdentityContext:  nil,
 	}
-	proxyConfig := &config.ProxyConfig{
+	proxyConfig := &config.Proxy{
 		ProxyImage:              &config.Image{ImageName: defaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
 		ProxyInitImage:          &config.Image{ImageName: defaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
 		DestinationApiPort:      &config.Port{Port: 8086},
