@@ -1,3 +1,28 @@
+## edge-19-2.5
+
+* CLI
+  * Updated `linkerd check` to ensure hint URLs are displayed for RPC checks
+* Controller
+  * Updated the auto-inject admission controller webhook to respond to UPDATE
+    events of deployment workload
+  * Updated destination service to return TLS identities only when the client
+    pod is TLS-aware and is in the same controller namespace
+  * Lessen klog level to improve security
+  * Updated control-plane components to query Kubernetes at startup to determine
+    authorized namespaces and if ServiceProfile support is available
+  * Modified the stats payload to include the following TCP stats:
+    `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
+* Proxy
+  * Fixed issue with proxy falling back to filesystem polling due to improperly
+    sized inotify buffer
+* Web UI
+  * Removed 'Help' hierarchy and surfaced links on navigation sidebar
+  * Added an Endpoints view to the web dashboard
+* Internal
+  * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
+    `goconst`, `scopelint`, `unused`, `gosimple`
+  * Bumped base Docker images
+
 ## stable-2.2.1
 
 This stable release polishes some of the CLI help text and fixes two issues that
