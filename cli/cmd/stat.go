@@ -24,6 +24,7 @@ type statOptions struct {
 	fromNamespace string
 	fromResource  string
 	allNamespaces bool
+	showTCPStats  bool
 }
 
 type indexedResults struct {
@@ -40,6 +41,7 @@ func newStatOptions() *statOptions {
 		fromNamespace:   "",
 		fromResource:    "",
 		allNamespaces:   false,
+		showTCPStats:    false,
 	}
 }
 
@@ -163,6 +165,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\"")
+	cmd.PersistentFlags().BoolVar(&options.showTCPStats, "tcp", options.showTCPStats, "Show TCP stats")
 
 	return cmd
 }
@@ -201,14 +204,17 @@ func renderStatStats(rows []*pb.StatTable_PodGroup_Row, options *statOptions) st
 const padding = 3
 
 type rowStats struct {
-	route       string
-	dst         string
-	requestRate float64
-	successRate float64
-	tlsPercent  float64
-	latencyP50  uint64
-	latencyP95  uint64
-	latencyP99  uint64
+	route              string
+	dst                string
+	requestRate        float64
+	successRate        float64
+	tlsPercent         float64
+	latencyP50         uint64
+	latencyP95         uint64
+	latencyP99         uint64
+	tcpOpenConnections uint64
+	tcpReadBytes       uint64
+	tcpWriteBytes      uint64
 }
 
 type row struct {
@@ -268,12 +274,15 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		if r.Stats != nil {
 			statTables[resourceKey][key].rowStats = &rowStats{
-				requestRate: getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
-				successRate: getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
-				tlsPercent:  getPercentTLS(r.Stats),
-				latencyP50:  r.Stats.LatencyMsP50,
-				latencyP95:  r.Stats.LatencyMsP95,
-				latencyP99:  r.Stats.LatencyMsP99,
+				requestRate:        getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
+				successRate:        getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
+				tlsPercent:         getPercentTLS(r.Stats),
+				latencyP50:         r.Stats.LatencyMsP50,
+				latencyP95:         r.Stats.LatencyMsP95,
+				latencyP99:         r.Stats.LatencyMsP99,
+				tcpOpenConnections: r.GetTcpStats().GetOpenConnections(),
+				tcpReadBytes:       r.GetTcpStats().GetReadBytesTotal(),
+				tcpWriteBytes:      r.GetTcpStats().GetWriteBytesTotal(),
 			}
 		}
 	}
@@ -286,7 +295,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, options)
 	case jsonOutput:
-		printStatJSON(statTables, w)
+		printStatJSON(statTables, w, options)
 	}
 }
 
@@ -312,6 +321,10 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 	}
 }
 
+func showTCPStats(options *statOptions, resourceType string) bool {
+	return options.showTCPStats && resourceType != k8s.Authority
+}
+
 func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	headers := make([]string, 0)
 	if options.allNamespaces {
@@ -326,8 +339,18 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99",
-		"TLS\t", // trailing \t is required to format last column
+		"TLS",
 	}...)
+
+	if showTCPStats(options, resourceType) {
+		headers = append(headers, []string{
+			"TCP CONNECTIONS",
+			"READ BYTES",
+			"WRITE BYTES",
+		}...)
+	}
+
+	headers = append(headers, "\t") // trailing \t is required to format last column
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
@@ -338,12 +361,18 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
 
+		if showTCPStats(options, resourceType) {
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%db\t%db\t\n"
+			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
+		}
+
 		if options.allNamespaces {
 			values = append(values,
 				namespace+strings.Repeat(" ", maxNamespaceLength-len(namespace)))
 			templateString = "%s\t" + templateString
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
+
 		padding := 0
 		if maxNameLength > len(name) {
 			padding = maxNameLength - len(name)
@@ -363,6 +392,14 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 				stats[key].tlsPercent * 100,
 			}...)
 
+			if showTCPStats(options, resourceType) {
+				values = append(values, []interface{}{
+					stats[key].tcpOpenConnections,
+					stats[key].tcpReadBytes,
+					stats[key].tcpWriteBytes,
+				}...)
+			}
+
 			fmt.Fprintf(w, templateString, values...)
 		} else {
 			fmt.Fprintf(w, templateStringEmpty, values...)
@@ -380,19 +417,22 @@ func namespaceName(resourceType string, key string) (string, string) {
 
 // Using pointers where the value is NA and the corresponding json is null
 type jsonStats struct {
-	Namespace    string   `json:"namespace"`
-	Kind         string   `json:"kind"`
-	Name         string   `json:"name"`
-	Meshed       string   `json:"meshed"`
-	Success      *float64 `json:"success"`
-	Rps          *float64 `json:"rps"`
-	LatencyMSp50 *uint64  `json:"latency_ms_p50"`
-	LatencyMSp95 *uint64  `json:"latency_ms_p95"`
-	LatencyMSp99 *uint64  `json:"latency_ms_p99"`
-	TLS          *float64 `json:"tls"`
+	Namespace      string   `json:"namespace"`
+	Kind           string   `json:"kind"`
+	Name           string   `json:"name"`
+	Meshed         string   `json:"meshed"`
+	Success        *float64 `json:"success"`
+	Rps            *float64 `json:"rps"`
+	LatencyMSp50   *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95   *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
+	TLS            *float64 `json:"tls"`
+	TCPConnections *uint64  `json:"tcp_open_connections"`
+	TCPReadBytes   *uint64  `json:"tcp_read_bytes"`
+	TCPWriteBytes  *uint64  `json:"tcp_write_bytes"`
 }
 
-func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
+func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer, options *statOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
 	for _, resourceType := range k8s.AllResources {
@@ -413,6 +453,12 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp95 = &stats[key].latencyP95
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
+
+					if options.showTCPStats {
+						entry.TCPConnections = &stats[key].tcpOpenConnections
+						entry.TCPReadBytes = &stats[key].tcpReadBytes
+						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
+					}
 				}
 
 				entries = append(entries, entry)
@@ -477,6 +523,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			FromName:      fromRes.Name,
 			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
+			TCPStats:      options.showTCPStats,
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)
