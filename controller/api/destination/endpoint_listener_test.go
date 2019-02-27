@@ -261,7 +261,7 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
-	t.Run("Does not send TlsIdentity to for other meshes", func(t *testing.T) {
+	t.Run("Does not send TlsIdentity for other meshes", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "other-linkerd-namespace"
