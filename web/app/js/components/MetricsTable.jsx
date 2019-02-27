@@ -14,7 +14,78 @@ import _isNil from 'lodash/isNil';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
-const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
+const tcpStatColumns = [
+  {
+    title: "Connections",
+    dataIndex: "tcp.openConnections",
+    isNumeric: true,
+    render: d => metricToFormatter["NO_UNIT"](d.tcp.openConnections),
+    sorter: (a, b) => numericSort(a.tcp.openConnections, b.tcp.openConnections)
+  },
+  {
+    title: "Read Bytes / min",
+    dataIndex: "tcp.readBytes",
+    isNumeric: true,
+    render: d => metricToFormatter["BYTES"](d.tcp.readBytes),
+    sorter: (a, b) => numericSort(a.tcp.readBytes, b.tcp.readBytes)
+  },
+  {
+    title: "Write Bytes / min",
+    dataIndex: "tcp.writeBytes",
+    isNumeric: true,
+    render: d => metricToFormatter["BYTES"](d.tcp.writeBytes),
+    sorter: (a, b) => numericSort(a.tcp.writeBytes, b.tcp.writeBytes)
+  },
+];
+
+const httpStatColumns = [
+  {
+    title: "Success Rate",
+    dataIndex: "successRate",
+    isNumeric: true,
+    render: d => <SuccessRateMiniChart sr={d.successRate} />,
+    sorter: (a, b) => numericSort(a.successRate, b.successRate)
+  },
+  {
+    title: "RPS",
+    dataIndex: "requestRate",
+    isNumeric: true,
+    render: d => metricToFormatter["NO_UNIT"](d.requestRate),
+    sorter: (a, b) => numericSort(a.requestRate, b.requestRate)
+  },
+  {
+    title: "P50 Latency",
+    dataIndex: "P50",
+    isNumeric: true,
+    render: d => metricToFormatter["LATENCY"](d.P50),
+    sorter: (a, b) => numericSort(a.P50, b.P50)
+  },
+  {
+    title: "P95 Latency",
+    dataIndex: "P95",
+    isNumeric: true,
+    render: d => metricToFormatter["LATENCY"](d.P95),
+    sorter: (a, b) => numericSort(a.P95, b.P95)
+  },
+  {
+    title: "P99 Latency",
+    dataIndex: "P99",
+    isNumeric: true,
+    render: d => metricToFormatter["LATENCY"](d.P99),
+    sorter: (a, b) => numericSort(a.P99, b.P99)
+  },
+  {
+    title: "TLS",
+    dataIndex: "tlsRequestPercent",
+    isNumeric: true,
+    render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
+    sorter: (a, b) => numericSort(
+      a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
+      b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
+  },
+];
+
+const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
   let isAuthorityTable = resource === "authority";
   let isMultiResourceTable = resource === "multi_resource";
   let getResourceDisplayName =  isMultiResourceTable ? displayName : d => d.name;
@@ -38,98 +109,61 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink) => {
     sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods)
   };
 
-  let columns = [
-    {
-      title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
-      dataIndex: "name",
-      isNumeric: false,
-      filter: d => d.name,
-      render: d => {
-        let nameContents;
-        if (resource === "namespace") {
-          nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
-        } else if (!d.added || isAuthorityTable) {
-          nameContents = getResourceDisplayName(d);
-        } else {
-          nameContents = (
-            <PrefixedLink to={"/namespaces/" + d.namespace + "/" + d.type + "s/" + d.name}>
-              {getResourceDisplayName(d)}
-            </PrefixedLink>
-          );
-        }
-        return (
-          <Grid container alignItems="center" spacing={8}>
-            <Grid item>{nameContents}</Grid>
-            { _isEmpty(d.errors) ? null :
-            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
-          </Grid>
-        );
-      },
-      sorter: (a, b) => (getResourceDisplayName(a) || "").localeCompare(getResourceDisplayName(b))
-    },
-    {
-      title: "Success Rate",
-      dataIndex: "successRate",
-      isNumeric: true,
-      render: d => <SuccessRateMiniChart sr={d.successRate} />,
-      sorter: (a, b) => numericSort(a.successRate, b.successRate)
-    },
-    {
-      title: "RPS",
-      dataIndex: "requestRate",
-      isNumeric: true,
-      render: d => metricToFormatter["NO_UNIT"](d.requestRate),
-      sorter: (a, b) => numericSort(a.requestRate, b.requestRate)
-    },
-    {
-      title: "P50 Latency",
-      dataIndex: "P50",
-      isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P50),
-      sorter: (a, b) => numericSort(a.P50, b.P50)
-    },
-    {
-      title: "P95 Latency",
-      dataIndex: "P95",
-      isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P95),
-      sorter: (a, b) => numericSort(a.P95, b.P95)
-    },
-    {
-      title: "P99 Latency",
-      dataIndex: "P99",
-      isNumeric: true,
-      render: d => metricToFormatter["LATENCY"](d.P99),
-      sorter: (a, b) => numericSort(a.P99, b.P99)
-    },
-    {
-      title: "TLS",
-      dataIndex: "tlsRequestPercent",
-      isNumeric: true,
-      render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
-      sorter: (a, b) => numericSort(
-        a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
-        b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
-    },
-    {
-      title: "Grafana",
-      key: "grafanaDashboard",
-      isNumeric: true,
-      render: row => {
-        if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0") ) {
-          return null;
-        }
+  let grafanaColumn = {
+    title: "Grafana",
+    key: "grafanaDashboard",
+    isNumeric: true,
+    render: row => {
+      if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0") ) {
+        return null;
+      }
 
-        return (
-          <GrafanaLink
-            name={row.name}
-            namespace={row.namespace}
-            resource={row.type}
-            PrefixedLink={PrefixedLink} />
+      return (
+        <GrafanaLink
+          name={row.name}
+          namespace={row.namespace}
+          resource={row.type}
+          PrefixedLink={PrefixedLink} />
+      );
+    }
+  };
+
+  let nameColumn = {
+    title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
+    dataIndex: "name",
+    isNumeric: false,
+    filter: d => d.name,
+    render: d => {
+      let nameContents;
+      if (resource === "namespace") {
+        nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
+      } else if (!d.added || isAuthorityTable) {
+        nameContents = getResourceDisplayName(d);
+      } else {
+        nameContents = (
+          <PrefixedLink to={"/namespaces/" + d.namespace + "/" + d.type + "s/" + d.name}>
+            {getResourceDisplayName(d)}
+          </PrefixedLink>
         );
       }
-    }
-  ];
+      return (
+        <Grid container alignItems="center" spacing={8}>
+          <Grid item>{nameContents}</Grid>
+          { _isEmpty(d.errors) ? null :
+          <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
+        </Grid>
+      );
+    },
+    sorter: (a, b) => (getResourceDisplayName(a) || "").localeCompare(getResourceDisplayName(b))
+  };
+
+  let columns = [nameColumn];
+  if (isTcpTable) {
+    columns = columns.concat(tcpStatColumns);
+  } else {
+    columns = columns.concat(httpStatColumns);
+    columns = columns.concat(grafanaColumn);
+  }
 
   // don't add the meshed column on a Authority MetricsTable
   if (!isAuthorityTable) {
@@ -161,6 +195,7 @@ class MetricsTable extends React.Component {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
+    isTcpTable: PropTypes.bool,
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
     showNamespaceColumn: PropTypes.bool,
@@ -170,15 +205,16 @@ class MetricsTable extends React.Component {
   static defaultProps = {
     showNamespaceColumn: true,
     title: "",
+    isTcpTable: false,
     metrics: []
   };
 
   render() {
-    const {  metrics, resource, showNamespaceColumn, title, api } = this.props;
+    const {  metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
 
-    let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink);
+    let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink, isTcpTable);
     let rows = preprocessMetrics(metrics);
     return (
       <BaseTable

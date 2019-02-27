@@ -58,6 +58,7 @@ func TestNetToPublic(t *testing.T) {
 	}
 
 	for i, exp := range expectations {
+		exp := exp // pin
 		t.Run(fmt.Sprintf("%d returns expected public API TCPAddress", i), func(t *testing.T) {
 			res := NetToPublic(exp.proxyAddr)
 			if !proto.Equal(res, exp.publicAddress) {

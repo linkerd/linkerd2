@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,10 +28,19 @@ func main() {
 	uuid := flag.String("uuid", "", "unique linkerd install id")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	singleNamespace := flag.Bool("single-namespace", false, "only operate in the controller namespace")
+	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	flags.ConfigureAndParse()
 
-	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
+	k8sClient, err := k8s.NewClientSet(*kubeConfigPath)
+	if err != nil {
+		log.Fatalf("failed to initialize Kubernetes client: %s", err)
+	}
+	serviceProfiles, err := pkgK8s.ServiceProfilesAccess(k8sClient)
+	if err != nil {
+		log.Fatalf("failed to check for ServiceProfiles: %s", err)
+	}
+
+	_, _, err = net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", *apiAddr)
 	}
@@ -41,7 +52,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, *singleNamespace, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, serviceProfiles, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

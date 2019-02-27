@@ -21,7 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	k8sV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -38,7 +38,6 @@ type grpcServer struct {
 	k8sAPI              *k8s.API
 	controllerNamespace string
 	ignoredNamespaces   []string
-	singleNamespace     bool
 }
 
 type podReport struct {
@@ -61,7 +60,6 @@ func newGrpcServer(
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
-	singleNamespace bool,
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
@@ -71,7 +69,6 @@ func newGrpcServer(
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 		ignoredNamespaces:   ignoredNamespaces,
-		singleNamespace:     singleNamespace,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -134,7 +131,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 		}
 	}
 
-	var pods []*k8sV1.Pod
+	var pods []*corev1.Pod
 	if namespace != "" {
 		pods, err = s.k8sAPI.Pod().Lister().Pods(namespace).List(labelSelector)
 	} else {
@@ -249,7 +246,7 @@ func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_T
 	}
 }
 
-func (s *grpcServer) shouldIgnore(pod *k8sV1.Pod) bool {
+func (s *grpcServer) shouldIgnore(pod *corev1.Pod) bool {
 	for _, namespace := range s.ignoredNamespaces {
 		if pod.Namespace == namespace {
 			return true

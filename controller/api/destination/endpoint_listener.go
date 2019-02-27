@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type endpointUpdateListener interface {
@@ -21,23 +21,38 @@ type endpointUpdateListener interface {
 	Stop()
 }
 
-type ownerKindAndNameFn func(*coreV1.Pod) (string, string)
+type ownerKindAndNameFn func(*corev1.Pod) (string, string)
 
 // updateAddress is a pairing of TCP address to Kubernetes pod object
 type updateAddress struct {
 	address *net.TcpAddress
-	pod     *coreV1.Pod
+	pod     *corev1.Pod
 }
 
-func (ua updateAddress) String() string {
-	addrStr := addr.ProxyAddressToString(ua.address)
+// String is used by tests for comparison and logging.
+func (ua *updateAddress) String() string {
+	return fmt.Sprintf("{address=%s, pod=%s, ns=%s}", ua.Address(), ua.Name(), ua.Namespace())
+}
+
+func (ua *updateAddress) Address() string {
+	return addr.ProxyAddressToString(ua.address)
+}
+
+func (ua *updateAddress) Name() string {
 	if ua.pod == nil {
-		return fmt.Sprintf("{address:%v}", addrStr)
+		return ""
 	}
-	return fmt.Sprintf("{address:%v, pod:%s.%s}", addrStr, ua.pod.Namespace, ua.pod.Name)
+	return ua.pod.Name
 }
 
-func (ua updateAddress) clone() *updateAddress {
+func (ua *updateAddress) Namespace() string {
+	if ua.pod == nil {
+		return ""
+	}
+	return ua.pod.Namespace
+}
+
+func (ua *updateAddress) clone() *updateAddress {
 	return &updateAddress{
 		pod:     ua.pod.DeepCopy(),
 		address: proto.Clone(ua.address).(*net.TcpAddress),
@@ -131,29 +146,41 @@ func (l *endpointListener) SetServiceID(id *serviceID) {
 	}
 }
 
+// Update is called with lists of newly added and/or removed pods in a service
+// and address updates on the listener's gRPC response stream.
+//
+// N.B. that pod is nil on remove addresses.
+//
+// TODO change the type signature to use more precise types.
 func (l *endpointListener) Update(add, remove []*updateAddress) {
-	l.log.Debugf("Update(%+v, %+v)", add, remove)
+	l.log.Debugf("Update: add=%d; remove=%d", len(add), len(remove))
 
 	if len(add) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Add{
-				Add: l.toWeightedAddrSet(add),
-			},
+		// If pods were added, send the list of metadata-rich WeightedAddr endpoints.
+		set := &pb.WeightedAddrSet{MetricLabels: l.labels}
+		for _, a := range add {
+			w := l.toWeightedAddr(a)
+			l.log.Debugf("Update: add: addr=%s; pod=%s; %+v", a.Address(), a.Name(), w)
+			set.Addrs = append(set.Addrs, w)
 		}
-		err := l.stream.Send(update)
-		if err != nil {
-			l.log.Error(err)
+
+		u := &pb.Update{Update: &pb.Update_Add{Add: set}}
+		if err := l.stream.Send(u); err != nil {
+			l.log.Errorf("Failed to send address update: %s", err)
 		}
 	}
+
 	if len(remove) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Remove{
-				Remove: l.toAddrSet(remove),
-			},
+		// If pods were removed, send the list of IP addresses.
+		set := &pb.AddrSet{}
+		for _, a := range remove {
+			l.log.Debugf("Update: remove: addr=%s pod=%s;", a.Address(), a.Name())
+			set.Addrs = append(set.Addrs, a.address)
 		}
-		err := l.stream.Send(update)
-		if err != nil {
-			l.log.Error(err)
+
+		u := &pb.Update{Update: &pb.Update_Remove{Remove: set}}
+		if err := l.stream.Send(u); err != nil {
+			l.log.Errorf("Failed to send address update: %s", err)
 		}
 	}
 }
@@ -161,25 +188,15 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 func (l *endpointListener) NoEndpoints(exists bool) {
 	l.log.Debugf("NoEndpoints(%+v)", exists)
 
-	update := &pb.Update{
+	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
 				Exists: exists,
 			},
 		},
 	}
-	l.stream.Send(update)
-}
-
-func (l *endpointListener) toWeightedAddrSet(addresses []*updateAddress) *pb.WeightedAddrSet {
-	addrs := make([]*pb.WeightedAddr, 0)
-	for _, a := range addresses {
-		addrs = append(addrs, l.toWeightedAddr(a))
-	}
-
-	return &pb.WeightedAddrSet{
-		Addrs:        addrs,
-		MetricLabels: l.labels,
+	if err := l.stream.Send(u); err != nil {
+		l.log.Errorf("Failed to send address update: %s", err)
 	}
 }
 
@@ -195,15 +212,7 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 	}
 }
 
-func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
-	addrs := make([]*net.TcpAddress, 0)
-	for _, a := range addresses {
-		addrs = append(addrs, a.address)
-	}
-	return &pb.AddrSet{Addrs: addrs}
-}
-
-func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
+func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
 	controllerNs := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
@@ -234,14 +243,10 @@ func (l *endpointListener) getAddrMetadata(pod *coreV1.Pod) (map[string]string, 
 		ControllerNamespace: controllerNs,
 	}
 
-	dnsName := identity.ToDNSName()
-
-	l.log.Debugf("getAddrMetadata(%+v): Owner: %s/%s DNS Name: %s Labels: %+v", pod, ownerKind, ownerName, dnsName, labels)
-
 	return labels, hint, &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
 			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-				PodIdentity:  dnsName,
+				PodIdentity:  identity.ToDNSName(),
 				ControllerNs: controllerNs,
 			},
 		},

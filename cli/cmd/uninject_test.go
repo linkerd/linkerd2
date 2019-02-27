@@ -13,10 +13,9 @@ import (
 func TestUninjectYAML(t *testing.T) {
 
 	testCases := []struct {
-		inputFileName     string
-		goldenFileName    string
-		reportFileName    string
-		testInjectOptions *injectOptions
+		inputFileName  string
+		goldenFileName string
+		reportFileName string
 	}{
 		{
 			inputFileName:  "inject_emojivoto_deployment.golden.yml",
@@ -86,6 +85,7 @@ func TestUninjectYAML(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.inputFileName), func(t *testing.T) {
 			file, err := os.Open("testdata/" + tc.inputFileName)
 			if err != nil {

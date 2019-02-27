@@ -107,7 +107,6 @@ spec:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -134,7 +133,6 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -enable-tls=false
         - -enable-h2-upgrade=true
         - -log-level=info
@@ -162,7 +160,6 @@ spec:
       - args:
         - tap
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -256,6 +253,22 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
 status: {}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"identityContext":null}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy:dev-undefined","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init:dev-undefined","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
+
 ---
 ###
 ### Service Profile CRD
@@ -424,7 +437,6 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/web:dev-undefined
         imagePullPolicy: IfNotPresent

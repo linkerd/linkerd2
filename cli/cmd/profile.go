@@ -11,13 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-type templateConfig struct {
-	ControlPlaneNamespace string
-	ServiceNamespace      string
-	ServiceName           string
-	ClusterZone           string
-}
-
 type profileOptions struct {
 	name          string
 	namespace     string

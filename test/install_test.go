@@ -137,15 +137,23 @@ func TestCheckPostInstall(t *testing.T) {
 		cmd = append(cmd, "--single-namespace")
 		golden = "check.single_namespace.golden"
 	}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
+	err := TestHelper.RetryFor(time.Minute, func() error {
+		out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Check command failed\n%s", out)
+		}
+
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Received unexpected output\n%s", err.Error())
+		}
+
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -235,14 +243,21 @@ func TestCheckProxy(t *testing.T) {
 		cmd = append(cmd, "--single-namespace")
 		golden = "check.proxy.single_namespace.golden"
 	}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
+	err := TestHelper.RetryFor(time.Minute, func() error {
+		out, _, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return fmt.Errorf("Check command failed\n%s", out)
+		}
 
-	err = TestHelper.ValidateOutput(out, golden)
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Received unexpected output\n%s", err.Error())
+		}
+
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		t.Fatal(err.Error())
 	}
 }

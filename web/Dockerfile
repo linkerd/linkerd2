@@ -26,7 +26,7 @@ COPY web/app .
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:ddae80d2 as golang
+FROM gcr.io/linkerd-io/go-deps:c9486134 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 RUN mkdir -p web
 COPY web/main.go web
@@ -37,7 +37,7 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
 
 ## package it all up
-FROM gcr.io/linkerd-io/base:2017-10-30.01
+FROM gcr.io/linkerd-io/base:2019-02-19.01
 WORKDIR /linkerd
 
 COPY LICENSE .

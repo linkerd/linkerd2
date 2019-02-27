@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -67,7 +67,7 @@ func NewPortForward(
 
 	podName := ""
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodRunning {
+		if pod.Status.Phase == corev1.PodRunning {
 			if strings.HasPrefix(pod.Name, deployName) {
 				podName = pod.Name
 				break

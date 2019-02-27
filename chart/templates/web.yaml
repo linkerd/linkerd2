@@ -62,7 +62,6 @@ spec:
         - "-grafana-addr=linkerd-grafana.{{.Values.Namespace}}.svc.cluster.local:3000"
         - "-uuid={{.Values.UUID}}"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-single-namespace={{.Values.SingleNamespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:

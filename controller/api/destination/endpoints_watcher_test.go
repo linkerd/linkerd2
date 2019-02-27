@@ -7,7 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -101,33 +101,33 @@ status:
 				serviceID{namespace: "ns", name: "name1"}: map[uint32]*servicePort{
 					8989: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("172.17.0.12", 8989, "ns", "name1-1"),
-							makeUpdateAddress("172.17.0.19", 8989, "ns", "name1-2"),
-							makeUpdateAddress("172.17.0.20", 8989, "ns", "name1-3"),
+							makeUpdateAddress("172.17.0.12", 8989, "name1-1"),
+							makeUpdateAddress("172.17.0.19", 8989, "name1-2"),
+							makeUpdateAddress("172.17.0.20", 8989, "name1-3"),
 						},
 						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 8989},
-						endpoints: &v1.Endpoints{
+						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "name1",
 								Namespace: "ns",
 							},
-							Subsets: []v1.EndpointSubset{
+							Subsets: []corev1.EndpointSubset{
 								{
-									Addresses: []v1.EndpointAddress{
+									Addresses: []corev1.EndpointAddress{
 										{
 											IP:        "172.17.0.12",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-1"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-1"},
 										},
 										{
 											IP:        "172.17.0.19",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-2"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-2"},
 										},
 										{
 											IP:        "172.17.0.20",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-3"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-3"},
 										},
 									},
-									Ports: []v1.EndpointPort{{Port: 8989}},
+									Ports: []corev1.EndpointPort{{Port: 8989}},
 								},
 							},
 						},
@@ -201,28 +201,28 @@ status:
 				serviceID{namespace: "ns", name: "name1"}: map[uint32]*servicePort{
 					8989: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("10.233.66.239", 8990, "ns", "name1-f748fb6b4-hpwpw"),
-							makeUpdateAddress("10.233.88.244", 8990, "ns", "name1-f748fb6b4-6vcmw"),
+							makeUpdateAddress("10.233.66.239", 8990, "name1-f748fb6b4-hpwpw"),
+							makeUpdateAddress("10.233.88.244", 8990, "name1-f748fb6b4-6vcmw"),
 						},
 						targetPort: intstr.IntOrString{Type: intstr.String, StrVal: ""},
-						endpoints: &v1.Endpoints{
+						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "name1",
 								Namespace: "ns",
 							},
-							Subsets: []v1.EndpointSubset{
+							Subsets: []corev1.EndpointSubset{
 								{
-									Addresses: []v1.EndpointAddress{
+									Addresses: []corev1.EndpointAddress{
 										{
 											IP:        "10.233.66.239",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-f748fb6b4-hpwpw"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-f748fb6b4-hpwpw"},
 										},
 										{
 											IP:        "10.233.88.244",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-f748fb6b4-6vcmw"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-f748fb6b4-6vcmw"},
 										},
 									},
-									Ports: []v1.EndpointPort{{Port: 8990, Protocol: "TCP"}},
+									Ports: []corev1.EndpointPort{{Port: 8990, Protocol: "TCP"}},
 								},
 							},
 						},
@@ -283,23 +283,23 @@ status:
 				serviceID{namespace: "ns", name: "world"}: map[uint32]*servicePort{
 					7778: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("10.1.30.135", 7779, "ns", "world-575bf846b4-tp4hw"),
+							makeUpdateAddress("10.1.30.135", 7779, "world-575bf846b4-tp4hw"),
 						},
 						targetPort: intstr.IntOrString{Type: intstr.String, StrVal: "app"},
-						endpoints: &v1.Endpoints{
+						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "world",
 								Namespace: "ns",
 							},
-							Subsets: []v1.EndpointSubset{
+							Subsets: []corev1.EndpointSubset{
 								{
-									Addresses: []v1.EndpointAddress{
+									Addresses: []corev1.EndpointAddress{
 										{
 											IP:        "10.1.30.135",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
 										},
 									},
-									Ports: []v1.EndpointPort{{Name: "app", Port: 7779, Protocol: "TCP"}},
+									Ports: []corev1.EndpointPort{{Name: "app", Port: 7779, Protocol: "TCP"}},
 								},
 							},
 						},
@@ -365,31 +365,31 @@ status:
 				serviceID{namespace: "ns", name: "name1"}: map[uint32]*servicePort{
 					8989: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("172.17.0.25", 8989, "ns", "name1-3"),
+							makeUpdateAddress("172.17.0.25", 8989, "name1-3"),
 						},
 						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 8989},
-						endpoints: &v1.Endpoints{
+						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "name1",
 								Namespace: "ns",
 							},
-							Subsets: []v1.EndpointSubset{
+							Subsets: []corev1.EndpointSubset{
 								{
-									Addresses: []v1.EndpointAddress{
+									Addresses: []corev1.EndpointAddress{
 										{
 											IP:        "172.17.0.23",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-1"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-1"},
 										},
 										{
 											IP:        "172.17.0.24",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-2"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-2"},
 										},
 										{
 											IP:        "172.17.0.25",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-3"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "name1-3"},
 										},
 									},
-									Ports: []v1.EndpointPort{{Port: 8989}},
+									Ports: []corev1.EndpointPort{{Port: 8989}},
 								},
 							},
 						},
@@ -419,7 +419,7 @@ spec:
 				serviceID{namespace: "ns", name: "name2"}: map[uint32]*servicePort{
 					7979: {
 						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 7979},
-						endpoints:  &v1.Endpoints{},
+						endpoints:  &corev1.Endpoints{},
 					},
 				},
 			},
@@ -445,7 +445,7 @@ spec:
 				serviceID{namespace: "ns", name: "name3"}: map[uint32]*servicePort{
 					6969: {
 						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 6969},
-						endpoints:  &v1.Endpoints{},
+						endpoints:  &corev1.Endpoints{},
 					},
 				},
 			},
@@ -462,12 +462,13 @@ spec:
 				serviceID{namespace: "ns", name: "name4"}: map[uint32]*servicePort{
 					5959: {
 						targetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 5959},
-						endpoints:  &v1.Endpoints{},
+						endpoints:  &corev1.Endpoints{},
 					},
 				},
 			},
 		},
 	} {
+		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
 			k8sAPI, err := k8s.NewFakeAPI("", tt.k8sConfigs...)
 			if err != nil {

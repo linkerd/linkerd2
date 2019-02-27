@@ -14,7 +14,7 @@ rootdir="$( cd $bindir/.. && pwd )"
 
 . $bindir/_docker.sh
 
-tag="2017-10-30.01"
+tag="2019-02-19.01"
 
 if (docker_pull base "${tag}"); then
     echo "$(docker_repo base):${tag}"

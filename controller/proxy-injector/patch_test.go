@@ -6,7 +6,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestPatch(t *testing.T) {
@@ -57,9 +57,9 @@ func TestPatch(t *testing.T) {
 	expected := NewPatch()
 	expected.patchOps = []*patchOp{
 		{Op: "add", Path: patchPathContainer, Value: sidecar},
-		{Op: "add", Path: patchPathInitContainerRoot, Value: []*v1.Container{}},
+		{Op: "add", Path: patchPathInitContainerRoot, Value: []*corev1.Container{}},
 		{Op: "add", Path: patchPathInitContainer, Value: init},
-		{Op: "add", Path: patchPathVolumeRoot, Value: []*v1.Volume{}},
+		{Op: "add", Path: patchPathVolumeRoot, Value: []*corev1.Volume{}},
 		{Op: "add", Path: patchPathVolume, Value: trustAnchors},
 		{Op: "add", Path: patchPathVolume, Value: secrets},
 		{Op: "add", Path: patchPathPodLabels, Value: map[string]string{
@@ -72,6 +72,6 @@ func TestPatch(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Content mismatch\nExpected: %s\nActual: %s", expected, actual)
+		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expected, actual)
 	}
 }

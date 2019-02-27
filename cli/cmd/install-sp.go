@@ -10,10 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type installSPConfig struct {
-	Namespace string
-}
-
 func newCmdInstallSP() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install-sp [flags]",

@@ -3,6 +3,7 @@ package srv
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -100,21 +102,15 @@ func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p 
 }
 
 func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	allNs := false
-	if req.FormValue("all_namespaces") == "true" {
-		allNs = true
-	}
-	skipStats := false
-	if req.FormValue("skip_stats") == "true" {
-		skipStats = true
-	}
+	trueStr := fmt.Sprintf("%t", true)
+
 	requestParams := util.StatsSummaryRequestParams{
 		StatsBaseRequestParams: util.StatsBaseRequestParams{
 			TimeWindow:    req.FormValue("window"),
 			ResourceName:  req.FormValue("resource_name"),
 			ResourceType:  req.FormValue("resource_type"),
 			Namespace:     req.FormValue("namespace"),
-			AllNamespaces: allNs,
+			AllNamespaces: req.FormValue("all_namespaces") == trueStr,
 		},
 		ToName:        req.FormValue("to_name"),
 		ToType:        req.FormValue("to_type"),
@@ -122,7 +118,8 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 		FromName:      req.FormValue("from_name"),
 		FromType:      req.FormValue("from_type"),
 		FromNamespace: req.FormValue("from_namespace"),
-		SkipStats:     skipStats,
+		SkipStats:     req.FormValue("skip_stats") == trueStr,
+		TCPStats:      req.FormValue("tcp_stats") == trueStr,
 	}
 
 	// default to returning deployment stats
@@ -235,7 +232,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 				break
 			}
 
-			if err := ws.WriteMessage(websocket.TextMessage, []byte(buf.String())); err != nil {
+			if err := ws.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					log.Error(err)
 				}
@@ -254,4 +251,13 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 			return
 		}
 	}
+}
+
+func (h *handler) handleAPIEndpoints(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	result, err := h.apiClient.Endpoints(req.Context(), &discovery.EndpointsParams{})
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJSONPb(w, result)
 }

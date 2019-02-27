@@ -131,16 +131,6 @@ type topRoutesExpected struct {
 	expectedResponse pb.TopRoutesResponse // the routes response we expect
 }
 
-func genEmptyTopRoutesResponse() pb.TopRoutesResponse {
-	return pb.TopRoutesResponse{
-		Response: &pb.TopRoutesResponse_Ok_{
-			Ok: &pb.TopRoutesResponse_Ok{
-				Routes: []*pb.RouteTable{},
-			},
-		},
-	}
-}
-
 func routesMetric(routes []string) model.Vector {
 	samples := make(model.Vector, 0)
 	for _, route := range routes {
@@ -155,7 +145,7 @@ func genRouteSample(route string) *model.Sample {
 		Metric: model.Metric{
 			"rt_route":       model.LabelValue(route),
 			"dst":            "books.default.svc.cluster.local",
-			"classification": "success",
+			"classification": success,
 		},
 		Value:     123,
 		Timestamp: 456,
@@ -166,7 +156,7 @@ func genDefaultRouteSample() *model.Sample {
 	return &model.Sample{
 		Metric: model.Metric{
 			"dst":            "books.default.svc.cluster.local",
-			"classification": "success",
+			"classification": success,
 		},
 		Value:     123,
 		Timestamp: 456,
@@ -175,6 +165,7 @@ func genDefaultRouteSample() *model.Sample {
 
 func testTopRoutes(t *testing.T, expectations []topRoutesExpected) {
 	for id, exp := range expectations {
+		exp := exp // pin
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			mockProm, fakeGrpcServer, err := newMockGrpcServer(exp.expectedStatRPC)
 			if err != nil {

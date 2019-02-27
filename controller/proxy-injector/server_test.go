@@ -2,7 +2,6 @@ package injector
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -76,7 +75,7 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestNewWebhookServer(t *testing.T) {
-	rootCA, err := tls.NewCA()
+	rootCA, err := tls.GenerateRootCAWithDefaults("Test CA")
 	if err != nil {
 		log.Fatalf("failed to create root CA: %s", err)
 	}
@@ -92,7 +91,7 @@ func TestNewWebhookServer(t *testing.T) {
 		t.Fatal("Unexpected error: ", err)
 	}
 
-	if server.Addr != fmt.Sprintf("%s", addr) {
+	if server.Addr != addr {
 		t.Errorf("Expected server address to be :%q", addr)
 	}
 }

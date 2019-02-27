@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -21,7 +20,10 @@ import (
 
 const (
 	defaultNamespace = "linkerd"
-	lineWidth        = 80
+
+	jsonOutput  = "json"
+	tableOutput = "table"
+	wideOutput  = "wide"
 )
 
 var (
@@ -183,24 +185,24 @@ func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
 		namespace:    "default",
 		timeWindow:   "1m",
-		outputFormat: "",
+		outputFormat: tableOutput,
 	}
 }
 
 func (o *statOptionsBase) validateOutputFormat() error {
 	switch o.outputFormat {
-	case "table", "json", "":
+	case tableOutput, jsonOutput:
 		return nil
 	default:
-		return errors.New("--output currently only supports table and json")
+		return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
 	}
 }
 
 func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 	var out string
 	switch options.outputFormat {
-	case "json":
-		out = string(buffer.Bytes())
+	case jsonOutput:
+		out = buffer.String()
 	default:
 		// strip left padding on the first column
 		out = string(buffer.Bytes()[padding:])
@@ -258,6 +260,8 @@ type proxyConfigOptions struct {
 	proxyMetricsPort        uint
 	proxyCPURequest         string
 	proxyMemoryRequest      string
+	proxyCPULimit           string
+	proxyMemoryLimit        string
 	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
@@ -292,6 +296,8 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyMetricsPort:        4191,
 		proxyCPURequest:         "",
 		proxyMemoryRequest:      "",
+		proxyCPULimit:           "",
+		proxyMemoryLimit:        "",
 		tls:                     "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
@@ -314,13 +320,39 @@ func (options *proxyConfigOptions) validate() error {
 
 	if options.proxyCPURequest != "" {
 		if _, err := k8sResource.ParseQuantity(options.proxyCPURequest); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu flag", options.proxyCPURequest)
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu-request flag", options.proxyCPURequest)
 		}
 	}
 
 	if options.proxyMemoryRequest != "" {
 		if _, err := k8sResource.ParseQuantity(options.proxyMemoryRequest); err != nil {
-			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory flag", options.proxyMemoryRequest)
+			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory-request flag", options.proxyMemoryRequest)
+		}
+	}
+
+	if options.proxyCPULimit != "" {
+		cpuLimit, err := k8sResource.ParseQuantity(options.proxyCPULimit)
+		if err != nil {
+			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", options.proxyCPULimit)
+		}
+		if options.proxyCPURequest != "" {
+			// Not checking for error because option proxyCPURequest was already validated
+			if cpuRequest, _ := k8sResource.ParseQuantity(options.proxyCPURequest); cpuRequest.MilliValue() > cpuLimit.MilliValue() {
+				return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", options.proxyCPULimit, options.proxyCPURequest)
+			}
+		}
+	}
+
+	if options.proxyMemoryLimit != "" {
+		memoryLimit, err := k8sResource.ParseQuantity(options.proxyMemoryLimit)
+		if err != nil {
+			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", options.proxyMemoryLimit)
+		}
+		if options.proxyMemoryRequest != "" {
+			// Not checking for error because option proxyMemoryRequest was already validated
+			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.Value() > memoryLimit.Value() {
+				return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", options.proxyMemoryLimit, options.proxyMemoryRequest)
+			}
 		}
 	}
 
@@ -368,9 +400,21 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintVar(&options.destinationAPIPort, "api-port", options.destinationAPIPort, "Port where the Linkerd controller's destination API is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
-	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu-request", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
 	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
+
+	// Deprecated flags
+	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
+	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+
+	cmd.PersistentFlags().MarkHidden("proxy-memory")
+	cmd.PersistentFlags().MarkHidden("proxy-cpu")
+
+	cmd.PersistentFlags().MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
+	cmd.PersistentFlags().MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
 }

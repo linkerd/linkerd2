@@ -64,6 +64,9 @@ spec:
         port: 4191
       initialDelaySeconds: 10
     resources:
+      limits:
+        cpu: 160m
+        memory: 150Mi
       requests:
         cpu: 110m
         memory: 100Mi

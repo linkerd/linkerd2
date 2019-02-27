@@ -16,9 +16,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	authorizationapi "k8s.io/api/authorization/v1beta1"
-	"k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 )
@@ -184,7 +183,7 @@ type HealthChecker struct {
 	clientset        *kubernetes.Clientset
 	spClientset      *spclient.Clientset
 	kubeVersion      *k8sVersion.Info
-	controlPlanePods []v1.Pod
+	controlPlanePods []corev1.Pod
 	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
@@ -433,7 +432,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:   "can query the control plane API",
+					description:   "control plane self-check",
 					hintAnchor:    "l5d-api-control-api",
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
@@ -636,6 +635,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
+				checker := checker // pin
 				if checker.check != nil {
 					if !hc.runCheck(c.id, &checker, observer) {
 						if !checker.warning {
@@ -699,6 +699,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	observer(&CheckResult{
 		Category:    categoryID,
 		Description: c.description,
+		HintAnchor:  c.hintAnchor,
 		Warning:     c.warning,
 		Err:         err,
 	})
@@ -781,28 +782,21 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 		}
 	}
 
-	auth := hc.clientset.AuthorizationV1beta1()
-
-	sar := &authorizationapi.SelfSubjectAccessReview{
-		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationapi.ResourceAttributes{
-				Namespace: namespace,
-				Verb:      "create",
-				Group:     group,
-				Version:   version,
-				Resource:  resource,
-			},
-		},
-	}
-
-	response, err := auth.SelfSubjectAccessReviews().Create(sar)
+	allowed, reason, err := k8s.ResourceAuthz(
+		hc.clientset,
+		namespace,
+		"create",
+		group,
+		version,
+		resource,
+	)
 	if err != nil {
 		return err
 	}
 
-	if !response.Status.Allowed {
-		if len(response.Status.Reason) > 0 {
-			return fmt.Errorf("Missing permissions to create %s: %v", resource, response.Status.Reason)
+	if !allowed {
+		if len(reason) > 0 {
+			return fmt.Errorf("Missing permissions to create %s: %v", resource, reason)
 		}
 		return fmt.Errorf("Missing permissions to create %s", resource)
 	}
@@ -818,7 +812,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		}
 	}
 
-	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles("").List(meta_v1.ListOptions{})
+	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles("").List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -839,18 +833,18 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	return nil
 }
 
-func getPodStatuses(pods []v1.Pod) map[string][]v1.ContainerStatus {
-	statuses := make(map[string][]v1.ContainerStatus)
+func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
+	statuses := make(map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
-		if pod.Status.Phase == v1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
+		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
 			// All control plane pods should have a name that results in at least 4
 			// substrings when string.Split on '-'
 			if len(parts) >= 4 {
 				name := strings.Join(parts[1:len(parts)-2], "-")
 				if _, found := statuses[name]; !found {
-					statuses[name] = make([]v1.ContainerStatus, 0)
+					statuses[name] = make([]corev1.ContainerStatus, 0)
 				}
 				statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
 			}
@@ -860,7 +854,7 @@ func getPodStatuses(pods []v1.Pod) map[string][]v1.ContainerStatus {
 	return statuses
 }
 
-func validateControlPlanePods(pods []v1.Pod) error {
+func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "prometheus", "web", "grafana"}
@@ -887,7 +881,7 @@ func validateControlPlanePods(pods []v1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []v1.Pod) error {
+func checkControllerRunning(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 	if _, ok := statuses["controller"]; !ok {
 		return errors.New("No running pods for \"linkerd-controller\"")

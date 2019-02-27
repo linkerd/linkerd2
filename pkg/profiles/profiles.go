@@ -11,10 +11,11 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1" // TODO: pkg/profiles should not depend on controller/gen
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/yaml"
 )
@@ -34,10 +35,10 @@ var (
 			Seconds: 10,
 		},
 	}
-	// ServiceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
-	ServiceProfileMeta = meta_v1.TypeMeta{
-		APIVersion: "linkerd.io/v1alpha1",
-		Kind:       "ServiceProfile",
+	// serviceProfileMeta is the TypeMeta for the ServiceProfile custom resource.
+	serviceProfileMeta = metav1.TypeMeta{
+		APIVersion: k8s.ServiceProfileAPIVersion,
+		Kind:       k8s.ServiceProfileKind,
 	}
 	// DefaultServiceProfile is used for services with no service profile.
 	DefaultServiceProfile = pb.DestinationProfile{
@@ -336,7 +337,7 @@ func ToRequestMatch(reqMatch *sp.RequestMatch) (*pb.RequestMatch, error) {
 // - recursive fields
 func Validate(data []byte) error {
 	var serviceProfile sp.ServiceProfile
-	err := yaml.UnmarshalStrict([]byte(data), &serviceProfile)
+	err := yaml.UnmarshalStrict(data, &serviceProfile)
 	if err != nil {
 		return fmt.Errorf("failed to validate ServiceProfile: %s", err)
 	}

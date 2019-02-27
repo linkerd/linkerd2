@@ -7,6 +7,7 @@ import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
+import Debug from './components/Debug.jsx';
 import Namespace from './components/Namespace.jsx';
 import NamespaceLanding from './components/NamespaceLanding.jsx';
 import Navigation from './components/Navigation.jsx';
@@ -104,6 +105,9 @@ let applicationHtml = (
               <Route
                 path={`${pathPrefix}/authorities`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="authority" />} />
+              <Route
+                path={`${pathPrefix}/debug`}
+                render={props => <Navigation {...props} ChildComponent={Debug} />} />
               <Route component={NoMatch} />
             </Switch>
           </RouterToUrlQuery>

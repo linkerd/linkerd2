@@ -9,7 +9,7 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -37,7 +37,7 @@ type CertificateController struct {
 // NewCertificateController initializes a CertificateController and its
 // internal Certificate Authority.
 func NewCertificateController(controllerNamespace string, k8sAPI *k8s.API) (*CertificateController, error) {
-	ca, err := tls.NewCA()
+	ca, err := tls.GenerateRootCAWithDefaults("Cluster-local Managed Pod CA")
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +108,10 @@ func (c *CertificateController) syncObject(key string) error {
 
 func (c *CertificateController) syncNamespace(ns string) error {
 	log.Debugf("syncNamespace(%s)", ns)
-	configMap := &v1.ConfigMap{
+	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: pkgK8s.TLSTrustAnchorConfigMapName},
 		Data: map[string]string{
-			pkgK8s.TLSTrustAnchorFileName: c.ca.TrustAnchorPEM(),
+			pkgK8s.TLSTrustAnchorFileName: c.ca.Cred.EncodeCertificatePEM(),
 		},
 	}
 
@@ -141,16 +141,21 @@ func (c *CertificateController) syncSecret(key string) error {
 
 	dnsName := identity.ToDNSName()
 	secretName := identity.ToSecretName()
-	certAndPrivateKey, err := c.ca.IssueEndEntityCertificate(dnsName)
+	cred, err := c.ca.GenerateEndEntityCred(dnsName)
 	if err != nil {
 		log.Errorf("Failed to issue certificate for %s", dnsName)
 		return err
 	}
-	secret := &v1.Secret{
+	pk, err := cred.EncodePrivateKeyP8()
+	if err != nil {
+		log.Errorf("Failed to issue certificate for %s", dnsName)
+		return err
+	}
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: secretName},
 		Data: map[string][]byte{
-			pkgK8s.TLSCertFileName:       certAndPrivateKey.Certificate,
-			pkgK8s.TLSPrivateKeyFileName: certAndPrivateKey.PrivateKey,
+			pkgK8s.TLSCertFileName:       cred.Certificate.Raw,
+			pkgK8s.TLSPrivateKeyFileName: pk,
 		},
 	}
 	_, err = c.k8sAPI.Client.CoreV1().Secrets(identity.Namespace).Create(secret)
@@ -162,7 +167,7 @@ func (c *CertificateController) syncSecret(key string) error {
 }
 
 func (c *CertificateController) handlePodAdd(obj interface{}) {
-	pod := obj.(*v1.Pod)
+	pod := obj.(*corev1.Pod)
 	if pkgK8s.IsMeshed(pod, c.namespace) {
 		log.Debugf("enqueuing update of CA bundle configmap in %s", pod.Namespace)
 		c.queue.Add(pod.Namespace)

@@ -5,7 +5,7 @@
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
-FROM golang:1.10.3
+FROM golang:1.11.5
 ENV TEMP_GOPATH=/temp-gopath
 WORKDIR ${TEMP_GOPATH}/src/github.com/linkerd/linkerd2
 

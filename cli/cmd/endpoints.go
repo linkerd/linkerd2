@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -23,25 +22,24 @@ type endpointsOptions struct {
 	outputFormat string
 }
 
-var (
+const (
 	podHeader = "POD"
 )
 
 // validate performs all validation on the command-line options.
 // It returns the first error encountered, or `nil` if the options are valid.
 func (o *endpointsOptions) validate() error {
-	switch o.outputFormat {
-	case "table", "json", "":
+	if o.outputFormat == tableOutput || o.outputFormat == jsonOutput {
 		return nil
 	}
 
-	return errors.New("--output currently only supports table and json")
+	return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
 }
 
 func newEndpointsOptions() *endpointsOptions {
 	return &endpointsOptions{
 		namespace:    "",
-		outputFormat: "",
+		outputFormat: tableOutput,
 	}
 }
 
@@ -89,7 +87,7 @@ requests.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified endpoints (default: all namespaces)")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; currently only \"table\" and \"json\" are supported (default \"table\")")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\" or \"%s\"", tableOutput, jsonOutput))
 
 	return cmd
 }
@@ -104,7 +102,7 @@ func renderEndpoints(endpoints *pb.EndpointsResponse, options *endpointsOptions)
 	writeEndpointsToBuffer(endpoints, w, options)
 	w.Flush()
 
-	return string(buffer.Bytes())
+	return buffer.String()
 }
 
 type rowEndpoint struct {
@@ -166,13 +164,13 @@ func writeEndpointsToBuffer(endpoints *pb.EndpointsResponse, w *tabwriter.Writer
 	}
 
 	switch options.outputFormat {
-	case "table", "":
+	case tableOutput:
 		if len(endpointsTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No endpoints found.")
 			os.Exit(0)
 		}
 		printEndpointsTables(endpointsTables, w, options, maxPodLength, maxNamespaceLength)
-	case "json":
+	case jsonOutput:
 		printEndpointsJSON(endpointsTables, w)
 	}
 }

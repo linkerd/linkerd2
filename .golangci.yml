@@ -1,14 +1,45 @@
+# This file specifies which linters golangci-lint should run.
+#
+# For descriptions of all available linters, run:
+# ./.golangci-lint-1.15.0 linters
+# or browse to:
+# https://github.com/golangci/golangci-lint#supported-linters
+
+run:
+  deadline: 5m
 issues:
   exclude-use-default: false
 linters:
   enable:
-  - gofmt
-  - golint
-  disable:
   - deadcode
-  - errcheck
+  - depguard
+  - goconst
+  - gofmt
+  - goimports
+  - golint
   - gosimple
-  - staticcheck
-  - structcheck
+  - govet
+  - ineffassign
+  - misspell
+  - nakedret
+  - scopelint
+  - typecheck
+  - unconvert
+  - unparam
   - unused
   - varcheck
+  # TODO: enable more linters!
+  # - dupl
+  # - gochecknoglobals
+  # - gochecknoinits
+  # - gocyclo
+  # - gosec
+  # - interfacer
+  # - lll
+  # - maligned
+  # - prealloc
+  # - stylecheck
+  disable:
+  - errcheck
+  - staticcheck
+  - structcheck

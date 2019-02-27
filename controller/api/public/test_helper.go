@@ -13,7 +13,7 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/prometheus/client_golang/api/prometheus/v1"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
 )
@@ -72,28 +72,6 @@ func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfChe
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
 }
 
-type mockAPITapClient struct {
-	TapEventsToReturn []pb.TapEvent
-	ErrorsToReturn    []error
-	grpc.ClientStream
-}
-
-func (a *mockAPITapClient) Recv() (*pb.TapEvent, error) {
-	var eventPopped pb.TapEvent
-	var errorPopped error
-	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
-		return nil, io.EOF
-	}
-	if len(a.TapEventsToReturn) != 0 {
-		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
-	}
-	if len(a.ErrorsToReturn) != 0 {
-		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
-	}
-
-	return &eventPopped, errorPopped
-}
-
 // MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
 type MockAPITapByResourceClient struct {
 	TapEventsToReturn []pb.TapEvent
@@ -142,7 +120,7 @@ func (m *mockProm) Query(ctx context.Context, query string, ts time.Time) (model
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
-func (m *mockProm) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, error) {
+func (m *mockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
@@ -157,7 +135,7 @@ func (m *mockProm) Series(ctx context.Context, matches []string, startTime time.
 
 // GenStatSummaryResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool) pb.StatSummaryResponse {
+func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool, tcpStats bool) pb.StatSummaryResponse {
 	rows := []*pb.StatTable_PodGroup_Row{}
 	for _, ns := range resNs {
 		statTableRow := &pb.StatTable_PodGroup_Row{
@@ -177,6 +155,14 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 				LatencyMsP95:    123,
 				LatencyMsP99:    123,
 				TlsRequestCount: 123,
+			}
+		}
+
+		if tcpStats {
+			statTableRow.TcpStats = &pb.TcpStats{
+				OpenConnections: 123,
+				ReadBytesTotal:  123,
+				WriteBytesTotal: 123,
 			}
 		}
 
@@ -283,7 +269,6 @@ func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
 		k8sAPI,
 		"linkerd",
 		[]string{},
-		false,
 	)
 
 	k8sAPI.Sync()

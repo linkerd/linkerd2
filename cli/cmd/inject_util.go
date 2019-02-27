@@ -8,12 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	appsV1 "k8s.io/api/apps/v1"
-	batchV1 "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
@@ -37,15 +38,46 @@ type injectReport struct {
 type resourceConfig struct {
 	obj             interface{}
 	om              objMeta
-	meta            metaV1.TypeMeta
-	podSpec         *v1.PodSpec
-	objectMeta      *metaV1.ObjectMeta
+	meta            metav1.TypeMeta
+	podSpec         *corev1.PodSpec
+	objectMeta      *metav1.ObjectMeta
 	dnsNameOverride string
 	k8sLabels       map[string]string
 }
 
-func (i injectReport) resName() string {
-	return fmt.Sprintf("%s/%s", i.kind, i.name)
+func (r injectReport) resName() string {
+	return fmt.Sprintf("%s/%s", r.kind, r.name)
+}
+
+// update updates the report for the provided resources.
+func (r *injectReport) update(m *metav1.ObjectMeta, p *corev1.PodSpec) {
+	r.injectDisabled = m.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	r.hostNetwork = p.HostNetwork
+	r.sidecar = healthcheck.HasExistingSidecars(p)
+	r.udp = checkUDPPorts(p)
+}
+
+func checkUDPPorts(t *corev1.PodSpec) bool {
+	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
+	for _, container := range t.Containers {
+		for _, port := range container.Ports {
+			if port.Protocol == corev1.ProtocolUDP {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// shouldInject returns false if the resource should not be injected.
+//
+// Injection is skipped in the following situations
+// - Injection is disabled by annotation
+// - Pods with `hostNetwork: true` share a network namespace with the host.
+//   The init-container would destroy the iptables configuration on the host.
+// - Known 3rd party sidecars already present.
+func (r *injectReport) shouldInject() bool {
+	return !r.injectDisabled && !r.hostNetwork && !r.sidecar
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
@@ -106,7 +138,7 @@ func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, options *injectO
 }
 
 func processList(b []byte, options *injectOptions, rt resourceTransformer) ([]byte, []injectReport, error) {
-	var sourceList v1.List
+	var sourceList corev1.List
 	if err := yaml.Unmarshal(b, &sourceList); err != nil {
 		return nil, nil, err
 	}
@@ -194,7 +226,7 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resou
 		conf.objectMeta = &deployment.Spec.Template.ObjectMeta
 
 	case "ReplicationController":
-		var rc v1.ReplicationController
+		var rc corev1.ReplicationController
 		if err := yaml.Unmarshal(bytes, &rc); err != nil {
 			return nil, nil, err
 		}
@@ -216,7 +248,7 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resou
 		conf.objectMeta = &rs.Spec.Template.ObjectMeta
 
 	case "Job":
-		var job batchV1.Job
+		var job batchv1.Job
 		if err := yaml.Unmarshal(bytes, &job); err != nil {
 			return nil, nil, err
 		}
@@ -238,7 +270,7 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resou
 		conf.objectMeta = &ds.Spec.Template.ObjectMeta
 
 	case "StatefulSet":
-		var statefulset appsV1.StatefulSet
+		var statefulset appsv1.StatefulSet
 		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
 			return nil, nil, err
 		}
@@ -249,7 +281,7 @@ func (conf *resourceConfig) parse(bytes []byte, options *injectOptions, rt resou
 		conf.objectMeta = &statefulset.Spec.Template.ObjectMeta
 
 	case "Pod":
-		var pod v1.Pod
+		var pod corev1.Pod
 		if err := yaml.Unmarshal(bytes, &pod); err != nil {
 			return nil, nil, err
 		}

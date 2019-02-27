@@ -10,7 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -71,6 +71,7 @@ type StatsSummaryRequestParams struct {
 	FromType      string
 	FromName      string
 	SkipStats     bool
+	TCPStats      bool
 }
 
 // TopRoutesRequestParams contains parameters that are used to build TopRoutes
@@ -148,7 +149,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 	if p.AllNamespaces {
 		targetNamespace = ""
 	} else if p.Namespace == "" {
-		targetNamespace = v1.NamespaceDefault
+		targetNamespace = corev1.NamespaceDefault
 	}
 
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
@@ -166,6 +167,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 		},
 		TimeWindow: window,
 		SkipStats:  p.SkipStats,
+		TcpStats:   p.TCPStats,
 	}
 
 	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
@@ -237,7 +239,7 @@ func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, erro
 	if p.AllNamespaces {
 		targetNamespace = ""
 	} else if p.Namespace == "" {
-		targetNamespace = v1.NamespaceDefault
+		targetNamespace = corev1.NamespaceDefault
 	}
 
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
@@ -330,7 +332,7 @@ func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
 }
 
 func parseResources(namespace string, resType string, args []string) ([]pb.Resource, error) {
-	if err := validateResources(resType, args); err != nil {
+	if err := validateResources(args); err != nil {
 		return nil, err
 	}
 	resources := make([]pb.Resource, 0)
@@ -344,7 +346,7 @@ func parseResources(namespace string, resType string, args []string) ([]pb.Resou
 	return resources, nil
 }
 
-func validateResources(resType string, args []string) error {
+func validateResources(args []string) error {
 	set := make(map[string]bool)
 	all := false
 	for _, arg := range args {
@@ -514,7 +516,7 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 }
 
 // K8sPodToPublicPod converts a Kubernetes Pod to a Public API Pod
-func K8sPodToPublicPod(pod v1.Pod, ownerKind string, ownerName string) pb.Pod {
+func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) pb.Pod {
 	status := string(pod.Status.Phase)
 	if pod.DeletionTimestamp != nil {
 		status = "Terminating"

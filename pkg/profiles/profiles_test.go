@@ -408,6 +408,7 @@ spec:
 	}
 
 	for id, exp := range expectations {
+		exp := exp // pin
 		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
 			err := Validate([]byte(exp.sp))
 			if err != nil || exp.err != nil {

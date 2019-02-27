@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -57,7 +57,7 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
-		ns := &coreV1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
 
 		if err != nil {
@@ -195,7 +195,7 @@ func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName
 // that's in the format namespace/resource. If the strings is in a different
 // format it returns an error.
 func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, string, error) {
-	r := regexp.MustCompile("^(.+)\\/(.+)$")
+	r := regexp.MustCompile(`^(.+)\/(.+)$`)
 	matches := r.FindAllStringSubmatch(resource, 2)
 	if len(matches) == 0 {
 		return "", "", fmt.Errorf("string [%s] didn't contain expected format for namespace/resource, extracted: %v", resource, matches)

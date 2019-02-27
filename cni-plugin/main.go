@@ -240,7 +240,3 @@ func cmdDel(args *skel.CmdArgs) error {
 	logrus.Info("linkerd-cni: cmdDel not implemented")
 	return nil
 }
-
-func cmdGet(args *skel.CmdArgs) error {
-	return fmt.Errorf("linkerd-cni: cmdGet not implemented")
-}

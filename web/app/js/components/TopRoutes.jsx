@@ -63,7 +63,7 @@ class TopRoutes extends React.Component {
     }).isRequired,
     classes: PropTypes.shape({}).isRequired,
     query: topRoutesQueryPropType,
-    singleNamespace: PropTypes.string.isRequired,
+    serviceProfiles: PropTypes.string.isRequired,
   }
   static defaultProps = {
     query: {
@@ -237,7 +237,7 @@ class TopRoutes extends React.Component {
           </Grid>
         </Grid>
         <Divider light className={classes.root} />
-        {this.props.singleNamespace === "true" ? null :
+        {this.props.serviceProfiles === "false" ? null :
         <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon={true} /></Typography>}
       </CardContent>
     );

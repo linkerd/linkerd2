@@ -19,6 +19,11 @@
                 "successCount": "135",
                 "tlsRequestCount": "100"
               },
+              "tcpStats": {
+                "openConnections": "221",
+                "readBytesTotal": "4421",
+                "writeBytesTotal": "4421"
+              },
               "timeWindow": "1m",
               "runningPodCount": "1",
               "failedPodCount": null,

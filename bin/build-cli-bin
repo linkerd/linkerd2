@@ -3,6 +3,8 @@
 set -eu
 
 # Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
+# Note: This script is used by Brew when running `brew install linkerd`:
+# https://github.com/Homebrew/homebrew-core/pull/36957
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
@@ -23,6 +25,7 @@ fi
       $bindir/dep ensure -vendor-only -v
     fi
     target="target/cli/${host_platform}/linkerd"
-    CGO_ENABLED=0 go build -o $target -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
+    go generate ./cli
+    CGO_ENABLED=0 go build -o $target -tags prod -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
     echo "$target"
 )

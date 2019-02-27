@@ -4,19 +4,19 @@ import (
 	"reflect"
 	"testing"
 
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetPodLabels(t *testing.T) {
 	t.Run("Maps proxy labels to prometheus labels", func(t *testing.T) {
-		pod := &coreV1.Pod{
-			ObjectMeta: metaV1.ObjectMeta{
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-pod",
 				Labels: map[string]string{
 					ControllerNSLabel:                      "linkerd-namespace",
-					appsV1.DefaultDeploymentUniqueLabelKey: "test-pth",
+					appsv1.DefaultDeploymentUniqueLabelKey: "test-pth",
 				},
 			},
 		}

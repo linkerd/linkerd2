@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -337,7 +336,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, cliPublicAPIClient(), req, table)
+			return getTrafficByResourceFromAPI(cliPublicAPIClient(), req, table)
 		},
 	}
 
@@ -363,7 +362,7 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
+func getTrafficByResourceFromAPI(client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err
@@ -569,13 +568,6 @@ func (t *topTable) renderHeaders() {
 		tbprintBold(x+padding, headerHeight-1, col.header)
 		x += col.width + columnSpacing
 	}
-}
-
-func max(i, j int) int {
-	if i > j {
-		return i
-	}
-	return j
 }
 
 func (t *topTable) adjustColumnWidths() {

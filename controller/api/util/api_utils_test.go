@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8sError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,8 +18,8 @@ import (
 func TestGRPCError(t *testing.T) {
 	t.Run("Maps errors to gRPC errors", func(t *testing.T) {
 		expectations := map[error]error{
-			nil:                       nil,
-			errors.New("normal erro"): errors.New("rpc error: code = Unknown desc = normal erro"),
+			nil:                        nil,
+			errors.New("normal error"): errors.New("rpc error: code = Unknown desc = normal error"),
 			status.Error(codes.NotFound, "grpc not found"):                                              errors.New("rpc error: code = NotFound desc = grpc not found"),
 			k8sError.NewNotFound(schema.GroupResource{Group: "foo", Resource: "bar"}, "http not found"): errors.New("rpc error: code = NotFound desc = bar.foo \"http not found\" not found"),
 			k8sError.NewServiceUnavailable("unavailable"):                                               errors.New("rpc error: code = Unavailable desc = unavailable"),
@@ -402,7 +402,7 @@ func TestBuildResources(t *testing.T) {
 
 func TestK8sPodToPublicPod(t *testing.T) {
 	type podExp struct {
-		k8sPod    v1.Pod
+		k8sPod    corev1.Pod
 		ownerKind string
 		ownerName string
 		publicPod pb.Pod
@@ -411,13 +411,13 @@ func TestK8sPodToPublicPod(t *testing.T) {
 	t.Run("Returns expected pods", func(t *testing.T) {
 		expectations := []podExp{
 			{
-				k8sPod: v1.Pod{},
+				k8sPod: corev1.Pod{},
 				publicPod: pb.Pod{
 					Name: "/",
 				},
 			},
 			{
-				k8sPod: v1.Pod{
+				k8sPod: corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:       "ns",
 						Name:            "name",
@@ -427,18 +427,18 @@ func TestK8sPodToPublicPod(t *testing.T) {
 							k8s.ControllerNSLabel:        "controller-ns",
 						},
 					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
 							{
 								Name:  k8s.ProxyContainerName,
 								Image: "linkerd-proxy:test-version",
 							},
 						},
 					},
-					Status: v1.PodStatus{
+					Status: corev1.PodStatus{
 						PodIP: "pod-ip",
 						Phase: "status",
-						ContainerStatuses: []v1.ContainerStatus{
+						ContainerStatuses: []corev1.ContainerStatus{
 							{
 								Name:  k8s.ProxyContainerName,
 								Ready: true,

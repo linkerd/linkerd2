@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	profiles "github.com/linkerd/linkerd2/pkg/profiles"
 	log "github.com/sirupsen/logrus"
@@ -19,10 +20,10 @@ type (
 
 	handler struct {
 		render              renderTemplate
-		apiClient           pb.ApiClient
+		apiClient           public.APIClient
 		uuid                string
 		controllerNamespace string
-		singleNamespace     bool
+		serviceProfiles     bool
 		grafanaProxy        *grafanaProxy
 	}
 )
@@ -37,7 +38,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	params := appParams{
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
-		SingleNamespace:     h.singleNamespace,
+		ServiceProfiles:     h.serviceProfiles,
 		PathPrefix:          pathPfx,
 	}
 

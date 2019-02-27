@@ -8,7 +8,7 @@ import (
 
 	"github.com/emicklei/proto"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // RenderProto reads a protobuf definition file and renders the corresponding
@@ -60,11 +60,11 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name string) (*sp.Se
 	proto.Walk(definition, handle)
 
 	return &sp.ServiceProfile{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
 			Namespace: namespace,
 		},
-		TypeMeta: ServiceProfileMeta,
+		TypeMeta: serviceProfileMeta,
 		Spec: sp.ServiceProfileSpec{
 			Routes: routes,
 		},
