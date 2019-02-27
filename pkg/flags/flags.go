@@ -39,7 +39,7 @@ func setLogLevel(logLevel string) {
 	if level == log.DebugLevel {
 		flag.Set("stderrthreshold", "INFO")
 		flag.Set("logtostderr", "true")
-		flag.Set("v", "10")
+		flag.Set("v", "6") // At 7 and higher, authorization tokens get logged.
 	}
 }
 
