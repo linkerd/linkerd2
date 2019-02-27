@@ -130,7 +130,7 @@ If no resource name is specified, displays stats about all resources of the spec
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
-					resp, err := requestStatsFromAPI(client, req, options)
+					resp, err := requestStatsFromAPI(client, req)
 					rows := respToRows(resp)
 					c <- indexedResults{num, rows, err}
 				}(num, req)
@@ -177,7 +177,7 @@ func respToRows(resp *pb.StatSummaryResponse) []*pb.StatTable_PodGroup_Row {
 	return rows
 }
 
-func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, options *statOptions) (*pb.StatSummaryResponse, error) {
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
 		return nil, fmt.Errorf("StatSummary API error: %v", err)

@@ -233,10 +233,7 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 		dsts = append(dsts, p.GetName())
 	}
 
-	reqLabels, err := s.buildRouteLabels(req, dsts, resource)
-	if err != nil {
-		return nil, err
-	}
+	reqLabels := s.buildRouteLabels(req, dsts, resource)
 	groupBy := "rt_route"
 
 	queries := map[promType]string{
@@ -284,7 +281,7 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 	return table, nil
 }
 
-func (s *grpcServer) buildRouteLabels(req *pb.TopRoutesRequest, dsts []string, resource *pb.Resource) (string, error) {
+func (s *grpcServer) buildRouteLabels(req *pb.TopRoutesRequest, dsts []string, resource *pb.Resource) string {
 	// labels: the labels for the resource we want to query for
 	var labels model.LabelSet
 
@@ -293,12 +290,12 @@ func (s *grpcServer) buildRouteLabels(req *pb.TopRoutesRequest, dsts []string, r
 	case *pb.TopRoutesRequest_ToResource:
 		labels = labels.Merge(promQueryLabels(resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
-		return renderLabels(labels, dsts), nil
+		return renderLabels(labels, dsts)
 
 	default:
 		labels = labels.Merge(promDirectionLabels("inbound"))
 		labels = labels.Merge(promQueryLabels(resource))
-		return renderLabels(labels, dsts), nil
+		return renderLabels(labels, dsts)
 	}
 }
 

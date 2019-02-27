@@ -28,9 +28,3 @@ if ! clusterroles=$(kubectl get clusterroles -oname | grep -E "/linkerd-$linkerd
 else
   kubectl delete $clusterroles
 fi
-
-if ! crd=$(kubectl get crd/serviceprofiles.linkerd.io -oname); then
-  echo "no serviceprofile crd found for [$linkerd_namespace]" >&2
-else
-  kubectl delete $crd
-fi

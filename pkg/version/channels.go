@@ -60,10 +60,10 @@ func (c Channels) Match(actualVersion string) error {
 // release channels.
 func GetLatestVersions(ctx context.Context, uuid string, source string) (Channels, error) {
 	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
-	return getLatestVersions(ctx, http.DefaultClient, url, uuid, source)
+	return getLatestVersions(ctx, http.DefaultClient, url)
 }
 
-func getLatestVersions(ctx context.Context, client *http.Client, url string, uuid string, source string) (Channels, error) {
+func getLatestVersions(ctx context.Context, client *http.Client, url string) (Channels, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return Channels{}, err
