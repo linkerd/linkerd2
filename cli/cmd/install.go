@@ -94,9 +94,8 @@ type installOptions struct {
 }
 
 const (
-	prometheusProxyOutboundCapacity = 10000
-	defaultControllerReplicas       = 1
-	defaultHAControllerReplicas     = 3
+	defaultControllerReplicas   = 1
+	defaultHAControllerReplicas = 3
 
 	nsTemplateName             = "templates/namespace.yaml"
 	controllerTemplateName     = "templates/controller.yaml"

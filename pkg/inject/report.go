@@ -16,7 +16,7 @@ type Report struct {
 	Name                string
 	HostNetwork         bool
 	Sidecar             bool
-	Udp                 bool // true if any port in any container has `protocol: UDP`
+	UDP                 bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource bool
 	InjectDisabled      bool
 }
@@ -25,8 +25,8 @@ type Report struct {
 // from conf
 func NewReport(conf *ResourceConfig) Report {
 	var name string
-	if conf.objectMeta.ObjectMeta != nil {
-		name = conf.objectMeta.Name
+	if m := conf.objMeta.ObjectMeta; m != nil {
+		name = m.Name
 	}
 	return Report{
 		Kind: strings.ToLower(conf.meta.Kind),
@@ -41,10 +41,10 @@ func (r Report) ResName() string {
 
 // update updates the report for the provided resource conf.
 func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.objectMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	r.InjectDisabled = conf.objMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 	r.HostNetwork = conf.podSpec.HostNetwork
 	r.Sidecar = healthcheck.HasExistingSidecars(conf.podSpec)
-	r.Udp = checkUDPPorts(conf.podSpec)
+	r.UDP = checkUDPPorts(conf.podSpec)
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {

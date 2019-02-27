@@ -6,10 +6,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	patchPathDeploymentLabels = "/metadata/labels"
-)
-
 // Patch represents a RFC 6902 patch document.
 type Patch struct {
 	patchOps                   []*patchOp

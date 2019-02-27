@@ -103,7 +103,15 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf 
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
-	patchJSON, reports, err := conf.PatchForYaml(bytes)
+	supportedResource, err := conf.ParseMeta(bytes)
+	if err != nil {
+		return bytes, nil, err
+	}
+	if !supportedResource {
+		r := inject.Report{UnsupportedResource: true}
+		return bytes, []inject.Report{r}, nil
+	}
+	patchJSON, reports, err := conf.GetPatch(bytes)
 	if patchJSON == nil || err != nil {
 		return bytes, reports, err
 	}
@@ -149,7 +157,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 			warningsPrinted = true
 		}
 
-		if r.Udp {
+		if r.UDP {
 			udp = append(udp, r.ResName())
 			warningsPrinted = true
 		}
