@@ -158,7 +158,9 @@ func uninjectPodSpec(t *corev1.PodSpec, report *injectReport) {
 func uninjectObjectMeta(t *metav1.ObjectMeta) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
-		if key != k8s.CreatedByAnnotation && key != k8s.ProxyVersionAnnotation {
+		if key != k8s.CreatedByAnnotation &&
+			key != k8s.ProxyVersionAnnotation &&
+			key != k8s.IdentityModeAnnotation {
 			newAnnotations[key] = val
 		}
 	}
