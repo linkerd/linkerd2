@@ -32,9 +32,9 @@ type resourceTransformerInject struct {
 	configs
 }
 
-// InjectYAML processes resource definitions and outputs them after injection in out
-func InjectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
-	return ProcessYAML(in, out, report, resourceTransformerInject{conf})
+// injectYAML processes resource definitions and outputs them after injection in out
+func injectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
+	return processYAML(in, out, report, resourceTransformerInject{conf})
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
@@ -105,7 +105,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
 	supportedResource, err := conf.ParseMeta(bytes)
 	if err != nil {
-		return bytes, nil, err
+		return nil, nil, err
 	}
 	if !supportedResource {
 		r := inject.Report{UnsupportedResource: true}
@@ -143,7 +143,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	warningsPrinted := verbose
 
 	for _, r := range reports {
-		if !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled {
+		if r.Injectable() {
 			injected = append(injected, r)
 		}
 
@@ -219,7 +219,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled {
+		if r.Injectable() {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {
@@ -238,7 +238,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 // and ProxyConfig, until we come up with an abstraction over those GRPC structs
 func injectOptionsToConfigs(options *injectOptions) configs {
 	var idContext *config.IdentityContext
-	if options.tls == "optional" {
+	if options.tls == optionalTLS {
 		idContext = &config.IdentityContext{}
 	}
 	globalConfig := &config.Global{

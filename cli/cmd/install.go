@@ -223,8 +223,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		OutboundPort:                options.outboundPort,
 		IgnoreInboundPorts:          strings.Join(ignoreInboundPorts, ","),
 		IgnoreOutboundPorts:         strings.Join(ignoreOutboundPorts, ","),
-		InboundAcceptKeepaliveMs:    defaultKeepaliveMs,
-		OutboundConnectKeepaliveMs:  defaultKeepaliveMs,
+		InboundAcceptKeepaliveMs:    inject.DefaultKeepaliveMs,
+		OutboundConnectKeepaliveMs:  inject.DefaultKeepaliveMs,
 		ProxyAutoInjectEnabled:      options.proxyAutoInject,
 		ProxyInjectAnnotation:       k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:         k8s.ProxyInjectDisabled,
@@ -320,7 +320,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
 	pbConfig := injectOptionsToConfigs(injectOptions)
 
-	return InjectYAML(&buf, w, ioutil.Discard, pbConfig)
+	return injectYAML(&buf, w, ioutil.Discard, pbConfig)
 }
 
 func (options *installOptions) validate() error {

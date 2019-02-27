@@ -29,7 +29,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := ProcessYAML(input, postInjectBuf, reportBuf, rt)
+		err := processYAML(input, postInjectBuf, reportBuf, rt)
 		if err != nil {
 			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
 			return 1
@@ -47,8 +47,8 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	return 0
 }
 
-// ProcessYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func ProcessYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
+// processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
