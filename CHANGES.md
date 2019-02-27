@@ -18,6 +18,7 @@
 * Web UI
   * Removed 'Help' hierarchy and surfaced links on navigation sidebar
   * Added an Endpoints view to the web dashboard
+  * Updated the resource detail page to start displaying a table with TCP stats
 * Internal
   * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
     `goconst`, `scopelint`, `unused`, `gosimple`
