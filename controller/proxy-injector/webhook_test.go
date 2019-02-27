@@ -111,7 +111,8 @@ func TestShouldInject(t *testing.T) {
 				}
 
 				fakeReq := getFakeReq(deployment)
-				patchJSON, err := testCase.conf.PatchForAdmissionRequest(fakeReq)
+				fullConf := testCase.conf.WithMeta(fakeReq.Kind.Kind, fakeReq.Namespace, fakeReq.Name)
+				patchJSON, _, err := fullConf.GetPatch(fakeReq.Object.Raw)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -133,8 +134,8 @@ func TestShouldInject(t *testing.T) {
 		}
 
 		fakeReq := getFakeReq(deployment)
-		conf := confNsDisabled()
-		patchJSON, err := conf.PatchForAdmissionRequest(fakeReq)
+		conf := confNsDisabled().WithMeta(fakeReq.Kind.Kind, fakeReq.Namespace, fakeReq.Name)
+		patchJSON, _, err := conf.GetPatch(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}

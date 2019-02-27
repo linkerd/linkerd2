@@ -50,7 +50,7 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 }
 
 func (conf *ResourceConfig) uninjectObjectMeta() {
-	t := conf.objectMeta
+	t := conf.objMeta
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
 		if key != k8s.CreatedByAnnotation &&

@@ -9,7 +9,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -46,13 +45,13 @@ type objMeta struct {
 type ResourceConfig struct {
 	globalConfig    *config.Global
 	proxyConfig     *config.Proxy
-	obj             interface{}
-	meta            metav1.TypeMeta
-	podSpec         *v1.PodSpec
-	objectMeta      objMeta
-	dnsNameOverride string
-	k8sLabels       map[string]string
 	nsAnnotations   map[string]string
+	meta            metav1.TypeMeta
+	obj             interface{}
+	objMeta         objMeta
+	podLabels       map[string]string
+	podSpec         *v1.PodSpec
+	dnsNameOverride string
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -60,8 +59,15 @@ func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *
 	return &ResourceConfig{
 		globalConfig: globalConfig,
 		proxyConfig:  proxyConfig,
-		k8sLabels:    map[string]string{},
+		podLabels:    map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
 	}
+}
+
+// WithMeta enriches ResourceConfig with extra metadata
+func (conf *ResourceConfig) WithMeta(kind, namespace, name string) *ResourceConfig {
+	conf.meta = metav1.TypeMeta{Kind: kind}
+	conf.objMeta = objMeta{&metav1.ObjectMeta{Name: name, Namespace: namespace}}
+	return conf
 }
 
 // WithNsAnnotations enriches ResourceConfig with the namespace annotations, that can
@@ -76,49 +82,31 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.obj)
 }
 
-// PatchForYaml parses bytes and (if pertinent) returns the json patch
-// for injecting the init and proxy containers and all the necessary metadata.
-// It also returns a Report with the results of the injection.
-// Note that bytes should only contain a single YAML (not multiple separated by ---)
-func (conf *ResourceConfig) PatchForYaml(bytes []byte) ([]byte, []Report, error) {
-	if err := conf.parseMeta(bytes); err != nil {
-		return nil, nil, err
-	}
-	if conf.objectMeta.ObjectMeta == nil {
-		r := Report{UnsupportedResource: true}
-		return nil, []Report{r}, nil
-	}
-	return conf.getPatch(bytes)
-}
-
-// ParseMetaAndYaml fills conf fields both the metatada and the workload contents
+// ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
 func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
-	if err := conf.parseMeta(bytes); err != nil {
+	if _, err := conf.ParseMeta(bytes); err != nil {
 		return nil, err
 	}
 	r := NewReport(conf)
 	return &r, conf.parse(bytes)
 }
 
-func (conf *ResourceConfig) parseMeta(bytes []byte) error {
+// ParseMeta extracts metadata from bytes.
+// It returns false if the workload's payload is empty
+func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
-		return err
+		return false, err
 	}
-	return yaml.Unmarshal(bytes, &conf.objectMeta)
+	if err := yaml.Unmarshal(bytes, &conf.objMeta); err != nil {
+		return false, err
+	}
+	return conf.objMeta.ObjectMeta != nil, nil
 }
 
-// PatchForAdmissionRequest parses request.ObjectRaw and (if pertinent) returns the json patch
-// for injecting the init and proxy containers and all the necessary metadata.
-func (conf *ResourceConfig) PatchForAdmissionRequest(request *admissionv1beta1.AdmissionRequest) ([]byte, error) {
-	conf.meta = metav1.TypeMeta{Kind: request.Kind.Kind}
-	conf.objectMeta = objMeta{&metav1.ObjectMeta{Name: request.Name, Namespace: request.Namespace}}
-	patch, _, err := conf.getPatch(request.Object.Raw)
-	return patch, err
-}
-
-func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
+// GetPatch returns the JSON patch containing the proxy and init containers specs, if any
+func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	report := NewReport(conf)
-	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objectMeta.Name)
+	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objMeta.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, []Report{report}, err
@@ -157,7 +145,7 @@ func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
 		}
 		if shouldInject {
 			conf.injectPodSpec(patch, identity)
-			conf.injectObjectMeta(conf.objectMeta, patch)
+			conf.injectObjectMeta(patch)
 		}
 	} else {
 		report.UnsupportedResource = true
@@ -172,7 +160,7 @@ func (conf *ResourceConfig) getPatch(bytes []byte) ([]byte, []Report, error) {
 	return patchJSON, []Report{report}, nil
 }
 
-// TODO: bytes can't be a List resource, but I'll fix that soon)
+// TODO: bytes can't be a List resource, but I'll fix that soon
 func (conf *ResourceConfig) parse(bytes []byte) error {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
@@ -210,7 +198,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &deployment
-		conf.k8sLabels[k8s.ProxyDeploymentLabel] = deployment.Name
+		conf.podLabels[k8s.ProxyDeploymentLabel] = deployment.Name
 		conf.complete(&deployment.Spec.Template)
 
 	case "ReplicationController":
@@ -220,7 +208,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &rc
-		conf.k8sLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
+		conf.podLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
 		conf.complete(rc.Spec.Template)
 
 	case "ReplicaSet":
@@ -230,7 +218,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &rs
-		conf.k8sLabels[k8s.ProxyReplicaSetLabel] = rs.Name
+		conf.podLabels[k8s.ProxyReplicaSetLabel] = rs.Name
 		conf.complete(&rs.Spec.Template)
 
 	case "Job":
@@ -240,7 +228,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &job
-		conf.k8sLabels[k8s.ProxyJobLabel] = job.Name
+		conf.podLabels[k8s.ProxyJobLabel] = job.Name
 		conf.complete(&job.Spec.Template)
 
 	case "DaemonSet":
@@ -250,7 +238,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &ds
-		conf.k8sLabels[k8s.ProxyDaemonSetLabel] = ds.Name
+		conf.podLabels[k8s.ProxyDaemonSetLabel] = ds.Name
 		conf.complete(&ds.Spec.Template)
 
 	case "StatefulSet":
@@ -260,7 +248,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = &statefulset
-		conf.k8sLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
+		conf.podLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
 		conf.complete(&statefulset.Spec.Template)
 
 	case "Pod":
@@ -271,7 +259,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = &pod
 		conf.podSpec = &pod.Spec
-		conf.objectMeta = objMeta{&pod.ObjectMeta}
+		conf.objMeta = objMeta{&pod.ObjectMeta}
 	}
 
 	return nil
@@ -279,12 +267,11 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.podSpec = &template.Spec
-	conf.objectMeta = objMeta{&template.ObjectMeta}
+	conf.objMeta = objMeta{&template.ObjectMeta}
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) {
-	t := conf.podSpec
 	f := false
 	inboundSkipPorts := append(conf.proxyConfig.GetIgnoreInboundPorts(), conf.proxyConfig.GetControlPort(), conf.proxyConfig.GetMetricsPort())
 	inboundSkipPortsStr := make([]string, len(inboundSkipPorts))
@@ -357,14 +344,14 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 	if conf.proxyConfig.GetDisableExternalProfiles() {
 		profileSuffixes = "svc.cluster.local."
 	}
-	proxyUid := conf.proxyConfig.GetProxyUid()
+	proxyUID := conf.proxyConfig.GetProxyUid()
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
 		Image:                    conf.taggedProxyImage(),
 		ImagePullPolicy:          v1.PullPolicy(conf.proxyConfig.GetProxyImage().GetPullPolicy()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{
-			RunAsUser: &proxyUid,
+			RunAsUser: &proxyUID,
 		},
 		Ports: []v1.ContainerPort{
 			{
@@ -406,7 +393,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 	// off of something at the top-level of the PodSpec, but there is nothing
 	// easily identifiable at that level.
 	// This is currently only used by the Prometheus pod in the control-plane.
-	for _, container := range t.Containers {
+	for _, container := range conf.podSpec.Containers {
 		if container.Image == PrometheusImage {
 			sidecar.Env = append(sidecar.Env,
 				v1.EnvVar{
@@ -461,7 +448,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
 		}
 
-		if len(t.Volumes) == 0 {
+		if len(conf.podSpec.Volumes) == 0 {
 			patch.addVolumeRoot()
 		}
 		patch.addVolume(configMapVolume)
@@ -488,7 +475,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 				RunAsUser:    &runAsUser,
 			},
 		}
-		if len(t.InitContainers) == 0 {
+		if len(conf.podSpec.InitContainers) == 0 {
 			patch.addInitContainerRoot()
 		}
 		patch.addInitContainer(initContainer)
@@ -497,24 +484,23 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
-func (conf *ResourceConfig) injectObjectMeta(t objMeta, patch *Patch) {
-	if len(t.Annotations) == 0 {
+func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
+	if len(conf.objMeta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
 	patch.addPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.globalConfig.GetVersion())
 
-	if globalConfig.GetIdentityContext() != nil {
+	if conf.globalConfig.GetIdentityContext() != nil {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeOptional)
 	} else {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
-	if len(t.Labels) == 0 {
+	if len(conf.objMeta.Labels) == 0 {
 		patch.addPodLabelsRoot()
 	}
-	patch.addPodLabel(k8s.ControllerNSLabel, conf.globalConfig.GetLinkerdNamespace())
-	for k, v := range conf.k8sLabels {
+	for k, v := range conf.podLabels {
 		patch.addPodLabel(k, v)
 	}
 }
@@ -547,14 +533,14 @@ func (conf *ResourceConfig) shouldInject(r Report) (bool, error) {
 		return false, nil
 	}
 
-	podAnnotation := conf.objectMeta.Annotations[k8s.ProxyInjectAnnotation]
+	podAnnotation := conf.objMeta.Annotations[k8s.ProxyInjectAnnotation]
 	if conf.nsAnnotations == nil {
 		return true, nil
-	} else {
-		nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
-		if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
-			return true, nil
-		}
+	}
+
+	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
+	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
+		return true, nil
 	}
 
 	return podAnnotation == k8s.ProxyInjectEnabled, nil

@@ -87,7 +87,7 @@ func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.
 }
 
 func (rt resourceTransformerUninjectSilent) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	return resourceTransformerUninject{rt.configs}.transform(bytes)
+	return resourceTransformerUninject(rt).transform(bytes)
 }
 
 func (resourceTransformerUninject) generateReport(reports []inject.Report, output io.Writer) {
