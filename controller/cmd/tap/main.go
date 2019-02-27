@@ -33,6 +33,7 @@ func main() {
 		k8s.RC,
 		k8s.Svc,
 		k8s.RS,
+		k8s.Job,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)

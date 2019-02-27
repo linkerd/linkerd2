@@ -56,6 +56,7 @@ var StatAllResourceTypes = []string{
 	Pod,
 	Service,
 	Authority,
+	Job,
 }
 
 func generateKubernetesAPIURLFor(serverURL, namespace, path string) (*url.URL, error) {

@@ -66,6 +66,7 @@ func newCmdStat() *cobra.Command {
   * po mypod1 mypod2
   * rc/my-replication-controller
   * sts/my-statefulset
+  * job/my-job
   * authority
   * au/my-authority
   * all
