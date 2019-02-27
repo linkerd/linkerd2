@@ -3,12 +3,23 @@ package test
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
+)
+
+type deploySpec struct {
+	replicas   int
+	containers []string
+}
+
+const (
+	proxyContainer = "linkerd-proxy"
+	initContainer  = "linkerd-init"
 )
 
 //////////////////////
@@ -31,11 +42,21 @@ var (
 		"linkerd-web",
 	}
 
-	linkerdDeployReplicas = map[string]int{
-		"linkerd-controller": 1,
-		"linkerd-grafana":    1,
-		"linkerd-prometheus": 1,
-		"linkerd-web":        1,
+	linkerdDeployReplicas = map[string]deploySpec{
+		"linkerd-controller": {1, []string{"destination", "public-api", "tap"}},
+		"linkerd-grafana":    {1, []string{}},
+		"linkerd-prometheus": {1, []string{}},
+		"linkerd-web":        {1, []string{"web"}},
+	}
+
+	// linkerd-proxy logs some errors when TLS is enabled, remove these once
+	// they're addressed.
+	knownProxyErrors = []string{
+		`linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
+		`linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/identity/certificate.crt: No such file or directory (os error 2)`,
+		`linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/trust-anchors/trust-anchors.pem: No such file or directory (os error 2)`,
+		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/identity/certificate.crt", Some(2)), falling back`,
+		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/trust-anchors/trust-anchors.pem", Some(2)), falling back`,
 	}
 )
 
@@ -83,7 +104,7 @@ func TestInstall(t *testing.T) {
 	}
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
-		linkerdDeployReplicas["linkerd-ca"] = 1
+		linkerdDeployReplicas["linkerd-ca"] = deploySpec{1, []string{"ca"}}
 	}
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")
@@ -113,11 +134,11 @@ func TestInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	for deploy, replicas := range linkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
+	for deploy, spec := range linkerdDeployReplicas {
+		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, replicas); err != nil {
+		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err))
 		}
 	}
@@ -259,5 +280,87 @@ func TestCheckProxy(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+}
+
+func TestLogs(t *testing.T) {
+	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
+	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", proxyContainer))
+
+	for deploy, spec := range linkerdDeployReplicas {
+		deploy := strings.TrimPrefix(deploy, "linkerd-")
+		containers := append(spec.containers, proxyContainer)
+
+		for _, container := range containers {
+			regex := controllerRegex
+			if container == proxyContainer {
+				regex = proxyRegex
+			}
+
+			outputStream, err := TestHelper.LinkerdRunStream(
+				"logs", "--no-color",
+				"--control-plane-component", deploy,
+				"--container", container,
+			)
+			if err != nil {
+				t.Fatalf("Error running command:\n%s", err)
+			}
+			defer outputStream.Stop()
+			outputLines, _ := outputStream.ReadUntil(100, 10*time.Second)
+			if len(outputLines) == 0 {
+				t.Fatalf("No logs found for %s/%s", deploy, container)
+			}
+
+			for _, line := range outputLines {
+				if regex.MatchString(line) {
+
+					// check for known errors
+					known := false
+					if TestHelper.TLS() && container == proxyContainer {
+						for _, er := range knownProxyErrors {
+							if strings.HasSuffix(line, er) {
+								known = true
+								break
+							}
+						}
+					}
+
+					if !known {
+						t.Fatalf("Found error in %s/%s log: %s", deploy, container, line)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestRestarts(t *testing.T) {
+	for deploy, spec := range linkerdDeployReplicas {
+		deploy := strings.TrimPrefix(deploy, "linkerd-")
+		containers := append(spec.containers, proxyContainer, initContainer)
+
+		for _, container := range containers {
+			selector := fmt.Sprintf("linkerd.io/control-plane-component=%s", deploy)
+			containerStatus := "containerStatuses"
+			if container == initContainer {
+				containerStatus = "initContainerStatuses"
+			}
+			output := fmt.Sprintf("jsonpath='{.items[*].status.%s[?(@.name==\"%s\")].restartCount}'", containerStatus, container)
+
+			out, err := TestHelper.Kubectl(
+				"-n", TestHelper.GetLinkerdNamespace(),
+				"get", "pods",
+				"--selector", selector,
+				"-o", output,
+			)
+			if err != nil {
+				t.Fatalf("kubectl command failed\n%s", out)
+			}
+			if out == "''" {
+				t.Fatalf("Could not find restartCount for %s/%s", deploy, container)
+			} else if out != "'0'" {
+				t.Fatalf("Found %s restarts of %s/%s", out, deploy, container)
+			}
+		}
 	}
 }

@@ -87,6 +87,13 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 	return string(out), err
 }
 
+// Kubectl executes an arbitrary Kubectl command
+func (h *KubernetesHelper) Kubectl(arg ...string) (string, error) {
+	cmd := exec.Command("kubectl", arg...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 // getDeployments gets all deployments with a count of their ready replicas in
 // the specified namespace.
 func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, error) {
