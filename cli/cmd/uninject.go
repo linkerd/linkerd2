@@ -17,9 +17,9 @@ type resourceTransformerUninjectSilent struct {
 	configs
 }
 
-// UninjectYAML processes resource definitions and outputs them after uninjection in out
-func UninjectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
-	return ProcessYAML(in, out, report, resourceTransformerUninject{conf})
+// uninjectYAML processes resource definitions and outputs them after uninjection in out
+func uninjectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
+	return processYAML(in, out, report, resourceTransformerUninject{conf})
 }
 
 func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {

@@ -13,7 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/config"
 )
 
-type injectYAML struct {
+type testCase struct {
 	inputFileName    string
 	goldenFileName   string
 	reportFileName   string
@@ -27,7 +27,7 @@ func mkFilename(filename string, verbose bool) string {
 	return filename
 }
 
-func testUninjectAndInject(t *testing.T, tc injectYAML) {
+func testUninjectAndInject(t *testing.T, tc testCase) {
 	file, err := os.Open("testdata/" + tc.inputFileName)
 	if err != nil {
 		t.Errorf("error opening test input file: %v\n", err)
@@ -68,7 +68,7 @@ func TestUninjectAndInject(t *testing.T) {
 	noInitContainerConfig.global.Version = defaultConfig.global.Version
 	noInitContainerConfig.global.CniEnabled = true
 
-	testCases := []injectYAML{
+	testCases := []testCase{
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",

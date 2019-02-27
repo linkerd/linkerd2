@@ -92,12 +92,12 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 }
 
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
-	log.Debugf("request object bytes: %v", string(request.Object.Raw))
+	log.Debugf("request object bytes: %s", string(request.Object.Raw))
 
 	jsonUnmarshaler := jsonpb.Unmarshaler{}
 
 	globalConfigJSON, err := ioutil.ReadFile(k8s.MountPathGlobalConfig)
-	log.Debugf("globalConfig (json): %v\n", string(globalConfigJSON))
+	log.Debugf("globalConfig (json): %s\n", string(globalConfigJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	proxyConfigJSON, err := ioutil.ReadFile(k8s.MountPathProxyConfig)
-	log.Debugf("proxyConfig (json): %v\n", string(proxyConfigJSON))
+	log.Debugf("proxyConfig (json): %s\n", string(proxyConfigJSON))
 	if err != nil {
 		return nil, err
 	}

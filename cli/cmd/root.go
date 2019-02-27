@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -274,18 +275,16 @@ type proxyConfigOptions struct {
 }
 
 const (
-	optionalTLS           = "optional"
-	defaultDockerRegistry = "gcr.io/linkerd-io"
-	defaultKeepaliveMs    = 10000
+	optionalTLS = "optional"
 )
 
 // Deprecated. Use newConfig
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
 		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
+		proxyImage:              inject.DefaultDockerRegistry + "/proxy",
+		initImage:               inject.DefaultDockerRegistry + "/proxy-init",
+		dockerRegistry:          inject.DefaultDockerRegistry,
 		imagePullPolicy:         "IfNotPresent",
 		inboundPort:             4143,
 		outboundPort:            4140,
@@ -311,13 +310,13 @@ func newConfig() configs {
 	globalConfig := &config.Global{
 		LinkerdNamespace: defaultNamespace,
 		CniEnabled:       false,
-		Registry:         defaultDockerRegistry,
+		Registry:         inject.DefaultDockerRegistry,
 		Version:          version.Version,
 		IdentityContext:  nil,
 	}
 	proxyConfig := &config.Proxy{
-		ProxyImage:              &config.Image{ImageName: defaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
-		ProxyInitImage:          &config.Image{ImageName: defaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
+		ProxyImage:              &config.Image{ImageName: inject.DefaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
+		ProxyInitImage:          &config.Image{ImageName: inject.DefaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
 		DestinationApiPort:      &config.Port{Port: 8086},
 		ControlPort:             &config.Port{Port: 4190},
 		IgnoreInboundPorts:      nil,

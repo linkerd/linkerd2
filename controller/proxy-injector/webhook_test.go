@@ -7,6 +7,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +40,9 @@ var (
 )
 
 func confNsEnabled() *inject.ResourceConfig {
-	return inject.NewResourceConfig(globalConfig, proxyConfig).WithNsAnnotations(map[string]string{"linkerd.io/inject": "enabled"})
+	return inject.
+		NewResourceConfig(globalConfig, proxyConfig).
+		WithNsAnnotations(map[string]string{k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled})
 }
 
 func confNsDisabled() *inject.ResourceConfig {

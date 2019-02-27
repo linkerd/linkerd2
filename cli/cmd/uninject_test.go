@@ -98,7 +98,7 @@ func TestUninjectYAML(t *testing.T) {
 			output := new(bytes.Buffer)
 			report := new(bytes.Buffer)
 
-			err = UninjectYAML(read, output, report, newConfig())
+			err = uninjectYAML(read, output, report, newConfig())
 			if err != nil {
 				t.Errorf("Unexpected error uninjecting YAML: %v\n", err)
 			}

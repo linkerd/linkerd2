@@ -31,9 +31,10 @@ const (
 	// PrometheusImage is the docker image and tag for the Prometheus instance used in the control plane
 	PrometheusImage                 = "prom/prometheus:v2.7.1"
 	prometheusProxyOutboundCapacity = 10000
-
-	defaultDockerRegistry = "gcr.io/linkerd-io"
-	defaultKeepaliveMs    = 10000
+	// DefaultDockerRegistry is the default registry to pull the proxy and init container images from
+	DefaultDockerRegistry = "gcr.io/linkerd-io"
+	// DefaultKeepaliveMs is used in the proxy configuration for remote connections
+	DefaultKeepaliveMs = 10000
 )
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
@@ -87,7 +88,7 @@ func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
 	if _, err := conf.ParseMeta(bytes); err != nil {
 		return nil, err
 	}
-	r := NewReport(conf)
+	r := newReport(conf)
 	return &r, conf.parse(bytes)
 }
 
@@ -105,7 +106,7 @@ func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
 func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
-	report := NewReport(conf)
+	report := newReport(conf)
 	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objMeta.Name)
 
 	if err := conf.parse(bytes); err != nil {
@@ -379,8 +380,8 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 				Name:      PodNamespaceEnvVarName,
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
-			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
-			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", DefaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", DefaultKeepaliveMs)},
 			{Name: "LINKERD2_PROXY_ID", Value: identity.ToDNSName()},
 		},
 		LivenessProbe:  &proxyProbe,
@@ -392,7 +393,8 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 	// We key off of any container image in the pod. Ideally we would instead key
 	// off of something at the top-level of the PodSpec, but there is nothing
 	// easily identifiable at that level.
-	// This is currently only used by the Prometheus pod in the control-plane.
+	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
+	// not just the one in Linkerd's Control Plane.
 	for _, container := range conf.podSpec.Containers {
 		if container.Image == PrometheusImage {
 			sidecar.Env = append(sidecar.Env,
@@ -508,14 +510,14 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 func (conf *ResourceConfig) taggedProxyImage() string {
 	name := conf.proxyConfig.GetProxyImage().GetImageName()
 	reg := conf.globalConfig.GetRegistry()
-	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
+	image := strings.Replace(name, DefaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, conf.globalConfig.GetVersion())
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
 	name := conf.proxyConfig.GetProxyInitImage().GetImageName()
 	reg := conf.globalConfig.GetRegistry()
-	image := strings.Replace(name, defaultDockerRegistry, reg, 1)
+	image := strings.Replace(name, DefaultDockerRegistry, reg, 1)
 	return fmt.Sprintf("%s:%s", image, conf.globalConfig.GetVersion())
 }
 
@@ -529,7 +531,7 @@ func (conf *ResourceConfig) taggedProxyInitImage() string {
 //   linkerd.io/inject annotation set to "disabled"; or
 // - the deployment's pod spec has the linkerd.io/inject annotation set to "enabled"
 func (conf *ResourceConfig) shouldInject(r Report) (bool, error) {
-	if r.InjectDisabled || r.HostNetwork || r.Sidecar {
+	if !r.Injectable() {
 		return false, nil
 	}
 
