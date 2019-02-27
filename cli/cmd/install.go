@@ -317,7 +317,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 
 	injectOptions := newInjectOptions()
-	injectOptions.proxyConfigOptions = options.proxyConfigOptions
+	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
 
 	// Special case for linkerd-proxy running in the Prometheus pod.
 	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
@@ -325,7 +325,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
 	// Once Kubernetes supports sidecar containers, this may be removed, as that
 	// will guarantee the proxy is running prior to control-plane startup.
-	injectOptions.ignoreOutboundPorts = []uint{443}
+	injectOptions.ignoreOutboundPorts = append(injectOptions.ignoreOutboundPorts, 443)
 
 	return InjectYAML(&buf, w, ioutil.Discard, injectOptions)
 }
