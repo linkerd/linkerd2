@@ -4,9 +4,9 @@
   * Updated `linkerd check` to ensure hint URLs are displayed for RPC checks
 * Controller
   * Updated the auto-inject admission controller webhook to respond to UPDATE
-    events of deployment workload
-  * Updated destination service to return TLS identities only when the client
-    pod is TLS-aware and is in the same controller namespace
+    events for deployment workloads
+  * Updated destination service to return TLS identities only when the
+    destination pod is TLS-aware and is in the same controller namespace
   * Lessen klog level to improve security
   * Updated control-plane components to query Kubernetes at startup to determine
     authorized namespaces and if ServiceProfile support is available
@@ -17,7 +17,7 @@
     sized inotify buffer
 * Web UI
   * Removed 'Help' hierarchy and surfaced links on navigation sidebar
-  * Added an Endpoints view to the web dashboard
+  * Added a Debug page to the web dashboard, allowing you to introspect service discovery state
   * Updated the resource detail page to start displaying a table with TCP stats
 * Internal
   * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
