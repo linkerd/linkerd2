@@ -310,12 +310,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 
 	injectOptions := newInjectOptions()
 
+	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
+
 	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
 	// Once Kubernetes supports sidecar containers, this may be removed, as that
 	// will guarantee the proxy is running prior to control-plane startup.
 	injectOptions.ignoreOutboundPorts = append(injectOptions.ignoreOutboundPorts, 443)
-
-	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
 
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
 	pbConfig := injectOptionsToConfigs(injectOptions)
