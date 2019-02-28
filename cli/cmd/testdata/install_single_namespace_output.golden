@@ -15,8 +15,8 @@ metadata:
   name: linkerd-Namespace-controller
   namespace: Namespace
 rules:
-- apiGroups: ["extensions", "apps"]
-  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+- apiGroups: ["extensions", "apps", "batch"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets", "jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"]
