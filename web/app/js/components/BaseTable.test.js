@@ -8,87 +8,64 @@ describe("Tests for <BaseTable>", () => {
   const defaultProps = {
     api: ApiHelpers(""),
   };
+  const tableColumns = [{
+    dataIndex: "pods.totalPods",
+    title: "Meshed"
+  },
+  {
+    dataIndex: "deployment",
+    title: "Name"
+  },
+  {
+    dataIndex: "namespace",
+    title: "Namespace"
+  }];
 
   it("renders the table with sample data", () => {
+
     let extraProps = _merge({}, defaultProps, {
       tableRows: [{
-        name: "authors",
+        deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        successRate: 0.6956521739130435,
-        requestRate: 6.9,
-        latency: {P50: 4, P95: 17, P99: 66},
-        pods: {totalPods: "1", meshedPods: "1"},
-        requestRate: 6.9,
-        successRate: 0.6956521739130435,
-        totalRequests: 414,
-        type: "deployment"
+        pods: {totalPods: "1", meshedPods: "1"}
       }],
-      tableColumns: [{
-        dataIndex: "pods.totalPods",
-        title: "Meshed"
-      },
-      {
-        dataIndex: "namespace",
-        title: "Namespace"
-      }],
+      tableColumns: tableColumns,
     });
+
     const component = mount(routerWrap(BaseTable, extraProps));
-
     const table = component.find("BaseTable");
-
     expect(table).toBeDefined();
     expect(table.props().tableRows).toHaveLength(1);
-    expect(table.props().tableColumns).toHaveLength(2);
-    expect(table.find("td")).toHaveLength(2);
-
+    expect(table.props().tableColumns).toHaveLength(3);
+    expect(table.find("td")).toHaveLength(3);
+    expect(table.find("tr")).toHaveLength(2);
   });
 
   it("if enableFilter is true, user is shown the filter dialog", () => {
+
     let extraProps = _merge({}, defaultProps, {
       tableRows: [{
-        name: "authors",
+        deployment: "authors",
         namespace: "default",
         key: "default-deployment-authors",
-        successRate: 0.6956521739130435,
-        requestRate: 6.9,
-        latency: {P50: 4, P95: 17, P99: 66},
-        pods: {totalPods: "1", meshedPods: "1"},
-        requestRate: 6.9,
-        successRate: 0.6956521739130435,
-        totalRequests: 414,
-        type: "deployment"
-      },{
-        name: "books",
-        namespace: "user-maria",
-        key: "default-deployment-books",
-        successRate: 0.565,
-        requestRate: 9,
-        latency: {P50: 1, P95: 2, P99: 3},
-        pods: {totalPods: "1", meshedPods: "1"},
-        requestRate: 6.9,
-        successRate: 0.6956521739130435,
-        totalRequests: 414,
-        type: "deployment"
-      }],
-      tableColumns: [
+        pods: {totalPods: "1", meshedPods: "1"}
+      },
       {
-        dataIndex: "namespace",
-        title: "Namespace",
-        sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace),
-        defaultOrderBy: "asc"
+        deployment: "books",
+        namespace: "default",
+        key: "default-deployment-books",
+        pods: {totalPods: "2", meshedPods: "1"}
       }],
+      tableColumns: tableColumns,
       enableFilter: true
     });
+
     const component = mount(routerWrap(BaseTable, extraProps));
-
     const table = component.find("BaseTable");
-
     const enableFilter = table.prop("enableFilter");
-
     const filterIcon = table.find("FilterListIcon");
-
     expect(enableFilter).toEqual(true);
-    expect (filterIcon).toBeDefined();
+    expect(filterIcon).toBeDefined();
   });
 });

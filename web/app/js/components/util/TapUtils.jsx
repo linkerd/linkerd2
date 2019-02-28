@@ -312,18 +312,14 @@ export const directionColumn = d => (
   </Tooltip>
 );
 
+export const extractDisplayName = d => {
+  let display = d.destination || {};
+  let labels = d.destinationLabels || {};
+  return [labels, display];
+};
+
 export const srcDstColumn = (d, resourceType, ResourceLink) => {
-
-  let display = {};
-  let labels = {};
-
-  if (d.direction === "INBOUND") {
-    display = d.source;
-    labels = d.sourceLabels;
-  } else {
-    display = d.destination;
-    labels = d.destinationLabels;
-  }
+  let [labels, display] = extractDisplayName(d);
 
   let link = (
     !_isEmpty(labels[resourceType]) ?

@@ -79,7 +79,7 @@ class BaseTable extends React.Component {
 
   handleFilterToggle = () => {
     let newFilterStatus = !this.state.showFilter;
-    this.setState({ showFilter: newFilterStatus });
+    this.setState({ showFilter: newFilterStatus, filterBy: "" });
   }
 
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
@@ -89,19 +89,12 @@ class BaseTable extends React.Component {
       rows = tableRows.sort(col.sorter);
     }
     if (filterBy) {
-      let filteredRows = [];
       let columnsToFilter = tableColumns.filter(col => col.filter);
-      let textToSearch = rows.map(row => {
-        let string = "";
-        columnsToFilter.forEach(col => {
-          string+= col.filter(row);
+      let filteredRows = tableRows.filter(row => {
+        return columnsToFilter.some(col => {
+          let rowText = col.filter(row);
+          return rowText.match(filterBy);
         });
-        return string;
-      });
-      textToSearch.forEach((row, rowIndex) => {
-        if (row.match(filterBy)) {
-          filteredRows.push(rows[rowIndex]);
-        }
       });
       rows = filteredRows;
     }
@@ -156,7 +149,8 @@ class BaseTable extends React.Component {
           <TextField
             id="input-with-icon-textfield"
             onChange={this.handleFilterInputChange}
-            placeholder="Filter by text" />}
+            placeholder="Filter by text"
+            autoFocus />}
         {!this.state.showFilter &&
           <FilterListIcon
             className={classes.toolbarIcon}

@@ -1,10 +1,11 @@
-import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, numericSort } from './util/Utils.js';
+import { directionColumn, extractDisplayName, srcDstColumn, tapLink } from './util/TapUtils.jsx';
+import { formatLatencySec, numericSort, toShortResourceName } from './util/Utils.js';
 
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
 
@@ -17,13 +18,10 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   {
     title: "Name",
     filter: d => {
-      if (d.path === "/ping") {
-        return "";
-      } else if (d.direction === "INBOUND") {
-        return "deploy/" + d.source.owner.split('/')[1];
-      } else if (d.direction === "OUTBOUND") {
-        return "deploy/" + d.destination.owner.split('/')[1];
-      }
+      let [labels, display] = extractDisplayName(d);
+      return _isEmpty(labels[resourceType]) ?
+        display.str :
+        toShortResourceName(resourceType) + "/" + labels[resourceType];
     },
     key: "src-dst",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
