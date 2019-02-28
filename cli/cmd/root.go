@@ -191,10 +191,10 @@ func newStatOptionsBase() *statOptionsBase {
 
 func (o *statOptionsBase) validateOutputFormat() error {
 	switch o.outputFormat {
-	case tableOutput, jsonOutput:
+	case tableOutput, jsonOutput, wideOutput:
 		return nil
 	default:
-		return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
+		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
 	}
 }
 

@@ -73,7 +73,7 @@ func TestStat(t *testing.T) {
 	})
 
 	options = newStatOptions()
-	options.showTCPStats = true
+	options.outputFormat = "wide"
 	t.Run("Returns TCP stats", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{
@@ -152,8 +152,8 @@ func TestStat(t *testing.T) {
 
 func testStatCall(exp paramsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, exp.options.showTCPStats)
+	queryTCP := exp.options.outputFormat == wideOutput || exp.options.outputFormat == jsonOutput
+	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, queryTCP)
 
 	mockClient.StatSummaryResponseToReturn = &response
 

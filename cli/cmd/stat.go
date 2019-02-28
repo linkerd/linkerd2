@@ -24,7 +24,6 @@ type statOptions struct {
 	fromNamespace string
 	fromResource  string
 	allNamespaces bool
-	showTCPStats  bool
 }
 
 type indexedResults struct {
@@ -41,7 +40,6 @@ func newStatOptions() *statOptions {
 		fromNamespace:   "",
 		fromResource:    "",
 		allNamespaces:   false,
-		showTCPStats:    false,
 	}
 }
 
@@ -164,8 +162,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\"")
-	cmd.PersistentFlags().BoolVar(&options.showTCPStats, "tcp", options.showTCPStats, "Show TCP stats")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
 
 	return cmd
 }
@@ -322,7 +319,8 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 }
 
 func showTCPStats(options *statOptions, resourceType string) bool {
-	return options.showTCPStats && resourceType != k8s.Authority
+	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
+		resourceType != k8s.Authority
 }
 
 func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
@@ -454,7 +452,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer, o
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
 
-					if options.showTCPStats {
+					if showTCPStats(options, resourceType) {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
 						entry.TCPReadBytes = &stats[key].tcpReadBytes
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
@@ -523,7 +521,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			FromName:      fromRes.Name,
 			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
-			TCPStats:      options.showTCPStats,
+			TCPStats:      showTCPStats(options, target.Type),
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)
