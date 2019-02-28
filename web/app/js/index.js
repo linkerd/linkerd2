@@ -6,6 +6,7 @@ import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
+import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Debug from './components/Debug.jsx';
 import Namespace from './components/Namespace.jsx';
@@ -114,6 +115,9 @@ let applicationHtml = (
               <Route
                 path={`${pathPrefix}/debug`}
                 render={props => <Navigation {...props} ChildComponent={Debug} />} />
+              <Route
+                path={`${pathPrefix}/community`}
+                render={props => <Navigation {...props} ChildComponent={Community} />} />
               <Route component={NoMatch} />
             </Switch>
           </RouterToUrlQuery>
