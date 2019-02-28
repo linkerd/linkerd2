@@ -60,6 +60,7 @@ type API struct {
 	deploy   appv1beta2informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
+	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
@@ -67,7 +68,6 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	job      batchv1informers.JobInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -172,6 +172,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case Job:
+			api.job = sharedInformers.Batch().V1().Jobs()
+			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
@@ -193,9 +196,6 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
-		case Job:
-			api.job = sharedInformers.Batch().V1().Jobs()
-			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 		}
 	}
 
@@ -331,6 +331,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getDaemonsets(namespace, name)
 	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
+	case k8s.Job:
+		return api.getJobs(namespace, name)
 	case k8s.Pod:
 		return api.getPods(namespace, name)
 	case k8s.ReplicationController:
@@ -339,8 +341,6 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getServices(namespace, name)
 	case k8s.StatefulSet:
 		return api.getStatefulsets(namespace, name)
-	case k8s.Job:
-		return api.getJobs(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
