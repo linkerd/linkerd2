@@ -1,22 +1,23 @@
-apiVersion: v1
+---
 kind: Namespace
+apiVersion: v1
 metadata:
+  name: linkerd
   annotations:
     linkerd.io/inject: disabled
-  name: linkerd
 ---
 ###
 ### Controller
 ###
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-controller
 rules:
@@ -33,8 +34,8 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-controller
 roleRef:
@@ -46,41 +47,41 @@ subjects:
   name: linkerd-controller
   namespace: linkerd
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: controller
   name: linkerd-controller-api
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: controller
   ports:
   - name: http
     port: 8085
     targetPort: 8085
-  selector:
-    linkerd.io/control-plane-component: controller
-  type: ClusterIP
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: controller
   name: linkerd-destination
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: controller
   ports:
   - name: grpc
     port: 8086
     targetPort: 8086
-  selector:
-    linkerd.io/control-plane-component: controller
-  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -258,20 +259,21 @@ spec:
           optional: true
           secretName: linkerd-controller-deployment-tls-linkerd-io
 ---
+kind: ConfigMap
 apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":true,"registry":"gcr.io/linkerd-io","version":"dev-undefined","identityContext":{}}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
-kind: ConfigMap
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: controller
-  name: linkerd-config
-  namespace: linkerd
+
 ---
 ###
 ### Service Profile CRD
@@ -280,25 +282,33 @@ metadata:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
   name: serviceprofiles.linkerd.io
   namespace: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
   names:
-    kind: ServiceProfile
     plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
     shortNames:
     - sp
-    singular: serviceprofile
-  scope: Namespaced
   validation:
     openAPIV3Schema:
       properties:
         spec:
+          required:
+          - routes
           properties:
             retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
               properties:
                 minRetriesPerSecond:
                   type: integer
@@ -306,99 +316,94 @@ spec:
                   type: number
                 ttl:
                   type: string
-              required:
-              - minRetriesPerSecond
-              - retryRatio
-              - ttl
-              type: object
             routes:
+              type: array
               items:
-                properties:
-                  condition:
-                    minProperties: 1
-                    properties:
-                      all:
-                        items:
-                          type: object
-                        type: array
-                      any:
-                        items:
-                          type: object
-                        type: array
-                      method:
-                        type: string
-                      not:
-                        type: object
-                      pathRegex:
-                        type: string
-                    type: object
-                  name:
-                    type: string
-                  responseClasses:
-                    items:
-                      properties:
-                        condition:
-                          properties:
-                            all:
-                              items:
-                                type: object
-                              type: array
-                            any:
-                              items:
-                                type: object
-                              type: array
-                            not:
-                              type: object
-                            status:
-                              minProperties: 1
-                              properties:
-                                max:
-                                  maximum: 599
-                                  minimum: 100
-                                  type: integer
-                                min:
-                                  maximum: 599
-                                  minimum: 100
-                                  type: integer
-                              type: object
-                          type: object
-                        isFailure:
-                          type: boolean
-                      required:
-                      - condition
-                      type: object
-                    type: array
-                  timeout:
-                    type: string
+                type: object
                 required:
                 - name
                 - condition
-                type: object
-              type: array
-          required:
-          - routes
-  version: v1alpha1
+                properties:
+                  name:
+                    type: string
+                  timeout:
+                    type: string
+                  condition:
+                    type: object
+                    minProperties: 1
+                    properties:
+                      method:
+                        type: string
+                      pathRegex:
+                        type: string
+                      all:
+                        type: array
+                        items:
+                          type: object
+                      any:
+                        type: array
+                        items:
+                          type: object
+                      not:
+                        type: object
+                  responseClasses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      properties:
+                        isFailure:
+                          type: boolean
+                        condition:
+                          type: object
+                          properties:
+                            status:
+                              type: object
+                              minProperties: 1
+                              properties:
+                                min:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                                max:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                            all:
+                              type: array
+                              items:
+                                type: object
+                            any:
+                              type: array
+                              items:
+                                type: object
+                            not:
+                              type: object
 ---
 ###
 ### Web
 ###
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: linkerd
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: web
   name: linkerd-web
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: web
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: web
   ports:
   - name: http
     port: 8084
@@ -406,9 +411,6 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
-  selector:
-    linkerd.io/control-plane-component: web
-  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -540,28 +542,23 @@ spec:
 ### Prometheus
 ###
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-prometheus
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-prometheus
 roleRef:
@@ -573,23 +570,23 @@ subjects:
   name: linkerd-prometheus
   namespace: linkerd
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: prometheus
   name: linkerd-prometheus
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: prometheus
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: prometheus
   ports:
   - name: admin-http
     port: 9090
     targetPort: 9090
-  selector:
-    linkerd.io/control-plane-component: prometheus
-  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -728,7 +725,15 @@ spec:
           optional: true
           secretName: linkerd-prometheus-deployment-tls-linkerd-io
 ---
+kind: ConfigMap
 apiVersion: v1
+metadata:
+  name: linkerd-prometheus-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: prometheus
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   prometheus.yml: |-
     global:
@@ -807,42 +812,34 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
-kind: ConfigMap
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: prometheus
-  name: linkerd-prometheus-config
-  namespace: linkerd
 ---
 ###
 ### Grafana
 ###
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: linkerd
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: grafana
   name: linkerd-grafana
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: grafana
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: grafana
   ports:
   - name: http
     port: 3000
     targetPort: 3000
-  selector:
-    linkerd.io/control-plane-component: grafana
-  type: ClusterIP
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -982,33 +979,16 @@ spec:
           optional: true
           secretName: linkerd-grafana-deployment-tls-linkerd-io
 ---
+kind: ConfigMap
 apiVersion: v1
+metadata:
+  name: linkerd-grafana-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: grafana
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 data:
-  dashboards.yaml: |-
-    apiVersion: 1
-    providers:
-    - name: 'default'
-      orgId: 1
-      folder: ''
-      type: file
-      disableDeletion: true
-      editable: true
-      options:
-        path: /var/lib/grafana/dashboards
-        homeDashboardId: linkerd-top-line
-  datasources.yaml: |-
-    apiVersion: 1
-    datasources:
-    - name: prometheus
-      type: prometheus
-      access: proxy
-      orgId: 1
-      url: http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-      isDefault: true
-      jsonData:
-        timeInterval: "5s"
-      version: 1
-      editable: true
   grafana.ini: |-
     instance_name = linkerd-grafana
 
@@ -1027,71 +1007,69 @@ data:
 
     [analytics]
     check_for_updates = false
-kind: ConfigMap
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  labels:
-    linkerd.io/control-plane-component: grafana
-  name: linkerd-grafana-config
-  namespace: linkerd
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://linkerd-prometheus.linkerd.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: linkerd-top-line
+
 ---
 ###
 ### CA
 ###
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-ca
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-ca
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resourceNames:
-  - linkerd-ca-bundle
-  resources:
-  - configmaps
-  verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - list
-  - get
-  - watch
-- apiGroups:
-  - extensions
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - list
-  - get
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - create
-  - update
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: [linkerd-ca-bundle]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-ca
 roleRef:
@@ -1362,62 +1340,53 @@ spec:
           optional: true
           secretName: linkerd-proxy-injector-deployment-tls-linkerd-io
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 ---
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-proxy-injector
 rules:
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  verbs:
-  - create
-  - update
-  - get
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - get
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
+  verbs: ["create", "update", "get", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-linkerd-proxy-injector
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
   name: linkerd-linkerd-proxy-injector
 subjects:
-- apiGroup: ""
-  kind: ServiceAccount
+- kind: ServiceAccount
   name: linkerd-proxy-injector
   namespace: linkerd
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-proxy-injector
+  apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: v1
 kind: Service
+apiVersion: v1
 metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
+  name: linkerd-proxy-injector
+  namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
-  name: linkerd-proxy-injector
-  namespace: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: proxy-injector
   ports:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
-  selector:
-    linkerd.io/control-plane-component: proxy-injector
-  type: ClusterIP
 ---
