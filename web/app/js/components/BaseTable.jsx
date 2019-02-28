@@ -138,7 +138,7 @@ class BaseTable extends React.Component {
   }
 
   renderToolbar = (classes, title) => {
-    let toolbar = (
+    return (
       <Toolbar>
         <Typography
           className={classes.title}
@@ -161,7 +161,6 @@ class BaseTable extends React.Component {
             onClick={this.handleFilterToggle} />}
       </Toolbar>
     );
-    return toolbar;
   }
 
   render() {
