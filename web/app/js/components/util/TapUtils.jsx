@@ -313,8 +313,16 @@ export const directionColumn = d => (
 );
 
 export const extractDisplayName = d => {
-  let display = d.destination || {};
-  let labels = d.destinationLabels || {};
+  let display = {};
+  let labels = {};
+
+  if (d.direction === "INBOUND") {
+    display = d.source;
+    labels = d.sourceLabels;
+  } else {
+    display = d.destination;
+    labels = d.destinationLabels;
+  }
   return [labels, display];
 };
 
