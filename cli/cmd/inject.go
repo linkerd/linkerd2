@@ -129,6 +129,12 @@ func injectObjectMeta(t *metav1.ObjectMeta, k8sLabels map[string]string, options
 	for k, v := range k8sLabels {
 		t.Labels[k] = v
 	}
+
+	if options.enableTLS() {
+		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeOptional
+	} else {
+		t.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
+	}
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.

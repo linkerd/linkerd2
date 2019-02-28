@@ -89,10 +89,7 @@ func writeProtoToHTTPResponse(w http.ResponseWriter, msg proto.Message) error {
 		return err
 	}
 
-	fullPayload, err := serializeAsPayload(marshalledProtobufMessage)
-	if err != nil {
-		return err
-	}
+	fullPayload := serializeAsPayload(marshalledProtobufMessage)
 	_, err = w.Write(fullPayload)
 	return err
 }
@@ -108,13 +105,13 @@ func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) 
 	return flushableWriter, nil
 }
 
-func serializeAsPayload(messageContentsInBytes []byte) ([]byte, error) {
+func serializeAsPayload(messageContentsInBytes []byte) []byte {
 	lengthOfThePayload := uint32(len(messageContentsInBytes))
 
 	messageLengthInBytes := make([]byte, numBytesForMessageLength)
 	binary.LittleEndian.PutUint32(messageLengthInBytes, lengthOfThePayload)
 
-	return append(messageLengthInBytes, messageContentsInBytes...), nil
+	return append(messageLengthInBytes, messageContentsInBytes...)
 }
 
 func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {

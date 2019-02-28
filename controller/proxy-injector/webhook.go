@@ -153,6 +153,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		patch.addInitContainer(proxyInit)
 	}
 
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = map[string]string{}
+	}
 	if w.tlsEnabled {
 		caBundle, tlsSecrets, err := w.volumesSpec(identity)
 		if err != nil {
@@ -166,6 +169,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}
 		patch.addVolume(caBundle)
 		patch.addVolume(tlsSecrets)
+		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeOptional
+	} else {
+		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeDisabled
 	}
 
 	if deployment.Spec.Template.Labels == nil {
@@ -193,9 +199,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		imageTag = image[1]
 	}
 
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = map[string]string{}
-	}
 	deployment.Spec.Template.Annotations[k8sPkg.CreatedByAnnotation] = fmt.Sprintf("linkerd/proxy-injector %s", imageTag)
 	deployment.Spec.Template.Annotations[k8sPkg.ProxyVersionAnnotation] = imageTag
 	patch.addPodAnnotations(deployment.Spec.Template.Annotations)

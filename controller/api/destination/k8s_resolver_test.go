@@ -72,7 +72,7 @@ func TestGetState(t *testing.T) {
 				serviceID{namespace: "ns", name: "name"}: map[uint32]*servicePort{
 					8888: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("10.1.30.135", 7779, "ns", "world-575bf846b4-tp4hw"),
+							makeUpdateAddress("10.1.30.135", 7779, "world-575bf846b4-tp4hw"),
 						},
 						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{

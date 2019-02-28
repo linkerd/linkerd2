@@ -98,6 +98,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -242,6 +243,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -281,7 +284,6 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
-  namespace: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -428,6 +430,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -520,6 +523,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -603,6 +608,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -701,6 +707,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -856,6 +864,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -948,6 +957,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1096,6 +1107,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1184,6 +1196,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1224,6 +1238,7 @@ spec:
       annotations:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1317,6 +1332,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
