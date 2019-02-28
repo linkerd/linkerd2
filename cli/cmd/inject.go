@@ -115,6 +115,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if patchJSON == nil || err != nil {
 		return bytes, reports, err
 	}
+	if !conf.KindInjectable() {
+		return bytes, reports, nil
+	}
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
 		return nil, nil, err
@@ -127,7 +130,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
-	injectedYAML, err := yaml.JSONToYAML(injectedJSON)
+	injectedYAML, err := conf.JSONToYAML(injectedJSON)
 	if err != nil {
 		return nil, nil, err
 	}

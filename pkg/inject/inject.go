@@ -37,6 +37,9 @@ const (
 	DefaultKeepaliveMs = 10000
 )
 
+var injectableKinds = []string{"Deployment", "ReplicationController",
+	"ReplicaSet", "Job", "DaemonSet", "StatefulSet", "Pod"}
+
 // objMeta provides a generic struct to parse the names of Kubernetes objects
 type objMeta struct {
 	*metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
@@ -153,12 +156,57 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	}
 
 	patchJSON, err := json.Marshal(patch.patchOps)
-	log.Debugf("patch: %v\n", string(patchJSON))
+	log.Debugf("patch: %s\n", patchJSON)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return patchJSON, []Report{report}, nil
+}
+
+// KindInjectable returns true if the resource in conf can be injected with a proxy
+func (conf *ResourceConfig) KindInjectable() bool {
+	for _, kind := range injectableKinds {
+		if conf.meta.Kind == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func (conf *ResourceConfig) getFreshWorkloadObj() (interface{}, error) {
+	var obj interface{}
+
+	switch conf.meta.Kind {
+	case "Deployment":
+		obj = v1beta1.Deployment{}
+	case "ReplicationController":
+		obj = v1.ReplicationController{}
+	case "ReplicaSet":
+		obj = v1beta1.ReplicaSet{}
+	case "Job":
+		obj = batchv1.Job{}
+	case "DaemonSet":
+		obj = v1beta1.DaemonSet{}
+	case "StatefulSet":
+		obj = appsv1.StatefulSet{}
+	case "Pod":
+		obj = v1.Pod{}
+	}
+	return obj, nil
+}
+
+// JSONToYAML is a replacement for the same function in sigs.k8s.io/yaml
+// that does conserve the field order as portrayed in k8s' api structs
+func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
+	obj, err := conf.getFreshWorkloadObj()
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(bytes, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
 }
 
 // TODO: bytes can't be a List resource, but I'll fix that soon
@@ -187,80 +235,78 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	//	   containers to be self contained.
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 
-	switch conf.meta.Kind {
-	case "Deployment":
-		var deployment v1beta1.Deployment
-		if err := yaml.Unmarshal(bytes, &deployment); err != nil {
+	obj, err := conf.getFreshWorkloadObj()
+	if err != nil {
+		return err
+	}
+
+	switch v := obj.(type) {
+	case v1beta1.Deployment:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		if deployment.Name == ControlPlanePodName && deployment.Namespace == conf.globalConfig.GetLinkerdNamespace() {
+		if v.Name == ControlPlanePodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
 			conf.dnsNameOverride = LocalhostDNSNameOverride
 		}
 
-		conf.obj = &deployment
-		conf.podLabels[k8s.ProxyDeploymentLabel] = deployment.Name
-		conf.complete(&deployment.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.complete(&v.Spec.Template)
 
-	case "ReplicationController":
-		var rc v1.ReplicationController
-		if err := yaml.Unmarshal(bytes, &rc); err != nil {
+	case v1.ReplicationController:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &rc
-		conf.podLabels[k8s.ProxyReplicationControllerLabel] = rc.Name
-		conf.complete(rc.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.complete(v.Spec.Template)
 
-	case "ReplicaSet":
-		var rs v1beta1.ReplicaSet
-		if err := yaml.Unmarshal(bytes, &rs); err != nil {
+	case v1beta1.ReplicaSet:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &rs
-		conf.podLabels[k8s.ProxyReplicaSetLabel] = rs.Name
-		conf.complete(&rs.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.complete(&v.Spec.Template)
 
-	case "Job":
-		var job batchv1.Job
-		if err := yaml.Unmarshal(bytes, &job); err != nil {
+	case batchv1.Job:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &job
-		conf.podLabels[k8s.ProxyJobLabel] = job.Name
-		conf.complete(&job.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyJobLabel] = v.Name
+		conf.complete(&v.Spec.Template)
 
-	case "DaemonSet":
-		var ds v1beta1.DaemonSet
-		if err := yaml.Unmarshal(bytes, &ds); err != nil {
+	case v1beta1.DaemonSet:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &ds
-		conf.podLabels[k8s.ProxyDaemonSetLabel] = ds.Name
-		conf.complete(&ds.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.complete(&v.Spec.Template)
 
-	case "StatefulSet":
-		var statefulset appsv1.StatefulSet
-		if err := yaml.Unmarshal(bytes, &statefulset); err != nil {
+	case appsv1.StatefulSet:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &statefulset
-		conf.podLabels[k8s.ProxyStatefulSetLabel] = statefulset.Name
-		conf.complete(&statefulset.Spec.Template)
+		conf.obj = &v
+		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.complete(&v.Spec.Template)
 
-	case "Pod":
-		var pod v1.Pod
-		if err := yaml.Unmarshal(bytes, &pod); err != nil {
+	case v1.Pod:
+		if err := yaml.Unmarshal(bytes, &v); err != nil {
 			return err
 		}
 
-		conf.obj = &pod
-		conf.podSpec = &pod.Spec
-		conf.objMeta = objMeta{&pod.ObjectMeta}
+		conf.obj = &v
+		conf.podSpec = &v.Spec
+		conf.objMeta = objMeta{&v.ObjectMeta}
 	}
 
 	return nil
