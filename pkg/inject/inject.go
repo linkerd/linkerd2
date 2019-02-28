@@ -143,11 +143,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 		}
 
 		report.update(conf)
-		shouldInject, err := conf.shouldInject(report)
-		if err != nil {
-			return nil, nil, err
-		}
-		if shouldInject {
+		if conf.shouldInject(report) {
 			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(patch)
 		}
@@ -156,7 +152,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	}
 
 	patchJSON, err := json.Marshal(patch.patchOps)
-	log.Debugf("patch: %s\n", patchJSON)
+	log.Debugf("patch: %s", patchJSON)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -174,7 +170,7 @@ func (conf *ResourceConfig) KindInjectable() bool {
 	return false
 }
 
-func (conf *ResourceConfig) getFreshWorkloadObj() (interface{}, error) {
+func (conf *ResourceConfig) getFreshWorkloadObj() interface{} {
 	var obj interface{}
 
 	switch conf.meta.Kind {
@@ -193,16 +189,13 @@ func (conf *ResourceConfig) getFreshWorkloadObj() (interface{}, error) {
 	case "Pod":
 		obj = v1.Pod{}
 	}
-	return obj, nil
+	return obj
 }
 
 // JSONToYAML is a replacement for the same function in sigs.k8s.io/yaml
 // that does conserve the field order as portrayed in k8s' api structs
 func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
-	obj, err := conf.getFreshWorkloadObj()
-	if err != nil {
-		return nil, err
-	}
+	obj := conf.getFreshWorkloadObj()
 	if err := yaml.Unmarshal(bytes, &obj); err != nil {
 		return nil, err
 	}
@@ -235,10 +228,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	//	   containers to be self contained.
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 
-	obj, err := conf.getFreshWorkloadObj()
-	if err != nil {
-		return err
-	}
+	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
 	case v1beta1.Deployment:
@@ -576,20 +566,20 @@ func (conf *ResourceConfig) taggedProxyInitImage() string {
 //   "enabled", and the deployment's pod spec does not have the
 //   linkerd.io/inject annotation set to "disabled"; or
 // - the deployment's pod spec has the linkerd.io/inject annotation set to "enabled"
-func (conf *ResourceConfig) shouldInject(r Report) (bool, error) {
+func (conf *ResourceConfig) shouldInject(r Report) bool {
 	if !r.Injectable() {
-		return false, nil
+		return false
 	}
 
 	podAnnotation := conf.objMeta.Annotations[k8s.ProxyInjectAnnotation]
 	if conf.nsAnnotations == nil {
-		return true, nil
+		return true
 	}
 
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
-		return true, nil
+		return true
 	}
 
-	return podAnnotation == k8s.ProxyInjectEnabled, nil
+	return podAnnotation == k8s.ProxyInjectEnabled
 }

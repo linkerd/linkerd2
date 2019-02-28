@@ -92,12 +92,12 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 }
 
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
-	log.Debugf("request object bytes: %s", string(request.Object.Raw))
+	log.Debugf("request object bytes: %s", request.Object.Raw)
 
 	jsonUnmarshaler := jsonpb.Unmarshaler{}
 
 	globalConfigJSON, err := ioutil.ReadFile(k8s.MountPathGlobalConfig)
-	log.Debugf("globalConfig (json): %s\n", string(globalConfigJSON))
+	log.Debugf("globalConfig (json): %s", globalConfigJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 
 	proxyConfigJSON, err := ioutil.ReadFile(k8s.MountPathProxyConfig)
-	log.Debugf("proxyConfig (json): %s\n", string(proxyConfigJSON))
+	log.Debugf("proxyConfig (json): %s", proxyConfigJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -125,18 +125,23 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
 		WithNsAnnotations(nsAnnotations).
 		WithMeta(request.Kind.Kind, request.Namespace, request.Name)
-	patchJSON, _, err := conf.GetPatch(request.Object.Raw)
+	patchJSON, reports, err := conf.GetPatch(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
 
-	patchType := admissionv1beta1.PatchTypeJSONPatch
 	admissionResponse := &admissionv1beta1.AdmissionResponse{
-		UID:       request.UID,
-		Allowed:   true,
-		Patch:     patchJSON,
-		PatchType: &patchType,
+		UID:     request.UID,
+		Allowed: true,
 	}
+
+	if len(reports) > 0 && !reports[0].Injectable() {
+		return admissionResponse, nil
+	}
+
+	patchType := admissionv1beta1.PatchTypeJSONPatch
+	admissionResponse.Patch = patchJSON
+	admissionResponse.PatchType = &patchType
 
 	return admissionResponse, nil
 }
