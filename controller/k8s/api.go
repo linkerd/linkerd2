@@ -42,6 +42,7 @@ const (
 	Deploy
 	DS
 	Endpoint
+	Job
 	MWC // mutating webhook configuration
 	Pod
 	RC
@@ -49,7 +50,6 @@ const (
 	SP
 	SS
 	Svc
-	Job
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -195,7 +195,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
-			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 		}
 	}
 
@@ -672,12 +672,12 @@ func (api *API) getJobs(namespace, name string) ([]runtime.Object, error) {
 	var jobs []*batchv1.Job
 
 	if namespace == "" {
-		jobs, err = api.job.Lister().List(labels.Everything())
+		jobs, err = api.Job().Lister().List(labels.Everything())
 	} else if name == "" {
-		jobs, err = api.job.Lister().Jobs(namespace).List(labels.Everything())
+		jobs, err = api.Job().Lister().Jobs(namespace).List(labels.Everything())
 	} else {
 		var job *batchv1.Job
-		job, err = api.job.Lister().Jobs(namespace).Get(name)
+		job, err = api.Job().Lister().Jobs(namespace).Get(name)
 		jobs = []*batchv1.Job{job}
 	}
 
