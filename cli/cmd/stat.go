@@ -61,6 +61,7 @@ func newCmdStat() *cobra.Command {
   * deploy/my-deploy
   * deploy/ po/
   * ds/my-daemonset
+  * job/my-job
   * ns/my-ns
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2

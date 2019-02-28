@@ -30,6 +30,7 @@ var (
 		k8s.Authority,
 		k8s.DaemonSet,
 		k8s.Deployment,
+		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,

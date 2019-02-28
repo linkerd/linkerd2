@@ -1316,6 +1316,7 @@
     "k8s.io/client-go/informers/admissionregistration/v1beta1",
     "k8s.io/client-go/informers/apps/v1",
     "k8s.io/client-go/informers/apps/v1beta2",
+    "k8s.io/client-go/informers/batch/v1",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",

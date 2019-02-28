@@ -59,6 +59,7 @@ func newCmdTap() *cobra.Command {
   * deploy/my-deploy
   * deploy my-deploy
   * ds/my-daemonset
+  * job/my-job
   * ns/my-ns
   * sts
   * sts/my-statefulset
