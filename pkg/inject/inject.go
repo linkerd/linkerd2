@@ -214,7 +214,6 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	return yaml.Marshal(obj)
 }
 
-// TODO: bytes can't be a List resource, but I'll fix that soon
 func (conf *ResourceConfig) parse(bytes []byte) error {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which

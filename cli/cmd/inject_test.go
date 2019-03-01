@@ -75,13 +75,12 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			testInjectConfig: defaultConfig,
 		},
-		// TODO: fix Lists
-		/*{
+		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
 			testInjectConfig: defaultConfig,
-		},*/
+		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
@@ -166,13 +165,12 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
 			testInjectConfig: defaultConfig,
 		},
-		// TODO: fix Lists
-		/*{
+		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
 			testInjectConfig: defaultConfig,
-		},*/
+		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_no_init_container.golden.yml",
