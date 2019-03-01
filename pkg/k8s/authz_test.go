@@ -47,7 +47,7 @@ subjects:
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: returns expected authorization", i), func(t *testing.T) {
 			k8sClient, _ := NewFakeClientSets(test.k8sConfigs...)
-			allowed, reason, err := ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments")
+			allowed, reason, err := ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments", "")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

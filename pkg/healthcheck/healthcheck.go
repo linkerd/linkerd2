@@ -180,8 +180,7 @@ type HealthChecker struct {
 	// these fields are set in the process of running checks
 	kubeAPI          *k8s.KubernetesAPI
 	httpClient       *http.Client
-	clientset        *kubernetes.Clientset
-	spClientset      *spclient.Clientset
+	clientset        kubernetes.Interface
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
 	apiClient        public.APIClient
@@ -235,6 +234,11 @@ func (hc *HealthChecker) allCategories() []category {
 						// https://github.com/kubernetes/kubernetes/issues/46503
 						// but we can set the timeout manually
 						hc.kubeAPI.Timeout = requestTimeout
+
+						hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
+						if err != nil {
+							return err
+						}
 						return
 					},
 				},
@@ -307,7 +311,14 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can create CustomResourceDefinitions",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+					},
+				},
+				{
+					description: "has NET_ADMIN capability",
+					hintAnchor:  "pre-k8s-cluster-net-admin",
+					check: func(context.Context) error {
+						return hc.checkNetAdmin()
 					},
 				},
 			},
@@ -782,11 +793,8 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
 	if hc.clientset == nil {
-		var err error
-		hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
-		if err != nil {
-			return err
-		}
+		// we should never get here
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
 	allowed, reason, err := k8s.ResourceAuthz(
@@ -796,6 +804,7 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 		group,
 		version,
 		resource,
+		"",
 	)
 	if err != nil {
 		return err
@@ -803,23 +812,66 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 
 	if !allowed {
 		if len(reason) > 0 {
-			return fmt.Errorf("Missing permissions to create %s: %v", resource, reason)
+			return fmt.Errorf("missing permissions to create %s: %v", resource, reason)
 		}
-		return fmt.Errorf("Missing permissions to create %s", resource)
+		return fmt.Errorf("missing permissions to create %s", resource)
 	}
 	return nil
 }
 
-func (hc *HealthChecker) validateServiceProfiles() error {
-	if hc.spClientset == nil {
-		var err error
-		hc.spClientset, err = spclient.NewForConfig(hc.kubeAPI.Config)
+func (hc *HealthChecker) checkNetAdmin() error {
+	if hc.clientset == nil {
+		// we should never get here
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+	}
+
+	pspList, err := hc.clientset.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	if len(pspList.Items) == 0 {
+		// no PodSecurityPolicies found, assume PodSecurityPolicy admission controller is disabled
+		return nil
+	}
+
+	// if PodSecurityPolicies are found, validate one exists that:
+	// 1) permits usage
+	// AND
+	// 2) provides NET_ADMIN
+	for _, psp := range pspList.Items {
+		allowed, _, err := k8s.ResourceAuthz(
+			hc.clientset,
+			"",
+			"use",
+			"policy",
+			"v1beta1",
+			"PodSecurityPolicy",
+			psp.GetName(),
+		)
 		if err != nil {
 			return err
 		}
+
+		if allowed {
+			for _, capability := range psp.Spec.AllowedCapabilities {
+				if capability == "*" || capability == "NET_ADMIN" {
+					return nil
+				}
+			}
+		}
 	}
 
-	svcProfiles, err := hc.spClientset.LinkerdV1alpha1().ServiceProfiles("").List(metav1.ListOptions{})
+	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN", len(pspList.Items))
+}
+
+func (hc *HealthChecker) validateServiceProfiles() error {
+	spClientset, err := spclient.NewForConfig(hc.kubeAPI.Config)
+	if err != nil {
+		return err
+	}
+
+	svcProfiles, err := spClientset.LinkerdV1alpha1().ServiceProfiles("").List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -827,7 +879,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	for _, p := range svcProfiles.Items {
 		// TODO: remove this check once we implement ServiceProfile validation via a
 		// ValidatingAdmissionWebhook
-		result := hc.spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
+		result := spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
 		raw, err := result.Raw()
 		if err != nil {
 			return err
