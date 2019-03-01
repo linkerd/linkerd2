@@ -263,6 +263,13 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
 					},
 				},
+				{
+					description: "is running the minimum kubectl version",
+					hintAnchor:  "kubectl-version",
+					check: func(context.Context) error {
+						return k8s.CheckKubectlVersion()
+					},
+				},
 			},
 		},
 		{
