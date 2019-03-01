@@ -57,6 +57,24 @@ var (
 		`linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/trust-anchors/trust-anchors.pem: No such file or directory (os error 2)`,
 		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/identity/certificate.crt", Some(2)), falling back`,
 		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/trust-anchors/trust-anchors.pem", Some(2)), falling back`,
+
+		// k8s hitting `:3000/api/health` before grafana is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:3000)`,
+
+		// k8s hitting `:9994/ready` before web is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9994)`,
+
+		// k8s hitting `:9995/ready` before public-api is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9995)`,
+
+		// k8s hitting `:9996/ready` before destination is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9996)`,
+
+		// k8s hitting `:9997/ready` before ca is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9997)`,
+
+		// k8s hitting `:9998/ready` before tap is ready
+		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9998)`,
 	}
 )
 
