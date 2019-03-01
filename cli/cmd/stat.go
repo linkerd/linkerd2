@@ -75,11 +75,11 @@ func newCmdStat() *cobra.Command {
   * daemonsets
   * deployments
   * namespaces
+  * jobs
   * pods
   * replicationcontrollers
   * statefulsets
   * authorities (not supported in --from)
-  * jobs (only supported as a --from or --to)
   * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
 

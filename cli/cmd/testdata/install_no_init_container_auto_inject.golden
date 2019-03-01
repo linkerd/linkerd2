@@ -21,9 +21,12 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-controller
 rules:
-- apiGroups: ["extensions", "apps", "batch"]
-  resources: ["daemonsets", "deployments", "replicasets", "statefulsets", "jobs"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
+  verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
