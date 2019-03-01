@@ -23,12 +23,11 @@ func TestUninjectYAML(t *testing.T) {
 			goldenFileName: "inject_emojivoto_deployment.input.yml",
 			reportFileName: "inject_emojivoto_deployment_uninject.report",
 		},
-		// TODO: fix Lists
-		/*{
+		{
 			inputFileName:  "inject_emojivoto_list.golden.yml",
 			goldenFileName: "inject_emojivoto_list.input.yml",
 			reportFileName: "inject_emojivoto_list_uninject.report",
-		},*/
+		},
 		{
 			inputFileName:  "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			goldenFileName: "inject_emojivoto_deployment_hostNetwork_true.input.yml",
