@@ -9,6 +9,7 @@ const routesColumns = [
   {
     title: "Route",
     dataIndex: "route",
+    filter: d => d.route,
     sorter: (a, b) => {
       if (a.route === DefaultRoute) {
         return 1;
@@ -24,6 +25,7 @@ const routesColumns = [
     title: "Service",
     tooltip: "hostname:port used when communicating with this target",
     dataIndex: "authority",
+    filter: d => d.authority,
     sorter: (a, b) => (a.authority).localeCompare(b.authority)
   },
   {
@@ -76,6 +78,7 @@ export default class TopRoutesTable extends React.Component {
     const { rows } = this.props;
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={rows}
         tableColumns={routesColumns}
         tableClassName="metric-table"
