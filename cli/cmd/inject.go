@@ -260,8 +260,14 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
 	}
 	proxyConfig := &config.Proxy{
-		ProxyImage:          &config.Image{ImageName: options.proxyImageOverride(), PullPolicy: options.imagePullPolicy},
-		ProxyInitImage:      &config.Image{ImageName: options.initImageOverride(), PullPolicy: options.imagePullPolicy},
+		ProxyImage: &config.Image{
+			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
+		ProxyInitImage: &config.Image{
+			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
 		DestinationApiPort:  &config.Port{Port: uint32(options.destinationAPIPort)},
 		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
 		IgnoreInboundPorts:  ignoreInboundPorts,

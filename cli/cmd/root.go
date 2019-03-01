@@ -392,12 +392,10 @@ func (options *proxyConfigOptions) enableTLS() bool {
 	return options.tls == optionalTLS
 }
 
-func (options *proxyConfigOptions) proxyImageOverride() string {
-	return strings.Replace(options.proxyImage, defaultDockerRegistry, options.dockerRegistry, 1)
-}
-
-func (options *proxyConfigOptions) initImageOverride() string {
-	return strings.Replace(options.initImage, defaultDockerRegistry, options.dockerRegistry, 1)
+// registryOverride replaces the registry of the provided image if the image is
+// using the default registry and the provided registry is not the default.
+func registryOverride(image, registry string) string {
+	return strings.Replace(image, defaultDockerRegistry, registry, 1)
 }
 
 // addProxyConfigFlags adds command line flags for all fields in the

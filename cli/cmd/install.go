@@ -319,11 +319,11 @@ func proxyConfig(options *installOptions) *config.Proxy {
 
 	return &config.Proxy{
 		ProxyImage: &config.Image{
-			ImageName:  options.proxyImageOverride(),
+			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  options.initImageOverride(),
+			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		DestinationApiPort: &config.Port{
