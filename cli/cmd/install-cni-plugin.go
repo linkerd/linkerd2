@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/linkerd/linkerd2/cli/install"
-	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -50,7 +49,7 @@ type cniPluginOptions struct {
 func newCNIPluginOptions() *cniPluginOptions {
 	return &cniPluginOptions{
 		linkerdVersion:      version.Version,
-		dockerRegistry:      inject.DefaultDockerRegistry,
+		dockerRegistry:      defaultDockerRegistry,
 		proxyControlPort:    4190,
 		proxyMetricsPort:    4191,
 		inboundPort:         4143,
@@ -58,7 +57,7 @@ func newCNIPluginOptions() *cniPluginOptions {
 		ignoreInboundPorts:  nil,
 		ignoreOutboundPorts: nil,
 		proxyUID:            2102,
-		cniPluginImage:      inject.DefaultDockerRegistry + "/cni-plugin",
+		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
 		logLevel:            "info",
 		destCNINetDir:       "/etc/cni/net.d",
 		destCNIBinDir:       "/opt/cni/bin",
@@ -82,7 +81,7 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) taggedCNIPluginImage() string {
-	image := strings.Replace(options.cniPluginImage, inject.DefaultDockerRegistry, options.dockerRegistry, 1)
+	image := strings.Replace(options.cniPluginImage, defaultDockerRegistry, options.dockerRegistry, 1)
 	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
 }
 

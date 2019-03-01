@@ -7,13 +7,12 @@ option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 message Global {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
-  string registry = 3;
-  string version = 4;
+  string version = 3;
 
   // null indicates TLS is disabled.
   // Otherwise, a non-null struct indicates the equivalence
   // of --tls=optional.
-  IdentityContext identity_context = 5;
+  IdentityContext identity_context = 4;
 }
 
 message Proxy {

@@ -1,13 +1,8 @@
 package injector
 
 import (
-	"bytes"
-	"io/ioutil"
-
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,25 +89,13 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	jsonUnmarshaler := jsonpb.Unmarshaler{}
-
-	globalConfigJSON, err := ioutil.ReadFile(k8s.MountPathGlobalConfig)
-	log.Debugf("globalConfig (json): %s", globalConfigJSON)
+	globalConfig, err := config.Global()
 	if err != nil {
 		return nil, err
 	}
-	globalConfig := &config.Global{}
-	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(globalConfigJSON), globalConfig); err != nil {
-		return nil, err
-	}
 
-	proxyConfigJSON, err := ioutil.ReadFile(k8s.MountPathProxyConfig)
-	log.Debugf("proxyConfig (json): %s", proxyConfigJSON)
+	proxyConfig, err := config.Proxy()
 	if err != nil {
-		return nil, err
-	}
-	proxyConfig := &config.Proxy{}
-	if err := jsonUnmarshaler.Unmarshal(bytes.NewReader(proxyConfigJSON), proxyConfig); err != nil {
 		return nil, err
 	}
 

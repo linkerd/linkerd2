@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 )
@@ -93,14 +94,14 @@ func TestUninjectYAML(t *testing.T) {
 				t.Errorf("error opening test input file: %v\n", err)
 			}
 
-			read := bufio.NewReader(file)
+			read := []io.Reader{bufio.NewReader(file)}
 
 			output := new(bytes.Buffer)
 			report := new(bytes.Buffer)
 
-			err = uninjectYAML(read, output, report, newConfig())
-			if err != nil {
-				t.Errorf("Unexpected error uninjecting YAML: %v\n", err)
+			exitCode := runUninjectCmd(read, report, output, configs{nil, nil})
+			if exitCode != 0 {
+				t.Errorf("Failed to inject %s\n", tc.inputFileName)
 			}
 
 			diffTestdata(t, tc.goldenFileName, output.String())

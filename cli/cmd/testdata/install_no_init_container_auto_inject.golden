@@ -85,18 +85,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: controller
   name: linkerd-controller
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
@@ -126,6 +129,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -153,6 +157,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
+        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -177,6 +182,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -255,6 +261,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-controller-deployment-tls-linkerd-io
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -267,7 +274,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":true,"registry":"gcr.io/linkerd-io","version":"dev-undefined","identityContext":{}}
+    {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"dev-undefined","identityContext":{}}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 
@@ -413,18 +420,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: web
   name: linkerd-web
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
@@ -455,6 +465,7 @@ spec:
           httpGet:
             path: /ready
             port: 9994
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -533,6 +544,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-web-deployment-tls-linkerd-io
+status: {}
 ---
 ###
 ### Prometheus
@@ -589,18 +601,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: prometheus
   name: linkerd-prometheus
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
@@ -629,6 +644,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources: {}
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -720,6 +736,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-prometheus-deployment-tls-linkerd-io
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -842,18 +859,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: grafana
   name: linkerd-grafana
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
@@ -878,6 +898,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources: {}
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -974,6 +995,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-grafana-deployment-tls-linkerd-io
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1082,18 +1104,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: ca
   name: linkerd-ca
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: ca
         linkerd.io/control-plane-ns: linkerd
@@ -1120,6 +1145,7 @@ spec:
           httpGet:
             path: /ready
             port: 9997
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -1198,6 +1224,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-ca-deployment-tls-linkerd-io
+status: {}
 ---
 ###
 ### Proxy Injector
@@ -1208,6 +1235,7 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: proxy-injector
   name: linkerd-proxy-injector
@@ -1217,12 +1245,14 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
@@ -1251,6 +1281,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources: {}
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1335,6 +1366,7 @@ spec:
         secret:
           optional: true
           secretName: linkerd-proxy-injector-deployment-tls-linkerd-io
+status: {}
 ---
 kind: ServiceAccount
 apiVersion: v1
