@@ -241,13 +241,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 
 	obj := conf.getFreshWorkloadObj()
-	if obj == nil {
-		return nil
-	}
 
-	switch strings.ToLower(conf.meta.Kind) {
-	case k8s.Deployment:
-		v := obj.(*v1beta1.Deployment)
+	switch v := obj.(type) {
+	case *v1beta1.Deployment:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -260,8 +256,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case k8s.ReplicationController:
-		v := obj.(*v1.ReplicationController)
+	case *v1.ReplicationController:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -270,8 +265,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
-	case k8s.ReplicaSet:
-		v := obj.(*v1beta1.ReplicaSet)
+	case *v1beta1.ReplicaSet:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -280,8 +274,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case k8s.Job:
-		v := obj.(*batchv1.Job)
+	case *batchv1.Job:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -290,8 +283,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case k8s.DaemonSet:
-		v := obj.(*v1beta1.DaemonSet)
+	case *v1beta1.DaemonSet:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -300,8 +292,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case k8s.StatefulSet:
-		v := obj.(*appsv1.StatefulSet)
+	case *appsv1.StatefulSet:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -310,8 +301,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case k8s.Pod:
-		v := obj.(*v1.Pod)
+	case *v1.Pod:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
