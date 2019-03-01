@@ -10,7 +10,11 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 type configs struct {
@@ -64,15 +68,24 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			return err
 		}
 
-		result, irs, err := rt.transform(bytes)
+		var result []byte
+		var irs []inject.Report
+
+		isList, err := kindIsList(bytes)
 		if err != nil {
 			return err
 		}
-
+		if isList {
+			result, irs, err = processList(bytes, rt)
+		} else {
+			result, irs, err = rt.transform(bytes)
+		}
+		if err != nil {
+			return err
+		}
+		reports = append(reports, irs...)
 		out.Write(result)
 		out.Write([]byte("---\n"))
-
-		reports = append(reports, irs...)
 	}
 
 	rt.generateReport(reports, report)
@@ -80,19 +93,25 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 	return nil
 }
 
-// TODO: Temporarily disabled processing Lists of resources because the recursion was too hard
-// to refactor. I'll come back to this later.
-/*func processList(b []byte, options *injectOptions, rt resourceTransformer) ([]byte, []inject.InjectReport, error) {
-	var sourceList v1.List
-	if err := yaml.Unmarshal(b, &sourceList); err != nil {
+func kindIsList(bytes []byte) (bool, error) {
+	var meta metav1.TypeMeta
+	if err := yaml.Unmarshal(bytes, &meta); err != nil {
+		return false, err
+	}
+	return meta.Kind == "List", nil
+}
+
+func processList(bytes []byte, rt resourceTransformer) ([]byte, []inject.Report, error) {
+	var sourceList corev1.List
+	if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
 		return nil, nil, err
 	}
 
-	injectReports := []inject.InjectReport{}
+	reports := []inject.Report{}
 	items := []runtime.RawExtension{}
 
 	for _, item := range sourceList.Items {
-		result, reports, err := rt.transform(item.Raw, options)
+		result, irs, err := rt.transform(item.Raw)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -106,7 +125,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 		}
 
 		items = append(items, runtime.RawExtension{Raw: injected})
-		injectReports = append(injectReports, reports...)
+		reports = append(reports, irs...)
 	}
 
 	sourceList.Items = items
@@ -114,9 +133,8 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return result, injectReports, nil
-}*/
+	return result, reports, nil
+}
 
 // Read all the resource files found in path into a slice of readers.
 // path can be either a file, directory or stdin.
