@@ -15,23 +15,20 @@ var containsAlphaRegexp = regexp.MustCompile("[a-zA-Z]")
 
 // implements the streamingDestinationResolver interface
 type k8sResolver struct {
-	k8sDNSZoneLabels    []string
-	controllerNamespace string
-	endpointsWatcher    *endpointsWatcher
-	profileWatcher      *profileWatcher
+	k8sDNSZoneLabels []string
+	endpointsWatcher *endpointsWatcher
+	profileWatcher   *profileWatcher
 }
 
 func newK8sResolver(
 	k8sDNSZoneLabels []string,
-	controllerNamespace string,
 	ew *endpointsWatcher,
 	pw *profileWatcher,
 ) *k8sResolver {
 	return &k8sResolver{
-		k8sDNSZoneLabels:    k8sDNSZoneLabels,
-		controllerNamespace: controllerNamespace,
-		endpointsWatcher:    ew,
-		profileWatcher:      pw,
+		k8sDNSZoneLabels: k8sDNSZoneLabels,
+		endpointsWatcher: ew,
+		profileWatcher:   pw,
 	}
 }
 

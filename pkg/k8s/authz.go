@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"errors"
 	"fmt"
 
 	authV1 "k8s.io/api/authorization/v1"
@@ -49,31 +50,25 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) (bool, error) {
 		if r.GroupVersion == ServiceProfileAPIVersion {
 			for _, apiRes := range r.APIResources {
 				if apiRes.Kind == ServiceProfileKind {
-					// TODO: Modify this to honor the error returned, once we give the
-					// control-plane namespace-wide access to ServiceProfiles.
-					access, _ := resourceAccess(k8sClient, "", "linkerd.io", "serviceprofiles")
-					return access, nil
+					return resourceAccess(k8sClient, "linkerd.io", "serviceprofiles")
 				}
 			}
 		}
 	}
 
-	return false, nil
+	return false, errors.New("ServiceProfiles not available")
 }
 
 // ClusterAccess verifies whether k8sClient is authorized to access all
-// namespaces in the cluster, or only the given namespace. If k8sClient does not
-// have at least namespace-wide access, it returns an error.
-func ClusterAccess(k8sClient kubernetes.Interface, namespace string) (bool, error) {
-	return resourceAccess(k8sClient, namespace, "", "pods")
+// namespaces in the cluster.
+func ClusterAccess(k8sClient kubernetes.Interface) (bool, error) {
+	return resourceAccess(k8sClient, "", "pods")
 }
 
 // resourceAccess verifies whether k8sClient is authorized to access a resource
-// in all namespaces in the cluster, or only the given namespace. If k8sClient
-// does not have at least namespace-wide access, it returns an error.
-func resourceAccess(k8sClient kubernetes.Interface, namespace, group, resource string) (bool, error) {
-	// first check for cluster-wide access
-	allowed, _, err := ResourceAuthz(
+// in all namespaces in the cluster.
+func resourceAccess(k8sClient kubernetes.Interface, group, resource string) (bool, error) {
+	allowed, reason, err := ResourceAuthz(
 		k8sClient,
 		"",
 		"list",
@@ -86,30 +81,11 @@ func resourceAccess(k8sClient kubernetes.Interface, namespace, group, resource s
 		return false, err
 	}
 	if allowed {
-		// authorized for cluster-wide access
 		return true, nil
 	}
 
-	// next check for namespace-wide access
-	allowed, reason, err := ResourceAuthz(
-		k8sClient,
-		namespace,
-		"list",
-		group,
-		"",
-		resource,
-		"",
-	)
-	if err != nil {
-		return false, err
-	}
-	if allowed {
-		// authorized for namespace-wide access
-		return false, nil
-	}
-
 	if len(reason) > 0 {
-		return false, fmt.Errorf("not authorized to access \"%s\" namespace: %s", namespace, reason)
+		return false, fmt.Errorf("not authorized to access %s/%s: %s", group, resource, reason)
 	}
-	return false, fmt.Errorf("not authorized to access \"%s\" namespace", namespace)
+	return false, fmt.Errorf("not authorized to access %s/%s", group, resource)
 }

@@ -278,7 +278,7 @@ type expectedStatRPC struct {
 }
 
 func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
-	k8sAPI, err := k8s.NewFakeAPI("", exp.k8sConfigs...)
+	k8sAPI, err := k8s.NewFakeAPI(exp.k8sConfigs...)
 	if err != nil {
 		return nil, nil, err
 	}

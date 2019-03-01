@@ -184,7 +184,7 @@ status:
 		}
 
 		for _, exp := range expectations {
-			k8sAPI, err := k8s.NewFakeAPI("", exp.k8sRes...)
+			k8sAPI, err := k8s.NewFakeAPI(exp.k8sRes...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}

@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -72,82 +73,54 @@ type API struct {
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
 	spSharedInformers sp.SharedInformerFactory
-	namespace         string
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPI(kubeConfig string, namespace string, resources ...APIResource) (*API, error) {
+func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	k8sClient, err := NewClientSet(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	// check for cluster-wide vs. namespace-wide access
-	clusterAccess, err := k8s.ClusterAccess(k8sClient, namespace)
+	// check for cluster-wide access
+	clusterAccess, err := k8s.ClusterAccess(k8sClient)
 	if err != nil {
 		return nil, err
 	}
-	restrictToNamespace := ""
 	if !clusterAccess {
-		log.Warnf("Not authorized for cluster-wide access, limiting access to \"%s\" namespace", namespace)
-		restrictToNamespace = namespace
+		return nil, fmt.Errorf("not authorized for cluster-wide access")
 	}
 
 	// check for need and access to ServiceProfiles
 	var spClient *spclient.Clientset
-	idxSP := 0
-	needSP := false
-	for i := range resources {
-		if resources[i] == SP {
-			needSP = true
-			idxSP = i
-			break
-		}
-	}
-	if needSP {
-		serviceProfiles, err := k8s.ServiceProfilesAccess(k8sClient)
-		if err != nil {
-			return nil, err
-		}
-		if serviceProfiles {
+	for _, res := range resources {
+		if res == SP {
+			serviceProfiles, err := k8s.ServiceProfilesAccess(k8sClient)
+			if err != nil {
+				return nil, err
+			}
+			if !serviceProfiles {
+				return nil, errors.New("not authorized for ServiceProfile access")
+			}
+
 			spClient, err = NewSpClientSet(kubeConfig)
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			log.Warn("ServiceProfiles not available")
-			// remove SP from resources list
-			resources = append(resources[:idxSP], resources[idxSP+1:]...)
+
+			break
 		}
 	}
-
-	return NewAPI(k8sClient, spClient, restrictToNamespace, resources...), nil
+	return NewAPI(k8sClient, spClient, resources...), nil
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API.
-func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespace string, resources ...APIResource) *API {
-	var sharedInformers informers.SharedInformerFactory
+func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resources ...APIResource) *API {
+	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+
 	var spSharedInformers sp.SharedInformerFactory
-	if namespace == "" {
-		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
-		if spClient != nil {
-			spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
-		}
-	} else {
-		sharedInformers = informers.NewFilteredSharedInformerFactory(
-			k8sClient,
-			10*time.Minute,
-			namespace,
-			nil,
-		)
-		if spClient != nil {
-			spSharedInformers = sp.NewFilteredSharedInformerFactory(
-				spClient,
-				10*time.Minute,
-				namespace,
-				nil,
-			)
-		}
+	if spClient != nil {
+		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
 	}
 
 	api := &API{
@@ -155,7 +128,6 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		syncChecks:        make([]cache.InformerSynced, 0),
 		sharedInformers:   sharedInformers,
 		spSharedInformers: spSharedInformers,
-		namespace:         namespace,
 	}
 
 	for _, resource := range resources {
@@ -499,15 +471,10 @@ func GetNamespaceOf(obj runtime.Object) (string, error) {
 }
 
 // getNamespaces returns the namespace matching the specified name. If no name
-// is given, it returns all namespaces, unless the API was configured to only
-// work with a single namespace, in which case it returns that namespace. Note
-// that namespace reads are not cached.
+// is given, it returns all namespaces. Note that namespace reads are not
+// cached.
 func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
 	namespaces := make([]*corev1.Namespace, 0)
-
-	if name == "" && api.namespace != "" {
-		name = api.namespace
-	}
 
 	if name == "" {
 		namespaceList, err := api.Client.CoreV1().Namespaces().List(metav1.ListOptions{})

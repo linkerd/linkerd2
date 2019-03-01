@@ -67,7 +67,7 @@ spec:
 	} {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
-			k8sAPI, err := k8s.NewFakeAPI("", tt.k8sConfigs...)
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
