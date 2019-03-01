@@ -85,12 +85,14 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
   name: linkerd-controller
   namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -98,6 +100,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
         linkerd.io/control-plane-ns: Namespace
@@ -127,6 +130,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -154,6 +158,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
+        resources: {}
         securityContext:
           runAsUser: 2103
       - args:
@@ -178,6 +183,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -252,6 +258,7 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -410,12 +417,14 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: web
   name: linkerd-web
   namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -423,6 +432,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: web
         linkerd.io/control-plane-ns: Namespace
@@ -453,6 +463,7 @@ spec:
           httpGet:
             path: /ready
             port: 9994
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -527,6 +538,7 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-web
+status: {}
 ---
 ###
 ### Prometheus
@@ -583,12 +595,14 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
   name: linkerd-prometheus
   namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -596,6 +610,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
         linkerd.io/control-plane-ns: Namespace
@@ -606,7 +621,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        image: prom/prometheus:v2.7.1
+        image: PrometheusImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
@@ -624,6 +639,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources: {}
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -712,6 +728,7 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -834,12 +851,14 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
   name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -847,6 +866,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
         linkerd.io/control-plane-ns: Namespace
@@ -871,6 +891,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources: {}
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -964,6 +985,7 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1072,12 +1094,14 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: ca
   name: linkerd-ca
   namespace: Namespace
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -1085,6 +1109,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: ca
         linkerd.io/control-plane-ns: Namespace
@@ -1111,6 +1136,7 @@ spec:
           httpGet:
             path: /ready
             port: 9997
+        resources: {}
         securityContext:
           runAsUser: 2103
       - env:
@@ -1185,6 +1211,7 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-ca
+status: {}
 ---
 ###
 ### Proxy Injector
@@ -1195,6 +1222,7 @@ kind: Deployment
 metadata:
   annotations:
     CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: proxy-injector
   name: linkerd-proxy-injector
@@ -1204,6 +1232,7 @@ spec:
   selector:
     matchLabels:
       ControllerComponentLabel: proxy-injector
+  strategy: {}
   template:
     metadata:
       annotations:
@@ -1211,6 +1240,7 @@ spec:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         ControllerComponentLabel: proxy-injector
         linkerd.io/control-plane-ns: Namespace
@@ -1239,6 +1269,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources: {}
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1320,6 +1351,7 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+status: {}
 ---
 kind: ServiceAccount
 apiVersion: v1

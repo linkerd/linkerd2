@@ -16,29 +16,32 @@ import (
 	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	// LocalhostDNSNameOverride allows override of the controlPlaneDNS. This
+	// localhostDNSNameOverride allows override of the controlPlaneDNS. This
 	// must be in absolute form for the proxy to special-case it.
-	LocalhostDNSNameOverride = "localhost."
-	// ControlPlanePodName default control plane pod name.
-	ControlPlanePodName = "linkerd-controller"
-	// PodNamespaceEnvVarName is the name of the variable used to pass the pod's namespace.
-	PodNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
-	// PrometheusImage is the docker image and tag for the Prometheus instance used in the control plane
-	PrometheusImage                 = "prom/prometheus:v2.7.1"
-	prometheusProxyOutboundCapacity = 10000
-	// DefaultDockerRegistry is the default registry to pull the proxy and init container images from
-	DefaultDockerRegistry = "gcr.io/linkerd-io"
-	// DefaultKeepaliveMs is used in the proxy configuration for remote connections
-	DefaultKeepaliveMs = 10000
+	localhostDNSNameOverride = "localhost."
+	// controlPlanePodName default control plane pod name.
+	controlPlanePodName = "linkerd-controller"
+	// podNamespaceEnvVarName is the name of the variable used to pass the pod's namespace.
+	podNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
+	// defaultKeepaliveMs is used in the proxy configuration for remote connections
+	defaultKeepaliveMs = 10000
 )
 
-var injectableKinds = []string{"Deployment", "ReplicationController",
-	"ReplicaSet", "Job", "DaemonSet", "StatefulSet", "Pod"}
+var injectableKinds = []string{
+	k8s.DaemonSet,
+	k8s.Deployment,
+	k8s.Job,
+	k8s.Pod,
+	k8s.ReplicaSet,
+	k8s.ReplicationController,
+	k8s.StatefulSet,
+}
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
 type objMeta struct {
@@ -47,23 +50,25 @@ type objMeta struct {
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	globalConfig    *config.Global
-	proxyConfig     *config.Proxy
-	nsAnnotations   map[string]string
-	meta            metav1.TypeMeta
-	obj             interface{}
-	objMeta         objMeta
-	podLabels       map[string]string
-	podSpec         *v1.PodSpec
-	dnsNameOverride string
+	globalConfig          *config.Global
+	proxyConfig           *config.Proxy
+	nsAnnotations         map[string]string
+	meta                  metav1.TypeMeta
+	obj                   runtime.Object
+	objMeta               objMeta
+	podLabels             map[string]string
+	podSpec               *v1.PodSpec
+	dnsNameOverride       string
+	proxyOutboundCapacity map[string]uint
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
 func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *ResourceConfig {
 	return &ResourceConfig{
-		globalConfig: globalConfig,
-		proxyConfig:  proxyConfig,
-		podLabels:    map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
+		globalConfig:          globalConfig,
+		proxyConfig:           proxyConfig,
+		podLabels:             map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
+		proxyOutboundCapacity: map[string]uint{},
 	}
 }
 
@@ -78,6 +83,14 @@ func (conf *ResourceConfig) WithMeta(kind, namespace, name string) *ResourceConf
 // be used in shouldInject()
 func (conf *ResourceConfig) WithNsAnnotations(m map[string]string) *ResourceConfig {
 	conf.nsAnnotations = m
+	return conf
+}
+
+// WithProxyOutboundCapacity enriches ResourceConfig with a map of image names
+// to capacities, which can be used by the install code to modify the outbound
+// capacity for the prometheus container in the control plane install
+func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *ResourceConfig {
+	conf.proxyOutboundCapacity = m
 	return conf
 }
 
@@ -117,7 +130,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	}
 
 	var patch *Patch
-	if conf.meta.Kind == "Pod" {
+	if strings.ToLower(conf.meta.Kind) == k8s.Pod {
 		patch = NewPatchPod()
 	} else {
 		patch = NewPatchDeployment()
@@ -138,7 +151,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 		identity := k8s.TLSIdentity{
 			Name:                metaAccessor.GetName(),
 			Kind:                strings.ToLower(conf.meta.Kind),
-			Namespace:           "$" + PodNamespaceEnvVarName,
+			Namespace:           "$" + podNamespaceEnvVarName,
 			ControllerNamespace: conf.globalConfig.GetLinkerdNamespace(),
 		}
 
@@ -163,40 +176,39 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 // KindInjectable returns true if the resource in conf can be injected with a proxy
 func (conf *ResourceConfig) KindInjectable() bool {
 	for _, kind := range injectableKinds {
-		if conf.meta.Kind == kind {
+		if strings.ToLower(conf.meta.Kind) == kind {
 			return true
 		}
 	}
 	return false
 }
 
-func (conf *ResourceConfig) getFreshWorkloadObj() interface{} {
-	var obj interface{}
-
-	switch conf.meta.Kind {
-	case "Deployment":
-		obj = v1beta1.Deployment{}
-	case "ReplicationController":
-		obj = v1.ReplicationController{}
-	case "ReplicaSet":
-		obj = v1beta1.ReplicaSet{}
-	case "Job":
-		obj = batchv1.Job{}
-	case "DaemonSet":
-		obj = v1beta1.DaemonSet{}
-	case "StatefulSet":
-		obj = appsv1.StatefulSet{}
-	case "Pod":
-		obj = v1.Pod{}
+func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
+	switch strings.ToLower(conf.meta.Kind) {
+	case k8s.Deployment:
+		return &v1beta1.Deployment{}
+	case k8s.ReplicationController:
+		return &v1.ReplicationController{}
+	case k8s.ReplicaSet:
+		return &v1beta1.ReplicaSet{}
+	case k8s.Job:
+		return &batchv1.Job{}
+	case k8s.DaemonSet:
+		return &v1beta1.DaemonSet{}
+	case k8s.StatefulSet:
+		return &appsv1.StatefulSet{}
+	case k8s.Pod:
+		return &v1.Pod{}
 	}
-	return obj
+
+	return nil
 }
 
 // JSONToYAML is a replacement for the same function in sigs.k8s.io/yaml
 // that does conserve the field order as portrayed in k8s' api structs
 func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	obj := conf.getFreshWorkloadObj()
-	if err := yaml.Unmarshal(bytes, &obj); err != nil {
+	if err := yaml.Unmarshal(bytes, obj); err != nil {
 		return nil, err
 	}
 	return yaml.Marshal(obj)
@@ -231,70 +243,70 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
-	case v1beta1.Deployment:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *v1beta1.Deployment:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		if v.Name == ControlPlanePodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
-			conf.dnsNameOverride = LocalhostDNSNameOverride
+		if v.Name == controlPlanePodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
+			conf.dnsNameOverride = localhostDNSNameOverride
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case v1.ReplicationController:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *v1.ReplicationController:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
-	case v1beta1.ReplicaSet:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *v1beta1.ReplicaSet:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case batchv1.Job:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *batchv1.Job:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case v1beta1.DaemonSet:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *v1beta1.DaemonSet:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case appsv1.StatefulSet:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *appsv1.StatefulSet:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case v1.Pod:
-		if err := yaml.Unmarshal(bytes, &v); err != nil {
+	case *v1.Pod:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.obj = &v
+		conf.obj = v
 		conf.podSpec = &v.Spec
 		conf.objMeta = objMeta{&v.ObjectMeta}
 	}
@@ -413,11 +425,11 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			{Name: "LINKERD2_PROXY_INBOUND_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetInboundPort().GetPort())},
 			{Name: "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES", Value: profileSuffixes},
 			{
-				Name:      PodNamespaceEnvVarName,
+				Name:      podNamespaceEnvVarName,
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
-			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", DefaultKeepaliveMs)},
-			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", DefaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
+			{Name: "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE", Value: fmt.Sprintf("%dms", defaultKeepaliveMs)},
 			{Name: "LINKERD2_PROXY_ID", Value: identity.ToDNSName()},
 		},
 		LivenessProbe:  &proxyProbe,
@@ -432,11 +444,11 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
 	// not just the one in Linkerd's Control Plane.
 	for _, container := range conf.podSpec.Containers {
-		if container.Image == PrometheusImage {
+		if capacity, ok := conf.proxyOutboundCapacity[container.Image]; ok {
 			sidecar.Env = append(sidecar.Env,
 				v1.EnvVar{
 					Name:  "LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY",
-					Value: fmt.Sprintf("%d", prometheusProxyOutboundCapacity),
+					Value: fmt.Sprintf("%d", capacity),
 				},
 			)
 			break
@@ -544,17 +556,15 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
-	name := conf.proxyConfig.GetProxyImage().GetImageName()
-	reg := conf.globalConfig.GetRegistry()
-	image := strings.Replace(name, DefaultDockerRegistry, reg, 1)
-	return fmt.Sprintf("%s:%s", image, conf.globalConfig.GetVersion())
+	return fmt.Sprintf("%s:%s",
+		conf.proxyConfig.GetProxyImage().GetImageName(),
+		conf.globalConfig.GetVersion())
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
-	name := conf.proxyConfig.GetProxyInitImage().GetImageName()
-	reg := conf.globalConfig.GetRegistry()
-	image := strings.Replace(name, DefaultDockerRegistry, reg, 1)
-	return fmt.Sprintf("%s:%s", image, conf.globalConfig.GetVersion())
+	return fmt.Sprintf("%s:%s",
+		conf.proxyConfig.GetProxyInitImage().GetImageName(),
+		conf.globalConfig.GetVersion())
 }
 
 // shouldInject determines whether or not the given deployment should be

@@ -83,18 +83,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: controller
   name: linkerd-controller
   namespace: linkerd
 spec:
   replicas: 2
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
@@ -264,6 +267,7 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -276,7 +280,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"registry":"gcr.io/linkerd-io","version":"dev-undefined","identityContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"dev-undefined","identityContext":null}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"400m","requestMemory":"300Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 
@@ -422,18 +426,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: web
   name: linkerd-web
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
@@ -545,6 +552,7 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-web
+status: {}
 ---
 ###
 ### Prometheus
@@ -601,18 +609,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: prometheus
   name: linkerd-prometheus
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
@@ -736,6 +747,7 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -858,18 +870,21 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: grafana
   name: linkerd-grafana
   namespace: linkerd
 spec:
   replicas: 1
+  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
@@ -994,6 +1009,7 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
+status: {}
 ---
 kind: ConfigMap
 apiVersion: v1

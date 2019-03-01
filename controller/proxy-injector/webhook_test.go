@@ -19,7 +19,6 @@ var (
 	globalConfig = &config.Global{
 		LinkerdNamespace: "linkerd",
 		CniEnabled:       false,
-		Registry:         "gcr.io/linkerd-io",
 		IdentityContext:  nil,
 	}
 	proxyConfig = &config.Proxy{
