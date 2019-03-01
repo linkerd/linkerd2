@@ -283,6 +283,82 @@ status:
 		testStatSummary(t, expectations)
 	})
 
+	t.Run("Successfully performs a query based on resource type Job", func(t *testing.T) {
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emoji
+  namespace: emojivoto
+spec:
+  selector:
+    matchLabels:
+      app: emoji-job
+  strategy: {}
+  template:
+    spec:
+      containers:
+      - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-job
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-not-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-job
+status:
+  phase: Running
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-not-running
+  namespace: emojivoto
+  labels:
+    app: emoji-job
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Completed
+`,
+					},
+					mockPromResponse: prometheusMetric("emoji", "k8s_job"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Job,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Job, []string{"emojivoto"}, &PodCounts{
+					MeshedPods:  1,
+					RunningPods: 2,
+					FailedPods:  0,
+				}, true, false),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
 	t.Run("Successfully performs a query based on resource type StatefulSet", func(t *testing.T) {
 		expectations := []statSumExpected{
 			{
