@@ -30,15 +30,13 @@ type injectOptions struct {
 
 type resourceTransformerInject struct {
 	configs
-}
-
-// injectYAML processes resource definitions and outputs them after injection in out
-func injectYAML(in io.Reader, out io.Writer, report io.Writer, conf configs) error {
-	return processYAML(in, out, report, resourceTransformerInject{conf})
+	proxyOutboundCapacity map[string]uint
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerInject{conf})
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerInject{
+		configs: conf,
+	})
 }
 
 func newInjectOptions() *injectOptions {
@@ -103,6 +101,9 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf 
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
 	conf := inject.NewResourceConfig(rt.global, rt.proxy)
+	if len(rt.proxyOutboundCapacity) > 0 {
+		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
+	}
 	supportedResource, err := conf.ParseMeta(bytes)
 	if err != nil {
 		return nil, nil, err
@@ -247,7 +248,6 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 	globalConfig := &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
-		Registry:         options.dockerRegistry,
 		Version:          options.linkerdVersion,
 		IdentityContext:  idContext,
 	}
@@ -260,8 +260,14 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
 	}
 	proxyConfig := &config.Proxy{
-		ProxyImage:          &config.Image{ImageName: options.proxyImage, PullPolicy: options.imagePullPolicy},
-		ProxyInitImage:      &config.Image{ImageName: options.initImage, PullPolicy: options.imagePullPolicy},
+		ProxyImage: &config.Image{
+			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
+		ProxyInitImage: &config.Image{
+			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
 		DestinationApiPort:  &config.Port{Port: uint32(options.destinationAPIPort)},
 		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
 		IgnoreInboundPorts:  ignoreInboundPorts,

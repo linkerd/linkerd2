@@ -7,12 +7,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
@@ -41,36 +39,15 @@ type installConfig struct {
 	CreatedByAnnotation         string
 	DestinationAPIPort          uint
 	EnableTLS                   bool
-	TLSTrustAnchorVolumeName    string
-	TLSSecretsVolumeName        string
 	TLSTrustAnchorConfigMapName string
 	ProxyContainerName          string
 	TLSTrustAnchorFileName      string
-	TLSCertFileName             string
-	TLSPrivateKeyFileName       string
-	InboundPort                 uint
-	OutboundPort                uint
-	IgnoreInboundPorts          string
-	IgnoreOutboundPorts         string
-	InboundAcceptKeepaliveMs    uint
-	OutboundConnectKeepaliveMs  uint
 	ProxyAutoInjectEnabled      bool
 	ProxyInjectAnnotation       string
 	ProxyInjectDisabled         string
-	ProxyLogLevel               string
-	ProxyUID                    int64
-	ProxyMetricsPort            uint
-	ProxyControlPort            uint
-	ProxyInitImage              string
-	ProxyImage                  string
-	ProxyResourceRequestCPU     string
-	ProxyResourceRequestMemory  string
-	ProxyResourceLimitCPU       string
-	ProxyResourceLimitMemory    string
 	SingleNamespace             bool
 	EnableHA                    bool
 	ControllerUID               int64
-	ProfileSuffixes             string
 	EnableH2Upgrade             bool
 	NoInitContainer             bool
 	GlobalConfig                string
@@ -94,8 +71,9 @@ type installOptions struct {
 }
 
 const (
-	defaultControllerReplicas   = 1
-	defaultHAControllerReplicas = 3
+	prometheusProxyOutboundCapacity = 10000
+	defaultControllerReplicas       = 1
+	defaultHAControllerReplicas     = 3
 
 	nsTemplateName             = "templates/namespace.yaml"
 	controllerTemplateName     = "templates/controller.yaml"
@@ -153,19 +131,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		return nil, err
 	}
 
-	// TODO: these seem to not be used?
-	ignoreInboundPorts := []string{
-		fmt.Sprintf("%d", options.proxyControlPort),
-		fmt.Sprintf("%d", options.proxyMetricsPort),
-	}
-	for _, p := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, fmt.Sprintf("%d", p))
-	}
-	ignoreOutboundPorts := []string{}
-	for _, p := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
-	}
-
 	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
 		options.controllerReplicas = defaultHAControllerReplicas
 	}
@@ -176,11 +141,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 
 	if options.highAvailability && options.proxyMemoryRequest == "" {
 		options.proxyMemoryRequest = "20Mi"
-	}
-
-	profileSuffixes := "."
-	if options.proxyConfigOptions.disableExternalProfiles {
-		profileSuffixes = "svc.cluster.local."
 	}
 
 	jsonMarshaler := jsonpb.Marshaler{EmitDefaults: true}
@@ -198,7 +158,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		Namespace:                   controlPlaneNamespace,
 		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
 		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:             inject.PrometheusImage,
+		PrometheusImage:             "prom/prometheus:v2.7.1",
 		PrometheusVolumeName:        "data",
 		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
 		GrafanaVolumeName:           "data",
@@ -212,35 +172,14 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		CreatedByAnnotation:         k8s.CreatedByAnnotation,
 		DestinationAPIPort:          options.destinationAPIPort,
 		EnableTLS:                   options.enableTLS(),
-		TLSTrustAnchorVolumeName:    k8s.TLSTrustAnchorVolumeName,
-		TLSSecretsVolumeName:        k8s.TLSSecretsVolumeName,
 		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:          k8s.ProxyContainerName,
 		TLSTrustAnchorFileName:      k8s.TLSTrustAnchorFileName,
-		TLSCertFileName:             k8s.TLSCertFileName,
-		TLSPrivateKeyFileName:       k8s.TLSPrivateKeyFileName,
-		InboundPort:                 options.inboundPort,
-		OutboundPort:                options.outboundPort,
-		IgnoreInboundPorts:          strings.Join(ignoreInboundPorts, ","),
-		IgnoreOutboundPorts:         strings.Join(ignoreOutboundPorts, ","),
-		InboundAcceptKeepaliveMs:    inject.DefaultKeepaliveMs,
-		OutboundConnectKeepaliveMs:  inject.DefaultKeepaliveMs,
 		ProxyAutoInjectEnabled:      options.proxyAutoInject,
 		ProxyInjectAnnotation:       k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:         k8s.ProxyInjectDisabled,
-		ProxyLogLevel:               options.proxyLogLevel,
-		ProxyUID:                    options.proxyUID,
-		ProxyMetricsPort:            options.proxyMetricsPort,
-		ProxyControlPort:            options.proxyControlPort,
-		ProxyInitImage:              options.initImage,
-		ProxyImage:                  options.proxyImage,
-		ProxyResourceRequestCPU:     options.proxyCPURequest,
-		ProxyResourceRequestMemory:  options.proxyMemoryRequest,
-		ProxyResourceLimitCPU:       options.proxyCPULimit,
-		ProxyResourceLimitMemory:    options.proxyMemoryLimit,
 		SingleNamespace:             options.singleNamespace,
 		EnableHA:                    options.highAvailability,
-		ProfileSuffixes:             profileSuffixes,
 		EnableH2Upgrade:             !options.disableH2Upgrade,
 		NoInitContainer:             options.noInitContainer,
 		GlobalConfig:                globalConfig,
@@ -320,7 +259,12 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
 	pbConfig := injectOptionsToConfigs(injectOptions)
 
-	return injectYAML(&buf, w, ioutil.Discard, pbConfig)
+	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
+		configs: pbConfig,
+		proxyOutboundCapacity: map[string]uint{
+			config.PrometheusImage: prometheusProxyOutboundCapacity,
+		},
+	})
 }
 
 func (options *installOptions) validate() error {
@@ -357,7 +301,6 @@ func globalConfig(options *installOptions) *config.Global {
 	return &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
-		Registry:         options.dockerRegistry,
 		Version:          options.linkerdVersion,
 		IdentityContext:  identityContext,
 	}
@@ -376,11 +319,11 @@ func proxyConfig(options *installOptions) *config.Proxy {
 
 	return &config.Proxy{
 		ProxyImage: &config.Image{
-			ImageName:  options.proxyImage,
+			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  options.initImage,
+			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		DestinationApiPort: &config.Port{
