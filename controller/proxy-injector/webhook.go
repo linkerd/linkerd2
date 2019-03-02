@@ -108,7 +108,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
 		WithNsAnnotations(nsAnnotations).
 		WithMeta(request.Kind.Kind, request.Namespace, request.Name)
-	patchJSON, reports, err := conf.GetPatch(request.Object.Raw)
+	patchJSON, reports, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
 	if err != nil {
 		return nil, err
 	}
