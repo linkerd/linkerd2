@@ -256,7 +256,6 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
-	destinationAPIPort      uint
 	proxyControlPort        uint
 	proxyMetricsPort        uint
 	proxyCPURequest         string
@@ -272,33 +271,6 @@ const (
 	optionalTLS           = "optional"
 	defaultDockerRegistry = "gcr.io/linkerd-io"
 )
-
-// Deprecated. Use newConfig
-func newProxyConfigOptions() *proxyConfigOptions {
-	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		destinationAPIPort:      8086,
-		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		proxyCPULimit:           "",
-		proxyMemoryLimit:        "",
-		tls:                     "",
-		disableExternalProfiles: false,
-		noInitContainer:         false,
-	}
-}
 
 func newConfig() configs {
 	globalConfig := &config.Global{
@@ -413,7 +385,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	cmd.PersistentFlags().UintVar(&options.destinationAPIPort, "api-port", options.destinationAPIPort, "Port where the Linkerd controller's destination API is running")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu-request", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")

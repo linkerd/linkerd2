@@ -36,7 +36,6 @@ func TestRender(t *testing.T) {
 		ControllerLogLevel:          "ControllerLogLevel",
 		ControllerComponentLabel:    "ControllerComponentLabel",
 		CreatedByAnnotation:         "CreatedByAnnotation",
-		DestinationAPIPort:          123,
 		EnableTLS:                   true,
 		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
 		ProxyContainerName:          "ProxyContainerName",
@@ -66,7 +65,6 @@ func TestRender(t *testing.T) {
 		ControllerLogLevel:          "ControllerLogLevel",
 		ControllerComponentLabel:    "ControllerComponentLabel",
 		CreatedByAnnotation:         "CreatedByAnnotation",
-		DestinationAPIPort:          123,
 		ControllerUID:               2103,
 		EnableTLS:                   true,
 		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
@@ -136,7 +134,7 @@ func TestRender(t *testing.T) {
 func TestValidate(t *testing.T) {
 	t.Run("Accepts the default options as valid", func(t *testing.T) {
 		if err := newInstallOptions().validate(); err != nil {
-			t.Fatalf("Unexpected error: %s", err)
+			t.Fatalf("Failed to validate install options: %s", err)
 		}
 	})
 

@@ -83,8 +83,8 @@ spec:
     {{.Values.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
-    port: {{.Values.DestinationAPIPort}}
-    targetPort: {{.Values.DestinationAPIPort}}
+    port: 8086
+    targetPort: 8086
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -140,14 +140,14 @@ spec:
       - name: destination
         ports:
         - name: grpc
-          containerPort: {{.Values.DestinationAPIPort}}
+          containerPort: 8086
         - name: admin-http
           containerPort: 9996
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "destination"
-        - "-addr=:{{.Values.DestinationAPIPort}}"
+        - "-addr=:8086"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-enable-tls={{.Values.EnableTLS}}"
         - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"

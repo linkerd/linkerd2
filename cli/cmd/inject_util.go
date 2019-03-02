@@ -8,23 +8,143 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
+
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type configs struct {
-	global *config.Global
-	proxy  *config.Proxy
+	global *pb.Global
+	proxy  *pb.Proxy
 }
 
 type resourceTransformer interface {
 	transform([]byte) ([]byte, []inject.Report, error)
 	generateReport([]inject.Report, io.Writer)
+}
+
+// fetchConfigsFromK8s uses the CLI's global configuration to fetch linkerd
+// configuration from Kubernetes.
+func fetchConfigsFromK8s() (configs, error) {
+	api, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	if err != nil {
+		return configs{}, err
+	}
+
+	k, err := kubernetes.NewForConfig(api.Config)
+	if err != nil {
+		return configs{}, err
+	}
+
+	global, proxy, err := config.Fetch(k.CoreV1().ConfigMaps(controlPlaneNamespace))
+	return configs{global, proxy}, err
+}
+
+// TODO: this is just a temporary function to convert command-line options to GlobalConfig
+// and ProxyConfig, until we come up with an abstraction over those GRPC structs
+func (c *configs) overrideFromOptions(options *injectOptions) {
+	if c == nil {
+		newc := newConfig()
+		c = &newc
+	}
+
+	if c.global == nil {
+		c.global = &pb.Global{}
+	}
+
+	if c.global.Version == "" {
+		c.global.Version = options.linkerdVersion
+	}
+
+	c.global.LinkerdNamespace = controlPlaneNamespace
+	c.global.CniEnabled = c.global.CniEnabled || options.noInitContainer
+
+	if options.tls != optionalTLS {
+		c.global.IdentityContext = nil
+	}
+
+	if c.proxy == nil {
+		c.proxy = &pb.Proxy{}
+	}
+	if len(options.ignoreInboundPorts) > 0 {
+		c.proxy.IgnoreInboundPorts = []*pb.Port{}
+		for _, port := range options.ignoreInboundPorts {
+			c.proxy.IgnoreInboundPorts = append(c.proxy.IgnoreInboundPorts, &pb.Port{Port: uint32(port)})
+		}
+	}
+	if len(options.ignoreOutboundPorts) > 0 {
+		c.proxy.IgnoreOutboundPorts = []*pb.Port{}
+		for _, port := range options.ignoreOutboundPorts {
+			c.proxy.IgnoreOutboundPorts = append(c.proxy.IgnoreOutboundPorts, &pb.Port{Port: uint32(port)})
+		}
+	}
+
+	if c.proxy.ProxyImage == nil {
+		c.proxy.ProxyImage = &pb.Image{}
+	}
+	if options.proxyImage != "" && options.dockerRegistry != "" {
+		c.proxy.ProxyImage.ImageName = registryOverride(options.proxyImage, options.dockerRegistry)
+	}
+	if options.imagePullPolicy != "" {
+		c.proxy.ProxyImage.PullPolicy = options.imagePullPolicy
+	}
+
+	if options.initImage != "" && options.dockerRegistry != "" {
+		c.proxy.ProxyInitImage.ImageName = registryOverride(options.initImage, options.dockerRegistry)
+	}
+	if options.imagePullPolicy != "" {
+		c.proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
+	}
+
+	if options.proxyControlPort != 0 {
+		c.proxy.ControlPort = &pb.Port{Port: uint32(options.proxyControlPort)}
+	}
+	if options.inboundPort != 0 {
+		c.proxy.InboundPort = &pb.Port{Port: uint32(options.inboundPort)}
+	}
+	if options.outboundPort != 0 {
+		c.proxy.OutboundPort = &pb.Port{Port: uint32(options.outboundPort)}
+	}
+	if options.proxyMetricsPort != 0 {
+		c.proxy.MetricsPort = &pb.Port{Port: uint32(options.proxyMetricsPort)}
+	}
+
+	if options.proxyUID != 0 {
+		c.proxy.ProxyUid = options.proxyUID
+	}
+	if options.proxyLogLevel != "" {
+		c.proxy.LogLevel = &pb.LogLevel{Level: options.proxyLogLevel}
+	}
+	if options.disableExternalProfiles {
+		c.proxy.DisableExternalProfiles = options.disableExternalProfiles
+	}
+
+	if options.proxyCPURequest != "" || options.proxyCPULimit != "" ||
+		options.proxyMemoryRequest != "" || options.proxyMemoryLimit != "" {
+		if c.proxy.Resource == nil {
+			c.proxy.Resource = &pb.ResourceRequirements{}
+		}
+		if options.proxyCPURequest != "" {
+			c.proxy.Resource.RequestCpu = options.proxyCPURequest
+		}
+		if options.proxyCPULimit != "" {
+			c.proxy.Resource.LimitCpu = options.proxyCPULimit
+		}
+		if options.proxyMemoryRequest != "" {
+			c.proxy.Resource.RequestMemory = options.proxyMemoryRequest
+		}
+		if options.proxyMemoryLimit != "" {
+			c.proxy.Resource.LimitMemory = options.proxyMemoryLimit
+		}
+	}
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.

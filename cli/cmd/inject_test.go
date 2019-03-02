@@ -268,7 +268,8 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	conf := injectOptionsToConfigs(newInjectOptions())
+	conf := newConfig()
+	conf.overrideFromOptions(newInjectOptions())
 	if exitCode := runInjectCmd(in, errBuf, actual, conf); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}

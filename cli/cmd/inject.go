@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/inject"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
+
+	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 )
 
 type injectOptions struct {
-	*proxyConfigOptions
+	proxyConfigOptions
 }
 
 type resourceTransformerInject struct {
@@ -40,9 +40,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf confi
 }
 
 func newInjectOptions() *injectOptions {
-	return &injectOptions{
-		proxyConfigOptions: newProxyConfigOptions(),
-	}
+	return &injectOptions{}
 }
 
 func newCmdInject() *cobra.Command {
@@ -78,7 +76,11 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			conf := injectOptionsToConfigs(options)
+			conf, err := fetchConfigsFromK8s()
+			if err != nil {
+				return err
+			}
+			conf.overrideFromOptions(options)
 
 			exitCode := uninjectAndInject(in, stderr, stdout, conf)
 			os.Exit(exitCode)
@@ -86,7 +88,7 @@ sub-folders, or coming from stdin.`,
 		},
 	}
 
-	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	addProxyConfigFlags(cmd, &options.proxyConfigOptions)
 
 	return cmd
 }
@@ -236,54 +238,4 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 	// Trailing newline to separate from kubectl output if piping
 	output.Write([]byte("\n"))
-}
-
-// TODO: this is just a temporary function to convert command-line options to GlobalConfig
-// and ProxyConfig, until we come up with an abstraction over those GRPC structs
-func injectOptionsToConfigs(options *injectOptions) configs {
-	var idContext *config.IdentityContext
-	if options.tls == optionalTLS {
-		idContext = &config.IdentityContext{}
-	}
-	globalConfig := &config.Global{
-		LinkerdNamespace: controlPlaneNamespace,
-		CniEnabled:       options.noInitContainer,
-		Version:          options.linkerdVersion,
-		IdentityContext:  idContext,
-	}
-	var ignoreInboundPorts []*config.Port
-	for _, port := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
-	}
-	var ignoreOutboundPorts []*config.Port
-	for _, port := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
-	}
-	proxyConfig := &config.Proxy{
-		ProxyImage: &config.Image{
-			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
-			PullPolicy: options.imagePullPolicy,
-		},
-		ProxyInitImage: &config.Image{
-			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
-			PullPolicy: options.imagePullPolicy,
-		},
-		DestinationApiPort:  &config.Port{Port: uint32(options.destinationAPIPort)},
-		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
-		IgnoreInboundPorts:  ignoreInboundPorts,
-		IgnoreOutboundPorts: ignoreOutboundPorts,
-		InboundPort:         &config.Port{Port: uint32(options.inboundPort)},
-		MetricsPort:         &config.Port{Port: uint32(options.proxyMetricsPort)},
-		OutboundPort:        &config.Port{Port: uint32(options.outboundPort)},
-		Resource: &config.ResourceRequirements{
-			RequestCpu:    options.proxyCPURequest,
-			RequestMemory: options.proxyMemoryRequest,
-			LimitCpu:      options.proxyCPULimit,
-			LimitMemory:   options.proxyMemoryLimit,
-		},
-		ProxyUid:                options.proxyUID,
-		LogLevel:                &config.LogLevel{Level: options.proxyLogLevel},
-		DisableExternalProfiles: options.disableExternalProfiles,
-	}
-	return configs{globalConfig, proxyConfig}
 }
