@@ -1,8 +1,11 @@
 package injector
 
 import (
+	"fmt"
+
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,11 +75,6 @@ func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 	}
 	admissionReview.Response = admissionResponse
 
-	if len(admissionResponse.Patch) > 0 {
-		log.Infof("patch generated: %s", admissionResponse.Patch)
-	}
-	log.Info("done")
-
 	return admissionReview
 }
 
@@ -126,9 +124,23 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return nil, err
 	}
 
-	if len(reports) > 0 && !reports[0].Injectable() {
+	if p.IsEmpty() {
 		return admissionResponse, nil
 	}
+
+	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
+
+	// When adding workloads through `kubectl apply` the spec template labels are
+	// automatically copied to the workload's main metadata section.
+	// This doesn't happen when adding labels through the webhook. So we manually
+	// add them to remain consistent.
+	conf.AddRootLabels(p)
+
+	patchJSON, err := p.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("patch generated: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
 	admissionResponse.Patch = patchJSON
