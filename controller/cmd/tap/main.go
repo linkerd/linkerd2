@@ -29,6 +29,7 @@ func main() {
 		k8s.DS,
 		k8s.SS,
 		k8s.Deploy,
+		k8s.Job,
 		k8s.Pod,
 		k8s.RC,
 		k8s.Svc,

@@ -61,6 +61,7 @@ func newCmdStat() *cobra.Command {
   * deploy/my-deploy
   * deploy/ po/
   * ds/my-daemonset
+  * job/my-job
   * ns/my-ns
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2
@@ -74,11 +75,11 @@ func newCmdStat() *cobra.Command {
   * daemonsets
   * deployments
   * namespaces
+  * jobs
   * pods
   * replicationcontrollers
   * statefulsets
   * authorities (not supported in --from)
-  * jobs (only supported as a --from or --to)
   * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
 
