@@ -114,9 +114,13 @@ func TestShouldInject(t *testing.T) {
 
 				fakeReq := getFakeReq(deployment)
 				fullConf := testCase.conf.WithMeta(fakeReq.Kind.Kind, fakeReq.Namespace, fakeReq.Name)
-				patchJSON, _, err := fullConf.GetPatch(fakeReq.Object.Raw)
+				p, _, err := fullConf.GetPatch(fakeReq.Object.Raw)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+				}
+				patchJSON, err := p.Marshal()
+				if err != nil {
+					t.Fatalf("Unexpected Marshal error: %s", err)
 				}
 				patchStr := string(patchJSON)
 				if patchStr != "[]" && !testCase.expected {
@@ -137,9 +141,13 @@ func TestShouldInject(t *testing.T) {
 
 		fakeReq := getFakeReq(deployment)
 		conf := confNsDisabled().WithMeta(fakeReq.Kind.Kind, fakeReq.Namespace, fakeReq.Name)
-		patchJSON, _, err := conf.GetPatch(fakeReq.Object.Raw)
+		p, _, err := conf.GetPatch(fakeReq.Object.Raw)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		patchJSON, err := p.Marshal()
+		if err != nil {
+			t.Fatalf("Unexepected Marshal error: %s", err)
 		}
 		if string(patchJSON) != "[]" {
 			t.Fatal("Expected deployment with injected proxy to be skipped")

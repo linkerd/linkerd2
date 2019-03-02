@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 )
@@ -112,13 +113,19 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		r := inject.Report{UnsupportedResource: true}
 		return bytes, []inject.Report{r}, nil
 	}
-	patchJSON, reports, err := conf.GetPatch(bytes)
-	if patchJSON == nil || err != nil {
-		return bytes, reports, err
-	}
-	if !conf.KindInjectable() {
+	p, reports, err := conf.GetPatch(bytes)
+	if err != nil {
 		return bytes, reports, nil
 	}
+	if p.IsEmpty() {
+		return bytes, reports, nil
+	}
+	p.AddCreatedByPodAnnotation(k8s.CreatedByAnnotationValue())
+	patchJSON, err := p.Marshal()
+	if patchJSON == nil || err != nil {
+		return bytes, reports, nil
+	}
+	log.Infof("patch generated: %s", patchJSON)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
 		return nil, nil, err

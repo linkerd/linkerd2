@@ -1,9 +1,15 @@
 package inject
 
 import (
+	"encoding/json"
 	"strings"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	patchPathRootLabels = "/metadata/labels"
 )
 
 // Patch represents a RFC 6902 patch document.
@@ -41,9 +47,14 @@ func NewPatchPod() *Patch {
 		patchPathInitContainer:     "/spec/initContainers/-",
 		patchPathVolumeRoot:        "/spec/volumes",
 		patchPathVolume:            "/spec/volumes/-",
-		patchPathPodLabels:         "/metadata/labels",
+		patchPathPodLabels:         patchPathRootLabels,
 		patchPathPodAnnotations:    "/metadata/annotations",
 	}
+}
+
+// Marshal returns the patch as JSON
+func (p *Patch) Marshal() ([]byte, error) {
+	return json.Marshal(p.patchOps)
 }
 
 func (p *Patch) addContainer(container *corev1.Container) {
@@ -86,18 +97,18 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
-func (p *Patch) addPodLabelsRoot() {
-	p.patchOps = append(p.patchOps, &patchOp{
-		Op:    "add",
-		Path:  p.patchPathPodLabels,
-		Value: map[string]string{},
-	})
-}
-
 func (p *Patch) addPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodLabels + "/" + escapeKey(key),
+		Value: value,
+	})
+}
+
+func (p *Patch) addRootLabel(key, value string) {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "add",
+		Path:  patchPathRootLabels + "/" + escapeKey(key),
 		Value: value,
 	})
 }
@@ -116,6 +127,17 @@ func (p *Patch) addPodAnnotation(key, value string) {
 		Path:  p.patchPathPodAnnotations + "/" + escapeKey(key),
 		Value: value,
 	})
+}
+
+// AddCreatedByPodAnnotation tags the pod so that we can tell appart injections
+// from the CLI and the webhook
+func (p *Patch) AddCreatedByPodAnnotation(s string) {
+	p.addPodAnnotation(k8s.CreatedByAnnotation, s)
+}
+
+// IsEmpty returns true if the patch doesn't contain any operations
+func (p *Patch) IsEmpty() bool {
+	return len(p.patchOps) == 0
 }
 
 // Slashes need to be encoded as ~1 per
