@@ -52,7 +52,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, configs{nil, nil})
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, configs{})
 			os.Exit(exitCode)
 			return nil
 		},
@@ -66,7 +66,7 @@ func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.
 
 	report, err := conf.ParseMetaAndYaml(bytes)
 	if err != nil {
-		return bytes, []inject.Report{}, err
+		return nil, nil, err
 	}
 
 	output, err := conf.Uninject(report)

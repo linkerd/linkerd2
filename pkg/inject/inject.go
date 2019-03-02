@@ -126,7 +126,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objMeta.Name)
 
 	if err := conf.parse(bytes); err != nil {
-		return nil, []Report{report}, err
+		return nil, nil, err
 	}
 
 	var patch *Patch
@@ -183,6 +183,7 @@ func (conf *ResourceConfig) KindInjectable() bool {
 	return false
 }
 
+// Note this switch must be kept in sync with injectableKinds (declared above)
 func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 	switch strings.ToLower(conf.meta.Kind) {
 	case k8s.Deployment:
@@ -567,8 +568,10 @@ func (conf *ResourceConfig) taggedProxyInitImage() string {
 }
 
 // shouldInject determines whether or not the given deployment should be
-// injected. A deployment shouldn't be injected if it contains any known sidecars
-// or is on a HostNetwork or the pod is not annotated with "linkerd.io/inject: disabled".
+// injected. A deployment shouldn't be injected if:
+// - it contains any known sidecars; or
+// - is on a HostNetwork; or
+// - the pod is annotated with "linkerd.io/inject: disabled".
 // Additionally, a deployment should be injected if:
 // - old CLI inject logic: namespace annotations unavailable
 // - the deployment's namespace has the linkerd.io/inject annotation set to
@@ -580,11 +583,11 @@ func (conf *ResourceConfig) shouldInject(r Report) bool {
 		return false
 	}
 
-	podAnnotation := conf.objMeta.Annotations[k8s.ProxyInjectAnnotation]
 	if conf.nsAnnotations == nil {
 		return true
 	}
 
+	podAnnotation := conf.objMeta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
 		return true
