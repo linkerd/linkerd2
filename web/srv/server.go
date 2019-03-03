@@ -97,6 +97,7 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace", handler.handleIndex)
 	server.router.GET("/daemonsets", handler.handleIndex)
 	server.router.GET("/statefulsets", handler.handleIndex)
+	server.router.GET("/jobs", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)

@@ -70,6 +70,9 @@ let applicationHtml = (
                 path={`${pathPrefix}/namespaces/:namespace/statefulsets/:statefulset`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/jobs/:job`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
@@ -96,6 +99,9 @@ let applicationHtml = (
               <Route
                 path={`${pathPrefix}/statefulsets`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
+              <Route
+                path={`${pathPrefix}/jobs`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="jobs" />} />
               <Route
                 path={`${pathPrefix}/replicationcontrollers`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
