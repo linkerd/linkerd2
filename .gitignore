@@ -2,6 +2,7 @@
 target
 tmp.discovery
 **/.idea
+**/.vscode
 **/cmake-*
 **/CMakeLists.txt
 *.iml
