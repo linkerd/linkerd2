@@ -292,7 +292,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, options)
 	case jsonOutput:
-		printStatJSON(statTables, w, options)
+		printStatJSON(statTables, w)
 	}
 }
 
@@ -348,7 +348,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		}...)
 	}
 
-	headers = append(headers, "\t") // trailing \t is required to format last column
+	headers[len(headers)-1] = headers[len(headers)-1] + "\t" // trailing \t is required to format last column
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
@@ -430,7 +430,7 @@ type jsonStats struct {
 	TCPWriteBytes  *uint64  `json:"tcp_write_bytes"`
 }
 
-func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer, options *statOptions) {
+func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*jsonStats{}
 	for _, resourceType := range k8s.AllResources {
@@ -452,7 +452,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer, o
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
 
-					if showTCPStats(options, resourceType) {
+					if resourceType != k8s.Authority {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
 						entry.TCPReadBytes = &stats[key].tcpReadBytes
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
