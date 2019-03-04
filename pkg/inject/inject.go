@@ -119,8 +119,11 @@ func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	return conf.objMeta.ObjectMeta != nil, nil
 }
 
-// GetPatch returns the patch containing the proxy and init containers specs, if any
-func (conf *ResourceConfig) GetPatch(bytes []byte) (*Patch, []Report, error) {
+// GetPatch returns the JSON patch containing the proxy and init containers specs, if any
+func (conf *ResourceConfig) GetPatch(
+	bytes []byte,
+	shouldInject func(*ResourceConfig, Report) bool,
+) (*Patch, []Report, error) {
 	report := newReport(conf)
 	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), report.Name)
 
@@ -155,7 +158,7 @@ func (conf *ResourceConfig) GetPatch(bytes []byte) (*Patch, []Report, error) {
 		}
 
 		report.update(conf)
-		if conf.shouldInject(report) {
+		if shouldInject(conf, report) {
 			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(patch)
 		}
@@ -563,24 +566,28 @@ func (conf *ResourceConfig) taggedProxyInitImage() string {
 		conf.globalConfig.GetVersion())
 }
 
-// shouldInject determines whether or not the given deployment should be
-// injected. A deployment shouldn't be injected if:
+// ShouldInjectCLI is used by CLI inject to determine whether or not a given
+// workload should be injected. It shouldn't if:
 // - it contains any known sidecars; or
 // - is on a HostNetwork; or
 // - the pod is annotated with "linkerd.io/inject: disabled".
-// Additionally, a deployment should be injected if:
-// - old CLI inject logic: namespace annotations unavailable
-// - the deployment's namespace has the linkerd.io/inject annotation set to
-//   "enabled", and the deployment's pod spec does not have the
+func ShouldInjectCLI(_ *ResourceConfig, r Report) bool {
+	return r.Injectable()
+}
+
+// ShouldInjectWebhook determines whether or not the given workload should be
+// injected. It shouldn't if:
+// - it contains any known sidecars; or
+// - is on a HostNetwork; or
+// - the pod is annotated with "linkerd.io/inject: disabled".
+// Additionally, a workload should be injected if:
+// - the workload's namespace has the linkerd.io/inject annotation set to
+//   "enabled", and the workload's pod spec does not have the
 //   linkerd.io/inject annotation set to "disabled"; or
-// - the deployment's pod spec has the linkerd.io/inject annotation set to "enabled"
-func (conf *ResourceConfig) shouldInject(r Report) bool {
+// - the workload's pod spec has the linkerd.io/inject annotation set to "enabled"
+func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
 	if !r.Injectable() {
 		return false
-	}
-
-	if conf.nsAnnotations == nil {
-		return true
 	}
 
 	podAnnotation := conf.objMeta.Annotations[k8s.ProxyInjectAnnotation]

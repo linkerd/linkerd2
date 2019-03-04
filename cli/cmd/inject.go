@@ -113,7 +113,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		r := inject.Report{UnsupportedResource: true}
 		return bytes, []inject.Report{r}, nil
 	}
-	p, reports, err := conf.GetPatch(bytes)
+	p, reports, err := conf.GetPatch(bytes, inject.ShouldInjectCLI)
 	if err != nil {
 		return nil, nil, err
 	}
