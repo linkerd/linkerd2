@@ -19,18 +19,35 @@ const styles = () => ({
   navMenuItem: {
     paddingLeft: "24px",
     paddingRight: "24px",
-  },
+  }
 });
 
 class NavigationResourcesBase extends React.Component {
   static propTypes = {
     classes: PropTypes.shape({}).isRequired,
-    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-  }
+    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired
+  };
 
   constructor(props) {
     super(props);
-    this.state = {open: false};
+    this.state = {
+      open: false,
+      allMetrics: {},
+      nsMetrics: {}
+    };
+  }
+
+  componentWillReceiveProps(prevProps, nextProps) {
+    const { data } = this.props;
+
+    if (nextProps !== prevProps) {
+      if (_has(data, "[0]")) {
+        this.setState({ allMetrics: processMultiResourceRollup(data[0]) });
+        if (_has(data, "[1]")) {
+          this.setState({ nsMetrics: processMultiResourceRollup(data[1]) });
+        }
+      }
+    }
   }
 
   handleOnClick = () => {
@@ -45,35 +62,34 @@ class NavigationResourcesBase extends React.Component {
         className={classes.navMenuItem}
         button
         onClick={this.handleOnClick}>
-        <ListItemIcon><ViewListIcon /></ListItemIcon>
+        <ListItemIcon>
+          <ViewListIcon />
+        </ListItemIcon>
         <ListItemText inset primary="Resources" />
         {this.state.open ? <ExpandLess /> : <ExpandMore />}
       </MenuItem>
     );
   }
 
+
   subMenu() {
-    const { data } = this.props;
-
-    let allMetrics = {};
-    let nsMetrics = {};
-    if (_has(data, '[0]')) {
-      allMetrics = processMultiResourceRollup(data[0]);
-
-      if (_has(data, '[1]')) {
-        nsMetrics = processMultiResourceRollup(data[1]);
-      }
-    }
+    const { allMetrics, nsMetrics } = this.state;
 
     return (
       <MenuList dense component="div" disablePadding>
         <NavigationResource type="authorities" />
-        <NavigationResource type="deployments" metrics={allMetrics.deployment} />
+        <NavigationResource
+          type="deployments"
+          metrics={allMetrics.deployment} />
         <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
-        <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
-        <NavigationResource type="statefulsets" metrics={allMetrics.statefulset} />
+        <NavigationResource
+          type="replicationcontrollers"
+          metrics={allMetrics.replicationcontroller} />
+        <NavigationResource
+          type="statefulsets"
+          metrics={allMetrics.statefulset} />
       </MenuList>
     );
   }
@@ -92,12 +108,12 @@ class NavigationResourcesBase extends React.Component {
 
 export default withREST(
   withContext(withStyles(styles, { withTheme: true })(NavigationResourcesBase)),
-  ({api}) => [
+  ({ api }) => [
     // TODO: modify "all" to also retrieve namespaces, also share fetch with parent component
     api.fetchMetrics(api.urlsForResource("all")),
     api.fetchMetrics(api.urlsForResource("namespace")),
   ],
   {
-    resetProps: ['resource'],
-  },
+    resetProps: ["resource"],
+  }
 );
