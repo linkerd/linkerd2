@@ -61,6 +61,7 @@ func newCmdStat() *cobra.Command {
   * deploy/my-deploy
   * deploy/ po/
   * ds/my-daemonset
+  * job/my-job
   * ns/my-ns
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2
@@ -74,11 +75,11 @@ func newCmdStat() *cobra.Command {
   * daemonsets
   * deployments
   * namespaces
+  * jobs
   * pods
   * replicationcontrollers
   * statefulsets
   * authorities (not supported in --from)
-  * jobs (only supported as a --from or --to)
   * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
 
@@ -130,7 +131,7 @@ If no resource name is specified, displays stats about all resources of the spec
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.StatSummaryRequest) {
-					resp, err := requestStatsFromAPI(client, req, options)
+					resp, err := requestStatsFromAPI(client, req)
 					rows := respToRows(resp)
 					c <- indexedResults{num, rows, err}
 				}(num, req)
@@ -177,7 +178,7 @@ func respToRows(resp *pb.StatSummaryResponse) []*pb.StatTable_PodGroup_Row {
 	return rows
 }
 
-func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest, options *statOptions) (*pb.StatSummaryResponse, error) {
+func requestStatsFromAPI(client pb.ApiClient, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
 	resp, err := client.StatSummary(context.Background(), req)
 	if err != nil {
 		return nil, fmt.Errorf("StatSummary API error: %v", err)

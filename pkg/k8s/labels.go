@@ -75,6 +75,20 @@ const (
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"
 
+	// IdentityModeAnnotation controls how a pod participates
+	// in service identity.
+	IdentityModeAnnotation = "linkerd.io/identity-mode"
+
+	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
+	// disable the proxy from participating in automatic identity.
+	IdentityModeDisabled = "disabled"
+
+	// IdentityModeOptional is assigned to IdentityModeAnnotation to
+	// optionally configure the proxy to participate in automatic identity.
+	//
+	// Will be deprecated soon.
+	IdentityModeOptional = "optional"
+
 	/*
 	 * Component Names
 	 */

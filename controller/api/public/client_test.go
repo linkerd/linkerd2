@@ -190,10 +190,7 @@ func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	payload, err := serializeAsPayload(msgBytes)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	payload := serializeAsPayload(msgBytes)
 
 	return bufio.NewReader(bytes.NewReader(payload))
 }

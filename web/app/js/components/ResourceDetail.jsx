@@ -303,9 +303,9 @@ export class ResourceDetailBase extends React.Component {
 
         { _isEmpty(upstreams) ? null : (
           <React.Fragment>
-            <Typography variant="h5">Inbound</Typography>
             <MetricsTable
               resource="multi_resource"
+              title="Inbound"
               metrics={upstreamMetrics} />
           </React.Fragment>
           )
@@ -313,9 +313,9 @@ export class ResourceDetailBase extends React.Component {
 
         { _isEmpty(this.state.downstreamMetrics) ? null : (
           <React.Fragment>
-            <Typography variant="h5">Outbound</Typography>
             <MetricsTable
               resource="multi_resource"
+              title="Outbound"
               metrics={downstreamMetrics} />
           </React.Fragment>
           )
@@ -324,18 +324,18 @@ export class ResourceDetailBase extends React.Component {
         {
           this.state.resource.type === "pod" ? null : (
             <React.Fragment>
-              <Typography variant="h5">Pods</Typography>
               <MetricsTable
                 resource="pod"
+                title="Pods"
                 metrics={this.state.podMetrics} />
             </React.Fragment>
           )
         }
 
         <React.Fragment>
-          <Typography variant="h5">TCP</Typography>
           <MetricsTable
             resource="pod"
+            title="TCP"
             isTcpTable={true}
             metrics={this.state.podMetrics} />
         </React.Fragment>

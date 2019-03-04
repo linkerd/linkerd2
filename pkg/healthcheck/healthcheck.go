@@ -16,7 +16,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	authorizationapi "k8s.io/api/authorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
@@ -262,6 +261,13 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-version",
 					check: func(context.Context) error {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+					},
+				},
+				{
+					description: "is running the minimum kubectl version",
+					hintAnchor:  "kubectl-version",
+					check: func(context.Context) error {
+						return k8s.CheckKubectlVersion()
 					},
 				},
 			},
@@ -783,28 +789,21 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 		}
 	}
 
-	auth := hc.clientset.AuthorizationV1beta1()
-
-	sar := &authorizationapi.SelfSubjectAccessReview{
-		Spec: authorizationapi.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationapi.ResourceAttributes{
-				Namespace: namespace,
-				Verb:      "create",
-				Group:     group,
-				Version:   version,
-				Resource:  resource,
-			},
-		},
-	}
-
-	response, err := auth.SelfSubjectAccessReviews().Create(sar)
+	allowed, reason, err := k8s.ResourceAuthz(
+		hc.clientset,
+		namespace,
+		"create",
+		group,
+		version,
+		resource,
+	)
 	if err != nil {
 		return err
 	}
 
-	if !response.Status.Allowed {
-		if len(response.Status.Reason) > 0 {
-			return fmt.Errorf("Missing permissions to create %s: %v", resource, response.Status.Reason)
+	if !allowed {
+		if len(reason) > 0 {
+			return fmt.Errorf("Missing permissions to create %s: %v", resource, reason)
 		}
 		return fmt.Errorf("Missing permissions to create %s", resource)
 	}

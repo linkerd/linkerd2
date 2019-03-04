@@ -72,6 +72,6 @@ func TestPatch(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Content mismatch\nExpected: %s\nActual: %s", expected, actual)
+		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expected, actual)
 	}
 }

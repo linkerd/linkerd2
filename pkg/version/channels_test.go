@@ -73,7 +73,7 @@ func TestGetLatestVersions(t *testing.T) {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			latest, err := getLatestVersions(ctx, ts.Client(), ts.URL, "uuid", "source")
+			latest, err := getLatestVersions(ctx, ts.Client(), ts.URL)
 			if (err == nil && tc.err != nil) ||
 				(err != nil && tc.err == nil) ||
 				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {

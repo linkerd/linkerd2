@@ -29,15 +29,30 @@ type updateAddress struct {
 	pod     *corev1.Pod
 }
 
-func (ua updateAddress) String() string {
-	addrStr := addr.ProxyAddressToString(ua.address)
-	if ua.pod == nil {
-		return fmt.Sprintf("{address:%v}", addrStr)
-	}
-	return fmt.Sprintf("{address:%v, pod:%s.%s}", addrStr, ua.pod.Namespace, ua.pod.Name)
+// String is used by tests for comparison and logging.
+func (ua *updateAddress) String() string {
+	return fmt.Sprintf("{address=%s, pod=%s, ns=%s}", ua.Address(), ua.Name(), ua.Namespace())
 }
 
-func (ua updateAddress) clone() *updateAddress {
+func (ua *updateAddress) Address() string {
+	return addr.ProxyAddressToString(ua.address)
+}
+
+func (ua *updateAddress) Name() string {
+	if ua.pod == nil {
+		return ""
+	}
+	return ua.pod.Name
+}
+
+func (ua *updateAddress) Namespace() string {
+	if ua.pod == nil {
+		return ""
+	}
+	return ua.pod.Namespace
+}
+
+func (ua *updateAddress) clone() *updateAddress {
 	return &updateAddress{
 		pod:     ua.pod.DeepCopy(),
 		address: proto.Clone(ua.address).(*net.TcpAddress),
@@ -79,6 +94,7 @@ func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress,
 
 // implements the endpointUpdateListener interface
 type endpointListener struct {
+	controllerNS     string
 	stream           pb.Destination_GetServer
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
@@ -92,8 +108,10 @@ func newEndpointListener(
 	stream pb.Destination_GetServer,
 	ownerKindAndName ownerKindAndNameFn,
 	enableTLS, enableH2Upgrade bool,
+	controllerNS string,
 ) *endpointListener {
 	return &endpointListener{
+		controllerNS:     controllerNS,
 		stream:           stream,
 		ownerKindAndName: ownerKindAndName,
 		labels:           make(map[string]string),
@@ -131,29 +149,41 @@ func (l *endpointListener) SetServiceID(id *serviceID) {
 	}
 }
 
+// Update is called with lists of newly added and/or removed pods in a service
+// and address updates on the listener's gRPC response stream.
+//
+// N.B. that pod is nil on remove addresses.
+//
+// TODO change the type signature to use more precise types.
 func (l *endpointListener) Update(add, remove []*updateAddress) {
-	l.log.Debugf("Update(%+v, %+v)", add, remove)
+	l.log.Debugf("Update: add=%d; remove=%d", len(add), len(remove))
 
 	if len(add) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Add{
-				Add: l.toWeightedAddrSet(add),
-			},
+		// If pods were added, send the list of metadata-rich WeightedAddr endpoints.
+		set := &pb.WeightedAddrSet{MetricLabels: l.labels}
+		for _, a := range add {
+			w := l.toWeightedAddr(a)
+			l.log.Debugf("Update: add: addr=%s; pod=%s; %+v", a.Address(), a.Name(), w)
+			set.Addrs = append(set.Addrs, w)
 		}
-		err := l.stream.Send(update)
-		if err != nil {
-			l.log.Error(err)
+
+		u := &pb.Update{Update: &pb.Update_Add{Add: set}}
+		if err := l.stream.Send(u); err != nil {
+			l.log.Errorf("Failed to send address update: %s", err)
 		}
 	}
+
 	if len(remove) > 0 {
-		update := &pb.Update{
-			Update: &pb.Update_Remove{
-				Remove: l.toAddrSet(remove),
-			},
+		// If pods were removed, send the list of IP addresses.
+		set := &pb.AddrSet{}
+		for _, a := range remove {
+			l.log.Debugf("Update: remove: addr=%s pod=%s;", a.Address(), a.Name())
+			set.Addrs = append(set.Addrs, a.address)
 		}
-		err := l.stream.Send(update)
-		if err != nil {
-			l.log.Error(err)
+
+		u := &pb.Update{Update: &pb.Update_Remove{Remove: set}}
+		if err := l.stream.Send(u); err != nil {
+			l.log.Errorf("Failed to send address update: %s", err)
 		}
 	}
 }
@@ -161,25 +191,15 @@ func (l *endpointListener) Update(add, remove []*updateAddress) {
 func (l *endpointListener) NoEndpoints(exists bool) {
 	l.log.Debugf("NoEndpoints(%+v)", exists)
 
-	update := &pb.Update{
+	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
 				Exists: exists,
 			},
 		},
 	}
-	l.stream.Send(update)
-}
-
-func (l *endpointListener) toWeightedAddrSet(addresses []*updateAddress) *pb.WeightedAddrSet {
-	addrs := make([]*pb.WeightedAddr, 0)
-	for _, a := range addresses {
-		addrs = append(addrs, l.toWeightedAddr(a))
-	}
-
-	return &pb.WeightedAddrSet{
-		Addrs:        addrs,
-		MetricLabels: l.labels,
+	if err := l.stream.Send(u); err != nil {
+		l.log.Errorf("Failed to send address update: %s", err)
 	}
 }
 
@@ -195,27 +215,18 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 	}
 }
 
-func (l *endpointListener) toAddrSet(addresses []*updateAddress) *pb.AddrSet {
-	addrs := make([]*net.TcpAddress, 0)
-	for _, a := range addresses {
-		addrs = append(addrs, a.address)
-	}
-	return &pb.AddrSet{Addrs: addrs}
-}
-
 func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
-	controllerNs := pod.Labels[pkgK8s.ControllerNSLabel]
+	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
-
-	var hint *pb.ProtocolHint
 
 	// If the pod is controlled by us, then it can be hinted that this destination
 	// knows H2 (and handles our orig-proto translation). Note that this check
 	// does not verify that the pod's control plane matches the control plane
 	// where the destination service is running; all pods injected for all control
 	// planes are considered valid for providing the H2 hint.
-	if l.enableH2Upgrade && controllerNs != "" {
+	var hint *pb.ProtocolHint
+	if l.enableH2Upgrade && controllerNS != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
@@ -223,27 +234,25 @@ func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, 
 		}
 	}
 
-	if !l.enableTLS {
-		return labels, hint, nil
-	}
+	var identity *pb.TlsIdentity
+	if l.enableTLS && controllerNS == l.controllerNS &&
+		pod.Annotations[pkgK8s.IdentityModeAnnotation] == pkgK8s.IdentityModeOptional {
+		name := pkgK8s.TLSIdentity{
+			Name:                ownerName,
+			Kind:                ownerKind,
+			Namespace:           pod.Namespace,
+			ControllerNamespace: controllerNS,
+		}.ToDNSName()
 
-	identity := pkgK8s.TLSIdentity{
-		Name:                ownerName,
-		Kind:                ownerKind,
-		Namespace:           pod.Namespace,
-		ControllerNamespace: controllerNs,
-	}
-
-	dnsName := identity.ToDNSName()
-
-	l.log.Debugf("getAddrMetadata(%+v): Owner: %s/%s DNS Name: %s Labels: %+v", pod, ownerKind, ownerName, dnsName, labels)
-
-	return labels, hint, &pb.TlsIdentity{
-		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
-			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-				PodIdentity:  dnsName,
-				ControllerNs: controllerNs,
+		identity = &pb.TlsIdentity{
+			Strategy: &pb.TlsIdentity_K8SPodIdentity_{
+				K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
+					PodIdentity:  name,
+					ControllerNs: controllerNS,
+				},
 			},
-		},
+		}
 	}
+
+	return labels, hint, identity
 }

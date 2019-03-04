@@ -30,6 +30,7 @@ var (
 		k8s.Authority,
 		k8s.DaemonSet,
 		k8s.Deployment,
+		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
 		k8s.ReplicationController,
@@ -332,7 +333,7 @@ func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
 }
 
 func parseResources(namespace string, resType string, args []string) ([]pb.Resource, error) {
-	if err := validateResources(resType, args); err != nil {
+	if err := validateResources(args); err != nil {
 		return nil, err
 	}
 	resources := make([]pb.Resource, 0)
@@ -346,7 +347,7 @@ func parseResources(namespace string, resType string, args []string) ([]pb.Resou
 	return resources, nil
 }
 
-func validateResources(resType string, args []string) error {
+func validateResources(args []string) error {
 	set := make(map[string]bool)
 	all := false
 	for _, arg := range args {

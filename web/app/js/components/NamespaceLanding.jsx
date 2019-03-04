@@ -127,11 +127,8 @@ class NamespaceLanding extends React.Component {
     return (
       <Grid container direction="column" justify="center">
         <Grid item>
-          <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
-        </Grid>
-
-        <Grid item>
           <MetricsTable
+            title={friendlyTitle(resource).plural}
             resource={resource}
             metrics={metrics}
             showNamespaceColumn={false} />

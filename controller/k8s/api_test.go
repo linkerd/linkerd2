@@ -19,7 +19,7 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 	k8sResults := []runtime.Object{}
 
 	for _, config := range resourceConfigs {
-		obj, err := toRuntimeObject(config)
+		obj, err := k8s.ToRuntimeObject(config)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -161,6 +161,26 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: my-ds
+  namespace: not-my-ns`,
+				},
+			},
+			{
+				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.Job,
+				name:      "my-job",
+				k8sResResults: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
   namespace: not-my-ns`,
 				},
 			},
@@ -573,7 +593,7 @@ status:
 		}
 
 		for _, exp := range expectations {
-			k8sInputObj, err := toRuntimeObject(exp.k8sResInput)
+			k8sInputObj, err := k8s.ToRuntimeObject(exp.k8sResInput)
 			if err != nil {
 				t.Fatalf("could not decode yml: %s", err)
 			}

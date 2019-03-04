@@ -131,21 +131,29 @@ func TestVersionPostInstall(t *testing.T) {
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=1m"}
+	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
 	golden := "check.golden"
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")
 		golden = "check.single_namespace.golden"
 	}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
+	err := TestHelper.RetryFor(time.Minute, func() error {
+		out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Check command failed\n%s", out)
+		}
+
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Received unexpected output\n%s", err.Error())
+		}
+
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -229,20 +237,27 @@ func TestInject(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=1m"}
+	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 	golden := "check.proxy.golden"
 	if TestHelper.SingleNamespace() {
 		cmd = append(cmd, "--single-namespace")
 		golden = "check.proxy.single_namespace.golden"
 	}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
 
-	if err != nil {
-		t.Fatalf("Check command failed\n%s", out)
-	}
+	err := TestHelper.RetryFor(time.Minute, func() error {
+		out, _, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return fmt.Errorf("Check command failed\n%s", out)
+		}
 
-	err = TestHelper.ValidateOutput(out, golden)
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Received unexpected output\n%s", err.Error())
+		}
+
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		t.Fatal(err.Error())
 	}
 }

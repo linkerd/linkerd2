@@ -20,6 +20,9 @@ rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
+  verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
   verbs: ["list", "get", "watch"]
@@ -118,7 +121,6 @@ spec:
         - "public-api"
         - "-prometheus-url=http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-single-namespace={{.Values.SingleNamespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
@@ -150,7 +152,6 @@ spec:
         - "destination"
         - "-addr=:{{.Values.DestinationAPIPort}}"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-single-namespace={{.Values.SingleNamespace}}"
         - "-enable-tls={{.Values.EnableTLS}}"
         - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
@@ -183,7 +184,6 @@ spec:
         args:
         - "tap"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-single-namespace={{.Values.SingleNamespace}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
