@@ -89,6 +89,11 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
+	admissionResponse := &admissionv1beta1.AdmissionResponse{
+		UID:     request.UID,
+		Allowed: true,
+	}
+
 	globalConfig, err := config.Global()
 	if err != nil {
 		return nil, err
@@ -107,15 +112,18 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
 		WithNsAnnotations(nsAnnotations).
-		WithMeta(request.Kind.Kind, request.Namespace, request.Name)
-	patchJSON, reports, err := conf.GetPatch(request.Object.Raw)
+		WithKind(request.Kind.Kind)
+	supportedResource, err := conf.ParseMeta(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
+	if !supportedResource {
+		return admissionResponse, nil
+	}
 
-	admissionResponse := &admissionv1beta1.AdmissionResponse{
-		UID:     request.UID,
-		Allowed: true,
+	patchJSON, reports, err := conf.GetPatch(request.Object.Raw)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(reports) > 0 && !reports[0].Injectable() {

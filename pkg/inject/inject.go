@@ -72,10 +72,9 @@ func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *
 	}
 }
 
-// WithMeta enriches ResourceConfig with extra metadata
-func (conf *ResourceConfig) WithMeta(kind, namespace, name string) *ResourceConfig {
+// WithKind enriches ResourceConfig with the workload kind
+func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
 	conf.meta = metav1.TypeMeta{Kind: kind}
-	conf.objMeta = objMeta{&metav1.ObjectMeta{Name: name, Namespace: namespace}}
 	return conf
 }
 
@@ -123,7 +122,7 @@ func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
 func (conf *ResourceConfig) GetPatch(bytes []byte) ([]byte, []Report, error) {
 	report := newReport(conf)
-	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), conf.objMeta.Name)
+	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), report.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
