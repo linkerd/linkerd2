@@ -1,5 +1,5 @@
 ## compile cni-plugin utility
-FROM gcr.io/linkerd-io/go-deps:9357499f as golang
+FROM gcr.io/linkerd-io/go-deps:ee275c25 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY proxy-init proxy-init
 COPY pkg pkg
