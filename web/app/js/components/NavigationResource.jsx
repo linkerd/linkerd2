@@ -48,11 +48,7 @@ class NavigationResource extends React.Component {
 
   constructor(props) {
     super(props);
-
-
-
     this.to = props.api.prefixLink("/" + props.type);
-
     this.state = {open: false};
   }
 
@@ -75,7 +71,7 @@ class NavigationResource extends React.Component {
       <MenuItem
         className={classes.navMenuItem}
         onClick={this.handleOnClick}>
-        {this.listItemIcon(this.resources)}
+        {this.listItemIcon()}
         <ListItemText primary={friendlyTitle(type).plural} />
       </MenuItem>
     );

@@ -19,35 +19,18 @@ const styles = () => ({
   navMenuItem: {
     paddingLeft: "24px",
     paddingRight: "24px",
-  }
+  },
 });
 
 class NavigationResourcesBase extends React.Component {
   static propTypes = {
     classes: PropTypes.shape({}).isRequired,
-    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired
-  };
+    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
+  }
 
   constructor(props) {
     super(props);
-    this.state = {
-      open: false,
-      allMetrics: {},
-      nsMetrics: {}
-    };
-  }
-
-  componentWillReceiveProps(prevProps, nextProps) {
-    const { data } = this.props;
-
-    if (nextProps !== prevProps) {
-      if (_has(data, "[0]")) {
-        this.setState({ allMetrics: processMultiResourceRollup(data[0]) });
-        if (_has(data, "[1]")) {
-          this.setState({ nsMetrics: processMultiResourceRollup(data[1]) });
-        }
-      }
-    }
+    this.state = { open: false };
   }
 
   handleOnClick = () => {
@@ -62,34 +45,35 @@ class NavigationResourcesBase extends React.Component {
         className={classes.navMenuItem}
         button
         onClick={this.handleOnClick}>
-        <ListItemIcon>
-          <ViewListIcon />
-        </ListItemIcon>
+        <ListItemIcon><ViewListIcon /></ListItemIcon>
         <ListItemText inset primary="Resources" />
         {this.state.open ? <ExpandLess /> : <ExpandMore />}
       </MenuItem>
     );
   }
 
-
   subMenu() {
-    const { allMetrics, nsMetrics } = this.state;
+    const { data } = this.props;
+
+    let allMetrics = {};
+    let nsMetrics = {};
+    if (_has(data, '[0]')) {
+      allMetrics = processMultiResourceRollup(data[0]);
+
+      if (_has(data, '[1]')) {
+        nsMetrics = processMultiResourceRollup(data[1]);
+      }
+    }
 
     return (
       <MenuList dense component="div" disablePadding>
         <NavigationResource type="authorities" />
-        <NavigationResource
-          type="deployments"
-          metrics={allMetrics.deployment} />
+        <NavigationResource type="deployments" metrics={allMetrics.deployment} />
         <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
-        <NavigationResource
-          type="replicationcontrollers"
-          metrics={allMetrics.replicationcontroller} />
-        <NavigationResource
-          type="statefulsets"
-          metrics={allMetrics.statefulset} />
+        <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
+        <NavigationResource type="statefulsets" metrics={allMetrics.statefulset} />
       </MenuList>
     );
   }
@@ -114,6 +98,6 @@ export default withREST(
     api.fetchMetrics(api.urlsForResource("namespace")),
   ],
   {
-    resetProps: ["resource"],
-  }
+    resetProps: ['resource'],
+  },
 );
