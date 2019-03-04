@@ -119,7 +119,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return admissionResponse, nil
 	}
 
-	patchJSON, reports, err := conf.GetPatch(request.Object.Raw)
+	p, _, err := conf.GetPatch(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
