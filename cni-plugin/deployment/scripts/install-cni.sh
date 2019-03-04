@@ -223,5 +223,6 @@ echo "Created CNI config ${CNI_CONF_PATH}"
 should_sleep=${SLEEP:-"true"}
 echo "Done configuring CNI. Sleep=$should_sleep"
 while [ "${should_sleep}" = "true"  ]; do
-  sleep 10
+  sleep infinity &
+  wait $!
 done
