@@ -104,11 +104,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	supportedResource, err := conf.ParseMeta(bytes)
+	nonEmpty, err := conf.ParseMeta(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	if !supportedResource {
+	if !nonEmpty {
 		r := inject.Report{UnsupportedResource: true}
 		return bytes, []inject.Report{r}, nil
 	}
