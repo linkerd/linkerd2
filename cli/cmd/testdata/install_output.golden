@@ -1369,7 +1369,7 @@ metadata:
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "update", "get", "delete", "watch"]
+  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
