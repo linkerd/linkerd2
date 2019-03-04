@@ -114,7 +114,7 @@ func TestShouldInject(t *testing.T) {
 
 				fakeReq := getFakeReq(deployment)
 				fullConf := testCase.conf.WithKind(fakeReq.Kind.Kind)
-				p, _, err := fullConf.GetPatch(fakeReq.Object.Raw)
+				p, _, err := fullConf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -141,7 +141,7 @@ func TestShouldInject(t *testing.T) {
 
 		fakeReq := getFakeReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
-		p, _, err := conf.GetPatch(fakeReq.Object.Raw)
+		p, _, err := conf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
