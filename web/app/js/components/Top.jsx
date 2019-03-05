@@ -133,7 +133,7 @@ class Top extends React.Component {
   handleTapStop = () => {
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: false
+      tapIsClosing: true,
     });
   }
 
@@ -144,13 +144,15 @@ class Top extends React.Component {
     });
   }
 
-  updateTapClosingState(isTapClosing) {
+  updateTapClosingState(isTapClosing, isTapRequestInProgress) {
     this.setState({
-      tapIsClosing: isTapClosing
+      tapIsClosing: isTapClosing,
+      tapRequestInProgress: isTapRequestInProgress
     });
   }
 
   render() {
+
     return (
       <div>
         {!this.state.error ? null :

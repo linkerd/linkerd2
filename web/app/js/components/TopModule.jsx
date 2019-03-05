@@ -103,7 +103,7 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    this.updateTapClosingState(false);
+    this.updateTapClosingState(false,false);
     /* We ignore any abnormal closure since it doesn't matter as long as
     the connection to the websocket is closed. This is also a workaround
     where Chrome browsers incorrectly displays a 1006 close code
