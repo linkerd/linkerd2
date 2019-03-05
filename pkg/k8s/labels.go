@@ -82,6 +82,61 @@ const (
 	// in service identity.
 	IdentityModeAnnotation = Prefix + "/identity-mode"
 
+	/*
+	 * Proxy config annotations
+	 */
+
+	// ProxyImageAnnotation can be used to override the proxyImage config.
+	ProxyImageAnnotation = "proxy.linkerd.io/proxy-image"
+
+	// ProxyInitImageAnnotation can be used to override the proxyInitImage
+	// config.
+	ProxyInitImageAnnotation = "proxy.linkerd.io/init-image"
+
+	// ProxyControlPortAnnotation can be used to override the controlPort config.
+	ProxyControlPortAnnotation = "proxy.linkerd.io/control-port"
+
+	// ProxyIgnoreInboundPortsAnnotation can be used to override the
+	// ignoreInboundPorts config.
+	ProxyIgnoreInboundPortsAnnotation = "proxy.linkerd.io/ignore-inbound-ports"
+
+	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
+	// ignoreOutboundPorts config.
+	ProxyIgnoreOutboundPortsAnnotation = "proxy.linkerd.io/ignore-outbound-ports"
+
+	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
+	ProxyInboundPortAnnotation = "proxy.linkerd.io/inbound-port"
+
+	// ProxyMetricsPortAnnotation can be used to override the metricsPort config.
+	ProxyMetricsPortAnnotation = "proxy.linkerd.io/metrics-port"
+
+	// ProxyOutboundPortAnnotation can be used to override the outboundPort
+	// config.
+	ProxyOutboundPortAnnotation = "proxy.linkerd.io/outbound-port"
+
+	// ProxyRequestCPUAnnotation can be used to override the requestCPU config.
+	ProxyRequestCPUAnnotation = "proxy.linkerd.io/request-cpu"
+
+	// ProxyRequestMemoryAnnotation can be used to override the
+	// requestMemoryConfig.
+	ProxyRequestMemoryAnnotation = "proxy.linkerd.io/request-memory"
+
+	// ProxyLimitCPUAnnotation can be used to override the limitCPU config.
+	ProxyLimitCPUAnnotation = "proxy.linkerd.io/limit-cpu"
+
+	// ProxyLimitMemoryAnnotation can be used to override the limitMemory config.
+	ProxyLimitMemoryAnnotation = "proxy.linkerd.io/limit-memory"
+
+	// ProxyUIDAnnotation can be used to override the UID config.
+	ProxyUIDAnnotation = "proxy.linkerd.io/uid"
+
+	// ProxyLogLevelAnnotation can be used to override the log level config.
+	ProxyLogLevelAnnotation = "proxy.linkerd.io/log-level"
+
+	// ProxyDisableExternalProfilesAnnotation can be used to override the
+	// disableExternalProfilesAnnotation config.
+	ProxyDisableExternalProfilesAnnotation = "proxy.linkerd.io/disable-external-profiles"
+
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = "disabled"
@@ -162,6 +217,26 @@ var (
 
 	// MountPathProxyConfig is the path at which the global config file is mounted
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
+
+	// ConfigAnnotations is the list of annotations that can be used to override
+	// proxy configurations
+	ProxyConfigAnnotations = []string{
+		ProxyImageAnnotation,
+		ProxyInitImageAnnotation,
+		ProxyControlPortAnnotation,
+		ProxyIgnoreInboundPortsAnnotation,
+		ProxyIgnoreOutboundPortsAnnotation,
+		ProxyInboundPortAnnotation,
+		ProxyMetricsPortAnnotation,
+		ProxyOutboundPortAnnotation,
+		ProxyRequestCPUAnnotation,
+		ProxyRequestMemoryAnnotation,
+		ProxyLimitCPUAnnotation,
+		ProxyLimitMemoryAnnotation,
+		ProxyUIDAnnotation,
+		ProxyLogLevelAnnotation,
+		ProxyDisableExternalProfilesAnnotation,
+	}
 )
 
 // CreatedByAnnotationValue returns the value associated with
