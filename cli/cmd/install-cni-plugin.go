@@ -81,7 +81,7 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) taggedCNIPluginImage() string {
-	image := strings.Replace(options.cniPluginImage, defaultDockerRegistry, options.dockerRegistry, 1)
+	image := registryOverride(options.cniPluginImage, options.dockerRegistry)
 	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
 }
 

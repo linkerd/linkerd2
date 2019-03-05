@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/controller/api/public"
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -265,19 +266,14 @@ type proxyConfigOptions struct {
 	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
-
-	// proxyOutboundCapacity is a special case that's only used for injecting the
-	// proxy into the control plane install, and as such it does not have a
-	// corresponding command line flag.
-	proxyOutboundCapacity map[string]uint
 }
 
 const (
 	optionalTLS           = "optional"
 	defaultDockerRegistry = "gcr.io/linkerd-io"
-	defaultKeepaliveMs    = 10000
 )
 
+// Deprecated. Use newConfig
 func newProxyConfigOptions() *proxyConfigOptions {
 	return &proxyConfigOptions{
 		linkerdVersion:          version.Version,
@@ -301,8 +297,32 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		tls:                     "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
-		proxyOutboundCapacity:   map[string]uint{},
 	}
+}
+
+func newConfig() configs {
+	globalConfig := &config.Global{
+		LinkerdNamespace: defaultNamespace,
+		CniEnabled:       false,
+		Version:          version.Version,
+		IdentityContext:  nil,
+	}
+	proxyConfig := &config.Proxy{
+		ProxyImage:              &config.Image{ImageName: defaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
+		ProxyInitImage:          &config.Image{ImageName: defaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
+		DestinationApiPort:      &config.Port{Port: 8086},
+		ControlPort:             &config.Port{Port: 4190},
+		IgnoreInboundPorts:      nil,
+		IgnoreOutboundPorts:     nil,
+		InboundPort:             &config.Port{Port: 4143},
+		MetricsPort:             &config.Port{Port: 4191},
+		OutboundPort:            &config.Port{Port: 4140},
+		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
+		ProxyUid:                2102,
+		LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
+		DisableExternalProfiles: false,
+	}
+	return configs{globalConfig, proxyConfig}
 }
 
 func (options *proxyConfigOptions) validate() error {
@@ -372,14 +392,10 @@ func (options *proxyConfigOptions) enableTLS() bool {
 	return options.tls == optionalTLS
 }
 
-func (options *proxyConfigOptions) taggedProxyImage() string {
-	image := strings.Replace(options.proxyImage, defaultDockerRegistry, options.dockerRegistry, 1)
-	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
-}
-
-func (options *proxyConfigOptions) taggedProxyInitImage() string {
-	image := strings.Replace(options.initImage, defaultDockerRegistry, options.dockerRegistry, 1)
-	return fmt.Sprintf("%s:%s", image, options.linkerdVersion)
+// registryOverride replaces the registry of the provided image if the image is
+// using the default registry and the provided registry is not the default.
+func registryOverride(image, registry string) string {
+	return strings.Replace(image, defaultDockerRegistry, registry, 1)
 }
 
 // addProxyConfigFlags adds command line flags for all fields in the

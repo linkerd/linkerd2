@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -14,28 +15,20 @@ import (
 )
 
 var (
-	testServer           *WebhookServer
-	testWebhookResources *WebhookResources
+	testServer *WebhookServer
 )
 
 func init() {
 	// create a webhook which uses its fake client to seed the sidecar configmap
 	fakeClient := fake.NewClient("")
 
-	testWebhookResources = &WebhookResources{
-		FileProxySpec:                fake.FileProxySpec,
-		FileProxyInitSpec:            fake.FileProxyInitSpec,
-		FileTLSTrustAnchorVolumeSpec: fake.FileTLSTrustAnchorVolumeSpec,
-		FileTLSIdentityVolumeSpec:    fake.FileTLSIdentityVolumeSpec,
-	}
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, false, true)
+	webhook, err := NewWebhook(fakeClient, fake.DefaultControllerNamespace, false, true)
 	if err != nil {
 		panic(err)
 	}
 	log.SetOutput(ioutil.Discard)
-	factory = fake.NewFactory()
+	factory = fake.NewFactory(filepath.Join("fake", "data"))
 
-	factory = fake.NewFactory()
 	testServer = &WebhookServer{nil, webhook}
 }
 
@@ -86,7 +79,7 @@ func TestNewWebhookServer(t *testing.T) {
 	)
 	fakeClient := fake.NewClient(kubeconfig)
 
-	server, err := NewWebhookServer(fakeClient, testWebhookResources, addr, fake.DefaultControllerNamespace, false, true, rootCA)
+	server, err := NewWebhookServer(fakeClient, addr, fake.DefaultControllerNamespace, false, true, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

@@ -1,28 +1,18 @@
 package injector
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
-)
-
-const (
-	envVarKeyProxyTLSPodIdentity        = "LINKERD2_PROXY_TLS_POD_IDENTITY"
-	envVarKeyProxyTLSControllerIdentity = "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY"
-	envVarKeyProxyID                    = "LINKERD2_PROXY_ID"
 )
 
 // Webhook is a Kubernetes mutating admission webhook that mutates pods admission
@@ -32,13 +22,12 @@ type Webhook struct {
 	client              kubernetes.Interface
 	deserializer        runtime.Decoder
 	controllerNamespace string
-	resources           *WebhookResources
 	noInitContainer     bool
 	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, resources *WebhookResources, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -48,7 +37,6 @@ func NewWebhook(client kubernetes.Interface, resources *WebhookResources, contro
 		client:              client,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
-		resources:           resources,
 		noInitContainer:     noInitContainer,
 		tlsEnabled:          tlsEnabled,
 	}, nil
@@ -87,11 +75,6 @@ func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
 	}
 	admissionReview.Response = admissionResponse
 
-	if len(admissionResponse.Patch) > 0 {
-		log.Infof("patch generated: %s", admissionResponse.Patch)
-	}
-	log.Info("done")
-
 	return admissionReview
 }
 
@@ -102,221 +85,66 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 }
 
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
-	var deployment appsv1.Deployment
-	if err := yaml.Unmarshal(request.Object.Raw, &deployment); err != nil {
-		return nil, err
-	}
-	log.Infof("working on %s/%s %s..", request.Kind.Version, strings.ToLower(request.Kind.Kind), deployment.ObjectMeta.Name)
+	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	ns := request.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	log.Infof("resource namespace: %s", ns)
-
-	inject, err := w.shouldInject(ns, &deployment)
+	globalConfig, err := config.Global()
 	if err != nil {
 		return nil, err
 	}
 
-	if !inject {
-		log.Infof("skipping deployment %s", deployment.GetName())
-		return &admissionv1beta1.AdmissionResponse{
-			UID:     request.UID,
-			Allowed: true,
-		}, nil
-	}
-
-	identity := &k8sPkg.TLSIdentity{
-		Name:                deployment.ObjectMeta.Name,
-		Kind:                strings.ToLower(request.Kind.Kind),
-		Namespace:           ns,
-		ControllerNamespace: w.controllerNamespace,
-	}
-
-	proxy, proxyInit, err := w.containersSpec(identity)
+	proxyConfig, err := config.Proxy()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("proxy image: %s", proxy.Image)
-	log.Infof("proxy-init image: %s", proxyInit.Image)
-	log.Debugf("proxy container: %+v", proxy)
-	log.Debugf("init container: %+v", proxyInit)
 
-	patch := NewPatch()
-	patch.addContainer(proxy)
-
-	if !w.noInitContainer {
-		if len(deployment.Spec.Template.Spec.InitContainers) == 0 {
-			patch.addInitContainerRoot()
-		}
-		patch.addInitContainer(proxyInit)
-	}
-
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = map[string]string{}
-	}
-	if w.tlsEnabled {
-		caBundle, tlsSecrets, err := w.volumesSpec(identity)
-		if err != nil {
-			return nil, err
-		}
-		log.Debugf("ca bundle volume: %+v", caBundle)
-		log.Debugf("tls secrets volume: %+v", tlsSecrets)
-
-		if len(deployment.Spec.Template.Spec.Volumes) == 0 {
-			patch.addVolumeRoot()
-		}
-		patch.addVolume(caBundle)
-		patch.addVolume(tlsSecrets)
-		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeOptional
-	} else {
-		deployment.Spec.Template.Annotations[k8sPkg.IdentityModeAnnotation] = k8sPkg.IdentityModeDisabled
-	}
-
-	if deployment.Spec.Template.Labels == nil {
-		deployment.Spec.Template.Labels = map[string]string{}
-	}
-
-	deployment.Spec.Template.Labels[k8sPkg.ControllerNSLabel] = w.controllerNamespace
-	deployment.Spec.Template.Labels[k8sPkg.ProxyDeploymentLabel] = deployment.ObjectMeta.Name
-	patch.addPodLabels(deployment.Spec.Template.Labels)
-
-	if deployment.Labels == nil {
-		deployment.Labels = map[string]string{}
-	}
-
-	deployment.Labels[k8sPkg.ControllerNSLabel] = w.controllerNamespace
-	deployment.Labels[k8sPkg.ProxyDeploymentLabel] = deployment.ObjectMeta.Name
-	patch.addDeploymentLabels(deployment.Labels)
-
-	image := strings.Split(proxy.Image, ":")
-	var imageTag string
-
-	if len(image) < 2 {
-		imageTag = "latest"
-	} else {
-		imageTag = image[1]
-	}
-
-	deployment.Spec.Template.Annotations[k8sPkg.CreatedByAnnotation] = fmt.Sprintf("linkerd/proxy-injector %s", imageTag)
-	deployment.Spec.Template.Annotations[k8sPkg.ProxyVersionAnnotation] = imageTag
-	patch.addPodAnnotations(deployment.Spec.Template.Annotations)
-
-	patchJSON, err := json.Marshal(patch.patchOps)
+	namespace, err := w.client.CoreV1().Namespaces().Get(request.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
+	nsAnnotations := namespace.GetAnnotations()
+
+	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
+		WithNsAnnotations(nsAnnotations).
+		WithKind(request.Kind.Kind)
+	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
+	if err != nil {
+		return nil, err
+	}
+
+	admissionResponse := &admissionv1beta1.AdmissionResponse{
+		UID:     request.UID,
+		Allowed: true,
+	}
+	if !nonEmpty {
+		return admissionResponse, nil
+	}
+
+	p, _, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.IsEmpty() {
+		return admissionResponse, nil
+	}
+
+	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
+
+	// When adding workloads through `kubectl apply` the spec template labels are
+	// automatically copied to the workload's main metadata section.
+	// This doesn't happen when adding labels through the webhook. So we manually
+	// add them to remain consistent.
+	conf.AddRootLabels(p)
+
+	patchJSON, err := p.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("patch generated: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
-	admissionResponse := &admissionv1beta1.AdmissionResponse{
-		UID:       request.UID,
-		Allowed:   true,
-		Patch:     patchJSON,
-		PatchType: &patchType,
-	}
+	admissionResponse.Patch = patchJSON
+	admissionResponse.PatchType = &patchType
 
 	return admissionResponse, nil
-}
-
-// shouldInject determines whether or not the given deployment should be
-// injected. A deployment should be injected if it does not already contain
-// any known sidecars, and:
-// - the deployment's namespace has the linkerd.io/inject annotation set to
-//   "enabled", and the deployment's pod spec does not have the
-//   linkerd.io/inject annotation set to "disabled"; or
-// - the deployment's pod spec has the linkerd.io/inject annotation set to
-//   "enabled"
-func (w *Webhook) shouldInject(ns string, deployment *appsv1.Deployment) (bool, error) {
-	if healthcheck.HasExistingSidecars(&deployment.Spec.Template.Spec) {
-		return false, nil
-	}
-
-	namespace, err := w.client.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	nsAnnotation := namespace.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
-	podAnnotation := deployment.Spec.Template.GetAnnotations()[k8sPkg.ProxyInjectAnnotation]
-
-	if nsAnnotation == k8sPkg.ProxyInjectEnabled && podAnnotation != k8sPkg.ProxyInjectDisabled {
-		return true, nil
-	}
-
-	return podAnnotation == k8sPkg.ProxyInjectEnabled, nil
-}
-
-func (w *Webhook) containersSpec(identity *k8sPkg.TLSIdentity) (*corev1.Container, *corev1.Container, error) {
-	proxySpec, err := ioutil.ReadFile(w.resources.FileProxySpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var proxy corev1.Container
-	if err := yaml.Unmarshal(proxySpec, &proxy); err != nil {
-		return nil, nil, err
-	}
-
-	for index, env := range proxy.Env {
-		if env.Name == envVarKeyProxyTLSPodIdentity {
-			proxy.Env[index].Value = identity.ToDNSName()
-		} else if env.Name == envVarKeyProxyTLSControllerIdentity {
-			proxy.Env[index].Value = identity.ToControllerIdentity().ToDNSName()
-		} else if env.Name == envVarKeyProxyID {
-			proxy.Env[index].Value = identity.ToDNSName()
-		}
-	}
-
-	proxyInitSpec, err := ioutil.ReadFile(w.resources.FileProxyInitSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var proxyInit corev1.Container
-	if err := yaml.Unmarshal(proxyInitSpec, &proxyInit); err != nil {
-		return nil, nil, err
-	}
-
-	return &proxy, &proxyInit, nil
-}
-
-func (w *Webhook) volumesSpec(identity *k8sPkg.TLSIdentity) (*corev1.Volume, *corev1.Volume, error) {
-	trustAnchorVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSTrustAnchorVolumeSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var trustAnchors corev1.Volume
-	if err := yaml.Unmarshal(trustAnchorVolumeSpec, &trustAnchors); err != nil {
-		return nil, nil, err
-	}
-
-	tlsVolumeSpec, err := ioutil.ReadFile(w.resources.FileTLSIdentityVolumeSpec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var linkerdSecrets corev1.Volume
-	if err := yaml.Unmarshal(tlsVolumeSpec, &linkerdSecrets); err != nil {
-		return nil, nil, err
-	}
-	linkerdSecrets.VolumeSource.Secret.SecretName = identity.ToSecretName()
-
-	return &trustAnchors, &linkerdSecrets, nil
-}
-
-// WebhookResources contain paths to all the needed file resources.
-type WebhookResources struct {
-	// FileProxySpec is the path to the proxy spec.
-	FileProxySpec string
-
-	// FileProxyInitSpec is the path to the proxy-init spec.
-	FileProxyInitSpec string
-
-	// FileTLSTrustAnchorVolumeSpec is the path to the trust anchor volume spec.
-	FileTLSTrustAnchorVolumeSpec string
-
-	// FileTLSIdentityVolumeSpec is the path to the TLS identity volume spec.
-	FileTLSIdentityVolumeSpec string
 }

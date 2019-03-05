@@ -30,8 +30,8 @@ type Factory struct {
 }
 
 // NewFactory returns a new instance of Fixture.
-func NewFactory() *Factory {
-	return &Factory{rootDir: filepath.Join("fake", "data")}
+func NewFactory(rootDir string) *Factory {
+	return &Factory{rootDir: rootDir}
 }
 
 // HTTPRequestBody returns the content of the specified file as a slice of

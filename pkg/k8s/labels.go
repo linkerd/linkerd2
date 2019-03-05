@@ -103,14 +103,6 @@ const (
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
-	// ProxySpecFileName is the name (key) within the proxy-injector ConfigMap
-	// that contains the proxy container spec.
-	ProxySpecFileName = "proxy.yaml"
-
-	// ProxyInitSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the proxy-init container spec.
-	ProxyInitSpecFileName = "proxy-init.yaml"
-
 	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
 	// used when injecting a proxy with TLS enabled.
 	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
@@ -118,14 +110,6 @@ const (
 	// TLSSecretsVolumeName is the name of the volume holding the secrets,
 	// when injecting a proxy with TLS enabled.
 	TLSSecretsVolumeName = "linkerd-secrets"
-
-	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the trust anchors volume spec.
-	TLSTrustAnchorVolumeSpecFileName = "linkerd-trust-anchors.yaml"
-
-	// TLSIdentityVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the TLS identity secrets volume spec.
-	TLSIdentityVolumeSpecFileName = "linkerd-secrets.yaml"
 
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
@@ -168,21 +152,11 @@ var (
 	// mounted
 	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
 
-	// MountPathConfigProxySpec is the path at which the proxy container spec is
-	// mounted to the proxy-injector
-	MountPathConfigProxySpec = MountPathBase + "/config/" + ProxySpecFileName
+	// MountPathGlobalConfig is the path at which the global config file is mounted
+	MountPathGlobalConfig = MountPathBase + "/config/global"
 
-	// MountPathConfigProxyInitSpec is the path at which the proxy-init container
-	// spec is mounted to the proxy-injector
-	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
-
-	// MountPathTLSTrustAnchorVolumeSpec is the path at which the trust anchor
-	// volume spec is mounted to the proxy-injector
-	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
-
-	// MountPathTLSIdentityVolumeSpec is the path at which the TLS identity
-	// secret volume spec is mounted to the proxy-injector
-	MountPathTLSIdentityVolumeSpec = MountPathBase + "/config/" + TLSIdentityVolumeSpecFileName
+	// MountPathProxyConfig is the path at which the global config file is mounted
+	MountPathProxyConfig = MountPathBase + "/config/proxy"
 )
 
 // CreatedByAnnotationValue returns the value associated with
