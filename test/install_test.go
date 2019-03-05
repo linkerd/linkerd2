@@ -49,33 +49,24 @@ var (
 		"linkerd-web":        {1, []string{"web"}},
 	}
 
-	// linkerd-proxy logs some errors when TLS is enabled, remove these once
+	// Linkerd commonly logs these errors during testing, remove these once
 	// they're addressed.
-	knownProxyErrors = []string{
-		`linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
-		`linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/identity/certificate.crt: No such file or directory (os error 2)`,
-		`linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/trust-anchors/trust-anchors.pem: No such file or directory (os error 2)`,
-		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/identity/certificate.crt", Some(2)), falling back`,
-		`linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io("/var/linkerd-io/trust-anchors/trust-anchors.pem", Some(2)), falling back`,
+	knownErrorsRegex = regexp.MustCompile(strings.Join([]string{
+		// TLS not ready at startup
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/identity/certificate\.crt: No such file or directory \(os error 2\)`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/trust-anchors/trust-anchors\.pem: No such file or directory \(os error 2\)`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/identity/certificate\.crt", Some\(2\)\), falling back`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/trust-anchors/trust-anchors\.pem", Some\(2\)\), falling back`,
 
-		// k8s hitting `:3000/api/health` before grafana is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:3000)`,
+		// k8s hitting readiness endpoints before components are ready
+		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
+		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
 
-		// k8s hitting `:9994/ready` before web is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9994)`,
+		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0.0.0.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
-		// k8s hitting `:9995/ready` before public-api is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9995)`,
-
-		// k8s hitting `:9996/ready` before destination is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9996)`,
-
-		// k8s hitting `:9997/ready` before ca is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9997)`,
-
-		// k8s hitting `:9998/ready` before tap is ready
-		`linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused (os error 111) (address: 127.0.0.1:9998)`,
-	}
+		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
+		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
+	}, "|"))
 )
 
 //////////////////////
@@ -310,9 +301,9 @@ func TestLogs(t *testing.T) {
 		containers := append(spec.containers, proxyContainer)
 
 		for _, container := range containers {
-			regex := controllerRegex
+			errRegex := controllerRegex
 			if container == proxyContainer {
-				regex = proxyRegex
+				errRegex = proxyRegex
 			}
 
 			outputStream, err := TestHelper.LinkerdRunStream(
@@ -321,31 +312,19 @@ func TestLogs(t *testing.T) {
 				"--container", container,
 			)
 			if err != nil {
-				t.Fatalf("Error running command:\n%s", err)
+				t.Errorf("Error running command:\n%s", err)
 			}
 			defer outputStream.Stop()
-			outputLines, _ := outputStream.ReadUntil(100, 10*time.Second)
+			// Ignore the error returned, since ReadUntil will return an error if it
+			// does not return 10,000 after 1 second. We don't need 10,000 log lines.
+			outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
 			if len(outputLines) == 0 {
-				t.Fatalf("No logs found for %s/%s", deploy, container)
+				t.Errorf("No logs found for %s/%s", deploy, container)
 			}
 
 			for _, line := range outputLines {
-				if regex.MatchString(line) {
-
-					// check for known errors
-					known := false
-					if TestHelper.TLS() && container == proxyContainer {
-						for _, er := range knownProxyErrors {
-							if strings.HasSuffix(line, er) {
-								known = true
-								break
-							}
-						}
-					}
-
-					if !known {
-						t.Fatalf("Found error in %s/%s log: %s", deploy, container, line)
-					}
+				if errRegex.MatchString(line) && !knownErrorsRegex.MatchString(line) {
+					t.Errorf("Found error in %s/%s log: %s", deploy, container, line)
 				}
 			}
 		}
@@ -354,31 +333,8 @@ func TestLogs(t *testing.T) {
 
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range linkerdDeployReplicas {
-		deploy := strings.TrimPrefix(deploy, "linkerd-")
-		containers := append(spec.containers, proxyContainer, initContainer)
-
-		for _, container := range containers {
-			selector := fmt.Sprintf("linkerd.io/control-plane-component=%s", deploy)
-			containerStatus := "containerStatuses"
-			if container == initContainer {
-				containerStatus = "initContainerStatuses"
-			}
-			output := fmt.Sprintf("jsonpath='{.items[*].status.%s[?(@.name==\"%s\")].restartCount}'", containerStatus, container)
-
-			out, err := TestHelper.Kubectl(
-				"-n", TestHelper.GetLinkerdNamespace(),
-				"get", "pods",
-				"--selector", selector,
-				"-o", output,
-			)
-			if err != nil {
-				t.Fatalf("kubectl command failed\n%s", out)
-			}
-			if out == "''" {
-				t.Fatalf("Could not find restartCount for %s/%s", deploy, container)
-			} else if out != "'0'" {
-				t.Fatalf("Found %s restarts of %s/%s", out, deploy, container)
-			}
+		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
+			t.Fatal(fmt.Errorf("Error validating pods [%s]:\n%s", deploy, err))
 		}
 	}
 }
