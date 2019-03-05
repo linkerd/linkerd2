@@ -71,7 +71,6 @@ func NewProxyMetricsForward(
 
 	var port corev1.ContainerPort
 	for _, p := range container.Ports {
-		// TODO: make a constant
 		if p.Name == ProxyMetricsPortName {
 			port = p
 			break
