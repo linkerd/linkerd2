@@ -88,7 +88,7 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("%s", string(bytes))
+			fmt.Printf("%s", bytes)
 
 			return nil
 		},
