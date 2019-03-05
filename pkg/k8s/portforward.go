@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -9,9 +8,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -33,40 +32,77 @@ type PortForward struct {
 	config     *rest.Config
 }
 
+// NewProxyMetricsForward returns an instance of the PortForward struct that can
+// be used to establish a port-forward connection to a linkerd-proxy's metrics
+// endpoint, specified by namespace and proxyPod.
+func NewProxyMetricsForward(
+	config *rest.Config,
+	clientset kubernetes.Interface,
+	namespace, proxyPod string,
+	emitLogs bool,
+) (*PortForward, error) {
+	timeoutSeconds := int64(30)
+	podList, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
+	if err != nil {
+		return nil, err
+	}
+
+	var pod corev1.Pod
+	for _, p := range podList.Items {
+		if p.Status.Phase == corev1.PodRunning && p.GetName() == proxyPod {
+			pod = p
+			break
+		}
+	}
+	if pod.GetName() != proxyPod {
+		return nil, fmt.Errorf("no running pods found for %s", proxyPod)
+	}
+
+	var container corev1.Container
+	for _, c := range pod.Spec.Containers {
+		if c.Name == ProxyContainerName {
+			container = c
+			break
+		}
+	}
+	if container.Name != ProxyContainerName {
+		return nil, fmt.Errorf("no %s container found for pod %s", ProxyContainerName, pod.GetName())
+	}
+
+	var port corev1.ContainerPort
+	for _, p := range container.Ports {
+		// TODO: make a constant
+		if p.Name == ProxyMetricsPortName {
+			port = p
+			break
+		}
+	}
+	if port.Name != ProxyMetricsPortName {
+		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyMetricsPortName, pod.GetName(), container.Name)
+	}
+
+	return newPortForward(config, clientset, namespace, pod.GetName(), 0, int(port.ContainerPort), emitLogs)
+}
+
 // NewPortForward returns an instance of the PortForward struct that can be used
 // to establish a port-forward connection to a pod in the deployment that's
 // specified by namespace and deployName. If localPort is 0, it will use a
 // random ephemeral port.
 func NewPortForward(
-	configPath, kubeContext, namespace, deployName string,
+	config *rest.Config,
+	clientset kubernetes.Interface,
+	namespace, deployName string,
 	localPort, remotePort int,
 	emitLogs bool,
 ) (*PortForward, error) {
-	config, err := GetConfig(configPath, kubeContext)
-	if err != nil {
-		return nil, err
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	kubeAPI := &KubernetesAPI{Config: config}
-	client, err := kubeAPI.NewClient()
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	pods, err := kubeAPI.GetPodsByNamespace(ctx, client, namespace)
+	timeoutSeconds := int64(30)
+	podList, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
 	if err != nil {
 		return nil, err
 	}
 
 	podName := ""
-	for _, pod := range pods {
+	for _, pod := range podList.Items {
 		if pod.Status.Phase == corev1.PodRunning {
 			if strings.HasPrefix(pod.Name, deployName) {
 				podName = pod.Name
@@ -79,12 +115,24 @@ func NewPortForward(
 		return nil, fmt.Errorf("no running pods found for %s", deployName)
 	}
 
+	return newPortForward(config, clientset, namespace, podName, localPort, remotePort, emitLogs)
+}
+
+func newPortForward(
+	config *rest.Config,
+	clientset kubernetes.Interface,
+	namespace, podName string,
+	localPort, remotePort int,
+	emitLogs bool,
+) (*PortForward, error) {
+
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Namespace(namespace).
 		Name(podName).
 		SubResource("portforward")
 
+	var err error
 	if localPort == 0 {
 		localPort, err = getLocalPort()
 		if err != nil {
