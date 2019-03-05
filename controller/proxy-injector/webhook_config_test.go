@@ -29,11 +29,11 @@ func TestCreate(t *testing.T) {
 	}
 
 	// expect mutating webhook configuration to not exist
-	_, exist, err := webhookConfig.exist()
+	exists, err := webhookConfig.exists()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if exist {
+	if exists {
 		t.Error("Unexpected mutating webhook configuration. Expect resources to not exist")
 	}
 
@@ -43,11 +43,11 @@ func TestCreate(t *testing.T) {
 	}
 
 	// expect mutating webhook configuration to exist
-	_, exist, err = webhookConfig.exist()
+	exists, err = webhookConfig.exists()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if !exist {
+	if !exists {
 		t.Error("Expected mutating webhook configuration to exist")
 	}
 

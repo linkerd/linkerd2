@@ -40,17 +40,16 @@ func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookS
 	}, nil
 }
 
-// Create sends the request to either create or update the
-// MutatingWebhookConfiguration resource.
+// Create sends the request to create the MutatingWebhookConfiguration resource.
 func (w *WebhookConfig) Create() (*arv1beta1.MutatingWebhookConfiguration, error) {
-	mwc, exist, err := w.exist()
+	exists, err := w.exists()
 	if err != nil {
 		return nil, err
 	}
 
-	if exist {
+	if exists {
 		log.Info("deleting existing mutating webhook configuration")
-		if err := w.delete(mwc); err != nil {
+		if err := w.delete(); err != nil {
 			return nil, err
 		}
 	}
@@ -58,19 +57,19 @@ func (w *WebhookConfig) Create() (*arv1beta1.MutatingWebhookConfiguration, error
 	return w.create()
 }
 
-// exist returns true if the mutating webhook configuration exists. Otherwise,
+// exists returns true if the mutating webhook configuration exists. Otherwise,
 // it returns false.
-func (w *WebhookConfig) exist() (*arv1beta1.MutatingWebhookConfiguration, bool, error) {
-	mwc, err := w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8sPkg.ProxyInjectorWebhookConfig, metav1.GetOptions{})
+func (w *WebhookConfig) exists() (bool, error) {
+	_, err := w.get()
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, false, nil
+			return false, nil
 		}
 
-		return nil, false, err
+		return false, err
 	}
 
-	return mwc, true, nil
+	return true, nil
 }
 
 func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error) {
@@ -101,6 +100,12 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
 }
 
-func (w *WebhookConfig) delete(mwc *arv1beta1.MutatingWebhookConfiguration) error {
-	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Delete(mwc.ObjectMeta.Name, &metav1.DeleteOptions{})
+func (w *WebhookConfig) get() (*arv1beta1.MutatingWebhookConfiguration, error) {
+	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
+		Get(k8sPkg.ProxyInjectorWebhookConfig, metav1.GetOptions{})
+}
+
+func (w *WebhookConfig) delete() error {
+	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Delete(
+		k8sPkg.ProxyInjectorWebhookConfig, &metav1.DeleteOptions{})
 }
