@@ -19,7 +19,6 @@ type deploySpec struct {
 
 const (
 	proxyContainer = "linkerd-proxy"
-	initContainer  = "linkerd-init"
 )
 
 //////////////////////
