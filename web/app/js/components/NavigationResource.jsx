@@ -80,7 +80,7 @@ class NavigationResource extends React.Component {
   subMenu() {
     const { api, classes, metrics } = this.props;
 
-    const resources = _orderBy( metrics
+    const resources = _orderBy(metrics
       .filter(m => m.pods.meshedPods !== "0")
       .map(m =>
         _merge(m, {
