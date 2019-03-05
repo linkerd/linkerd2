@@ -63,6 +63,7 @@ type ResourceConfig struct {
 	podSpec               *v1.PodSpec
 	dnsNameOverride       string
 	proxyOutboundCapacity map[string]uint
+	proxyConfigOverrides  map[string]interface{}
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -72,6 +73,7 @@ func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *
 		proxyConfig:           proxyConfig,
 		podLabels:             map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
 		proxyOutboundCapacity: map[string]uint{},
+		proxyConfigOverrides:  map[string]interface{}{},
 	}
 }
 
@@ -145,6 +147,10 @@ func (conf *ResourceConfig) GetPatch(
 	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), report.Name)
 
 	if err := conf.parse(bytes); err != nil {
+		return nil, nil, err
+	}
+
+	if err := conf.overrides(); err != nil {
 		return nil, nil, err
 	}
 
@@ -534,7 +540,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			Image:                    conf.taggedProxyInitImage(),
 			ImagePullPolicy:          v1.PullPolicy(conf.proxyConfig.GetProxyInitImage().GetPullPolicy()),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     initArgs,
+			Args: initArgs,
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -587,6 +593,186 @@ func (conf *ResourceConfig) taggedProxyInitImage() string {
 	return fmt.Sprintf("%s:%s",
 		conf.proxyConfig.GetProxyInitImage().GetImageName(),
 		conf.globalConfig.GetVersion())
+}
+
+func (conf *ResourceConfig) overrides() error {
+	if !conf.KindInjectable() {
+		return nil
+	}
+
+	log.Debugf("object annotations: %+v\n", conf.podMeta.Annotations)
+	log.Debugf("namespace annotations: %+v\n", conf.nsAnnotations)
+	for _, annotation := range k8s.ProxyConfigAnnotations {
+		if value, exists := conf.podMeta.Annotations[annotation]; exists {
+			typed, err := conf.annotationValueType(annotation, value)
+			if err != nil {
+				return err
+			}
+
+			conf.proxyConfigOverrides[annotation] = typed
+			continue
+		}
+
+		if value, exists := conf.nsAnnotations[annotation]; exists {
+			typed, err := conf.annotationValueType(annotation, value)
+			if err != nil {
+				return err
+			}
+
+			conf.proxyConfigOverrides[annotation] = typed
+			continue
+		}
+
+		typed, err := conf.annotationValueType(annotation, "")
+		if err != nil {
+			return err
+		}
+
+		conf.proxyConfigOverrides[annotation] = typed
+	}
+
+	log.Debugf("proxy config: %+v", conf.proxyConfigOverrides)
+	return nil
+}
+
+func isProxyConfigAnnotation(annotation string) bool {
+	for _, a := range k8s.ProxyConfigAnnotations {
+		if annotation == a {
+			return true
+		}
+	}
+	return false
+}
+
+func (conf *ResourceConfig) annotationValueType(annotation, strValue string) (interface{}, error) {
+
+	var (
+		value interface{}
+		err   error
+	)
+	switch annotation {
+	case k8s.ProxyImageAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetProxyImage().GetImageName(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyInitImageAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetProxyInitImage().GetImageName(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyIgnoreInboundPortsAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetIgnoreInboundPorts(), nil
+		}
+
+		ports := []*config.Port{}
+		for _, portStr := range strings.Split(strValue, ",") {
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			ports = append(ports, &config.Port{Port: uint32(port)})
+		}
+		value = ports
+
+	case k8s.ProxyIgnoreOutboundPortsAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetIgnoreOutboundPorts(), nil
+		}
+
+		ports := []*config.Port{}
+		for _, portStr := range strings.Split(strValue, ",") {
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			ports = append(ports, &config.Port{Port: uint32(port)})
+		}
+		value = ports
+
+	case k8s.ProxyControlPortAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetControlPort(), nil
+		}
+
+		var port uint64
+		port, err = strconv.ParseUint(strValue, 10, 32)
+		value = &config.Port{Port: uint32(port)}
+
+	case k8s.ProxyInboundPortAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetInboundPort(), nil
+		}
+
+		var port uint64
+		port, err = strconv.ParseUint(strValue, 10, 32)
+		value = &config.Port{Port: uint32(port)}
+
+	case k8s.ProxyMetricsPortAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetMetricsPort(), nil
+		}
+
+		var port uint64
+		port, err = strconv.ParseUint(strValue, 10, 32)
+		value = &config.Port{Port: uint32(port)}
+
+	case k8s.ProxyOutboundPortAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetOutboundPort(), nil
+		}
+
+		var port uint64
+		port, err = strconv.ParseUint(strValue, 10, 32)
+		value = &config.Port{Port: uint32(port)}
+
+	case k8s.ProxyRequestCPUAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetResource().GetRequestCpu(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyRequestMemoryAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetResource().GetRequestMemory(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyLimitCPUAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetResource().GetLimitCpu(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyLimitMemoryAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetResource().GetLimitMemory(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyUIDAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetProxyUid(), nil
+		}
+		value, err = strconv.ParseInt(strValue, 10, 64)
+
+	case k8s.ProxyLogLevelAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetLogLevel().GetLevel(), nil
+		}
+		value = strValue
+
+	case k8s.ProxyDisableExternalProfilesAnnotation:
+		if strValue == "" {
+			return conf.proxyConfig.GetDisableExternalProfiles(), nil
+		}
+		value, err = strconv.ParseBool(strValue)
+	}
+
+	return value, err
 }
 
 // ShouldInjectCLI is used by CLI inject to determine whether or not a given
