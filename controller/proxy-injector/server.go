@@ -78,6 +78,9 @@ func (w *WebhookServer) Shutdown() error {
 }
 
 func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, error) {
+	// must use the service short name in this TLS identity as the k8s api server
+	// looks for the webhook at <svc_name>.<namespace>.svc, without the cluster
+	// domain.
 	tlsIdentity := k8s.TLSIdentity{
 		Name:                "linkerd-proxy-injector",
 		Kind:                k8s.Service,
