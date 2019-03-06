@@ -19,19 +19,18 @@ message Proxy {
   Image proxy_image = 1;
   Image proxy_init_image = 2;
 
-  Port destination_api_port = 3;
-  Port control_port = 4;
-  repeated Port ignore_inbound_ports = 5;
-  repeated Port ignore_outbound_ports = 6;
-  Port inbound_port = 7;
-  Port metrics_port = 8;
-  Port outbound_port = 9;
+  Port control_port = 3;
+  repeated Port ignore_inbound_ports = 4;
+  repeated Port ignore_outbound_ports = 5;
+  Port inbound_port = 6;
+  Port metrics_port = 7;
+  Port outbound_port = 8;
 
-  ResourceRequirements resource = 10;
+  ResourceRequirements resource = 9;
 
-  int64 proxy_uid = 11;
-  LogLevel log_level = 12;
-  bool disable_external_profiles = 13;
+  int64 proxy_uid = 10;
+  LogLevel log_level = 11;
+  bool disable_external_profiles = 12;
 }
 
 message Image {
