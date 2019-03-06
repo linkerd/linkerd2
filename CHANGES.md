@@ -1,4 +1,29 @@
-## edge-19-2.5
+## edge-19.3.1
+
+* CLI
+  * Introduced a check for NET_ADMIN in `linkerd check`
+  * Fixed permissions check for CRDs
+  * Included kubectl version check as part of `linkerd check` (thanks @yb172!)
+  * Added TCP stats to the stat command, under the `-o wide` and `-o json` flags
+* Controller
+  * Updated the `mutatingwebhookconfiguration` so that it is recreated when the
+    proxy injector is restarted, so that the MWC always picks up the latest
+    config template during version upgrade
+* Proxy
+  * Increased the inbound/router cap on MAX_CONCURRENT_STREAMS
+  * The `l5d-remote-ip` header is now set on inbound requests and outbound
+    responses
+* Web UI
+  * Jobs now appear in the dashboard and Grafana (thanks, @Pothulapati!)
+  * Fixed sidebar not updating when resources were added/deleted (thanks
+    @liquidslr!)
+  * Added filter functionality to the metrics tables
+* Internal
+  * Added more log errors to the integration tests
+  * Removed the GOPATH dependence from the CLI dev environment
+  * Consolidated injection code from CLI and admission controller code paths
+
+## edge-19.2.5
 
 * CLI
   * Updated `linkerd check` to ensure hint URLs are displayed for RPC checks
