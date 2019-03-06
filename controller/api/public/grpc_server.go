@@ -10,10 +10,12 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/config"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -218,6 +220,19 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		},
 	}
 	return response, nil
+}
+
+func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
+	global, err := config.Global()
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving global config - %s", err)
+	}
+	proxy, err := config.Proxy()
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
+	}
+	rsp := &configPb.All{Global: global, Proxy: proxy}
+	return rsp, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {

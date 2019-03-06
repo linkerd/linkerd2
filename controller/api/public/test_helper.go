@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -27,6 +28,7 @@ type MockAPIClient struct {
 	StatSummaryResponseToReturn    *pb.StatSummaryResponse
 	TopRoutesResponseToReturn      *pb.TopRoutesResponse
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
+	ConfigResponseToReturn         *configPb.All
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
 	*discovery.MockDiscoveryClient
@@ -70,6 +72,11 @@ func (c *MockAPIClient) TapByResource(ctx context.Context, in *pb.TapByResourceR
 // SelfCheck provides a mock of a Public API method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
+}
+
+// Config provides a mock of a Public API method.
+func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.CallOption) (*configPb.All, error) {
+	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
 // MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
