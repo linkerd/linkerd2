@@ -15,6 +15,9 @@ pre-kubernetes-cluster-setup
 √ can create ClusterRoles
 √ can create ClusterRoleBindings
 √ can create CustomResourceDefinitions
+
+pre-kubernetes-capability
+-------------------------
 √ has NET_ADMIN capability
 
 pre-kubernetes-setup

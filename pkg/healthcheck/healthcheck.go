@@ -53,6 +53,12 @@ const (
 	// checks must be added first.
 	LinkerdPreInstallSingleNamespaceChecks CategoryID = "pre-kubernetes-single-namespace-setup"
 
+	// LinkerdPreInstallCapabilityChecks adds a check to validate the user has the
+	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN
+	// capability is required by the `linkerd-init` container to modify IP tables.
+	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
+	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
+
 	// LinkerdPreInstallChecks adds checks to validate that the user can create
 	// Kubernetes objects necessary to install the control plane, including
 	// Service, Deployment, and ConfigMap. This check only runs as part of the set
@@ -314,13 +320,6 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
 					},
 				},
-				{
-					description: "has NET_ADMIN capability",
-					hintAnchor:  "pre-k8s-cluster-net-admin",
-					check: func(context.Context) error {
-						return hc.checkNetAdmin()
-					},
-				},
 			},
 		},
 		{
@@ -345,6 +344,18 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdPreInstallCapabilityChecks,
+			checkers: []checker{
+				{
+					description: "has NET_ADMIN capability",
+					hintAnchor:  "pre-k8s-cluster-net-admin",
+					check: func(context.Context) error {
+						return hc.checkNetAdmin()
 					},
 				},
 			},
