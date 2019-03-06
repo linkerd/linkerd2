@@ -30,7 +30,7 @@ class NavigationResourcesBase extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = {open: false};
+    this.state = { open: false };
   }
 
   handleOnClick = () => {
@@ -92,7 +92,7 @@ class NavigationResourcesBase extends React.Component {
 
 export default withREST(
   withContext(withStyles(styles, { withTheme: true })(NavigationResourcesBase)),
-  ({api}) => [
+  ({ api }) => [
     // TODO: modify "all" to also retrieve namespaces, also share fetch with parent component
     api.fetchMetrics(api.urlsForResource("all")),
     api.fetchMetrics(api.urlsForResource("namespace")),
