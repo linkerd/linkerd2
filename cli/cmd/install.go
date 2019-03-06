@@ -37,7 +37,6 @@ type installConfig struct {
 	ControllerLogLevel          string
 	ControllerComponentLabel    string
 	CreatedByAnnotation         string
-	DestinationAPIPort          uint
 	EnableTLS                   bool
 	TLSTrustAnchorConfigMapName string
 	ProxyContainerName          string
@@ -170,7 +169,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ControllerComponentLabel:    k8s.ControllerComponentLabel,
 		ControllerUID:               options.controllerUID,
 		CreatedByAnnotation:         k8s.CreatedByAnnotation,
-		DestinationAPIPort:          options.destinationAPIPort,
 		EnableTLS:                   options.enableTLS(),
 		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
 		ProxyContainerName:          k8s.ProxyContainerName,
@@ -325,9 +323,6 @@ func proxyConfig(options *installOptions) *config.Proxy {
 		ProxyInitImage: &config.Image{
 			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
-		},
-		DestinationApiPort: &config.Port{
-			Port: uint32(options.destinationAPIPort),
 		},
 		ControlPort: &config.Port{
 			Port: uint32(options.proxyControlPort),

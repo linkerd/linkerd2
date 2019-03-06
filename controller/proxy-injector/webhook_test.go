@@ -24,7 +24,6 @@ var (
 	proxyConfig = &config.Proxy{
 		ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
 		ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
-		DestinationApiPort:      &config.Port{Port: 8086},
 		ControlPort:             &config.Port{Port: 4190},
 		IgnoreInboundPorts:      nil,
 		IgnoreOutboundPorts:     nil,

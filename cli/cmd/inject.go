@@ -278,7 +278,6 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
-		DestinationApiPort:  &config.Port{Port: uint32(options.destinationAPIPort)},
 		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
 		IgnoreInboundPorts:  ignoreInboundPorts,
 		IgnoreOutboundPorts: ignoreOutboundPorts,
