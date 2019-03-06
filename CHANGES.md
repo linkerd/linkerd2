@@ -14,7 +14,6 @@
   * The `l5d-remote-ip` header is now set on inbound requests and outbound
     responses
 * Web UI
-  * Jobs now appear in the dashboard and Grafana (thanks, @Pothulapati!)
   * Fixed sidebar not updating when resources were added/deleted (thanks
     @liquidslr!)
   * Added filter functionality to the metrics tables
