@@ -5,6 +5,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -87,12 +88,12 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	globalConfig, err := config.Global()
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	proxyConfig, err := config.Proxy()
+	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -34,12 +34,14 @@ type APIServer interface {
 }
 
 type grpcServer struct {
-	prometheusAPI       promv1.API
-	tapClient           tapPb.TapClient
-	discoveryClient     discoveryPb.DiscoveryClient
-	k8sAPI              *k8s.API
-	controllerNamespace string
-	ignoredNamespaces   []string
+	prometheusAPI         promv1.API
+	tapClient             tapPb.TapClient
+	discoveryClient       discoveryPb.DiscoveryClient
+	k8sAPI                *k8s.API
+	controllerNamespace   string
+	ignoredNamespaces     []string
+	mountPathGlobalConfig string
+	mountPathProxyConfig  string
 }
 
 type podReport struct {
@@ -65,17 +67,25 @@ func newGrpcServer(
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
-		prometheusAPI:       promAPI,
-		tapClient:           tapClient,
-		discoveryClient:     discoveryClient,
-		k8sAPI:              k8sAPI,
-		controllerNamespace: controllerNamespace,
-		ignoredNamespaces:   ignoredNamespaces,
+		prometheusAPI:         promAPI,
+		tapClient:             tapClient,
+		discoveryClient:       discoveryClient,
+		k8sAPI:                k8sAPI,
+		controllerNamespace:   controllerNamespace,
+		ignoredNamespaces:     ignoredNamespaces,
+		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
+		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
 
 	return grpcServer
+}
+
+func (s *grpcServer) WithConfigPaths(global, proxy string) *grpcServer {
+	s.mountPathGlobalConfig = global
+	s.mountPathProxyConfig = proxy
+	return s
 }
 
 func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
@@ -223,11 +233,11 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 }
 
 func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
-	global, err := config.Global()
+	global, err := config.Global(s.mountPathGlobalConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving global config - %s", err)
 	}
-	proxy, err := config.Proxy()
+	proxy, err := config.Proxy(s.mountPathProxyConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
 	}
