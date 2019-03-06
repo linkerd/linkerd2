@@ -4,7 +4,6 @@
   * Introduced a check for NET_ADMIN in `linkerd check`
   * Fixed permissions check for CRDs
   * Included kubectl version check as part of `linkerd check` (thanks @yb172!)
-  * Removed the `--api-port` flag (thanks @paranoidaditya!)
   * Added TCP stats to the stat command, under the `-o wide` and `-o json` flags
 * Controller
   * Updated the `mutatingwebhookconfiguration` so that it is recreated when the
