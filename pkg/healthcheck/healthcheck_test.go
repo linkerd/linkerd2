@@ -298,8 +298,12 @@ func TestCheckCanCreate(t *testing.T) {
 		[]CategoryID{},
 		&Options{},
 	)
-	hc.clientset, _ = k8s.NewFakeClientSets()
-	err := hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
+	var err error
+	hc.clientset, _, err = k8s.NewFakeClientSets()
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	err = hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
 		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp, err)
@@ -336,8 +340,12 @@ spec:
 				&Options{},
 			)
 
-			hc.clientset, _ = k8s.NewFakeClientSets(test.k8sConfigs...)
-			err := hc.checkNetAdmin()
+			var err error
+			hc.clientset, _, err = k8s.NewFakeClientSets(test.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			err = hc.checkNetAdmin()
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
