@@ -11,8 +11,8 @@
     "latency_ms_p99": 123,
     "tls": 1,
     "tcp_open_connections": 123,
-    "tcp_read_bytes": 123,
-    "tcp_write_bytes": 123
+    "tcp_read_bytes_rate": 2.05,
+    "tcp_write_bytes_rate": 2.05
   },
   {
     "namespace": "emojivoto2",
@@ -26,7 +26,7 @@
     "latency_ms_p99": 123,
     "tls": 1,
     "tcp_open_connections": 123,
-    "tcp_read_bytes": 123,
-    "tcp_write_bytes": 123
+    "tcp_read_bytes_rate": 2.05,
+    "tcp_write_bytes_rate": 2.05
   }
 ]
