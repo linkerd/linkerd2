@@ -55,7 +55,7 @@ export const metricToFormatter = {
   "SUCCESS_RATE": m => _isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": formatLatencyMs,
   "UNTRUNCATED": m => styleNum(m, "", false),
-  "BYTES": m => _isNil(m) ? "---" : styleNum(m, "bps", true),
+  "BYTES": m => _isNil(m) ? "---" : styleNum(m, "B/s", true),
   "NO_UNIT": m => _isNil(m) ? "---" : styleNum(m, "", true)
 };
 
