@@ -1,2 +1,2 @@
 NAME    MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99    TLS   TCP CONNECTIONS   READ BYTES/SEC   WRITE BYTES/SEC
-emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms   100%               123           2.0bps            2.0B/s
+emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms   100%               123           2.0B/s            2.0B/s

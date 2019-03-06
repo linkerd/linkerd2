@@ -362,7 +362,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
 
 		if showTCPStats(options, resourceType) {
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fbps\t%.1fB/s\t\n"
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fB/s\t%.1fB/s\t\n"
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
 		}
 
