@@ -92,10 +92,10 @@ describe('Utils', () => {
     });
 
     it('formats bytes', () => {
-      expect(metricToFormatter["BYTES"](123.938112312)).toEqual('123.94bps');
-      expect(metricToFormatter["BYTES"](1234.32)).toEqual('1.234kbps');
-      expect(metricToFormatter["BYTES"](12345.1831)).toEqual('12.345kbps');
-      expect(metricToFormatter["BYTES"](1234567.02384)).toEqual('1.235Mbps');
+      expect(metricToFormatter["BYTES"](123.938112312)).toEqual('123.94B/s');
+      expect(metricToFormatter["BYTES"](1234.32)).toEqual('1.234kB/s');
+      expect(metricToFormatter["BYTES"](12345.1831)).toEqual('12.345kB/s');
+      expect(metricToFormatter["BYTES"](1234567.02384)).toEqual('1.235MB/s');
     });
 
     it('formats latencies expressed as seconds into a more appropriate display unit', () => {
