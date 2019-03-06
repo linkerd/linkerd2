@@ -76,8 +76,8 @@ spec:
     ControllerComponentLabel: controller
   ports:
   - name: grpc
-    port: 123
-    targetPort: 123
+    port: 8086
+    targetPort: 8086
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -134,7 +134,7 @@ spec:
           runAsUser: 2103
       - args:
         - destination
-        - -addr=:123
+        - -addr=:8086
         - -controller-namespace=Namespace
         - -enable-tls=true
         - -enable-h2-upgrade=true
@@ -148,7 +148,7 @@ spec:
           initialDelaySeconds: 10
         name: destination
         ports:
-        - containerPort: 123
+        - containerPort: 8086
           name: grpc
         - containerPort: 9996
           name: admin-http

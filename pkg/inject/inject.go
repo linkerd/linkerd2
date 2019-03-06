@@ -31,6 +31,8 @@ const (
 	podNamespaceEnvVarName = "LINKERD2_PROXY_POD_NAMESPACE"
 	// defaultKeepaliveMs is used in the proxy configuration for remote connections
 	defaultKeepaliveMs = 10000
+	// destinationAPIPort is the port exposed by the linkerd-destination service
+	destinationAPIPort = 8086
 )
 
 var injectableKinds = []string{
@@ -420,7 +422,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			{Name: "LINKERD2_PROXY_LOG", Value: conf.proxyConfig.GetLogLevel().GetLevel()},
 			{
 				Name:  "LINKERD2_PROXY_CONTROL_URL",
-				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, conf.proxyConfig.GetDestinationApiPort().GetPort()),
+				Value: fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, destinationAPIPort),
 			},
 			{Name: "LINKERD2_PROXY_CONTROL_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetControlPort().GetPort())},
 			{Name: "LINKERD2_PROXY_METRICS_LISTENER", Value: fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyConfig.GetMetricsPort().GetPort())},
