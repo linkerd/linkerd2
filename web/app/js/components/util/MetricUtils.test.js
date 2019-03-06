@@ -22,7 +22,9 @@ describe('MetricUtils', () => {
           tcp: {
             openConnections: 221,
             readBytes: 4421,
-            writeBytes: 4421
+            writeBytes: 4421,
+            readRate: 73.68333333333334,
+            writeRate: 73.68333333333334
           },
           totalRequests: 150,
           tlsRequestPercent: new Percentage(100, 150),
@@ -31,7 +33,7 @@ describe('MetricUtils', () => {
             P95: 2,
             P99: 7
           },
-          pods: {totalPods: "1", meshedPods: "1", meshedPercentage: new Percentage(1,1)},
+          pods: { totalPods: "1", meshedPods: "1", meshedPercentage: new Percentage(1, 1) },
           added: true,
           errors: {}
         }

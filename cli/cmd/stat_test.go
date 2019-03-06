@@ -72,6 +72,21 @@ func TestStat(t *testing.T) {
 		}, t)
 	})
 
+	options = newStatOptions()
+	options.outputFormat = "wide"
+	t.Run("Returns TCP stats", func(t *testing.T) {
+		testStatCall(paramsExp{
+			counts: &public.PodCounts{
+				MeshedPods:  1,
+				RunningPods: 2,
+				FailedPods:  0,
+			},
+			options: options,
+			resNs:   []string{"emojivoto1"},
+			file:    "stat_one_tcp_output.golden",
+		}, t)
+	})
+
 	t.Run("Returns an error for named resource queries with the --all-namespaces flag", func(t *testing.T) {
 		options := newStatOptions()
 		options.allNamespaces = true
@@ -137,8 +152,8 @@ func TestStat(t *testing.T) {
 
 func testStatCall(exp paramsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, false)
+	queryTCP := exp.options.outputFormat == wideOutput || exp.options.outputFormat == jsonOutput
+	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, queryTCP)
 
 	mockClient.StatSummaryResponseToReturn = &response
 
