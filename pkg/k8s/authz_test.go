@@ -46,7 +46,10 @@ subjects:
 	for i, test := range tests {
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: returns expected authorization", i), func(t *testing.T) {
-			k8sClient, _ := NewFakeClientSets(test.k8sConfigs...)
+			k8sClient, _, err := NewFakeClientSets(test.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
 			allowed, reason, err := ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments", "")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||

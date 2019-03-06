@@ -13,13 +13,13 @@ import (
 )
 
 // NewFakeClientSets provides a mock Kubernetes ClientSet for testing.
-func NewFakeClientSets(configs ...string) (kubernetes.Interface, spclient.Interface) {
+func NewFakeClientSets(configs ...string) (kubernetes.Interface, spclient.Interface, error) {
 	objs := []runtime.Object{}
 	spObjs := []runtime.Object{}
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
 		if err != nil {
-			return nil, nil
+			return nil, nil, err
 		}
 		if strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind) == ServiceProfile {
 			spObjs = append(spObjs, obj)
@@ -28,7 +28,7 @@ func NewFakeClientSets(configs ...string) (kubernetes.Interface, spclient.Interf
 		}
 	}
 
-	return fake.NewSimpleClientset(objs...), spfake.NewSimpleClientset(spObjs...)
+	return fake.NewSimpleClientset(objs...), spfake.NewSimpleClientset(spObjs...), nil
 }
 
 // ToRuntimeObject deserializes Kubernetes YAML into a Runtime Object
