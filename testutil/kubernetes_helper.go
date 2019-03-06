@@ -87,6 +87,13 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 	return string(out), err
 }
 
+// Kubectl executes an arbitrary Kubectl command
+func (h *KubernetesHelper) Kubectl(arg ...string) (string, error) {
+	cmd := exec.Command("kubectl", arg...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 // getDeployments gets all deployments with a count of their ready replicas in
 // the specified namespace.
 func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, error) {
@@ -127,9 +134,12 @@ func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName stri
 }
 
 // CheckPods checks that a deployment in a namespace contains the expected
-// number of pods in the Running state.
+// number of pods in the Running state, and that no pods have been restarted.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
-	return h.retryFor(3*time.Minute, func() error {
+	var checkedPods []corev1.Pod
+
+	err := h.retryFor(3*time.Minute, func() error {
+		checkedPods = []corev1.Pod{}
 		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
 			return err
@@ -138,6 +148,8 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 		var deploymentReplicas int
 		for _, pod := range pods.Items {
 			if strings.HasPrefix(pod.Name, deploymentName) {
+				checkedPods = append(checkedPods, pod)
+
 				deploymentReplicas++
 				if pod.Status.Phase != "Running" {
 					return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
@@ -159,6 +171,21 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range checkedPods {
+		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
+			if status.RestartCount != 0 {
+				return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
+					status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			}
+		}
+	}
+
+	return nil
 }
 
 // CheckService checks that a service exists in a namespace.
