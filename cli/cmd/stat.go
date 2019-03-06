@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -210,8 +211,8 @@ type rowStats struct {
 	latencyP95         uint64
 	latencyP99         uint64
 	tcpOpenConnections uint64
-	tcpReadBytes       uint64
-	tcpWriteBytes      uint64
+	tcpReadBytes       float64
+	tcpWriteBytes      float64
 }
 
 type row struct {
@@ -278,8 +279,8 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				latencyP95:         r.Stats.LatencyMsP95,
 				latencyP99:         r.Stats.LatencyMsP99,
 				tcpOpenConnections: r.GetTcpStats().GetOpenConnections(),
-				tcpReadBytes:       r.GetTcpStats().GetReadBytesTotal(),
-				tcpWriteBytes:      r.GetTcpStats().GetWriteBytesTotal(),
+				tcpReadBytes:       getByteRate(r.GetTcpStats().GetReadBytesTotal(), r.TimeWindow),
+				tcpWriteBytes:      getByteRate(r.GetTcpStats().GetWriteBytesTotal(), r.TimeWindow),
 			}
 		}
 	}
@@ -343,8 +344,8 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 	if showTCPStats(options, resourceType) {
 		headers = append(headers, []string{
 			"TCP CONNECTIONS",
-			"READ BYTES",
-			"WRITE BYTES",
+			"READ BYTES/SEC",
+			"WRITE BYTES/SEC",
 		}...)
 	}
 
@@ -360,7 +361,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
 
 		if showTCPStats(options, resourceType) {
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%db\t%db\t\n"
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fbps\t%.1fbps\t\n"
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
 		}
 
@@ -426,8 +427,8 @@ type jsonStats struct {
 	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
 	TLS            *float64 `json:"tls"`
 	TCPConnections *uint64  `json:"tcp_open_connections"`
-	TCPReadBytes   *uint64  `json:"tcp_read_bytes"`
-	TCPWriteBytes  *uint64  `json:"tcp_write_bytes"`
+	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
+	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -592,4 +593,14 @@ func (o *statOptions) validateNamespaceFlags() error {
 	}
 
 	return nil
+}
+
+// get byte rate calculates the read/write byte rate
+func getByteRate(bytes uint64, timeWindow string) float64 {
+	windowLength, err := time.ParseDuration(timeWindow)
+	if err != nil {
+		log.Error(err.Error())
+		return 0.0
+	}
+	return float64(bytes) / windowLength.Seconds()
 }
