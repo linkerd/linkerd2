@@ -39,17 +39,23 @@ const getTotalRequests = row => {
   return success + failure;
 };
 
+const timeWindowSeconds = timeWindow => {
+  let seconds = 0;
+
+  if (timeWindow === "10s") { seconds = 10; }
+  if (timeWindow === "1m") { seconds = 60; }
+  if (timeWindow === "10m") { seconds = 600; }
+  if (timeWindow === "1h") { seconds = 3600; }
+
+  return seconds;
+};
+
 const getRequestRate = row => {
   if (_isEmpty(row.stats)) {
     return null;
   }
 
-  let seconds = 0;
-
-  if (row.timeWindow === "10s") { seconds = 10; }
-  if (row.timeWindow === "1m") { seconds = 60; }
-  if (row.timeWindow === "10m") { seconds = 600; }
-  if (row.timeWindow === "1h") { seconds = 3600; }
+  let seconds = timeWindowSeconds(row.timeWindow);
 
   if (seconds === 0) {
     return null;
@@ -97,10 +103,15 @@ const getTcpStats = row => {
   if (_isEmpty(row.tcpStats)) {
     return {};
   } else {
+    let seconds = timeWindowSeconds(row.timeWindow);
+    let readBytes = parseInt(row.tcpStats.readBytesTotal, 0);
+    let writeBytes = parseInt(row.tcpStats.writeBytesTotal, 0);
     return {
       openConnections: parseInt(row.tcpStats.openConnections, 0),
-      readBytes: parseInt(row.tcpStats.readBytesTotal, 0),
-      writeBytes: parseInt(row.tcpStats.writeBytesTotal, 0),
+      readBytes,
+      writeBytes,
+      readRate: seconds === 0 ? null : readBytes / seconds,
+      writeRate: seconds === 0 ? null : writeBytes / seconds,
     };
   }
 };
