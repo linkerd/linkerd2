@@ -1,8 +1,11 @@
 package inject
 
 import (
+	"strings"
+
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Uninject removes from the workload in conf the init and proxy containers,
@@ -13,7 +16,12 @@ func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
 	}
 
 	conf.uninjectPodSpec(report)
-	conf.uninjectObjectMeta()
+
+	if conf.workLoadMeta != nil {
+		uninjectObjectMeta(conf.workLoadMeta)
+	}
+
+	uninjectObjectMeta(conf.podMeta.ObjectMeta)
 	return conf.YamlMarshalObj()
 }
 
@@ -49,13 +57,10 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	t.Volumes = volumes
 }
 
-func (conf *ResourceConfig) uninjectObjectMeta() {
-	t := conf.objMeta
+func uninjectObjectMeta(t *metav1.ObjectMeta) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
-		if key != k8s.CreatedByAnnotation &&
-			key != k8s.ProxyVersionAnnotation &&
-			key != k8s.IdentityModeAnnotation {
+		if !strings.HasPrefix(key, k8s.Prefix) || key == k8s.ProxyInjectAnnotation {
 			newAnnotations[key] = val
 		}
 	}
@@ -63,14 +68,7 @@ func (conf *ResourceConfig) uninjectObjectMeta() {
 
 	labels := make(map[string]string)
 	for key, val := range t.Labels {
-		keep := true
-		for _, label := range k8s.InjectedLabels {
-			if key == label {
-				keep = false
-				break
-			}
-		}
-		if keep {
+		if !strings.HasPrefix(key, k8s.Prefix) {
 			labels[key] = val
 		}
 	}
