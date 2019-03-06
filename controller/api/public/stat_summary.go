@@ -442,8 +442,8 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 			}
 		}
 
-		errors := checkContainerErrors(pod.Status.ContainerStatuses, k8s.ProxyContainerName)
-		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses, k8s.InitContainerName)...)
+		errors := checkContainerErrors(pod.Status.ContainerStatuses)
+		errors = append(errors, checkContainerErrors(pod.Status.InitContainerStatuses)...)
 
 		if len(errors) > 0 {
 			podErrors[pod.Name] = &pb.PodErrors{Errors: errors}
@@ -466,7 +466,7 @@ func toPodError(container, image, reason, message string) *pb.PodErrors_PodError
 	}
 }
 
-func checkContainerErrors(containerStatuses []corev1.ContainerStatus, containerName string) []*pb.PodErrors_PodError {
+func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodErrors_PodError {
 	errors := []*pb.PodErrors_PodError{}
 	for _, st := range containerStatuses {
 		if !st.Ready {

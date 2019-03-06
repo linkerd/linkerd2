@@ -248,11 +248,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 	t.Run("Can read message correctly based on payload size correct payload size to message", func(t *testing.T) {
 		expectedMessage := "this is the message"
 
-		messageWithSize, err := serializeAsPayload([]byte(expectedMessage))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
+		messageWithSize := serializeAsPayload([]byte(expectedMessage))
 		messageWithSomeNoise := append(messageWithSize, []byte("this is noise and should not be read")...)
 
 		actualMessage, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(messageWithSomeNoise)))
@@ -276,15 +272,8 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			expectedMessage2 = expectedMessage2 + fmt.Sprintf("tum (%d), ", i)
 		}
 
-		messageWithSize1, err := serializeAsPayload([]byte(expectedMessage1))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		messageWithSize2, err := serializeAsPayload([]byte(expectedMessage2))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		messageWithSize1 := serializeAsPayload([]byte(expectedMessage1))
+		messageWithSize2 := serializeAsPayload([]byte(expectedMessage2))
 
 		streamWithManyMessages := append(messageWithSize1, messageWithSize2...)
 		reader := bufio.NewReader(bytes.NewReader(streamWithManyMessages))
@@ -320,10 +309,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		serialized, err := serializeAsPayload(expectedReadArray)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		serialized := serializeAsPayload(expectedReadArray)
 
 		reader := bufio.NewReader(bytes.NewReader(serialized))
 		if err != nil {
@@ -369,11 +355,7 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 			t.Fatalf("Test needs data larger than [%d] bytes, currently only [%d] bytes", goDefaultChunkSize, lengthOfInputData)
 		}
 
-		payload, err := serializeAsPayload(expectedMessageAsBytes)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
+		payload := serializeAsPayload(expectedMessageAsBytes)
 		actualMessage, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(payload)))
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
@@ -387,13 +369,9 @@ func TestDeserializePayloadFromReader(t *testing.T) {
 	t.Run("Returns error when message has fewer bytes than declared message size", func(t *testing.T) {
 		expectedMessage := "this is the message"
 
-		messageWithSize, err := serializeAsPayload([]byte(expectedMessage))
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
+		messageWithSize := serializeAsPayload([]byte(expectedMessage))
 		messageMissingOneCharacter := messageWithSize[:len(expectedMessage)-1]
-		_, err = deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(messageMissingOneCharacter)))
+		_, err := deserializePayloadFromReader(bufio.NewReader(bytes.NewReader(messageMissingOneCharacter)))
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
@@ -454,11 +432,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		message, err := serializeAsPayload(protoInBytes)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
+		message := serializeAsPayload(protoInBytes)
 		response := &http.Response{
 			Header:     make(http.Header),
 			Body:       ioutil.NopCloser(bytes.NewReader(message)),
@@ -483,10 +457,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		message, err := serializeAsPayload(protoInBytes)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+		message := serializeAsPayload(protoInBytes)
 
 		response := &http.Response{
 			Header:     make(http.Header),

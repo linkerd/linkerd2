@@ -1,10 +1,11 @@
-import { directionColumn, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, numericSort } from './util/Utils.js';
+import { directionColumn, extractDisplayName, srcDstColumn, tapLink } from './util/TapUtils.jsx';
+import { formatLatencySec, numericSort, toShortResourceName } from './util/Utils.js';
 
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
 
@@ -16,17 +17,25 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   },
   {
     title: "Name",
+    filter: d => {
+      let [labels, display] = extractDisplayName(d);
+      return _isEmpty(labels[resourceType]) ?
+        display.str :
+        toShortResourceName(resourceType) + "/" + labels[resourceType];
+    },
     key: "src-dst",
     render: d => srcDstColumn(d, resourceType, ResourceLink)
   },
   {
     title: "Method",
     dataIndex: "httpMethod",
+    filter: d => d.httpMethod,
     sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod)
   },
   {
     title: "Path",
     dataIndex: "path",
+    filter: d => d.path,
     sorter: (a, b) => a.path.localeCompare(b.path)
   },
   {
@@ -91,6 +100,7 @@ class TopEventTable extends React.Component {
     let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={tableRows}
         tableColumns={columns}
         tableClassName="metric-table"

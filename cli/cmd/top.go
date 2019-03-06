@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -285,6 +284,7 @@ func newCmdTop() *cobra.Command {
   * deploy/my-deploy
   * deploy my-deploy
   * ds/my-daemonset
+  * job/my-job
   * ns/my-ns
   * sts
   * sts/my-statefulset
@@ -292,11 +292,11 @@ func newCmdTop() *cobra.Command {
   Valid resource types include:
   * daemonsets
   * deployments
+  * jobs
   * namespaces
   * pods
   * replicationcontrollers
   * statefulsets
-  * jobs (only supported as a --to resource),
   * services (only supported as a --to resource)`,
 		Example: `  # display traffic for the web deployment in the default namespace
   linkerd top deploy/web
@@ -337,7 +337,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(os.Stdout, cliPublicAPIClient(), req, table)
+			return getTrafficByResourceFromAPI(cliPublicAPIClient(), req, table)
 		},
 	}
 
@@ -363,7 +363,7 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
+func getTrafficByResourceFromAPI(client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
 	rsp, err := client.TapByResource(context.Background(), req)
 	if err != nil {
 		return err

@@ -536,16 +536,18 @@
   version = "v1.7.3"
 
 [[projects]]
-  digest = "1:e76d0fea4ab688de44c38e57cc657a53aed582cdc1e67470d7f3fbbfc3afec1c"
+  digest = "1:6f218995d6a74636cfcab45ce03005371e682b4b9bee0e5eb0ccfd83ef85364f"
   name = "github.com/prometheus/client_golang"
   packages = [
     "api",
     "api/prometheus/v1",
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = ""
-  revision = "9bb6ab929dcbe1c8393cd9ef70387cb69811bd1c"
+  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
+  version = "v0.9.2"
 
 [[projects]]
   branch = "master"
@@ -1249,6 +1251,7 @@
     "github.com/containernetworking/cni/pkg/types/current",
     "github.com/containernetworking/cni/pkg/version",
     "github.com/emicklei/proto",
+    "github.com/evanphx/json-patch",
     "github.com/fatih/color",
     "github.com/ghodss/yaml",
     "github.com/go-openapi/spec",
@@ -1316,6 +1319,7 @@
     "k8s.io/client-go/informers/admissionregistration/v1beta1",
     "k8s.io/client-go/informers/apps/v1",
     "k8s.io/client-go/informers/apps/v1beta2",
+    "k8s.io/client-go/informers/batch/v1",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",

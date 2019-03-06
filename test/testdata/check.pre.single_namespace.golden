@@ -6,12 +6,17 @@ kubernetes-api
 kubernetes-version
 ------------------
 √ is running the minimum Kubernetes API version
+√ is running the minimum kubectl version
 
 pre-kubernetes-single-namespace-setup
 -------------------------------------
 √ control plane namespace exists
 √ can create Roles
 √ can create RoleBindings
+
+pre-kubernetes-capability
+-------------------------
+√ has NET_ADMIN capability
 
 pre-kubernetes-setup
 --------------------

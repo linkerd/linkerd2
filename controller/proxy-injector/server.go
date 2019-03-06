@@ -21,7 +21,7 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, addr, controllerNamespace string, noInitContainer, tlsEnabled bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace string, noInitContainer, tlsEnabled bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
 	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewWebhookServer(client kubernetes.Interface, resources *WebhookResources, 
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(client, resources, controllerNamespace, noInitContainer, tlsEnabled)
+	webhook, err := NewWebhook(client, controllerNamespace, noInitContainer, tlsEnabled)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +78,9 @@ func (w *WebhookServer) Shutdown() error {
 }
 
 func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, error) {
+	// must use the service short name in this TLS identity as the k8s api server
+	// looks for the webhook at <svc_name>.<namespace>.svc, without the cluster
+	// domain.
 	tlsIdentity := k8s.TLSIdentity{
 		Name:                "linkerd-proxy-injector",
 		Kind:                k8s.Service,

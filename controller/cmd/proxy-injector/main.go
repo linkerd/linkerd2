@@ -10,7 +10,6 @@ import (
 	injector "github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
@@ -44,20 +43,13 @@ func main() {
 		log.Fatalf("failed to read the trust anchor file: %s", err)
 	}
 
-	mwc, err := webhookConfig.CreateOrUpdate()
+	mwc, err := webhookConfig.Create()
 	if err != nil {
 		log.Fatalf("failed to create the mutating webhook configurations resource: %s", err)
 	}
-	log.Infof("created or updated mutating webhook configuration: %s", mwc.ObjectMeta.SelfLink)
+	log.Infof("created mutating webhook configuration: %s", mwc.ObjectMeta.SelfLink)
 
-	resources := &injector.WebhookResources{
-		FileProxySpec:                k8sPkg.MountPathConfigProxySpec,
-		FileProxyInitSpec:            k8sPkg.MountPathConfigProxyInitSpec,
-		FileTLSTrustAnchorVolumeSpec: k8sPkg.MountPathTLSTrustAnchorVolumeSpec,
-		FileTLSIdentityVolumeSpec:    k8sPkg.MountPathTLSIdentityVolumeSpec,
-	}
-
-	s, err := injector.NewWebhookServer(k8sClient, resources, *addr, *controllerNamespace, *noInitContainer, *tlsEnabled, rootCA)
+	s, err := injector.NewWebhookServer(k8sClient, *addr, *controllerNamespace, *noInitContainer, *tlsEnabled, rootCA)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

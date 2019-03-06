@@ -51,6 +51,7 @@ var StatAllResourceTypes = []string{
 	// TODO: add Namespace here to decrease queries from the web process
 	DaemonSet,
 	StatefulSet,
+	Job,
 	Deployment,
 	ReplicationController,
 	Pod,

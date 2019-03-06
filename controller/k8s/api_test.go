@@ -166,6 +166,26 @@ metadata:
 			},
 			{
 				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.Job,
+				name:      "my-job",
+				k8sResResults: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: not-my-ns`,
+				},
+			},
+			{
+				err:       nil,
 				namespace: "",
 				resType:   k8s.StatefulSet,
 				name:      "",

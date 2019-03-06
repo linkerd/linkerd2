@@ -126,11 +126,33 @@ func (m *mockProm) QueryRange(ctx context.Context, query string, r promv1.Range)
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
+
+func (m *mockProm) AlertManagers(ctx context.Context) (promv1.AlertManagersResult, error) {
+	return promv1.AlertManagersResult{}, nil
+}
+func (m *mockProm) CleanTombstones(ctx context.Context) error {
+	return nil
+}
+func (m *mockProm) Config(ctx context.Context) (promv1.ConfigResult, error) {
+	return promv1.ConfigResult{}, nil
+}
+func (m *mockProm) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
+	return nil
+}
+func (m *mockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
+	return promv1.FlagsResult{}, nil
+}
 func (m *mockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
 	return nil, nil
 }
 func (m *mockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
 	return nil, nil
+}
+func (m *mockProm) Snapshot(ctx context.Context, skipHead bool) (promv1.SnapshotResult, error) {
+	return promv1.SnapshotResult{}, nil
+}
+func (m *mockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
+	return promv1.TargetsResult{}, nil
 }
 
 // GenStatSummaryResponse generates a mock Public API StatSummaryResponse

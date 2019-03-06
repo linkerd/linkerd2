@@ -24,6 +24,9 @@ rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
+  verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
@@ -97,6 +100,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -273,9 +277,9 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":true,"identityContext":{}}
+    {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"dev-undefined","identityContext":{}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy:dev-undefined","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init:dev-undefined","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 
 ---
 ###
@@ -286,7 +290,6 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
-  namespace: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -432,6 +435,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -612,6 +616,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -869,6 +874,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1113,6 +1119,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1246,6 +1253,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: optional
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1281,7 +1289,7 @@ spec:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/linkerd-io/config
-          name: proxy-spec
+          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1351,8 +1359,8 @@ spec:
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
-          name: linkerd-proxy-injector-sidecar-config
-        name: proxy-spec
+          name: linkerd-config
+        name: config
       - configMap:
           name: linkerd-ca-bundle
           optional: true
@@ -1376,7 +1384,7 @@ metadata:
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "update", "get", "watch"]
+  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
@@ -1412,112 +1420,4 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector-sidecar-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  proxy-init.yaml: |
-    args:
-    - --incoming-proxy-port
-    - 4143
-    - --outgoing-proxy-port
-    - 4140
-    - --proxy-uid
-    - 2102
-    - --inbound-ports-to-ignore
-    - 4190,4191
-    image: gcr.io/linkerd-io/proxy-init:dev-undefined
-    imagePullPolicy: IfNotPresent
-    name: linkerd-init
-    securityContext:
-      capabilities:
-        add:
-        - NET_ADMIN
-      privileged: false
-      runAsNonRoot: false
-      runAsUser: 0
-    terminationMessagePolicy: FallbackToLogsOnError
-  proxy.yaml: |
-    env:
-    - name: LINKERD2_PROXY_LOG
-      value: warn,linkerd2_proxy=info
-    - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
-    - name: LINKERD2_PROXY_CONTROL_LISTENER
-      value: tcp://0.0.0.0:4190
-    - name: LINKERD2_PROXY_METRICS_LISTENER
-      value: tcp://0.0.0.0:4191
-    - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-      value: tcp://127.0.0.1:4140
-    - name: LINKERD2_PROXY_INBOUND_LISTENER
-      value: tcp://0.0.0.0:4143
-    - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-      value: .
-    - name: LINKERD2_PROXY_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-      value: 10000ms
-    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-      value: 10000ms
-    - name: LINKERD2_PROXY_ID
-      value: "" # this value will be computed by the webhook
-    - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-      value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-    - name: LINKERD2_PROXY_TLS_CERT
-      value: /var/linkerd-io/identity/certificate.crt
-    - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-      value: /var/linkerd-io/identity/private-key.p8
-    - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-      value: "" # this value will be computed by the webhook
-    - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-      value: linkerd
-    - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-      value: "" # this value will be computed by the webhook
-    image: gcr.io/linkerd-io/proxy:dev-undefined
-    imagePullPolicy: IfNotPresent
-    livenessProbe:
-      httpGet:
-        path: /metrics
-        port: 4191
-      initialDelaySeconds: 10
-    name: linkerd-proxy
-    ports:
-    - containerPort: 4143
-      name: linkerd-proxy
-    - containerPort: 4191
-      name: linkerd-metrics
-    readinessProbe:
-      httpGet:
-        path: /metrics
-        port: 4191
-      initialDelaySeconds: 10
-    securityContext:
-      runAsUser: 2102
-    terminationMessagePolicy: FallbackToLogsOnError
-    volumeMounts:
-    - mountPath: /var/linkerd-io/trust-anchors
-      name: linkerd-trust-anchors
-      readOnly: true
-    - mountPath: /var/linkerd-io/identity
-      name: linkerd-secrets
-      readOnly: true
-  linkerd-trust-anchors.yaml: |
-    name: linkerd-trust-anchors
-    configMap:
-      name: linkerd-ca-bundle
-      optional: true
-  linkerd-secrets.yaml: |
-    name: linkerd-secrets
-    secret:
-      secretName: "" # this value will be computed by the webhook
-      optional: true
 ---

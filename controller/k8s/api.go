@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +26,7 @@ import (
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	appv1beta2informers "k8s.io/client-go/informers/apps/v1beta2"
+	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -40,6 +42,7 @@ const (
 	Deploy
 	DS
 	Endpoint
+	Job
 	MWC // mutating webhook configuration
 	Pod
 	RC
@@ -57,6 +60,7 @@ type API struct {
 	deploy   appv1beta2informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
+	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
@@ -168,6 +172,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, namespa
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case Job:
+			api.job = sharedInformers.Batch().V1().Jobs()
+			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
@@ -299,6 +306,14 @@ func (api *API) MWC() arinformers.MutatingWebhookConfigurationInformer {
 	return api.mwc
 }
 
+//Job provides access to a shared informer and lister for Jobs.
+func (api *API) Job() batchv1informers.JobInformer {
+	if api.job == nil {
+		panic("Job informer not configured")
+	}
+	return api.job
+}
+
 // SPAvailable informs the caller whether this API is configured to retrieve
 // ServiceProfiles
 func (api *API) SPAvailable() bool {
@@ -316,6 +331,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getDaemonsets(namespace, name)
 	case k8s.Deployment:
 		return api.getDeployments(namespace, name)
+	case k8s.Job:
+		return api.getJobs(namespace, name)
 	case k8s.Pod:
 		return api.getPods(namespace, name)
 	case k8s.ReplicationController:
@@ -373,6 +390,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
 	case *appsv1beta2.ReplicaSet:
+		namespace = typed.Namespace
+		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+
+	case *batchv1.Job:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 
@@ -434,6 +455,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 		return typed.Name, typed.Namespace, nil
 
 	case *appsv1beta2.Deployment:
+		return typed.Name, typed.Namespace, nil
+
+	case *batchv1.Job:
 		return typed.Name, typed.Namespace, nil
 
 	case *appsv1beta2.ReplicaSet:
@@ -638,6 +662,32 @@ func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error
 	objects := []runtime.Object{}
 	for _, ss := range statefulsets {
 		objects = append(objects, ss)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getJobs(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var jobs []*batchv1.Job
+
+	if namespace == "" {
+		jobs, err = api.Job().Lister().List(labels.Everything())
+	} else if name == "" {
+		jobs, err = api.Job().Lister().Jobs(namespace).List(labels.Everything())
+	} else {
+		var job *batchv1.Job
+		job, err = api.Job().Lister().Jobs(namespace).Get(name)
+		jobs = []*batchv1.Job{job}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, job := range jobs {
+		objects = append(objects, job)
 	}
 
 	return objects, nil

@@ -20,6 +20,7 @@ type checkOptions struct {
 	wait            time.Duration
 	namespace       string
 	singleNamespace bool
+	cniEnabled      bool
 }
 
 func newCheckOptions() *checkOptions {
@@ -30,6 +31,7 @@ func newCheckOptions() *checkOptions {
 		wait:            300 * time.Second,
 		namespace:       "",
 		singleNamespace: false,
+		cniEnabled:      false,
 	}
 }
 
@@ -66,6 +68,7 @@ non-zero exit code.`,
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
+	cmd.PersistentFlags().BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
 
 	return cmd
 }
@@ -86,6 +89,9 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 			checks = append(checks, healthcheck.LinkerdPreInstallSingleNamespaceChecks)
 		} else {
 			checks = append(checks, healthcheck.LinkerdPreInstallClusterChecks)
+		}
+		if !options.cniEnabled {
+			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else {

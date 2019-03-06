@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/linkerd/linkerd2/cli/static"
@@ -24,60 +23,35 @@ import (
 )
 
 type installConfig struct {
-	Namespace                        string
-	ControllerImage                  string
-	WebImage                         string
-	PrometheusImage                  string
-	PrometheusVolumeName             string
-	GrafanaImage                     string
-	GrafanaVolumeName                string
-	ControllerReplicas               uint
-	ImagePullPolicy                  string
-	UUID                             string
-	CliVersion                       string
-	ControllerLogLevel               string
-	ControllerComponentLabel         string
-	CreatedByAnnotation              string
-	DestinationAPIPort               uint
-	EnableTLS                        bool
-	TLSTrustAnchorVolumeName         string
-	TLSSecretsVolumeName             string
-	TLSTrustAnchorConfigMapName      string
-	ProxyContainerName               string
-	TLSTrustAnchorFileName           string
-	TLSCertFileName                  string
-	TLSPrivateKeyFileName            string
-	TLSTrustAnchorVolumeSpecFileName string
-	TLSIdentityVolumeSpecFileName    string
-	InboundPort                      uint
-	OutboundPort                     uint
-	IgnoreInboundPorts               string
-	IgnoreOutboundPorts              string
-	InboundAcceptKeepaliveMs         uint
-	OutboundConnectKeepaliveMs       uint
-	ProxyAutoInjectEnabled           bool
-	ProxyInjectAnnotation            string
-	ProxyInjectDisabled              string
-	ProxyLogLevel                    string
-	ProxyUID                         int64
-	ProxyMetricsPort                 uint
-	ProxyControlPort                 uint
-	ProxySpecFileName                string
-	ProxyInitSpecFileName            string
-	ProxyInitImage                   string
-	ProxyImage                       string
-	ProxyResourceRequestCPU          string
-	ProxyResourceRequestMemory       string
-	ProxyResourceLimitCPU            string
-	ProxyResourceLimitMemory         string
-	SingleNamespace                  bool
-	EnableHA                         bool
-	ControllerUID                    int64
-	ProfileSuffixes                  string
-	EnableH2Upgrade                  bool
-	NoInitContainer                  bool
-	GlobalConfig                     string
-	ProxyConfig                      string
+	Namespace                   string
+	ControllerImage             string
+	WebImage                    string
+	PrometheusImage             string
+	PrometheusVolumeName        string
+	GrafanaImage                string
+	GrafanaVolumeName           string
+	ControllerReplicas          uint
+	ImagePullPolicy             string
+	UUID                        string
+	CliVersion                  string
+	ControllerLogLevel          string
+	ControllerComponentLabel    string
+	CreatedByAnnotation         string
+	DestinationAPIPort          uint
+	EnableTLS                   bool
+	TLSTrustAnchorConfigMapName string
+	ProxyContainerName          string
+	TLSTrustAnchorFileName      string
+	ProxyAutoInjectEnabled      bool
+	ProxyInjectAnnotation       string
+	ProxyInjectDisabled         string
+	SingleNamespace             bool
+	EnableHA                    bool
+	ControllerUID               int64
+	EnableH2Upgrade             bool
+	NoInitContainer             bool
+	GlobalConfig                string
+	ProxyConfig                 string
 }
 
 // installOptions holds values for command line flags that apply to the install
@@ -157,18 +131,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		return nil, err
 	}
 
-	ignoreInboundPorts := []string{
-		fmt.Sprintf("%d", options.proxyControlPort),
-		fmt.Sprintf("%d", options.proxyMetricsPort),
-	}
-	for _, p := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, fmt.Sprintf("%d", p))
-	}
-	ignoreOutboundPorts := []string{}
-	for _, p := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
-	}
-
 	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
 		options.controllerReplicas = defaultHAControllerReplicas
 	}
@@ -179,11 +141,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 
 	if options.highAvailability && options.proxyMemoryRequest == "" {
 		options.proxyMemoryRequest = "20Mi"
-	}
-
-	profileSuffixes := "."
-	if options.proxyConfigOptions.disableExternalProfiles {
-		profileSuffixes = "svc.cluster.local."
 	}
 
 	jsonMarshaler := jsonpb.Marshaler{EmitDefaults: true}
@@ -198,60 +155,35 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}
 
 	return &installConfig{
-		Namespace:                        controlPlaneNamespace,
-		ControllerImage:                  fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
-		WebImage:                         fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:                  "prom/prometheus:v2.7.1",
-		PrometheusVolumeName:             "data",
-		GrafanaImage:                     fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
-		GrafanaVolumeName:                "data",
-		ControllerReplicas:               options.controllerReplicas,
-		ImagePullPolicy:                  options.imagePullPolicy,
-		UUID:                             uuid.NewV4().String(),
-		CliVersion:                       k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:               options.controllerLogLevel,
-		ControllerComponentLabel:         k8s.ControllerComponentLabel,
-		ControllerUID:                    options.controllerUID,
-		CreatedByAnnotation:              k8s.CreatedByAnnotation,
-		DestinationAPIPort:               options.destinationAPIPort,
-		EnableTLS:                        options.enableTLS(),
-		TLSTrustAnchorVolumeName:         k8s.TLSTrustAnchorVolumeName,
-		TLSSecretsVolumeName:             k8s.TLSSecretsVolumeName,
-		TLSTrustAnchorConfigMapName:      k8s.TLSTrustAnchorConfigMapName,
-		ProxyContainerName:               k8s.ProxyContainerName,
-		TLSTrustAnchorFileName:           k8s.TLSTrustAnchorFileName,
-		TLSCertFileName:                  k8s.TLSCertFileName,
-		TLSPrivateKeyFileName:            k8s.TLSPrivateKeyFileName,
-		TLSTrustAnchorVolumeSpecFileName: k8s.TLSTrustAnchorVolumeSpecFileName,
-		TLSIdentityVolumeSpecFileName:    k8s.TLSIdentityVolumeSpecFileName,
-		InboundPort:                      options.inboundPort,
-		OutboundPort:                     options.outboundPort,
-		IgnoreInboundPorts:               strings.Join(ignoreInboundPorts, ","),
-		IgnoreOutboundPorts:              strings.Join(ignoreOutboundPorts, ","),
-		InboundAcceptKeepaliveMs:         defaultKeepaliveMs,
-		OutboundConnectKeepaliveMs:       defaultKeepaliveMs,
-		ProxyAutoInjectEnabled:           options.proxyAutoInject,
-		ProxyInjectAnnotation:            k8s.ProxyInjectAnnotation,
-		ProxyInjectDisabled:              k8s.ProxyInjectDisabled,
-		ProxyLogLevel:                    options.proxyLogLevel,
-		ProxyUID:                         options.proxyUID,
-		ProxyMetricsPort:                 options.proxyMetricsPort,
-		ProxyControlPort:                 options.proxyControlPort,
-		ProxySpecFileName:                k8s.ProxySpecFileName,
-		ProxyInitSpecFileName:            k8s.ProxyInitSpecFileName,
-		ProxyInitImage:                   options.taggedProxyInitImage(),
-		ProxyImage:                       options.taggedProxyImage(),
-		ProxyResourceRequestCPU:          options.proxyCPURequest,
-		ProxyResourceRequestMemory:       options.proxyMemoryRequest,
-		ProxyResourceLimitCPU:            options.proxyCPULimit,
-		ProxyResourceLimitMemory:         options.proxyMemoryLimit,
-		SingleNamespace:                  options.singleNamespace,
-		EnableHA:                         options.highAvailability,
-		ProfileSuffixes:                  profileSuffixes,
-		EnableH2Upgrade:                  !options.disableH2Upgrade,
-		NoInitContainer:                  options.noInitContainer,
-		GlobalConfig:                     globalConfig,
-		ProxyConfig:                      proxyConfig,
+		Namespace:                   controlPlaneNamespace,
+		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
+		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
+		PrometheusImage:             "prom/prometheus:v2.7.1",
+		PrometheusVolumeName:        "data",
+		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaVolumeName:           "data",
+		ControllerReplicas:          options.controllerReplicas,
+		ImagePullPolicy:             options.imagePullPolicy,
+		UUID:                        uuid.NewV4().String(),
+		CliVersion:                  k8s.CreatedByAnnotationValue(),
+		ControllerLogLevel:          options.controllerLogLevel,
+		ControllerComponentLabel:    k8s.ControllerComponentLabel,
+		ControllerUID:               options.controllerUID,
+		CreatedByAnnotation:         k8s.CreatedByAnnotation,
+		DestinationAPIPort:          options.destinationAPIPort,
+		EnableTLS:                   options.enableTLS(),
+		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
+		ProxyContainerName:          k8s.ProxyContainerName,
+		TLSTrustAnchorFileName:      k8s.TLSTrustAnchorFileName,
+		ProxyAutoInjectEnabled:      options.proxyAutoInject,
+		ProxyInjectAnnotation:       k8s.ProxyInjectAnnotation,
+		ProxyInjectDisabled:         k8s.ProxyInjectDisabled,
+		SingleNamespace:             options.singleNamespace,
+		EnableHA:                    options.highAvailability,
+		EnableH2Upgrade:             !options.disableH2Upgrade,
+		NoInitContainer:             options.noInitContainer,
+		GlobalConfig:                globalConfig,
+		ProxyConfig:                 proxyConfig,
 	}, nil
 }
 
@@ -316,12 +248,23 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	}
 
 	injectOptions := newInjectOptions()
-	injectOptions.proxyConfigOptions = options.proxyConfigOptions
 
-	// Special case for linkerd-proxy running in the Prometheus pod.
-	injectOptions.proxyOutboundCapacity[config.PrometheusImage] = prometheusProxyOutboundCapacity
+	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
 
-	return InjectYAML(&buf, w, ioutil.Discard, injectOptions)
+	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
+	// Once Kubernetes supports sidecar containers, this may be removed, as that
+	// will guarantee the proxy is running prior to control-plane startup.
+	injectOptions.ignoreOutboundPorts = append(injectOptions.ignoreOutboundPorts, 443)
+
+	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
+	pbConfig := injectOptionsToConfigs(injectOptions)
+
+	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
+		configs: pbConfig,
+		proxyOutboundCapacity: map[string]uint{
+			config.PrometheusImage: prometheusProxyOutboundCapacity,
+		},
+	})
 }
 
 func (options *installOptions) validate() error {
@@ -349,20 +292,21 @@ func readIntoBytes(filename string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func globalConfig(options *installOptions) *config.GlobalConfig {
+func globalConfig(options *installOptions) *config.Global {
 	var identityContext *config.IdentityContext
 	if options.enableTLS() {
 		identityContext = &config.IdentityContext{}
 	}
 
-	return &config.GlobalConfig{
+	return &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
+		Version:          options.linkerdVersion,
 		IdentityContext:  identityContext,
 	}
 }
 
-func proxyConfig(options *installOptions) *config.ProxyConfig {
+func proxyConfig(options *installOptions) *config.Proxy {
 	ignoreInboundPorts := []*config.Port{}
 	for _, port := range options.ignoreInboundPorts {
 		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
@@ -373,13 +317,13 @@ func proxyConfig(options *installOptions) *config.ProxyConfig {
 		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
 	}
 
-	return &config.ProxyConfig{
+	return &config.Proxy{
 		ProxyImage: &config.Image{
-			ImageName:  options.taggedProxyImage(),
+			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		ProxyInitImage: &config.Image{
-			ImageName:  options.taggedProxyInitImage(),
+			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
 		DestinationApiPort: &config.Port{

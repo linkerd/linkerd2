@@ -51,6 +51,25 @@ spec:
       containers:
       - image: buoyantio/booksapp:v0.0.2`
 
+//job/books
+var booksJobConfig = `kind: Job
+apiVersion: batch/v1
+metadata:
+  name: books
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: books
+  template:
+    metadata:
+      labels:
+        app: books
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - image: buoyantio/booksapp:v0.0.2`
+
 var booksStatefulsetConfig = `kind: StatefulSet
 apiVersion: apps/v1
 metadata:
@@ -124,6 +143,7 @@ spec:
 var booksConfig = append(booksServiceConfig, booksDeployConfig)
 var booksDSConfig = append(booksServiceConfig, booksDaemonsetConfig)
 var booksSSConfig = append(booksServiceConfig, booksStatefulsetConfig)
+var booksJConfig = append(booksServiceConfig, booksJobConfig)
 
 type topRoutesExpected struct {
 	expectedStatRPC
@@ -302,6 +322,39 @@ func TestTopRoutes(t *testing.T) {
 						Resource: &pb.Resource{
 							Namespace: "default",
 							Type:      pkgK8s.DaemonSet,
+							Name:      "books",
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenTopRoutesResponse(routes, counts, false, "books"),
+			},
+		}
+
+		testTopRoutes(t, expectations)
+	})
+
+	t.Run("Successfully performs a routes query for a job", func(t *testing.T) {
+		routes := []string{"/a"}
+		counts := []uint64{123}
+		expectations := []topRoutesExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err:              nil,
+					mockPromResponse: routesMetric([]string{"/a"}),
+					expectedPrometheusQueries: []string{
+						`histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", k8s_job="books", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", k8s_job="books", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", k8s_job="books", namespace="default"}[1m])) by (le, dst, rt_route))`,
+						`sum(increase(route_response_total{direction="inbound", dst=~"(books.default.svc.cluster.local)(:\\d+)?", k8s_job="books", namespace="default"}[1m])) by (rt_route, dst, classification)`,
+					},
+					k8sConfigs: booksJConfig,
+				},
+				req: pb.TopRoutesRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "default",
+							Type:      pkgK8s.Job,
 							Name:      "books",
 						},
 					},

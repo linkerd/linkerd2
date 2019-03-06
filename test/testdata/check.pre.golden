@@ -6,6 +6,7 @@ kubernetes-api
 kubernetes-version
 ------------------
 √ is running the minimum Kubernetes API version
+√ is running the minimum kubectl version
 
 pre-kubernetes-cluster-setup
 ----------------------------
@@ -14,6 +15,10 @@ pre-kubernetes-cluster-setup
 √ can create ClusterRoles
 √ can create ClusterRoleBindings
 √ can create CustomResourceDefinitions
+
+pre-kubernetes-capability
+-------------------------
+√ has NET_ADMIN capability
 
 pre-kubernetes-setup
 --------------------

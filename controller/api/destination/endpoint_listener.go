@@ -94,6 +94,7 @@ func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress,
 
 // implements the endpointUpdateListener interface
 type endpointListener struct {
+	controllerNS     string
 	stream           pb.Destination_GetServer
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
@@ -107,8 +108,10 @@ func newEndpointListener(
 	stream pb.Destination_GetServer,
 	ownerKindAndName ownerKindAndNameFn,
 	enableTLS, enableH2Upgrade bool,
+	controllerNS string,
 ) *endpointListener {
 	return &endpointListener{
+		controllerNS:     controllerNS,
 		stream:           stream,
 		ownerKindAndName: ownerKindAndName,
 		labels:           make(map[string]string),
@@ -213,18 +216,17 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 }
 
 func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
-	controllerNs := pod.Labels[pkgK8s.ControllerNSLabel]
+	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
 	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
-
-	var hint *pb.ProtocolHint
 
 	// If the pod is controlled by us, then it can be hinted that this destination
 	// knows H2 (and handles our orig-proto translation). Note that this check
 	// does not verify that the pod's control plane matches the control plane
 	// where the destination service is running; all pods injected for all control
 	// planes are considered valid for providing the H2 hint.
-	if l.enableH2Upgrade && controllerNs != "" {
+	var hint *pb.ProtocolHint
+	if l.enableH2Upgrade && controllerNS != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
@@ -232,23 +234,25 @@ func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, 
 		}
 	}
 
-	if !l.enableTLS {
-		return labels, hint, nil
-	}
+	var identity *pb.TlsIdentity
+	if l.enableTLS && controllerNS == l.controllerNS &&
+		pod.Annotations[pkgK8s.IdentityModeAnnotation] == pkgK8s.IdentityModeOptional {
+		name := pkgK8s.TLSIdentity{
+			Name:                ownerName,
+			Kind:                ownerKind,
+			Namespace:           pod.Namespace,
+			ControllerNamespace: controllerNS,
+		}.ToDNSName()
 
-	identity := pkgK8s.TLSIdentity{
-		Name:                ownerName,
-		Kind:                ownerKind,
-		Namespace:           pod.Namespace,
-		ControllerNamespace: controllerNs,
-	}
-
-	return labels, hint, &pb.TlsIdentity{
-		Strategy: &pb.TlsIdentity_K8SPodIdentity_{
-			K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-				PodIdentity:  identity.ToDNSName(),
-				ControllerNs: controllerNs,
+		identity = &pb.TlsIdentity{
+			Strategy: &pb.TlsIdentity_K8SPodIdentity_{
+				K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
+					PodIdentity:  name,
+					ControllerNs: controllerNS,
+				},
 			},
-		},
+		}
 	}
+
+	return labels, hint, identity
 }

@@ -11,7 +11,7 @@ import (
 // perform a given action.
 func ResourceAuthz(
 	k8sClient kubernetes.Interface,
-	namespace, verb, group, version, resource string,
+	namespace, verb, group, version, resource, name string,
 ) (bool, string, error) {
 	ssar := &authV1.SelfSubjectAccessReview{
 		Spec: authV1.SelfSubjectAccessReviewSpec{
@@ -21,6 +21,7 @@ func ResourceAuthz(
 				Group:     group,
 				Version:   version,
 				Resource:  resource,
+				Name:      name,
 			},
 		},
 	}
@@ -79,6 +80,7 @@ func resourceAccess(k8sClient kubernetes.Interface, namespace, group, resource s
 		group,
 		"",
 		resource,
+		"",
 	)
 	if err != nil {
 		return false, err
@@ -96,6 +98,7 @@ func resourceAccess(k8sClient kubernetes.Interface, namespace, group, resource s
 		group,
 		"",
 		resource,
+		"",
 	)
 	if err != nil {
 		return false, err

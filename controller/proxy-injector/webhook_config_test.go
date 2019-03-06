@@ -9,7 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 )
 
-func TestCreateOrUpdate(t *testing.T) {
+func TestCreate(t *testing.T) {
 	var (
 		namespace          = fake.DefaultControllerNamespace
 		webhookServiceName = "test.linkerd.io"
@@ -29,30 +29,30 @@ func TestCreateOrUpdate(t *testing.T) {
 	}
 
 	// expect mutating webhook configuration to not exist
-	_, exist, err := webhookConfig.exist()
+	exists, err := webhookConfig.exists()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if exist {
+	if exists {
 		t.Error("Unexpected mutating webhook configuration. Expect resources to not exist")
 	}
 
 	// create the mutating webhook configuration
-	if _, err := webhookConfig.CreateOrUpdate(); err != nil {
+	if _, err := webhookConfig.Create(); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
 	// expect mutating webhook configuration to exist
-	_, exist, err = webhookConfig.exist()
+	exists, err = webhookConfig.exists()
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	if !exist {
+	if !exists {
 		t.Error("Expected mutating webhook configuration to exist")
 	}
 
-	// update the mutating webhook configuration using the same trust anchors
-	if _, err := webhookConfig.CreateOrUpdate(); err != nil {
+	// expect the mutating webhook configuration to be created without errors
+	if _, err := webhookConfig.Create(); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 }

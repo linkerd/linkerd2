@@ -112,13 +112,13 @@ func equalServicePorts(servicePorts1, servicePorts2 servicePorts) error {
 	return nil
 }
 
-func makeUpdateAddress(ipStr string, portNum uint32, ns string, name string) *updateAddress {
+func makeUpdateAddress(ipStr string, portNum uint32, name string) *updateAddress {
 	ip, _ := addr.ParseProxyIPV4(ipStr)
 	return &updateAddress{
 		address: &proxyNet.TcpAddress{Ip: ip, Port: portNum},
 		pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
+				Namespace: "ns",
 				Name:      name,
 			},
 		},

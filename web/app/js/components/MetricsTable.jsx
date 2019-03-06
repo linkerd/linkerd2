@@ -94,6 +94,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     {
       title: "Namespace",
       dataIndex: "namespace",
+      filter: d => d.namespace,
       isNumeric: false,
       render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace)
@@ -131,6 +132,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
     dataIndex: "name",
     isNumeric: false,
+    filter: d => d.name,
     render: d => {
       let nameContents;
       if (resource === "namespace") {
@@ -197,16 +199,18 @@ class MetricsTable extends React.Component {
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
     showNamespaceColumn: PropTypes.bool,
+    title: PropTypes.string
   };
 
   static defaultProps = {
     showNamespaceColumn: true,
+    title: "",
     isTcpTable: false,
     metrics: []
   };
 
   render() {
-    const { metrics, resource, showNamespaceColumn, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
 
@@ -214,9 +218,11 @@ class MetricsTable extends React.Component {
     let rows = preprocessMetrics(metrics);
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={rows}
         tableColumns={columns}
         tableClassName="metric-table"
+        title={title}
         defaultOrderBy="name"
         padding="dense" />
     );
