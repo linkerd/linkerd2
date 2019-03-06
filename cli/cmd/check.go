@@ -93,6 +93,7 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 		if !options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
+		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
