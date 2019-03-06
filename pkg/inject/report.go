@@ -25,7 +25,7 @@ type Report struct {
 // from conf
 func newReport(conf *ResourceConfig) Report {
 	var name string
-	if m := conf.templateMeta.ObjectMeta; m != nil {
+	if m := conf.podMeta.ObjectMeta; m != nil {
 		name = m.Name
 	}
 	return Report{
@@ -47,7 +47,7 @@ func (r Report) Injectable() bool {
 
 // update updates the report for the provided resource conf.
 func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.templateMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	r.InjectDisabled = conf.podMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 	r.HostNetwork = conf.podSpec.HostNetwork
 	r.Sidecar = healthcheck.HasExistingSidecars(conf.podSpec)
 	r.UDP = checkUDPPorts(conf.podSpec)

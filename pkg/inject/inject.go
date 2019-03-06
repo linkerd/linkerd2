@@ -55,8 +55,8 @@ type ResourceConfig struct {
 	nsAnnotations         map[string]string
 	meta                  metav1.TypeMeta
 	obj                   runtime.Object
-	objMeta               *metav1.ObjectMeta
-	templateMeta          objMeta
+	workLoadMeta          *metav1.ObjectMeta
+	podMeta               objMeta
 	podLabels             map[string]string
 	podSpec               *v1.PodSpec
 	dnsNameOverride       string
@@ -114,10 +114,10 @@ func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return false, err
 	}
-	if err := yaml.Unmarshal(bytes, &conf.templateMeta); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.podMeta); err != nil {
 		return false, err
 	}
-	return conf.templateMeta.ObjectMeta != nil, nil
+	return conf.podMeta.ObjectMeta != nil, nil
 }
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
@@ -250,7 +250,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -260,7 +260,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
@@ -270,7 +270,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -280,7 +280,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -290,7 +290,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -300,7 +300,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.obj = v
-		conf.objMeta = &v.ObjectMeta
+		conf.workLoadMeta = &v.ObjectMeta
 		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -311,7 +311,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.obj = v
 		conf.podSpec = &v.Spec
-		conf.templateMeta = objMeta{&v.ObjectMeta}
+		conf.podMeta = objMeta{&v.ObjectMeta}
 	}
 
 	return nil
@@ -319,7 +319,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.podSpec = &template.Spec
-	conf.templateMeta = objMeta{&template.ObjectMeta}
+	conf.podMeta = objMeta{&template.ObjectMeta}
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
@@ -538,7 +538,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	if len(conf.templateMeta.Annotations) == 0 {
+	if len(conf.podMeta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.globalConfig.GetVersion())
@@ -597,7 +597,7 @@ func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
 		return false
 	}
 
-	podAnnotation := conf.templateMeta.Annotations[k8s.ProxyInjectAnnotation]
+	podAnnotation := conf.podMeta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
 		return true

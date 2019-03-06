@@ -17,11 +17,11 @@ func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
 
 	conf.uninjectPodSpec(report)
 
-	if conf.objMeta != nil {
-		uninjectObjectMeta(conf.objMeta)
+	if conf.workLoadMeta != nil {
+		uninjectObjectMeta(conf.workLoadMeta)
 	}
 
-	uninjectObjectMeta(conf.templateMeta.ObjectMeta)
+	uninjectObjectMeta(conf.podMeta.ObjectMeta)
 	return conf.YamlMarshalObj()
 }
 
