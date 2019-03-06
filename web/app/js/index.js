@@ -101,7 +101,7 @@ let applicationHtml = (
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
               <Route
                 path={`${pathPrefix}/jobs`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="jobs" />} />
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="job" />} />
               <Route
                 path={`${pathPrefix}/replicationcontrollers`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />

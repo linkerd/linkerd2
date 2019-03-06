@@ -177,6 +177,7 @@ export const shortNameLookup = {
   "replicaset": "rs",
   "service": "svc",
   "statefulset": "sts",
+  "job": "job",
   "authority": "au"
 };
 
