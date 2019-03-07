@@ -73,10 +73,6 @@ var (
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:(3000|999(4|5|6|7|8))\)`,
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: operation timed out after 300ms`,
 
-		// single namespace warnings
-		`.*-single-namespace linkerd-controller-.*-.* (destination|public-api|tap) time=".*" level=warning msg="Not authorized for cluster-wide access, limiting access to \\".*-single-namespace\\" namespace"`,
-		`.*-single-namespace linkerd-controller-.*-.* (destination|public-api|tap) time=".*" level=warning msg="ServiceProfiles not available"`,
-
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! linkerd-destination\..*-tls\.svc\.cluster\.local:8086 rustls::session TLS alert received: Message {`,
 		`.*-tls linkerd-controller-.*-.* linkerd-proxy ERR! .*:9090 rustls::session TLS alert received: Message {`,
@@ -102,14 +98,6 @@ func TestVersionPreInstall(t *testing.T) {
 func TestCheckPreInstall(t *testing.T) {
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.pre.single_namespace.golden"
-		err := TestHelper.CreateNamespaceIfNotExists(TestHelper.GetLinkerdNamespace())
-		if err != nil {
-			t.Fatalf("Namespace creation failed\n%s", err.Error())
-		}
-	}
 	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
@@ -130,9 +118,6 @@ func TestInstall(t *testing.T) {
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["linkerd-ca"] = deploySpec{1, []string{"ca"}}
-	}
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -179,10 +164,6 @@ func TestVersionPostInstall(t *testing.T) {
 func TestCheckPostInstall(t *testing.T) {
 	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
 	golden := "check.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.single_namespace.golden"
-	}
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
 		out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -285,10 +266,6 @@ func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
 	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 	golden := "check.proxy.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.proxy.single_namespace.golden"
-	}
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
 		out, _, err := TestHelper.LinkerdRun(cmd...)

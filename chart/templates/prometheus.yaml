@@ -9,28 +9,22 @@ metadata:
   name: linkerd-prometheus
   namespace: {{.Values.Namespace}}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-prometheus
-  {{- if .Values.SingleNamespace}}
-  namespace: {{.Values.Namespace}}
-  {{- end}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-prometheus
-  {{- if .Values.SingleNamespace}}
-  namespace: {{.Values.Namespace}}
-  {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  kind: ClusterRole
   name: linkerd-{{.Values.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
@@ -171,10 +165,6 @@ data:
     - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
-        {{- if .Values.SingleNamespace}}
-        namespaces:
-          names: ['{{.Values.Namespace}}']
-        {{- end}}
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name

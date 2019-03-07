@@ -292,7 +292,7 @@ func TestHealthChecker(t *testing.T) {
 }
 
 func TestCheckCanCreate(t *testing.T) {
-	exp := fmt.Errorf("missing permissions to create deployments")
+	exp := fmt.Errorf("not authorized to access deployments.extensions")
 
 	hc := NewHealthChecker(
 		[]CategoryID{},

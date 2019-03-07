@@ -36,36 +36,21 @@ const (
 
 	// LinkerdPreInstall* checks enabled by `linkerd check --pre`
 
-	// LinkerdPreInstallClusterChecks adds checks to validate that the control
-	// plane namespace does not already exist, and that the user can create
-	// cluster-wide resources, including ClusterRole, ClusterRoleBinding, and
-	// CustomResourceDefinition. This check only runs as part of the set
+	// LinkerdPreInstallChecks adds checks to validate that the control plane
+	// namespace does not already exist, and that the user can create cluster-wide
+	// resources, including ClusterRole, ClusterRoleBinding, and
+	// CustomResourceDefinition, as well as namespace-wide resources, including
+	// Service, Deployment, and ConfigMap. This check only runs as part of the set
 	// of pre-install checks.
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
-	LinkerdPreInstallClusterChecks CategoryID = "pre-kubernetes-cluster-setup"
-
-	// LinkerdPreInstallSingleNamespaceChecks adds a check to validate that the
-	// control plane namespace already exists, and that the user can create
-	// namespace-scoped resources, including Role and RoleBinding. This check only
-	// runs as part of the set of pre-install checks.
-	// This check is dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdPreInstallSingleNamespaceChecks CategoryID = "pre-kubernetes-single-namespace-setup"
+	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
 	// LinkerdPreInstallCapabilityChecks adds a check to validate the user has the
 	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN
 	// capability is required by the `linkerd-init` container to modify IP tables.
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
-
-	// LinkerdPreInstallChecks adds checks to validate that the user can create
-	// Kubernetes objects necessary to install the control plane, including
-	// Service, Deployment, and ConfigMap. This check only runs as part of the set
-	// of pre-install checks.
-	// This check is dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
 	// the control plane namespace and controller pod exist.
@@ -78,12 +63,6 @@ const (
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdAPIChecks CategoryID = "linkerd-api"
-
-	// LinkerdServiceProfileChecks add a check validate any ServiceProfiles that
-	// may already be installed.
-	// These checks are dependent on the output of KubernetesAPIChecks, so those
-	// checks must be added first.
-	LinkerdServiceProfileChecks CategoryID = "linkerd-service-profile"
 
 	// LinkerdVersionChecks adds a series of checks to query for the latest
 	// version, and validate the the CLI is up to date.
@@ -283,7 +262,7 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdPreInstallClusterChecks,
+			id: LinkerdPreInstallChecks,
 			checkers: []checker{
 				{
 					description: "control plane namespace does not already exist",
@@ -320,49 +299,6 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
 					},
 				},
-			},
-		},
-		{
-			id: LinkerdPreInstallSingleNamespaceChecks,
-			checkers: []checker{
-				{
-					description: "control plane namespace exists",
-					hintAnchor:  "pre-single-ns",
-					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
-					},
-				},
-				{
-					description: "can create Roles",
-					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "Role")
-					},
-				},
-				{
-					description: "can create RoleBindings",
-					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "rbac.authorization.k8s.io", "v1beta1", "RoleBinding")
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdPreInstallCapabilityChecks,
-			checkers: []checker{
-				{
-					description: "has NET_ADMIN capability",
-					hintAnchor:  "pre-k8s-cluster-net-admin",
-					check: func(context.Context) error {
-						return hc.checkNetAdmin()
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdPreInstallChecks,
-			checkers: []checker{
 				{
 					description: "can create ServiceAccounts",
 					hintAnchor:  "pre-k8s",
@@ -389,6 +325,18 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdPreInstallCapabilityChecks,
+			checkers: []checker{
+				{
+					description: "has NET_ADMIN capability",
+					hintAnchor:  "pre-k8s-cluster-net-admin",
+					check: func(context.Context) error {
+						return hc.checkNetAdmin()
 					},
 				},
 			},
@@ -469,11 +417,6 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
-			},
-		},
-		{
-			id: LinkerdServiceProfileChecks,
-			checkers: []checker{
 				{
 					description: "no invalid service profiles",
 					hintAnchor:  "l5d-sp",
@@ -808,7 +751,7 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
-	allowed, reason, err := k8s.ResourceAuthz(
+	return k8s.ResourceAuthz(
 		hc.clientset,
 		namespace,
 		"create",
@@ -817,17 +760,6 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 		resource,
 		"",
 	)
-	if err != nil {
-		return err
-	}
-
-	if !allowed {
-		if len(reason) > 0 {
-			return fmt.Errorf("missing permissions to create %s: %v", resource, reason)
-		}
-		return fmt.Errorf("missing permissions to create %s", resource)
-	}
-	return nil
 }
 
 func (hc *HealthChecker) checkNetAdmin() error {
@@ -851,7 +783,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	// AND
 	// 2) provides NET_ADMIN
 	for _, psp := range pspList.Items {
-		allowed, _, err := k8s.ResourceAuthz(
+		err := k8s.ResourceAuthz(
 			hc.clientset,
 			"",
 			"use",
@@ -860,11 +792,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 			"PodSecurityPolicy",
 			psp.GetName(),
 		)
-		if err != nil {
-			return err
-		}
-
-		if allowed {
+		if err == nil {
 			for _, capability := range psp.Spec.AllowedCapabilities {
 				if capability == "*" || capability == "NET_ADMIN" {
 					return nil

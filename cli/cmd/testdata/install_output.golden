@@ -284,7 +284,6 @@ data:
     GlobalConfig
   proxy: |
     ProxyConfig
-
 ---
 ###
 ### Service Profile CRD

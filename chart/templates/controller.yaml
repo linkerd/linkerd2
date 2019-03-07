@@ -9,13 +9,10 @@ metadata:
   name: linkerd-controller
   namespace: {{.Values.Namespace}}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-controller
-  {{- if .Values.SingleNamespace}}
-  namespace: {{.Values.Namespace}}
-  {{- end}}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -24,29 +21,19 @@ rules:
   resources: ["jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers"{{if not .Values.SingleNamespace}}, "namespaces"{{end}}]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
-{{- if .Values.SingleNamespace }}
-- apiGroups: [""]
-  resources: ["namespaces"]
-  resourceNames: ["{{.Values.Namespace}}"]
-  verbs: ["list", "get", "watch"]
-{{- else }}
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
-{{- end }}
 ---
-kind: {{if not .Values.SingleNamespace}}Cluster{{end}}RoleBinding
+kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Values.Namespace}}-controller
-  {{- if .Values.SingleNamespace}}
-  namespace: {{.Values.Namespace}}
-  {{- end}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: {{if not .Values.SingleNamespace}}Cluster{{end}}Role
+  kind: ClusterRole
   name: linkerd-{{.Values.Namespace}}-controller
 subjects:
 - kind: ServiceAccount

@@ -40,8 +40,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	// TODO: modify this API to always assume serviceProfiles are available
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, true, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, *uuid, *controllerNamespace, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

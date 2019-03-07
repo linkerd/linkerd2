@@ -19,8 +19,7 @@ func TestRender(t *testing.T) {
 	defaultConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
 	// A configuration that shows that all config setting strings are honored
-	// by `render()`. Note that `SingleNamespace` is tested in a separate
-	// configuration, since it's incompatible with `ProxyAutoInjectEnabled`.
+	// by `render()`.
 	metaConfig := installConfig{
 		Namespace:                   "Namespace",
 		ControllerImage:             "ControllerImage",
@@ -44,33 +43,6 @@ func TestRender(t *testing.T) {
 		ProxyInjectAnnotation:       "ProxyInjectAnnotation",
 		ProxyInjectDisabled:         "ProxyInjectDisabled",
 		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		NoInitContainer:             false,
-		GlobalConfig:                "GlobalConfig",
-		ProxyConfig:                 "ProxyConfig",
-	}
-
-	singleNamespaceConfig := installConfig{
-		Namespace:                   "Namespace",
-		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
-		PrometheusImage:             "PrometheusImage",
-		PrometheusVolumeName:        "data",
-		GrafanaImage:                "GrafanaImage",
-		GrafanaVolumeName:           "data",
-		ControllerReplicas:          1,
-		ImagePullPolicy:             "ImagePullPolicy",
-		UUID:                        "UUID",
-		CliVersion:                  "CliVersion",
-		ControllerLogLevel:          "ControllerLogLevel",
-		ControllerComponentLabel:    "ControllerComponentLabel",
-		CreatedByAnnotation:         "CreatedByAnnotation",
-		ControllerUID:               2103,
-		EnableTLS:                   true,
-		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
-		ProxyContainerName:          "ProxyContainerName",
-		TLSTrustAnchorFileName:      "TLSTrustAnchorFileName",
-		SingleNamespace:             true,
 		EnableH2Upgrade:             true,
 		NoInitContainer:             false,
 		GlobalConfig:                "GlobalConfig",
@@ -110,7 +82,6 @@ func TestRender(t *testing.T) {
 	}{
 		{*defaultConfig, defaultOptions, defaultControlPlaneNamespace, "install_default.golden"},
 		{metaConfig, defaultOptions, metaConfig.Namespace, "install_output.golden"},
-		{singleNamespaceConfig, defaultOptions, singleNamespaceConfig.Namespace, "install_single_namespace_output.golden"},
 		{*haConfig, haOptions, haConfig.Namespace, "install_ha_output.golden"},
 		{*haWithOverridesConfig, haWithOverridesOptions, haWithOverridesConfig.Namespace, "install_ha_with_overrides_output.golden"},
 		{*noInitContainerConfig, noInitContainerOptions, noInitContainerConfig.Namespace, "install_no_init_container.golden"},
@@ -183,21 +154,6 @@ func TestValidate(t *testing.T) {
 			if !tc.valid && err.Error() != fmt.Sprintf(expectedErr, tc.input) {
 				t.Fatalf("Expected error string \""+expectedErr+"\"", tc.input, err)
 			}
-		}
-	})
-
-	t.Run("Rejects single namespace install with auto inject", func(t *testing.T) {
-		options := newInstallOptions()
-		options.proxyAutoInject = true
-		options.singleNamespace = true
-		expected := "The --proxy-auto-inject and --single-namespace flags cannot both be specified together"
-
-		err := options.validate()
-		if err == nil {
-			t.Fatalf("Expected error, got nothing")
-		}
-		if err.Error() != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
 		}
 	})
 }

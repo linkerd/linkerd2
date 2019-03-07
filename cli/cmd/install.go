@@ -44,7 +44,6 @@ type installConfig struct {
 	ProxyAutoInjectEnabled      bool
 	ProxyInjectAnnotation       string
 	ProxyInjectDisabled         string
-	SingleNamespace             bool
 	EnableHA                    bool
 	ControllerUID               int64
 	EnableH2Upgrade             bool
@@ -62,7 +61,6 @@ type installOptions struct {
 	controllerReplicas uint
 	controllerLogLevel string
 	proxyAutoInject    bool
-	singleNamespace    bool
 	highAvailability   bool
 	controllerUID      int64
 	disableH2Upgrade   bool
@@ -89,7 +87,6 @@ func newInstallOptions() *installOptions {
 		controllerReplicas: defaultControllerReplicas,
 		controllerLogLevel: "info",
 		proxyAutoInject:    false,
-		singleNamespace:    false,
 		highAvailability:   false,
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
@@ -118,7 +115,6 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
 	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
 	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Enable proxy sidecar auto-injection via a webhook (default false)")
-	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "Experimental: Configure the control plane to only operate in the installed namespace (default false)")
 	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane (default false)")
 	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
 	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)")
@@ -176,7 +172,6 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		ProxyAutoInjectEnabled:      options.proxyAutoInject,
 		ProxyInjectAnnotation:       k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:         k8s.ProxyInjectDisabled,
-		SingleNamespace:             options.singleNamespace,
 		EnableHA:                    options.highAvailability,
 		EnableH2Upgrade:             !options.disableH2Upgrade,
 		NoInitContainer:             options.noInitContainer,
@@ -268,10 +263,6 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 func (options *installOptions) validate() error {
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
-	}
-
-	if options.proxyAutoInject && options.singleNamespace {
-		return fmt.Errorf("The --proxy-auto-inject and --single-namespace flags cannot both be specified together")
 	}
 
 	return options.proxyConfigOptions.validate()
