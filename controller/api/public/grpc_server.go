@@ -10,10 +10,12 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/config"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -32,12 +34,14 @@ type APIServer interface {
 }
 
 type grpcServer struct {
-	prometheusAPI       promv1.API
-	tapClient           tapPb.TapClient
-	discoveryClient     discoveryPb.DiscoveryClient
-	k8sAPI              *k8s.API
-	controllerNamespace string
-	ignoredNamespaces   []string
+	prometheusAPI         promv1.API
+	tapClient             tapPb.TapClient
+	discoveryClient       discoveryPb.DiscoveryClient
+	k8sAPI                *k8s.API
+	controllerNamespace   string
+	ignoredNamespaces     []string
+	mountPathGlobalConfig string
+	mountPathProxyConfig  string
 }
 
 type podReport struct {
@@ -63,12 +67,14 @@ func newGrpcServer(
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
-		prometheusAPI:       promAPI,
-		tapClient:           tapClient,
-		discoveryClient:     discoveryClient,
-		k8sAPI:              k8sAPI,
-		controllerNamespace: controllerNamespace,
-		ignoredNamespaces:   ignoredNamespaces,
+		prometheusAPI:         promAPI,
+		tapClient:             tapClient,
+		discoveryClient:       discoveryClient,
+		k8sAPI:                k8sAPI,
+		controllerNamespace:   controllerNamespace,
+		ignoredNamespaces:     ignoredNamespaces,
+		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
+		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -218,6 +224,18 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		},
 	}
 	return response, nil
+}
+
+func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
+	global, err := config.Global(s.mountPathGlobalConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving global config - %s", err)
+	}
+	proxy, err := config.Proxy(s.mountPathProxyConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
+	}
+	return &configPb.All{Global: global, Proxy: proxy}, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {

@@ -4,6 +4,11 @@ package linkerd2.config;
 
 option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 
+message All {
+  Global global = 1;
+  Proxy proxy = 2;
+}
+
 message Global {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;

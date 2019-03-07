@@ -132,6 +132,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/linkerd-io/config
+          name: config
       - args:
         - destination
         - -addr=:8086
@@ -257,6 +260,10 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-controller
+      volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
 status: {}
 ---
 kind: ConfigMap

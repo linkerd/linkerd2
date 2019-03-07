@@ -135,6 +135,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/linkerd-io/config
+          name: config
       - args:
         - destination
         - -addr=:8086
@@ -256,6 +259,9 @@ spec:
           readOnly: true
       serviceAccountName: linkerd-controller
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - configMap:
           name: linkerd-ca-bundle
           optional: true

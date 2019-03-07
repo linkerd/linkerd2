@@ -7,23 +7,22 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
 var unmarshaler = jsonpb.Unmarshaler{}
 
 // Global returns the Global protobuf config from the linkerd-config ConfigMap
-func Global() (*pb.Global, error) {
+func Global(filepath string) (*pb.Global, error) {
 	config := &pb.Global{}
-	err := unmarshalConfig(k8s.MountPathGlobalConfig, config)
+	err := unmarshalConfig(filepath, config)
 	return config, err
 }
 
 // Proxy returns the Proxy protobuf config from the linkerd-config ConfigMap
-func Proxy() (*pb.Proxy, error) {
+func Proxy(filepath string) (*pb.Proxy, error) {
 	config := &pb.Proxy{}
-	err := unmarshalConfig(k8s.MountPathProxyConfig, config)
+	err := unmarshalConfig(filepath, config)
 	return config, err
 }
 

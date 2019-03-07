@@ -462,7 +462,7 @@ func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesRespo
 }
 
 func TestListServices(t *testing.T) {
-	t.Run("Successfully queryies for services", func(t *testing.T) {
+	t.Run("Successfully queries for services", func(t *testing.T) {
 		expectations := []listServicesExpected{
 			{
 				err: nil,
@@ -568,6 +568,47 @@ func TestEndpoints(t *testing.T) {
 			if !proto.Equal(exp.res, rsp) {
 				t.Fatalf("Unexpected response: [%+v] != [%+v]", exp.res, rsp)
 			}
+		}
+	})
+}
+
+func TestConfig(t *testing.T) {
+	t.Run("Configs are parsed and returned", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI("")
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
+		fakeGrpcServer := newGrpcServer(
+			&mockProm{},
+			nil,
+			nil,
+			k8sAPI,
+			"linkerd",
+			[]string{},
+		)
+		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"
+		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"
+
+		k8sAPI.Sync()
+
+		rsp, err := fakeGrpcServer.Config(context.Background(), &pb.Empty{})
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+
+		expectedVersion := "dev-206ff685-foo"
+		if v := rsp.GetGlobal().GetVersion(); v != expectedVersion {
+			t.Fatalf("Unexpected response: \"%s\" != \"%s\"", expectedVersion, v)
+		}
+
+		expectedPort := uint32(123)
+		ports := rsp.GetProxy().GetIgnoreOutboundPorts()
+		if len(ports) != 1 {
+			t.Fatal("Unexpected response: didn't get the outbound port")
+		}
+		if p := ports[0].GetPort(); p != expectedPort {
+			t.Fatalf("Unexpected response: %d != %d", expectedPort, p)
 		}
 	})
 }
