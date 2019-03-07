@@ -104,12 +104,12 @@ func TestOverrides(t *testing.T) {
 					ProxyInitImage: &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init:abcde", PullPolicy: "Always"},
 					ControlPort:    &config.Port{Port: 4000},
 					IgnoreInboundPorts: []*config.Port{
-						&config.Port{Port: 4222},
-						&config.Port{Port: 6222},
+						{Port: 4222},
+						{Port: 6222},
 					},
 					IgnoreOutboundPorts: []*config.Port{
-						&config.Port{Port: 8079},
-						&config.Port{Port: 8080},
+						{Port: 8079},
+						{Port: 8080},
 					},
 					InboundPort:  &config.Port{Port: 5000},
 					MetricsPort:  &config.Port{Port: 5001},
@@ -262,10 +262,10 @@ func TestOverrides(t *testing.T) {
 					ProxyInitImage: &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init:klmno", PullPolicy: "IfNotPresent"},
 					ControlPort:    &config.Port{Port: 9000},
 					IgnoreInboundPorts: []*config.Port{
-						&config.Port{Port: 53},
+						{Port: 53},
 					},
 					IgnoreOutboundPorts: []*config.Port{
-						&config.Port{Port: 9079},
+						{Port: 9079},
 					},
 					InboundPort:  &config.Port{Port: 6000},
 					MetricsPort:  &config.Port{Port: 6001},
@@ -363,24 +363,27 @@ func TestOverrides(t *testing.T) {
 	)
 
 	for _, testCase := range testCases {
-		t.Run(fmt.Sprintf("%s", testCase.id), func(t *testing.T) {
-			resourceConfig := NewResourceConfig(globalConfig, testCase.proxyConfig)
+		var (
+			proxyConfig          = testCase.proxyConfig
+			namespaceAnnotations = testCase.namespaceAnnotations
+			podAnnotations       = testCase.podAnnotations
+			expectedOverrides    = testCase.expectedOverrides
+		)
 
-			// insert the namespace and pod annotations
-			resourceConfig = resourceConfig.WithKind(kind).WithNsAnnotations(testCase.namespaceAnnotations)
+		t.Run(fmt.Sprint(testCase.id), func(t *testing.T) {
+			resourceConfig := NewResourceConfig(globalConfig, proxyConfig)
+			resourceConfig = resourceConfig.WithKind(kind).WithNsAnnotations(namespaceAnnotations)
 			resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
-			resourceConfig.podMeta.Annotations = testCase.podAnnotations
+			resourceConfig.podMeta.Annotations = podAnnotations
 
-			if err := resourceConfig.useOverridesOrDefaults(); err != nil {
-				t.Fatal(err)
-			}
+			resourceConfig.useOverridesOrDefaults()
 
-			if len(resourceConfig.proxyConfigOverrides) != len(testCase.expectedOverrides) {
-				t.Errorf("Number of config overrides don't match. Expected: %d. Actual: %d", len(testCase.expectedOverrides), len(resourceConfig.proxyConfigOverrides))
+			if len(resourceConfig.proxyConfigOverrides) != len(expectedOverrides) {
+				t.Errorf("Number of config overrides don't match. Expected: %d. Actual: %d", len(expectedOverrides), len(resourceConfig.proxyConfigOverrides))
 			}
 
 			for key, actual := range resourceConfig.proxyConfigOverrides {
-				expected, exist := testCase.expectedOverrides[key]
+				expected, exist := expectedOverrides[key]
 				if !exist {
 					t.Errorf("Expected annotation %q to exist", key)
 				}
