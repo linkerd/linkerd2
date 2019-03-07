@@ -10,7 +10,7 @@ metadata:
   name: serviceprofiles.linkerd.io
   namespace: {{.Values.Namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   group: linkerd.io
   version: v1alpha1

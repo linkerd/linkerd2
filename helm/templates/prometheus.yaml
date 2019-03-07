@@ -45,7 +45,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: prometheus
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -63,7 +63,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: prometheus
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
@@ -71,7 +71,7 @@ spec:
       labels:
         {{.Values.Controller.ComponentLabel}}: prometheus
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-prometheus
       volumes:
@@ -130,7 +130,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: prometheus
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   prometheus.yml: |-
     global:

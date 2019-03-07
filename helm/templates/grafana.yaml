@@ -17,7 +17,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -35,7 +35,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
@@ -43,7 +43,7 @@ spec:
       labels:
         {{.Values.Controller.ComponentLabel}}: grafana
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       volumes:
       - name: {{.Values.Grafana.VolumeName}}
@@ -104,7 +104,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   grafana.ini: |-
     instance_name = linkerd-grafana

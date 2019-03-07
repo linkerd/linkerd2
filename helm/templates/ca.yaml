@@ -59,7 +59,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: ca
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   template:
@@ -67,7 +67,7 @@ spec:
       labels:
         {{.Values.Controller.ComponentLabel}}: ca
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-ca
       containers:

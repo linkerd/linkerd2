@@ -58,7 +58,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -76,7 +76,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -94,15 +94,15 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
-  replicas: {{.Values.Controller.Replicas}}
+  replicas: {{ if .Values.EnableHA }}{{.Values.Controller.HAReplicas}}{{ else }}{{.Values.Controller.Replicas}}{{ end }}
   template:
     metadata:
       labels:
         {{.Values.Controller.ComponentLabel}}: controller
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-controller
       containers:
@@ -214,7 +214,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   {{- if include "config.global" . }}
   global: |

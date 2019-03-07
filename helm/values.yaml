@@ -1,6 +1,5 @@
 Namespace: linkerd
 CliVersion: linkerd/cli edge-19.2.5
-CreatedByAnnotation: linkerd.io/created-by
 EnableH2Upgrade: true
 EnableHA: false
 ImagePullPolicy: IfNotPresent
@@ -22,6 +21,7 @@ Controller:
   Image: gcr.io/linkerd-io/controller:edge-19.2.5
   LogLevel: info
   Replicas: 1
+  HAReplicas: 2
   UID: 2103
 
 Web:
@@ -59,3 +59,8 @@ Proxy:
   MetricsPort: 4191
   SpecFileName: proxy.yaml
   UID: 2102
+
+# These values are internal to the operation of linkerd,
+# and should not be changed unless you are entirely sure of what you're doing.
+Internal:
+  Internal.CreatedByAnnotation: linkerd.io/created-by

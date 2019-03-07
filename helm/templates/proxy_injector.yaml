@@ -12,7 +12,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: proxy-injector
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   replicas: 1
   selector:
@@ -23,7 +23,7 @@ spec:
       labels:
         {{.Values.Controller.ComponentLabel}}: proxy-injector
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       serviceAccountName: linkerd-proxy-injector
       containers:
@@ -105,7 +105,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: proxy-injector
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -123,7 +123,7 @@ metadata:
   labels:
     {{.Values.Controller.ComponentLabel}}: proxy-injector
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.Values.Internal.CreatedByAnnotation}}: {{.Values.CliVersion}}
 data:
   {{.Values.Proxy.InitSpecFileName}}: |
     args:
