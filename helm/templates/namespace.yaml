@@ -4,9 +4,9 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Values.Namespace}}
-  {{- if .Values.ProxyAutoInjectEnabled }}
+  {{- if .Values.Proxy.AutoInjectEnabled }}
   annotations:
-    {{.Values.ProxyInjectAnnotation}}: {{.Values.ProxyInjectDisabled}}
+    {{.Values.Proxy.InjectAnnotation}}: {{.Values.Proxy.InjectDisabled}}
   {{- end }}
 {{ end -}}
 

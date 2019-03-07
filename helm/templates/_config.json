@@ -1,0 +1,48 @@
+{{- define "config.global" }}
+{
+    "linkerdNamespace": "{{.Values.Namespace}}",
+    "cniEnabled": false,
+    "identityContext": null
+}
+{{- end }}
+
+{{- define "config.proxy" }}
+{ 
+    "proxyImage": {
+        "imageName": "",
+        "pullPolicy": "{{.Values.ImagePullPolicy}}"
+    },
+    "proxyInitImage": {
+        "imageName": "{{.Values.Proxy.InitImage}}",
+        "pullPolicy": "{{.Values.ImagePullPolicy}}"
+    },
+    "destinationApiPort": {
+        "port": {{.Values.Ports.DestinationAPI}}
+    },
+    "controlPort": {
+        "port": {{.Values.Proxy.ControlPort}}
+    },
+    "ignoreInboundPorts": [],
+    "ignorePorts.Outbounds": [],
+    "inboundPort": {
+        "port": {{.Values.Ports.Inbound}}
+    },
+    "metricsPort": {
+        "port": {{.Values.Proxy.MetricsPort}}
+    },
+    "Ports.Outbound": {
+        "port": {{.Values.Ports.Outbound}}
+    },
+    "resource": {
+        "requestCpu": "",
+        "requestMemory": "",
+        "limitCpu": "",
+        "limitMemory": ""
+    },
+    "proxyUid": "{{.Values.Proxy.UID}}",
+    "logLevel": {
+        "level": "warn,linkerd2_proxy=info"
+    },
+    "disableExternalProfiles": false
+}
+{{- end }}

@@ -1,0 +1,21 @@
+{{- define "containers.init" }}
+- name: linkerd-init
+  args:
+    - --incoming-proxy-port
+    - "{{ .Values.Ports.Inbound }}"
+    - --outgoing-proxy-port
+    - "{{ .Values.Ports.Outbound }}"
+    - --proxy-uid
+    - "{{ .Values.Proxy.UID }}"
+    - --inbound-ports-to-ignore
+    - {{ .Values.Ports.IgnoreInbound }}
+  image: {{ .Values.Proxy.InitImage }}
+  imagePullPolicy: IfNotPresent
+  resources: {}
+  securityContext:
+    capabilities:
+      add:
+      - NET_ADMIN
+    privileged: false
+  terminationMessagePolicy: FallbackToLogsOnError
+{{- end }}

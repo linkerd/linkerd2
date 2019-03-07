@@ -1,4 +1,4 @@
-{{ if .Values.EnableTLS }}
+{{ if .Values.TLS.Enabled }}
 ---
 ###
 ### CA
@@ -23,7 +23,7 @@ rules:
   verbs: ["create"]
 - apiGroups: [""]
   resources: ["configmaps"]
-  resourceNames: [{{.Values.TLSTrustAnchorConfigMapName}}]
+  resourceNames: [{{.Values.TLS.TrustAnchorConfigMapName}}]
   verbs: ["update"]
 - apiGroups: [""]
   resources: ["pods"]
@@ -57,7 +57,7 @@ metadata:
   name: linkerd-ca
   namespace: {{.Values.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: ca
+    {{.Values.Controller.ComponentLabel}}: ca
   annotations:
     {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
@@ -65,7 +65,7 @@ spec:
   template:
     metadata:
       labels:
-        {{.Values.ControllerComponentLabel}}: ca
+        {{.Values.Controller.ComponentLabel}}: ca
       annotations:
         {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
@@ -75,13 +75,13 @@ spec:
         ports:
         - name: admin-http
           containerPort: 9997
-        image: {{.Values.ControllerImage}}
+        image: {{.Values.Controller.Image}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
         - "ca"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-single-namespace={{.Values.SingleNamespace}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-log-level={{.Values.Controller.LogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -99,5 +99,5 @@ spec:
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.Values.Controller.UID}}
 {{ end -}}
