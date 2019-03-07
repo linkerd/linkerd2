@@ -648,7 +648,6 @@ func (conf *ResourceConfig) useOverridesOrDefaults() error {
 			continue
 		}
 
-		fmt.Println(">>>")
 		typed, err := conf.annotationValueType(annotation, "", useDefault)
 		if err != nil {
 			return err
