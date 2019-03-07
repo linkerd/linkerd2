@@ -36,7 +36,8 @@ export const tapResourceTypes = [
   "daemonset",
   "pod",
   "replicationcontroller",
-  "statefulset"
+  "statefulset",
+  "job"
 ];
 
 // use a generator to get this object, to prevent it from being overwritten
