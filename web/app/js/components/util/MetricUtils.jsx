@@ -144,7 +144,7 @@ const processStatTable = table => {
   return _orderBy(rows, r => r.name);
 };
 
-export const DefaultRoute = "[default]";
+export const DefaultRoute = "[DEFAULT]";
 export const processTopRoutesResults = rows => {
   return _map(rows, row => ({
     route: row.route || DefaultRoute,
