@@ -423,13 +423,13 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 		resources.Limits["memory"] = k8sResource.MustParse(limit)
 	}
 
-	disableExternlProfiles, err := strconv.ParseBool(conf.proxyConfigOverrides[k8s.ProxyDisableExternalProfilesAnnotation])
+	disableExternalProfiles, err := strconv.ParseBool(conf.proxyConfigOverrides[k8s.ProxyDisableExternalProfilesAnnotation])
 	if err != nil {
 		return err
 	}
 
 	profileSuffixes := "."
-	if disableExternlProfiles {
+	if disableExternalProfiles {
 		profileSuffixes = "svc.cluster.local."
 	}
 
