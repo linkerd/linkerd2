@@ -286,5 +286,11 @@ describe('ApiHelpers', () => {
       let deploymentUrls = api.urlsForResource("pod", "my-ns");
       expect(deploymentUrls).toEqual('/api/tps-reports?resource_type=pod&namespace=my-ns');
     });
+
+    it('queries for TCP stats when specified', () => {
+      api = ApiHelpers();
+      let url = api.urlsForResource('sts', '', true);
+      expect(url).toEqual('/api/tps-reports?resource_type=sts&all_namespaces=true&tcp_stats=true');
+    })
   });
 });

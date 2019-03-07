@@ -121,8 +121,17 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   const urlsForResource = (type, namespace, includeTcp) => {
     // Traffic Performance Summary. This retrieves stats for the given resource.
     let baseUrl = '/api/tps-reports?resource_type=' + type;
-    let resourceUrl = !namespace ? baseUrl + '&all_namespaces=true' : baseUrl + '&namespace=' + namespace;
-    return !includeTcp ? resourceUrl : resourceUrl + '&tcp_stats=true';
+    let resourceUrl;
+    if (_isEmpty(namespace)) {
+      resourceUrl = baseUrl + '&all_namespaces=true';
+    } else {
+      resourceUrl = baseUrl + '&namespace=' + namespace;
+    }
+    if (includeTcp) {
+      resourceUrl += '&tcp_stats=true';
+    }
+
+    return resourceUrl;
   };
 
   // maintain a list of a component's requests,
