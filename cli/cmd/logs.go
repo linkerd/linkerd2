@@ -12,8 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/wercker/stern/stern"
-	"k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
@@ -105,7 +105,7 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	return config, nil
 }
 
-func getControlPlaneComponentsAndContainers(pods *v1.PodList) ([]string, []string) {
+func getControlPlaneComponentsAndContainers(pods *corev1.PodList) ([]string, []string) {
 	var controlPlaneComponents, containers []string
 	for _, pod := range pods.Items {
 		controlPlaneComponents = append(controlPlaneComponents, pod.Labels["linkerd.io/control-plane-component"])
@@ -127,7 +127,7 @@ func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (
 		return nil, err
 	}
 
-	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(meta_v1.ListOptions{})
+	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

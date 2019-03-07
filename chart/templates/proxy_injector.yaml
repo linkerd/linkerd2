@@ -40,7 +40,7 @@ spec:
         - name: proxy-injector
           containerPort: 8443
         volumeMounts:
-        - name: proxy-spec
+        - name: config
           mountPath: /var/linkerd-io/config
         livenessProbe:
           httpGet:
@@ -61,9 +61,9 @@ spec:
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
       volumes:
-      - name: proxy-spec
+      - name: config
         configMap:
-          name: linkerd-proxy-injector-sidecar-config
+          name: linkerd-config
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -78,7 +78,7 @@ metadata:
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "update", "get", "watch"]
+  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
@@ -115,146 +115,4 @@ spec:
     port: 443
     targetPort: proxy-injector
 ---
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector-sidecar-config
-  namespace: {{.Values.Namespace}}
-  labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-  annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
-data:
-  {{.Values.ProxyInitSpecFileName}}: |
-    args:
-    - --incoming-proxy-port
-    - {{.Values.InboundPort}}
-    - --outgoing-proxy-port
-    - {{.Values.OutboundPort}}
-    - --proxy-uid
-    - {{.Values.ProxyUID}}
-    {{- if ne (len .Values.IgnoreInboundPorts) 0}}
-    - --inbound-ports-to-ignore
-    - {{.Values.IgnoreInboundPorts}}
-    {{- end }}
-    {{- if ne (len .Values.IgnoreOutboundPorts) 0}}
-    - --outbound-ports-to-ignore
-    - {{.Values.IgnoreOutboundPorts}}
-    {{- end}}
-    image: {{.Values.ProxyInitImage}}
-    imagePullPolicy: IfNotPresent
-    name: linkerd-init
-    securityContext:
-      capabilities:
-        add:
-        - NET_ADMIN
-      privileged: false
-      runAsNonRoot: false
-      runAsUser: 0
-    terminationMessagePolicy: FallbackToLogsOnError
-  {{.Values.ProxySpecFileName}}: |
-    env:
-    - name: LINKERD2_PROXY_LOG
-      value: {{.Values.ProxyLogLevel}}
-    - name: LINKERD2_PROXY_CONTROL_URL
-      value: tcp://linkerd-destination.{{.Values.Namespace}}.svc.cluster.local:{{.Values.DestinationAPIPort}}
-    - name: LINKERD2_PROXY_CONTROL_LISTENER
-      value: tcp://0.0.0.0:{{.Values.ProxyControlPort}}
-    - name: LINKERD2_PROXY_METRICS_LISTENER
-      value: tcp://0.0.0.0:{{.Values.ProxyMetricsPort}}
-    - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-      value: tcp://127.0.0.1:{{.Values.OutboundPort}}
-    - name: LINKERD2_PROXY_INBOUND_LISTENER
-      value: tcp://0.0.0.0:{{.Values.InboundPort}}
-    - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-      value: {{.Values.ProfileSuffixes}}
-    - name: LINKERD2_PROXY_POD_NAMESPACE
-      valueFrom:
-        fieldRef:
-          fieldPath: metadata.namespace
-    {{- if .Values.InboundAcceptKeepaliveMs }}
-    - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-      value: {{.Values.InboundAcceptKeepaliveMs}}ms
-    {{- end}}
-    {{- if .Values.OutboundConnectKeepaliveMs }}
-    - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-      value: {{.Values.OutboundConnectKeepaliveMs}}ms
-    {{- end}}
-    - name: LINKERD2_PROXY_ID
-      value: "" # this value will be computed by the webhook
-    {{- if .Values.EnableTLS }}
-    - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-      value: /var/linkerd-io/trust-anchors/{{.Values.TLSTrustAnchorFileName}}
-    - name: LINKERD2_PROXY_TLS_CERT
-      value: /var/linkerd-io/identity/{{.Values.TLSCertFileName}}
-    - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-      value: /var/linkerd-io/identity/{{.Values.TLSPrivateKeyFileName}}
-    - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-      value: "" # this value will be computed by the webhook
-    - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-      value: {{.Values.Namespace}}
-    - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-      value: "" # this value will be computed by the webhook
-    {{- end}}
-    image: {{.Values.ProxyImage}}
-    imagePullPolicy: IfNotPresent
-    livenessProbe:
-      httpGet:
-        path: /metrics
-        port: {{.Values.ProxyMetricsPort}}
-      initialDelaySeconds: 10
-    name: linkerd-proxy
-    ports:
-    - containerPort: {{.Values.InboundPort}}
-      name: linkerd-proxy
-    - containerPort: {{.Values.ProxyMetricsPort}}
-      name: linkerd-metrics
-    readinessProbe:
-      httpGet:
-        path: /metrics
-        port: {{.Values.ProxyMetricsPort}}
-      initialDelaySeconds: 10
-    {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory .Values.ProxyResourceLimitCPU .Values.ProxyResourceLimitMemory }}
-    resources:
-      {{- if or .Values.ProxyResourceRequestCPU .Values.ProxyResourceRequestMemory }}
-      requests:
-        {{- if .Values.ProxyResourceRequestCPU }}
-        cpu: {{.Values.ProxyResourceRequestCPU}}
-        {{- end }}
-        {{- if .Values.ProxyResourceRequestMemory }}
-        memory: {{.Values.ProxyResourceRequestMemory}}
-        {{- end }}
-      {{- end }}
-      {{- if or .Values.ProxyResourceLimitCPU .Values.ProxyResourceLimitMemory }}
-      limits:
-        {{- if .Values.ProxyResourceLimitCPU }}
-        cpu: {{.Values.ProxyResourceLimitCPU}}
-        {{- end }}
-        {{- if .Values.ProxyResourceLimitMemory }}
-        memory: {{.Values.ProxyResourceLimitMemory}}
-        {{- end }}
-      {{- end }}
-    {{- end }}
-    securityContext:
-      runAsUser: {{.Values.ProxyUID}}
-    terminationMessagePolicy: FallbackToLogsOnError
-    {{- if .Values.EnableTLS }}
-    volumeMounts:
-    - mountPath: /var/linkerd-io/trust-anchors
-      name: {{.Values.TLSTrustAnchorVolumeName}}
-      readOnly: true
-    - mountPath: /var/linkerd-io/identity
-      name: {{.Values.TLSSecretsVolumeName}}
-      readOnly: true
-    {{- end }}
-  {{.Values.TLSTrustAnchorVolumeSpecFileName}}: |
-    name: {{.Values.TLSTrustAnchorVolumeName}}
-    configMap:
-      name: {{.Values.TLSTrustAnchorConfigMapName}}
-      optional: true
-  {{.Values.TLSIdentityVolumeSpecFileName}}: |
-    name: {{.Values.TLSSecretsVolumeName}}
-    secret:
-      secretName: "" # this value will be computed by the webhook
-      optional: true
 {{ end -}}

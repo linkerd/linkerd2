@@ -23,18 +23,18 @@ const tcpStatColumns = [
     sorter: (a, b) => numericSort(a.tcp.openConnections, b.tcp.openConnections)
   },
   {
-    title: "Read Bytes / min",
-    dataIndex: "tcp.readBytes",
+    title: "Read Bytes / sec",
+    dataIndex: "tcp.readRate",
     isNumeric: true,
-    render: d => metricToFormatter["BYTES"](d.tcp.readBytes),
-    sorter: (a, b) => numericSort(a.tcp.readBytes, b.tcp.readBytes)
+    render: d => metricToFormatter["BYTES"](d.tcp.readRate),
+    sorter: (a, b) => numericSort(a.tcp.readRate, b.tcp.readRate)
   },
   {
-    title: "Write Bytes / min",
-    dataIndex: "tcp.writeBytes",
+    title: "Write Bytes / sec",
+    dataIndex: "tcp.writeRate",
     isNumeric: true,
-    render: d => metricToFormatter["BYTES"](d.tcp.writeBytes),
-    sorter: (a, b) => numericSort(a.tcp.writeBytes, b.tcp.writeBytes)
+    render: d => metricToFormatter["BYTES"](d.tcp.writeRate),
+    sorter: (a, b) => numericSort(a.tcp.writeRate, b.tcp.writeRate)
   },
 ];
 
@@ -88,12 +88,13 @@ const httpStatColumns = [
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
   let isAuthorityTable = resource === "authority";
   let isMultiResourceTable = resource === "multi_resource";
-  let getResourceDisplayName =  isMultiResourceTable ? displayName : d => d.name;
+  let getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
 
   let nsColumn = [
     {
       title: "Namespace",
       dataIndex: "namespace",
+      filter: d => d.namespace,
       isNumeric: false,
       render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
       sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace)
@@ -113,7 +114,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     key: "grafanaDashboard",
     isNumeric: true,
     render: row => {
-      if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0") ) {
+      if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0")) {
         return null;
       }
 
@@ -131,6 +132,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     title: isMultiResourceTable ? "Resource" : friendlyTitle(resource).singular,
     dataIndex: "name",
     isNumeric: false,
+    filter: d => d.name,
     render: d => {
       let nameContents;
       if (resource === "namespace") {
@@ -147,7 +149,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       return (
         <Grid container alignItems="center" spacing={8}>
           <Grid item>{nameContents}</Grid>
-          { _isEmpty(d.errors) ? null :
+          {_isEmpty(d.errors) ? null :
           <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
         </Grid>
       );
@@ -197,16 +199,18 @@ class MetricsTable extends React.Component {
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
     showNamespaceColumn: PropTypes.bool,
+    title: PropTypes.string
   };
 
   static defaultProps = {
     showNamespaceColumn: true,
+    title: "",
     isTcpTable: false,
     metrics: []
   };
 
   render() {
-    const {  metrics, resource, showNamespaceColumn, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
 
@@ -214,9 +218,11 @@ class MetricsTable extends React.Component {
     let rows = preprocessMetrics(metrics);
     return (
       <BaseTable
+        enableFilter={true}
         tableRows={rows}
         tableColumns={columns}
         tableClassName="metric-table"
+        title={title}
         defaultOrderBy="name"
         padding="dense" />
     );

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -72,22 +72,22 @@ func TestGetState(t *testing.T) {
 				serviceID{namespace: "ns", name: "name"}: map[uint32]*servicePort{
 					8888: {
 						addresses: []*updateAddress{
-							makeUpdateAddress("10.1.30.135", 7779, "ns", "world-575bf846b4-tp4hw"),
+							makeUpdateAddress("10.1.30.135", 7779, "world-575bf846b4-tp4hw"),
 						},
-						endpoints: &v1.Endpoints{
+						endpoints: &corev1.Endpoints{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "world",
 								Namespace: "ns",
 							},
-							Subsets: []v1.EndpointSubset{
+							Subsets: []corev1.EndpointSubset{
 								{
-									Addresses: []v1.EndpointAddress{
+									Addresses: []corev1.EndpointAddress{
 										{
 											IP:        "10.1.30.135",
-											TargetRef: &v1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
+											TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "ns", Name: "world-575bf846b4-tp4hw"},
 										},
 									},
-									Ports: []v1.EndpointPort{{Name: "app", Port: 7779, Protocol: "TCP"}},
+									Ports: []corev1.EndpointPort{{Name: "app", Port: 7779, Protocol: "TCP"}},
 								},
 							},
 						},

@@ -2,7 +2,7 @@ import _has from 'lodash/has';
 import _isNil from 'lodash/isNil';
 import _lowerCase from 'lodash/lowerCase';
 import _startCase from 'lodash/startCase';
-import { format as d3Format }  from 'd3-format';
+import { format as d3Format } from 'd3-format';
 
 /*
 * Display grid constants
@@ -55,7 +55,7 @@ export const metricToFormatter = {
   "SUCCESS_RATE": m => _isNil(m) ? "---" : successRateFormatter(m),
   "LATENCY": formatLatencyMs,
   "UNTRUNCATED": m => styleNum(m, "", false),
-  "BYTES": m => _isNil(m) ? "---" : styleNum(m, "B", true),
+  "BYTES": m => _isNil(m) ? "---" : styleNum(m, "B/s", true),
   "NO_UNIT": m => _isNil(m) ? "---" : styleNum(m, "", true)
 };
 
@@ -78,7 +78,7 @@ export function addCommas(nStr) {
 * Round a number to a given number of decimals
 */
 export const roundNumber = (num, dec) => {
-  return Math.round(num * Math.pow(10,dec)) / Math.pow(10,dec);
+  return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
 };
 
 /*
@@ -149,7 +149,7 @@ export const friendlyTitle = singularOrPluralResource => {
 export const singularResource = resource => {
   if (resource === "authorities") {
     return "authority";
-  } else {return resource.replace(/s$/, "");}
+  } else { return resource.replace(/s$/, ""); }
 };
 
 /*
@@ -177,6 +177,7 @@ export const shortNameLookup = {
   "replicaset": "rs",
   "service": "svc",
   "statefulset": "sts",
+  "job": "job",
   "authority": "au"
 };
 
@@ -223,5 +224,5 @@ export const getSrClassification = sr => {
     return "status-poor";
   } else if (sr < 0.95) {
     return "status-ok";
-  } else {return "status-good";}
+  } else { return "status-good"; }
 };

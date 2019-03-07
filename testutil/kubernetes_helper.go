@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -57,7 +57,7 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
-		ns := &coreV1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
 
 		if err != nil {
@@ -83,6 +83,13 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 
 	cmd := exec.Command("kubectl", "apply", "-f", "-", "--namespace", namespace)
 	cmd.Stdin = strings.NewReader(stdin)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// Kubectl executes an arbitrary Kubectl command
+func (h *KubernetesHelper) Kubectl(arg ...string) (string, error) {
+	cmd := exec.Command("kubectl", arg...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -127,9 +134,12 @@ func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName stri
 }
 
 // CheckPods checks that a deployment in a namespace contains the expected
-// number of pods in the Running state.
+// number of pods in the Running state, and that no pods have been restarted.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
-	return h.retryFor(3*time.Minute, func() error {
+	var checkedPods []corev1.Pod
+
+	err := h.retryFor(3*time.Minute, func() error {
+		checkedPods = []corev1.Pod{}
 		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
 			return err
@@ -138,6 +148,8 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 		var deploymentReplicas int
 		for _, pod := range pods.Items {
 			if strings.HasPrefix(pod.Name, deploymentName) {
+				checkedPods = append(checkedPods, pod)
+
 				deploymentReplicas++
 				if pod.Status.Phase != "Running" {
 					return fmt.Errorf("Pod [%s] in namespace [%s] is not running",
@@ -159,6 +171,21 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range checkedPods {
+		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
+			if status.RestartCount != 0 {
+				return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
+					status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			}
+		}
+	}
+
+	return nil
 }
 
 // CheckService checks that a service exists in a namespace.

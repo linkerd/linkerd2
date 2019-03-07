@@ -11,8 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestHealthChecker(t *testing.T) {
@@ -290,13 +291,79 @@ func TestHealthChecker(t *testing.T) {
 	})
 }
 
+func TestCheckCanCreate(t *testing.T) {
+	exp := fmt.Errorf("missing permissions to create deployments")
+
+	hc := NewHealthChecker(
+		[]CategoryID{},
+		&Options{},
+	)
+	var err error
+	hc.clientset, _, err = k8s.NewFakeClientSets()
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	err = hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
+	if err == nil ||
+		err.Error() != exp.Error() {
+		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp, err)
+	}
+}
+
+func TestCheckNetAdmin(t *testing.T) {
+	tests := []struct {
+		k8sConfigs []string
+		err        error
+	}{
+		{
+			[]string{},
+			nil,
+		},
+		{
+			[]string{`apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: restricted
+spec:
+  requiredDropCapabilities:
+    - ALL`,
+			},
+			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN"),
+		},
+	}
+
+	for i, test := range tests {
+		test := test // pin
+		t.Run(fmt.Sprintf("%d: returns expected NET_ADMIN result", i), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{},
+			)
+
+			var err error
+			hc.clientset, _, err = k8s.NewFakeClientSets(test.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			err = hc.checkNetAdmin()
+			if err != nil || test.err != nil {
+				if (err == nil && test.err != nil) ||
+					(err != nil && test.err == nil) ||
+					(err.Error() != test.err.Error()) {
+					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
+				}
+			}
+		})
+	}
+}
+
 func TestValidateControlPlanePods(t *testing.T) {
-	pod := func(name string, phase v1.PodPhase, ready bool) v1.Pod {
-		return v1.Pod{
-			ObjectMeta: meta.ObjectMeta{Name: name},
-			Status: v1.PodStatus{
+	pod := func(name string, phase corev1.PodPhase, ready bool) corev1.Pod {
+		return corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Status: corev1.PodStatus{
 				Phase: phase,
-				ContainerStatuses: []v1.ContainerStatus{
+				ContainerStatuses: []corev1.ContainerStatus{
 					{
 						Name:  strings.Split(name, "-")[1],
 						Ready: ready,
@@ -307,11 +374,11 @@ func TestValidateControlPlanePods(t *testing.T) {
 	}
 
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
-		pods := []v1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
-			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodFailed, false),
-			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodFailed, false),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -324,11 +391,11 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
-		pods := []v1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, false),
-			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
-			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, false),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -341,11 +408,11 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
-		pods := []v1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
-			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
-			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -355,12 +422,12 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 
 	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
-		pods := []v1.Pod{
-			pod("linkerd-controller-6f78cbd47-bc557", v1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", v1.PodRunning, true),
-			pod("linkerd-prometheus-74d6879cd6-bbdk6", v1.PodRunning, true),
-			pod("linkerd-web-98c9ddbcd-7b5lh", v1.PodRunning, true),
-			pod("hello-43c25d", v1.PodRunning, true),
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
+			pod("hello-43c25d", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)

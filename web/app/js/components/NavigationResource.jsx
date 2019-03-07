@@ -48,18 +48,7 @@ class NavigationResource extends React.Component {
 
   constructor(props) {
     super(props);
-
-    let resources = props.metrics
-      .filter(m => m.pods.meshedPods !== "0")
-      .map(m =>
-        _merge(m, {
-          menuName: props.type === "namespaces" ? m.name : `${m.namespace}/${m.name}`
-        })
-      );
-    this.resources = _orderBy(resources, r => r.menuName);
-
     this.to = props.api.prefixLink("/" + props.type);
-
     this.state = {open: false};
   }
 
@@ -82,14 +71,23 @@ class NavigationResource extends React.Component {
       <MenuItem
         className={classes.navMenuItem}
         onClick={this.handleOnClick}>
-        {this.listItemIcon(this.resources)}
+        {this.listItemIcon()}
         <ListItemText primary={friendlyTitle(type).plural} />
       </MenuItem>
     );
   }
 
   subMenu() {
-    const { api, classes } = this.props;
+    const { api, classes, metrics } = this.props;
+
+    const resources = _orderBy(metrics
+      .filter(m => m.pods.meshedPods !== "0")
+      .map(m =>
+        _merge(m, {
+          menuName: this.props.type === "namespaces" ? m.name : `${m.namespace}/${m.name}`
+        })
+      ), r => r.menuName);
+
 
     return (
       <MenuList dense component="div" disablePadding>
@@ -107,7 +105,7 @@ class NavigationResource extends React.Component {
             className={classes.navResourceText} />
         </MenuItem>
         {
-          this.resources.map(r => {
+          resources.map(r => {
             let url = api.prefixLink(api.generateResourceURL(r));
             return (
               <MenuItem

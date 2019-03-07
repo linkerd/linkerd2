@@ -2,30 +2,58 @@ package injector
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
-	factory *fake.Factory
+	factory      *fake.Factory
+	globalConfig = &config.Global{
+		LinkerdNamespace: "linkerd",
+		CniEnabled:       false,
+		IdentityContext:  nil,
+	}
+	proxyConfig = &config.Proxy{
+		ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
+		ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
+		ControlPort:             &config.Port{Port: 4190},
+		IgnoreInboundPorts:      nil,
+		IgnoreOutboundPorts:     nil,
+		InboundPort:             &config.Port{Port: 4143},
+		MetricsPort:             &config.Port{Port: 4191},
+		OutboundPort:            &config.Port{Port: 4140},
+		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
+		ProxyUid:                2102,
+		LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
+		DisableExternalProfiles: false,
+	}
 )
+
+func confNsEnabled() *inject.ResourceConfig {
+	return inject.
+		NewResourceConfig(globalConfig, proxyConfig).
+		WithNsAnnotations(map[string]string{k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled})
+}
+
+func confNsDisabled() *inject.ResourceConfig {
+	return inject.NewResourceConfig(globalConfig, proxyConfig).WithNsAnnotations(map[string]string{})
+}
 
 func TestShouldInject(t *testing.T) {
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	nsDisabled, err := factory.Namespace("namespace-inject-disabled.yaml")
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	fakeClient := fake.NewClient("", nsEnabled, nsDisabled)
 
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
+	nsDisabled, err := factory.Namespace("namespace-inject-disabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -34,36 +62,43 @@ func TestShouldInject(t *testing.T) {
 		var testCases = []struct {
 			filename string
 			ns       *corev1.Namespace
+			conf     *inject.ResourceConfig
 			expected bool
 		}{
 			{
 				filename: "deployment-inject-empty.yaml",
 				ns:       nsEnabled,
+				conf:     confNsEnabled(),
 				expected: true,
 			},
 			{
 				filename: "deployment-inject-enabled.yaml",
 				ns:       nsEnabled,
+				conf:     confNsEnabled(),
 				expected: true,
 			},
 			{
 				filename: "deployment-inject-disabled.yaml",
 				ns:       nsEnabled,
+				conf:     confNsEnabled(),
 				expected: false,
 			},
 			{
 				filename: "deployment-inject-empty.yaml",
 				ns:       nsDisabled,
+				conf:     confNsDisabled(),
 				expected: false,
 			},
 			{
 				filename: "deployment-inject-enabled.yaml",
 				ns:       nsDisabled,
+				conf:     confNsDisabled(),
 				expected: true,
 			},
 			{
 				filename: "deployment-inject-disabled.yaml",
 				ns:       nsDisabled,
+				conf:     confNsDisabled(),
 				expected: false,
 			},
 		}
@@ -71,112 +106,59 @@ func TestShouldInject(t *testing.T) {
 		for id, testCase := range testCases {
 			testCase := testCase // pin
 			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-				deployment, err := factory.Deployment(testCase.filename)
+				deployment, err := factory.HTTPRequestBody(testCase.filename)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				inject, err := webhook.shouldInject(testCase.ns.GetName(), deployment)
+				fakeReq := getFakeReq(deployment)
+				fullConf := testCase.conf.WithKind(fakeReq.Kind.Kind)
+				p, _, err := fullConf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
 				if err != nil {
-					t.Fatalf("Unexpected shouldInject error: %s", err)
+					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
-				if inject != testCase.expected {
-					t.Fatalf("Boolean mismatch. Expected: %t. Actual: %t", testCase.expected, inject)
+				patchJSON, err := p.Marshal()
+				if err != nil {
+					t.Fatalf("Unexpected Marshal error: %s", err)
+				}
+				patchStr := string(patchJSON)
+				if patchStr != "[]" && !testCase.expected {
+					t.Fatalf("Did not expect injection for file '%s'", testCase.filename)
+				}
+				if patchStr == "[]" && testCase.expected {
+					t.Fatalf("Was expecting injection for file '%s'", testCase.filename)
 				}
 			})
 		}
 	})
 
 	t.Run("by checking container spec", func(t *testing.T) {
-		deployment, err := factory.Deployment("deployment-with-injected-proxy.yaml")
+		deployment, err := factory.HTTPRequestBody("deployment-with-injected-proxy.yaml")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		inject, err := webhook.shouldInject(nsEnabled.GetName(), deployment)
+		fakeReq := getFakeReq(deployment)
+		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
+		p, _, err := conf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
 		if err != nil {
-			t.Fatalf("Unexpected shouldInject error: %s", err)
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
-		if inject {
+		patchJSON, err := p.Marshal()
+		if err != nil {
+			t.Fatalf("Unexepected Marshal error: %s", err)
+		}
+		if string(patchJSON) != "[]" {
 			t.Fatal("Expected deployment with injected proxy to be skipped")
 		}
 	})
 }
 
-func TestContainersSpec(t *testing.T) {
-	fakeClient := fake.NewClient("")
-
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedSidecar, err := factory.Container("inject-sidecar-container-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedInit, err := factory.Container("inject-init-container-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	identity := &k8s.TLSIdentity{
-		Name:                "nginx",
-		Kind:                "deployment",
-		Namespace:           fake.DefaultNamespace,
-		ControllerNamespace: fake.DefaultControllerNamespace,
-	}
-
-	actualSidecar, actualInit, err := webhook.containersSpec(identity)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	if !reflect.DeepEqual(expectedSidecar, actualSidecar) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedSidecar, actualSidecar)
-	}
-
-	if !reflect.DeepEqual(expectedInit, actualInit) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedInit, actualInit)
-	}
-}
-
-func TestVolumesSpec(t *testing.T) {
-	fakeClient := fake.NewClient("")
-
-	webhook, err := NewWebhook(fakeClient, testWebhookResources, fake.DefaultControllerNamespace, fake.DefaultNoInitContainer, fake.DefaultTLSEnabled)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedTrustAnchors, err := factory.Volume("inject-trust-anchors-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	expectedLinkerdSecrets, err := factory.Volume("inject-linkerd-secrets-volume-spec.yaml")
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	identity := &k8s.TLSIdentity{
-		Name:                "nginx",
-		Kind:                "deployment",
-		Namespace:           fake.DefaultNamespace,
-		ControllerNamespace: fake.DefaultControllerNamespace,
-	}
-
-	actualTrustAnchors, actualLinkerdSecrets, err := webhook.volumesSpec(identity)
-	if err != nil {
-		t.Fatal("Unexpected error: ", err)
-	}
-
-	if !reflect.DeepEqual(expectedTrustAnchors, actualTrustAnchors) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedTrustAnchors, actualTrustAnchors)
-	}
-
-	if !reflect.DeepEqual(expectedLinkerdSecrets, actualLinkerdSecrets) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expectedLinkerdSecrets, actualLinkerdSecrets)
+func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
+	return &admissionv1beta1.AdmissionRequest{
+		Kind:      metav1.GroupVersionKind{Kind: "Deployment"},
+		Name:      "foobar",
+		Namespace: "linkerd",
+		Object:    runtime.RawExtension{Raw: b},
 	}
 }

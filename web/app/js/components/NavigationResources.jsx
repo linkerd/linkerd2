@@ -30,7 +30,7 @@ class NavigationResourcesBase extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = {open: false};
+    this.state = { open: false };
   }
 
   handleOnClick = () => {
@@ -70,6 +70,7 @@ class NavigationResourcesBase extends React.Component {
         <NavigationResource type="authorities" />
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />
         <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
+        <NavigationResource type="jobs" metrics={allMetrics.job} />
         <NavigationResource type="namespaces" metrics={nsMetrics.namespace} />
         <NavigationResource type="pods" metrics={allMetrics.pod} />
         <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
@@ -92,7 +93,7 @@ class NavigationResourcesBase extends React.Component {
 
 export default withREST(
   withContext(withStyles(styles, { withTheme: true })(NavigationResourcesBase)),
-  ({api}) => [
+  ({ api }) => [
     // TODO: modify "all" to also retrieve namespaces, also share fetch with parent component
     api.fetchMetrics(api.urlsForResource("all")),
     api.fetchMetrics(api.urlsForResource("namespace")),

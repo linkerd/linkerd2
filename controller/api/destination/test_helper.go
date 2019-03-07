@@ -7,7 +7,7 @@ import (
 	proxyNet "github.com/linkerd/linkerd2-proxy-api/go/net"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -112,13 +112,13 @@ func equalServicePorts(servicePorts1, servicePorts2 servicePorts) error {
 	return nil
 }
 
-func makeUpdateAddress(ipStr string, portNum uint32, ns string, name string) *updateAddress {
+func makeUpdateAddress(ipStr string, portNum uint32, name string) *updateAddress {
 	ip, _ := addr.ParseProxyIPV4(ipStr)
 	return &updateAddress{
 		address: &proxyNet.TcpAddress{Ip: ip, Port: portNum},
-		pod: &v1.Pod{
+		pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
+				Namespace: "ns",
 				Name:      name,
 			},
 		},

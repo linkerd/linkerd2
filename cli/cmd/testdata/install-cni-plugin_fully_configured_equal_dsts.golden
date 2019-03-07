@@ -106,61 +106,64 @@ spec:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
-      terminationGracePeriodSeconds: 5
       containers:
-        # This container installs the linkerd CNI binaries
-        # and CNI network config file on each node. The install
-        # script copies the files into place and then sleeps so
-        # that Kubernetes doesn't keep trying to restart it.
-        - name: install-cni
-          image: my-docker-registry.io/awesome/cni-plugin-test-image:awesome-linkerd-version.1
-          env:
-          - name: DEST_CNI_NET_DIR
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: dest_cni_net_dir
-          - name: DEST_CNI_BIN_DIR
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: dest_cni_bin_dir
-          # The CNI network config to install on each node.
-          - name: CNI_NETWORK_CONFIG
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: cni_network_config
-          - name: INCOMING_PROXY_PORT
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: incoming_proxy_port
-          - name: OUTGOING_PROXY_PORT
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: outgoing_proxy_port
-          - name: PROXY_UID
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: proxy_uid
-          - name: INBOUND_PORTS_TO_IGNORE
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: inbound_ports_to_ignore
-          - name: LOG_LEVEL
-            valueFrom:
-              configMapKeyRef:
-                name: linkerd-cni-config
-                key: log_level
-          - name: SLEEP
-            value: "true"
-          volumeMounts:
-          - mountPath: /host/etc/kubernetes/cni/net.d
-            name: cni-net-dir
+      # This container installs the linkerd CNI binaries
+      # and CNI network config file on each node. The install
+      # script copies the files into place and then sleeps so
+      # that Kubernetes doesn't keep trying to restart it.
+      - name: install-cni
+        image: my-docker-registry.io/awesome/cni-plugin-test-image:awesome-linkerd-version.1
+        env:
+        - name: DEST_CNI_NET_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_net_dir
+        - name: DEST_CNI_BIN_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_bin_dir
+        # The CNI network config to install on each node.
+        - name: CNI_NETWORK_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: cni_network_config
+        - name: INCOMING_PROXY_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: incoming_proxy_port
+        - name: OUTGOING_PROXY_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: outgoing_proxy_port
+        - name: PROXY_UID
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: proxy_uid
+        - name: INBOUND_PORTS_TO_IGNORE
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: inbound_ports_to_ignore
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: log_level
+        - name: SLEEP
+          value: "true"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["kill","-15","1"]
+        volumeMounts:
+        - mountPath: /host/etc/kubernetes/cni/net.d
+          name: cni-net-dir
       volumes:
       # Used to install CNI.
       - name: cni-net-dir

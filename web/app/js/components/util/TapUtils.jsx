@@ -36,7 +36,8 @@ export const tapResourceTypes = [
   "daemonset",
   "pod",
   "replicationcontroller",
-  "statefulset"
+  "statefulset",
+  "job"
 ];
 
 // use a generator to get this object, to prevent it from being overwritten
@@ -312,8 +313,7 @@ export const directionColumn = d => (
   </Tooltip>
 );
 
-export const srcDstColumn = (d, resourceType, ResourceLink) => {
-
+export const extractDisplayName = d => {
   let display = {};
   let labels = {};
 
@@ -324,6 +324,11 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     display = d.destination;
     labels = d.destinationLabels;
   }
+  return [labels, display];
+};
+
+export const srcDstColumn = (d, resourceType, ResourceLink) => {
+  let [labels, display] = extractDisplayName(d);
 
   let link = (
     !_isEmpty(labels[resourceType]) ?

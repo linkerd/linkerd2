@@ -57,7 +57,7 @@ required = [
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"
-  revision = "9bb6ab929dcbe1c8393cd9ef70387cb69811bd1c"
+  version = "v0.9.2"
 
 [[constraint]]
   name = "github.com/gorilla/websocket"

@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/linkerd/linkerd2/pkg/version"
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -18,37 +18,40 @@ const (
 	 * Labels
 	 */
 
+	// Prefix is the prefix common to all labels and annotations injected by Linkerd
+	Prefix = "linkerd.io"
+
 	// ControllerComponentLabel identifies this object as a component of Linkerd's
 	// control plane (e.g. web, controller).
-	ControllerComponentLabel = "linkerd.io/control-plane-component"
+	ControllerComponentLabel = Prefix + "/control-plane-component"
 
 	// ControllerNSLabel is injected into mesh-enabled apps, identifying the
 	// namespace of the Linkerd control plane.
-	ControllerNSLabel = "linkerd.io/control-plane-ns"
+	ControllerNSLabel = Prefix + "/control-plane-ns"
 
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
 	// deployment that this proxy belongs to.
-	ProxyDeploymentLabel = "linkerd.io/proxy-deployment"
+	ProxyDeploymentLabel = Prefix + "/proxy-deployment"
 
 	// ProxyReplicationControllerLabel is injected into mesh-enabled apps,
 	// identifying the ReplicationController that this proxy belongs to.
-	ProxyReplicationControllerLabel = "linkerd.io/proxy-replicationcontroller"
+	ProxyReplicationControllerLabel = Prefix + "/proxy-replicationcontroller"
 
 	// ProxyReplicaSetLabel is injected into mesh-enabled apps, identifying the
 	// ReplicaSet that this proxy belongs to.
-	ProxyReplicaSetLabel = "linkerd.io/proxy-replicaset"
+	ProxyReplicaSetLabel = Prefix + "/proxy-replicaset"
 
 	// ProxyJobLabel is injected into mesh-enabled apps, identifying the Job that
 	// this proxy belongs to.
-	ProxyJobLabel = "linkerd.io/proxy-job"
+	ProxyJobLabel = Prefix + "/proxy-job"
 
 	// ProxyDaemonSetLabel is injected into mesh-enabled apps, identifying the
 	// DaemonSet that this proxy belongs to.
-	ProxyDaemonSetLabel = "linkerd.io/proxy-daemonset"
+	ProxyDaemonSetLabel = Prefix + "/proxy-daemonset"
 
 	// ProxyStatefulSetLabel is injected into mesh-enabled apps, identifying the
 	// StatefulSet that this proxy belongs to.
-	ProxyStatefulSetLabel = "linkerd.io/proxy-statefulset"
+	ProxyStatefulSetLabel = Prefix + "/proxy-statefulset"
 
 	/*
 	 * Annotations
@@ -56,16 +59,16 @@ const (
 
 	// CreatedByAnnotation indicates the source of the injected data plane
 	// (e.g. linkerd/cli v2.0.0).
-	CreatedByAnnotation = "linkerd.io/created-by"
+	CreatedByAnnotation = Prefix + "/created-by"
 
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
-	ProxyVersionAnnotation = "linkerd.io/proxy-version"
+	ProxyVersionAnnotation = Prefix + "/proxy-version"
 
 	// ProxyInjectAnnotation controls whether or not a pod should be injected
 	// when set on a pod spec. When set on a namespace spec, it applies to all
 	// pods in the namespace. Supported values are "enabled" or "disabled"
-	ProxyInjectAnnotation = "linkerd.io/inject"
+	ProxyInjectAnnotation = Prefix + "/inject"
 
 	// ProxyInjectEnabled is assigned to the ProxyInjectAnnotation annotation to
 	// enable injection for a pod or namespace.
@@ -74,6 +77,20 @@ const (
 	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"
+
+	// IdentityModeAnnotation controls how a pod participates
+	// in service identity.
+	IdentityModeAnnotation = Prefix + "/identity-mode"
+
+	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
+	// disable the proxy from participating in automatic identity.
+	IdentityModeDisabled = "disabled"
+
+	// IdentityModeOptional is assigned to IdentityModeAnnotation to
+	// optionally configure the proxy to participate in automatic identity.
+	//
+	// Will be deprecated soon.
+	IdentityModeOptional = "optional"
 
 	/*
 	 * Component Names
@@ -89,14 +106,6 @@ const (
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
-	// ProxySpecFileName is the name (key) within the proxy-injector ConfigMap
-	// that contains the proxy container spec.
-	ProxySpecFileName = "proxy.yaml"
-
-	// ProxyInitSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the proxy-init container spec.
-	ProxyInitSpecFileName = "proxy-init.yaml"
-
 	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
 	// used when injecting a proxy with TLS enabled.
 	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
@@ -104,14 +113,6 @@ const (
 	// TLSSecretsVolumeName is the name of the volume holding the secrets,
 	// when injecting a proxy with TLS enabled.
 	TLSSecretsVolumeName = "linkerd-secrets"
-
-	// TLSTrustAnchorVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the trust anchors volume spec.
-	TLSTrustAnchorVolumeSpecFileName = "linkerd-trust-anchors.yaml"
-
-	// TLSIdentityVolumeSpecFileName is the name (key) within the
-	// proxy-injector ConfigMap that contains the TLS identity secrets volume spec.
-	TLSIdentityVolumeSpecFileName = "linkerd-secrets.yaml"
 
 	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
 	// trust anchors (trusted root certificates).
@@ -137,10 +138,6 @@ const (
 	MountPathBase = "/var/linkerd-io"
 )
 
-// InjectedLabels contains the list of label keys subjected to be injected by Linkerd into resource definitions
-var InjectedLabels = []string{ControllerNSLabel, ProxyDeploymentLabel, ProxyReplicationControllerLabel,
-	ProxyReplicaSetLabel, ProxyJobLabel, ProxyDaemonSetLabel, ProxyStatefulSetLabel}
-
 var (
 	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
 	// mounted
@@ -154,21 +151,11 @@ var (
 	// mounted
 	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
 
-	// MountPathConfigProxySpec is the path at which the proxy container spec is
-	// mounted to the proxy-injector
-	MountPathConfigProxySpec = MountPathBase + "/config/" + ProxySpecFileName
+	// MountPathGlobalConfig is the path at which the global config file is mounted
+	MountPathGlobalConfig = MountPathBase + "/config/global"
 
-	// MountPathConfigProxyInitSpec is the path at which the proxy-init container
-	// spec is mounted to the proxy-injector
-	MountPathConfigProxyInitSpec = MountPathBase + "/config/" + ProxyInitSpecFileName
-
-	// MountPathTLSTrustAnchorVolumeSpec is the path at which the trust anchor
-	// volume spec is mounted to the proxy-injector
-	MountPathTLSTrustAnchorVolumeSpec = MountPathBase + "/config/" + TLSTrustAnchorVolumeSpecFileName
-
-	// MountPathTLSIdentityVolumeSpec is the path at which the TLS identity
-	// secret volume spec is mounted to the proxy-injector
-	MountPathTLSIdentityVolumeSpec = MountPathBase + "/config/" + TLSIdentityVolumeSpecFileName
+	// MountPathProxyConfig is the path at which the global config file is mounted
+	MountPathProxyConfig = MountPathBase + "/config/proxy"
 )
 
 // CreatedByAnnotationValue returns the value associated with
@@ -178,7 +165,7 @@ func CreatedByAnnotationValue() string {
 }
 
 // GetPodLabels returns the set of prometheus owner labels for a given pod
-func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]string {
+func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]string {
 	labels := map[string]string{"pod": pod.Name}
 
 	l5dLabel := KindToL5DLabel(ownerKind)
@@ -188,7 +175,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 		labels["control_plane_ns"] = controllerNS
 	}
 
-	if pth := pod.Labels[appsV1.DefaultDeploymentUniqueLabelKey]; pth != "" {
+	if pth := pod.Labels[appsv1.DefaultDeploymentUniqueLabelKey]; pth != "" {
 		labels["pod_template_hash"] = pth
 	}
 
@@ -196,7 +183,7 @@ func GetPodLabels(ownerKind, ownerName string, pod *coreV1.Pod) map[string]strin
 }
 
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
-func IsMeshed(pod *coreV1.Pod, controllerNS string) bool {
+func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
 }
 

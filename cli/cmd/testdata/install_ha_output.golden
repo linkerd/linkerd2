@@ -22,6 +22,9 @@ rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
+  verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
@@ -95,6 +98,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -107,7 +111,6 @@ spec:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -137,7 +140,6 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -enable-tls=false
         - -enable-h2-upgrade=true
         - -log-level=info
@@ -168,7 +170,6 @@ spec:
       - args:
         - tap
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -254,6 +255,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -280,9 +283,9 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"identityContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"dev-undefined","identityContext":null}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy:dev-undefined","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init:dev-undefined","pullPolicy":"IfNotPresent"},"destinationApiPort":{"port":8086},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"10m","requestMemory":"20Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"10m","requestMemory":"20Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 
 ---
 ###
@@ -293,7 +296,6 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
-  namespace: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -439,6 +441,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -452,7 +455,6 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
         - -controller-namespace=linkerd
-        - -single-namespace=false
         - -log-level=info
         image: gcr.io/linkerd-io/web:dev-undefined
         imagePullPolicy: IfNotPresent
@@ -538,6 +540,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -620,6 +624,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -724,6 +729,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -878,6 +885,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -976,6 +984,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init

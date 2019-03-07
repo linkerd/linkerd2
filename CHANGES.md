@@ -1,3 +1,53 @@
+## edge-19.3.1
+
+* CLI
+  * Introduced a check for NET_ADMIN in `linkerd check`
+  * Fixed permissions check for CRDs
+  * Included kubectl version check as part of `linkerd check` (thanks @yb172!)
+  * Added TCP stats to the stat command, under the `-o wide` and `-o json` flags
+* Controller
+  * Updated the `mutatingwebhookconfiguration` so that it is recreated when the
+    proxy injector is restarted, so that the MWC always picks up the latest
+    config template during version upgrade
+* Proxy
+  * Increased the inbound/router cap on MAX_CONCURRENT_STREAMS
+  * The `l5d-remote-ip` header is now set on inbound requests and outbound
+    responses
+* Web UI
+  * Fixed sidebar not updating when resources were added/deleted (thanks
+    @liquidslr!)
+  * Added filter functionality to the metrics tables
+* Internal
+  * Added more log errors to the integration tests
+  * Removed the GOPATH dependence from the CLI dev environment
+  * Consolidated injection code from CLI and admission controller code paths
+
+## edge-19.2.5
+
+* CLI
+  * Updated `linkerd check` to ensure hint URLs are displayed for RPC checks
+* Controller
+  * Updated the auto-inject admission controller webhook to respond to UPDATE
+    events for deployment workloads
+  * Updated destination service to return TLS identities only when the
+    destination pod is TLS-aware and is in the same controller namespace
+  * Lessen klog level to improve security
+  * Updated control-plane components to query Kubernetes at startup to determine
+    authorized namespaces and if ServiceProfile support is available
+  * Modified the stats payload to include the following TCP stats:
+    `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
+* Proxy
+  * Fixed issue with proxy falling back to filesystem polling due to improperly
+    sized inotify buffer
+* Web UI
+  * Removed 'Help' hierarchy and surfaced links on navigation sidebar
+  * Added a Debug page to the web dashboard, allowing you to introspect service discovery state
+  * Updated the resource detail page to start displaying a table with TCP stats
+* Internal
+  * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
+    `goconst`, `scopelint`, `unused`, `gosimple`
+  * Bumped base Docker images
+
 ## stable-2.2.1
 
 This stable release polishes some of the CLI help text and fixes two issues that

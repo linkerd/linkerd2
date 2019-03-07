@@ -127,11 +127,8 @@ class NamespaceLanding extends React.Component {
     return (
       <Grid container direction="column" justify="center">
         <Grid item>
-          <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
-        </Grid>
-
-        <Grid item>
           <MetricsTable
+            title={friendlyTitle(resource).plural}
             resource={resource}
             metrics={metrics}
             showNamespaceColumn={false} />
@@ -159,6 +156,7 @@ class NamespaceLanding extends React.Component {
         {this.renderResourceSection("pod", metrics.pod)}
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("statefulset", metrics.statefulset)}
+        {this.renderResourceSection("job", metrics.job)}
         {this.renderResourceSection("authority", metrics.authority)}
       </Grid>
     );
