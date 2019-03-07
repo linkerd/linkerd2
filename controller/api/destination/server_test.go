@@ -49,7 +49,7 @@ func (m *mockDestinationServer) SendMsg(x interface{}) error  { return m.errorTo
 func (m *mockDestinationServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
 
 func TestBuildResolver(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI("")
+	k8sAPI, err := k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
@@ -57,7 +57,7 @@ func TestBuildResolver(t *testing.T) {
 	t.Run("Doesn't build a resolver if Kubernetes DNS zone isnt valid", func(t *testing.T) {
 		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
 		for _, dsnZone := range invalidK8sDNSZones {
-			resolver, err := buildResolver(dsnZone, "linkerd", k8sAPI)
+			resolver, err := buildResolver(dsnZone, k8sAPI)
 			if err == nil {
 				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolver: %v", dsnZone, resolver)
 			}
@@ -100,7 +100,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 	stream := &mockDestinationGetServer{}
 	host := "something"
 	port := 666
-	k8sAPI, err := k8s.NewFakeAPI("")
+	k8sAPI, err := k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
@@ -149,7 +149,7 @@ func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
 }
 
 func TestEndpoints(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI("")
+	k8sAPI, err := k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}

@@ -25,11 +25,12 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath, *controllerNamespace,
+		*kubeConfigPath,
 		k8s.DS,
 		k8s.SS,
 		k8s.Deploy,
 		k8s.Job,
+		k8s.NS,
 		k8s.Pod,
 		k8s.RC,
 		k8s.Svc,

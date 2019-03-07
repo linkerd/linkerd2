@@ -55,7 +55,7 @@ func TestK8sResolver(t *testing.T) {
 }
 
 func TestGetState(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI("")
+	k8sAPI, err := k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
@@ -104,7 +104,6 @@ func TestGetState(t *testing.T) {
 			endpointsWatcher.servicePorts = tt.servicePorts
 			resolver := newK8sResolver(
 				[]string{"some", "namespace"},
-				"controller-ns",
 				endpointsWatcher,
 				newProfileWatcher(k8sAPI),
 			)

@@ -22,7 +22,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(*kubeConfigPath, *controllerNamespace, k8s.Pod, k8s.RS)
+	k8sAPI, err := k8s.InitializeAPI(*kubeConfigPath, k8s.Pod, k8s.RS)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}

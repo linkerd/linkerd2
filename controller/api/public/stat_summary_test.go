@@ -1043,7 +1043,7 @@ status:
 	})
 
 	t.Run("Given an invalid resource type, returns error", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("")
+		k8sAPI, err := k8s.NewFakeAPI()
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
@@ -1109,7 +1109,7 @@ status:
 	})
 
 	t.Run("Validates service stat requests", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("")
+		k8sAPI, err := k8s.NewFakeAPI()
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
