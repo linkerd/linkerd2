@@ -79,7 +79,9 @@ class NamespaceLanding extends React.Component {
       this.api.fetchMetrics(this.api.urlsForResource("namespace"))
     ];
     if (!_isEmpty(this.state.selectedNs)) {
-      apiRequests = apiRequests.concat([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.selectedNs))]);
+      apiRequests = apiRequests.concat([
+        this.api.fetchMetrics(this.api.urlsForResource("all", this.state.selectedNs, true))
+      ]);
     }
     this.api.setCurrentRequests(apiRequests);
 
@@ -144,12 +146,12 @@ class NamespaceLanding extends React.Component {
 
     let metrics = this.state.metricsByNs[namespace] || {};
     let noMetrics = _isEmpty(metrics.pod);
-
+    // metrics.pod.map(p => console.log(p.tcp));
     return (
       <Grid container direction="column" spacing={16}>
         <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
         <Grid item><Divider /></Grid>
-        <Grid item>{ noMetrics ? <div>No resources detected.</div> : null}</Grid>
+        <Grid item>{noMetrics ? <div>No resources detected.</div> : null}</Grid>
 
         {this.renderResourceSection("deployment", metrics.deployment)}
         {this.renderResourceSection("daemonset", metrics.daemonset)}
@@ -158,6 +160,19 @@ class NamespaceLanding extends React.Component {
         {this.renderResourceSection("statefulset", metrics.statefulset)}
         {this.renderResourceSection("job", metrics.job)}
         {this.renderResourceSection("authority", metrics.authority)}
+
+        {
+          noMetrics ? null :
+          <Grid container direction="column" justify="center">
+            <Grid item>
+              <MetricsTable
+                title="TCP"
+                resource="pod"
+                metrics={metrics.pod}
+                isTcpTable={true} />
+            </Grid>
+          </Grid>
+        }
       </Grid>
     );
   }
@@ -167,7 +182,7 @@ class NamespaceLanding extends React.Component {
       let hr = (
         <Grid container justify="space-between" alignItems="center">
           <Grid item><Typography variant="subtitle1">{ns.name}</Typography></Grid>
-          {!ns.added ? null : <Grid item><SimpleChip label="meshed" type="good" /></Grid> }
+          {!ns.added ? null : <Grid item><SimpleChip label="meshed" type="good" /></Grid>}
         </Grid>
       );
       return {
@@ -192,8 +207,8 @@ class NamespaceLanding extends React.Component {
   render() {
     return (
       <div className="page-content">
-        { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spinner /> : this.renderAccordion() }
+        {!this.state.error ? null : <ErrorBanner message={this.state.error} />}
+        {!this.state.loaded ? <Spinner /> : this.renderAccordion()}
       </div>);
   }
 }

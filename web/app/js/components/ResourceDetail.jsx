@@ -105,7 +105,7 @@ export class ResourceDetailBase extends React.Component {
     // rcs, deploys, replicasets, etc but not pods or authorities
     let shouldExclude = this.state.resourceType === "pod" ?
       r => r !== "pod" :
-      r => r === "pod" || r === "authority"  || r === "service";
+      r => r === "pod" || r === "authority" || r === "service";
     return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
       if (shouldExclude(resource)) {
         return mem;
@@ -131,7 +131,7 @@ export class ResourceDetailBase extends React.Component {
       this.api.fetchPods(resource.namespace),
       // metrics for all pods in this namespace (hack, continued)
       this.api.fetchMetrics(
-        `${this.api.urlsForResource("pod", resource.namespace)}&tcp_stats=true`
+        `${this.api.urlsForResource("pod", resource.namespace, true)}`
       ),
       // upstream resources of this resource (meshed traffic only)
       this.api.fetchMetrics(
@@ -269,9 +269,9 @@ export class ResourceDetailBase extends React.Component {
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
             <Grid container spacing={8}>
-              { showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null }
+              {showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null}
               <Grid item>
-                { resourceIsMeshed ?
+                {resourceIsMeshed ?
                   <SimpleChip label="meshed" type="good" /> :
                   <SimpleChip label="unmeshed" type="bad" />
                 }
@@ -301,24 +301,24 @@ export class ResourceDetailBase extends React.Component {
           updateUnmeshedSources={this.updateUnmeshedSources}
           disableTop={!resourceIsMeshed} />
 
-        { _isEmpty(upstreams) ? null : (
+        {_isEmpty(upstreams) ? null : (
           <React.Fragment>
             <MetricsTable
               resource="multi_resource"
               title="Inbound"
               metrics={upstreamMetrics} />
           </React.Fragment>
-          )
+        )
         }
 
-        { _isEmpty(this.state.downstreamMetrics) ? null : (
+        {_isEmpty(this.state.downstreamMetrics) ? null : (
           <React.Fragment>
             <MetricsTable
               resource="multi_resource"
               title="Outbound"
               metrics={downstreamMetrics} />
           </React.Fragment>
-          )
+        )
         }
 
         {
