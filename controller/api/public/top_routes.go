@@ -355,8 +355,6 @@ func processRouteMetrics(results []promResult, timeWindow string, table indexedT
 			}
 		}
 	}
-	if samples == 0 {
-		return errors.New("No samples")
-	}
+
 	return nil
 }
