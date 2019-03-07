@@ -6,7 +6,6 @@ import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
-import Typography from '@material-ui/core/Typography';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
