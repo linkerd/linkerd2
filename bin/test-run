@@ -58,7 +58,6 @@ exit_code=0
 
 run_test "$test_directory/install_test.go" || exit_code=$?
 run_test "$test_directory/install_test.go" "-enable-tls" || exit_code=$?
-run_test "$test_directory/install_test.go" "-single-namespace" || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done

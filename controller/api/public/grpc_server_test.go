@@ -574,7 +574,7 @@ func TestEndpoints(t *testing.T) {
 
 func TestConfig(t *testing.T) {
 	t.Run("Configs are parsed and returned", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI("")
+		k8sAPI, err := k8s.NewFakeAPI()
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
