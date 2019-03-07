@@ -27,6 +27,8 @@ func newReport(conf *ResourceConfig) Report {
 	var name string
 	if m := conf.pod.Meta; m != nil {
 		name = m.Name
+	} else if m.GenerateName != "" {
+		name = m.GenerateName
 	}
 	return Report{
 		Kind: strings.ToLower(conf.workload.metaType.Kind),

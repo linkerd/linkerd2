@@ -357,6 +357,10 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	return nil
 }
 
+func (conf *ResourceConfig) GetOwnerReferences() []metav1.OwnerReference {
+	return conf.podMeta.OwnerReferences
+}
+
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.pod.spec = &template.Spec
 	conf.pod.Meta = &template.ObjectMeta
@@ -566,7 +570,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	}
 
 	for k, v := range conf.pod.labels {
-		patch.addPodLabel(k, v)
+		patch.AddPodLabel(k, v)
 	}
 }
 

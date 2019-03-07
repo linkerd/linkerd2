@@ -97,7 +97,7 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
-func (p *Patch) addPodLabel(key, value string) {
+func (p *Patch) AddPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodLabels + "/" + escapeKey(key),

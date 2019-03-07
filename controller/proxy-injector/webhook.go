@@ -2,6 +2,7 @@ package injector
 
 import (
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -11,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
@@ -131,11 +133,20 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 
-	// When adding workloads through `kubectl apply` the spec template labels are
-	// automatically copied to the workload's main metadata section.
-	// This doesn't happen when adding labels through the webhook. So we manually
-	// add them to remain consistent.
-	conf.AddRootLabels(p)
+	if refs := conf.GetOwnerReferences(); len(refs) > 0 {
+		// assuming just one owner reference
+		k, v, err := w.parentRefLabel(request.Namespace, refs[0])
+		if err != nil {
+			return nil, err
+		}
+		p.AddPodLabel(k, v)
+	} else {
+		// When adding workloads through `kubectl apply` the spec template labels are
+		// automatically copied to the workload's main metadata section.
+		// This doesn't happen when adding labels through the webhook. So we manually
+		// add them to remain consistent.
+		conf.AddRootLabels(p)
+	}
 
 	patchJSON, err := p.Marshal()
 	if err != nil {
@@ -149,4 +160,37 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	admissionResponse.PatchType = &patchType
 
 	return admissionResponse, nil
+}
+
+func (w *Webhook) parentRefLabel(ns string, ref metav1.OwnerReference) (string, string, error) {
+	var key string
+	switch strings.ToLower(ref.Kind) {
+	case k8s.Deployment:
+		key = k8s.ProxyDeploymentLabel
+	case k8s.ReplicationController:
+		key = k8s.ProxyReplicationControllerLabel
+		rs, err := w.client.CoreV1().ReplicationControllers(ns).Get(ref.Name, v1.GetOptions{})
+		if err != nil {
+			return "", "", err
+		}
+		for _, ref := range rs.OwnerReferences {
+			return w.parentRefLabel(ns, ref)
+		}
+	case k8s.ReplicaSet:
+		key = k8s.ProxyReplicaSetLabel
+		rs, err := w.client.ExtensionsV1beta1().ReplicaSets(ns).Get(ref.Name, v1.GetOptions{})
+		if err != nil {
+			return "", "", err
+		}
+		for _, ref := range rs.OwnerReferences {
+			return w.parentRefLabel(ns, ref)
+		}
+	case k8s.Job:
+		key = k8s.ProxyJobLabel
+	case k8s.DaemonSet:
+		key = k8s.ProxyDaemonSetLabel
+	case k8s.StatefulSet:
+		key = k8s.ProxyStatefulSetLabel
+	}
+	return key, ref.Name, nil
 }

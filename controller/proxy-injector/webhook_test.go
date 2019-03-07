@@ -153,6 +153,146 @@ func TestGetPatch(t *testing.T) {
 	})
 }
 
+// All the cases are tested for full coverage purposes, but the ReplicaSet
+// one is the only interesting one, where we actually look into the ReplicaSet's
+// ownerReference
+func TestParentRefLabel(t *testing.T) {
+	t.Run("by checking annotations", func(t *testing.T) {
+		testCases := []struct {
+			k8sConfigs         []string
+			ownerRef           metav1.OwnerReference
+			expectedLabelKey   string
+			expectedLabelValue string
+		}{
+			{
+				k8sConfigs: []string{`
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: emoji-dep
+  namespace: emojivoto
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "Deployment",
+					Name: "emoji-dep",
+				},
+				expectedLabelKey:   k8s.ProxyDeploymentLabel,
+				expectedLabelValue: "emoji-dep",
+			},
+			{
+				k8sConfigs: []string{`
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  labels:
+    app: emoji-svc
+  name: emoji-rc
+  namespace: emojivoto
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "ReplicationController",
+					Name: "emoji-rc",
+				},
+				expectedLabelKey:   k8s.ProxyReplicationControllerLabel,
+				expectedLabelValue: "emoji-rc",
+			},
+			{
+				k8sConfigs: []string{`
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: emoji-svc
+  name: emoji-rs
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: emoji
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "ReplicaSet",
+					Name: "emoji-rs",
+				},
+				expectedLabelKey:   k8s.ProxyDeploymentLabel,
+				expectedLabelValue: "emoji",
+			},
+			{
+				k8sConfigs: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emoji-job
+  namespace: emojivoto
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "Job",
+					Name: "emoji-job",
+				},
+				expectedLabelKey:   k8s.ProxyJobLabel,
+				expectedLabelValue: "emoji-job",
+			},
+			{
+				k8sConfigs: []string{`
+apiVersion: apps/v1beta2
+kind: DaemonSet
+metadata:
+  name: emoji-ds
+  namespace: emojivoto
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "DaemonSet",
+					Name: "emoji-ds",
+				},
+				expectedLabelKey:   k8s.ProxyDaemonSetLabel,
+				expectedLabelValue: "emoji-ds",
+			},
+			{
+				k8sConfigs: []string{`
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: emoji-sts
+  namespace: emojivoto
+`,
+				},
+				ownerRef: metav1.OwnerReference{
+					Kind: "StatefulSet",
+					Name: "emoji-sts",
+				},
+				expectedLabelKey:   k8s.ProxyStatefulSetLabel,
+				expectedLabelValue: "emoji-sts",
+			},
+		}
+
+		for _, tt := range testCases {
+			fakeClient, _, err := k8s.NewFakeClientSets(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Error instantiating client: %s", err)
+			}
+			webhook, err := NewWebhook(fakeClient, "emojivoto", false, true)
+			if err != nil {
+				t.Fatalf("Error instantiating Webhook: %s", err)
+			}
+			k, v, err := webhook.parentRefLabel("emojivoto", tt.ownerRef)
+			if err != nil {
+				t.Fatalf("Error building parent label: %s", err)
+			}
+			if k != tt.expectedLabelKey {
+				t.Fatalf("Expected label key to be \"%s\", got \"%s\"", tt.expectedLabelKey, k)
+			}
+			if v != tt.expectedLabelValue {
+				t.Fatalf("Expected label value to be \"%s\", got \"%s\"", tt.expectedLabelValue, v)
+			}
+		}
+	})
+}
+
 func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	return &admissionv1beta1.AdmissionRequest{
 		Kind:      metav1.GroupVersionKind{Kind: "Deployment"},

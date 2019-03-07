@@ -81,6 +81,9 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get"]
+- apiGroups: ["", "extensions"]
+  resources: ["replicationcontrollers", "replicasets"]
+  verbs: ["get"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
