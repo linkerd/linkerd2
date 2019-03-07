@@ -38,24 +38,11 @@ type PortForward struct {
 func NewProxyMetricsForward(
 	config *rest.Config,
 	clientset kubernetes.Interface,
-	namespace, proxyPod string,
+	pod corev1.Pod,
 	emitLogs bool,
 ) (*PortForward, error) {
-	timeoutSeconds := int64(30)
-	podList, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
-	if err != nil {
-		return nil, err
-	}
-
-	var pod corev1.Pod
-	for _, p := range podList.Items {
-		if p.Status.Phase == corev1.PodRunning && p.GetName() == proxyPod {
-			pod = p
-			break
-		}
-	}
-	if pod.GetName() != proxyPod {
-		return nil, fmt.Errorf("no running pods found for %s", proxyPod)
+	if pod.Status.Phase != corev1.PodRunning {
+		return nil, fmt.Errorf("pod not running: %s", pod.GetName())
 	}
 
 	var container corev1.Container
@@ -80,7 +67,7 @@ func NewProxyMetricsForward(
 		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyMetricsPortName, pod.GetName(), container.Name)
 	}
 
-	return newPortForward(config, clientset, namespace, pod.GetName(), 0, int(port.ContainerPort), emitLogs)
+	return newPortForward(config, clientset, pod.GetNamespace(), pod.GetName(), 0, int(port.ContainerPort), emitLogs)
 }
 
 // NewPortForward returns an instance of the PortForward struct that can be used

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -55,44 +56,6 @@ spec:
 			errors.New("no linkerd-proxy container found for pod pod-name"),
 		},
 		{
-			"bad-ns",
-			"pod-name",
-			[]string{`apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-name
-  namespace: pod-ns
-status:
-  phase: Running
-spec:
-  containers:
-  - name: linkerd-proxy
-    ports:
-    - name: linkerd-metrics
-      port: 123`,
-			},
-			errors.New("no running pods found for pod-name"),
-		},
-		{
-			"pod-ns",
-			"bad-name",
-			[]string{`apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-name
-  namespace: pod-ns
-status:
-  phase: Running
-spec:
-  containers:
-  - name: linkerd-proxy
-    ports:
-    - name: linkerd-metrics
-      port: 123`,
-			},
-			errors.New("no running pods found for bad-name"),
-		},
-		{
 			"pod-ns",
 			"pod-name",
 			[]string{`apiVersion: v1
@@ -109,7 +72,7 @@ spec:
     - name: linkerd-metrics
       port: 123`,
 			},
-			errors.New("no running pods found for pod-name"),
+			errors.New("pod not running: pod-name"),
 		},
 	}
 
@@ -117,7 +80,11 @@ spec:
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: NewProxyMetricsForward returns expected result", i), func(t *testing.T) {
 			k8sClient, _ := NewFakeClientSets(test.k8sConfigs...)
-			_, err := NewProxyMetricsForward(&rest.Config{}, k8sClient, test.ns, test.name, false)
+			pod, err := k8sClient.CoreV1().Pods(test.ns).Get(test.name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Unexpected error %s", err)
+			}
+			_, err = NewProxyMetricsForward(&rest.Config{}, k8sClient, *pod, false)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
