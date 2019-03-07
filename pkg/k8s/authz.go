@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	authV1 "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -50,7 +51,10 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) (bool, error) {
 		if r.GroupVersion == ServiceProfileAPIVersion {
 			for _, apiRes := range r.APIResources {
 				if apiRes.Kind == ServiceProfileKind {
-					return resourceAccess(k8sClient, "linkerd.io", "serviceprofiles")
+					return resourceAccess(k8sClient, schema.GroupKind{
+						Group: "linkerd.io",
+						Kind:  "serviceprofiles",
+					})
 				}
 			}
 		}
@@ -59,22 +63,22 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) (bool, error) {
 	return false, errors.New("ServiceProfiles not available")
 }
 
-// ClusterAccess verifies whether k8sClient is authorized to access all
-// namespaces in the cluster.
+// ClusterAccess verifies whether k8sClient is authorized to access all pods in
+// all namespaces in the cluster.
 func ClusterAccess(k8sClient kubernetes.Interface) (bool, error) {
-	return resourceAccess(k8sClient, "", "pods")
+	return resourceAccess(k8sClient, schema.GroupKind{Kind: "pods"})
 }
 
 // resourceAccess verifies whether k8sClient is authorized to access a resource
 // in all namespaces in the cluster.
-func resourceAccess(k8sClient kubernetes.Interface, group, resource string) (bool, error) {
+func resourceAccess(k8sClient kubernetes.Interface, gk schema.GroupKind) (bool, error) {
 	allowed, reason, err := ResourceAuthz(
 		k8sClient,
 		"",
 		"list",
-		group,
+		gk.Group,
 		"",
-		resource,
+		gk.Kind,
 		"",
 	)
 	if err != nil {
@@ -85,7 +89,7 @@ func resourceAccess(k8sClient kubernetes.Interface, group, resource string) (boo
 	}
 
 	if len(reason) > 0 {
-		return false, fmt.Errorf("not authorized to access %s/%s: %s", group, resource, reason)
+		return false, fmt.Errorf("not authorized to access %s: %s", gk, reason)
 	}
-	return false, fmt.Errorf("not authorized to access %s/%s", group, resource)
+	return false, fmt.Errorf("not authorized to access %s", gk)
 }

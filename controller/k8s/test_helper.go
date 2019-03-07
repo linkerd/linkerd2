@@ -17,14 +17,15 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		CM,
 		Deploy,
 		DS,
-		SS,
 		Endpoint,
 		Job,
+		MWC,
+		NS,
 		Pod,
 		RC,
 		RS,
-		Svc,
 		SP,
-		MWC,
+		SS,
+		Svc,
 	), nil
 }

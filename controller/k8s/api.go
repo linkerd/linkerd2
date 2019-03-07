@@ -45,6 +45,7 @@ const (
 	Endpoint
 	Job
 	MWC // mutating webhook configuration
+	NS
 	Pod
 	RC
 	RS
@@ -63,6 +64,7 @@ type API struct {
 	endpoint coreinformers.EndpointsInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
+	ns       coreinformers.NamespaceInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
 	rs       appv1beta2informers.ReplicaSetInformer
@@ -150,6 +152,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
+		case NS:
+			api.ns = sharedInformers.Core().V1().Namespaces()
+			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
@@ -187,6 +192,14 @@ func (api *API) Sync() {
 		log.Fatal("failed to sync caches")
 	}
 	log.Infof("caches synced")
+}
+
+// NS provides access to a shared informer and lister for Namespaces.
+func (api *API) NS() coreinformers.NamespaceInformer {
+	if api.ns == nil {
+		panic("NS informer not configured")
+	}
+	return api.ns
 }
 
 // Deploy provides access to a shared informer and lister for Deployments.
@@ -471,22 +484,18 @@ func GetNamespaceOf(obj runtime.Object) (string, error) {
 }
 
 // getNamespaces returns the namespace matching the specified name. If no name
-// is given, it returns all namespaces. Note that namespace reads are not
-// cached.
+// is given, it returns all namespaces.
 func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
-	namespaces := make([]*corev1.Namespace, 0)
+	var namespaces []*corev1.Namespace
 
 	if name == "" {
-		namespaceList, err := api.Client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		var err error
+		namespaces, err = api.NS().Lister().List(labels.Everything())
 		if err != nil {
 			return nil, err
 		}
-		for _, item := range namespaceList.Items {
-			ns := item // must create separate var in order to get unique pointers
-			namespaces = append(namespaces, &ns)
-		}
 	} else {
-		namespace, err := api.Client.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		namespace, err := api.NS().Lister().Get(name)
 		if err != nil {
 			return nil, err
 		}
