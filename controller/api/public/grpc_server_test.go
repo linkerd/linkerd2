@@ -586,7 +586,9 @@ func TestConfig(t *testing.T) {
 			k8sAPI,
 			"linkerd",
 			[]string{},
-		).WithConfigPaths("testdata/global.conf.json", "testdata/proxy.conf.json")
+		)
+		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"
+		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"
 
 		k8sAPI.Sync()
 

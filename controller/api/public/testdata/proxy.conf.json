@@ -7,9 +7,6 @@
       "imageName": "gcr.io/linkerd-io/proxy-init",
       "pullPolicy": "IfNotPresent"
     },
-    "destinationApiPort": {
-      "port": 8086
-    },
     "controlPort": {
       "port": 4190
     },

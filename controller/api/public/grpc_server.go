@@ -82,12 +82,6 @@ func newGrpcServer(
 	return grpcServer
 }
 
-func (s *grpcServer) WithConfigPaths(global, proxy string) *grpcServer {
-	s.mountPathGlobalConfig = global
-	s.mountPathProxyConfig = proxy
-	return s
-}
-
 func (*grpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
 	return &pb.VersionInfo{GoVersion: runtime.Version(), ReleaseVersion: version.Version, BuildDate: "1970-01-01T00:00:00Z"}, nil
 }
@@ -241,8 +235,7 @@ func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
 	}
-	rsp := &configPb.All{Global: global, Proxy: proxy}
-	return rsp, nil
+	return &configPb.All{Global: global, Proxy: proxy}, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {

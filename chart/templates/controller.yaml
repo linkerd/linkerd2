@@ -116,8 +116,8 @@ spec:
         - name: admin-http
           containerPort: 9995
         volumeMounts:
-          - name: config
-            mountPath: /var/linkerd-io/config
+        - name: config
+          mountPath: /var/linkerd-io/config
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
