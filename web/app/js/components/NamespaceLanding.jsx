@@ -146,7 +146,7 @@ class NamespaceLanding extends React.Component {
 
     let metrics = this.state.metricsByNs[namespace] || {};
     let noMetrics = _isEmpty(metrics.pod);
-    // metrics.pod.map(p => console.log(p.tcp));
+
     return (
       <Grid container direction="column" spacing={16}>
         <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
