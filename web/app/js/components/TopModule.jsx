@@ -19,6 +19,8 @@ import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
 import { withContext } from './util/AppContext.jsx';
 
+const WS_NORMAL_CLOSURE = 1000;
+const WS_ABNORMAL_CLOSURE = 1006;
 class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
@@ -103,13 +105,13 @@ class TopModule extends React.Component {
   }
 
   onWebsocketClose = e => {
-    this.updateTapClosingState(false,false);
+    this.updateTapClosingState();
     /* We ignore any abnormal closure since it doesn't matter as long as
     the connection to the websocket is closed. This is also a workaround
     where Chrome browsers incorrectly displays a 1006 close code
     https://github.com/linkerd/linkerd2/issues/1630
     */
-    if (!e.wasClean && e.code !== 1006) {
+    if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
