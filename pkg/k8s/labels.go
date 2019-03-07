@@ -89,9 +89,17 @@ const (
 	// ProxyImageAnnotation can be used to override the proxyImage config.
 	ProxyImageAnnotation = "proxy.linkerd.io/proxy-image"
 
+	// ProxyImagePullPolicyAnnotation can be used to override the
+	// proxyImagePullPolicy config.
+	ProxyImagePullPolicyAnnotation = "proxy.linkerd.io/proxy-image-pull-policy"
+
 	// ProxyInitImageAnnotation can be used to override the proxyInitImage
 	// config.
 	ProxyInitImageAnnotation = "proxy.linkerd.io/init-image"
+
+	// ProxyInitImagePullPolicyAnnotation can be used to override the
+	// proxyInitImagePullPolicy config.
+	ProxyInitImagePullPolicyAnnotation = "proxy.linkerd.io/init-image-pull-policy"
 
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
 	ProxyControlPortAnnotation = "proxy.linkerd.io/control-port"
