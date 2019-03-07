@@ -692,7 +692,7 @@ func (conf *ResourceConfig) annotationValueType(annotation, strValue string) (st
 
 	case k8s.ProxyIgnoreInboundPortsAnnotation:
 		value = strValue
-		if value == "" {
+		if value == "" && len(conf.proxyConfig.GetIgnoreInboundPorts()) > 0 {
 			for _, port := range conf.proxyConfig.GetIgnoreInboundPorts() {
 				portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
 				value += portStr + ","
@@ -702,7 +702,7 @@ func (conf *ResourceConfig) annotationValueType(annotation, strValue string) (st
 
 	case k8s.ProxyIgnoreOutboundPortsAnnotation:
 		value = strValue
-		if value == "" {
+		if value == "" && len(conf.proxyConfig.GetIgnoreOutboundPorts()) > 0 {
 			for _, port := range conf.proxyConfig.GetIgnoreOutboundPorts() {
 				portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
 				value += portStr + ","
