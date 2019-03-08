@@ -8,7 +8,6 @@ OutboundConnectKeepaliveMs: 10000
 NoInitContainer: false
 ProfileSuffixes: .
 SingleNamespace: false
-UUID: 1e0f82c4-0b28-42b9-ba3c-c7787b8b7d58
 
 Ports:
   Outbound: 4140
@@ -63,4 +62,4 @@ Proxy:
 # These values are internal to the operation of linkerd,
 # and should not be changed unless you are entirely sure of what you're doing.
 Internal:
-  Internal.CreatedByAnnotation: linkerd.io/created-by
+  CreatedByAnnotation: linkerd.io/created-by

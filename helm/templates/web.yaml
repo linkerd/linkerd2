@@ -60,7 +60,7 @@ spec:
         args:
         - "-api-addr=linkerd-controller-api.{{.Values.Namespace}}.svc.cluster.local:8085"
         - "-grafana-addr=linkerd-grafana.{{.Values.Namespace}}.svc.cluster.local:3000"
-        - "-uuid={{.Values.UUID}}"
+        - "-uuid={{ uuidv4 }}"
         - "-controller-namespace={{.Values.Namespace}}"
         - "-log-level={{.Values.Controller.LogLevel}}"
         livenessProbe:
