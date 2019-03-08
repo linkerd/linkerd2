@@ -6,8 +6,6 @@ function Community() {
     <React.Fragment>
       <Iframe
         url="https://linkerd.io/dashboard/"
-        id="myId"
-        className="myClassname"
         position="inherit"
         display="block"
         height="-webkit-fill-available"

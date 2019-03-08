@@ -181,15 +181,16 @@ class NavigationBase extends React.Component {
       .then(rsp => rsp.data.date)
       .then(rsp => {
         if (rsp.length > 0) {
-          let lastUpdated = rsp.map(update => new Date(update.date))
-            .sort((a, b) => b - a);
-          let lastChecked = localStorage["linkerd-updates-last-checked"];
-          if (!lastChecked) {
+          let lastClicked = localStorage["linkerd-updates-last-checked"];
+          if (!lastClicked) {
             localStorage.setItem("linkerd-updates-last-checked", new Date());
             this.setState({ hideUpdateBadge: false });
-          }
-          if (lastUpdated[0] > lastChecked) {
-            this.setState({ hideUpdateBadge: false });
+          } else {
+            let latestCommunityUpdate = rsp.map(update => new Date(update.date))
+              .sort((a, b) => b - a)[0];
+            if (latestCommunityUpdate > lastClicked) {
+              this.setState({ hideUpdateBadge: false });
+            }
           }
         }
       }).catch(this.handleApiError);
