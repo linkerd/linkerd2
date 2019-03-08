@@ -7,6 +7,10 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
 DEV_PORT=8080
 export NODE_ENV=${NODE_ENV:=development}
 
+# Stop everything in the process group (in the background) whenever the
+# parent process experiences an error and exits.
+trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
+
 function -h {
 cat <<USAGE
 USAGE: web <command>
