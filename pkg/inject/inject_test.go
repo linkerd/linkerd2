@@ -10,6 +10,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var proxyConfigAnnotations = []string{
+	k8s.ProxyImageAnnotation,
+	k8s.ProxyImagePullPolicyAnnotation,
+	k8s.ProxyInitImageAnnotation,
+	k8s.ProxyInitImagePullPolicyAnnotation,
+	k8s.ProxyControlPortAnnotation,
+	k8s.ProxyIgnoreInboundPortsAnnotation,
+	k8s.ProxyIgnoreOutboundPortsAnnotation,
+	k8s.ProxyInboundPortAnnotation,
+	k8s.ProxyMetricsPortAnnotation,
+	k8s.ProxyOutboundPortAnnotation,
+	k8s.ProxyRequestCPUAnnotation,
+	k8s.ProxyRequestMemoryAnnotation,
+	k8s.ProxyLimitCPUAnnotation,
+	k8s.ProxyLimitMemoryAnnotation,
+	k8s.ProxyUIDAnnotation,
+	k8s.ProxyLogLevelAnnotation,
+	k8s.ProxyDisableExternalProfilesAnnotation,
+}
+
 func TestOverrides(t *testing.T) {
 	var (
 		kind         = "Deployment"
@@ -376,20 +396,15 @@ func TestOverrides(t *testing.T) {
 			resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
 			resourceConfig.podMeta.Annotations = podAnnotations
 
-			resourceConfig.useOverridesOrDefaults()
-
-			if len(resourceConfig.proxyConfigOverrides) != len(expectedOverrides) {
-				t.Errorf("Number of config overrides don't match. Expected: %d. Actual: %d", len(expectedOverrides), len(resourceConfig.proxyConfigOverrides))
-			}
-
-			for key, actual := range resourceConfig.proxyConfigOverrides {
-				expected, exist := expectedOverrides[key]
-				if !exist {
-					t.Errorf("Expected annotation %q to exist", key)
+			for _, annotation := range proxyConfigAnnotations {
+				actual := resourceConfig.getOverrideOrDefault(annotation)
+				expected, exists := expectedOverrides[annotation]
+				if !exists {
+					t.Errorf("Expected annotation %q to exist", annotation)
 				}
 
 				if !reflect.DeepEqual(expected, actual) {
-					t.Errorf("Annotation: %q. Expected: %v (%T). Actual: %v (%T)", key, expected, expected, actual, actual)
+					t.Errorf("Annotation: %q. Expected: %s. Actual: %s", annotation, expected, actual)
 				}
 			}
 		})
