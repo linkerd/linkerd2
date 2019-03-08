@@ -435,12 +435,12 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 
 	inboundPortInt, err := strconv.ParseInt(inboundPort, 10, 32)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	metricsPortInt, err := strconv.ParseInt(metricsPort, 10, 32)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	sidecar := v1.Container{
