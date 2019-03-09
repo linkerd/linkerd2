@@ -78,7 +78,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	dispositionHeaderVal := fmt.Sprintf("attachment; filename='%s-profile.yml'", service)
+	dispositionHeaderVal := fmt.Sprintf("attachment; filename=%s-profile.yml", service)
 
 	w.Header().Set("Content-Type", "text/yaml")
 	w.Header().Set("Content-Disposition", dispositionHeaderVal)
