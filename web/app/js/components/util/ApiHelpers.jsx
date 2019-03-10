@@ -17,7 +17,7 @@ const checkFetchOk = resp => {
     throw {
       status: resp.status,
       url: resp.url,
-      statusText:resp.statusText,
+      statusText: resp.statusText,
       error: error.error
     };
   });
@@ -118,10 +118,20 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     metricsWindow = window;
   };
 
-  const urlsForResource = (type, namespace) => {
+  const urlsForResource = (type, namespace, includeTcp) => {
     // Traffic Performance Summary. This retrieves stats for the given resource.
-    let baseUrl = '/api/tps-reports?resource_type=' + type;
-    return !namespace ? baseUrl + '&all_namespaces=true' : baseUrl + '&namespace=' + namespace;
+    let resourceUrl = '/api/tps-reports?resource_type=' + type;
+
+    if (_isEmpty(namespace)) {
+      resourceUrl += '&all_namespaces=true';
+    } else {
+      resourceUrl += '&namespace=' + namespace;
+    }
+    if (includeTcp) {
+      resourceUrl += '&tcp_stats=true';
+    }
+
+    return resourceUrl;
   };
 
   // maintain a list of a component's requests,
@@ -157,7 +167,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       return (
         <Link
           to={url}
-          {...(this.props.targetBlank ? {target:'_blank'} : {})}>
+          {...(this.props.targetBlank ? { target: '_blank' } : {})}>
           {this.props.children}
         </Link>
       );
@@ -175,10 +185,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   // a prefixed link to a Resource Detail page
-  const ResourceLink = ({resource, linkText}) => {
+  const ResourceLink = ({ resource, linkText }) => {
     return (
       <PrefixedLink to={generateResourceURL(resource)}>
-        { linkText || resource.type + "/" + resource.name}
+        {linkText || resource.type + "/" + resource.name}
       </PrefixedLink>
     );
   };

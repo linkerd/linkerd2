@@ -6,7 +6,6 @@ import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
-import Typography from '@material-ui/core/Typography';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -84,7 +83,7 @@ class Namespaces extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.ns))]);
+    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.ns, true))]);
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
@@ -117,8 +116,8 @@ class Namespaces extends React.Component {
     }
     return (
       <div className="page-section">
-        <Typography variant="h5">{friendlyTitle(resource).plural}</Typography>
         <MetricsTable
+          title={friendlyTitle(resource).plural}
           resource={resource}
           metrics={metrics}
           showNamespaceColumn={false} />
@@ -127,16 +126,16 @@ class Namespaces extends React.Component {
   }
 
   render() {
-    const {metrics} = this.state;
+    const { metrics } = this.state;
     let noMetrics = _isEmpty(metrics.pod);
     let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
     return (
       <div className="page-content">
-        { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spinner /> : (
+        {!this.state.error ? null : <ErrorBanner message={this.state.error} />}
+        {!this.state.loaded ? <Spinner /> : (
           <div>
-            { noMetrics ? <div>No resources detected.</div> : null}
+            {noMetrics ? <div>No resources detected.</div> : null}
             {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
@@ -148,6 +147,17 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("statefulset", metrics.statefulset)}
             {this.renderResourceSection("job", metrics.job)}
             {this.renderResourceSection("authority", metrics.authority)}
+
+            {
+              noMetrics ? null :
+              <div className="page-section">
+                <MetricsTable
+                  title="TCP"
+                  resource="pod"
+                  metrics={metrics.pod}
+                  isTcpTable={true} />
+              </div>
+            }
           </div>
         )}
       </div>);

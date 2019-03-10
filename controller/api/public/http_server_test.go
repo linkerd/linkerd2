@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
@@ -53,6 +54,11 @@ func (m *mockGrpcServer) ListServices(ctx context.Context, req *pb.ListServicesR
 func (m *mockGrpcServer) SelfCheck(ctx context.Context, req *healcheckPb.SelfCheckRequest) (*healcheckPb.SelfCheckResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*healcheckPb.SelfCheckResponse), m.ErrorToReturn
+}
+
+func (m *mockGrpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*configPb.All), m.ErrorToReturn
 }
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {

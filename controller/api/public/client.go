@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -63,6 +64,12 @@ func (c *grpcOverHTTPClient) Version(ctx context.Context, req *pb.Empty, _ ...gr
 func (c *grpcOverHTTPClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	var msg healthcheckPb.SelfCheckResponse
 	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
+	return &msg, err
+}
+
+func (c *grpcOverHTTPClient) Config(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*configPb.All, error) {
+	var msg configPb.All
+	err := c.apiRequest(ctx, "Config", req, &msg)
 	return &msg, err
 }
 

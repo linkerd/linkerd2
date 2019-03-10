@@ -26,6 +26,7 @@ var (
 	tapByResourcePath = fullURLPathFor("TapByResource")
 	selfCheckPath     = fullURLPathFor("SelfCheck")
 	endpointsPath     = fullURLPathFor("Endpoints")
+	configPath        = fullURLPathFor("Config")
 )
 
 type handler struct {
@@ -60,6 +61,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleSelfCheck(w, req)
 	case endpointsPath:
 		h.handleEndpoints(w, req)
+	case configPath:
+		h.handleConfig(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -209,6 +212,27 @@ func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) 
 
 	server := tapServer{w: flushableWriter, req: req}
 	err = h.grpcServer.TapByResource(&protoRequest, server)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+}
+
+func (h *handler) handleConfig(w http.ResponseWriter, req *http.Request) {
+	var protoRequest pb.Empty
+	err := httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+
+	rsp, err := h.grpcServer.Config(req.Context(), &protoRequest)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+
+	err = writeProtoToHTTPResponse(w, rsp)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err)
 		return

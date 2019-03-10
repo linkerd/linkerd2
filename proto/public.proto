@@ -6,6 +6,8 @@ import "google/protobuf/duration.proto";
 
 import "common/healthcheck.proto";
 
+import "config/config.proto";
+
 option go_package = "github.com/linkerd/linkerd2/controller/gen/public";
 
 message Empty {}
@@ -428,4 +430,6 @@ service Api {
 
   rpc Version(Empty) returns (VersionInfo) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
+
+  rpc Config(Empty) returns (config.All) {}
 }

@@ -78,7 +78,7 @@ var (
 		`.*-single-namespace linkerd-controller-.*-.* (destination|public-api|tap) time=".*" level=warning msg="ServiceProfiles not available"`,
 
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.*-tls linkerd-web-.*-.* linkerd-proxy ERR! linkerd-destination\..*-tls\.svc\.cluster\.local:8086 rustls::session TLS alert received: Message {`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! linkerd-destination\..*-tls\.svc\.cluster\.local:8086 rustls::session TLS alert received: Message {`,
 		`.*-tls linkerd-controller-.*-.* linkerd-proxy ERR! .*:9090 rustls::session TLS alert received: Message {`,
 		`.*-tls linkerd-web-.*-.* linkerd-proxy WARN linkerd-destination\..*-tls\.svc\.cluster\.local:8086 linkerd2_proxy::proxy::reconnect connect error to Config { addr: Name\(NameAddr { name: "linkerd-destination\..*-tls\.svc\.cluster\.local", port: 8086 }\), tls_server_identity: Some\("linkerd-controller\.deployment\..*-tls\.linkerd-managed\..*-tls.svc.cluster.local"\), tls_config: Some\(ClientConfig\) }: received fatal alert: AccessDenied`,
 		`.*-tls linkerd-controller-.*-.* linkerd-proxy WARN .*:9090 linkerd2_proxy::proxy::reconnect connect error to Config { target: Target { addr: V4\(.*:9090\), tls: Some\(ConnectionConfig { server_identity: "linkerd-prometheus\.deployment\..*-tls.linkerd-managed\..*-tls\.svc\.cluster\.local", config: ClientConfig }\) }, settings: Http2, _p: \(\) }: received fatal alert: AccessDenied`,

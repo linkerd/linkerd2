@@ -409,11 +409,11 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 		},
 		Ports: []v1.ContainerPort{
 			{
-				Name:          "linkerd-proxy",
+				Name:          k8s.ProxyPortName,
 				ContainerPort: int32(conf.proxyConfig.GetInboundPort().GetPort()),
 			},
 			{
-				Name:          "linkerd-metrics",
+				Name:          k8s.ProxyMetricsPortName,
 				ContainerPort: int32(conf.proxyConfig.GetMetricsPort().GetPort()),
 			},
 		},

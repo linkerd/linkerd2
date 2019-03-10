@@ -5,7 +5,7 @@ import (
 )
 
 // NewFakeAPI provides a mock Kubernetes API for testing.
-func NewFakeAPI(namespace string, configs ...string) (*API, error) {
+func NewFakeAPI(configs ...string) (*API, error) {
 	clientSet, spClientSet, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
@@ -14,18 +14,18 @@ func NewFakeAPI(namespace string, configs ...string) (*API, error) {
 	return NewAPI(
 		clientSet,
 		spClientSet,
-		namespace,
 		CM,
 		Deploy,
 		DS,
-		SS,
 		Endpoint,
 		Job,
+		MWC,
+		NS,
 		Pod,
 		RC,
 		RS,
-		Svc,
 		SP,
-		MWC,
+		SS,
+		Svc,
 	), nil
 }

@@ -11,7 +11,6 @@ import (
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -45,7 +44,7 @@ func NewServer(
 	k8sAPI *k8s.API,
 	done chan struct{},
 ) (*grpc.Server, error) {
-	resolver, err := buildResolver(k8sDNSZone, controllerNS, k8sAPI)
+	resolver, err := buildResolver(k8sDNSZone, k8sAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -192,13 +191,11 @@ func getHostAndPort(dest *pb.GetDestination) (string, int, error) {
 }
 
 func buildResolver(
-	k8sDNSZone, controllerNS string,
+	k8sDNSZone string,
 	k8sAPI *k8s.API,
 ) (streamingDestinationResolver, error) {
-	var k8sDNSZoneLabels []string
-	if k8sDNSZone == "" {
-		k8sDNSZoneLabels = []string{}
-	} else {
+	k8sDNSZoneLabels := []string{}
+	if k8sDNSZone != "" {
 		var err error
 		k8sDNSZoneLabels, err = splitDNSName(k8sDNSZone)
 		if err != nil {
@@ -206,16 +203,7 @@ func buildResolver(
 		}
 	}
 
-	var pw *profileWatcher
-	serviceProfiles, err := pkgK8s.ServiceProfilesAccess(k8sAPI.Client)
-	if err != nil {
-		return nil, err
-	}
-	if serviceProfiles {
-		pw = newProfileWatcher(k8sAPI)
-	}
-
-	k8sResolver := newK8sResolver(k8sDNSZoneLabels, controllerNS, newEndpointsWatcher(k8sAPI), pw)
+	k8sResolver := newK8sResolver(k8sDNSZoneLabels, newEndpointsWatcher(k8sAPI), newProfileWatcher(k8sAPI))
 
 	log.Infof("Built k8s name resolver")
 

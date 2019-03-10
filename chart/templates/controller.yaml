@@ -115,6 +115,9 @@ spec:
           containerPort: 8085
         - name: admin-http
           containerPort: 9995
+        volumeMounts:
+        - name: config
+          mountPath: /var/linkerd-io/config
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
@@ -203,6 +206,10 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.ControllerUID}}
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
 ---
 kind: ConfigMap
 apiVersion: v1

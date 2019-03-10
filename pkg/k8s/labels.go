@@ -102,6 +102,12 @@ const (
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
+	// ProxyPortName is the name of the Linkerd Proxy's proxy port
+	ProxyPortName = "linkerd-proxy"
+
+	// ProxyMetricsPortName is the name of the Linkerd Proxy's metrics port
+	ProxyMetricsPortName = "linkerd-metrics"
+
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
