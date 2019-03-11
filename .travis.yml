@@ -29,6 +29,8 @@ jobs:
           - target
           - vendor
           - "$HOME/.cache"
+      before_install:
+        - echo $GITCOOKIE_SH | base64 -d | bash
       install:
         - ./bin/dep ensure -vendor-only -v
         - ./bin/dep status -v
@@ -127,6 +129,9 @@ jobs:
           - vendor
           - "$HOME/google-cloud-sdk/"
           - "$HOME/.cache"
+
+      before_install:
+        - echo $GITCOOKIE_SH | base64 -d | bash
 
       install:
         - ./bin/dep ensure -vendor-only -v
