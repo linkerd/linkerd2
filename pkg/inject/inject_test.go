@@ -2,7 +2,6 @@ package inject
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
@@ -403,7 +402,7 @@ func TestOverrides(t *testing.T) {
 					t.Errorf("Expected annotation %q to exist", annotation)
 				}
 
-				if !reflect.DeepEqual(expected, actual) {
+				if expected != actual {
 					t.Errorf("Annotation: %q. Expected: %s. Actual: %s", annotation, expected, actual)
 				}
 			}
