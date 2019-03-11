@@ -75,6 +75,20 @@ func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *
 	}
 }
 
+// String satisfies the Stringer interface
+func (conf *ResourceConfig) String() string {
+	l := []string{}
+
+	if conf.meta.Kind != "" {
+		l = append(l, conf.meta.Kind)
+	}
+	if conf.workLoadMeta != nil {
+		l = append(l, fmt.Sprintf("%s.%s", conf.workLoadMeta.GetName(), conf.workLoadMeta.GetNamespace()))
+	}
+
+	return strings.Join(l, "/")
+}
+
 // WithKind enriches ResourceConfig with the workload kind
 func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
 	conf.meta = metav1.TypeMeta{Kind: kind}
