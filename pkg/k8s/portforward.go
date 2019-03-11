@@ -180,11 +180,25 @@ func (pf *PortForward) URLFor(path string) string {
 	return fmt.Sprintf("http://127.0.0.1:%d%s", pf.localPort, path)
 }
 
-// getLocalPort binds to a free ephemeral port and returns the port number.
+// getLocalPort is used by dashboard.go to select a port for the dashboard.
+// It first checks the availability of the default port, defined in addr.
+// If that port is taken, it binds to a free ephemeral port and returns the
+// port number.
 func getLocalPort() (int, error) {
-	ln, err := net.Listen("tcp", ":0")
+	addr := "127.0.0.1:60606"
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return 0, err
+		if opError, ok := err.(*net.OpError); ok {
+			if opError.Op == "listen" &&
+				opError.Net == "tcp" &&
+				opError.Addr.String() == addr &&
+				opError.Err.Error() == "bind: address already in use" {
+				ln, err = net.Listen("tcp", ":0")
+			}
+		}
+		if err != nil {
+			return 0, err
+		}
 	}
 	defer ln.Close()
 
