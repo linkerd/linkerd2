@@ -8,8 +8,7 @@ function Community() {
         url="https://linkerd.io/dashboard/"
         position="inherit"
         display="block"
-        height="-webkit-fill-available"
-        width="-webkit-fill-available"
+        height="100vh"
         border="none" />
     </React.Fragment>
   );
