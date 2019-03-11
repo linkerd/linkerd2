@@ -141,7 +141,8 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("patch generated: %s", patchJSON)
+	log.Infof("patch generated for: %s", conf)
+	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
 	admissionResponse.Patch = patchJSON
