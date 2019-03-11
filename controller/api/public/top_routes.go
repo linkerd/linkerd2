@@ -154,10 +154,6 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 		}
 	}
 
-	if len(profiles) == 0 {
-		return nil, fmt.Errorf("No ServiceProfiles found for Services of %s/%s", requestedResource.Type, requestedResource.Name)
-	}
-
 	metrics, err := s.getRouteMetrics(ctx, req, profiles, targetResource)
 	if err != nil {
 		return nil, err
@@ -274,10 +270,8 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 		}
 	}
 
-	err = processRouteMetrics(results, timeWindow, table)
-	if err != nil {
-		return nil, err
-	}
+	processRouteMetrics(results, timeWindow, table)
+
 	return table, nil
 }
 
@@ -311,12 +305,9 @@ func renderLabels(labels model.LabelSet, services []string) string {
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
 
-func processRouteMetrics(results []promResult, timeWindow string, table indexedTable) error {
-	samples := 0
+func processRouteMetrics(results []promResult, timeWindow string, table indexedTable) {
 	for _, result := range results {
 		for _, sample := range result.vec {
-			samples++
-
 			route := string(sample.Metric[model.LabelName("rt_route")])
 			dst := string(sample.Metric[model.LabelName("dst")])
 			dst = strings.Split(dst, ":")[0] // Truncate port, if there is one.
@@ -355,8 +346,4 @@ func processRouteMetrics(results []promResult, timeWindow string, table indexedT
 			}
 		}
 	}
-	if samples == 0 {
-		return errors.New("No samples")
-	}
-	return nil
 }

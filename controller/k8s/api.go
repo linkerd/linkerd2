@@ -763,6 +763,7 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1
 		}
 	}
 	// Not found; return default.
+	log.Debugf("no Service Profile found for '%s' -- using default", dst)
 	return &spv1alpha1.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: dst,
