@@ -27,10 +27,13 @@ import SentimentVerySatisfiedIcon from '@material-ui/icons/SentimentVerySatisfie
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
+import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
+
+const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
 
 const styles = theme => {
   const drawerWidth = theme.spacing.unit * 31;
@@ -176,7 +179,6 @@ class NavigationBase extends React.Component {
   }
 
   fetchLatestCommunityUpdate() {
-    let jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
     this.communityUpdatesPromise = fetch(jsonFeedUrl)
       .then(rsp => rsp.json())
       .then(rsp => rsp.data.date)
@@ -186,10 +188,10 @@ class NavigationBase extends React.Component {
           if (!lastClicked) {
             this.setState({ hideUpdateBadge: false });
           } else {
-            lastClicked = new Date(lastClicked);
-            let latestCommunityUpdate = rsp.map(update => new Date(update.date))
-              .sort((a, b) => b - a)[0];
-            if (latestCommunityUpdate > lastClicked) {
+            let lastClickedDateObject = new Date(lastClicked);
+            let latestArticle = _maxBy(rsp, update => update.date);
+            let latestArticleDateObject = new Date(latestArticle);
+            if (latestArticleDateObject > lastClickedDateObject) {
               this.setState({ hideUpdateBadge: false });
             }
           }
