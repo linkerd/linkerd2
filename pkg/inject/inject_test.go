@@ -42,52 +42,13 @@ func TestOverrides(t *testing.T) {
 		globalConfig = &config.Global{}
 
 		testCases = []struct {
-			id                   string
-			podAnnotations       map[string]string
-			namespaceAnnotations map[string]string
-			proxyConfig          *config.Proxy
-			expectedOverrides    map[string]string
+			id                string
+			podAnnotations    map[string]string
+			proxyConfig       *config.Proxy
+			expectedOverrides map[string]string
 		}{
 			{id: "by pod annotations",
 				podAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:         "Always",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "4000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-					k8s.ProxyInboundPortAnnotation:             "5000",
-					k8s.ProxyMetricsPortAnnotation:             "5001",
-					k8s.ProxyOutboundPortAnnotation:            "5002",
-					k8s.ProxyRequestCPUAnnotation:              "0.2",
-					k8s.ProxyRequestMemoryAnnotation:           "64",
-					k8s.ProxyLimitCPUAnnotation:                "1",
-					k8s.ProxyLimitMemoryAnnotation:             "128",
-					k8s.ProxyUIDAnnotation:                     "9700",
-					k8s.ProxyLogLevelAnnotation:                "info,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-				expectedOverrides: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:         "Always",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "4000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-					k8s.ProxyInboundPortAnnotation:             "5000",
-					k8s.ProxyMetricsPortAnnotation:             "5001",
-					k8s.ProxyOutboundPortAnnotation:            "5002",
-					k8s.ProxyRequestCPUAnnotation:              "0.2",
-					k8s.ProxyRequestMemoryAnnotation:           "64",
-					k8s.ProxyLimitCPUAnnotation:                "1",
-					k8s.ProxyLimitMemoryAnnotation:             "128",
-					k8s.ProxyUIDAnnotation:                     "9700",
-					k8s.ProxyLogLevelAnnotation:                "info,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-			},
-			{id: "by namespace annotations",
-				namespaceAnnotations: map[string]string{
 					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
 					k8s.ProxyImagePullPolicyAnnotation:         "Always",
 					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
@@ -175,120 +136,7 @@ func TestOverrides(t *testing.T) {
 					k8s.ProxyLogLevelAnnotation:                "info,linkerd2_proxy=debug",
 					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
 			},
-			{id: "by pod annotations over namespace annotations",
-				namespaceAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:         "IfNotPresent",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "IfNotPresent",
-					k8s.ProxyControlPortAnnotation:             "4000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-					k8s.ProxyInboundPortAnnotation:             "5000",
-					k8s.ProxyMetricsPortAnnotation:             "5001",
-					k8s.ProxyOutboundPortAnnotation:            "5002",
-					k8s.ProxyRequestCPUAnnotation:              "0.2",
-					k8s.ProxyRequestMemoryAnnotation:           "64",
-					k8s.ProxyLimitCPUAnnotation:                "1",
-					k8s.ProxyLimitMemoryAnnotation:             "128",
-					k8s.ProxyUIDAnnotation:                     "9700",
-					k8s.ProxyLogLevelAnnotation:                "info,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-				podAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:fghij",
-					k8s.ProxyImagePullPolicyAnnotation:         "Always",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:fghij",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "5000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "3306,6379",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "7000,7070",
-					k8s.ProxyInboundPortAnnotation:             "9000",
-					k8s.ProxyMetricsPortAnnotation:             "9001",
-					k8s.ProxyOutboundPortAnnotation:            "9002",
-					k8s.ProxyRequestCPUAnnotation:              "0.15",
-					k8s.ProxyRequestMemoryAnnotation:           "120",
-					k8s.ProxyLimitCPUAnnotation:                "1.5",
-					k8s.ProxyLimitMemoryAnnotation:             "256",
-					k8s.ProxyUIDAnnotation:                     "8500",
-					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-				expectedOverrides: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:fghij",
-					k8s.ProxyImagePullPolicyAnnotation:         "Always",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:fghij",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "5000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "3306,6379",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "7000,7070",
-					k8s.ProxyInboundPortAnnotation:             "9000",
-					k8s.ProxyMetricsPortAnnotation:             "9001",
-					k8s.ProxyOutboundPortAnnotation:            "9002",
-					k8s.ProxyRequestCPUAnnotation:              "0.15",
-					k8s.ProxyRequestMemoryAnnotation:           "120",
-					k8s.ProxyLimitCPUAnnotation:                "1.5",
-					k8s.ProxyLimitMemoryAnnotation:             "256",
-					k8s.ProxyUIDAnnotation:                     "8500",
-					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-			},
-			{id: "by merging pod and namespace annotations",
-				namespaceAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:               "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyInitImageAnnotation:           "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation: "Always",
-					k8s.ProxyControlPortAnnotation:         "4000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:  "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation: "8079,8080",
-					k8s.ProxyInboundPortAnnotation:         "5000",
-					k8s.ProxyMetricsPortAnnotation:         "5001",
-					k8s.ProxyOutboundPortAnnotation:        "5002"},
-				podAnnotations: map[string]string{
-					k8s.ProxyRequestCPUAnnotation:              "0.15",
-					k8s.ProxyRequestMemoryAnnotation:           "120",
-					k8s.ProxyLimitCPUAnnotation:                "1.5",
-					k8s.ProxyLimitMemoryAnnotation:             "256",
-					k8s.ProxyUIDAnnotation:                     "8500",
-					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-				expectedOverrides: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:         "Always",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "4000",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-					k8s.ProxyInboundPortAnnotation:             "5000",
-					k8s.ProxyMetricsPortAnnotation:             "5001",
-					k8s.ProxyOutboundPortAnnotation:            "5002",
-					k8s.ProxyRequestCPUAnnotation:              "0.15",
-					k8s.ProxyRequestMemoryAnnotation:           "120",
-					k8s.ProxyLimitCPUAnnotation:                "1.5",
-					k8s.ProxyLimitMemoryAnnotation:             "256",
-					k8s.ProxyUIDAnnotation:                     "8500",
-					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-			},
-			{id: "by pod annotations over namespace annotations and config map",
-				namespaceAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:         "Never",
-					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyControlPortAnnotation:             "Never",
-					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-					k8s.ProxyInboundPortAnnotation:             "5000",
-					k8s.ProxyMetricsPortAnnotation:             "5001",
-					k8s.ProxyOutboundPortAnnotation:            "5002",
-					k8s.ProxyRequestCPUAnnotation:              "0.2",
-					k8s.ProxyRequestMemoryAnnotation:           "64",
-					k8s.ProxyLimitCPUAnnotation:                "1",
-					k8s.ProxyLimitMemoryAnnotation:             "128",
-					k8s.ProxyUIDAnnotation:                     "9700",
-					k8s.ProxyLogLevelAnnotation:                "info,linkerd2_proxy=debug",
-					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
+			{id: "by pod annotations over config map",
 				proxyConfig: &config.Proxy{
 					ProxyImage:     &config.Image{ImageName: "gcr.io/linkerd-io/proxy:klmno", PullPolicy: "IfNotPresent"},
 					ProxyInitImage: &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init:klmno", PullPolicy: "IfNotPresent"},
@@ -349,13 +197,7 @@ func TestOverrides(t *testing.T) {
 					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
 					k8s.ProxyDisableExternalProfilesAnnotation: "true"},
 			},
-			{id: "by merging pod and namespace annotations, and config map",
-				namespaceAnnotations: map[string]string{
-					k8s.ProxyImageAnnotation:               "gcr.io/linkerd-io/proxy:abcde",
-					k8s.ProxyImagePullPolicyAnnotation:     "Always",
-					k8s.ProxyInitImageAnnotation:           "gcr.io/linkerd-io/proxy-init:abcde",
-					k8s.ProxyInitImagePullPolicyAnnotation: "Always",
-				},
+			{id: "by merging pod annotations and config map",
 				proxyConfig: &config.Proxy{
 					ControlPort:  &config.Port{Port: 9000},
 					InboundPort:  &config.Port{Port: 6000},
@@ -363,6 +205,10 @@ func TestOverrides(t *testing.T) {
 					OutboundPort: &config.Port{Port: 6002},
 				},
 				podAnnotations: map[string]string{
+					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy:abcde",
+					k8s.ProxyImagePullPolicyAnnotation:         "Always",
+					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init:abcde",
+					k8s.ProxyInitImagePullPolicyAnnotation:     "Always",
 					k8s.ProxyIgnoreInboundPortsAnnotation:      "3306,6379",
 					k8s.ProxyIgnoreOutboundPortsAnnotation:     "7000,7070",
 					k8s.ProxyRequestCPUAnnotation:              "0.15",
@@ -396,15 +242,14 @@ func TestOverrides(t *testing.T) {
 
 	for _, testCase := range testCases {
 		var (
-			proxyConfig          = testCase.proxyConfig
-			namespaceAnnotations = testCase.namespaceAnnotations
-			podAnnotations       = testCase.podAnnotations
-			expectedOverrides    = testCase.expectedOverrides
+			proxyConfig       = testCase.proxyConfig
+			podAnnotations    = testCase.podAnnotations
+			expectedOverrides = testCase.expectedOverrides
 		)
 
 		t.Run(fmt.Sprint(testCase.id), func(t *testing.T) {
 			resourceConfig := NewResourceConfig(globalConfig, proxyConfig)
-			resourceConfig = resourceConfig.WithKind(kind).WithNsAnnotations(namespaceAnnotations)
+			resourceConfig = resourceConfig.WithKind(kind)
 			resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
 			resourceConfig.podMeta.Annotations = podAnnotations
 

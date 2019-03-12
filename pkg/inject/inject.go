@@ -589,10 +589,6 @@ func (conf *ResourceConfig) getOverrideOrDefault(annotation string) string {
 		return value
 	}
 
-	if value, exists := conf.nsAnnotations[annotation]; exists {
-		return value
-	}
-
 	return conf.getDefault(annotation)
 }
 
