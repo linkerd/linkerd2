@@ -20,6 +20,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+const defaultPort = 50750
+
 // PortForward provides a port-forward connection into a Kubernetes cluster.
 type PortForward struct {
 	method     string
@@ -180,12 +182,22 @@ func (pf *PortForward) URLFor(path string) string {
 	return fmt.Sprintf("http://127.0.0.1:%d%s", pf.localPort, path)
 }
 
-// getLocalPort binds to a free ephemeral port and returns the port number.
+// getLocalPort is used by dashboard.go to select a port for the dashboard.
+// It first checks the availability of the default port, defined in addr.
+// If that port is taken, it binds to a free ephemeral port and returns the
+// port number.
 func getLocalPort() (int, error) {
+	defaultAddr := fmt.Sprintf("127.0.0.1:%d", defaultPort)
+	if ln, err := net.Listen("tcp", defaultAddr); err == nil {
+		ln.Close()
+		return defaultPort, nil
+	}
+
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return 0, err
 	}
+
 	defer ln.Close()
 
 	// get port
