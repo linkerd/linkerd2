@@ -86,64 +86,67 @@ const (
 	 * Proxy config annotations
 	 */
 
+	// ProxyConfigAnnotationsPrefix is the prefix of all config-related annotations
+	ProxyConfigAnnotationsPrefix = "config.linkerd.io"
+
 	// ProxyImageAnnotation can be used to override the proxyImage config.
-	ProxyImageAnnotation = "proxy.linkerd.io/proxy-image"
+	ProxyImageAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image"
 
 	// ProxyImagePullPolicyAnnotation can be used to override the
 	// proxyImagePullPolicy config.
-	ProxyImagePullPolicyAnnotation = "proxy.linkerd.io/proxy-image-pull-policy"
+	ProxyImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image-pull-policy"
 
 	// ProxyInitImageAnnotation can be used to override the proxyInitImage
 	// config.
-	ProxyInitImageAnnotation = "proxy.linkerd.io/init-image"
+	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
 
 	// ProxyInitImagePullPolicyAnnotation can be used to override the
 	// proxyInitImagePullPolicy config.
-	ProxyInitImagePullPolicyAnnotation = "proxy.linkerd.io/init-image-pull-policy"
+	ProxyInitImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-pull-policy"
 
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
-	ProxyControlPortAnnotation = "proxy.linkerd.io/control-port"
+	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
 
 	// ProxyIgnoreInboundPortsAnnotation can be used to override the
 	// ignoreInboundPorts config.
-	ProxyIgnoreInboundPortsAnnotation = "proxy.linkerd.io/ignore-inbound-ports"
+	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/ignore-inbound-ports"
 
 	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
 	// ignoreOutboundPorts config.
-	ProxyIgnoreOutboundPortsAnnotation = "proxy.linkerd.io/ignore-outbound-ports"
+	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/ignore-outbound-ports"
 
 	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
-	ProxyInboundPortAnnotation = "proxy.linkerd.io/inbound-port"
+	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
 
 	// ProxyMetricsPortAnnotation can be used to override the metricsPort config.
-	ProxyMetricsPortAnnotation = "proxy.linkerd.io/metrics-port"
+	ProxyMetricsPortAnnotation = ProxyConfigAnnotationsPrefix + "/metrics-port"
 
 	// ProxyOutboundPortAnnotation can be used to override the outboundPort
 	// config.
-	ProxyOutboundPortAnnotation = "proxy.linkerd.io/outbound-port"
+	ProxyOutboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/outbound-port"
 
 	// ProxyRequestCPUAnnotation can be used to override the requestCPU config.
-	ProxyRequestCPUAnnotation = "proxy.linkerd.io/request-cpu"
+	ProxyRequestCPUAnnotation = ProxyConfigAnnotationsPrefix + "/request-cpu"
 
 	// ProxyRequestMemoryAnnotation can be used to override the
 	// requestMemoryConfig.
-	ProxyRequestMemoryAnnotation = "proxy.linkerd.io/request-memory"
+	ProxyRequestMemoryAnnotation = ProxyConfigAnnotationsPrefix + "/request-memory"
 
 	// ProxyLimitCPUAnnotation can be used to override the limitCPU config.
-	ProxyLimitCPUAnnotation = "proxy.linkerd.io/limit-cpu"
+	ProxyLimitCPUAnnotation = ProxyConfigAnnotationsPrefix + "/limit-cpu"
 
 	// ProxyLimitMemoryAnnotation can be used to override the limitMemory config.
-	ProxyLimitMemoryAnnotation = "proxy.linkerd.io/limit-memory"
+	ProxyLimitMemoryAnnotation = ProxyConfigAnnotationsPrefix + "/limit-memory"
 
 	// ProxyUIDAnnotation can be used to override the UID config.
-	ProxyUIDAnnotation = "proxy.linkerd.io/uid"
+	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/uid"
 
 	// ProxyLogLevelAnnotation can be used to override the log level config.
-	ProxyLogLevelAnnotation = "proxy.linkerd.io/log-level"
+	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/log-level"
 
 	// ProxyDisableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.
-	ProxyDisableExternalProfilesAnnotation = "proxy.linkerd.io/disable-external-profiles"
+	ProxyDisableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/disable-external-profiles"
 
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.

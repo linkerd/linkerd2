@@ -186,7 +186,9 @@ func (conf *ResourceConfig) GetPatch(
 
 		report.update(conf)
 		if shouldInject(conf, report) {
-			conf.injectPodSpec(patch, identity)
+			if err := conf.injectPodSpec(patch, identity); err != nil {
+				return nil, nil, err
+			}
 			conf.injectObjectMeta(patch)
 		} else {
 			if err := conf.overrideProxyConfigs(patch); err != nil {
