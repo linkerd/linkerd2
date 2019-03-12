@@ -69,15 +69,6 @@ func (k *k8sResolver) streamResolution(host string, port int, listener endpointU
 }
 
 func (k *k8sResolver) streamProfiles(host string, clientNs string, listener profileUpdateListener) error {
-	// In single namespace mode, we'll close the stream immediately and the proxy
-	// will reissue the request after 3 seconds. If we wanted to be more
-	// sophisticated about this in the future, we could leave the stream open
-	// indefinitely, or we could update the API to support a ProfilesDisabled
-	// message. For now, however, this works.
-	if k.profileWatcher == nil {
-		return nil
-	}
-
 	subscriptions := map[profileID]profileUpdateListener{}
 
 	primaryListener, secondaryListener := newFallbackProfileListener(listener)
@@ -131,9 +122,7 @@ func (k *k8sResolver) getState() servicePorts {
 
 func (k *k8sResolver) stop() {
 	k.endpointsWatcher.stop()
-	if k.profileWatcher != nil {
-		k.profileWatcher.stop()
-	}
+	k.profileWatcher.stop()
 }
 
 func (k *k8sResolver) resolveKubernetesService(id *serviceID, port int, listener endpointUpdateListener) error {
