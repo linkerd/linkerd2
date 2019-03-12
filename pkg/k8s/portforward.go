@@ -20,6 +20,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+const defaultPort = 50750
+
 // PortForward provides a port-forward connection into a Kubernetes cluster.
 type PortForward struct {
 	method     string
@@ -185,21 +187,17 @@ func (pf *PortForward) URLFor(path string) string {
 // If that port is taken, it binds to a free ephemeral port and returns the
 // port number.
 func getLocalPort() (int, error) {
-	addr := "127.0.0.1:50750"
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		if opError, ok := err.(*net.OpError); ok {
-			if opError.Op == "listen" &&
-				opError.Net == "tcp" &&
-				opError.Addr.String() == addr &&
-				opError.Err.Error() == "bind: address already in use" {
-				ln, err = net.Listen("tcp", ":0")
-			}
-		}
-		if err != nil {
-			return 0, err
-		}
+	defaultAddr := fmt.Sprintf("127.0.0.1:%d", defaultPort)
+	if ln, err := net.Listen("tcp", defaultAddr); err == nil {
+		ln.Close()
+		return defaultPort, nil
 	}
+
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+
 	defer ln.Close()
 
 	// get port
