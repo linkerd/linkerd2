@@ -14,7 +14,7 @@ import (
 func ResourceAuthz(
 	k8sClient kubernetes.Interface,
 	namespace, verb, group, version, resource, name string,
-) (bool, string, error) {
+) error {
 	ssar := &authV1.SelfSubjectAccessReview{
 		Spec: authV1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &authV1.ResourceAttributes{
@@ -33,63 +33,46 @@ func ResourceAuthz(
 		SelfSubjectAccessReviews().
 		Create(ssar)
 	if err != nil {
-		return false, "", err
+		return err
 	}
 
-	return result.Status.Allowed, result.Status.Reason, nil
+	if result.Status.Allowed {
+		return nil
+	}
+
+	gk := schema.GroupKind{
+		Group: group,
+		Kind:  resource,
+	}
+	if len(result.Status.Reason) > 0 {
+		return fmt.Errorf("not authorized to access %s: %s", gk, result.Status.Reason)
+	}
+	return fmt.Errorf("not authorized to access %s", gk)
 }
 
 // ServiceProfilesAccess checks whether the ServiceProfile CRD is installed
 // on the cluster and the client is authorized to access ServiceProfiles.
-func ServiceProfilesAccess(k8sClient kubernetes.Interface) (bool, error) {
+func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 	res, err := k8sClient.Discovery().ServerResources()
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	for _, r := range res {
 		if r.GroupVersion == ServiceProfileAPIVersion {
 			for _, apiRes := range r.APIResources {
 				if apiRes.Kind == ServiceProfileKind {
-					return resourceAccess(k8sClient, schema.GroupKind{
-						Group: "linkerd.io",
-						Kind:  "serviceprofiles",
-					})
+					return ResourceAuthz(k8sClient, "", "list", "linkerd.io", "", "serviceprofiles", "")
 				}
 			}
 		}
 	}
 
-	return false, errors.New("ServiceProfiles not available")
+	return errors.New("ServiceProfile CRD not found")
 }
 
 // ClusterAccess verifies whether k8sClient is authorized to access all pods in
 // all namespaces in the cluster.
-func ClusterAccess(k8sClient kubernetes.Interface) (bool, error) {
-	return resourceAccess(k8sClient, schema.GroupKind{Kind: "pods"})
-}
-
-// resourceAccess verifies whether k8sClient is authorized to access a resource
-// in all namespaces in the cluster.
-func resourceAccess(k8sClient kubernetes.Interface, gk schema.GroupKind) (bool, error) {
-	allowed, reason, err := ResourceAuthz(
-		k8sClient,
-		"",
-		"list",
-		gk.Group,
-		"",
-		gk.Kind,
-		"",
-	)
-	if err != nil {
-		return false, err
-	}
-	if allowed {
-		return true, nil
-	}
-
-	if len(reason) > 0 {
-		return false, fmt.Errorf("not authorized to access %s: %s", gk, reason)
-	}
-	return false, fmt.Errorf("not authorized to access %s", gk)
+func ClusterAccess(k8sClient kubernetes.Interface) error {
+	return ResourceAuthz(k8sClient, "", "list", "", "", "pods", "")
 }

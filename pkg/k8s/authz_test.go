@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -8,8 +9,6 @@ import (
 func TestResourceAuthz(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
-		allowed    bool
-		reason     string
 		err        error
 	}{
 		{
@@ -37,9 +36,7 @@ subjects:
   name: system:unauthenticated
   apiGroup: rbac.authorization.k8s.io`,
 			},
-			false,
-			"",
-			nil,
+			errors.New("not authorized to access deployments.extensions"),
 		},
 	}
 
@@ -50,19 +47,13 @@ subjects:
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
-			allowed, reason, err := ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments", "")
+			err = ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments", "")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
 					(err.Error() != test.err.Error()) {
 					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
 				}
-			}
-			if allowed != test.allowed {
-				t.Errorf("Allowed mismatch. Expected %v, but got %v", test.allowed, allowed)
-			}
-			if reason != test.reason {
-				t.Errorf("Reason mismatch. Expected %v, but got %v", test.reason, reason)
 			}
 		})
 	}

@@ -58,13 +58,14 @@ var (
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/identity/certificate\.crt", Some\(2\)\), falling back`,
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/trust-anchors/trust-anchors\.pem", Some\(2\)\), falling back`,
 
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN proxy={server=in listen=0.0.0.0:4143} rustls::session Sending fatal alert AccessDenied`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN proxy={server=in listen=0\.0\.0\.0:4143} rustls::session Sending fatal alert AccessDenied`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an IO error occurred: Connection reset by peer (os error 104)`,
 
 		// k8s hitting readiness endpoints before components are ready
 		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
 		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
 
-		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0.0.0.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
+		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
@@ -72,10 +73,6 @@ var (
 		// prometheus scrape failures of control-plane
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:(3000|999(4|5|6|7|8))\)`,
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: operation timed out after 300ms`,
-
-		// single namespace warnings
-		`.*-single-namespace linkerd-controller-.*-.* (destination|public-api|tap) time=".*" level=warning msg="Not authorized for cluster-wide access, limiting access to \\".*-single-namespace\\" namespace"`,
-		`.*-single-namespace linkerd-controller-.*-.* (destination|public-api|tap) time=".*" level=warning msg="ServiceProfiles not available"`,
 
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! linkerd-destination\..*-tls\.svc\.cluster\.local:8086 rustls::session TLS alert received: Message {`,
@@ -102,14 +99,6 @@ func TestVersionPreInstall(t *testing.T) {
 func TestCheckPreInstall(t *testing.T) {
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.pre.single_namespace.golden"
-		err := TestHelper.CreateNamespaceIfNotExists(TestHelper.GetLinkerdNamespace())
-		if err != nil {
-			t.Fatalf("Namespace creation failed\n%s", err.Error())
-		}
-	}
 	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("Check command failed\n%s", out)
@@ -130,9 +119,6 @@ func TestInstall(t *testing.T) {
 	if TestHelper.TLS() {
 		cmd = append(cmd, []string{"--tls", "optional"}...)
 		linkerdDeployReplicas["linkerd-ca"] = deploySpec{1, []string{"ca"}}
-	}
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -179,10 +165,6 @@ func TestVersionPostInstall(t *testing.T) {
 func TestCheckPostInstall(t *testing.T) {
 	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
 	golden := "check.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.single_namespace.golden"
-	}
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
 		out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -285,10 +267,6 @@ func TestCheckProxy(t *testing.T) {
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
 	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 	golden := "check.proxy.golden"
-	if TestHelper.SingleNamespace() {
-		cmd = append(cmd, "--single-namespace")
-		golden = "check.proxy.single_namespace.golden"
-	}
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
 		out, _, err := TestHelper.LinkerdRun(cmd...)

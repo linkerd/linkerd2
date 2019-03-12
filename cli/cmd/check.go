@@ -19,7 +19,6 @@ type checkOptions struct {
 	dataPlaneOnly   bool
 	wait            time.Duration
 	namespace       string
-	singleNamespace bool
 	cniEnabled      bool
 }
 
@@ -30,7 +29,6 @@ func newCheckOptions() *checkOptions {
 		dataPlaneOnly:   false,
 		wait:            300 * time.Second,
 		namespace:       "",
-		singleNamespace: false,
 		cniEnabled:      false,
 	}
 }
@@ -67,7 +65,6 @@ non-zero exit code.`,
 	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
-	cmd.PersistentFlags().BoolVar(&options.singleNamespace, "single-namespace", options.singleNamespace, "When running pre-installation checks (--pre), only check the permissions required to operate the control plane in a single namespace")
 	cmd.PersistentFlags().BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
 
 	return cmd
@@ -85,22 +82,13 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 	}
 
 	if options.preInstallOnly {
-		if options.singleNamespace {
-			checks = append(checks, healthcheck.LinkerdPreInstallSingleNamespaceChecks)
-		} else {
-			checks = append(checks, healthcheck.LinkerdPreInstallClusterChecks)
-		}
+		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 		if !options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
-		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
-
-		if !options.singleNamespace {
-			checks = append(checks, healthcheck.LinkerdServiceProfileChecks)
-		}
 
 		if options.dataPlaneOnly {
 			checks = append(checks, healthcheck.LinkerdDataPlaneChecks)

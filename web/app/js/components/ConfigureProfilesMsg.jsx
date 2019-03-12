@@ -139,9 +139,7 @@ class ConfigureProfilesMsg extends React.Component {
 
   render() {
     const { showAsIcon } = this.props;
-    if (this.props.serviceProfiles === "false") {
-      return null;
-    } else if (showAsIcon) {
+    if (showAsIcon) {
       return this.renderDownloadProfileForm();
     } else {
       return (
@@ -162,7 +160,6 @@ ConfigureProfilesMsg.propTypes = {
     prefixedUrl: PropTypes.func.isRequired,
   }).isRequired,
   classes: PropTypes.shape({}).isRequired,
-  serviceProfiles: PropTypes.string.isRequired,
   showAsIcon: PropTypes.bool,
 };
 

@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -85,24 +84,18 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	}
 
 	// check for cluster-wide access
-	clusterAccess, err := k8s.ClusterAccess(k8sClient)
+	err = k8s.ClusterAccess(k8sClient)
 	if err != nil {
 		return nil, err
-	}
-	if !clusterAccess {
-		return nil, fmt.Errorf("not authorized for cluster-wide access")
 	}
 
 	// check for need and access to ServiceProfiles
 	var spClient *spclient.Clientset
 	for _, res := range resources {
 		if res == SP {
-			serviceProfiles, err := k8s.ServiceProfilesAccess(k8sClient)
+			err := k8s.ServiceProfilesAccess(k8sClient)
 			if err != nil {
 				return nil, err
-			}
-			if !serviceProfiles {
-				return nil, errors.New("not authorized for ServiceProfile access")
 			}
 
 			spClient, err = NewSpClientSet(kubeConfig)

@@ -23,7 +23,6 @@ type (
 		apiClient           public.APIClient
 		uuid                string
 		controllerNamespace string
-		serviceProfiles     bool
 		grafanaProxy        *grafanaProxy
 	}
 )
@@ -38,7 +37,6 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	params := appParams{
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
-		ServiceProfiles:     h.serviceProfiles,
 		PathPrefix:          pathPfx,
 	}
 

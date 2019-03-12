@@ -8,24 +8,21 @@ kubernetes-version
 √ is running the minimum Kubernetes API version
 √ is running the minimum kubectl version
 
-pre-kubernetes-cluster-setup
-----------------------------
+pre-kubernetes-setup
+--------------------
 √ control plane namespace does not already exist
 √ can create Namespaces
 √ can create ClusterRoles
 √ can create ClusterRoleBindings
 √ can create CustomResourceDefinitions
-
-pre-kubernetes-capability
--------------------------
-√ has NET_ADMIN capability
-
-pre-kubernetes-setup
---------------------
 √ can create ServiceAccounts
 √ can create Services
 √ can create Deployments
 √ can create ConfigMaps
+
+pre-kubernetes-capability
+-------------------------
+√ has NET_ADMIN capability
 
 linkerd-version
 ---------------

@@ -21,9 +21,6 @@ linkerd-api
 √ control plane self-check
 √ [kubernetes] control plane can talk to Kubernetes
 √ [prometheus] control plane can talk to Prometheus
-
-linkerd-service-profile
------------------------
 √ no invalid service profiles
 
 linkerd-version
