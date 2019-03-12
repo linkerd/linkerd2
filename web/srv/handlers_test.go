@@ -95,7 +95,7 @@ func TestHandleConfigDownload(t *testing.T) {
 			"text/yaml",
 		},
 		"Content-Disposition": []string{
-			"attachment; filename='authors-profile.yml'",
+			"attachment; filename=authors-profile.yml",
 		},
 	}
 	if !reflect.DeepEqual(recorder.Header(), header) {
