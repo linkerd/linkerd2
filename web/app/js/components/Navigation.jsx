@@ -186,6 +186,7 @@ class NavigationBase extends React.Component {
           if (!lastClicked) {
             this.setState({ hideUpdateBadge: false });
           } else {
+            lastClicked = new Date(lastClicked);
             let latestCommunityUpdate = rsp.map(update => new Date(update.date))
               .sort((a, b) => b - a)[0];
             if (latestCommunityUpdate > lastClicked) {
