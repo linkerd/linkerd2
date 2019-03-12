@@ -185,7 +185,7 @@ func (pf *PortForward) URLFor(path string) string {
 // If that port is taken, it binds to a free ephemeral port and returns the
 // port number.
 func getLocalPort() (int, error) {
-	addr := "127.0.0.1:60606"
+	addr := "127.0.0.1:50750"
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		if opError, ok := err.(*net.OpError); ok {
