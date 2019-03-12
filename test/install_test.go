@@ -58,13 +58,14 @@ var (
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/identity/certificate\.crt", Some\(2\)\), falling back`,
 		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/trust-anchors/trust-anchors\.pem", Some\(2\)\), falling back`,
 
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN proxy={server=in listen=0.0.0.0:4143} rustls::session Sending fatal alert AccessDenied`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN proxy={server=in listen=0\.0\.0\.0:4143} rustls::session Sending fatal alert AccessDenied`,
+		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an IO error occurred: Connection reset by peer (os error 104)`,
 
 		// k8s hitting readiness endpoints before components are ready
 		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
 		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
 
-		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0.0.0.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
+		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
