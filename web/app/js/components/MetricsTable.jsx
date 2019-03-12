@@ -83,12 +83,13 @@ const httpStatColumns = [
       a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
       b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
   },
+
 ];
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
   let isAuthorityTable = resource === "authority";
   let isMultiResourceTable = resource === "multi_resource";
-  let getResourceDisplayName =  isMultiResourceTable ? displayName : d => d.name;
+  let getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
 
   let nsColumn = [
     {
@@ -114,7 +115,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     key: "grafanaDashboard",
     isNumeric: true,
     render: row => {
-      if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0") ) {
+      if (!isAuthorityTable && (!row.added || _get(row, "pods.totalPods") === "0")) {
         return null;
       }
 
@@ -149,7 +150,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       return (
         <Grid container alignItems="center" spacing={8}>
           <Grid item>{nameContents}</Grid>
-          { _isEmpty(d.errors) ? null :
+          {_isEmpty(d.errors) ? null :
           <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
         </Grid>
       );
@@ -162,8 +163,9 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     columns = columns.concat(tcpStatColumns);
   } else {
     columns = columns.concat(httpStatColumns);
-    columns = columns.concat(grafanaColumn);
   }
+  columns = columns.concat(grafanaColumn);
+
 
   // don't add the meshed column on a Authority MetricsTable
   if (!isAuthorityTable) {
@@ -210,7 +212,7 @@ class MetricsTable extends React.Component {
   };
 
   render() {
-    const {  metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
 
