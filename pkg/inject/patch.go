@@ -97,6 +97,7 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
+// AddPodLabel appends the label with the provided key and value
 func (p *Patch) AddPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
