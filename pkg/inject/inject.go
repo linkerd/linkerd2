@@ -154,7 +154,7 @@ func (conf *ResourceConfig) GetPatch(
 	shouldInject func(*ResourceConfig, Report) bool,
 ) (*Patch, []Report, error) {
 	report := newReport(conf)
-	log.Infof("working on %s %s..", strings.ToLower(conf.meta.Kind), report.Name)
+	log.Infof("received %s/%s", strings.ToLower(conf.meta.Kind), report.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
@@ -191,6 +191,7 @@ func (conf *ResourceConfig) GetPatch(
 			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(patch)
 		} else {
+			log.Infof("skipped auto-inject on %s/%s", strings.ToLower(conf.meta.Kind), report.Name)
 			conf.overrideProxyConfigs(patch)
 		}
 	} else {
