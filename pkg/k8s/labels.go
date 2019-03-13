@@ -93,27 +93,23 @@ const (
 	ProxyImageAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image"
 
 	// ProxyImagePullPolicyAnnotation can be used to override the
-	// proxyImagePullPolicy config.
-	ProxyImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image-pull-policy"
+	// proxyImagePullPolicy and proxyInitImagePullPolicy configs.
+	ProxyImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/image-pull-policy"
 
 	// ProxyInitImageAnnotation can be used to override the proxyInitImage
 	// config.
 	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
-
-	// ProxyInitImagePullPolicyAnnotation can be used to override the
-	// proxyInitImagePullPolicy config.
-	ProxyInitImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-pull-policy"
 
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
 	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
 
 	// ProxyIgnoreInboundPortsAnnotation can be used to override the
 	// ignoreInboundPorts config.
-	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/ignore-inbound-ports"
+	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
 
 	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
 	// ignoreOutboundPorts config.
-	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/ignore-outbound-ports"
+	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
 
 	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
 	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
@@ -125,24 +121,24 @@ const (
 	// config.
 	ProxyOutboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/outbound-port"
 
-	// ProxyRequestCPUAnnotation can be used to override the requestCPU config.
-	ProxyRequestCPUAnnotation = ProxyConfigAnnotationsPrefix + "/request-cpu"
+	// ProxyCPURequestAnnotation can be used to override the requestCPU config.
+	ProxyCPURequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-request"
 
-	// ProxyRequestMemoryAnnotation can be used to override the
+	// ProxyMemoryRequestAnnotation can be used to override the
 	// requestMemoryConfig.
-	ProxyRequestMemoryAnnotation = ProxyConfigAnnotationsPrefix + "/request-memory"
+	ProxyMemoryRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-request"
 
-	// ProxyLimitCPUAnnotation can be used to override the limitCPU config.
-	ProxyLimitCPUAnnotation = ProxyConfigAnnotationsPrefix + "/limit-cpu"
+	// ProxyCPULimitAnnotation can be used to override the limitCPU config.
+	ProxyCPULimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit"
 
-	// ProxyLimitMemoryAnnotation can be used to override the limitMemory config.
-	ProxyLimitMemoryAnnotation = ProxyConfigAnnotationsPrefix + "/limit-memory"
+	// ProxyMemoryLimitAnnotation can be used to override the limitMemory config.
+	ProxyMemoryLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-limit"
 
 	// ProxyUIDAnnotation can be used to override the UID config.
-	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/uid"
+	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-uid"
 
 	// ProxyLogLevelAnnotation can be used to override the log level config.
-	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/log-level"
+	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
 	// ProxyDisableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.

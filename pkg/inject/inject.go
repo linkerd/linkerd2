@@ -632,49 +632,49 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 		err           error
 	)
 
-	if override := conf.getOverride(k8s.ProxyRequestCPUAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyCPURequestAnnotation); override != "" {
 		requestCPU, err = k8sResource.ParseQuantity(override)
 	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestCpu(); defaultRequest != "" {
 		requestCPU, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
-		log.Warnf("%s (%s)", err, k8s.ProxyRequestCPUAnnotation)
+		log.Warnf("%s (%s)", err, k8s.ProxyCPURequestAnnotation)
 	}
 	if !requestCPU.IsZero() {
 		resources.Requests["cpu"] = requestCPU
 	}
 
-	if override := conf.getOverride(k8s.ProxyRequestMemoryAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyMemoryRequestAnnotation); override != "" {
 		requestMemory, err = k8sResource.ParseQuantity(override)
 	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestMemory(); defaultRequest != "" {
 		requestMemory, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
-		log.Warnf("%s (%s)", err, k8s.ProxyRequestMemoryAnnotation)
+		log.Warnf("%s (%s)", err, k8s.ProxyMemoryRequestAnnotation)
 	}
 	if !requestMemory.IsZero() {
 		resources.Requests["memory"] = requestMemory
 	}
 
-	if override := conf.getOverride(k8s.ProxyLimitCPUAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyCPULimitAnnotation); override != "" {
 		limitCPU, err = k8sResource.ParseQuantity(override)
 	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitCpu(); defaultLimit != "" {
 		limitCPU, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
-		log.Warnf("%s (%s)", err, k8s.ProxyLimitCPUAnnotation)
+		log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 	}
 	if !limitCPU.IsZero() {
 		resources.Limits["cpu"] = limitCPU
 	}
 
-	if override := conf.getOverride(k8s.ProxyLimitMemoryAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyMemoryLimitAnnotation); override != "" {
 		limitMemory, err = k8sResource.ParseQuantity(override)
 	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitMemory(); defaultLimit != "" {
 		limitMemory, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
-		log.Warnf("%s (%s)", err, k8s.ProxyLimitMemoryAnnotation)
+		log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 	}
 	if !limitMemory.IsZero() {
 		resources.Limits["memory"] = limitMemory
@@ -752,7 +752,7 @@ func (conf *ResourceConfig) proxyInitImage() string {
 }
 
 func (conf *ResourceConfig) proxyInitImagePullPolicy() v1.PullPolicy {
-	if override := conf.getOverride(k8s.ProxyInitImagePullPolicyAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
 		return v1.PullPolicy(override)
 	}
 	return v1.PullPolicy(conf.proxyConfig.GetProxyInitImage().GetPullPolicy())

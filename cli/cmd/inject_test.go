@@ -177,6 +177,12 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			testInjectConfig: noInitContainerConfig,
 		},
+		{
+			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			testInjectConfig: defaultConfig,
+		},
 	}
 
 	for i, tc := range testCases {
