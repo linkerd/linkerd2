@@ -1,3 +1,26 @@
+## edge-19.3.2
+
+* Controller
+  * **Breaking change** Removed support for running the control plane in
+    single-namespace mode, and removed the `--single-namespace` install flag
+  * Updated automatic proxy injection and CLI injection to support overriding
+    inject defaults via pod spec annotations
+  * Added a new public API endpoint for fetching control plane configuration
+* CLI
+  * **Breaking change** Removed the `--api-port` flag from the `inject` and
+    `install` commands (thanks, @paranoidaditya)
+  * Introduced the `linkerd metrics` command for fetching proxy metrics
+  * Updated the `linkerd routes` command to display rows for routes that are not
+    receiving any traffic
+  * Updated the `linkerd dashboard` command to serve dashboard on a fixed port
+* Web UI
+  * Added a Community page to surface news and updates from linkerd.io
+  * Fixed a quoting issue with service profile downloads (thanks, @liquidslr!)
+  * Added a Grafana dashboard and web tables for displaying Job stats
+    (thanks, @Pothulapati!)
+  * Updated sorting of route table to move default routes to the bottom
+  * Added TCP stat tables on the namespace landing page and resource detail page
+
 ## edge-19.3.1
 
 * CLI
