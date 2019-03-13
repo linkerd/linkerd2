@@ -32,6 +32,8 @@ const (
 	// destinationAPIPort is the port exposed by the linkerd-destination service
 	destinationAPIPort = 8086
 
+	defaultProfileSuffix                  = "."
+	internalProfileSuffix                 = "svc.cluster.local."
 	envVarProxyPodNamespace               = "LINKERD2_PROXY_POD_NAMESPACE"
 	envVarProxyLog                        = "LINKERD2_PROXY_LOG"
 	envVarProxyControlURL                 = "LINKERD2_PROXY_CONTROL_URL"
@@ -186,14 +188,10 @@ func (conf *ResourceConfig) GetPatch(
 
 		report.update(conf)
 		if shouldInject(conf, report) {
-			if err := conf.injectPodSpec(patch, identity); err != nil {
-				return nil, nil, err
-			}
+			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(patch)
 		} else {
-			if err := conf.overrideProxyConfigs(patch); err != nil {
-				return nil, nil, err
-			}
+			conf.overrideProxyConfigs(patch)
 		}
 	} else {
 		report.UnsupportedResource = true
@@ -355,38 +353,12 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) error {
-	proxyUID, err := strconv.ParseInt(conf.getOverrideOrDefault(k8s.ProxyUIDAnnotation), 10, 64)
-	if err != nil {
-		return err
-	}
-
-	proxyProbe, err := conf.proxyProbe()
-	if err != nil {
-		return err
-	}
-
-	profileSuffixes, err := conf.proxyDestinationProfileSuffixes()
-	if err != nil {
-		return err
-	}
-
-	inboundPort, err := conf.proxyPort()
-	if err != nil {
-		return err
-	}
-
-	metricsPort, err := conf.proxyMetricsPort()
-	if err != nil {
-		return err
-	}
-
+func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) {
+	proxyUID := conf.proxyUID()
 	sidecar := v1.Container{
-		Name:  k8s.ProxyContainerName,
-		Image: conf.taggedProxyImage(),
-		ImagePullPolicy: v1.PullPolicy(
-			conf.getOverrideOrDefault(k8s.ProxyImagePullPolicyAnnotation),
-		),
+		Name:                     k8s.ProxyContainerName,
+		Image:                    conf.taggedProxyImage(),
+		ImagePullPolicy:          conf.proxyImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{
 			RunAsUser: &proxyUID,
@@ -394,18 +366,19 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 		Ports: []v1.ContainerPort{
 			{
 				Name:          k8s.ProxyPortName,
-				ContainerPort: inboundPort,
+				ContainerPort: conf.proxyInboundPort(),
 			},
 			{
 				Name:          k8s.ProxyMetricsPortName,
-				ContainerPort: metricsPort,
+				ContainerPort: conf.proxyMetricsPort(),
 			},
 		},
 		Resources: conf.proxyResourceRequirements(),
 		Env: []v1.EnvVar{
 			{
 				Name:  envVarProxyLog,
-				Value: conf.getOverrideOrDefault(k8s.ProxyLogLevelAnnotation)},
+				Value: conf.proxyLogLevel(),
+			},
 			{
 				Name:  envVarProxyControlURL,
 				Value: conf.proxyControlURL(),
@@ -428,7 +401,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			},
 			{
 				Name:  envVarProxyDestinationProfileSuffixes,
-				Value: profileSuffixes,
+				Value: conf.proxyDestinationProfileSuffixes(),
 			},
 			{
 				Name:      envVarProxyPodNamespace,
@@ -444,8 +417,8 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 			},
 			{Name: envVarProxyID, Value: identity.ToDNSName()},
 		},
-		LivenessProbe:  proxyProbe,
-		ReadinessProbe: proxyProbe,
+		LivenessProbe:  conf.proxyProbe(),
+		ReadinessProbe: conf.proxyProbe(),
 	}
 
 	// Special case if the caller specifies that
@@ -525,9 +498,9 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 		initContainer := &v1.Container{
 			Name:                     k8s.InitContainerName,
 			Image:                    conf.taggedProxyInitImage(),
-			ImagePullPolicy:          v1.PullPolicy(conf.getOverrideOrDefault(k8s.ProxyInitImagePullPolicyAnnotation)),
+			ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     conf.initProxyArgs(proxyUID),
+			Args:                     conf.proxyInitArgs(),
 			SecurityContext: &v1.SecurityContext{
 				Capabilities: &v1.Capabilities{
 					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -542,8 +515,6 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 		}
 		patch.addInitContainer(initContainer)
 	}
-
-	return nil
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -572,98 +543,12 @@ func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
 	}
 }
 
-func (conf *ResourceConfig) taggedProxyImage() string {
-	return fmt.Sprintf("%s:%s",
-		conf.getOverrideOrDefault(k8s.ProxyImageAnnotation),
-		conf.globalConfig.GetVersion())
+func (conf *ResourceConfig) getOverride(annotation string) string {
+	return conf.podMeta.Annotations[annotation]
 }
 
-func (conf *ResourceConfig) taggedProxyInitImage() string {
-	return fmt.Sprintf("%s:%s",
-		conf.getOverrideOrDefault(k8s.ProxyInitImageAnnotation),
-		conf.globalConfig.GetVersion())
-}
-
-func (conf *ResourceConfig) getOverrideOrDefault(annotation string) string {
-	if value, exists := conf.podMeta.Annotations[annotation]; exists {
-		return value
-	}
-
-	return conf.getDefault(annotation)
-}
-
-func (conf *ResourceConfig) getDefault(annotation string) string {
-	switch annotation {
-	case k8s.ProxyImageAnnotation:
-		return conf.proxyConfig.GetProxyImage().GetImageName()
-
-	case k8s.ProxyImagePullPolicyAnnotation:
-		return conf.proxyConfig.GetProxyImage().GetPullPolicy()
-
-	case k8s.ProxyInitImageAnnotation:
-		return conf.proxyConfig.GetProxyInitImage().GetImageName()
-
-	case k8s.ProxyInitImagePullPolicyAnnotation:
-		return conf.proxyConfig.GetProxyInitImage().GetPullPolicy()
-
-	case k8s.ProxyIgnoreInboundPortsAnnotation:
-		ports := []string{}
-		for _, port := range conf.proxyConfig.GetIgnoreInboundPorts() {
-			portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
-			ports = append(ports, portStr)
-		}
-		return strings.Join(ports, ",")
-
-	case k8s.ProxyIgnoreOutboundPortsAnnotation:
-		ports := []string{}
-		for _, port := range conf.proxyConfig.GetIgnoreOutboundPorts() {
-			portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
-			ports = append(ports, portStr)
-		}
-		return strings.Join(ports, ",")
-
-	case k8s.ProxyControlPortAnnotation:
-		return strconv.FormatUint(uint64(conf.proxyConfig.GetControlPort().GetPort()), 10)
-
-	case k8s.ProxyInboundPortAnnotation:
-		return strconv.FormatUint(uint64(conf.proxyConfig.GetInboundPort().GetPort()), 10)
-
-	case k8s.ProxyMetricsPortAnnotation:
-		return strconv.FormatUint(uint64(conf.proxyConfig.GetMetricsPort().GetPort()), 10)
-
-	case k8s.ProxyOutboundPortAnnotation:
-		return strconv.FormatUint(uint64(conf.proxyConfig.GetOutboundPort().GetPort()), 10)
-
-	case k8s.ProxyRequestCPUAnnotation:
-		return conf.proxyConfig.GetResource().GetRequestCpu()
-
-	case k8s.ProxyRequestMemoryAnnotation:
-		return conf.proxyConfig.GetResource().GetRequestMemory()
-
-	case k8s.ProxyLimitCPUAnnotation:
-		return conf.proxyConfig.GetResource().GetLimitCpu()
-
-	case k8s.ProxyLimitMemoryAnnotation:
-		return conf.proxyConfig.GetResource().GetLimitMemory()
-
-	case k8s.ProxyUIDAnnotation:
-		return strconv.FormatInt(conf.proxyConfig.GetProxyUid(), 10)
-
-	case k8s.ProxyLogLevelAnnotation:
-		return conf.proxyConfig.GetLogLevel().GetLevel()
-
-	case k8s.ProxyDisableExternalProfilesAnnotation:
-		return strconv.FormatBool(conf.proxyConfig.GetDisableExternalProfiles())
-	}
-
-	return ""
-}
-
-func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
-	proxyUID, err := strconv.ParseInt(conf.getOverrideOrDefault(k8s.ProxyUIDAnnotation), 10, 64)
-	if err != nil {
-		return err
-	}
+func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) {
+	proxyUID := conf.proxyUID()
 
 	// override the proxy container
 	for i, c := range conf.podSpec.Containers {
@@ -673,7 +558,7 @@ func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
 
 			container.Image = conf.taggedProxyImage()
 			container.ImagePullPolicy = v1.PullPolicy(
-				conf.getOverrideOrDefault(k8s.ProxyImagePullPolicyAnnotation),
+				conf.getOverride(k8s.ProxyImagePullPolicyAnnotation),
 			)
 			if container.SecurityContext == nil {
 				container.SecurityContext = &v1.SecurityContext{}
@@ -684,22 +569,16 @@ func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
 			for i, port := range container.Ports {
 				switch port.Name {
 				case k8s.ProxyPortName:
-					container.Ports[i].ContainerPort, err = conf.proxyPort()
-					if err != nil {
-						return err
-					}
+					container.Ports[i].ContainerPort = conf.proxyInboundPort()
 				case k8s.ProxyMetricsPortName:
-					container.Ports[i].ContainerPort, err = conf.proxyMetricsPort()
-					if err != nil {
-						return err
-					}
+					container.Ports[i].ContainerPort = conf.proxyMetricsPort()
 				}
 			}
 
 			for i, env := range container.Env {
 				switch env.Name {
 				case envVarProxyLog:
-					container.Env[i].Value = conf.getOverrideOrDefault(k8s.ProxyLogLevelAnnotation)
+					container.Env[i].Value = conf.getOverride(k8s.ProxyLogLevelAnnotation)
 				case envVarProxyControlListener:
 					container.Env[i].Value = conf.proxyControlListener()
 				case envVarProxyMetricsListener:
@@ -709,23 +588,12 @@ func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
 				case envVarProxyInboundListener:
 					container.Env[i].Value = conf.proxyInboundListener()
 				case envVarProxyDestinationProfileSuffixes:
-					profileSuffixes, err := conf.proxyDestinationProfileSuffixes()
-					if err != nil {
-						return err
-					}
-					container.Env[i].Value = profileSuffixes
+					container.Env[i].Value = conf.proxyDestinationProfileSuffixes()
 				}
 			}
 
-			container.LivenessProbe, err = conf.proxyProbe()
-			if err != nil {
-				return err
-			}
-
-			container.ReadinessProbe, err = conf.proxyProbe()
-			if err != nil {
-				return err
-			}
+			container.LivenessProbe = conf.proxyProbe()
+			container.ReadinessProbe = conf.proxyProbe()
 
 			conf.podSpec.Containers[i] = container
 			log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, conf.podSpec.Containers[i])
@@ -743,9 +611,9 @@ func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
 
 			container.Image = conf.taggedProxyInitImage()
 			container.ImagePullPolicy = v1.PullPolicy(
-				conf.getOverrideOrDefault(k8s.ProxyInitImagePullPolicyAnnotation),
+				conf.getOverride(k8s.ProxyInitImagePullPolicyAnnotation),
 			)
-			container.Args = conf.initProxyArgs(proxyUID)
+			container.Args = conf.proxyInitArgs()
 
 			conf.podSpec.InitContainers[i] = container
 			log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, conf.podSpec.InitContainers[i])
@@ -754,27 +622,79 @@ func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) error {
 			break
 		}
 	}
-
-	return nil
 }
 
-func (conf *ResourceConfig) proxyPort() (int32, error) {
-	inboundPort := conf.getOverrideOrDefault(k8s.ProxyInboundPortAnnotation)
-	inboundPortInt, err := strconv.ParseInt(inboundPort, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-
-	return int32(inboundPortInt), nil
+func (conf *ResourceConfig) taggedProxyImage() string {
+	return fmt.Sprintf("%s:%s", conf.proxyImage(), conf.globalConfig.GetVersion())
 }
 
-func (conf *ResourceConfig) proxyMetricsPort() (int32, error) {
-	metricsPort := conf.getOverrideOrDefault(k8s.ProxyMetricsPortAnnotation)
-	metricsPortInt, err := strconv.ParseInt(metricsPort, 10, 32)
-	if err != nil {
-		return 0, err
+func (conf *ResourceConfig) taggedProxyInitImage() string {
+	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.globalConfig.GetVersion())
+}
+
+func (conf *ResourceConfig) proxyImage() string {
+	if override := conf.getOverride(k8s.ProxyImageAnnotation); override != "" {
+		return override
 	}
-	return int32(metricsPortInt), nil
+	return conf.proxyConfig.GetProxyImage().GetImageName()
+}
+
+func (conf *ResourceConfig) proxyImagePullPolicy() v1.PullPolicy {
+	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
+		return v1.PullPolicy(override)
+	}
+	return v1.PullPolicy(conf.proxyConfig.GetProxyImage().GetPullPolicy())
+}
+
+func (conf *ResourceConfig) proxyControlPort() int32 {
+	if override := conf.getOverride(k8s.ProxyControlPortAnnotation); override != "" {
+		controlPort, err := strconv.ParseInt(override, 10, 32)
+		if err == nil {
+			return int32(controlPort)
+		}
+	}
+
+	return int32(conf.proxyConfig.GetControlPort().GetPort())
+}
+
+func (conf *ResourceConfig) proxyInboundPort() int32 {
+	if override := conf.getOverride(k8s.ProxyInboundPortAnnotation); override != "" {
+		inboundPort, err := strconv.ParseInt(override, 10, 32)
+		if err == nil {
+			return int32(inboundPort)
+		}
+	}
+
+	return int32(conf.proxyConfig.GetInboundPort().GetPort())
+}
+
+func (conf *ResourceConfig) proxyMetricsPort() int32 {
+	if override := conf.getOverride(k8s.ProxyMetricsPortAnnotation); override != "" {
+		metricsPort, err := strconv.ParseInt(override, 10, 32)
+		if err == nil {
+			return int32(metricsPort)
+		}
+	}
+	return int32(conf.proxyConfig.GetMetricsPort().GetPort())
+}
+
+func (conf *ResourceConfig) proxyOutboundPort() int32 {
+	if override := conf.getOverride(k8s.ProxyOutboundPortAnnotation); override != "" {
+		outboundPort, err := strconv.ParseInt(override, 10, 32)
+		if err == nil {
+			return int32(outboundPort)
+		}
+	}
+
+	return int32(conf.proxyConfig.GetOutboundPort().GetPort())
+}
+
+func (conf *ResourceConfig) proxyLogLevel() string {
+	if override := conf.getOverride(k8s.ProxyLogLevelAnnotation); override != "" {
+		return override
+	}
+
+	return conf.proxyConfig.GetLogLevel().GetLevel()
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements {
@@ -783,20 +703,60 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 		Limits:   v1.ResourceList{},
 	}
 
-	if request := conf.getOverrideOrDefault(k8s.ProxyRequestCPUAnnotation); request != "" {
-		resources.Requests["cpu"] = k8sResource.MustParse(request)
+	var (
+		requestCPU    k8sResource.Quantity
+		requestMemory k8sResource.Quantity
+		limitCPU      k8sResource.Quantity
+		limitMemory   k8sResource.Quantity
+		err           error
+	)
+
+	if override := conf.getOverride(k8s.ProxyRequestCPUAnnotation); override != "" {
+		requestCPU, err = k8sResource.ParseQuantity(override)
+	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestCpu(); defaultRequest != "" {
+		requestCPU, err = k8sResource.ParseQuantity(defaultRequest)
+	}
+	if err != nil {
+		log.Warnf("%s (%s)", err, k8s.ProxyRequestCPUAnnotation)
+	}
+	if !requestCPU.IsZero() {
+		resources.Requests["cpu"] = requestCPU
 	}
 
-	if request := conf.getOverrideOrDefault(k8s.ProxyRequestMemoryAnnotation); request != "" {
-		resources.Requests["memory"] = k8sResource.MustParse(request)
+	if override := conf.getOverride(k8s.ProxyRequestMemoryAnnotation); override != "" {
+		requestMemory, err = k8sResource.ParseQuantity(override)
+	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestMemory(); defaultRequest != "" {
+		requestMemory, err = k8sResource.ParseQuantity(defaultRequest)
+	}
+	if err != nil {
+		log.Warnf("%s (%s)", err, k8s.ProxyRequestMemoryAnnotation)
+	}
+	if !requestMemory.IsZero() {
+		resources.Requests["memory"] = requestMemory
 	}
 
-	if limit := conf.getOverrideOrDefault(k8s.ProxyLimitCPUAnnotation); limit != "" {
-		resources.Limits["cpu"] = k8sResource.MustParse(limit)
+	if override := conf.getOverride(k8s.ProxyLimitCPUAnnotation); override != "" {
+		limitCPU, err = k8sResource.ParseQuantity(override)
+	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitCpu(); defaultLimit != "" {
+		limitCPU, err = k8sResource.ParseQuantity(defaultLimit)
+	}
+	if err != nil {
+		log.Warnf("%s (%s)", err, k8s.ProxyLimitCPUAnnotation)
+	}
+	if !limitCPU.IsZero() {
+		resources.Limits["cpu"] = limitCPU
 	}
 
-	if limit := conf.getOverrideOrDefault(k8s.ProxyLimitMemoryAnnotation); limit != "" {
-		resources.Limits["memory"] = k8sResource.MustParse(limit)
+	if override := conf.getOverride(k8s.ProxyLimitMemoryAnnotation); override != "" {
+		limitMemory, err = k8sResource.ParseQuantity(override)
+	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitMemory(); defaultLimit != "" {
+		limitMemory, err = k8sResource.ParseQuantity(defaultLimit)
+	}
+	if err != nil {
+		log.Warnf("%s (%s)", err, k8s.ProxyLimitMemoryAnnotation)
+	}
+	if !limitMemory.IsZero() {
+		resources.Limits["memory"] = limitMemory
 	}
 
 	return resources
@@ -811,77 +771,91 @@ func (conf *ResourceConfig) proxyControlURL() string {
 }
 
 func (conf *ResourceConfig) proxyControlListener() string {
-	controlPort := conf.getOverrideOrDefault(k8s.ProxyControlPortAnnotation)
-	return fmt.Sprintf("tcp://0.0.0.0:%s", controlPort)
-}
-
-func (conf *ResourceConfig) proxyMetricsListener() string {
-	metricsPort := conf.getOverrideOrDefault(k8s.ProxyMetricsPortAnnotation)
-	return fmt.Sprintf("tcp://0.0.0.0:%s", metricsPort)
-}
-
-func (conf *ResourceConfig) proxyOutboundListener() string {
-	outboundPort := conf.getOverrideOrDefault(k8s.ProxyOutboundPortAnnotation)
-	return fmt.Sprintf("tcp://127.0.0.1:%s", outboundPort)
+	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyControlPort())
 }
 
 func (conf *ResourceConfig) proxyInboundListener() string {
-	inboundPort := conf.getOverrideOrDefault(k8s.ProxyInboundPortAnnotation)
-	return fmt.Sprintf("tcp://0.0.0.0:%s", inboundPort)
+	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyInboundPort())
 }
 
-func (conf *ResourceConfig) proxyDestinationProfileSuffixes() (string, error) {
-	disableExternalProfiles, err := strconv.ParseBool(conf.getOverrideOrDefault(k8s.ProxyDisableExternalProfilesAnnotation))
-	if err != nil {
-		return "", err
-	}
-
-	profileSuffixes := "."
-	if disableExternalProfiles {
-		profileSuffixes = "svc.cluster.local."
-	}
-
-	return profileSuffixes, nil
+func (conf *ResourceConfig) proxyMetricsListener() string {
+	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyMetricsPort())
 }
 
-func (conf *ResourceConfig) proxyProbe() (*v1.Probe, error) {
-	metricsPort := conf.getOverrideOrDefault(k8s.ProxyMetricsPortAnnotation)
-	probePort, err := strconv.ParseUint(metricsPort, 10, 32)
-	if err != nil {
-		return nil, err
+func (conf *ResourceConfig) proxyOutboundListener() string {
+	return fmt.Sprintf("tcp://127.0.0.1:%d", conf.proxyOutboundPort())
+}
+
+func (conf *ResourceConfig) proxyUID() int64 {
+	if overrides := conf.getOverride(k8s.ProxyUIDAnnotation); overrides != "" {
+		v, err := strconv.ParseInt(overrides, 10, 64)
+		if err == nil {
+			return v
+		}
 	}
 
+	return conf.proxyConfig.GetProxyUid()
+}
+
+func (conf *ResourceConfig) proxyProbe() *v1.Probe {
+	metricsPort := conf.proxyMetricsPort()
 	return &v1.Probe{
 		Handler: v1.Handler{
 			HTTPGet: &v1.HTTPGetAction{
 				Path: "/metrics",
 				Port: intstr.IntOrString{
-					IntVal: int32(probePort),
+					IntVal: metricsPort,
 				},
 			},
 		},
 		InitialDelaySeconds: 10,
-	}, nil
+	}
 }
 
-func (conf *ResourceConfig) initProxyArgs(proxyUID int64) []string {
+func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
+	if overrides := conf.getOverride(k8s.ProxyDisableExternalProfilesAnnotation); overrides != "" {
+		disableExternalProfiles, err := strconv.ParseBool(overrides)
+		if err == nil && disableExternalProfiles {
+			return internalProfileSuffix
+		}
+	}
+
+	return defaultProfileSuffix
+}
+
+func (conf *ResourceConfig) proxyInitImage() string {
+	if override := conf.getOverride(k8s.ProxyInitImageAnnotation); override != "" {
+		return override
+	}
+	return conf.proxyConfig.GetProxyInitImage().GetImageName()
+}
+
+func (conf *ResourceConfig) proxyInitImagePullPolicy() v1.PullPolicy {
+	if override := conf.getOverride(k8s.ProxyInitImagePullPolicyAnnotation); override != "" {
+		return v1.PullPolicy(override)
+	}
+	return v1.PullPolicy(conf.proxyConfig.GetProxyInitImage().GetPullPolicy())
+}
+
+func (conf *ResourceConfig) proxyInitArgs() []string {
 	var (
-		controlPort       = conf.getOverrideOrDefault(k8s.ProxyControlPortAnnotation)
-		metricsPort       = conf.getOverrideOrDefault(k8s.ProxyMetricsPortAnnotation)
-		inboundPort       = conf.getOverrideOrDefault(k8s.ProxyInboundPortAnnotation)
-		outboundPort      = conf.getOverrideOrDefault(k8s.ProxyOutboundPortAnnotation)
-		outboundSkipPorts = conf.getOverrideOrDefault(k8s.ProxyIgnoreOutboundPortsAnnotation)
+		controlPort       = conf.proxyControlPort()
+		metricsPort       = conf.proxyMetricsPort()
+		inboundPort       = conf.proxyInboundPort()
+		outboundPort      = conf.proxyOutboundPort()
+		outboundSkipPorts = conf.proxyOutboundSkipPorts()
+		proxyUID          = conf.proxyUID()
 	)
 
-	inboundSkipPorts := conf.getOverrideOrDefault(k8s.ProxyIgnoreInboundPortsAnnotation)
+	inboundSkipPorts := conf.proxyInboundSkipPorts()
 	if len(inboundSkipPorts) > 0 {
 		inboundSkipPorts += ","
 	}
-	inboundSkipPorts += controlPort + "," + metricsPort
+	inboundSkipPorts += fmt.Sprintf("%d,%d", controlPort, metricsPort)
 
 	initArgs := []string{
-		"--incoming-proxy-port", inboundPort,
-		"--outgoing-proxy-port", outboundPort,
+		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),
+		"--outgoing-proxy-port", fmt.Sprintf("%d", outboundPort),
 		"--proxy-uid", fmt.Sprintf("%d", proxyUID),
 	}
 	initArgs = append(initArgs, "--inbound-ports-to-ignore", inboundSkipPorts)
@@ -891,6 +865,32 @@ func (conf *ResourceConfig) initProxyArgs(proxyUID int64) []string {
 	}
 
 	return initArgs
+}
+
+func (conf *ResourceConfig) proxyInboundSkipPorts() string {
+	if override := conf.getOverride(k8s.ProxyIgnoreInboundPortsAnnotation); override != "" {
+		return override
+	}
+
+	ports := []string{}
+	for _, port := range conf.proxyConfig.GetIgnoreInboundPorts() {
+		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
+		ports = append(ports, portStr)
+	}
+	return strings.Join(ports, ",")
+}
+
+func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
+	if override := conf.getOverride(k8s.ProxyIgnoreOutboundPortsAnnotation); override != "" {
+		return override
+	}
+
+	ports := []string{}
+	for _, port := range conf.proxyConfig.GetIgnoreOutboundPorts() {
+		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
+		ports = append(ports, portStr)
+	}
+	return strings.Join(ports, ",")
 }
 
 // ShouldInjectCLI is used by CLI inject to determine whether or not a given
