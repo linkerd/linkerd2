@@ -13,18 +13,16 @@ echo "cleaning up namespace [${linkerd_namespace}] and associated test namespace
 
 if ! namespaces=$(kubectl get ns -oname | grep -E "/$linkerd_namespace(-|$)"); then
   echo "no namespaces found for [$linkerd_namespace]" >&2
-else
-  kubectl delete $namespaces
 fi
 
 if ! clusterrolebindings=$(kubectl get clusterrolebindings -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
   echo "no clusterrolebindings found for [$linkerd_namespace]" >&2
-else
-  kubectl delete $clusterrolebindings
 fi
 
 if ! clusterroles=$(kubectl get clusterroles -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
   echo "no clusterroles found for [$linkerd_namespace]" >&2
-else
-  kubectl delete $clusterroles
+fi
+
+if [[ $namespaces || $clusterrolebindings || $clusterroles ]]; then
+  kubectl delete --wait=false $namespaces $clusterrolebindings $clusterroles
 fi
