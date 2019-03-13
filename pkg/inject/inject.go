@@ -190,9 +190,6 @@ func (conf *ResourceConfig) GetPatch(
 		if shouldInject(conf, report) {
 			conf.injectPodSpec(patch, identity)
 			conf.injectObjectMeta(patch)
-		} else {
-			log.Infof("skipped auto-inject on %s/%s", strings.ToLower(conf.meta.Kind), report.Name)
-			conf.overrideProxyConfigs(patch)
 		}
 	} else {
 		report.UnsupportedResource = true
@@ -546,83 +543,6 @@ func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
 	return conf.podMeta.Annotations[annotation]
-}
-
-func (conf *ResourceConfig) overrideProxyConfigs(patch *Patch) {
-	proxyUID := conf.proxyUID()
-
-	// override the proxy container
-	for i, c := range conf.podSpec.Containers {
-		if c.Name == k8s.ProxyContainerName {
-			container := conf.podSpec.Containers[i]
-			log.Debugf("before overrides (%s): %+v\n", k8s.ProxyContainerName, container)
-
-			container.Image = conf.taggedProxyImage()
-			container.ImagePullPolicy = v1.PullPolicy(
-				conf.getOverride(k8s.ProxyImagePullPolicyAnnotation),
-			)
-			if container.SecurityContext == nil {
-				container.SecurityContext = &v1.SecurityContext{}
-			}
-			container.SecurityContext.RunAsUser = &proxyUID
-			container.Resources = conf.proxyResourceRequirements()
-
-			for i, port := range container.Ports {
-				switch port.Name {
-				case k8s.ProxyPortName:
-					container.Ports[i].ContainerPort = conf.proxyInboundPort()
-				case k8s.ProxyMetricsPortName:
-					container.Ports[i].ContainerPort = conf.proxyMetricsPort()
-				}
-			}
-
-			for i, env := range container.Env {
-				switch env.Name {
-				case envVarProxyLog:
-					container.Env[i].Value = conf.getOverride(k8s.ProxyLogLevelAnnotation)
-				case envVarProxyControlListener:
-					container.Env[i].Value = conf.proxyControlListener()
-				case envVarProxyMetricsListener:
-					container.Env[i].Value = conf.proxyMetricsListener()
-				case envVarProxyOutboundListener:
-					container.Env[i].Value = conf.proxyOutboundListener()
-				case envVarProxyInboundListener:
-					container.Env[i].Value = conf.proxyInboundListener()
-				case envVarProxyDestinationProfileSuffixes:
-					container.Env[i].Value = conf.proxyDestinationProfileSuffixes()
-				}
-			}
-
-			container.LivenessProbe = conf.proxyProbe()
-			container.ReadinessProbe = conf.proxyProbe()
-
-			conf.podSpec.Containers[i] = container
-			log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, conf.podSpec.Containers[i])
-
-			patch.replaceContainer(&conf.podSpec.Containers[i], i)
-			break
-		}
-	}
-
-	// override the init container
-	for i, c := range conf.podSpec.InitContainers {
-		if c.Name == k8s.InitContainerName {
-			container := conf.podSpec.InitContainers[i]
-			log.Debugf("before overrides (%s): %+v\n", k8s.InitContainerName, container)
-
-			container.Image = conf.taggedProxyInitImage()
-			container.ImagePullPolicy = v1.PullPolicy(
-				conf.getOverride(k8s.ProxyInitImagePullPolicyAnnotation),
-			)
-			container.Args = conf.proxyInitArgs()
-
-			conf.podSpec.InitContainers[i] = container
-			log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, conf.podSpec.InitContainers[i])
-
-			patch.replaceInitContainer(&conf.podSpec.InitContainers[i], i)
-			break
-		}
-	}
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {

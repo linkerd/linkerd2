@@ -2,7 +2,6 @@ package inject
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -66,14 +65,6 @@ func (p *Patch) addContainer(container *corev1.Container) {
 	})
 }
 
-func (p *Patch) replaceContainer(container *corev1.Container, index int) {
-	p.patchOps = append(p.patchOps, &patchOp{
-		Op:    "replace",
-		Path:  fmt.Sprintf("/spec/template/spec/containers/%d", index),
-		Value: container,
-	})
-}
-
 func (p *Patch) addInitContainerRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
@@ -86,14 +77,6 @@ func (p *Patch) addInitContainer(container *corev1.Container) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathInitContainer,
-		Value: container,
-	})
-}
-
-func (p *Patch) replaceInitContainer(container *corev1.Container, index int) {
-	p.patchOps = append(p.patchOps, &patchOp{
-		Op:    "replace",
-		Path:  fmt.Sprintf("/spec/template/spec/initContainers/%d", index),
 		Value: container,
 	})
 }

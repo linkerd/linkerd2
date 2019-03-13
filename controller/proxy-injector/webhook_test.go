@@ -145,18 +145,8 @@ func TestGetPatch(t *testing.T) {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
 
-		if p.IsEmpty() {
-			t.Errorf("Expected at least one patches to be present")
-		}
-
-		actual, err := p.Marshal()
-		if err != nil {
-			t.Fatalf("Unexepected Marshal error: %s", err)
-		}
-
-		expected := `[{"op":"replace","path":"/spec/template/spec/containers/1","value":{"name":"linkerd-proxy","image":"gcr.io/linkerd-io/proxy:","resources":{},"livenessProbe":{"httpGet":{"path":"/metrics","port":4191},"initialDelaySeconds":10},"readinessProbe":{"httpGet":{"path":"/metrics","port":4191},"initialDelaySeconds":10},"securityContext":{"runAsUser":2102}}},{"op":"replace","path":"/spec/template/spec/initContainers/0","value":{"name":"linkerd-init","image":"gcr.io/linkerd-io/proxy-init:","args":["--incoming-proxy-port","4143","--outgoing-proxy-port","4140","--proxy-uid","2102","--inbound-ports-to-ignore","4190,4191"],"resources":{}}}]`
-		if string(actual) != expected {
-			t.Errorf("Expected: '%s'\nActual :'%s'", expected, actual)
+		if !p.IsEmpty() {
+			t.Errorf("Expected empty patch")
 		}
 	})
 }
