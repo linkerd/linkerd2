@@ -21,6 +21,7 @@ import { withContext } from './util/AppContext.jsx';
 
 const WS_NORMAL_CLOSURE = 1000;
 const WS_ABNORMAL_CLOSURE = 1006;
+
 class TopModule extends React.Component {
   static propTypes = {
     maxRowsToDisplay: PropTypes.number,
