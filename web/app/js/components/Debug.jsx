@@ -9,7 +9,6 @@ import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _reduce from 'lodash/reduce';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
-import { numericSort } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 
@@ -18,33 +17,33 @@ const endpointColumns = [
     title: "Namespace",
     dataIndex: "namespace",
     render: d => <Link to={"/namespaces/" + d.namespace}>{d.namespace}</Link>,
-    sorter: (a, b) => (a.namespace).localeCompare(b.namespace)
+    sorter: d => d.namespace
   },
   {
     title: "IP",
     dataIndex: "ip",
-    sorter: (a, b) => (a.ip).localeCompare(b.ip)
+    sorter: d => d.ip
   },
   {
     title: "Port",
     dataIndex: "port",
-    sorter: (a, b) => numericSort(a.port, b.port)
+    sorter: d => d.port
   },
   {
     title: "Pod",
     dataIndex: "name",
-    sorter: (a, b) => (a.name).localeCompare(b.name),
+    sorter: d => d.name,
     render: d => <Link to={`/namespaces/${d.namespace}/pods/${d.name}`}>{d.name}</Link>
   },
   {
     title: "Resource Version",
     dataIndex: "resourceVersion",
-    sorter: (a, b) => numericSort(a.resourceVersion, b.resourceVersion)
+    sorter: d => d.resourceVersion
   },
   {
     title: "Service",
     dataIndex: "service",
-    sorter: (a, b) => (a.service).localeCompare(b.service)
+    sorter: d => d.service
   }
 ];
 class Debug extends React.Component {

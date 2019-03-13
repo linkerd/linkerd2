@@ -16,6 +16,7 @@ import Typography from '@material-ui/core/Typography';
 import _find from 'lodash/find';
 import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
+import _sortBy from 'lodash/sortBy';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -85,8 +86,8 @@ class BaseTable extends React.Component {
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
     let rows = tableRows;
     let col = _find(tableColumns, d => d.dataIndex === orderBy);
-    if (orderBy) {
-      rows = tableRows.sort(col.sorter);
+    if (orderBy && col.sorter) {
+      rows = _sortBy(rows, row => col.sorter(row));
     }
     if (filterBy) {
       let columnsToFilter = tableColumns.filter(col => col.filter);

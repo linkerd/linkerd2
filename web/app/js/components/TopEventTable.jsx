@@ -1,5 +1,5 @@
 import { directionColumn, extractDisplayName, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, numericSort, toShortResourceName } from './util/Utils.js';
+import { formatLatencySec, toShortResourceName } from './util/Utils.js';
 
 import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
@@ -30,27 +30,27 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: "Method",
     dataIndex: "httpMethod",
     filter: d => d.httpMethod,
-    sorter: (a, b) => a.httpMethod.localeCompare(b.httpMethod)
+    sorter: d => d.httpMethod
   },
   {
     title: "Path",
     dataIndex: "path",
     filter: d => d.path,
-    sorter: (a, b) => a.path.localeCompare(b.path)
+    sorter: d => d.path
   },
   {
     title: "Count",
     dataIndex: "count",
     isNumeric: true,
     defaultSortOrder: "desc",
-    sorter: (a, b) => numericSort(a.count, b.count)
+    sorter: d => d.count
   },
   {
     title: "Best",
     dataIndex: "best",
     isNumeric: true,
     render: d => formatLatencySec(d.best),
-    sorter: (a, b) => numericSort(a.best, b.best)
+    sorter: d => d.best
   },
   {
     title: "Worst",
@@ -58,14 +58,14 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     isNumeric: true,
     defaultSortOrder: "desc",
     render: d => formatLatencySec(d.worst),
-    sorter: (a, b) => numericSort(a.worst, b.worst)
+    sorter: d => d.worst
   },
   {
     title: "Last",
     dataIndex: "last",
     isNumeric: true,
     render: d => formatLatencySec(d.last),
-    sorter: (a, b) => numericSort(a.last, b.last)
+    sorter: d => d.last
   },
   {
     title: "Success Rate",
@@ -73,7 +73,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     isNumeric: true,
     render: d => _isNil(d) || _isNil(d.successRate) ? "---" :
     <SuccessRateMiniChart sr={d.successRate.get()} />,
-    sorter: (a, b) => numericSort(a.successRate.get(), b.successRate.get()),
+    sorter: d => d.successRate.get()
   },
   {
     title: "Tap",

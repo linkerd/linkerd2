@@ -1,4 +1,4 @@
-import { displayName, friendlyTitle, metricToFormatter, numericSort } from './util/Utils.js';
+import { displayName, friendlyTitle, metricToFormatter } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
@@ -20,21 +20,21 @@ const tcpStatColumns = [
     dataIndex: "tcp.openConnections",
     isNumeric: true,
     render: d => metricToFormatter["NO_UNIT"](d.tcp.openConnections),
-    sorter: (a, b) => numericSort(a.tcp.openConnections, b.tcp.openConnections)
+    sorter: d => d.tcp.openConnections
   },
   {
     title: "Read Bytes / sec",
     dataIndex: "tcp.readRate",
     isNumeric: true,
     render: d => metricToFormatter["BYTES"](d.tcp.readRate),
-    sorter: (a, b) => numericSort(a.tcp.readRate, b.tcp.readRate)
+    sorter: d => d.tcp.readRate
   },
   {
     title: "Write Bytes / sec",
     dataIndex: "tcp.writeRate",
     isNumeric: true,
     render: d => metricToFormatter["BYTES"](d.tcp.writeRate),
-    sorter: (a, b) => numericSort(a.tcp.writeRate, b.tcp.writeRate)
+    sorter: d => d.tcp.writeRate
   },
 ];
 
@@ -44,44 +44,42 @@ const httpStatColumns = [
     dataIndex: "successRate",
     isNumeric: true,
     render: d => <SuccessRateMiniChart sr={d.successRate} />,
-    sorter: (a, b) => numericSort(a.successRate, b.successRate)
+    sorter: d => d.successRate
   },
   {
     title: "RPS",
     dataIndex: "requestRate",
     isNumeric: true,
     render: d => metricToFormatter["NO_UNIT"](d.requestRate),
-    sorter: (a, b) => numericSort(a.requestRate, b.requestRate)
+    sorter: d => d.requestRate
   },
   {
     title: "P50 Latency",
     dataIndex: "P50",
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.P50),
-    sorter: (a, b) => numericSort(a.P50, b.P50)
+    sorter: d => d.P50
   },
   {
     title: "P95 Latency",
     dataIndex: "P95",
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.P95),
-    sorter: (a, b) => numericSort(a.P95, b.P95)
+    sorter: d => d.P95
   },
   {
     title: "P99 Latency",
     dataIndex: "P99",
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.P99),
-    sorter: (a, b) => numericSort(a.P99, b.P99)
+    sorter: d => d.P99
   },
   {
     title: "TLS",
     dataIndex: "tlsRequestPercent",
     isNumeric: true,
     render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
-    sorter: (a, b) => numericSort(
-      a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
-      b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
+    sorter: d => d.tlsRequestPercent ? d.tlsRequestPercent.get() : 0
   },
 ];
 
@@ -97,7 +95,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       filter: d => d.namespace,
       isNumeric: false,
       render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
-      sorter: (a, b) => (a.namespace || "").localeCompare(b.namespace)
+      sorter: d => d.namespace
     }
   ];
 
@@ -106,7 +104,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     dataIndex: "pods.totalPods",
     isNumeric: true,
     render: d => !d.pods ? null : d.pods.meshedPods + "/" + d.pods.totalPods,
-    sorter: (a, b) => numericSort(a.pods.totalPods, b.pods.totalPods)
+    sorter: d => d.pods ? d.pods.totalPods : 0
   };
 
   let grafanaColumn = {
@@ -154,7 +152,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
         </Grid>
       );
     },
-    sorter: (a, b) => (getResourceDisplayName(a) || "").localeCompare(getResourceDisplayName(b))
+    sorter: d => getResourceDisplayName(d) ? getResourceDisplayName(d) : 0
   };
 
   let columns = [nameColumn];
