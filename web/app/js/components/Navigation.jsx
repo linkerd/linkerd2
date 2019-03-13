@@ -34,6 +34,7 @@ import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
+const localStorageKey = "linkerd-updates-last-clicked";
 
 const styles = theme => {
   const drawerWidth = theme.spacing.unit * 31;
@@ -184,7 +185,7 @@ class NavigationBase extends React.Component {
       .then(rsp => rsp.data.date)
       .then(rsp => {
         if (rsp.length > 0) {
-          let lastClicked = localStorage["linkerd-updates-last-clicked"];
+          let lastClicked = localStorage[localStorageKey];
           if (!lastClicked) {
             this.setState({ hideUpdateBadge: false });
           } else {
@@ -207,10 +208,8 @@ class NavigationBase extends React.Component {
 
   handleCommunityClick = () => {
     let lastClicked = new Date();
-    localStorage.setItem("linkerd-updates-last-clicked", lastClicked);
-    if (this.state.hideUpdateBadge === false) {
-      this.setState({ hideUpdateBadge: true });
-    }
+    localStorage.setItem(localStorageKey, lastClicked);
+    this.setState({ hideUpdateBadge: true });
   }
 
   handleDrawerClick = () => {

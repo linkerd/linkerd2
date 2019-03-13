@@ -1,17 +1,15 @@
 import Iframe from 'react-iframe';
 import React from 'react';
 
-function Community() {
+const Community = () => {
   return (
-    <React.Fragment>
-      <Iframe
-        url="https://linkerd.io/dashboard/"
-        position="inherit"
-        display="block"
-        height="100vh"
-        border="none" />
-    </React.Fragment>
+    <Iframe
+      url="https://linkerd.io/dashboard/"
+      position="inherit"
+      display="block"
+      height="100vh"
+      border="none" />
   );
-}
+};
 
 export default Community;
