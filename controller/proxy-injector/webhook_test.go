@@ -47,7 +47,7 @@ func confNsDisabled() *inject.ResourceConfig {
 	return inject.NewResourceConfig(globalConfig, proxyConfig).WithNsAnnotations(map[string]string{})
 }
 
-func TestShouldInject(t *testing.T) {
+func TestGetPatch(t *testing.T) {
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
@@ -144,12 +144,9 @@ func TestShouldInject(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
-		patchJSON, err := p.Marshal()
-		if err != nil {
-			t.Fatalf("Unexepected Marshal error: %s", err)
-		}
-		if string(patchJSON) != "[]" {
-			t.Fatal("Expected deployment with injected proxy to be skipped")
+
+		if !p.IsEmpty() {
+			t.Errorf("Expected empty patch")
 		}
 	})
 }

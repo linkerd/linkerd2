@@ -82,6 +82,68 @@ const (
 	// in service identity.
 	IdentityModeAnnotation = Prefix + "/identity-mode"
 
+	/*
+	 * Proxy config annotations
+	 */
+
+	// ProxyConfigAnnotationsPrefix is the prefix of all config-related annotations
+	ProxyConfigAnnotationsPrefix = "config.linkerd.io"
+
+	// ProxyImageAnnotation can be used to override the proxyImage config.
+	ProxyImageAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-image"
+
+	// ProxyImagePullPolicyAnnotation can be used to override the
+	// proxyImagePullPolicy and proxyInitImagePullPolicy configs.
+	ProxyImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/image-pull-policy"
+
+	// ProxyInitImageAnnotation can be used to override the proxyInitImage
+	// config.
+	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
+
+	// ProxyControlPortAnnotation can be used to override the controlPort config.
+	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
+
+	// ProxyIgnoreInboundPortsAnnotation can be used to override the
+	// ignoreInboundPorts config.
+	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
+
+	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
+	// ignoreOutboundPorts config.
+	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
+
+	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
+	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
+
+	// ProxyMetricsPortAnnotation can be used to override the metricsPort config.
+	ProxyMetricsPortAnnotation = ProxyConfigAnnotationsPrefix + "/metrics-port"
+
+	// ProxyOutboundPortAnnotation can be used to override the outboundPort
+	// config.
+	ProxyOutboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/outbound-port"
+
+	// ProxyCPURequestAnnotation can be used to override the requestCPU config.
+	ProxyCPURequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-request"
+
+	// ProxyMemoryRequestAnnotation can be used to override the
+	// requestMemoryConfig.
+	ProxyMemoryRequestAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-request"
+
+	// ProxyCPULimitAnnotation can be used to override the limitCPU config.
+	ProxyCPULimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-cpu-limit"
+
+	// ProxyMemoryLimitAnnotation can be used to override the limitMemory config.
+	ProxyMemoryLimitAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-memory-limit"
+
+	// ProxyUIDAnnotation can be used to override the UID config.
+	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-uid"
+
+	// ProxyLogLevelAnnotation can be used to override the log level config.
+	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
+
+	// ProxyDisableExternalProfilesAnnotation can be used to override the
+	// disableExternalProfilesAnnotation config.
+	ProxyDisableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/disable-external-profiles"
+
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = "disabled"
