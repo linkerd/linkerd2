@@ -38,29 +38,59 @@ func TestPatch(t *testing.T) {
 		createdBy           = "linkerd/cli v18.8.4"
 	)
 
-	actual := NewPatchDeployment()
-	actual.addContainer(sidecar)
-	actual.addInitContainerRoot()
-	actual.addInitContainer(init)
-	actual.addVolumeRoot()
-	actual.addVolume(trustAnchors)
-	actual.addVolume(secrets)
-	actual.addPodLabel(k8sPkg.ControllerNSLabel, controllerNamespace)
-	actual.addPodAnnotation(k8sPkg.CreatedByAnnotation, createdBy)
+	t.Run("add paths", func(t *testing.T) {
+		actual := NewPatchDeployment()
+		actual.addContainer(sidecar)
+		actual.addInitContainerRoot()
+		actual.addInitContainer(init)
+		actual.addVolumeRoot()
+		actual.addVolume(trustAnchors)
+		actual.addVolume(secrets)
+		actual.addPodLabel(k8sPkg.ControllerNSLabel, controllerNamespace)
+		actual.addPodAnnotation(k8sPkg.CreatedByAnnotation, createdBy)
 
-	expected := NewPatchDeployment()
-	expected.patchOps = []*patchOp{
-		{Op: "add", Path: expected.patchPathContainer, Value: sidecar},
-		{Op: "add", Path: expected.patchPathInitContainerRoot, Value: []*v1.Container{}},
-		{Op: "add", Path: expected.patchPathInitContainer, Value: init},
-		{Op: "add", Path: expected.patchPathVolumeRoot, Value: []*v1.Volume{}},
-		{Op: "add", Path: expected.patchPathVolume, Value: trustAnchors},
-		{Op: "add", Path: expected.patchPathVolume, Value: secrets},
-		{Op: "add", Path: expected.patchPathPodLabels + "/" + escapeKey(k8sPkg.ControllerNSLabel), Value: controllerNamespace},
-		{Op: "add", Path: expected.patchPathPodAnnotations + "/" + escapeKey(k8sPkg.CreatedByAnnotation), Value: createdBy},
-	}
+		expected := NewPatchDeployment()
+		expected.patchOps = []*patchOp{
+			{Op: "add", Path: expected.patchPathContainer, Value: sidecar},
+			{Op: "add", Path: expected.patchPathInitContainerRoot, Value: []*v1.Container{}},
+			{Op: "add", Path: expected.patchPathInitContainer, Value: init},
+			{Op: "add", Path: expected.patchPathVolumeRoot, Value: []*v1.Volume{}},
+			{Op: "add", Path: expected.patchPathVolume, Value: trustAnchors},
+			{Op: "add", Path: expected.patchPathVolume, Value: secrets},
+			{Op: "add", Path: expected.patchPathPodLabels + "/" + escapeKey(k8sPkg.ControllerNSLabel), Value: controllerNamespace},
+			{Op: "add", Path: expected.patchPathPodAnnotations + "/" + escapeKey(k8sPkg.CreatedByAnnotation), Value: createdBy},
+		}
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expected, actual)
-	}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("Content mismatch\nExpected: %+v\nActual: %+v", expected, actual)
+		}
+	})
+
+	t.Run("append", func(t *testing.T) {
+		var (
+			head = NewPatchPod()
+			tail = NewPatchPod()
+		)
+
+		head.addContainer(sidecar)
+		head.addInitContainer(init)
+		tail.addVolume(trustAnchors)
+		tail.addVolume(secrets)
+
+		head.Append(tail)
+
+		expected := NewPatchPod()
+		expected.patchOps = []*patchOp{
+			{Op: "add", Path: expected.patchPathContainer, Value: sidecar},
+			{Op: "add", Path: expected.patchPathInitContainer, Value: init},
+			{Op: "add", Path: expected.patchPathVolume, Value: trustAnchors},
+			{Op: "add", Path: expected.patchPathVolume, Value: secrets},
+		}
+
+		for i, actual := range head.patchOps {
+			if !reflect.DeepEqual(actual, expected.patchOps[i]) {
+				t.Errorf("Expected patch op #%d to be %+v, but got %+v", i, expected.patchOps[i], actual)
+			}
+		}
+	})
 }

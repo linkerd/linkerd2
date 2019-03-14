@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -148,6 +149,13 @@ func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	return conf.podMeta.ObjectMeta != nil, nil
 }
 
+// AddRootLabels adds all the pod labels into the root workload (e.g. Deployment)
+func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
+	for k, v := range conf.podLabels {
+		patch.addRootLabel(k, v)
+	}
+}
+
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
 func (conf *ResourceConfig) GetPatch(
 	bytes []byte,
@@ -158,13 +166,6 @@ func (conf *ResourceConfig) GetPatch(
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
-	}
-
-	var patch *Patch
-	if strings.ToLower(conf.meta.Kind) == k8s.Pod {
-		patch = NewPatchPod()
-	} else {
-		patch = NewPatchDeployment()
 	}
 
 	// If we don't inject anything into the pod template then output the
@@ -187,15 +188,41 @@ func (conf *ResourceConfig) GetPatch(
 		}
 
 		report.update(conf)
-		if shouldInject(conf, report) {
-			conf.injectPodSpec(patch, identity)
-			conf.injectObjectMeta(patch)
+		if !shouldInject(conf, report) && !shouldOverrideConfig(conf) {
+			return &Patch{}, []Report{report}, nil
 		}
+
+		// populate the proxy's configurable properties with either overrides or
+		// defaults
+		proxy := conf.setProxyConfigs(identity)
+		var proxyInit *v1.Container
+		if !conf.globalConfig.GetCniEnabled() {
+			proxyInit = conf.setProxyInitConfigs()
+		}
+
+		// generate the additional JSON patches needed to inject the proxy
+		// into the unmeshed workload
+		if shouldInject(conf, report) {
+			patch := newProxyPatch(proxy, identity, conf)
+			if !conf.globalConfig.GetCniEnabled() {
+				patch.Append(newProxyInitPatch(proxyInit, conf))
+			}
+			patch.Append(newObjectMetaPatch(conf))
+			return patch, []Report{report}, nil
+		}
+
+		// generate the JSON patches to override the configurable proxy properties
+		// for the meshed workloads
+		patch := newOverrideProxyPatch(proxy, conf)
+		if !conf.globalConfig.GetCniEnabled() {
+			patch.Append(newOverrideProxyInitPatch(proxyInit, conf))
+		}
+		return patch, []Report{report}, nil
 	} else {
 		report.UnsupportedResource = true
 	}
 
-	return patch, []Report{report}, nil
+	return &Patch{}, []Report{report}, nil
 }
 
 // KindInjectable returns true if the resource in conf can be injected with a proxy
@@ -350,17 +377,69 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.podMeta = objMeta{&template.ObjectMeta}
 }
 
-// injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) {
+func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Container {
+	var container *v1.Container
+	for _, c := range conf.podSpec.Containers {
+		if c.Name == k8s.ProxyContainerName {
+			container = &c
+			break
+		}
+	}
+
+	// create a new container for this unmeshed workload
+	if container == nil {
+		container = conf.newProxyContainer(identity)
+	}
+
+	log.Debugf("before overrides (%s): %+v\n", k8s.ProxyContainerName, container)
 	proxyUID := conf.proxyUID()
-	sidecar := v1.Container{
-		Name:                     k8s.ProxyContainerName,
-		Image:                    conf.taggedProxyImage(),
-		ImagePullPolicy:          conf.proxyImagePullPolicy(),
+	container.Image = conf.taggedProxyImage()
+	container.ImagePullPolicy = conf.proxyImagePullPolicy()
+
+	if container.SecurityContext == nil {
+		container.SecurityContext = &v1.SecurityContext{}
+	}
+	container.SecurityContext.RunAsUser = &proxyUID
+
+	container.Resources = conf.proxyResourceRequirements()
+
+	for i, port := range container.Ports {
+		switch port.Name {
+		case k8s.ProxyPortName:
+			container.Ports[i].ContainerPort = conf.proxyInboundPort()
+		case k8s.ProxyMetricsPortName:
+			container.Ports[i].ContainerPort = conf.proxyMetricsPort()
+		}
+	}
+
+	for i, env := range container.Env {
+		switch env.Name {
+		case envVarProxyLog:
+			container.Env[i].Value = conf.getOverride(k8s.ProxyLogLevelAnnotation)
+		case envVarProxyControlListener:
+			container.Env[i].Value = conf.proxyControlListener()
+		case envVarProxyMetricsListener:
+			container.Env[i].Value = conf.proxyMetricsListener()
+		case envVarProxyOutboundListener:
+			container.Env[i].Value = conf.proxyOutboundListener()
+		case envVarProxyInboundListener:
+			container.Env[i].Value = conf.proxyInboundListener()
+		case envVarProxyDestinationProfileSuffixes:
+			container.Env[i].Value = conf.proxyDestinationProfileSuffixes()
+		}
+	}
+
+	container.LivenessProbe = conf.proxyProbe()
+	container.ReadinessProbe = conf.proxyProbe()
+
+	log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, container)
+	return container
+}
+
+func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Container {
+	return &v1.Container{
+		Name: k8s.ProxyContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		SecurityContext: &v1.SecurityContext{
-			RunAsUser: &proxyUID,
-		},
 		Ports: []v1.ContainerPort{
 			{
 				Name:          k8s.ProxyPortName,
@@ -371,7 +450,6 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 				ContainerPort: conf.proxyMetricsPort(),
 			},
 		},
-		Resources: conf.proxyResourceRequirements(),
 		Env: []v1.EnvVar{
 			{
 				Name:  envVarProxyLog,
@@ -413,131 +491,57 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 				Name:  envVarProxyOutboundConnectKeepAlive,
 				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
 			},
-			{Name: envVarProxyID, Value: identity.ToDNSName()},
+			{
+				Name:  envVarProxyID,
+				Value: identity.ToDNSName(),
+			},
 		},
-		LivenessProbe:  conf.proxyProbe(),
-		ReadinessProbe: conf.proxyProbe(),
 	}
+}
 
-	// Special case if the caller specifies that
-	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
-	// We key off of any container image in the pod. Ideally we would instead key
-	// off of something at the top-level of the PodSpec, but there is nothing
-	// easily identifiable at that level.
-	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
-	// not just the one in Linkerd's Control Plane.
-	for _, container := range conf.podSpec.Containers {
-		if capacity, ok := conf.proxyOutboundCapacity[container.Image]; ok {
-			sidecar.Env = append(sidecar.Env,
-				v1.EnvVar{
-					Name:  "LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY",
-					Value: fmt.Sprintf("%d", capacity),
-				},
-			)
+func (conf *ResourceConfig) setProxyInitConfigs() *v1.Container {
+	var initContainer *v1.Container
+	for _, c := range conf.podSpec.InitContainers {
+		if c.Name == k8s.InitContainerName {
+			initContainer = &c
 			break
 		}
 	}
 
-	if conf.globalConfig.GetIdentityContext() != nil {
-		yes := true
-
-		configMapVolume := &v1.Volume{
-			Name: k8s.TLSTrustAnchorVolumeName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
-					Optional:             &yes,
-				},
-			},
-		}
-		secretVolume := &v1.Volume{
-			Name: k8s.TLSSecretsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: identity.ToSecretName(),
-					Optional:   &yes,
-				},
-			},
-		}
-
-		base := "/var/linkerd-io"
-		configMapBase := base + "/trust-anchors"
-		secretBase := base + "/identity"
-		tlsEnvVars := []v1.EnvVar{
-			{Name: "LINKERD2_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
-			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
-			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
-			{
-				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
-				Value: identity.ToDNSName(),
-			},
-			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: conf.globalConfig.GetLinkerdNamespace()},
-			{Name: "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
-		}
-
-		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
-		sidecar.VolumeMounts = []v1.VolumeMount{
-			{Name: configMapVolume.Name, MountPath: configMapBase, ReadOnly: true},
-			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
-		}
-
-		if len(conf.podSpec.Volumes) == 0 {
-			patch.addVolumeRoot()
-		}
-		patch.addVolume(configMapVolume)
-		patch.addVolume(secretVolume)
+	// create a new container for this uninjected workload
+	if initContainer == nil {
+		initContainer = conf.newProxyInitContainer()
 	}
 
-	patch.addContainer(&sidecar)
+	log.Debugf("before overrides (%s): %+v\n", k8s.InitContainerName, initContainer)
+	initContainer.Image = conf.taggedProxyInitImage()
+	initContainer.ImagePullPolicy = conf.proxyImagePullPolicy()
+	initContainer.Args = conf.proxyInitArgs()
 
-	if !conf.globalConfig.GetCniEnabled() {
-		nonRoot := false
-		runAsUser := int64(0)
-		initContainer := &v1.Container{
-			Name:                     k8s.InitContainerName,
-			Image:                    conf.taggedProxyInitImage(),
-			ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
-			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     conf.proxyInitArgs(),
-			SecurityContext: &v1.SecurityContext{
-				Capabilities: &v1.Capabilities{
-					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
-				},
-				Privileged:   &nonRoot,
-				RunAsNonRoot: &nonRoot,
-				RunAsUser:    &runAsUser,
-			},
-		}
-		if len(conf.podSpec.InitContainers) == 0 {
-			patch.addInitContainerRoot()
-		}
-		patch.addInitContainer(initContainer)
-	}
+	log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, initContainer)
+	return initContainer
 }
 
-// Given a ObjectMeta, update ObjectMeta in place with the new labels and
-// annotations.
-func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	if len(conf.podMeta.Annotations) == 0 {
-		patch.addPodAnnotationsRoot()
-	}
-	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.globalConfig.GetVersion())
+func (conf *ResourceConfig) newProxyInitContainer() *v1.Container {
+	var (
+		nonRoot   = false
+		runAsUser = int64(0)
+	)
 
-	if conf.globalConfig.GetIdentityContext() != nil {
-		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeOptional)
-	} else {
-		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
-	}
-
-	for k, v := range conf.podLabels {
-		patch.addPodLabel(k, v)
-	}
-}
-
-// AddRootLabels adds all the pod labels into the root workload (e.g. Deployment)
-func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
-	for k, v := range conf.podLabels {
-		patch.addRootLabel(k, v)
+	return &v1.Container{
+		Name:                     k8s.InitContainerName,
+		Image:                    conf.taggedProxyInitImage(),
+		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+		Args: conf.proxyInitArgs(),
+		SecurityContext: &v1.SecurityContext{
+			Capabilities: &v1.Capabilities{
+				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
+			},
+			Privileged:   &nonRoot,
+			RunAsNonRoot: &nonRoot,
+			RunAsUser:    &runAsUser,
+		},
 	}
 }
 
@@ -845,4 +849,18 @@ func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
 	}
 
 	return podAnnotation == k8s.ProxyInjectEnabled
+}
+
+func shouldOverrideConfig(conf *ResourceConfig) bool {
+	return healthcheck.HasExistingSidecars(conf.podSpec) && hasOverrideAnnotations(conf.podMeta)
+}
+
+func hasOverrideAnnotations(meta objMeta) bool {
+	for _, annotation := range k8s.ProxyConfigAnnotations {
+		if _, exists := meta.Annotations[annotation]; exists {
+			return true
+		}
+	}
+
+	return false
 }

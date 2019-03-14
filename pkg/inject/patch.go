@@ -2,6 +2,7 @@ package inject
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -129,6 +130,22 @@ func (p *Patch) addPodAnnotation(key, value string) {
 	})
 }
 
+func (p *Patch) replaceContainer(container *corev1.Container, index int) {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "replace",
+		Path:  fmt.Sprintf("/spec/template/spec/containers/%d", index),
+		Value: container,
+	})
+}
+
+func (p *Patch) replaceInitContainer(container *corev1.Container, index int) {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "replace",
+		Path:  fmt.Sprintf("/spec/template/spec/initContainers/%d", index),
+		Value: container,
+	})
+}
+
 // AddCreatedByPodAnnotation tags the pod so that we can tell apart injections
 // from the CLI and the webhook
 func (p *Patch) AddCreatedByPodAnnotation(s string) {
@@ -138,6 +155,11 @@ func (p *Patch) AddCreatedByPodAnnotation(s string) {
 // IsEmpty returns true if the patch doesn't contain any operations
 func (p *Patch) IsEmpty() bool {
 	return len(p.patchOps) == 0
+}
+
+// Append appends all tail's patchOps to p.
+func (p *Patch) Append(tail *Patch) {
+	p.patchOps = append(p.patchOps, tail.patchOps...)
 }
 
 // Slashes need to be encoded as ~1 per

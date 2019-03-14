@@ -224,6 +224,26 @@ var (
 
 	// MountPathProxyConfig is the path at which the global config file is mounted
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
+
+	// ProxyConfigAnnotations is the list of proxy config annotations
+	ProxyConfigAnnotations = []string{
+		ProxyImageAnnotation,
+		ProxyImagePullPolicyAnnotation,
+		ProxyInitImageAnnotation,
+		ProxyControlPortAnnotation,
+		ProxyIgnoreInboundPortsAnnotation,
+		ProxyIgnoreOutboundPortsAnnotation,
+		ProxyInboundPortAnnotation,
+		ProxyMetricsPortAnnotation,
+		ProxyOutboundPortAnnotation,
+		ProxyCPURequestAnnotation,
+		ProxyCPULimitAnnotation,
+		ProxyMemoryRequestAnnotation,
+		ProxyMemoryLimitAnnotation,
+		ProxyUIDAnnotation,
+		ProxyLogLevelAnnotation,
+		ProxyDisableExternalProfilesAnnotation,
+	}
 )
 
 // CreatedByAnnotationValue returns the value associated with
