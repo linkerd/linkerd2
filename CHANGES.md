@@ -2,20 +2,22 @@
 
 * Controller
   * **Breaking change** Removed support for running the control plane in
-    single-namespace mode, and removed the `--single-namespace` install flag
+    single-namespace mode, which was severely limited in the number of features
+    it supported due to not having access to cluster-wide resources
   * Updated automatic proxy injection and CLI injection to support overriding
     inject defaults via pod spec annotations
   * Added a new public API endpoint for fetching control plane configuration
 * CLI
   * **Breaking change** Removed the `--api-port` flag from the `inject` and
-    `install` commands (thanks, @paranoidaditya)
+    `install` commands, since there's no benefit to running the control plane's
+    destination API on a non-default port (thanks, @paranoidaditya)
   * Introduced the `linkerd metrics` command for fetching proxy metrics
   * Updated the `linkerd routes` command to display rows for routes that are not
     receiving any traffic
   * Updated the `linkerd dashboard` command to serve the dashboard on a fixed
-    port
+    port, allowing it to leverage browser local storage for user settings
 * Web UI
-  * Added a Community page to surface news and updates from linkerd.io
+  * **New** Added a Community page to surface news and updates from linkerd.io
   * Fixed a quoting issue with service profile downloads (thanks, @liquidslr!)
   * Added a Grafana dashboard and web tables for displaying Job stats
     (thanks, @Pothulapati!)
