@@ -661,12 +661,266 @@
       }
     },
     {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15.600000000000001
+      },
+      "id": 201,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 16.6
+          },
+          "id": 173,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_close_total{namespace=\"$namespace\", pod=\"$pod\" ,deployment=\"$deployment\", direction=\"inbound\",errno!=\"\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}} {{errno}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTIONS FAILURES",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 16.6
+          },
+          "id": 175,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_open_connections{namespace=\"$namespace\", pod=\"$pod\" ,deployment=\"$deployment\", direction=\"inbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTIONS OPEN",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "cards": {
+            "cardPadding": null,
+            "cardRound": null
+          },
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "sqrt",
+            "colorScheme": "interpolateOranges",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "timeseries",
+          "datasource": "prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 16.6
+          },
+          "heatmap": {},
+          "highlightCards": true,
+          "id": 177,
+          "legend": {
+            "show": false
+          },
+          "links": [],
+          "targets": [
+            {
+              "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", pod=\"$pod\" ,deployment=\"$deployment\", direction=\"inbound\"}",
+              "format": "heatmap",
+              "intervalFactor": 1,
+              "refId": "A"
+            }
+          ],
+          "title": "TCP CONNECTION DURATION",
+          "tooltip": {
+            "show": true,
+            "showHistogram": true
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "xBucketNumber": null,
+          "xBucketSize": null,
+          "yAxis": {
+            "decimals": null,
+            "format": "ms",
+            "logBase": 1,
+            "max": null,
+            "min": "0",
+            "show": true,
+            "splitFactor": null
+          },
+          "yBucketBound": "auto",
+          "yBucketNumber": null,
+          "yBucketSize": null
+        }
+      ],
+      "title": "Inbound TCP Metrics",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16.6
+      },
+      "id": 199,
+      "panels": [],
+      "title": "",
+      "type": "row"
+    },
+    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND PODS</span>\n</div>",
       "gridPos": {
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 15.600000000000001
+        "y": 17.6
       },
       "id": 80,
       "links": [],
@@ -686,7 +940,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 17.8
+        "y": 19.8
       },
       "id": 81,
       "legend": {
@@ -772,7 +1026,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 17.8
+        "y": 19.8
       },
       "id": 82,
       "legend": {
@@ -864,7 +1118,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 17.8
+        "y": 19.8
       },
       "id": 83,
       "legend": {
@@ -959,7 +1213,7 @@
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 24.8
+        "y": 26.8
       },
       "id": 88,
       "links": [],
@@ -979,7 +1233,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 27
+        "y": 29
       },
       "id": 89,
       "legend": {
@@ -1065,7 +1319,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 27
+        "y": 29
       },
       "id": 90,
       "legend": {
@@ -1157,7 +1411,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 27
+        "y": 29
       },
       "id": 91,
       "legend": {
@@ -1247,12 +1501,266 @@
       }
     },
     {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 197,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 37
+          },
+          "id": 191,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_close_total{namespace=\"$namespace\", pod=\"$pod\", deployment=\"$deployment\", direction=\"outbound\",errno!=\"\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}} {{errno}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTION FAILURES",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "none",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 37
+          },
+          "id": 183,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "tcp_open_connections{namespace=\"$namespace\", pod=\"$pod\" ,deployment=\"$deployment\", direction=\"outbound\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{peer}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "TCP CONNECTIONS OPEN",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "cards": {
+            "cardPadding": null,
+            "cardRound": null
+          },
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "sqrt",
+            "colorScheme": "interpolateOranges",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "timeseries",
+          "datasource": "prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 37
+          },
+          "heatmap": {},
+          "highlightCards": true,
+          "id": 189,
+          "legend": {
+            "show": false
+          },
+          "links": [],
+          "targets": [
+            {
+              "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", deployment=\"$deployment\", direction=\"outbound\"}",
+              "format": "heatmap",
+              "intervalFactor": 1,
+              "refId": "A"
+            }
+          ],
+          "title": "TCP CONNECTION DURATION",
+          "tooltip": {
+            "show": true,
+            "showHistogram": true
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "xBucketNumber": null,
+          "xBucketSize": null,
+          "yAxis": {
+            "decimals": null,
+            "format": "ms",
+            "logBase": 1,
+            "max": null,
+            "min": "0",
+            "show": true,
+            "splitFactor": null
+          },
+          "yBucketBound": "auto",
+          "yBucketNumber": null,
+          "yBucketSize": null
+        }
+      ],
+      "title": "Outbound TCP Metrics",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 187,
+      "panels": [],
+      "title": "",
+      "type": "row"
+    },
+    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND PODS</span>\n</div>",
       "gridPos": {
         "h": 2.2,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 38
       },
       "id": 84,
       "links": [],
@@ -1272,7 +1780,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 36.2
+        "y": 40.2
       },
       "id": 85,
       "legend": {
@@ -1358,7 +1866,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 36.2
+        "y": 40.2
       },
       "id": 86,
       "legend": {
@@ -1450,7 +1958,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 36.2
+        "y": 40.2
       },
       "id": 87,
       "legend": {
@@ -1545,7 +2053,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 43.2
+        "y": 47.2
       },
       "height": "1px",
       "id": 171,
@@ -1577,6 +2085,7 @@
         "query": "label_values(process_start_time_seconds, namespace)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -1597,6 +2106,73 @@
         "query": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, pod)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "prometheus",
+        "definition": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, deployment)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "deployment",
+        "multi": false,
+        "name": "deployment",
+        "options": [],
+        "query": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, deployment)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "prometheus",
+        "definition": "label_values(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\"}, deployment)",
+        "hide": 2,
+        "includeAll": true,
+        "label": null,
+        "multi": false,
+        "name": "inbound",
+        "options": [],
+        "query": "",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "prometheus",
+        "definition": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
+        "hide": 2,
+        "includeAll": true,
+        "label": null,
+        "multi": false,
+        "name": "outbound",
+        "options": [],
+        "query": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],

@@ -83,6 +83,7 @@ const httpStatColumns = [
       a.tlsRequestPercent ? a.tlsRequestPercent.get() : -1,
       b.tlsRequestPercent ? b.tlsRequestPercent.get() : -1)
   },
+
 ];
 
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
@@ -162,8 +163,9 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     columns = columns.concat(tcpStatColumns);
   } else {
     columns = columns.concat(httpStatColumns);
-    columns = columns.concat(grafanaColumn);
   }
+  columns = columns.concat(grafanaColumn);
+
 
   // don't add the meshed column on a Authority MetricsTable
   if (!isAuthorityTable) {
