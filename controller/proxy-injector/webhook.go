@@ -11,80 +11,16 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/yaml"
 )
 
-// Webhook is a Kubernetes mutating admission webhook that mutates pods admission
-// requests by injecting sidecar container spec into the pod spec during pod
-// creation.
-type Webhook struct {
-	client              kubernetes.Interface
-	deserializer        runtime.Decoder
-	controllerNamespace string
-	noInitContainer     bool
-}
-
-// NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
-	var (
-		scheme = runtime.NewScheme()
-		codecs = serializer.NewCodecFactory(scheme)
-	)
-
-	return &Webhook{
-		client:              client,
-		deserializer:        codecs.UniversalDeserializer(),
-		controllerNamespace: controllerNamespace,
-		noInitContainer:     noInitContainer,
-	}, nil
-}
-
-// Mutate changes the given pod spec by injecting the proxy sidecar container
-// into the spec. The admission review object returns contains the original
-// request and the response with the mutated pod spec.
-func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
-	admissionReview, err := w.decode(data)
-	if err != nil {
-		log.Error("failed to decode data. Reason: ", err)
-		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
-			UID:     admissionReview.Request.UID,
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		return admissionReview
-	}
-	log.Infof("received admission review request %s", admissionReview.Request.UID)
-	log.Debugf("admission request: %+v", admissionReview.Request)
-
-	admissionResponse, err := w.inject(admissionReview.Request)
-	if err != nil {
-		log.Error("failed to inject sidecar. Reason: ", err)
-		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
-			UID:     admissionReview.Request.UID,
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		return admissionReview
-	}
-	admissionReview.Response = admissionResponse
-
-	return admissionReview
-}
-
-func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error) {
-	var admissionReview admissionv1beta1.AdmissionReview
-	err := yaml.Unmarshal(data, &admissionReview)
-	return &admissionReview, err
-}
-
-func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
+// Inject receives an Admission Request containing a workload definition, and it
+// returns an Admission Response with a JSON patch for adding the proxy (and
+// the initContainer if necessary), or an empty patch if there's no injection
+// to perform
+func Inject(client kubernetes.Interface,
+	request *admissionv1beta1.AdmissionRequest,
+) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
 	globalConfig, err := config.Global(k8s.MountPathGlobalConfig)
@@ -97,7 +33,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return nil, err
 	}
 
-	namespace, err := w.client.CoreV1().Namespaces().Get(request.Namespace, metav1.GetOptions{})
+	namespace, err := client.CoreV1().Namespaces().Get(request.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

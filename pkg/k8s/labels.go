@@ -183,6 +183,10 @@ const (
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
+	// SPValidatorWebhookConfig is the name of the mutating webhook
+	// configuration resource of the service profile validator webhook.
+	SPValidatorWebhookConfig = "linkerd-sp-validator-webhook-config"
+
 	/*
 	 * Mount paths
 	 */

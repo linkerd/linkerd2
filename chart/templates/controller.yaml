@@ -23,6 +23,9 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingwebhookconfigurations"]
+  verbs: ["create", "get", "delete"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
@@ -75,6 +78,24 @@ spec:
   - name: grpc
     port: 8086
     targetPort: 8086
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Values.Namespace}}
+  labels:
+    {{.Values.ControllerComponentLabel}}: controller
+  annotations:
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.ControllerComponentLabel}}: controller
+  ports:
+  - name: sp-validator
+    port: 443
+    targetPort: sp-validator
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -186,6 +207,34 @@ spec:
           httpGet:
             path: /ready
             port: 9998
+          failureThreshold: 7
+        {{- if .Values.EnableHA }}
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.ControllerUID}}
+      - name: sp-validator
+        image: {{.Values.ControllerImage}}
+        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        args:
+        - "sp-validator"
+        - "-controller-namespace={{.Values.Namespace}}"
+        - "-log-level={{.Values.ControllerLogLevel}}"
+        ports:
+        - name: sp-validator
+          containerPort: 8443
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9990
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9990
           failureThreshold: 7
         {{- if .Values.EnableHA }}
         resources:
