@@ -12,17 +12,17 @@ spec:
   strategy: {}
   template:
     metadata:
+      annotations:
+        config.linkerd.io/metrics-port: "9998"
+        config.linkerd.io/proxy-cpu-limit: "1"
+        config.linkerd.io/proxy-cpu-request: "0.5"
+        config.linkerd.io/proxy-memory-limit: 256Mi
+        config.linkerd.io/proxy-memory-request: 64Mi
+        config.linkerd.io/skip-inbound-ports: 7777,8888
+        config.linkerd.io/skip-outbound-ports: "9999"
       creationTimestamp: null
       labels:
         app: web-svc
-      annotations:
-        config.linkerd.io/skip-inbound-ports: 7777,8888
-        config.linkerd.io/skip-outbound-ports: 9999
-        config.linkerd.io/metrics-port: 9998
-        config.linkerd.io/proxy-cpu-limit: 1.0
-        config.linkerd.io/proxy-cpu-request: 0.5
-        config.linkerd.io/proxy-memory-request: 64Mi
-        config.linkerd.io/proxy-memory-limit: 256Mi
     spec:
       containers:
       - env:
