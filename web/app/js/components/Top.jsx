@@ -144,9 +144,10 @@ class Top extends React.Component {
     });
   }
 
-  updateTapClosingState(isTapClosing) {
+  updateTapClosingState() {
     this.setState({
-      tapIsClosing: isTapClosing
+      tapRequestInProgress: false,
+      tapIsClosing: false
     });
   }
 
