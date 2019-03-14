@@ -12,7 +12,8 @@
   * Introduced the `linkerd metrics` command for fetching proxy metrics
   * Updated the `linkerd routes` command to display rows for routes that are not
     receiving any traffic
-  * Updated the `linkerd dashboard` command to serve dashboard on a fixed port
+  * Updated the `linkerd dashboard` command to serve the dashboard on a fixed
+    port
 * Web UI
   * Added a Community page to surface news and updates from linkerd.io
   * Fixed a quoting issue with service profile downloads (thanks, @liquidslr!)
