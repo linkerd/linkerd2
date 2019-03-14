@@ -7198,6 +7198,15 @@ prop-types@^15.5.4, prop-types@^15.5.9, prop-types@^15.6.0, prop-types@^15.6.1, 
     loose-envify "^1.3.1"
     object-assign "^4.1.1"
 
+prop-types@^15.6.x:
+  version "15.7.2"
+  resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.7.2.tgz#52c41e75b8c87e72b9d9360e0206b99dcbffa6c5"
+  integrity sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==
+  dependencies:
+    loose-envify "^1.4.0"
+    object-assign "^4.1.1"
+    react-is "^16.8.1"
+
 proxy-addr@~2.0.4:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/proxy-addr/-/proxy-addr-2.0.4.tgz#ecfc733bf22ff8c6f407fa275327b9ab67e48b93"
@@ -7394,10 +7403,23 @@ react-event-listener@^0.6.2:
     prop-types "^15.6.0"
     warning "^4.0.1"
 
+react-iframe@^1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/react-iframe/-/react-iframe-1.5.0.tgz#20778988cb2782d32663a4537ef0da704dd2b9b2"
+  integrity sha512-hHPK0Os1iQIGD5YVM4N7DMZB9mcWHm+BmY+pSauuaX+NofilONnWUrVbCbrzy0gW6NkDW1ETAmUqlY4mrE9cxg==
+  dependencies:
+    object-assign "^4.1.1"
+    prop-types "^15.6.x"
+
 react-is@^16.3.2, react-is@^16.5.2, react-is@^16.6.3, react-is@^16.7.0:
   version "16.7.0"
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.7.0.tgz#c1bd21c64f1f1364c6f70695ec02d69392f41bfa"
   integrity sha512-Z0VRQdF4NPDoI0tsXVMLkJLiwEBa+RP66g0xDHxgxysxSoCUccSten4RTF/UFvZF1dZvZ9Zu1sx+MDXwcOR34g==
+
+react-is@^16.8.1:
+  version "16.8.3"
+  resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.8.3.tgz#4ad8b029c2a718fc0cfc746c8d4e1b7221e5387d"
+  integrity sha512-Y4rC1ZJmsxxkkPuMLwvKvlL1Zfpbcu+Bf4ZigkHup3v9EfdYhAlWAaVyA19olXq2o2mGn0w+dFKvk3pVVlYcIA==
 
 react-lifecycles-compat@^3.0.2, react-lifecycles-compat@^3.0.4:
   version "3.0.4"

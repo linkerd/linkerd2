@@ -17,6 +17,7 @@
     "prop-types": "15.6.1",
     "react": "16.5.0",
     "react-dom": "16.5.0",
+    "react-iframe": "^1.5.0",
     "react-router": "4.2.0",
     "react-router-dom": "4.2.2",
     "react-router-prop-types": "^1.0.4",

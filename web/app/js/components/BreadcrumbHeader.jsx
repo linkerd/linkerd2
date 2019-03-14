@@ -13,6 +13,7 @@ const routeToCrumbTitle = {
   "tap": "Tap",
   "top": "Top",
   "routes": "Top Routes",
+  "community": "Community",
   "debug": "Debug"
 };
 

@@ -1,5 +1,6 @@
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
+import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import BuildIcon from '@material-ui/icons/Build';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
@@ -22,12 +23,18 @@ import NavigationResources from './NavigationResources.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
+import SentimentVerySatisfiedIcon from '@material-ui/icons/SentimentVerySatisfied';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
+import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import yellow from '@material-ui/core/colors/yellow';
+
+const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
+const localStorageKey = "linkerd-updates-last-clicked";
 
 const styles = theme => {
   const drawerWidth = theme.spacing.unit * 31;
@@ -122,6 +129,9 @@ const styles = theme => {
       fontSize: "18px",
       paddingLeft: "3px",
       paddingRight: "3px",
+    },
+    badge: {
+      backgroundColor: yellow[500],
     }
   };
 };
@@ -131,6 +141,7 @@ class NavigationBase extends React.Component {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
+    this.handleCommunityClick = this.handleCommunityClick.bind(this);
 
     this.state = this.getInitialState();
   }
@@ -139,6 +150,7 @@ class NavigationBase extends React.Component {
     return {
       drawerOpen: true,
       helpMenuOpen: false,
+      hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
       namespaceFilter: "all"
@@ -147,6 +159,7 @@ class NavigationBase extends React.Component {
 
   componentDidMount() {
     this.fetchVersion();
+    this.fetchLatestCommunityUpdate();
   }
 
   fetchVersion() {
@@ -166,10 +179,37 @@ class NavigationBase extends React.Component {
       }).catch(this.handleApiError);
   }
 
+  fetchLatestCommunityUpdate() {
+    this.communityUpdatesPromise = fetch(jsonFeedUrl)
+      .then(rsp => rsp.json())
+      .then(rsp => rsp.data.date)
+      .then(rsp => {
+        if (rsp.length > 0) {
+          let lastClicked = localStorage[localStorageKey];
+          if (!lastClicked) {
+            this.setState({ hideUpdateBadge: false });
+          } else {
+            let lastClickedDateObject = new Date(lastClicked);
+            let latestArticle = _maxBy(rsp, update => update.date);
+            let latestArticleDateObject = new Date(latestArticle);
+            if (latestArticleDateObject > lastClickedDateObject) {
+              this.setState({ hideUpdateBadge: false });
+            }
+          }
+        }
+      }).catch(this.handleApiError);
+  }
+
   handleApiError(e) {
     this.setState({
       error: e
     });
+  }
+
+  handleCommunityClick = () => {
+    let lastClicked = new Date();
+    localStorage.setItem(localStorageKey, lastClicked);
+    this.setState({ hideUpdateBadge: true });
   }
 
   handleDrawerClick = () => {
@@ -180,7 +220,7 @@ class NavigationBase extends React.Component {
     this.setState(state => ({ helpMenuOpen: !state.helpMenuOpen }));
   }
 
-  menuItem(path, title, icon) {
+  menuItem(path, title, icon, onClick) {
     const { classes, api } = this.props;
     let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
     let isCurrentPage = path => path === normalizedPath;
@@ -188,6 +228,7 @@ class NavigationBase extends React.Component {
     return (
       <MenuItem
         component={Link}
+        onClick={onClick}
         to={api.prefixLink(path)}
         className={classes.navMenuItem}
         selected={isCurrentPage(path)}>
@@ -196,6 +237,7 @@ class NavigationBase extends React.Component {
       </MenuItem>
     );
   }
+
   render() {
     const { classes, ChildComponent, ...otherProps } = this.props;
 
@@ -245,6 +287,14 @@ class NavigationBase extends React.Component {
               <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
               <ListItemText primary="Documentation" />
             </ListItem>
+            { this.menuItem("/community", "Community",
+              <Badge
+                classes={{ badge: classes.badge }}
+                invisible={this.state.hideUpdateBadge}
+                badgeContent="1">
+                <SentimentVerySatisfiedIcon />
+              </Badge>, this.handleCommunityClick
+              ) }
             <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.helpMenuItem}>
               <ListItemIcon><EmailIcon /></ListItemIcon>
               <ListItemText primary="Join the Mailing List" />
