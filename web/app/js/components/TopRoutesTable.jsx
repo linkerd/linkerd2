@@ -37,14 +37,14 @@ const routesColumns = [
     dataIndex: "latency.P50",
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.latency.P50),
-    sorter: d => d.P50
+    sorter: d => d.latency.P50
   },
   {
     title: "P95 Latency",
     dataIndex: "latency.P95",
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.latency.P95),
-    sorter: d => d.P95
+    sorter: d => d.latency.P95
   },
   {
     title: "P99 Latency",

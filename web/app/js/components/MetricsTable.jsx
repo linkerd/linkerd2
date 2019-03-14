@@ -79,7 +79,7 @@ const httpStatColumns = [
     dataIndex: "tlsRequestPercent",
     isNumeric: true,
     render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
-    sorter: d => d.tlsRequestPercent ? d.tlsRequestPercent.get() : 0
+    sorter: d => d.tlsRequestPercent ? d.tlsRequestPercent.get() : -1
   },
 ];
 
@@ -95,7 +95,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       filter: d => d.namespace,
       isNumeric: false,
       render: d => !d.namespace ? "---" : <PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink>,
-      sorter: d => d.namespace
+      sorter: d => !d.namespace ? "---" : d.namespace
     }
   ];
 
@@ -104,7 +104,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     dataIndex: "pods.totalPods",
     isNumeric: true,
     render: d => !d.pods ? null : d.pods.meshedPods + "/" + d.pods.totalPods,
-    sorter: d => d.pods ? d.pods.totalPods : 0
+    sorter: d => !d.pods ? -1 : d.pods.totalPods
   };
 
   let grafanaColumn = {
@@ -152,7 +152,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
         </Grid>
       );
     },
-    sorter: d => getResourceDisplayName(d) ? getResourceDisplayName(d) : 0
+    sorter: d => getResourceDisplayName(d) ? getResourceDisplayName(d) : -1
   };
 
   let columns = [nameColumn];
