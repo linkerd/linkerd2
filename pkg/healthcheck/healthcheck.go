@@ -275,56 +275,56 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can create Namespaces",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate("", "", "v1", "Namespace")
+						return hc.checkCanCreate("", "", "v1", "namespaces")
 					},
 				},
 				{
 					description: "can create ClusterRoles",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRole")
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterroles")
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "ClusterRoleBinding")
+						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterrolebindings")
 					},
 				},
 				{
 					description: "can create CustomResourceDefinitions",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition")
+						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "customresourcedefinitions")
 					},
 				},
 				{
 					description: "can create ServiceAccounts",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ServiceAccount")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "serviceaccounts")
 					},
 				},
 				{
 					description: "can create Services",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "Service")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "services")
 					},
 				},
 				{
 					description: "can create Deployments",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "Deployments")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "deployments")
 					},
 				},
 				{
 					description: "can create ConfigMaps",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "ConfigMap")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")
 					},
 				},
 			},
@@ -789,7 +789,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 			"use",
 			"policy",
 			"v1beta1",
-			"PodSecurityPolicy",
+			"podsecuritypolicies",
 			psp.GetName(),
 		)
 		if err == nil {
