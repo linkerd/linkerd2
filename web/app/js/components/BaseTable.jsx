@@ -84,7 +84,6 @@ class BaseTable extends React.Component {
   }
 
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
-    console.log('orderBy: ' + orderBy);
     let rows = tableRows;
     let col = _find(tableColumns, d => d.dataIndex === orderBy);
     if (orderBy && col.sorter) {
