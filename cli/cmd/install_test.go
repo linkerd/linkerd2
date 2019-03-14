@@ -33,6 +33,7 @@ func TestRender(t *testing.T) {
 		UUID:                        "UUID",
 		CliVersion:                  "CliVersion",
 		ControllerLogLevel:          "ControllerLogLevel",
+		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerComponentLabel:    "ControllerComponentLabel",
 		CreatedByAnnotation:         "CreatedByAnnotation",
 		EnableTLS:                   true,
