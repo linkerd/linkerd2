@@ -174,9 +174,9 @@ const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
 
 
 // hide verbose information
-const expandedRowRender = d => {
+const expandedRowRender = (d, expandedWrapStyle) => {
   return (
-    <Grid container spacing={16} className="tap-more-info">
+    <Grid container spacing={16} className={expandedWrapStyle}>
       <Grid item xs={4}>
         <Card>
           <CardContent>{requestInitSection(d)}</CardContent>
