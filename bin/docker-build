@@ -2,6 +2,9 @@
 
 set -eu
 
+echo "TEST TESTING FAIL bin/docker-build"
+exit 1
+
 if [ $# -ne 0 ]; then
     echo "no arguments allowed for $(basename $0), given: $@" >&2
     exit 64
