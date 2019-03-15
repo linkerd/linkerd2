@@ -16,7 +16,7 @@ func newProxyPatch(proxy *v1.Container, identity k8s.TLSIdentity, config *Resour
 	// We key off of any container image in the pod. Ideally we would instead key
 	// off of something at the top-level of the PodSpec, but there is nothing
 	// easily identifiable at that level.
-	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
+	// Currently this will be set on any proxy that gets injected into a Prometheus pod,
 	// not just the one in Linkerd's Control Plane.
 	for _, container := range config.podSpec.Containers {
 		if capacity, ok := config.proxyOutboundCapacity[container.Image]; ok {

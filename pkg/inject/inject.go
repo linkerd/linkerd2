@@ -218,10 +218,9 @@ func (conf *ResourceConfig) GetPatch(
 			patch.Append(newOverrideProxyInitPatch(proxyInit, conf))
 		}
 		return patch, []Report{report}, nil
-	} else {
-		report.UnsupportedResource = true
 	}
 
+	report.UnsupportedResource = true
 	return &Patch{}, []Report{report}, nil
 }
 
@@ -379,9 +378,9 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 
 func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Container {
 	var container *v1.Container
-	for _, c := range conf.podSpec.Containers {
+	for i, c := range conf.podSpec.Containers {
 		if c.Name == k8s.ProxyContainerName {
-			container = &c
+			container = &conf.podSpec.Containers[i]
 			break
 		}
 	}
@@ -415,7 +414,7 @@ func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Contai
 	for i, env := range container.Env {
 		switch env.Name {
 		case envVarProxyLog:
-			container.Env[i].Value = conf.getOverride(k8s.ProxyLogLevelAnnotation)
+			container.Env[i].Value = conf.proxyLogLevel()
 		case envVarProxyControlListener:
 			container.Env[i].Value = conf.proxyControlListener()
 		case envVarProxyMetricsListener:
@@ -438,7 +437,7 @@ func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Contai
 
 func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Container {
 	return &v1.Container{
-		Name: k8s.ProxyContainerName,
+		Name:                     k8s.ProxyContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		Ports: []v1.ContainerPort{
 			{
@@ -501,9 +500,9 @@ func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Cont
 
 func (conf *ResourceConfig) setProxyInitConfigs() *v1.Container {
 	var initContainer *v1.Container
-	for _, c := range conf.podSpec.InitContainers {
+	for i, c := range conf.podSpec.InitContainers {
 		if c.Name == k8s.InitContainerName {
-			initContainer = &c
+			initContainer = &conf.podSpec.InitContainers[i]
 			break
 		}
 	}
@@ -530,10 +529,7 @@ func (conf *ResourceConfig) newProxyInitContainer() *v1.Container {
 
 	return &v1.Container{
 		Name:                     k8s.InitContainerName,
-		Image:                    conf.taggedProxyInitImage(),
-		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: conf.proxyInitArgs(),
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -856,9 +852,11 @@ func shouldOverrideConfig(conf *ResourceConfig) bool {
 }
 
 func hasOverrideAnnotations(meta objMeta) bool {
-	for _, annotation := range k8s.ProxyConfigAnnotations {
-		if _, exists := meta.Annotations[annotation]; exists {
-			return true
+	if len(meta.Annotations) > 0 {
+		for _, annotation := range k8s.ProxyConfigAnnotations {
+			if _, exists := meta.Annotations[annotation]; exists {
+				return true
+			}
 		}
 	}
 

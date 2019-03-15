@@ -1,12 +1,12 @@
 package inject
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ type expectedProxyConfigs struct {
 }
 
 func TestConfigAccessors(t *testing.T) {
-	// this test uses an annotated deployment and a proxyConfig object to verify
+	// this test uses an annotated pod and a proxyConfig object to verify
 	// all the proxy config accessors. The first test run ensures that the
 	// accessors picks up the pod-level config annotations. The second test run
 	// ensures that the defaults in the config map is used.
@@ -64,36 +64,32 @@ func TestConfigAccessors(t *testing.T) {
 		DisableExternalProfiles: false,
 	}
 	globalConfig := &config.Global{LinkerdNamespace: "linkerd"}
-	resourceConfig := NewResourceConfig(globalConfig, proxyConfig).WithKind("Deployment")
+	resourceConfig := NewResourceConfig(globalConfig, proxyConfig).WithKind("Pod")
 
 	var testCases = []struct {
 		id       string
-		spec     appsv1.DeploymentSpec
+		meta     metav1.ObjectMeta
 		expected expectedProxyConfigs
 	}{
 		{id: "use overrides",
-			spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					metav1.ObjectMeta{
-						Annotations: map[string]string{
-							k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy",
-							k8s.ProxyImagePullPolicyAnnotation:         "Always",
-							k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init",
-							k8s.ProxyControlPortAnnotation:             "4000",
-							k8s.ProxyInboundPortAnnotation:             "5000",
-							k8s.ProxyMetricsPortAnnotation:             "5001",
-							k8s.ProxyOutboundPortAnnotation:            "5002",
-							k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
-							k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
-							k8s.ProxyCPURequestAnnotation:              "0.15",
-							k8s.ProxyMemoryRequestAnnotation:           "120",
-							k8s.ProxyCPULimitAnnotation:                "1.5",
-							k8s.ProxyMemoryLimitAnnotation:             "256",
-							k8s.ProxyUIDAnnotation:                     "8500",
-							k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
-							k8s.ProxyDisableExternalProfilesAnnotation: "true"},
-					},
-					corev1.PodSpec{},
+			meta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyImageAnnotation:                   "gcr.io/linkerd-io/proxy",
+					k8s.ProxyImagePullPolicyAnnotation:         "Always",
+					k8s.ProxyInitImageAnnotation:               "gcr.io/linkerd-io/proxy-init",
+					k8s.ProxyControlPortAnnotation:             "4000",
+					k8s.ProxyInboundPortAnnotation:             "5000",
+					k8s.ProxyMetricsPortAnnotation:             "5001",
+					k8s.ProxyOutboundPortAnnotation:            "5002",
+					k8s.ProxyIgnoreInboundPortsAnnotation:      "4222,6222",
+					k8s.ProxyIgnoreOutboundPortsAnnotation:     "8079,8080",
+					k8s.ProxyCPURequestAnnotation:              "0.15",
+					k8s.ProxyMemoryRequestAnnotation:           "120",
+					k8s.ProxyCPULimitAnnotation:                "1.5",
+					k8s.ProxyMemoryLimitAnnotation:             "256",
+					k8s.ProxyUIDAnnotation:                     "8500",
+					k8s.ProxyLogLevelAnnotation:                "debug,linkerd2_proxy=debug",
+					k8s.ProxyDisableExternalProfilesAnnotation: "true",
 				},
 			},
 			expected: expectedProxyConfigs{
@@ -146,12 +142,7 @@ func TestConfigAccessors(t *testing.T) {
 			},
 		},
 		{id: "use defaults",
-			spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					metav1.ObjectMeta{},
-					corev1.PodSpec{},
-				},
-			},
+			meta: metav1.ObjectMeta{},
 			expected: expectedProxyConfigs{
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("IfNotPresent"),
@@ -206,7 +197,13 @@ func TestConfigAccessors(t *testing.T) {
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.id, func(t *testing.T) {
-			data, err := yaml.Marshal(&appsv1.Deployment{Spec: testCase.spec})
+			pod := &corev1.Pod{
+				metav1.TypeMeta{},
+				testCase.meta,
+				corev1.PodSpec{},
+				corev1.PodStatus{},
+			}
+			data, err := yaml.Marshal(pod)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -363,4 +360,316 @@ func TestConfigAccessors(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestShouldOverrideAnnotation(t *testing.T) {
+	var (
+		podSpec = &corev1.PodSpec{
+			Containers: []corev1.Container{{Image: "gcr.io/linkerd-io/proxy:"}},
+		}
+		annotationValue = "test"
+	)
+
+	t.Run("true for proxy config annotations", func(t *testing.T) {
+		expected := true
+		for _, annotation := range k8s.ProxyConfigAnnotations {
+			var (
+				podMeta = objMeta{&metav1.ObjectMeta{
+					Annotations: map[string]string{
+						annotation: annotationValue,
+					},
+				}}
+				resourceConfig = &ResourceConfig{
+					podSpec: podSpec,
+					podMeta: podMeta,
+				}
+			)
+
+			if actual := shouldOverrideConfig(resourceConfig); expected != actual {
+				t.Errorf("Expected %t. Actual %t", expected, actual)
+			}
+		}
+	})
+
+	t.Run("false for all other annotations", func(t *testing.T) {
+		var (
+			expected = false
+			podMeta  = objMeta{&metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"created-by": annotationValue,
+				},
+			}}
+			resourceConfig = &ResourceConfig{
+				podSpec: podSpec,
+				podMeta: podMeta,
+			}
+		)
+
+		if actual := shouldOverrideConfig(resourceConfig); expected != actual {
+			t.Errorf("Expected %t. Actual %t", expected, actual)
+		}
+	})
+}
+
+func TestSetProxyConfigs(t *testing.T) {
+	t.Run("use default configs", func(t *testing.T) {
+		var (
+			resourceKind        = "Pod"
+			controllerNamespace = "linkerd"
+			proxyConfig         = &config.Proxy{
+				ProxyImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
+				ProxyInitImage:      &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
+				ControlPort:         &config.Port{Port: 9000},
+				InboundPort:         &config.Port{Port: 6000},
+				MetricsPort:         &config.Port{Port: 6001},
+				OutboundPort:        &config.Port{Port: 6002},
+				IgnoreInboundPorts:  []*config.Port{{Port: 53}},
+				IgnoreOutboundPorts: []*config.Port{{Port: 9079}},
+				Resource: &config.ResourceRequirements{
+					RequestCpu:    "0.2",
+					RequestMemory: "64",
+					LimitCpu:      "1",
+					LimitMemory:   "128",
+				},
+				ProxyUid:                8888,
+				LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
+				DisableExternalProfiles: false,
+			}
+			globalConfig = &config.Global{
+				LinkerdNamespace: controllerNamespace,
+				Version:          "abcde",
+			}
+			resourceConfig = NewResourceConfig(globalConfig, proxyConfig).WithKind(resourceKind)
+			proxyUID       = int64(8888)
+			identity       = k8s.TLSIdentity{
+				Name:                "emojivoto",
+				Kind:                resourceKind,
+				Namespace:           "emojivoto",
+				ControllerNamespace: controllerNamespace,
+			}
+			expected = &corev1.Container{
+				Name:                     k8s.ProxyContainerName,
+				Image:                    "gcr.io/linkerd-io/proxy:abcde",
+				ImagePullPolicy:          "IfNotPresent",
+				TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: &proxyUID,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						"cpu":    k8sResource.MustParse("0.2"),
+						"memory": k8sResource.MustParse("64"),
+					},
+					Limits: corev1.ResourceList{
+						"cpu":    k8sResource.MustParse("1"),
+						"memory": k8sResource.MustParse("128"),
+					},
+				},
+				Ports: []corev1.ContainerPort{
+					{Name: k8s.ProxyPortName, ContainerPort: 6000},
+					{Name: k8s.ProxyMetricsPortName, ContainerPort: 6001},
+				},
+				Env: []corev1.EnvVar{
+					{Name: envVarProxyLog, Value: "info,linkerd2_proxy=debug"},
+					{Name: envVarProxyControlURL, Value: fmt.Sprintf("tcp://linkerd-destination.%s.svc.cluster.local:8086", controllerNamespace)},
+					{Name: envVarProxyControlListener, Value: "tcp://0.0.0.0:9000"},
+					{Name: envVarProxyMetricsListener, Value: "tcp://0.0.0.0:6001"},
+					{Name: envVarProxyOutboundListener, Value: "tcp://127.0.0.1:6002"},
+					{Name: envVarProxyInboundListener, Value: "tcp://0.0.0.0:6000"},
+					{Name: envVarProxyDestinationProfileSuffixes, Value: "."},
+					{Name: envVarProxyPodNamespace, ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+					}},
+					{Name: envVarProxyInboundAcceptKeepAlive, Value: "10000ms"},
+					{Name: envVarProxyOutboundConnectKeepAlive, Value: "10000ms"},
+					{Name: envVarProxyID, Value: identity.ToDNSName()},
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/metrics",
+							Port: intstr.IntOrString{
+								IntVal: int32(6001),
+							},
+						},
+					},
+					InitialDelaySeconds: 10,
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/metrics",
+							Port: intstr.IntOrString{
+								IntVal: int32(6001),
+							},
+						},
+					},
+					InitialDelaySeconds: 10,
+				},
+			}
+		)
+
+		resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
+
+		t.Run("create a new proxy for an unmeshed workload", func(t *testing.T) {
+			resourceConfig.podSpec = &corev1.PodSpec{}
+			if actual := resourceConfig.setProxyConfigs(identity); !reflect.DeepEqual(expected, actual) {
+				t.Errorf("Expected %+v\nActual %+v", expected, actual)
+			}
+		})
+
+		t.Run("override existing proxy of a meshed workload", func(t *testing.T) {
+			resourceConfig.podSpec = &corev1.PodSpec{
+				// all the configurable properties in this proxy will be overridden by
+				// defaults in the config map.
+				Containers: []corev1.Container{
+					{
+						Name:                     k8s.ProxyContainerName,
+						Image:                    "gcr.io/linkerd-io/proxy:old",
+						ImagePullPolicy:          "Always",
+						TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+						SecurityContext: &corev1.SecurityContext{
+							RunAsUser: &proxyUID,
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								"cpu":    k8sResource.MustParse("0.75"),
+								"memory": k8sResource.MustParse("128"),
+							},
+							Limits: corev1.ResourceList{
+								"cpu":    k8sResource.MustParse("2"),
+								"memory": k8sResource.MustParse("256"),
+							},
+						},
+						Ports: []corev1.ContainerPort{
+							{Name: k8s.ProxyPortName, ContainerPort: 7000},
+							{Name: k8s.ProxyMetricsPortName, ContainerPort: 7001},
+						},
+						Env: []corev1.EnvVar{
+							{Name: envVarProxyLog, Value: "debug,linkerd2_proxy=debug"},
+							{Name: envVarProxyControlURL, Value: fmt.Sprintf("tcp://linkerd-destination.%s.svc.cluster.local:8086", controllerNamespace)},
+							{Name: envVarProxyControlListener, Value: "tcp://0.0.0.0:9000"},
+							{Name: envVarProxyMetricsListener, Value: "tcp://0.0.0.0:7001"},
+							{Name: envVarProxyOutboundListener, Value: "tcp://127.0.0.1:7002"},
+							{Name: envVarProxyInboundListener, Value: "tcp://0.0.0.0:7000"},
+							{Name: envVarProxyDestinationProfileSuffixes, Value: "."},
+							{Name: envVarProxyPodNamespace, ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+							}},
+							{Name: envVarProxyInboundAcceptKeepAlive, Value: "10000ms"},
+							{Name: envVarProxyOutboundConnectKeepAlive, Value: "10000ms"},
+							{Name: envVarProxyID, Value: identity.ToDNSName()},
+						},
+						LivenessProbe: &corev1.Probe{
+							Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/metrics",
+									Port: intstr.IntOrString{
+										IntVal: int32(7001),
+									},
+								},
+							},
+							InitialDelaySeconds: 10,
+						},
+						ReadinessProbe: &corev1.Probe{
+							Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/metrics",
+									Port: intstr.IntOrString{
+										IntVal: int32(7001),
+									},
+								},
+							},
+							InitialDelaySeconds: 10,
+						},
+					},
+				},
+			}
+			if actual := resourceConfig.setProxyConfigs(identity); !reflect.DeepEqual(expected, actual) {
+				t.Errorf("Expected %+v\nActual %+v", expected, actual)
+			}
+		})
+	})
+}
+
+func TestSetProxyInitConfigs(t *testing.T) {
+	t.Run("use default configs", func(t *testing.T) {
+		var (
+			resourceKind = "Pod"
+			proxyConfig  = &config.Proxy{
+				ProxyImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
+				ProxyInitImage:      &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
+				ControlPort:         &config.Port{Port: 9000},
+				InboundPort:         &config.Port{Port: 6000},
+				MetricsPort:         &config.Port{Port: 6001},
+				OutboundPort:        &config.Port{Port: 6002},
+				IgnoreInboundPorts:  []*config.Port{{Port: 53}},
+				IgnoreOutboundPorts: []*config.Port{{Port: 9079}},
+				Resource: &config.ResourceRequirements{
+					RequestCpu:    "0.2",
+					RequestMemory: "64",
+					LimitCpu:      "1",
+					LimitMemory:   "128",
+				},
+				ProxyUid:                8888,
+				LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
+				DisableExternalProfiles: false,
+			}
+			globalConfig = &config.Global{
+				LinkerdNamespace: "linkerd",
+				Version:          "abcde",
+			}
+			resourceConfig = NewResourceConfig(globalConfig, proxyConfig).WithKind(resourceKind)
+			nonRoot        = false
+			runAsUser      = int64(0)
+			expected       = &corev1.Container{
+				Name:                     k8s.InitContainerName,
+				Image:                    "gcr.io/linkerd-io/proxy-init:abcde",
+				ImagePullPolicy:          "IfNotPresent",
+				TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+				Args: []string{
+					"--incoming-proxy-port", "6000",
+					"--outgoing-proxy-port", "6002",
+					"--proxy-uid", "8888",
+					"--inbound-ports-to-ignore", "53,9000,6001",
+					"--outbound-ports-to-ignore", "9079",
+				},
+				SecurityContext: &corev1.SecurityContext{
+					Capabilities: &corev1.Capabilities{
+						Add: []corev1.Capability{corev1.Capability("NET_ADMIN")},
+					},
+					Privileged:   &nonRoot,
+					RunAsNonRoot: &nonRoot,
+					RunAsUser:    &runAsUser,
+				},
+			}
+		)
+
+		resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
+
+		t.Run("create a new proxy-init for an unmeshed workload", func(t *testing.T) {
+			resourceConfig.podSpec = &corev1.PodSpec{}
+			if actual := resourceConfig.setProxyInitConfigs(); !reflect.DeepEqual(expected, actual) {
+				t.Errorf("Expected %+v\nActual %+v", expected, actual)
+			}
+		})
+
+		t.Run("override existing proxy-init of a meshed workload", func(t *testing.T) {
+			resourceConfig.podSpec = &corev1.PodSpec{
+				// all the configurable properties will be overridden by defaults in
+				// the config map.
+				Containers: []corev1.Container{
+					{
+						Name:            k8s.InitContainerName,
+						Image:           "example.com/proxy-init:",
+						ImagePullPolicy: "Always",
+						Args:            []string{},
+					},
+				},
+			}
+			if actual := resourceConfig.setProxyInitConfigs(); !reflect.DeepEqual(expected, actual) {
+				t.Errorf("Expected %+v\nActual %+v", expected, actual)
+			}
+		})
+	})
 }

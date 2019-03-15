@@ -81,13 +81,13 @@ func TestGetPatch(t *testing.T) {
 				filename: "deployment-inject-disabled.yaml",
 				ns:       nsEnabled,
 				conf:     confNsEnabled(),
-				expected: false,
+				expected: true,
 			},
 			{
 				filename: "deployment-inject-empty.yaml",
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
-				expected: false,
+				expected: true,
 			},
 			{
 				filename: "deployment-inject-enabled.yaml",
@@ -99,7 +99,7 @@ func TestGetPatch(t *testing.T) {
 				filename: "deployment-inject-disabled.yaml",
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
-				expected: false,
+				expected: true,
 			},
 		}
 

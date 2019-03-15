@@ -16,6 +16,7 @@ const (
 // Patch represents a RFC 6902 patch document.
 type Patch struct {
 	patchOps                   []*patchOp
+	patchPathContainerRoot     string
 	patchPathContainer         string
 	patchPathInitContainerRoot string
 	patchPathInitContainer     string
@@ -29,6 +30,7 @@ type Patch struct {
 func NewPatchDeployment() *Patch {
 	return &Patch{
 		patchOps:                   []*patchOp{},
+		patchPathContainerRoot:     "/spec/template/spec/containers",
 		patchPathContainer:         "/spec/template/spec/containers/-",
 		patchPathInitContainerRoot: "/spec/template/spec/initContainers",
 		patchPathInitContainer:     "/spec/template/spec/initContainers/-",
@@ -43,6 +45,7 @@ func NewPatchDeployment() *Patch {
 func NewPatchPod() *Patch {
 	return &Patch{
 		patchOps:                   []*patchOp{},
+		patchPathContainerRoot:     "/spec/containers",
 		patchPathContainer:         "/spec/containers/-",
 		patchPathInitContainerRoot: "/spec/initContainers",
 		patchPathInitContainer:     "/spec/initContainers/-",
@@ -133,7 +136,7 @@ func (p *Patch) addPodAnnotation(key, value string) {
 func (p *Patch) replaceContainer(container *corev1.Container, index int) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "replace",
-		Path:  fmt.Sprintf("/spec/template/spec/containers/%d", index),
+		Path:  fmt.Sprintf("%s/%d", p.patchPathContainerRoot, index),
 		Value: container,
 	})
 }
@@ -141,7 +144,7 @@ func (p *Patch) replaceContainer(container *corev1.Container, index int) {
 func (p *Patch) replaceInitContainer(container *corev1.Container, index int) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "replace",
-		Path:  fmt.Sprintf("/spec/template/spec/initContainers/%d", index),
+		Path:  fmt.Sprintf("%s/%d", p.patchPathInitContainerRoot, index),
 		Value: container,
 	})
 }
