@@ -162,7 +162,7 @@ func (conf *ResourceConfig) GetPatch(
 	shouldInject func(*ResourceConfig, Report) bool,
 ) (*Patch, []Report, error) {
 	report := newReport(conf)
-	log.Infof("received %s/%s", strings.ToLower(conf.meta.Kind), report.Name)
+	log.Infof("received %s", conf)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
@@ -189,6 +189,7 @@ func (conf *ResourceConfig) GetPatch(
 
 		report.update(conf)
 		if !shouldInject(conf, report) && !shouldOverrideConfig(conf) {
+			log.Infof("skipping %s", conf)
 			return &Patch{}, []Report{report}, nil
 		}
 
@@ -517,7 +518,7 @@ func (conf *ResourceConfig) setProxyInitConfigs() *v1.Container {
 	initContainer.ImagePullPolicy = conf.proxyImagePullPolicy()
 	initContainer.Args = conf.proxyInitArgs()
 
-	log.Debugf("after overrides (%s): %+v\n", k8s.ProxyContainerName, initContainer)
+	log.Debugf("after overrides (%s): %+v\n", k8s.InitContainerName, initContainer)
 	return initContainer
 }
 
@@ -835,6 +836,10 @@ func ShouldInjectCLI(_ *ResourceConfig, r Report) bool {
 // - the workload's pod spec has the linkerd.io/inject annotation set to "enabled"
 func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
 	if !r.Injectable() {
+		return false
+	}
+
+	if createdBy, exists := conf.podMeta.Annotations[k8s.CreatedByAnnotation]; exists && strings.Contains(createdBy, k8s.CreatedByCLI) {
 		return false
 	}
 

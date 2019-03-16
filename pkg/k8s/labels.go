@@ -61,6 +61,14 @@ const (
 	// (e.g. linkerd/cli v2.0.0).
 	CreatedByAnnotation = Prefix + "/created-by"
 
+	// CreatedByCLI is used by the CreatedByAnnotation to indicate that the
+	// proxy is injected by the CLI.
+	CreatedByCLI = "linkerd/cli"
+
+	// CreatedByProxyInjector is used by the CreatedByAnnotation to indicate that
+	// the proxy is auto-injected by the proxy injector.
+	CreatedByProxyInjector = "linkerd/proxy-injector"
+
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
 	ProxyVersionAnnotation = Prefix + "/proxy-version"
