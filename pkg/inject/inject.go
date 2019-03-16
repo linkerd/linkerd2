@@ -162,7 +162,7 @@ func (conf *ResourceConfig) GetPatch(
 	shouldInject func(*ResourceConfig, Report) bool,
 ) (*Patch, []Report, error) {
 	report := newReport(conf)
-	log.Infof("received %s", conf)
+	log.Infof("received %s/%s", conf, report.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
@@ -438,7 +438,7 @@ func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Contai
 
 func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Container {
 	return &v1.Container{
-		Name:                     k8s.ProxyContainerName,
+		Name: k8s.ProxyContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		Ports: []v1.ContainerPort{
 			{
@@ -529,7 +529,7 @@ func (conf *ResourceConfig) newProxyInitContainer() *v1.Container {
 	)
 
 	return &v1.Container{
-		Name:                     k8s.InitContainerName,
+		Name: k8s.InitContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
@@ -835,13 +835,16 @@ func ShouldInjectCLI(_ *ResourceConfig, r Report) bool {
 //   linkerd.io/inject annotation set to "disabled"; or
 // - the workload's pod spec has the linkerd.io/inject annotation set to "enabled"
 func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
+	log.Info("ShouldInjectWebhook")
 	if !r.Injectable() {
 		return false
 	}
 
+	log.Infof("CLI created-by annotation %s", conf.podMeta.Annotations[k8s.CreatedByAnnotation])
 	if createdBy, exists := conf.podMeta.Annotations[k8s.CreatedByAnnotation]; exists && strings.Contains(createdBy, k8s.CreatedByCLI) {
 		return false
 	}
+	log.Info("Not skipping CLI inject")
 
 	podAnnotation := conf.podMeta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
