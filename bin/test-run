@@ -39,6 +39,7 @@ linkerd_path=$1
 
 # echo "TEST TESTING FAIL bin/test-run"
 # exit 1
+# another change
 
 if [ -z "$linkerd_path" ]; then
     echo "usage: $(basename "$0") /path/to/linkerd [namespace]" >&2
