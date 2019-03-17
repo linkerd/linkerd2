@@ -9,6 +9,8 @@ import (
 	"net/url"
 
 	corev1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/api/extensions/v1beta1"
+
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/rest"
 
@@ -148,4 +150,35 @@ func NewAPI(configPath, kubeContext string) (*KubernetesAPI, error) {
 	}
 
 	return &KubernetesAPI{Config: config}, nil
+}
+
+// GetReplicaSetByNamespace returns all replicasets in a given namespace
+func (kubeAPI *KubernetesAPI) GetReplicaSetByNamespace(ctx context.Context, client *http.Client, namespace string) ([]v1beta1.ReplicaSet, error) {
+	return kubeAPI.getReplicaSets(ctx, client, "/apis/extensions/v1beta1/namespaces/"+namespace+"/replicasets")
+}
+
+func (kubeAPI *KubernetesAPI) getReplicaSets(ctx context.Context, client *http.Client, path string) ([]v1beta1.ReplicaSet, error) {
+	rsp, err := kubeAPI.getRequest(ctx, client, path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rsp.Body.Close()
+
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
+	}
+
+	bytes, err := ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var replicaSetList v1beta1.ReplicaSetList
+	err = json.Unmarshal(bytes, &replicaSetList)
+	if err != nil {
+		return nil, err
+	}
+
+	return replicaSetList.Items, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
@@ -163,14 +164,15 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI          *k8s.KubernetesAPI
-	httpClient       *http.Client
-	clientset        kubernetes.Interface
-	kubeVersion      *k8sVersion.Info
-	controlPlanePods []corev1.Pod
-	apiClient        public.APIClient
-	latestVersions   version.Channels
-	serverVersion    string
+	kubeAPI                *k8s.KubernetesAPI
+	httpClient             *http.Client
+	clientset              kubernetes.Interface
+	kubeVersion            *k8sVersion.Info
+	controlPlanePods       []corev1.Pod
+	controlPlaneReplicaSet []v1beta1.ReplicaSet
+	apiClient              public.APIClient
+	latestVersions         version.Channels
+	serverVersion          string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -350,6 +352,32 @@ func (hc *HealthChecker) allCategories() []category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description: "correct pod secuirty policies",
+					hintAnchor:  "l5d-existence-psp",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						var err error
+						hc.controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSetByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkPodSecurityPolicies(hc.controlPlaneReplicaSet)
+					},
+				},
+				{
+					description: "no unschedulable pods",
+					hintAnchor:  "l5d-existence-unschedulable-pods",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						var err error
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkUnschedulablePods(hc.controlPlanePods)
 					},
 				},
 				{
@@ -835,10 +863,12 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 	statuses := make(map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
+
 		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
 			// All control plane pods should have a name that results in at least 4
 			// substrings when string.Split on '-'
+
 			if len(parts) >= 4 {
 				name := strings.Join(parts[1:len(parts)-2], "-")
 				if _, found := statuses[name]; !found {
@@ -928,6 +958,29 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 
 	if errMsg != "" {
 		return fmt.Errorf(errMsg)
+	}
+
+	return nil
+}
+
+func checkUnschedulablePods(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		for _, node := range pod.Status.Conditions {
+			if node.Status == "False" && node.Message == "no nodes available to schedule pods" {
+				return fmt.Errorf("No node available for the pod %s", pod.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func checkPodSecurityPolicies(rst []v1beta1.ReplicaSet) error {
+	for _, rs := range rst {
+		for _, r := range rs.Status.Conditions {
+			if strings.Contains(r.Message, "unable to validate against any pod security policy") {
+				return fmt.Errorf("Invalid pod secuirty policy for the replicaset %s", rs.Name)
+			}
+		}
 	}
 
 	return nil
