@@ -90,7 +90,7 @@ func (resourceTransformerUninject) generateReport(reports []inject.Report, outpu
 	output.Write([]byte("\n"))
 
 	for _, r := range reports {
-		if r.Sidecar {
+		if r.Uninjected.Proxy || r.Uninjected.ProxyInit {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {

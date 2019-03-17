@@ -105,28 +105,35 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	nonEmpty, err := conf.ParseMeta(bytes)
+
+	report, err := conf.ParseMetaAndYaml(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	if !nonEmpty {
-		r := inject.Report{UnsupportedResource: true}
-		return bytes, []inject.Report{r}, nil
+
+	if !shouldInject(conf) {
+		return bytes, []inject.Report{*report}, nil
 	}
-	p, reports, err := conf.GetPatch(bytes, inject.ShouldInjectCLI)
+
+	p, err := conf.GetPatch()
 	if err != nil {
-		return nil, nil, err
+		if err == inject.ErrUnsupportedResourceType {
+			report.UnsupportedResource = true
+		}
+		return bytes, []inject.Report{*report}, err
 	}
+
 	if p.IsEmpty() {
-		return bytes, reports, nil
+		return bytes, []inject.Report{*report}, nil
 	}
+
 	p.AddCreatedByPodAnnotation(k8s.CreatedByAnnotationValue())
 	patchJSON, err := p.Marshal()
 	if err != nil {
 		return nil, nil, err
 	}
 	if patchJSON == nil {
-		return bytes, reports, nil
+		return bytes, []inject.Report{*report}, nil
 	}
 	log.Infof("patch generated for: %s", conf)
 	log.Debugf("patch: %s", patchJSON)
@@ -146,7 +153,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
-	return injectedYAML, reports, nil
+	return injectedYAML, []inject.Report{*report}, nil
 }
 
 func (resourceTransformerInject) generateReport(reports []inject.Report, output io.Writer) {
@@ -296,4 +303,8 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		DisableExternalProfiles: options.disableExternalProfiles,
 	}
 	return configs{globalConfig, proxyConfig}
+}
+
+func shouldInject(conf *inject.ResourceConfig) bool {
+	return conf.HasPayload() && !conf.PodUsingHostNetwork() && !conf.HasExistingProxy() && !conf.InjectDisabled()
 }

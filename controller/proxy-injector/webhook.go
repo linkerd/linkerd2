@@ -107,26 +107,27 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
-	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
-	if err != nil {
+	if _, err := conf.ParseMetaAndYaml(request.Object.Raw); err != nil {
 		return nil, err
 	}
 
-	admissionResponse := &admissionv1beta1.AdmissionResponse{
-		UID:     request.UID,
-		Allowed: true,
-	}
-	if !nonEmpty {
-		return admissionResponse, nil
+	if !shouldInject(conf) && !conf.ShouldOverrideConfig() {
+		return &admissionv1beta1.AdmissionResponse{
+			UID:     request.UID,
+			Allowed: true,
+		}, nil
 	}
 
-	p, _, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
+	p, err := conf.GetPatch()
 	if err != nil {
 		return nil, err
 	}
 
 	if p.IsEmpty() {
-		return admissionResponse, nil
+		return &admissionv1beta1.AdmissionResponse{
+			UID:     request.UID,
+			Allowed: true,
+		}, nil
 	}
 
 	p.AddCreatedByPodAnnotation(fmt.Sprintf("%s %s", k8s.CreatedByProxyInjector, version.Version))
@@ -145,8 +146,16 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
+	admissionResponse := &admissionv1beta1.AdmissionResponse{
+		UID:     request.UID,
+		Allowed: true,
+	}
 	admissionResponse.Patch = patchJSON
 	admissionResponse.PatchType = &patchType
 
 	return admissionResponse, nil
+}
+
+func shouldInject(conf *inject.ResourceConfig) bool {
+	return conf.HasPayload() && conf.InjectEnabled() && !conf.PodUsingHostNetwork() && !conf.HasExistingProxy()
 }

@@ -385,7 +385,7 @@ func TestShouldOverrideAnnotation(t *testing.T) {
 				}
 			)
 
-			if actual := shouldOverrideConfig(resourceConfig); expected != actual {
+			if actual := resourceConfig.ShouldOverrideConfig(); expected != actual {
 				t.Errorf("Expected %t. Actual %t", expected, actual)
 			}
 		}
@@ -405,7 +405,7 @@ func TestShouldOverrideAnnotation(t *testing.T) {
 			}
 		)
 
-		if actual := shouldOverrideConfig(resourceConfig); expected != actual {
+		if actual := resourceConfig.ShouldOverrideConfig(); expected != actual {
 			t.Errorf("Expected %t. Actual %t", expected, actual)
 		}
 	})
@@ -672,4 +672,164 @@ func TestSetProxyInitConfigs(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestHasPayload(t *testing.T) {
+	var testCases = []struct {
+		podMeta  objMeta
+		podSpec  *corev1.PodSpec
+		expected bool
+	}{
+		{
+			podMeta:  objMeta{},
+			podSpec:  nil,
+			expected: false,
+		},
+		{
+			podMeta:  objMeta{&metav1.ObjectMeta{}},
+			podSpec:  &corev1.PodSpec{},
+			expected: true,
+		},
+	}
+
+	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
+	for _, testCase := range testCases {
+		resourceConfig.podMeta = testCase.podMeta
+		resourceConfig.podSpec = testCase.podSpec
+		if actual := resourceConfig.HasPayload(); testCase.expected != actual {
+			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+		}
+	}
+}
+
+func TestInjectEnabled(t *testing.T) {
+	var testCases = []struct {
+		podMeta       objMeta
+		nsAnnotations map[string]string
+		expected      bool
+	}{
+		{
+			podMeta:       objMeta{&metav1.ObjectMeta{}},
+			nsAnnotations: map[string]string{},
+			expected:      false,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+			}},
+			nsAnnotations: map[string]string{},
+			expected:      false,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{}},
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+			},
+			expected: false,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+			}},
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			expected: false,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			}},
+			nsAnnotations: map[string]string{},
+			expected:      true,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{}},
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			expected: true,
+		},
+		{
+			podMeta: objMeta{&metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			}},
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			expected: true,
+		},
+	}
+
+	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
+	for _, testCase := range testCases {
+		resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
+		resourceConfig.podMeta = testCase.podMeta
+		if actual := resourceConfig.InjectEnabled(); testCase.expected != actual {
+			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+		}
+	}
+}
+
+func TestPodUsingHostNetwork(t *testing.T) {
+	var testCases = []struct {
+		podSpec  *corev1.PodSpec
+		expected bool
+	}{
+		{podSpec: &corev1.PodSpec{}, expected: false},
+		{podSpec: &corev1.PodSpec{HostNetwork: false}, expected: false},
+		{podSpec: &corev1.PodSpec{HostNetwork: true}, expected: true},
+	}
+
+	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
+	for _, testCase := range testCases {
+		resourceConfig.podSpec = testCase.podSpec
+		if actual := resourceConfig.PodUsingHostNetwork(); testCase.expected != actual {
+			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+		}
+	}
+}
+
+func TestHasExistingProxy(t *testing.T) {
+	var testCases = []struct {
+		podSpec  *corev1.PodSpec
+		expected bool
+	}{
+		{
+			podSpec:  &corev1.PodSpec{},
+			expected: false,
+		},
+		{
+			podSpec: &corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Image: "gcr.io/linkerd-io/proxy:"},
+				},
+			},
+			expected: true,
+		},
+		{
+			podSpec: &corev1.PodSpec{
+				InitContainers: []corev1.Container{
+					{Image: "gcr.io/linkerd-io/proxy-init:"},
+				},
+			},
+			expected: true,
+		},
+	}
+
+	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
+	for _, testCase := range testCases {
+		resourceConfig.podSpec = testCase.podSpec
+		if actual := resourceConfig.HasExistingProxy(); testCase.expected != actual {
+			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+		}
+	}
 }

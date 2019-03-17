@@ -113,7 +113,8 @@ func TestGetPatch(t *testing.T) {
 
 				fakeReq := getFakeReq(deployment)
 				fullConf := testCase.conf.WithKind(fakeReq.Kind.Kind)
-				p, _, err := fullConf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
+				fullConf.ParseMetaAndYaml(fakeReq.Object.Raw)
+				p, err := fullConf.GetPatch()
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -129,24 +130,6 @@ func TestGetPatch(t *testing.T) {
 					t.Fatalf("Was expecting injection for file '%s'", testCase.filename)
 				}
 			})
-		}
-	})
-
-	t.Run("by checking container spec", func(t *testing.T) {
-		deployment, err := factory.HTTPRequestBody("deployment-with-injected-proxy.yaml")
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-
-		fakeReq := getFakeReq(deployment)
-		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
-		p, _, err := conf.GetPatch(fakeReq.Object.Raw, inject.ShouldInjectWebhook)
-		if err != nil {
-			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
-		}
-
-		if !p.IsEmpty() {
-			t.Errorf("Expected empty patch")
 		}
 	})
 }

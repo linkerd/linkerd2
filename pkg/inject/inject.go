@@ -48,15 +48,19 @@ const (
 	envVarProxyID                         = "LINKERD2_PROXY_ID"
 )
 
-var injectableKinds = []string{
-	k8s.DaemonSet,
-	k8s.Deployment,
-	k8s.Job,
-	k8s.Pod,
-	k8s.ReplicaSet,
-	k8s.ReplicationController,
-	k8s.StatefulSet,
-}
+var (
+	injectableKinds = []string{
+		k8s.DaemonSet,
+		k8s.Deployment,
+		k8s.Job,
+		k8s.Pod,
+		k8s.ReplicaSet,
+		k8s.ReplicationController,
+		k8s.StatefulSet,
+	}
+
+	ErrUnsupportedResourceType = fmt.Errorf("Unsupported resource type")
+)
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
 type objMeta struct {
@@ -130,16 +134,25 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 
 // ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
 func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
-	if _, err := conf.ParseMeta(bytes); err != nil {
+	if _, err := conf.parseMeta(bytes); err != nil {
 		return nil, err
 	}
+
+	if err := conf.parse(bytes); err != nil {
+		return nil, err
+	}
+
 	r := newReport(conf)
-	return &r, conf.parse(bytes)
+	if conf.HasPayload() {
+		r.update(conf)
+	} else {
+		r.UnsupportedResource = true
+	}
+
+	return &r, nil
 }
 
-// ParseMeta extracts metadata from bytes.
-// It returns false if the workload's payload is empty
-func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
+func (conf *ResourceConfig) parseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return false, err
 	}
@@ -157,16 +170,8 @@ func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
 }
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
-func (conf *ResourceConfig) GetPatch(
-	bytes []byte,
-	shouldInject func(*ResourceConfig, Report) bool,
-) (*Patch, []Report, error) {
-	report := newReport(conf)
-	log.Infof("received %s/%s", conf, report.Name)
-
-	if err := conf.parse(bytes); err != nil {
-		return nil, nil, err
-	}
+func (conf *ResourceConfig) GetPatch() (*Patch, error) {
+	log.Infof("received %s", conf)
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
@@ -174,7 +179,7 @@ func (conf *ResourceConfig) GetPatch(
 	if conf.podSpec != nil {
 		metaAccessor, err := k8sMeta.Accessor(conf.obj)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		// The namespace isn't necessarily in the input so it has to be substituted
@@ -187,12 +192,6 @@ func (conf *ResourceConfig) GetPatch(
 			ControllerNamespace: conf.globalConfig.GetLinkerdNamespace(),
 		}
 
-		report.update(conf)
-		if !shouldInject(conf, report) && !shouldOverrideConfig(conf) {
-			log.Infof("skipping %s", conf)
-			return &Patch{}, []Report{report}, nil
-		}
-
 		// populate the proxy's configurable properties with either overrides or
 		// defaults
 		proxy := conf.setProxyConfigs(identity)
@@ -201,28 +200,27 @@ func (conf *ResourceConfig) GetPatch(
 			proxyInit = conf.setProxyInitConfigs()
 		}
 
-		// generate the additional JSON patches needed to inject the proxy
-		// into the unmeshed workload
-		if shouldInject(conf, report) {
-			patch := newProxyPatch(proxy, identity, conf)
-			if !conf.globalConfig.GetCniEnabled() {
-				patch.Append(newProxyInitPatch(proxyInit, conf))
-			}
-			patch.Append(newObjectMetaPatch(conf))
-			return patch, []Report{report}, nil
-		}
-
 		// generate the JSON patches to override the configurable proxy properties
 		// for the meshed workloads
-		patch := newOverrideProxyPatch(proxy, conf)
-		if !conf.globalConfig.GetCniEnabled() {
-			patch.Append(newOverrideProxyInitPatch(proxyInit, conf))
+		if conf.ShouldOverrideConfig() {
+			patch := newOverrideProxyPatch(proxy, conf)
+			if !conf.globalConfig.GetCniEnabled() {
+				patch.Append(newOverrideProxyInitPatch(proxyInit, conf))
+			}
+			return patch, nil
 		}
-		return patch, []Report{report}, nil
+
+		// generate the additional JSON patches needed to inject the proxy
+		// into the unmeshed workload
+		patch := newProxyPatch(proxy, identity, conf)
+		if !conf.globalConfig.GetCniEnabled() {
+			patch.Append(newProxyInitPatch(proxyInit, conf))
+		}
+		patch.Append(newObjectMetaPatch(conf))
+		return patch, nil
 	}
 
-	report.UnsupportedResource = true
-	return &Patch{}, []Report{report}, nil
+	return &Patch{}, ErrUnsupportedResourceType
 }
 
 // KindInjectable returns true if the resource in conf can be injected with a proxy
@@ -815,47 +813,47 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 	return strings.Join(ports, ",")
 }
 
-// ShouldInjectCLI is used by CLI inject to determine whether or not a given
-// workload should be injected. It shouldn't if:
-// - it contains any known sidecars; or
-// - is on a HostNetwork; or
-// - the pod is annotated with "linkerd.io/inject: disabled".
-func ShouldInjectCLI(_ *ResourceConfig, r Report) bool {
-	return r.Injectable()
+// HasPayload returns true if the pod's meta isn't empty.
+func (conf *ResourceConfig) HasPayload() bool {
+	return conf.podMeta.ObjectMeta != nil && conf.podSpec != nil
 }
 
-// ShouldInjectWebhook determines whether or not the given workload should be
-// injected. It shouldn't if:
-// - it contains any known sidecars; or
-// - is on a HostNetwork; or
-// - the pod is annotated with "linkerd.io/inject: disabled".
-// Additionally, a workload should be injected if:
-// - the workload's namespace has the linkerd.io/inject annotation set to
-//   "enabled", and the workload's pod spec does not have the
-//   linkerd.io/inject annotation set to "disabled"; or
-// - the workload's pod spec has the linkerd.io/inject annotation set to "enabled"
-func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
-	log.Info("ShouldInjectWebhook")
-	if !r.Injectable() {
-		return false
-	}
-
-	log.Infof("CLI created-by annotation %s", conf.podMeta.Annotations[k8s.CreatedByAnnotation])
-	if createdBy, exists := conf.podMeta.Annotations[k8s.CreatedByAnnotation]; exists && strings.Contains(createdBy, k8s.CreatedByCLI) {
-		return false
-	}
-	log.Info("Not skipping CLI inject")
-
+// InjectEnabled returns true if the linkerd.io/inject=enabled annotation is
+// present either at the namespace or pod level, without a counter
+// linkerd.io/inject=disabled annotation.
+func (conf *ResourceConfig) InjectEnabled() bool {
 	podAnnotation := conf.podMeta.Annotations[k8s.ProxyInjectAnnotation]
-	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
-	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
-		return true
+
+	if conf.nsAnnotations != nil {
+		nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
+		if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
+			return true
+		}
 	}
 
 	return podAnnotation == k8s.ProxyInjectEnabled
 }
 
-func shouldOverrideConfig(conf *ResourceConfig) bool {
+// InjectDisabled returns true if the workload has a 'linkerd.io/inject:
+// disabled' annotation. This is one of the conditions used by the CLI to
+// determine if a proxy injection should happen.
+func (conf *ResourceConfig) InjectDisabled() bool {
+	return conf.podMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+}
+
+// PodUsingHostNetwork returns true if the HostNetwork property is true.
+func (conf *ResourceConfig) PodUsingHostNetwork() bool {
+	return conf.podSpec != nil && conf.podSpec.HostNetwork
+}
+
+// HasExistingProxy returns true if the pod already has a proxy sidecar.
+func (conf *ResourceConfig) HasExistingProxy() bool {
+	return conf.podSpec != nil && healthcheck.HasExistingSidecars(conf.podSpec)
+}
+
+// ShouldOverrideConfig returns true if the workload has existing sidecars and
+// config override annotations.
+func (conf *ResourceConfig) ShouldOverrideConfig() bool {
 	return healthcheck.HasExistingSidecars(conf.podSpec) && hasOverrideAnnotations(conf.podMeta)
 }
 

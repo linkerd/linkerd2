@@ -19,15 +19,22 @@ type Report struct {
 	UDP                 bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource bool
 	InjectDisabled      bool
+	Uninjected          struct {
+		Proxy     bool
+		ProxyInit bool
+	}
 }
 
 // newReport returns a new Report struct, initialized with the Kind and Name
 // from conf
 func newReport(conf *ResourceConfig) Report {
 	var name string
-	if m := conf.podMeta.ObjectMeta; m != nil {
+	if conf.workLoadMeta != nil {
+		name = conf.workLoadMeta.Name
+	} else if m := conf.podMeta.ObjectMeta; m != nil {
 		name = m.Name
 	}
+
 	return Report{
 		Kind: strings.ToLower(conf.meta.Kind),
 		Name: name,
