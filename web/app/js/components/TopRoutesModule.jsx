@@ -8,6 +8,7 @@ import TopRoutesTable from './TopRoutesTable.jsx';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
+import _sortBy from 'lodash/sortBy';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';
@@ -44,6 +45,7 @@ class TopRoutesBase extends React.Component {
   render() {
     const {data, loading} = this.props;
     let results = _get(data, '[0].ok.routes', []);
+    results = _sortBy(results, o => o.resource);
 
     let metricsByResource = results.map(r => {
       return {
