@@ -35,6 +35,7 @@ type installConfig struct {
 	UUID                        string
 	CliVersion                  string
 	ControllerLogLevel          string
+	PrometheusLogLevel          string
 	ControllerComponentLabel    string
 	CreatedByAnnotation         string
 	EnableTLS                   bool
@@ -149,6 +150,11 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		return nil, err
 	}
 
+	prometheusLogLevel := options.controllerLogLevel
+	if prometheusLogLevel == "panic" || prometheusLogLevel == "fatal" {
+		prometheusLogLevel = "error"
+	}
+
 	return &installConfig{
 		Namespace:                   controlPlaneNamespace,
 		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
@@ -162,6 +168,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		UUID:                        uuid.NewV4().String(),
 		CliVersion:                  k8s.CreatedByAnnotationValue(),
 		ControllerLogLevel:          options.controllerLogLevel,
+		PrometheusLogLevel:          prometheusLogLevel,
 		ControllerComponentLabel:    k8s.ControllerComponentLabel,
 		ControllerUID:               options.controllerUID,
 		CreatedByAnnotation:         k8s.CreatedByAnnotation,

@@ -91,6 +91,7 @@ spec:
         - "--storage.tsdb.path=/{{.Values.PrometheusVolumeName}}"
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--log.level={{.Values.PrometheusLogLevel}}"
         readinessProbe:
           httpGet:
             path: /-/ready
