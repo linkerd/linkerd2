@@ -113,7 +113,7 @@ func TestProxyPatch(t *testing.T) {
 			}
 
 			// the empty containers list emulates an unmeshed pod
-			resourceConfig.podSpec = &corev1.PodSpec{}
+			resourceConfig.pod.spec = &corev1.PodSpec{}
 			if actual := newProxyPatch(container, identity, resourceConfig); !reflect.DeepEqual(expected, actual) {
 				t.Errorf("Expected: %+v\nActual: %+v", expected, actual)
 			}
@@ -135,7 +135,7 @@ func TestProxyPatch(t *testing.T) {
 			}
 
 			// the non-empty containers list emulates a meshed pod
-			resourceConfig.podSpec = &corev1.PodSpec{
+			resourceConfig.pod.spec = &corev1.PodSpec{
 				Containers: []corev1.Container{*container},
 			}
 			if actual := newOverrideProxyPatch(container, resourceConfig); !reflect.DeepEqual(expected, actual) {
@@ -191,7 +191,7 @@ func TestNewProxyInitPatch(t *testing.T) {
 		}
 
 		// the empty init-containers list emulates an unmeshed pod
-		resourceConfig.podSpec = &corev1.PodSpec{}
+		resourceConfig.pod.spec = &corev1.PodSpec{}
 		if actual := newProxyInitPatch(container, resourceConfig); !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Expected: %+v\nActual: %+v", expected, actual)
 		}
@@ -213,7 +213,7 @@ func TestNewProxyInitPatch(t *testing.T) {
 		}
 
 		// the non-empty init-containers list emulates a meshed pod
-		resourceConfig.podSpec = &corev1.PodSpec{
+		resourceConfig.pod.spec = &corev1.PodSpec{
 			InitContainers: []corev1.Container{*container},
 		}
 		if actual := newOverrideProxyInitPatch(container, resourceConfig); !reflect.DeepEqual(expected, actual) {
@@ -228,8 +228,8 @@ func TestNewObjectMetaPatch(t *testing.T) {
 		globalConfig   = &config.Global{Version: "abcde"}
 		resourceConfig = NewResourceConfig(globalConfig, &config.Proxy{}).WithKind(resourceKind)
 	)
-	resourceConfig.podLabels = map[string]string{"app": "nginx"}
-	resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
+	resourceConfig.pod.labels = map[string]string{"app": "nginx"}
+	resourceConfig.pod.meta = objMeta{&metav1.ObjectMeta{}}
 
 	t.Run("Non-TLS", func(t *testing.T) {
 		expected := &Patch{

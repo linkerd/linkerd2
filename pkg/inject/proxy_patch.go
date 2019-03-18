@@ -18,7 +18,7 @@ func newProxyPatch(proxy *v1.Container, identity k8s.TLSIdentity, config *Resour
 	// easily identifiable at that level.
 	// Currently this will be set on any proxy that gets injected into a Prometheus pod,
 	// not just the one in Linkerd's Control Plane.
-	for _, container := range config.podSpec.Containers {
+	for _, container := range config.pod.spec.Containers {
 		if capacity, ok := config.proxyOutboundCapacity[container.Image]; ok {
 			proxy.Env = append(proxy.Env,
 				v1.EnvVar{
@@ -73,7 +73,7 @@ func newProxyPatch(proxy *v1.Container, identity k8s.TLSIdentity, config *Resour
 			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
 		}
 
-		if len(config.podSpec.Volumes) == 0 {
+		if len(config.pod.spec.Volumes) == 0 {
 			patch.addVolumeRoot()
 		}
 		patch.addVolume(configMapVolume)
@@ -86,7 +86,7 @@ func newProxyPatch(proxy *v1.Container, identity k8s.TLSIdentity, config *Resour
 
 func newProxyInitPatch(proxyInit *v1.Container, config *ResourceConfig) *Patch {
 	patch := patchKind(config.meta.Kind)
-	if len(config.podSpec.InitContainers) == 0 {
+	if len(config.pod.spec.InitContainers) == 0 {
 		patch.addInitContainerRoot()
 	}
 
@@ -96,7 +96,7 @@ func newProxyInitPatch(proxyInit *v1.Container, config *ResourceConfig) *Patch {
 
 func newObjectMetaPatch(config *ResourceConfig) *Patch {
 	patch := patchKind(config.meta.Kind)
-	if len(config.podMeta.Annotations) == 0 {
+	if len(config.pod.meta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, config.globalConfig.GetVersion())
@@ -107,7 +107,7 @@ func newObjectMetaPatch(config *ResourceConfig) *Patch {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
-	for k, v := range config.podLabels {
+	for k, v := range config.pod.labels {
 		patch.addPodLabel(k, v)
 	}
 
@@ -116,7 +116,7 @@ func newObjectMetaPatch(config *ResourceConfig) *Patch {
 
 func newOverrideProxyPatch(proxy *v1.Container, conf *ResourceConfig) *Patch {
 	patch := patchKind(conf.meta.Kind)
-	for i, c := range conf.podSpec.Containers {
+	for i, c := range conf.pod.spec.Containers {
 		if c.Name == k8s.ProxyContainerName {
 			patch.replaceContainer(proxy, i)
 			break
@@ -128,7 +128,7 @@ func newOverrideProxyPatch(proxy *v1.Container, conf *ResourceConfig) *Patch {
 
 func newOverrideProxyInitPatch(proxyInit *v1.Container, conf *ResourceConfig) *Patch {
 	patch := patchKind(conf.meta.Kind)
-	for i, c := range conf.podSpec.InitContainers {
+	for i, c := range conf.pod.spec.InitContainers {
 		if c.Name == k8s.InitContainerName {
 			patch.replaceInitContainer(proxyInit, i)
 			break

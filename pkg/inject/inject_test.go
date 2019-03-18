@@ -379,11 +379,10 @@ func TestShouldOverrideAnnotation(t *testing.T) {
 						annotation: annotationValue,
 					},
 				}}
-				resourceConfig = &ResourceConfig{
-					podSpec: podSpec,
-					podMeta: podMeta,
-				}
+				resourceConfig = &ResourceConfig{}
 			)
+			resourceConfig.pod.spec = podSpec
+			resourceConfig.pod.meta = podMeta
 
 			if actual := resourceConfig.ShouldOverrideConfig(); expected != actual {
 				t.Errorf("Expected %t. Actual %t", expected, actual)
@@ -399,11 +398,10 @@ func TestShouldOverrideAnnotation(t *testing.T) {
 					"created-by": annotationValue,
 				},
 			}}
-			resourceConfig = &ResourceConfig{
-				podSpec: podSpec,
-				podMeta: podMeta,
-			}
+			resourceConfig = &ResourceConfig{}
 		)
+		resourceConfig.pod.spec = podSpec
+		resourceConfig.pod.meta = podMeta
 
 		if actual := resourceConfig.ShouldOverrideConfig(); expected != actual {
 			t.Errorf("Expected %t. Actual %t", expected, actual)
@@ -509,17 +507,17 @@ func TestSetProxyConfigs(t *testing.T) {
 			}
 		)
 
-		resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
+		resourceConfig.pod.meta = objMeta{&metav1.ObjectMeta{}}
 
 		t.Run("create a new proxy for an unmeshed workload", func(t *testing.T) {
-			resourceConfig.podSpec = &corev1.PodSpec{}
+			resourceConfig.pod.spec = &corev1.PodSpec{}
 			if actual := resourceConfig.setProxyConfigs(identity); !reflect.DeepEqual(expected, actual) {
 				t.Errorf("Expected %+v\nActual %+v", expected, actual)
 			}
 		})
 
 		t.Run("override existing proxy of a meshed workload", func(t *testing.T) {
-			resourceConfig.podSpec = &corev1.PodSpec{
+			resourceConfig.pod.spec = &corev1.PodSpec{
 				// all the configurable properties in this proxy will be overridden by
 				// defaults in the config map.
 				Containers: []corev1.Container{
@@ -645,17 +643,17 @@ func TestSetProxyInitConfigs(t *testing.T) {
 			}
 		)
 
-		resourceConfig.podMeta = objMeta{&metav1.ObjectMeta{}}
+		resourceConfig.pod.meta = objMeta{&metav1.ObjectMeta{}}
 
 		t.Run("create a new proxy-init for an unmeshed workload", func(t *testing.T) {
-			resourceConfig.podSpec = &corev1.PodSpec{}
+			resourceConfig.pod.spec = &corev1.PodSpec{}
 			if actual := resourceConfig.setProxyInitConfigs(); !reflect.DeepEqual(expected, actual) {
 				t.Errorf("Expected %+v\nActual %+v", expected, actual)
 			}
 		})
 
 		t.Run("override existing proxy-init of a meshed workload", func(t *testing.T) {
-			resourceConfig.podSpec = &corev1.PodSpec{
+			resourceConfig.pod.spec = &corev1.PodSpec{
 				// all the configurable properties will be overridden by defaults in
 				// the config map.
 				Containers: []corev1.Container{
@@ -694,8 +692,8 @@ func TestHasPayload(t *testing.T) {
 
 	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
 	for _, testCase := range testCases {
-		resourceConfig.podMeta = testCase.podMeta
-		resourceConfig.podSpec = testCase.podSpec
+		resourceConfig.pod.meta = testCase.podMeta
+		resourceConfig.pod.spec = testCase.podSpec
 		if actual := resourceConfig.HasPayload(); testCase.expected != actual {
 			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 		}
@@ -772,7 +770,7 @@ func TestInjectEnabled(t *testing.T) {
 	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
 	for _, testCase := range testCases {
 		resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
-		resourceConfig.podMeta = testCase.podMeta
+		resourceConfig.pod.meta = testCase.podMeta
 		if actual := resourceConfig.InjectEnabled(); testCase.expected != actual {
 			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 		}
@@ -791,7 +789,7 @@ func TestPodUsingHostNetwork(t *testing.T) {
 
 	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
 	for _, testCase := range testCases {
-		resourceConfig.podSpec = testCase.podSpec
+		resourceConfig.pod.spec = testCase.podSpec
 		if actual := resourceConfig.PodUsingHostNetwork(); testCase.expected != actual {
 			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 		}
@@ -827,7 +825,7 @@ func TestHasExistingProxy(t *testing.T) {
 
 	resourceConfig := NewResourceConfig(&config.Global{}, &config.Proxy{})
 	for _, testCase := range testCases {
-		resourceConfig.podSpec = testCase.podSpec
+		resourceConfig.pod.spec = testCase.podSpec
 		if actual := resourceConfig.HasExistingProxy(); testCase.expected != actual {
 			t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 		}

@@ -117,7 +117,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	p, err := conf.GetPatch()
 	if err != nil {
-		if err == inject.ErrUnsupportedResourceType {
+		if err == inject.ErrUnsupportedResourceKind {
 			report.UnsupportedResource = true
 		}
 		return bytes, []inject.Report{*report}, err

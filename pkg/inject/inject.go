@@ -59,7 +59,9 @@ var (
 		k8s.StatefulSet,
 	}
 
-	ErrUnsupportedResourceType = fmt.Errorf("Unsupported resource type")
+	// ErrUnsupportedResourceKind is the error used to indicate an supported
+	// resource kind in the input YAML.
+	ErrUnsupportedResourceKind = fmt.Errorf("Unsupported resource kind")
 )
 
 // objMeta provides a generic struct to parse the names of Kubernetes objects
@@ -73,23 +75,31 @@ type ResourceConfig struct {
 	proxyConfig           *config.Proxy
 	nsAnnotations         map[string]string
 	meta                  metav1.TypeMeta
-	obj                   runtime.Object
-	workLoadMeta          *metav1.ObjectMeta
-	podMeta               objMeta
-	podLabels             map[string]string
-	podSpec               *v1.PodSpec
 	dnsNameOverride       string
 	proxyOutboundCapacity map[string]uint
+
+	workload struct {
+		meta *metav1.ObjectMeta
+		obj  runtime.Object
+	}
+
+	pod struct {
+		meta   objMeta
+		labels map[string]string
+		spec   *v1.PodSpec
+	}
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
 func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *ResourceConfig {
-	return &ResourceConfig{
+	config := &ResourceConfig{
 		globalConfig:          globalConfig,
 		proxyConfig:           proxyConfig,
-		podLabels:             map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
 		proxyOutboundCapacity: map[string]uint{},
 	}
+	config.pod.labels = map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()}
+
+	return config
 }
 
 // String satisfies the Stringer interface
@@ -99,8 +109,8 @@ func (conf *ResourceConfig) String() string {
 	if conf.meta.Kind != "" {
 		l = append(l, conf.meta.Kind)
 	}
-	if conf.workLoadMeta != nil {
-		l = append(l, fmt.Sprintf("%s.%s", conf.workLoadMeta.GetName(), conf.workLoadMeta.GetNamespace()))
+	if conf.workload.meta != nil {
+		l = append(l, fmt.Sprintf("%s.%s", conf.workload.meta.GetName(), conf.workload.meta.GetNamespace()))
 	}
 
 	return strings.Join(l, "/")
@@ -129,7 +139,7 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
-	return yaml.Marshal(conf.obj)
+	return yaml.Marshal(conf.workload.obj)
 }
 
 // ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
@@ -156,15 +166,15 @@ func (conf *ResourceConfig) parseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
 		return false, err
 	}
-	if err := yaml.Unmarshal(bytes, &conf.podMeta); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.pod.meta); err != nil {
 		return false, err
 	}
-	return conf.podMeta.ObjectMeta != nil, nil
+	return conf.pod.meta.ObjectMeta != nil, nil
 }
 
 // AddRootLabels adds all the pod labels into the root workload (e.g. Deployment)
 func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
-	for k, v := range conf.podLabels {
+	for k, v := range conf.pod.labels {
 		patch.addRootLabel(k, v)
 	}
 }
@@ -176,8 +186,8 @@ func (conf *ResourceConfig) GetPatch() (*Patch, error) {
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
-	if conf.podSpec != nil {
-		metaAccessor, err := k8sMeta.Accessor(conf.obj)
+	if conf.pod.spec != nil {
+		metaAccessor, err := k8sMeta.Accessor(conf.workload.obj)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +230,7 @@ func (conf *ResourceConfig) GetPatch() (*Patch, error) {
 		return patch, nil
 	}
 
-	return &Patch{}, ErrUnsupportedResourceType
+	return &Patch{}, ErrUnsupportedResourceKind
 }
 
 // KindInjectable returns true if the resource in conf can be injected with a proxy
@@ -302,9 +312,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			conf.dnsNameOverride = localhostDNSNameOverride
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1.ReplicationController:
@@ -312,9 +322,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
 	case *v1beta1.ReplicaSet:
@@ -322,9 +332,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
@@ -332,9 +342,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyJobLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1beta1.DaemonSet:
@@ -342,9 +352,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
@@ -352,9 +362,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1.Pod:
@@ -362,24 +372,24 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.podSpec = &v.Spec
-		conf.podMeta = objMeta{&v.ObjectMeta}
+		conf.workload.obj = v
+		conf.pod.spec = &v.Spec
+		conf.pod.meta = objMeta{&v.ObjectMeta}
 	}
 
 	return nil
 }
 
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
-	conf.podSpec = &template.Spec
-	conf.podMeta = objMeta{&template.ObjectMeta}
+	conf.pod.spec = &template.Spec
+	conf.pod.meta = objMeta{&template.ObjectMeta}
 }
 
 func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Container {
 	var container *v1.Container
-	for i, c := range conf.podSpec.Containers {
+	for i, c := range conf.pod.spec.Containers {
 		if c.Name == k8s.ProxyContainerName {
-			container = &conf.podSpec.Containers[i]
+			container = &conf.pod.spec.Containers[i]
 			break
 		}
 	}
@@ -436,7 +446,7 @@ func (conf *ResourceConfig) setProxyConfigs(identity k8s.TLSIdentity) *v1.Contai
 
 func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Container {
 	return &v1.Container{
-		Name: k8s.ProxyContainerName,
+		Name:                     k8s.ProxyContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		Ports: []v1.ContainerPort{
 			{
@@ -499,9 +509,9 @@ func (conf *ResourceConfig) newProxyContainer(identity k8s.TLSIdentity) *v1.Cont
 
 func (conf *ResourceConfig) setProxyInitConfigs() *v1.Container {
 	var initContainer *v1.Container
-	for i, c := range conf.podSpec.InitContainers {
+	for i, c := range conf.pod.spec.InitContainers {
 		if c.Name == k8s.InitContainerName {
-			initContainer = &conf.podSpec.InitContainers[i]
+			initContainer = &conf.pod.spec.InitContainers[i]
 			break
 		}
 	}
@@ -527,7 +537,7 @@ func (conf *ResourceConfig) newProxyInitContainer() *v1.Container {
 	)
 
 	return &v1.Container{
-		Name: k8s.InitContainerName,
+		Name:                     k8s.InitContainerName,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
@@ -541,7 +551,7 @@ func (conf *ResourceConfig) newProxyInitContainer() *v1.Container {
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
-	return conf.podMeta.Annotations[annotation]
+	return conf.pod.meta.Annotations[annotation]
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
@@ -815,14 +825,14 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 
 // HasPayload returns true if the pod's meta isn't empty.
 func (conf *ResourceConfig) HasPayload() bool {
-	return conf.podMeta.ObjectMeta != nil && conf.podSpec != nil
+	return conf.pod.meta.ObjectMeta != nil && conf.pod.spec != nil
 }
 
 // InjectEnabled returns true if the linkerd.io/inject=enabled annotation is
 // present either at the namespace or pod level, without a counter
 // linkerd.io/inject=disabled annotation.
 func (conf *ResourceConfig) InjectEnabled() bool {
-	podAnnotation := conf.podMeta.Annotations[k8s.ProxyInjectAnnotation]
+	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
 
 	if conf.nsAnnotations != nil {
 		nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
@@ -838,23 +848,23 @@ func (conf *ResourceConfig) InjectEnabled() bool {
 // disabled' annotation. This is one of the conditions used by the CLI to
 // determine if a proxy injection should happen.
 func (conf *ResourceConfig) InjectDisabled() bool {
-	return conf.podMeta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	return conf.pod.meta.ObjectMeta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 }
 
 // PodUsingHostNetwork returns true if the HostNetwork property is true.
 func (conf *ResourceConfig) PodUsingHostNetwork() bool {
-	return conf.podSpec != nil && conf.podSpec.HostNetwork
+	return conf.pod.spec != nil && conf.pod.spec.HostNetwork
 }
 
 // HasExistingProxy returns true if the pod already has a proxy sidecar.
 func (conf *ResourceConfig) HasExistingProxy() bool {
-	return conf.podSpec != nil && healthcheck.HasExistingSidecars(conf.podSpec)
+	return conf.pod.spec != nil && healthcheck.HasExistingSidecars(conf.pod.spec)
 }
 
 // ShouldOverrideConfig returns true if the workload has existing sidecars and
 // config override annotations.
 func (conf *ResourceConfig) ShouldOverrideConfig() bool {
-	return healthcheck.HasExistingSidecars(conf.podSpec) && hasOverrideAnnotations(conf.podMeta)
+	return healthcheck.HasExistingSidecars(conf.pod.spec) && hasOverrideAnnotations(conf.pod.meta)
 }
 
 func hasOverrideAnnotations(meta objMeta) bool {
