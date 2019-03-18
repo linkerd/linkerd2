@@ -41,6 +41,9 @@ const styles = theme => ({
   },
 });
 
+const dns1035ServiceFmt = '^[a-z]([-a-z0-9]*[a-z0-9])?$';
+const dns1035NamespaceFmt = '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$';
+
 class ConfigureProfilesMsg extends React.Component {
   constructor(props) {
     super(props);
@@ -80,16 +83,14 @@ class ConfigureProfilesMsg extends React.Component {
   };
 
   validateFields = (type, name) => {
-    let state = this.state;
-    let regExp = /[a-z0-9]([-a-z0-9]*[a-z0-9])?/;
-    let match = regExp.test(name);
-    if (match) {
-      state.error[type] = false;
-      this.setState(state);
-    } else {
-      state.error[type] = true;
-      this.setState(state);
-    }
+    let match;
+    let error = this.state.error;
+    let serviceNameRegexp = RegExp(dns1035ServiceFmt);
+    let namespaceNameRegexp = RegExp(dns1035NamespaceFmt);
+
+    type === 'service' ? match = serviceNameRegexp.test(name) : match = namespaceNameRegexp.test(name);
+    error[type] = !match;
+    this.setState({ error });
   };
 
   renderDownloadProfileForm = () => {
@@ -177,7 +178,6 @@ class ConfigureProfilesMsg extends React.Component {
               Cancel
             </Button>
             <a href={downloadUrl} style={{ textDecoration: 'none' }}>
-              `
               <Button
                 disabled={_isEmpty(query.service) ||
                   _isEmpty(query.namespace) ||
