@@ -9,7 +9,8 @@ export NODE_ENV=${NODE_ENV:=development}
 
 # Stop everything in the process group (in the background) whenever the
 # parent process experiences an error and exits.
-trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
+trap "exit" SIGINT SIGTERM
+trap "kill 0" EXIT
 
 function -h {
 cat <<USAGE
