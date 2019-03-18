@@ -7,11 +7,6 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
 DEV_PORT=8080
 export NODE_ENV=${NODE_ENV:=development}
 
-# Stop everything in the process group (in the background) whenever the
-# parent process experiences an error and exits.
-trap "exit" SIGINT SIGTERM
-trap "kill 0" EXIT
-
 function -h {
 cat <<USAGE
 USAGE: web <command>
@@ -45,6 +40,11 @@ function check-for-linkerd {
 }
 
 function dev {
+  # Stop everything in the process group (in the background) whenever the
+  # parent process experiences an error and exits.
+  trap "exit" INT TERM
+  trap "kill 0" EXIT
+
   build
 
   while getopts "p:" opt; do
