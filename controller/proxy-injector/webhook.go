@@ -110,8 +110,10 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if _, err := conf.ParseMetaAndYaml(request.Object.Raw); err != nil {
 		return nil, err
 	}
+	log.Infof("received %s", conf)
 
 	if !shouldInject(conf) && !conf.ShouldOverrideConfig() {
+		log.Infof("skipping %s", conf)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,

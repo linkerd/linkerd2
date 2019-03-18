@@ -181,8 +181,6 @@ func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
 func (conf *ResourceConfig) GetPatch() (*Patch, error) {
-	log.Infof("received %s", conf)
-
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
