@@ -143,7 +143,6 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=Namespace
-        - -enable-tls=
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
         image: ControllerImage

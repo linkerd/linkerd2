@@ -143,7 +143,6 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
-        - -enable-tls=
         - -enable-h2-upgrade=true
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
