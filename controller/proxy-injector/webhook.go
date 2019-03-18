@@ -2,6 +2,7 @@ package injector
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
@@ -110,9 +111,12 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if _, err := conf.ParseMetaAndYaml(request.Object.Raw); err != nil {
 		return nil, err
 	}
-	log.Infof("received %s", conf)
+	log.Infof("%s %s", strings.ToLower(string(request.Operation)), conf)
 
-	if !shouldInject(conf) {
+	// perform a shouldInject check if this is a create operation.
+	// this check doesn't apply to update operations, in order to support config
+	// overrides when updating meshed workloads.
+	if request.Operation == admissionv1beta1.Create && !shouldInject(conf) {
 		log.Infof("skipping %s", conf)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
@@ -132,13 +136,17 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		}, nil
 	}
 
-	p.AddCreatedByPodAnnotation(fmt.Sprintf("%s %s", k8s.CreatedByProxyInjector, version.Version))
+	// the resource YAML for update operations would already have the created-by
+	// annotation and the root labels.
+	if request.Operation == admissionv1beta1.Create {
+		p.AddCreatedByPodAnnotation(fmt.Sprintf("%s %s", k8s.CreatedByProxyInjector, version.Version))
 
-	// When adding workloads through `kubectl apply` the spec template labels are
-	// automatically copied to the workload's main metadata section.
-	// This doesn't happen when adding labels through the webhook. So we manually
-	// add them to remain consistent.
-	conf.AddRootLabels(p)
+		// When adding workloads through `kubectl apply` the spec template labels are
+		// automatically copied to the workload's main metadata section.
+		// This doesn't happen when adding labels through the webhook. So we manually
+		// add them to remain consistent.
+		conf.AddRootLabels(p)
+	}
 
 	patchJSON, err := p.Marshal()
 	if err != nil {
