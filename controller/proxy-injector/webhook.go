@@ -112,7 +112,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 	log.Infof("received %s", conf)
 
-	if !shouldInject(conf) && !conf.ShouldOverrideConfig() {
+	if !shouldInject(conf) {
 		log.Infof("skipping %s", conf)
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
