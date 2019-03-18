@@ -100,7 +100,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -142,7 +142,7 @@ spec:
         - destination
         - -addr=:8086
         - -controller-namespace=linkerd
-        - -enable-tls=true
+        - -enable-tls=
         - -enable-h2-upgrade=true
         - -log-level=info
         image: gcr.io/linkerd-io/controller:dev-undefined
@@ -215,19 +215,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: linkerd-controller.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-controller.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -250,26 +238,11 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       serviceAccountName: linkerd-controller
       volumes:
       - configMap:
           name: linkerd-config
         name: config
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-controller-deployment-tls-linkerd-io
 status: {}
 ---
 kind: ConfigMap
@@ -283,7 +256,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"dev-undefined","identityContext":{}}
+    {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"dev-undefined","identityContext":null}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 ---
@@ -440,7 +413,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -500,19 +473,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: linkerd-web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-web.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -535,23 +496,7 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       serviceAccountName: linkerd-web
-      volumes:
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-web-deployment-tls-linkerd-io
 status: {}
 ---
 ###
@@ -621,7 +566,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -686,21 +631,9 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: linkerd-prometheus.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
+          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-prometheus.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -723,13 +656,6 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       serviceAccountName: linkerd-prometheus
       volumes:
       - emptyDir: {}
@@ -737,14 +663,6 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-prometheus-deployment-tls-linkerd-io
 status: {}
 ---
 kind: ConfigMap
@@ -880,7 +798,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -940,19 +858,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: linkerd-grafana.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-grafana.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -975,13 +881,6 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
@@ -996,14 +895,6 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-grafana-deployment-tls-linkerd-io
 status: {}
 ---
 kind: ConfigMap
@@ -1064,178 +955,6 @@ data:
 
 ---
 ###
-### CA
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-ca
-  namespace: linkerd
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-ca
-rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["configmaps"]
-  resourceNames: [linkerd-ca-bundle]
-  verbs: ["update"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["extensions", "apps"]
-  resources: ["replicasets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["create", "update"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-ca
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-ca
-subjects:
-- kind: ServiceAccount
-  name: linkerd-ca
-  namespace: linkerd
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
-  labels:
-    linkerd.io/control-plane-component: ca
-  name: linkerd-ca
-  namespace: linkerd
-spec:
-  replicas: 1
-  strategy: {}
-  template:
-    metadata:
-      annotations:
-        linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
-        linkerd.io/proxy-version: dev-undefined
-      creationTimestamp: null
-      labels:
-        linkerd.io/control-plane-component: ca
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-ca
-    spec:
-      containers:
-      - args:
-        - ca
-        - -controller-namespace=linkerd
-        - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9997
-          initialDelaySeconds: 10
-        name: ca
-        ports:
-        - containerPort: 9997
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9997
-        resources: {}
-        securityContext:
-          runAsUser: 2103
-      - env:
-        - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_CONTROL_LISTENER
-          value: tcp://0.0.0.0:4190
-        - name: LINKERD2_PROXY_METRICS_LISTENER
-          value: tcp://0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-          value: tcp://127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTENER
-          value: tcp://0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-          value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 10000ms
-        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 10000ms
-        - name: LINKERD2_PROXY_ID
-          value: linkerd-ca.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-ca.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
-        image: gcr.io/linkerd-io/proxy:dev-undefined
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /metrics
-            port: 4191
-          initialDelaySeconds: 10
-        name: linkerd-proxy
-        ports:
-        - containerPort: 4143
-          name: linkerd-proxy
-        - containerPort: 4191
-          name: linkerd-metrics
-        readinessProbe:
-          httpGet:
-            path: /metrics
-            port: 4191
-          initialDelaySeconds: 10
-        resources: {}
-        securityContext:
-          runAsUser: 2102
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
-      serviceAccountName: linkerd-ca
-      volumes:
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-ca-deployment-tls-linkerd-io
-status: {}
----
-###
 ### Proxy Injector
 ###
 ---
@@ -1259,7 +978,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/identity-mode: optional
+        linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: dev-undefined
       creationTimestamp: null
       labels:
@@ -1273,7 +992,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -no-init-container=true
-        - -tls-enabled=true
+        - -tls-enabled=
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1320,19 +1039,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_ID
-          value: linkerd-proxy-injector.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_TLS_TRUST_ANCHORS
-          value: /var/linkerd-io/trust-anchors/trust-anchors.pem
-        - name: LINKERD2_PROXY_TLS_CERT
-          value: /var/linkerd-io/identity/certificate.crt
-        - name: LINKERD2_PROXY_TLS_PRIVATE_KEY
-          value: /var/linkerd-io/identity/private-key.p8
-        - name: LINKERD2_PROXY_TLS_POD_IDENTITY
-          value: linkerd-proxy-injector.deployment.$LINKERD2_PROXY_POD_NAMESPACE.linkerd-managed.linkerd.svc.cluster.local
-        - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
-          value: linkerd
-        - name: LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY
-          value: linkerd-controller.deployment.linkerd.linkerd-managed.linkerd.svc.cluster.local
+          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1355,26 +1062,11 @@ spec:
         securityContext:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/linkerd-io/trust-anchors
-          name: linkerd-trust-anchors
-          readOnly: true
-        - mountPath: /var/linkerd-io/identity
-          name: linkerd-secrets
-          readOnly: true
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
           name: linkerd-config
         name: config
-      - configMap:
-          name: linkerd-ca-bundle
-          optional: true
-        name: linkerd-trust-anchors
-      - name: linkerd-secrets
-        secret:
-          optional: true
-          secretName: linkerd-proxy-injector-deployment-tls-linkerd-io
 status: {}
 ---
 kind: ServiceAccount

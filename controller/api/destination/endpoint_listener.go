@@ -99,7 +99,6 @@ type endpointListener struct {
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
 	enableH2Upgrade  bool
-	enableTLS        bool
 	stopCh           chan struct{}
 	log              *log.Entry
 }
@@ -107,7 +106,7 @@ type endpointListener struct {
 func newEndpointListener(
 	stream pb.Destination_GetServer,
 	ownerKindAndName ownerKindAndNameFn,
-	enableTLS, enableH2Upgrade bool,
+	enableH2Upgrade bool,
 	controllerNS string,
 ) *endpointListener {
 	return &endpointListener{
@@ -116,7 +115,6 @@ func newEndpointListener(
 		ownerKindAndName: ownerKindAndName,
 		labels:           make(map[string]string),
 		enableH2Upgrade:  enableH2Upgrade,
-		enableTLS:        enableTLS,
 		stopCh:           make(chan struct{}),
 		log: log.WithFields(log.Fields{
 			"component": "endpoint-listener",
@@ -234,25 +232,5 @@ func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, 
 		}
 	}
 
-	var identity *pb.TlsIdentity
-	if l.enableTLS && controllerNS == l.controllerNS &&
-		pod.Annotations[pkgK8s.IdentityModeAnnotation] == pkgK8s.IdentityModeOptional {
-		name := pkgK8s.TLSIdentity{
-			Name:                ownerName,
-			Kind:                ownerKind,
-			Namespace:           pod.Namespace,
-			ControllerNamespace: controllerNS,
-		}.ToDNSName()
-
-		identity = &pb.TlsIdentity{
-			Strategy: &pb.TlsIdentity_K8SPodIdentity_{
-				K8SPodIdentity: &pb.TlsIdentity_K8SPodIdentity{
-					PodIdentity:  name,
-					ControllerNs: controllerNS,
-				},
-			},
-		}
-	}
-
-	return labels, hint, identity
+	return labels, hint, nil
 }

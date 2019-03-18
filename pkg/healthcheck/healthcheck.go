@@ -856,9 +856,6 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "prometheus", "web", "grafana"}
-	if _, found := statuses["ca"]; found {
-		names = append(names, "ca")
-	}
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
 	}

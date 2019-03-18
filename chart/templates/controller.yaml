@@ -142,7 +142,6 @@ spec:
         - "destination"
         - "-addr=:8086"
         - "-controller-namespace={{.Values.Namespace}}"
-        - "-enable-tls={{.Values.EnableTLS}}"
         - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"
         - "-log-level={{.Values.ControllerLogLevel}}"
         livenessProbe:
