@@ -213,6 +213,8 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 	}
 }
 
+// TODO: restore TLS identities
+//nolint
 func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
 	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 	ownerKind, ownerName := l.ownerKindAndName(pod)
