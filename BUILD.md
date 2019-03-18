@@ -247,12 +247,14 @@ These commands assume working [Go](https://golang.org) and
 
 #### First time setup
 
-Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
+1. Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
 
-```bash
-brew install yarn
-bin/web setup
-```
+    ```bash
+    brew install yarn
+    bin/web setup
+    ```
+
+1. Install Linkerd on a Kubernetes cluster.
 
 #### Run web standalone
 
@@ -265,8 +267,6 @@ The web server will be running on `localhost:8084`.
 #### Webpack dev server
 
 To develop with a webpack dev server:
-
-1. Install Linkerd on a Kubernetes cluster.
 
 1. Start the development server.
 
