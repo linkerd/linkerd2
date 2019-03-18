@@ -152,7 +152,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
         </Grid>
       );
     },
-    sorter: d => getResourceDisplayName(d) ? getResourceDisplayName(d) : -1
+    sorter: d => getResourceDisplayName(d) || -1
   };
 
   let columns = [nameColumn];
