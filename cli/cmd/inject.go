@@ -253,9 +253,6 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 // and ProxyConfig, until we come up with an abstraction over those GRPC structs
 func injectOptionsToConfigs(options *injectOptions) configs {
 	var idContext *config.IdentityContext
-	if options.tls == optionalTLS {
-		idContext = &config.IdentityContext{}
-	}
 	globalConfig := &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,

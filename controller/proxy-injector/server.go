@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
@@ -21,7 +21,7 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace string, noInitContainer, tlsEnabled bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
 	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace str
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(client, controllerNamespace, noInitContainer, tlsEnabled)
+	webhook, err := NewWebhook(client, controllerNamespace, noInitContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +81,7 @@ func tlsConfig(rootCA *pkgTls.CA, controllerNamespace string) (*tls.Config, erro
 	// must use the service short name in this TLS identity as the k8s api server
 	// looks for the webhook at <svc_name>.<namespace>.svc, without the cluster
 	// domain.
-	tlsIdentity := k8s.TLSIdentity{
-		Name:                "linkerd-proxy-injector",
-		Kind:                k8s.Service,
-		Namespace:           controllerNamespace,
-		ControllerNamespace: controllerNamespace,
-	}
-	dnsName := tlsIdentity.ToDNSName()
+	dnsName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", controllerNamespace)
 	cred, err := rootCA.GenerateEndEntityCred(dnsName)
 	if err != nil {
 		return nil, err

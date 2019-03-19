@@ -71,7 +71,6 @@ func TestEndpointListener(t *testing.T) {
 			mockGetServer,
 			defaultOwnerKindAndName,
 			false,
-			false,
 			"linkerd",
 		)
 
@@ -89,7 +88,6 @@ func TestEndpointListener(t *testing.T) {
 		listener := newEndpointListener(
 			mockGetServer,
 			defaultOwnerKindAndName,
-			false,
 			false,
 			"linkerd",
 		)
@@ -131,7 +129,6 @@ func TestEndpointListener(t *testing.T) {
 		listener := newEndpointListener(
 			mockGetServer,
 			defaultOwnerKindAndName,
-			false,
 			false,
 			"linkerd",
 		)
@@ -176,7 +173,6 @@ func TestEndpointListener(t *testing.T) {
 			mockGetServer,
 			ownerKindAndName,
 			false,
-			false,
 			"linkerd",
 		)
 		listener.labels = map[string]string{
@@ -206,14 +202,12 @@ func TestEndpointListener(t *testing.T) {
 	})
 
 	t.Run("Sends TlsIdentity when enabled", func(t *testing.T) {
+		t.Skip("TLS is currently disabled")
 		expectedPodName := pod1.Name
 		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "linkerd-namespace"
 		expectedPodDeployment := podDeployment
-		expectedTLSIdentity := &pb.TlsIdentity_K8SPodIdentity{
-			PodIdentity:  "pod-deployment.deployment.this-namespace.linkerd-managed.linkerd-namespace.svc.cluster.local",
-			ControllerNs: "linkerd-namespace",
-		}
+		//expectedTLSIdentity := nil
 
 		podForAddedAddress1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -240,7 +234,6 @@ func TestEndpointListener(t *testing.T) {
 		listener := newEndpointListener(
 			mockGetServer,
 			ownerKindAndName,
-			true,
 			false,
 			expectedControllerNamespace,
 		)
@@ -255,13 +248,14 @@ func TestEndpointListener(t *testing.T) {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
 
-		actualTLSIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
-		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
-			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
-		}
+		// actualTLSIdentity := addrs[0].GetTlsIdentity().GetK8SPodIdentity()
+		// if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
+		// 	t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		// }
 	})
 
 	t.Run("Does not send TlsIdentity for other meshes", func(t *testing.T) {
+		t.Skip("TLS is currently disabled")
 		expectedPodName := "pod1"
 		expectedPodNamespace := thisNS
 		expectedControllerNamespace := "other-linkerd-namespace"
@@ -292,7 +286,6 @@ func TestEndpointListener(t *testing.T) {
 		listener := newEndpointListener(
 			mockGetServer,
 			ownerKindAndName,
-			true,
 			false,
 			"linkerd-namespace",
 		)
@@ -340,7 +333,6 @@ func TestEndpointListener(t *testing.T) {
 		listener := newEndpointListener(
 			mockGetServer,
 			ownerKindAndName,
-			false,
 			false,
 			"linkerd",
 		)

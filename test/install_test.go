@@ -52,20 +52,12 @@ var (
 	// they're addressed.
 	// TODO: eliminate these errors: https://github.com/linkerd/linkerd2/issues/2453
 	knownErrorsRegex = regexp.MustCompile(strings.Join([]string{
-		// TLS not ready at startup
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/identity/certificate\.crt: No such file or directory \(os error 2\)`,
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={bg=tls-config} linkerd2_proxy::transport::tls::config error loading /var/linkerd-io/trust-anchors/trust-anchors\.pem: No such file or directory \(os error 2\)`,
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/identity/certificate\.crt", Some\(2\)\), falling back`,
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN admin={bg=tls-config} linkerd2_proxy::transport::tls::config error reloading TLS config: Io\("/var/linkerd-io/trust-anchors/trust-anchors\.pem", Some\(2\)\), falling back`,
-
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy WARN proxy={server=in listen=0\.0\.0\.0:4143} rustls::session Sending fatal alert AccessDenied`,
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an IO error occurred: Connection reset by peer (os error 104)`,
 
 		// k8s hitting readiness endpoints before components are ready
-		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
-		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
+		`.* linkerd-(controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
+		`.* linkerd-(controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
 
-		`.* linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
+		`.* linkerd-(controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
@@ -75,10 +67,6 @@ var (
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: operation timed out after 300ms`,
 
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.*-tls linkerd-(ca|controller|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! linkerd-destination\..*-tls\.svc\.cluster\.local:8086 rustls::session TLS alert received: Message {`,
-		`.*-tls linkerd-controller-.*-.* linkerd-proxy ERR! .*:9090 rustls::session TLS alert received: Message {`,
-		`.*-tls linkerd-web-.*-.* linkerd-proxy WARN linkerd-destination\..*-tls\.svc\.cluster\.local:8086 linkerd2_proxy::proxy::reconnect connect error to Config { addr: Name\(NameAddr { name: "linkerd-destination\..*-tls\.svc\.cluster\.local", port: 8086 }\), tls_server_identity: Some\("linkerd-controller\.deployment\..*-tls\.linkerd-managed\..*-tls.svc.cluster.local"\), tls_config: Some\(ClientConfig\) }: received fatal alert: AccessDenied`,
-		`.*-tls linkerd-controller-.*-.* linkerd-proxy WARN .*:9090 linkerd2_proxy::proxy::reconnect connect error to Config { target: Target { addr: V4\(.*:9090\), tls: Some\(ConnectionConfig { server_identity: "linkerd-prometheus\.deployment\..*-tls.linkerd-managed\..*-tls\.svc\.cluster\.local", config: ClientConfig }\) }, settings: Http2, _p: \(\) }: received fatal alert: AccessDenied`,
 	}, "|"))
 )
 
@@ -115,10 +103,6 @@ func TestInstall(t *testing.T) {
 		"--controller-log-level", "debug",
 		"--proxy-log-level", "warn,linkerd2_proxy=debug",
 		"--linkerd-version", TestHelper.GetVersion(),
-	}
-	if TestHelper.TLS() {
-		cmd = append(cmd, []string{"--tls", "optional"}...)
-		linkerdDeployReplicas["linkerd-ca"] = deploySpec{1, []string{"ca"}}
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -219,9 +203,6 @@ func TestDashboard(t *testing.T) {
 
 func TestInject(t *testing.T) {
 	cmd := []string{"inject", "testdata/smoke_test.yaml"}
-	if TestHelper.TLS() {
-		cmd = append(cmd, []string{"--tls", "optional"}...)
-	}
 
 	out, injectReport, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {

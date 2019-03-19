@@ -78,11 +78,6 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 				default:
 					log.Printf("  - protocol hint: UNKNOWN")
 				}
-				switch identityType := addr.GetTlsIdentity().GetStrategy().(type) {
-				case *pb.TlsIdentity_K8SPodIdentity_:
-					log.Printf("  - pod identity: %s", identityType.K8SPodIdentity.PodIdentity)
-					log.Printf("  - controller ns: %s", identityType.K8SPodIdentity.ControllerNs)
-				}
 			}
 			log.Println()
 		case *pb.Update_Remove:

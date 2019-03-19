@@ -24,11 +24,10 @@ type Webhook struct {
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	noInitContainer     bool
-	tlsEnabled          bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer, tlsEnabled bool) (*Webhook, error) {
+func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -39,7 +38,6 @@ func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitC
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		noInitContainer:     noInitContainer,
-		tlsEnabled:          tlsEnabled,
 	}, nil
 }
 

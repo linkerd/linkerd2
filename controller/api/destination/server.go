@@ -20,7 +20,6 @@ type server struct {
 	k8sAPI          *k8s.API
 	resolver        streamingDestinationResolver
 	enableH2Upgrade bool
-	enableTLS       bool
 	controllerNS    string
 	log             *log.Entry
 }
@@ -40,7 +39,7 @@ type server struct {
 func NewServer(
 	addr, k8sDNSZone string,
 	controllerNS string,
-	enableTLS, enableH2Upgrade bool,
+	enableH2Upgrade bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
 ) (*grpc.Server, error) {
@@ -53,7 +52,6 @@ func NewServer(
 		k8sAPI:          k8sAPI,
 		resolver:        resolver,
 		enableH2Upgrade: enableH2Upgrade,
-		enableTLS:       enableTLS,
 		controllerNS:    controllerNS,
 		log: log.WithFields(log.Fields{
 			"addr":      addr,
@@ -96,11 +94,22 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	listener := newProfileListener(stream)
 
-	proxyID := strings.Split(dest.ProxyId, ".")
 	proxyNS := ""
-	// <deployment>.deployment.<namespace>.linkerd-managed.linkerd.svc.cluster.local
-	if len(proxyID) >= 3 {
-		proxyNS = proxyID[2]
+	parts := strings.Split(dest.ProxyId, ":")
+	// ns:<namespace>
+	if len(parts) == 2 && parts[0] == "ns" {
+		proxyNS = parts[1]
+	} else {
+		// TODO remove this after the 2.3 release...
+		parts = strings.Split(dest.ProxyId, ".")
+		// <deployment>.deployment.<namespace>.linkerd-managed.linkerd.svc.cluster.local
+		if len(parts) >= 3 {
+			log.Debug("Serving profile request for legacy proxy")
+			proxyNS = parts[2]
+		}
+	}
+	if proxyNS != "" {
+		log.Debugf("Looking up profile given context: ns:%s", proxyNS)
 	}
 
 	err = s.resolver.streamProfiles(host, proxyNS, listener)
@@ -152,7 +161,7 @@ func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsPar
 }
 
 func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableTLS, s.enableH2Upgrade, s.controllerNS)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableH2Upgrade, s.controllerNS)
 
 	resolverCanResolve, err := s.resolver.canResolve(host, port)
 	if err != nil {

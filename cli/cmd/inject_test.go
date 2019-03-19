@@ -51,10 +51,6 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := newConfig()
 	defaultConfig.global.Version = "testinjectversion"
 
-	tlsConfig := newConfig()
-	tlsConfig.global.IdentityContext = &config.IdentityContext{}
-	tlsConfig.global.Version = defaultConfig.global.Version
-
 	proxyResourceConfig := newConfig()
 	proxyResourceConfig.global.Version = defaultConfig.global.Version
 	proxyResourceConfig.proxy.Resource = &config.ResourceRequirements{
@@ -122,18 +118,6 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:   "inject_emojivoto_pod_with_requests.report",
 			testInjectConfig: proxyResourceConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_tls.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			testInjectConfig: tlsConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_pod.input.yml",
-			goldenFileName:   "inject_emojivoto_pod_tls.golden.yml",
-			reportFileName:   "inject_emojivoto_pod.report",
-			testInjectConfig: tlsConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_udp.input.yml",

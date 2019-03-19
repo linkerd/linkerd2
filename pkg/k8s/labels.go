@@ -174,50 +174,12 @@ const (
 	// configuration resource of the proxy-injector webhook.
 	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
 
-	// TLSTrustAnchorVolumeName is the name of the trust anchor volume,
-	// used when injecting a proxy with TLS enabled.
-	TLSTrustAnchorVolumeName = "linkerd-trust-anchors"
-
-	// TLSSecretsVolumeName is the name of the volume holding the secrets,
-	// when injecting a proxy with TLS enabled.
-	TLSSecretsVolumeName = "linkerd-secrets"
-
-	// TLSTrustAnchorConfigMapName is the name of the ConfigMap that holds the
-	// trust anchors (trusted root certificates).
-	TLSTrustAnchorConfigMapName = "linkerd-ca-bundle"
-
-	// TLSTrustAnchorFileName is the name (key) within the trust anchor ConfigMap
-	// that contains the actual trust anchor bundle.
-	TLSTrustAnchorFileName = "trust-anchors.pem"
-
-	// TLSCertFileName is the name (key) within proxy-injector ConfigMap that
-	// contains the TLS certificate.
-	TLSCertFileName = "certificate.crt"
-
-	// TLSPrivateKeyFileName is the name (key) within proxy-injector ConfigMap
-	// that contains the TLS private key.
-	TLSPrivateKeyFileName = "private-key.p8"
-
 	/*
 	 * Mount paths
 	 */
 
 	// MountPathBase is the base directory of the mount path
 	MountPathBase = "/var/linkerd-io"
-)
-
-var (
-	// MountPathTLSTrustAnchor is the path at which the trust anchor file is
-	// mounted
-	MountPathTLSTrustAnchor = MountPathBase + "/trust-anchors/" + TLSTrustAnchorFileName
-
-	// MountPathTLSIdentityCert is the path at which the TLS identity cert file is
-	// mounted
-	MountPathTLSIdentityCert = MountPathBase + "/identity/" + TLSCertFileName
-
-	// MountPathTLSIdentityKey is the path at which the TLS identity key file is
-	// mounted
-	MountPathTLSIdentityKey = MountPathBase + "/identity/" + TLSPrivateKeyFileName
 
 	// MountPathGlobalConfig is the path at which the global config file is mounted
 	MountPathGlobalConfig = MountPathBase + "/config/global"
@@ -253,47 +215,4 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
-}
-
-// TLSIdentity is the identity of a pod owner (Deployment, Pod,
-// ReplicationController, etc.).
-type TLSIdentity struct {
-	// Name is the name of the pod owner.
-	Name string
-
-	// Kind is the singular, lowercased Kubernetes resource type of the pod owner
-	// (deployment, daemonset, job, replicationcontroller, etc.).
-	Kind string
-
-	// Namespace is the pod's namespace. Kubernetes requires that pods and
-	// pod owners be in the same namespace.
-	Namespace string
-
-	// ControllerNamespace is the namespace of the controller for the pod.
-	ControllerNamespace string
-}
-
-// ToDNSName formats a TLSIdentity as a DNS name.
-func (i TLSIdentity) ToDNSName() string {
-	if i.Kind == Service {
-		return fmt.Sprintf("%s.%s.svc", i.Name, i.Namespace)
-	}
-	return fmt.Sprintf("%s.%s.%s.linkerd-managed.%s.svc.cluster.local", i.Name,
-		i.Kind, i.Namespace, i.ControllerNamespace)
-}
-
-// ToSecretName formats a TLSIdentity as a secret name.
-func (i TLSIdentity) ToSecretName() string {
-	return fmt.Sprintf("%s-%s-tls-linkerd-io", i.Name, i.Kind)
-}
-
-// ToControllerIdentity returns the TLSIdentity of the Linkerd Controller, given
-// an arbitrary TLSIdentity.
-func (i TLSIdentity) ToControllerIdentity() TLSIdentity {
-	return TLSIdentity{
-		Name:                "linkerd-controller",
-		Kind:                "deployment",
-		Namespace:           i.ControllerNamespace,
-		ControllerNamespace: i.ControllerNamespace,
-	}
 }

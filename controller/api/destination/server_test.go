@@ -158,7 +158,7 @@ func TestEndpoints(t *testing.T) {
 	lis := bufconn.Listen(1024 * 1024)
 	gRPCServer, err := NewServer(
 		"fake-addr", "", "controller-ns",
-		false, false, k8sAPI, nil,
+		false, k8sAPI, nil,
 	)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)

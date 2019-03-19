@@ -13,7 +13,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
-	k8sMeta "k8s.io/apimachinery/pkg/api/meta"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -171,24 +170,9 @@ func (conf *ResourceConfig) GetPatch(
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
 	if conf.podSpec != nil {
-		metaAccessor, err := k8sMeta.Accessor(conf.obj)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// The namespace isn't necessarily in the input so it has to be substituted
-		// at runtime. The proxy recognizes the "$NAME" syntax for this variable
-		// but not necessarily other variables.
-		identity := k8s.TLSIdentity{
-			Name:                metaAccessor.GetName(),
-			Kind:                strings.ToLower(conf.meta.Kind),
-			Namespace:           "$" + envVarProxyPodNamespace,
-			ControllerNamespace: conf.globalConfig.GetLinkerdNamespace(),
-		}
-
 		report.update(conf)
 		if shouldInject(conf, report) {
-			conf.injectPodSpec(patch, identity)
+			conf.injectPodSpec(patch)
 			conf.injectObjectMeta(patch)
 		}
 	} else {
@@ -351,7 +335,7 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
-func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity) {
+func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	proxyUID := conf.proxyUID()
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
@@ -413,7 +397,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 				Name:  envVarProxyOutboundConnectKeepAlive,
 				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
 			},
-			{Name: envVarProxyID, Value: identity.ToDNSName()},
+			{Name: envVarProxyID, Value: fmt.Sprintf("ns:$(%s)", envVarProxyPodNamespace)},
 		},
 		LivenessProbe:  conf.proxyProbe(),
 		ReadinessProbe: conf.proxyProbe(),
@@ -439,53 +423,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch, identity k8s.TLSIdentity
 	}
 
 	if conf.globalConfig.GetIdentityContext() != nil {
-		yes := true
-
-		configMapVolume := &v1.Volume{
-			Name: k8s.TLSTrustAnchorVolumeName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{Name: k8s.TLSTrustAnchorConfigMapName},
-					Optional:             &yes,
-				},
-			},
-		}
-		secretVolume := &v1.Volume{
-			Name: k8s.TLSSecretsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: identity.ToSecretName(),
-					Optional:   &yes,
-				},
-			},
-		}
-
-		base := "/var/linkerd-io"
-		configMapBase := base + "/trust-anchors"
-		secretBase := base + "/identity"
-		tlsEnvVars := []v1.EnvVar{
-			{Name: "LINKERD2_PROXY_TLS_TRUST_ANCHORS", Value: configMapBase + "/" + k8s.TLSTrustAnchorFileName},
-			{Name: "LINKERD2_PROXY_TLS_CERT", Value: secretBase + "/" + k8s.TLSCertFileName},
-			{Name: "LINKERD2_PROXY_TLS_PRIVATE_KEY", Value: secretBase + "/" + k8s.TLSPrivateKeyFileName},
-			{
-				Name:  "LINKERD2_PROXY_TLS_POD_IDENTITY",
-				Value: identity.ToDNSName(),
-			},
-			{Name: "LINKERD2_PROXY_CONTROLLER_NAMESPACE", Value: conf.globalConfig.GetLinkerdNamespace()},
-			{Name: "LINKERD2_PROXY_TLS_CONTROLLER_IDENTITY", Value: identity.ToControllerIdentity().ToDNSName()},
-		}
-
-		sidecar.Env = append(sidecar.Env, tlsEnvVars...)
-		sidecar.VolumeMounts = []v1.VolumeMount{
-			{Name: configMapVolume.Name, MountPath: configMapBase, ReadOnly: true},
-			{Name: secretVolume.Name, MountPath: secretBase, ReadOnly: true},
-		}
-
-		if len(conf.podSpec.Volumes) == 0 {
-			patch.addVolumeRoot()
-		}
-		patch.addVolume(configMapVolume)
-		patch.addVolume(secretVolume)
+		log.Warn("TLS configuration exists but is currently not available")
 	}
 
 	patch.addContainer(&sidecar)

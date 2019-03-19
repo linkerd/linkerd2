@@ -21,33 +21,30 @@ func TestRender(t *testing.T) {
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
 	metaConfig := installConfig{
-		Namespace:                   "Namespace",
-		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
-		PrometheusImage:             "PrometheusImage",
-		PrometheusVolumeName:        "data",
-		GrafanaImage:                "GrafanaImage",
-		GrafanaVolumeName:           "data",
-		ControllerReplicas:          1,
-		ImagePullPolicy:             "ImagePullPolicy",
-		UUID:                        "UUID",
-		CliVersion:                  "CliVersion",
-		ControllerLogLevel:          "ControllerLogLevel",
-		PrometheusLogLevel:          "PrometheusLogLevel",
-		ControllerComponentLabel:    "ControllerComponentLabel",
-		CreatedByAnnotation:         "CreatedByAnnotation",
-		EnableTLS:                   true,
-		TLSTrustAnchorConfigMapName: "TLSTrustAnchorConfigMapName",
-		ProxyContainerName:          "ProxyContainerName",
-		TLSTrustAnchorFileName:      "TLSTrustAnchorFileName",
-		ProxyAutoInjectEnabled:      true,
-		ProxyInjectAnnotation:       "ProxyInjectAnnotation",
-		ProxyInjectDisabled:         "ProxyInjectDisabled",
-		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		NoInitContainer:             false,
-		GlobalConfig:                "GlobalConfig",
-		ProxyConfig:                 "ProxyConfig",
+		Namespace:                "Namespace",
+		ControllerImage:          "ControllerImage",
+		WebImage:                 "WebImage",
+		PrometheusImage:          "PrometheusImage",
+		PrometheusVolumeName:     "data",
+		GrafanaImage:             "GrafanaImage",
+		GrafanaVolumeName:        "data",
+		ControllerReplicas:       1,
+		ImagePullPolicy:          "ImagePullPolicy",
+		UUID:                     "UUID",
+		CliVersion:               "CliVersion",
+		ControllerLogLevel:       "ControllerLogLevel",
+		PrometheusLogLevel:       "PrometheusLogLevel",
+		ControllerComponentLabel: "ControllerComponentLabel",
+		CreatedByAnnotation:      "CreatedByAnnotation",
+		ProxyContainerName:       "ProxyContainerName",
+		ProxyAutoInjectEnabled:   true,
+		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
+		ProxyInjectDisabled:      "ProxyInjectDisabled",
+		ControllerUID:            2103,
+		EnableH2Upgrade:          true,
+		NoInitContainer:          false,
+		GlobalConfig:             "GlobalConfig",
+		ProxyConfig:              "ProxyConfig",
 	}
 
 	haOptions := newInstallOptions()
@@ -71,7 +68,6 @@ func TestRender(t *testing.T) {
 	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectOptions.tls = "optional"
 	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
 	noInitContainerWithProxyAutoInjectConfig.UUID = defaultConfig.UUID
 

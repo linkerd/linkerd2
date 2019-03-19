@@ -22,7 +22,7 @@ func init() {
 	// create a webhook which uses its fake client to seed the sidecar configmap
 	fakeClient := fake.NewClient("")
 
-	webhook, err := NewWebhook(fakeClient, fake.DefaultControllerNamespace, false, true)
+	webhook, err := NewWebhook(fakeClient, fake.DefaultControllerNamespace, false)
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +79,7 @@ func TestNewWebhookServer(t *testing.T) {
 	)
 	fakeClient := fake.NewClient(kubeconfig)
 
-	server, err := NewWebhookServer(fakeClient, addr, fake.DefaultControllerNamespace, false, true, rootCA)
+	server, err := NewWebhookServer(fakeClient, addr, fake.DefaultControllerNamespace, false, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

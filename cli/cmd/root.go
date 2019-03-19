@@ -263,13 +263,11 @@ type proxyConfigOptions struct {
 	proxyMemoryRequest      string
 	proxyCPULimit           string
 	proxyMemoryLimit        string
-	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
 }
 
 const (
-	optionalTLS           = "optional"
 	defaultDockerRegistry = "gcr.io/linkerd-io"
 )
 
@@ -293,7 +291,6 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyMemoryRequest:      "",
 		proxyCPULimit:           "",
 		proxyMemoryLimit:        "",
-		tls:                     "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
 	}
@@ -374,20 +371,12 @@ func (options *proxyConfigOptions) validate() error {
 		}
 	}
 
-	if options.tls != "" && options.tls != optionalTLS {
-		return fmt.Errorf("--tls must be blank or set to \"%s\"", optionalTLS)
-	}
-
 	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
 			options.proxyLogLevel)
 	}
 
 	return nil
-}
-
-func (options *proxyConfigOptions) enableTLS() bool {
-	return options.tls == optionalTLS
 }
 
 // registryOverride replaces the registry of the provided image if the image is
@@ -417,7 +406,6 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
-	cmd.PersistentFlags().StringVar(&options.tls, "tls", options.tls, "Enable TLS; valid settings: \"optional\"")
 	cmd.PersistentFlags().BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
 	cmd.PersistentFlags().BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
 

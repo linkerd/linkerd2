@@ -23,34 +23,31 @@ import (
 )
 
 type installConfig struct {
-	Namespace                   string
-	ControllerImage             string
-	WebImage                    string
-	PrometheusImage             string
-	PrometheusVolumeName        string
-	GrafanaImage                string
-	GrafanaVolumeName           string
-	ControllerReplicas          uint
-	ImagePullPolicy             string
-	UUID                        string
-	CliVersion                  string
-	ControllerLogLevel          string
-	PrometheusLogLevel          string
-	ControllerComponentLabel    string
-	CreatedByAnnotation         string
-	EnableTLS                   bool
-	TLSTrustAnchorConfigMapName string
-	ProxyContainerName          string
-	TLSTrustAnchorFileName      string
-	ProxyAutoInjectEnabled      bool
-	ProxyInjectAnnotation       string
-	ProxyInjectDisabled         string
-	EnableHA                    bool
-	ControllerUID               int64
-	EnableH2Upgrade             bool
-	NoInitContainer             bool
-	GlobalConfig                string
-	ProxyConfig                 string
+	Namespace                string
+	ControllerImage          string
+	WebImage                 string
+	PrometheusImage          string
+	PrometheusVolumeName     string
+	GrafanaImage             string
+	GrafanaVolumeName        string
+	ControllerReplicas       uint
+	ImagePullPolicy          string
+	UUID                     string
+	CliVersion               string
+	ControllerLogLevel       string
+	PrometheusLogLevel       string
+	ControllerComponentLabel string
+	CreatedByAnnotation      string
+	ProxyContainerName       string
+	ProxyAutoInjectEnabled   bool
+	ProxyInjectAnnotation    string
+	ProxyInjectDisabled      string
+	EnableHA                 bool
+	ControllerUID            int64
+	EnableH2Upgrade          bool
+	NoInitContainer          bool
+	GlobalConfig             string
+	ProxyConfig              string
 }
 
 // installOptions holds values for command line flags that apply to the install
@@ -79,7 +76,6 @@ const (
 	prometheusTemplateName     = "templates/prometheus.yaml"
 	grafanaTemplateName        = "templates/grafana.yaml"
 	serviceprofileTemplateName = "templates/serviceprofile.yaml"
-	caTemplateName             = "templates/ca.yaml"
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
@@ -156,34 +152,31 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 	}
 
 	return &installConfig{
-		Namespace:                   controlPlaneNamespace,
-		ControllerImage:             fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
-		WebImage:                    fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:             "prom/prometheus:v2.7.1",
-		PrometheusVolumeName:        "data",
-		GrafanaImage:                fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
-		GrafanaVolumeName:           "data",
-		ControllerReplicas:          options.controllerReplicas,
-		ImagePullPolicy:             options.imagePullPolicy,
-		UUID:                        uuid.NewV4().String(),
-		CliVersion:                  k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:          options.controllerLogLevel,
-		PrometheusLogLevel:          prometheusLogLevel,
-		ControllerComponentLabel:    k8s.ControllerComponentLabel,
-		ControllerUID:               options.controllerUID,
-		CreatedByAnnotation:         k8s.CreatedByAnnotation,
-		EnableTLS:                   options.enableTLS(),
-		TLSTrustAnchorConfigMapName: k8s.TLSTrustAnchorConfigMapName,
-		ProxyContainerName:          k8s.ProxyContainerName,
-		TLSTrustAnchorFileName:      k8s.TLSTrustAnchorFileName,
-		ProxyAutoInjectEnabled:      options.proxyAutoInject,
-		ProxyInjectAnnotation:       k8s.ProxyInjectAnnotation,
-		ProxyInjectDisabled:         k8s.ProxyInjectDisabled,
-		EnableHA:                    options.highAvailability,
-		EnableH2Upgrade:             !options.disableH2Upgrade,
-		NoInitContainer:             options.noInitContainer,
-		GlobalConfig:                globalConfig,
-		ProxyConfig:                 proxyConfig,
+		Namespace:                controlPlaneNamespace,
+		ControllerImage:          fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
+		WebImage:                 fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
+		PrometheusImage:          "prom/prometheus:v2.7.1",
+		PrometheusVolumeName:     "data",
+		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaVolumeName:        "data",
+		ControllerReplicas:       options.controllerReplicas,
+		ImagePullPolicy:          options.imagePullPolicy,
+		UUID:                     uuid.NewV4().String(),
+		CliVersion:               k8s.CreatedByAnnotationValue(),
+		ControllerLogLevel:       options.controllerLogLevel,
+		PrometheusLogLevel:       prometheusLogLevel,
+		ControllerComponentLabel: k8s.ControllerComponentLabel,
+		ControllerUID:            options.controllerUID,
+		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		ProxyContainerName:       k8s.ProxyContainerName,
+		ProxyAutoInjectEnabled:   options.proxyAutoInject,
+		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
+		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
+		EnableHA:                 options.highAvailability,
+		EnableH2Upgrade:          !options.disableH2Upgrade,
+		NoInitContainer:          options.noInitContainer,
+		GlobalConfig:             globalConfig,
+		ProxyConfig:              proxyConfig,
 	}, nil
 }
 
@@ -203,7 +196,6 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		{Name: webTemplateName},
 		{Name: prometheusTemplateName},
 		{Name: grafanaTemplateName},
-		{Name: caTemplateName},
 		{Name: proxyInjectorTemplateName},
 	}
 
@@ -290,9 +282,6 @@ func readIntoBytes(filename string) ([]byte, error) {
 
 func globalConfig(options *installOptions) *config.Global {
 	var identityContext *config.IdentityContext
-	if options.enableTLS() {
-		identityContext = &config.IdentityContext{}
-	}
 
 	return &config.Global{
 		LinkerdNamespace: controlPlaneNamespace,
