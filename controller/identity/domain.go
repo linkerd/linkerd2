@@ -3,39 +3,42 @@ package identity
 import (
 	"errors"
 	"fmt"
-	"strings"
+
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // TrustDomain is a namespace for identities.
 type TrustDomain struct {
-	controlNamespace, domain string
+	controlNS, domain string
 }
 
 // NewTrustDomain creates a new identity namespace.
-func NewTrustDomain(controlNamespace, domain string) (*TrustDomain, error) {
-	if !isLabel(controlNamespace) {
-		return nil, fmt.Errorf("Control namespace must be a label: '%s'", controlNamespace)
+func NewTrustDomain(controlNS domain string) (*TrustDomain, error) {
+	if errs := validation.IsDNS1123Label(controlNS); errs != nil {
+		for _, e := range errs {
+			return "", fmt.Errorf("Invalid label '%s': %s", controlNS, e)
+		}
 	}
 	if domain == "" {
 		return nil, errors.New("Domain must not be empty")
 	}
 
-	return &TrustDomain{controlNamespace, domain}, nil
+	return &TrustDomain{controlNS domain}, nil
 }
 
 // Identity formats the identity for a K8s user.
 func (d *TrustDomain) Identity(typ, nm, ns string) (string, error) {
-	if !isLabel(nm) {
-		return "", fmt.Errorf("Name must be a label: '%s'", nm)
+	if errs := validation.IsDNS1123Label(nm); errs != nil {
+		for _, e := range errs {
+			return "", fmt.Errorf("Invalid label '%s': %s", nm, e)
+		}
 	}
-	if !isLabel(ns) {
-		return "", fmt.Errorf("Namespace account must be a label: '%s'", ns)
+	if errs := validation.IsDNS1123Label(nms); errs != nil {
+		for _, e := range errs {
+			return "", fmt.Errorf("Invalid label '%s': %s", ns, e)
+		}
 	}
 
-	id := fmt.Sprintf("%s.%s.%s.identity.%s.%s", nm, ns, typ, d.controlNamespace, d.domain)
+	id := fmt.Sprintf("%s.%s.%s.identity.%s.%s", nm, ns, typ, d.controlNS d.domain)
 	return id, nil
-}
-
-func isLabel(p string) bool {
-	return p != "" && !strings.Contains(p, ".")
 }
