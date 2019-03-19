@@ -21,6 +21,9 @@ const styles = theme => ({
     marginTop: theme.spacing.unit * 3,
     overflowX: 'auto',
   },
+  expandedWrap: {
+    wordBreak: `break-word`
+  },
   table: {
     minWidth: 700
   },
@@ -107,7 +110,7 @@ class ExpandableTable extends React.Component {
           aria-labelledby="form-dialog-title">
           <DialogTitle id="form-dialog-title">Request Details</DialogTitle>
           <DialogContent>
-            {expandedRowRender(this.state.datum)}
+            {expandedRowRender(this.state.datum, classes.expandedWrap)}
           </DialogContent>
           <DialogActions>
             <Button onClick={this.handleDialogClose} color="primary">Close</Button>
