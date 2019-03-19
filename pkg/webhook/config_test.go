@@ -45,6 +45,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf(tc.testName), func(t *testing.T) {
 			webhookConfig := &Config{
 				ControllerNamespace: "linkerd",

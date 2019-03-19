@@ -16,7 +16,6 @@ import (
 )
 
 var (
-	factory *fake.Factory
 	configs = &config.All{
 		Global: &config.Global{
 			LinkerdNamespace: "linkerd",
