@@ -99,8 +99,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "identity"
-        - "-addr=:8080"
-        - "-admin-addr=:9990"
         - "-log-level={{.ControllerLogLevel}}"
         volumeMounts:
         - mountPath: /var/run/linkerd/config
