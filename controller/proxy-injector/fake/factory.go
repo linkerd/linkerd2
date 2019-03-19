@@ -14,8 +14,6 @@ import (
 const (
 	DefaultControllerNamespace = "linkerd"
 	DefaultNamespace           = "default"
-	FileProxySpec              = "fake/data/config-proxy.yaml"
-	FileProxyInitSpec          = "fake/data/config-proxy-init.yaml"
 	DefaultNoInitContainer     = false
 )
 
