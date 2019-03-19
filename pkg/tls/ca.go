@@ -53,6 +53,11 @@ type (
 		// more than this allowance in either direction.
 		ClockSkewAllowance time.Duration
 	}
+
+	// Issuer implementors signs certificate requests.
+	Issuer interface {
+		IssueEndEntityCrt(*x509.CertificateRequest) (Crt, error)
+	}
 )
 
 const (
@@ -66,14 +71,12 @@ const (
 	// DefaultClockSkewAllowance indicates the maximum allowed difference in clocks
 	// in the network.
 	//
-	// Allow an two hours of clock skew.
-	//
-	// TODO: decrease the default value of this and make it tunable.
+	// TODO: make it tunable.
 	//
 	// TODO: Reconsider how this interacts with the similar logic in the webpki
 	// verifier; since both are trying to account for clock skew, there is
 	// somewhat of an over-correction.
-	DefaultClockSkewAllowance = 2 * time.Hour
+	DefaultClockSkewAllowance = 10 * time.Second
 )
 
 // NewCA initializes a new CA with default settings.
@@ -148,7 +151,7 @@ func (ca *CA) GenerateCA(name string, validity Validity, maxPathLen int) (*CA, e
 		return nil, err
 	}
 
-	return NewCA(validCredOrPanic(key, *crt), ca.Validity), nil
+	return NewCA(validCredOrPanic(key, crt), ca.Validity), nil
 }
 
 // GenerateEndEntityCred creates a new certificate that is valid for the
@@ -164,21 +167,21 @@ func (ca *CA) GenerateEndEntityCred(dnsName string) (*Cred, error) {
 		DNSNames:  []string{dnsName},
 		PublicKey: &key.PublicKey,
 	}
-	crt, err := ca.SignEndEntityCrt(&csr)
+	crt, err := ca.IssueEndEntityCrt(&csr)
 	if err != nil {
 		return nil, err
 	}
 
-	c := validCredOrPanic(key, *crt)
+	c := validCredOrPanic(key, crt)
 	return &c, nil
 }
 
-// SignEndEntityCrt creates a new certificate that is valid for the
+// IssueEndEntityCrt creates a new certificate that is valid for the
 // given DNS name, generating a new keypair for it.
-func (ca *CA) SignEndEntityCrt(csr *x509.CertificateRequest) (*Crt, error) {
+func (ca *CA) IssueEndEntityCrt(csr *x509.CertificateRequest) (Crt, error) {
 	pubkey, ok := csr.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("CSR must contain an ECDSA public key: %+v", csr.PublicKey)
+		return Crt{}, fmt.Errorf("CSR must contain an ECDSA public key: %+v", csr.PublicKey)
 	}
 
 	t := ca.createTemplate(pubkey)
