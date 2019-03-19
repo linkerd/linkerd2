@@ -426,25 +426,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// injectOptionsToConfigs does NOT set an identity context if none exists,
 	// since it can't be enabled at inject-time if it's not enabled at
 	// install-time.
-	if config.Identity != nil {
-		id := config.Identity
-		il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
-		if err != nil {
-			il = defaultIdentityIssuanceLifetime
-		}
-
-		csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
-		if err != nil {
-			csa = defaultIdentityClockSkewAllowance
-		}
-
-		pbConfig.global.IdentityContext = &pb.IdentityContext{
-			TrustDomain:        id.TrustDomain,
-			TrustAnchorsPem:    id.TrustAnchorsPEM,
-			IssuanceLifetime:   ptypes.DurationProto(il),
-			ClockSkewAllowance: ptypes.DurationProto(csa),
-		}
-	}
+	pbConfig.global.IdentityContext = config.Identity.toIdentityContext()
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
 		configs: pbConfig,
@@ -476,31 +458,11 @@ func readIntoBytes(filename string) ([]byte, error) {
 }
 
 func globalConfig(options *installOptions, id *installIdentityConfig) *pb.Global {
-	var identityContext *pb.IdentityContext
-	if id != nil {
-		il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
-		if err != nil {
-			il = defaultIdentityIssuanceLifetime
-		}
-
-		csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
-		if err != nil {
-			csa = defaultIdentityClockSkewAllowance
-		}
-
-		identityContext = &pb.IdentityContext{
-			TrustDomain:        id.TrustDomain,
-			TrustAnchorsPem:    id.TrustAnchorsPEM,
-			IssuanceLifetime:   ptypes.DurationProto(il),
-			ClockSkewAllowance: ptypes.DurationProto(csa),
-		}
-	}
-
 	return &pb.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Version:          options.linkerdVersion,
-		IdentityContext:  identityContext,
+		IdentityContext:  id.toIdentityContext(),
 	}
 }
 
@@ -549,5 +511,28 @@ func proxyConfig(options *installOptions) *pb.Proxy {
 			Level: options.proxyLogLevel,
 		},
 		DisableExternalProfiles: options.disableExternalProfiles,
+	}
+}
+
+func (id *installIdentityConfig) toIdentityContext() *pb.IdentityContext {
+	if id == nil {
+		return nil
+	}
+
+	il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
+	if err != nil {
+		il = defaultIdentityIssuanceLifetime
+	}
+
+	csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
+	if err != nil {
+		csa = defaultIdentityClockSkewAllowance
+	}
+
+	return &pb.IdentityContext{
+		TrustDomain:        id.TrustDomain,
+		TrustAnchorsPem:    id.TrustAnchorsPEM,
+		IssuanceLifetime:   ptypes.DurationProto(il),
+		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}
 }
