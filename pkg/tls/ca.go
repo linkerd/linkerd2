@@ -84,6 +84,11 @@ func NewCA(cred Cred, validity Validity) *CA {
 	return &CA{cred, validity, uint64(1)}
 }
 
+func init() {
+	// Assert that the struct implements the interface.
+	var _ Issuer = &CA{}
+}
+
 // CreateRootCA configures a new root CA with the given settings
 func CreateRootCA(
 	name string,

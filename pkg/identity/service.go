@@ -109,7 +109,7 @@ func (s *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Cert
 	}
 	crts := crt.ExtractRaw()
 	if len(crts) == 0 {
-		panic("We seem to have lost the certificate while signing it?")
+		log.Fatal("The issuer provided a certificate with key material.")
 	}
 
 	// Bundle issuer crt with certificate so the trust path to the root can be verified.

@@ -7,6 +7,7 @@ import (
 
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	k8s "k8s.io/client-go/kubernetes"
 	kauthn "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	kauthz "k8s.io/client-go/kubernetes/typed/authorization/v1"
@@ -39,6 +40,7 @@ func NewK8sTokenValidator(
 }
 
 func init() {
+	// Assert that the struct implements the interface.
 	var _ identity.Validator = &K8sTokenValidator{}
 }
 
@@ -66,7 +68,7 @@ func (k *K8sTokenValidator) Validate(_ context.Context, tok []byte) (string, err
 	}
 	uns = uns[1:]
 	for _, l := range uns {
-		if !isLabel(l) {
+		if errs := validation.IsDNS1123Label(l); len(errs) > 0 {
 			return "", identity.InvalidToken{Reason: fmt.Sprintf("Not a label: %s", l)}
 		}
 	}

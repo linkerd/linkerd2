@@ -32,7 +32,7 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	issuerPath := flag.String("issuer",
 		"/var/run/linkerd/identity/issuer",
-		"path to directoring containing issuer credentials")
+		"path to directory containing issuer credentials")
 	flags.ConfigureAndParse()
 
 	cfg, err := config.Global(consts.MountPathGlobalConfig)
@@ -93,9 +93,6 @@ func main() {
 	}
 
 	ca := tls.NewCA(*creds, validity)
-	if err != nil {
-		log.Fatalf("Failed to read issuer credentials from %s: %s", *issuerPath, err)
-	}
 
 	k8s, err := k8s.NewClientSet(*kubeConfigPath)
 	if err != nil {
