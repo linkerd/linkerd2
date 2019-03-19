@@ -71,7 +71,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err = checkCSR(csr, reqIdentity); err != nil {
-		log.Debugf("requster sent invalid CSR: %s", err)
+		log.Debugf("requester sent invalid CSR: %s", err)
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
@@ -108,7 +108,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 	crts := crt.ExtractRaw()
 	if len(crts) == 0 {
-		log.Fatal("the issuer provided a certificate with key material.")
+		log.Fatal("the issuer provided a certificate without key material")
 	}
 
 	// Bundle issuer crt with certificate so the trust path to the root can be verified.
