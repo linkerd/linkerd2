@@ -186,7 +186,7 @@ func newCmdInstall() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
-		"Configures the name suffix use for identities.",
+		"Configures the name suffix used for identities.",
 	)
 	cmd.PersistentFlags().StringVar(
 		&options.identityOptions.trustPEMFile, "identity-trust-anchors-file", options.identityOptions.trustPEMFile,
@@ -206,7 +206,7 @@ func newCmdInstall() *cobra.Command {
 	)
 	cmd.PersistentFlags().DurationVar(
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
-		"The amount of time for which the Identity issuer should certfy identity",
+		"The amount of time for which the Identity issuer should certify identity",
 	)
 
 	return cmd
