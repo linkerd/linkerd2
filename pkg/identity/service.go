@@ -25,8 +25,8 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		v Validator
-		i tls.Issuer
+		Validator
+		tls.Issuer
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -64,30 +64,30 @@ func Register(g *grpc.Server, s *Service) {
 }
 
 // Certify validates identity and signs certificates.
-func (s *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
+func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
 	// Extract the relevant info from the request.
 	reqIdentity, tok, csr, err := checkRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err = checkCSR(csr, reqIdentity); err != nil {
-		log.Debug()
+		log.Debugf("requster sent invalid CSR: %s", err)
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
 	// Authenticate the provided token against the Kubernetes API.
 	log.Debugf("Validating token for %s", reqIdentity)
-	tokIdentity, err := s.v.Validate(ctx, tok)
+	tokIdentity, err := svc.Validate(ctx, tok)
 	if err != nil {
 		switch e := err.(type) {
 		case NotAuthenticated:
-			log.Infof("Authentication failed for %s: %s", reqIdentity, e)
+			log.Infof("authentication failed for %s: %s", reqIdentity, e)
 			return nil, status.Error(codes.FailedPrecondition, e.Error())
 		case InvalidToken:
-			log.Debugf("Invalid token provided for %s: %s", reqIdentity, e)
+			log.Debugf("invalid token provided for %s: %s", reqIdentity, e)
 			return nil, status.Error(codes.InvalidArgument, e.Error())
 		default:
-			msg := fmt.Sprintf("Error validating token for %s: %s", reqIdentity, e)
+			msg := fmt.Sprintf("error validating token for %s: %s", reqIdentity, e)
 			log.Error(msg)
 			return nil, status.Error(codes.Internal, msg)
 		}
@@ -95,27 +95,27 @@ func (s *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Cert
 
 	// Ensure the requested identity matches the token's identity.
 	if reqIdentity != tokIdentity {
-		msg := fmt.Sprintf("Requested identity did not match provided token: requested=%s; found=%s",
+		msg := fmt.Sprintf("requested identity did not match provided token: requested=%s; found=%s",
 			reqIdentity, tokIdentity)
 		log.Debug(msg)
 		return nil, status.Error(codes.FailedPrecondition, msg)
 	}
 
 	// Create a certificate
-	crt, err := s.i.IssueEndEntityCrt(csr)
+	crt, err := svc.IssueEndEntityCrt(csr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	crts := crt.ExtractRaw()
 	if len(crts) == 0 {
-		log.Fatal("The issuer provided a certificate with key material.")
+		log.Fatal("the issuer provided a certificate with key material.")
 	}
 
 	// Bundle issuer crt with certificate so the trust path to the root can be verified.
 	log.Infof("certifying %s until %s", tokIdentity, crt.Certificate.NotAfter)
 	validUntil, err := ptypes.TimestampProto(crt.Certificate.NotAfter)
 	if err != nil {
-		log.Errorf("Invalid expiry time: %s", err)
+		log.Errorf("invalid expiry time: %s", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -164,21 +164,20 @@ func checkCSR(csr *x509.CertificateRequest, identity string) error {
 		return errors.New("CommonName must be empty")
 	}
 	if len(csr.EmailAddresses) > 0 {
-		return errors.New("Cannot validate email addresses")
+		return errors.New("cannot validate email addresses")
 	}
 	if len(csr.IPAddresses) > 0 {
-		return errors.New("Cannot validate IP addresses")
+		return errors.New("cannot validate IP addresses")
 	}
 	if len(csr.URIs) > 0 {
-		return errors.New("Cannot validate URIs")
+		return errors.New("cannot validate URIs")
 	}
 
 	return nil
 }
 
-func (e NotAuthenticated) Error() string {
-	_ = e // satisfy linter
-	return "Authentication token could not be authenticated"
+func (NotAuthenticated) Error() string {
+	return "authentication token could not be authenticated"
 }
 
 func (e InvalidToken) Error() string {

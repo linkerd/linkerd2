@@ -29,18 +29,13 @@ type K8sTokenValidator struct {
 func NewK8sTokenValidator(
 	k8s k8s.Interface,
 	domain *TrustDomain,
-) (*K8sTokenValidator, error) {
+) (identity.Validator, error) {
 	if err := checkAccess(k8s.AuthorizationV1()); err != nil {
 		return nil, err
 	}
 
 	authn := k8s.AuthenticationV1()
 	return &K8sTokenValidator{authn, domain}, nil
-}
-
-func init() {
-	// Assert that the struct implements the interface.
-	var _ identity.Validator = &K8sTokenValidator{}
 }
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
