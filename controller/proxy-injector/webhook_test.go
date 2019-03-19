@@ -28,7 +28,7 @@ var (
 		IgnoreInboundPorts:      nil,
 		IgnoreOutboundPorts:     nil,
 		InboundPort:             &config.Port{Port: 4143},
-		MetricsPort:             &config.Port{Port: 4191},
+		AdminPort:               &config.Port{Port: 4191},
 		OutboundPort:            &config.Port{Port: 4140},
 		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
 		ProxyUid:                2102,

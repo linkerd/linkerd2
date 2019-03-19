@@ -37,7 +37,7 @@ ports:
     - containerPort: 4143
       name: linkerd-proxy
     - containerPort: 4191
-      name: linkerd-metrics
+      name: linkerd-admin
 readinessProbe:
     httpGet:
         path: /metrics

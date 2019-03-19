@@ -60,13 +60,13 @@ func NewProxyMetricsForward(
 
 	var port corev1.ContainerPort
 	for _, p := range container.Ports {
-		if p.Name == ProxyMetricsPortName {
+		if p.Name == ProxyAdminPortName {
 			port = p
 			break
 		}
 	}
-	if port.Name != ProxyMetricsPortName {
-		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyMetricsPortName, pod.GetName(), container.Name)
+	if port.Name != ProxyAdminPortName {
+		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyAdminPortName, pod.GetName(), container.Name)
 	}
 
 	return newPortForward(config, clientset, pod.GetNamespace(), pod.GetName(), 0, int(port.ContainerPort), emitLogs)

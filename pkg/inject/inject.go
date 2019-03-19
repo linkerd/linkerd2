@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -18,32 +16,39 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
+
+	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 const (
-	// localhostDNSNameOverride allows override of the controlPlaneDNS. This
+	// localhostDNSOverride allows override of the destinationDNS. This
 	// must be in absolute form for the proxy to special-case it.
-	localhostDNSNameOverride = "localhost."
-	// controlPlanePodName default control plane pod name.
-	controlPlanePodName = "linkerd-controller"
+	localhostDNSOverride = "localhost."
+
+	controllerPodName = "linkerd-controller"
+
 	// defaultKeepaliveMs is used in the proxy configuration for remote connections
 	defaultKeepaliveMs = 10000
+
+	defaultProfileSuffix  = "."
+	internalProfileSuffix = "svc.cluster.local."
+
+	envLog                = "LINKERD2_PROXY_LOG"
+	envControlListenAddr  = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
+	envAdminListenAddr    = "LINKERD2_PROXY_ADMIN_LISTEN_ADDR"
+	envOutboundListenAddr = "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR"
+	envInboundListenAddr  = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+
+	envInboundAcceptKeepAlive   = "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE"
+	envOutboundConnectKeepAlive = "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE"
+
+	envDestinationContext         = "LINKERD2_PROXY_DESTINATION_CONTEXT"
+	envDestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
+	envDestinationSvcAddr         = "LINKERD2_PROXY_DESTINATION_SVC_ADDR"
+
 	// destinationAPIPort is the port exposed by the linkerd-destination service
 	destinationAPIPort = 8086
-
-	defaultProfileSuffix                  = "."
-	internalProfileSuffix                 = "svc.cluster.local."
-	envVarProxyPodNamespace               = "LINKERD2_PROXY_POD_NAMESPACE"
-	envVarProxyLog                        = "LINKERD2_PROXY_LOG"
-	envVarProxyControlURL                 = "LINKERD2_PROXY_CONTROL_URL"
-	envVarProxyControlListener            = "LINKERD2_PROXY_CONTROL_LISTENER"
-	envVarProxyMetricsListener            = "LINKERD2_PROXY_METRICS_LISTENER"
-	envVarProxyOutboundListener           = "LINKERD2_PROXY_OUTBOUND_LISTENER"
-	envVarProxyInboundListener            = "LINKERD2_PROXY_INBOUND_LISTENER"
-	envVarProxyDestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
-	envVarProxyInboundAcceptKeepAlive     = "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE"
-	envVarProxyOutboundConnectKeepAlive   = "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE"
-	envVarProxyID                         = "LINKERD2_PROXY_ID"
 )
 
 var injectableKinds = []string{
@@ -63,17 +68,17 @@ type objMeta struct {
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	globalConfig          *config.Global
-	proxyConfig           *config.Proxy
-	nsAnnotations         map[string]string
-	meta                  metav1.TypeMeta
-	obj                   runtime.Object
-	workLoadMeta          *metav1.ObjectMeta
-	podMeta               objMeta
-	podLabels             map[string]string
-	podSpec               *v1.PodSpec
-	dnsNameOverride       string
-	proxyOutboundCapacity map[string]uint
+	globalConfig           *config.Global
+	proxyConfig            *config.Proxy
+	nsAnnotations          map[string]string
+	meta                   metav1.TypeMeta
+	obj                    runtime.Object
+	workLoadMeta           *metav1.ObjectMeta
+	podMeta                objMeta
+	podLabels              map[string]string
+	podSpec                *v1.PodSpec
+	destinationDNSOverride string
+	proxyOutboundCapacity  map[string]uint
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -257,8 +262,8 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		if v.Name == controlPlanePodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
-			conf.dnsNameOverride = localhostDNSNameOverride
+		if v.Name == controllerPodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
+			conf.destinationDNSOverride = localhostDNSOverride
 		}
 
 		conf.obj = v
@@ -336,71 +341,70 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
+	if !conf.globalConfig.GetCniEnabled() {
+		conf.injectProxyInit(patch)
+	}
+
 	proxyUID := conf.proxyUID()
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
 		Image:                    conf.taggedProxyImage(),
 		ImagePullPolicy:          conf.proxyImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		SecurityContext: &v1.SecurityContext{
-			RunAsUser: &proxyUID,
-		},
+		SecurityContext:          &v1.SecurityContext{RunAsUser: &proxyUID},
 		Ports: []v1.ContainerPort{
-			{
-				Name:          k8s.ProxyPortName,
-				ContainerPort: conf.proxyInboundPort(),
-			},
-			{
-				Name:          k8s.ProxyMetricsPortName,
-				ContainerPort: conf.proxyMetricsPort(),
-			},
+			{Name: k8s.ProxyPortName, ContainerPort: conf.proxyInboundPort()},
+			{Name: k8s.ProxyAdminPortName, ContainerPort: conf.proxyAdminPort()},
 		},
 		Resources: conf.proxyResourceRequirements(),
 		Env: []v1.EnvVar{
 			{
-				Name:  envVarProxyLog,
+				Name:  envLog,
 				Value: conf.proxyLogLevel(),
 			},
 			{
-				Name:  envVarProxyControlURL,
-				Value: conf.proxyControlURL(),
+				Name:  envDestinationSvcAddr,
+				Value: conf.proxyDestinationAddr(),
 			},
 			{
-				Name:  envVarProxyControlListener,
-				Value: conf.proxyControlListener(),
+				Name:  envControlListenAddr,
+				Value: conf.proxyControlListenAddr(),
 			},
 			{
-				Name:  envVarProxyMetricsListener,
-				Value: conf.proxyMetricsListener(),
+				Name:  envAdminListenAddr,
+				Value: conf.proxyAdminListenAddr(),
 			},
 			{
-				Name:  envVarProxyOutboundListener,
-				Value: conf.proxyOutboundListener(),
+				Name:  envOutboundListenAddr,
+				Value: conf.proxyOutboundListenAddr(),
 			},
 			{
-				Name:  envVarProxyInboundListener,
-				Value: conf.proxyInboundListener(),
+				Name:  envInboundListenAddr,
+				Value: conf.proxyInboundListenAddr(),
 			},
 			{
-				Name:  envVarProxyDestinationProfileSuffixes,
+				Name:  envDestinationProfileSuffixes,
 				Value: conf.proxyDestinationProfileSuffixes(),
 			},
 			{
-				Name:      envVarProxyPodNamespace,
+				Name:  envInboundAcceptKeepAlive,
+				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
+			},
+			{
+				Name:  envOutboundConnectKeepAlive,
+				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
+			},
+			{
+				Name:      "K8S_NS",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 			{
-				Name:  envVarProxyInboundAcceptKeepAlive,
-				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
+				Name:  envDestinationContext,
+				Value: "ns:$(K8S_NS)",
 			},
-			{
-				Name:  envVarProxyOutboundConnectKeepAlive,
-				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
-			},
-			{Name: envVarProxyID, Value: fmt.Sprintf("ns:$(%s)", envVarProxyPodNamespace)},
 		},
-		LivenessProbe:  conf.proxyProbe(),
-		ReadinessProbe: conf.proxyProbe(),
+		ReadinessProbe: conf.proxyReadinessProbe(),
+		LivenessProbe:  conf.proxyLivenessProbe(),
 	}
 
 	// Special case if the caller specifies that
@@ -422,35 +426,39 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
-	if conf.globalConfig.GetIdentityContext() != nil {
-		log.Warn("TLS configuration exists but is currently not available")
+	sidecar.Env = append(sidecar.Env, v1.EnvVar{
+		Name:  "LINKERD2_PROXY_IDENTITY_DISABLED",
+		Value: "Identity configuration is unavailable",
+	})
+	if idctx := conf.globalConfig.GetIdentityContext(); idctx != nil {
+		log.Warn("Ignoring Identity configuration.")
 	}
 
 	patch.addContainer(&sidecar)
+}
 
-	if !conf.globalConfig.GetCniEnabled() {
-		nonRoot := false
-		runAsUser := int64(0)
-		initContainer := &v1.Container{
-			Name:                     k8s.InitContainerName,
-			Image:                    conf.taggedProxyInitImage(),
-			ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
-			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-			Args:                     conf.proxyInitArgs(),
-			SecurityContext: &v1.SecurityContext{
-				Capabilities: &v1.Capabilities{
-					Add: []v1.Capability{v1.Capability("NET_ADMIN")},
-				},
-				Privileged:   &nonRoot,
-				RunAsNonRoot: &nonRoot,
-				RunAsUser:    &runAsUser,
+func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
+	nonRoot := false
+	runAsUser := int64(0)
+	initContainer := &v1.Container{
+		Name:                     k8s.InitContainerName,
+		Image:                    conf.taggedProxyInitImage(),
+		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+		Args:                     conf.proxyInitArgs(),
+		SecurityContext: &v1.SecurityContext{
+			Capabilities: &v1.Capabilities{
+				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
 			},
-		}
-		if len(conf.podSpec.InitContainers) == 0 {
-			patch.addInitContainerRoot()
-		}
-		patch.addInitContainer(initContainer)
+			Privileged:   &nonRoot,
+			RunAsNonRoot: &nonRoot,
+			RunAsUser:    &runAsUser,
+		},
 	}
+	if len(conf.podSpec.InitContainers) == 0 {
+		patch.addInitContainerRoot()
+	}
+	patch.addInitContainer(initContainer)
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -527,14 +535,14 @@ func (conf *ResourceConfig) proxyInboundPort() int32 {
 	return int32(conf.proxyConfig.GetInboundPort().GetPort())
 }
 
-func (conf *ResourceConfig) proxyMetricsPort() int32 {
-	if override := conf.getOverride(k8s.ProxyMetricsPortAnnotation); override != "" {
-		metricsPort, err := strconv.ParseInt(override, 10, 32)
+func (conf *ResourceConfig) proxyAdminPort() int32 {
+	if override := conf.getOverride(k8s.ProxyAdminPortAnnotation); override != "" {
+		adminPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
-			return int32(metricsPort)
+			return int32(adminPort)
 		}
 	}
-	return int32(conf.proxyConfig.GetMetricsPort().GetPort())
+	return int32(conf.proxyConfig.GetAdminPort().GetPort())
 }
 
 func (conf *ResourceConfig) proxyOutboundPort() int32 {
@@ -621,28 +629,28 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 	return resources
 }
 
-func (conf *ResourceConfig) proxyControlURL() string {
-	controlPlaneDNS := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", conf.globalConfig.GetLinkerdNamespace())
-	if conf.dnsNameOverride != "" {
-		controlPlaneDNS = conf.dnsNameOverride
+func (conf *ResourceConfig) proxyDestinationAddr() string {
+	dns := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", conf.globalConfig.GetLinkerdNamespace())
+	if conf.destinationDNSOverride != "" {
+		dns = conf.destinationDNSOverride
 	}
-	return fmt.Sprintf("tcp://%s:%d", controlPlaneDNS, destinationAPIPort)
+	return fmt.Sprintf("%s:%d", dns, destinationAPIPort)
 }
 
-func (conf *ResourceConfig) proxyControlListener() string {
-	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyControlPort())
+func (conf *ResourceConfig) proxyControlListenAddr() string {
+	return fmt.Sprintf("0.0.0.0:%d", conf.proxyControlPort())
 }
 
-func (conf *ResourceConfig) proxyInboundListener() string {
-	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyInboundPort())
+func (conf *ResourceConfig) proxyInboundListenAddr() string {
+	return fmt.Sprintf("0.0.0.0:%d", conf.proxyInboundPort())
 }
 
-func (conf *ResourceConfig) proxyMetricsListener() string {
-	return fmt.Sprintf("tcp://0.0.0.0:%d", conf.proxyMetricsPort())
+func (conf *ResourceConfig) proxyAdminListenAddr() string {
+	return fmt.Sprintf("0.0.0.0:%d", conf.proxyAdminPort())
 }
 
-func (conf *ResourceConfig) proxyOutboundListener() string {
-	return fmt.Sprintf("tcp://127.0.0.1:%d", conf.proxyOutboundPort())
+func (conf *ResourceConfig) proxyOutboundListenAddr() string {
+	return fmt.Sprintf("127.0.0.1:%d", conf.proxyOutboundPort())
 }
 
 func (conf *ResourceConfig) proxyUID() int64 {
@@ -656,15 +664,24 @@ func (conf *ResourceConfig) proxyUID() int64 {
 	return conf.proxyConfig.GetProxyUid()
 }
 
-func (conf *ResourceConfig) proxyProbe() *v1.Probe {
-	metricsPort := conf.proxyMetricsPort()
+func (conf *ResourceConfig) proxyReadinessProbe() *v1.Probe {
+	return &v1.Probe{
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/ready",
+				Port: intstr.IntOrString{IntVal: conf.proxyAdminPort()},
+			},
+		},
+		InitialDelaySeconds: 2,
+	}
+}
+
+func (conf *ResourceConfig) proxyLivenessProbe() *v1.Probe {
 	return &v1.Probe{
 		Handler: v1.Handler{
 			HTTPGet: &v1.HTTPGetAction{
 				Path: "/metrics",
-				Port: intstr.IntOrString{
-					IntVal: metricsPort,
-				},
+				Port: intstr.IntOrString{IntVal: conf.proxyAdminPort()},
 			},
 		},
 		InitialDelaySeconds: 10,
@@ -699,7 +716,7 @@ func (conf *ResourceConfig) proxyInitImagePullPolicy() v1.PullPolicy {
 func (conf *ResourceConfig) proxyInitArgs() []string {
 	var (
 		controlPort       = conf.proxyControlPort()
-		metricsPort       = conf.proxyMetricsPort()
+		adminPort         = conf.proxyAdminPort()
 		inboundPort       = conf.proxyInboundPort()
 		outboundPort      = conf.proxyOutboundPort()
 		outboundSkipPorts = conf.proxyOutboundSkipPorts()
@@ -710,7 +727,7 @@ func (conf *ResourceConfig) proxyInitArgs() []string {
 	if len(inboundSkipPorts) > 0 {
 		inboundSkipPorts += ","
 	}
-	inboundSkipPorts += fmt.Sprintf("%d,%d", controlPort, metricsPort)
+	inboundSkipPorts += fmt.Sprintf("%d,%d", controlPort, adminPort)
 
 	initArgs := []string{
 		"--incoming-proxy-port", fmt.Sprintf("%d", inboundPort),

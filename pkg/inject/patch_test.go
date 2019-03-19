@@ -13,6 +13,12 @@ import (
 func TestPatch(t *testing.T) {
 	fixture := fake.NewFactory(filepath.Join("..", "..", "controller", "proxy-injector", "fake", "data"))
 
+	// TODO end entity volume
+	// secrets, err := fixture.Volume("inject-linkerd-secrets-volume-spec.yaml")
+	// if err != nil {
+	// 	t.Fatal("Unexpected error: ", err)
+	// }
+
 	sidecar, err := fixture.Container("inject-sidecar-container-spec.yaml")
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -32,6 +38,8 @@ func TestPatch(t *testing.T) {
 	actual.addContainer(sidecar)
 	actual.addInitContainerRoot()
 	actual.addInitContainer(init)
+	//actual.addVolumeRoot()
+	//actual.addVolume(secrets)
 	actual.addPodLabel(k8sPkg.ControllerNSLabel, controllerNamespace)
 	actual.addPodAnnotation(k8sPkg.CreatedByAnnotation, createdBy)
 
@@ -40,6 +48,8 @@ func TestPatch(t *testing.T) {
 		{Op: "add", Path: expected.patchPathContainer, Value: sidecar},
 		{Op: "add", Path: expected.patchPathInitContainerRoot, Value: []*v1.Container{}},
 		{Op: "add", Path: expected.patchPathInitContainer, Value: init},
+		//{Op: "add", Path: expected.patchPathVolumeRoot, Value: []*v1.Volume{}},
+		//{Op: "add", Path: expected.patchPathVolume, Value: secrets},
 		{Op: "add", Path: expected.patchPathPodLabels + "/" + escapeKey(k8sPkg.ControllerNSLabel), Value: controllerNamespace},
 		{Op: "add", Path: expected.patchPathPodAnnotations + "/" + escapeKey(k8sPkg.CreatedByAnnotation), Value: createdBy},
 	}

@@ -319,8 +319,8 @@ func proxyConfig(options *installOptions) *config.Proxy {
 		InboundPort: &config.Port{
 			Port: uint32(options.inboundPort),
 		},
-		MetricsPort: &config.Port{
-			Port: uint32(options.proxyMetricsPort),
+		AdminPort: &config.Port{
+			Port: uint32(options.proxyAdminPort),
 		},
 		OutboundPort: &config.Port{
 			Port: uint32(options.outboundPort),

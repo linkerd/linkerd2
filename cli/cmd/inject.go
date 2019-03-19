@@ -280,7 +280,7 @@ func injectOptionsToConfigs(options *injectOptions) configs {
 		IgnoreInboundPorts:  ignoreInboundPorts,
 		IgnoreOutboundPorts: ignoreOutboundPorts,
 		InboundPort:         &config.Port{Port: uint32(options.inboundPort)},
-		MetricsPort:         &config.Port{Port: uint32(options.proxyMetricsPort)},
+		AdminPort:           &config.Port{Port: uint32(options.proxyAdminPort)},
 		OutboundPort:        &config.Port{Port: uint32(options.outboundPort)},
 		Resource: &config.ResourceRequirements{
 			RequestCpu:    options.proxyCPURequest,

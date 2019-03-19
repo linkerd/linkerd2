@@ -172,7 +172,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^{{.Values.ProxyContainerName}};linkerd-metrics;{{.Values.Namespace}}$
+        regex: ^{{.Values.ProxyContainerName}};linkerd-admin;{{.Values.Namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace

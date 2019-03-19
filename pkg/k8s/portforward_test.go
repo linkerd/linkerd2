@@ -34,7 +34,7 @@ spec:
     - name: bad-port
       port: 123`,
 			},
-			errors.New("no linkerd-metrics port found for container pod-name/linkerd-proxy"),
+			errors.New("no linkerd-admin port found for container pod-name/linkerd-proxy"),
 		},
 		{
 			"pod-ns",
@@ -50,7 +50,7 @@ spec:
   containers:
   - name: bad-container
     ports:
-    - name: linkerd-metrics
+    - name: linkerd-admin
       port: 123`,
 			},
 			errors.New("no linkerd-proxy container found for pod pod-name"),
@@ -69,7 +69,7 @@ spec:
   containers:
   - name: linkerd-proxy
     ports:
-    - name: linkerd-metrics
+    - name: linkerd-admin
       port: 123`,
 			},
 			errors.New("pod not running: pod-name"),
