@@ -416,17 +416,18 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:b54147c462536e1d92f5dfd0e0c94816c4e27e5349b06524d4269aaecd387ed4"
+  digest = "1:f290ea91c428cd9482eac37f4feba06d8774683fcd503c18efdec57c432ca484"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
     "go/http_types",
+    "go/identity",
     "go/net",
     "go/tap",
   ]
   pruneopts = ""
-  revision = "ff6064f88ecdcbc6f8a4284f4a0f8c49f184897a"
-  version = "v0.1.6"
+  revision = "be7667cfd0cca15b55724949f4e625ddf49f740f"
+  version = "v0.1.7"
 
 [[projects]]
   branch = "master"
@@ -684,7 +685,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:733bbd39aeb07cba7586933ac301c66f5504f687b393529125affaf9a096d2a8"
+  digest = "1:5462386895a322b94a79a5de7314310edbd5f4d15f851ae032f146b2c951b3de"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
@@ -692,7 +693,7 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "d9133f5469342136e669e85192a26056b587f503"
+  revision = "74369b46fc6756741c016591724fd1cb8e26845f"
 
 [[projects]]
   branch = "master"
@@ -1264,6 +1265,7 @@
     "github.com/julienschmidt/httprouter",
     "github.com/linkerd/linkerd2-proxy-api/go/destination",
     "github.com/linkerd/linkerd2-proxy-api/go/http_types",
+    "github.com/linkerd/linkerd2-proxy-api/go/identity",
     "github.com/linkerd/linkerd2-proxy-api/go/net",
     "github.com/linkerd/linkerd2-proxy-api/go/tap",
     "github.com/mattn/go-runewidth",
@@ -1292,6 +1294,7 @@
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
     "k8s.io/api/apps/v1beta2",
+    "k8s.io/api/authentication/v1",
     "k8s.io/api/authorization/v1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
@@ -1322,6 +1325,8 @@
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",
+    "k8s.io/client-go/kubernetes/typed/authentication/v1",
+    "k8s.io/client-go/kubernetes/typed/authorization/v1",
     "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
