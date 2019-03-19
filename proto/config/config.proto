@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package linkerd2.config;
 
+import "google/protobuf/duration.proto";
+
 option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 
 message All {
@@ -54,7 +56,13 @@ message ResourceRequirements {
   string limit_memory = 4;
 }
 
-message IdentityContext {}
+message IdentityContext {
+  string trust_domain = 1;
+  string trust_anchors_pem = 2;
+
+  google.protobuf.Duration issuance_lifetime = 3;
+  google.protobuf.Duration clock_skew_allowance = 4;
+}
 
 message LogLevel {
   string level = 1;

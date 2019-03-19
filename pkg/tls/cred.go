@@ -111,7 +111,7 @@ func certificateMatchesKey(c *x509.Certificate, k *ecdsa.PrivateKey) bool {
 // SignCrt uses this Cred to sign a new certificate.
 //
 // This may fail if the Cred contains an end-entity certificate.
-func (cred *Cred) SignCrt(template *x509.Certificate) (*Crt, error) {
+func (cred *Cred) SignCrt(template *x509.Certificate) (Crt, error) {
 	crtb, err := x509.CreateCertificate(
 		rand.Reader,
 		template,
@@ -120,19 +120,19 @@ func (cred *Cred) SignCrt(template *x509.Certificate) (*Crt, error) {
 		cred.PrivateKey,
 	)
 	if err != nil {
-		return nil, err
+		return Crt{}, err
 	}
 
 	c, err := x509.ParseCertificate(crtb)
 	if err != nil {
-		return nil, err
+		return Crt{}, err
 	}
 
 	crt := Crt{
 		Certificate: c,
 		TrustChain:  append(cred.Crt.TrustChain, cred.Crt.Certificate),
 	}
-	return &crt, nil
+	return crt, nil
 }
 
 // ReadPEMCreds reads PEM-encoded credentials from the named files.
