@@ -275,7 +275,7 @@ metadata:
 			if err != nil {
 				t.Fatalf("Error instantiating client: %s", err)
 			}
-			webhook, err := NewWebhook(fakeClient, "emojivoto", false, true)
+			webhook, err := NewWebhook(fakeClient, "emojivoto", false)
 			if err != nil {
 				t.Fatalf("Error instantiating Webhook: %s", err)
 			}
