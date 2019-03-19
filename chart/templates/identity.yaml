@@ -79,7 +79,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.IdentityReplicas}}
+  replicas: {{.Identity.Replicas}}
   template:
     metadata:
       labels:

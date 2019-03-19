@@ -59,6 +59,8 @@ type (
 	}
 
 	installIdentityConfig struct {
+		Replicas uint
+
 		TrustDomain     string
 		TrustAnchorsPEM string
 
@@ -235,6 +237,11 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		}
 		issuerName := fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, trustDomain)
 
+		identityReplicas := uint(1)
+		if options.highAvailability {
+			identityReplicas = 3
+		}
+
 		// Load signing material from options...
 		if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
 			if idopts.trustPEMFile == "" {
@@ -269,6 +276,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 			}
 
 			identity = &installIdentityConfig{
+				Replicas:        identityReplicas,
 				TrustDomain:     idopts.trustDomain,
 				TrustAnchorsPEM: trustAnchorsPEM,
 				Issuer: &issuerConfig{
@@ -290,6 +298,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 			}
 
 			identity = &installIdentityConfig{
+				Replicas:        identityReplicas,
 				TrustDomain:     trustDomain,
 				TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 				Issuer: &issuerConfig{
