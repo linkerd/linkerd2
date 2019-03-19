@@ -10,9 +10,6 @@ import (
 	"syscall"
 
 	"github.com/golang/protobuf/ptypes"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
-
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -21,6 +18,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
 // TODO watch trustAnchorsPath for changes

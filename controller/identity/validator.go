@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/linkerd/linkerd2/pkg/identity"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	k8s "k8s.io/client-go/kubernetes"
 	kauthn "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	kauthz "k8s.io/client-go/kubernetes/typed/authorization/v1"
-
-	"github.com/linkerd/linkerd2/pkg/identity"
 )
 
 // K8sTokenValidator implements Validator for Kubernetes bearer tokens.

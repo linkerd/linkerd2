@@ -8,13 +8,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 )
 
 const (
