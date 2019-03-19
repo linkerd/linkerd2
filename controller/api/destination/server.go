@@ -100,9 +100,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if len(parts) == 2 && parts[0] == "ns" {
 		proxyNS = parts[1]
 	} else {
+		// TODO remove this after the 2.3 release...
 		parts = strings.Split(dest.ProxyId, ".")
 		// <deployment>.deployment.<namespace>.linkerd-managed.linkerd.svc.cluster.local
 		if len(parts) >= 3 {
+			log.Debug("Serving profile request for legacy proxy")
 			proxyNS = parts[2]
 		}
 	}
