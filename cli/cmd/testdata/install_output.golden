@@ -98,8 +98,6 @@ spec:
       containers:
       - args:
         - identity
-        - -addr=:8080
-        - -admin-addr=:9990
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy

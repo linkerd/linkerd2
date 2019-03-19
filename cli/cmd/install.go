@@ -229,7 +229,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 
 	var identity *installIdentityConfig
 	if idopts := options.identityOptions; idopts != nil {
-		trustDomain := options.identityOptions.trustDomain
+		trustDomain := idopts.trustDomain
 		if trustDomain == "" {
 			return nil, errors.New("Trust domain must be specified")
 		}
@@ -248,25 +248,21 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 			}
 
 			// Validate credentials...
-			fmt.Println("Reading creds")
 			creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
 			if err != nil {
 				return nil, err
 			}
 
-			fmt.Println("Reading trust")
 			trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
 			if err != nil {
 				return nil, err
 			}
 			trustAnchorsPEM := string(trustb)
-			fmt.Println("Decoding trust")
 			roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
 			if err != nil {
 				return nil, err
 			}
 
-			fmt.Println("Verifying")
 			issuerName := "" // TODO restrict issuer name?
 			if err := creds.Verify(roots, issuerName); err != nil {
 				return nil, fmt.Errorf("Credentials cannot be validated: %s", err)
@@ -276,8 +272,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 				TrustDomain:     idopts.trustDomain,
 				TrustAnchorsPEM: trustAnchorsPEM,
 				Issuer: &issuerConfig{
-					ClockSkewAllowance:  options.identityOptions.clockSkewAllowance.String(),
-					IssuanceLifetime:    options.identityOptions.issuanceLifetime.String(),
+					ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+					IssuanceLifetime:    idopts.issuanceLifetime.String(),
 					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 					KeyPEM:    creds.EncodePrivateKeyPEM(),
@@ -297,8 +293,8 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 				TrustDomain:     trustDomain,
 				TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 				Issuer: &issuerConfig{
-					ClockSkewAllowance:  options.identityOptions.clockSkewAllowance.String(),
-					IssuanceLifetime:    options.identityOptions.issuanceLifetime.String(),
+					ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+					IssuanceLifetime:    idopts.issuanceLifetime.String(),
 					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 					KeyPEM:    root.Cred.EncodePrivateKeyPEM(),
