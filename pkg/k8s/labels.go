@@ -168,10 +168,10 @@ const (
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
-	// ProxyPortName is the name of the Linkerd Proxy's proxy port
+	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
-	// ProxyAdminPortName is the name of the Linkerd Proxy's metrics port
+	// ProxyAdminPortName is the name of the Linkerd Proxy's metrics port.
 	ProxyAdminPortName = "linkerd-admin"
 
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
@@ -182,7 +182,7 @@ const (
 	 * Mount paths
 	 */
 
-	// MountPathBase is the base directory of the mount path
+	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
 	// MountPathGlobalConfig is the path at which the global config file is mounted.
