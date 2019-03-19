@@ -46,6 +46,9 @@ const (
 	envDestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
 	envDestinationSvcAddr         = "LINKERD2_PROXY_DESTINATION_SVC_ADDR"
 
+	envIdentityDisabled = "LINKERD2_PROXY_IDENTITY_DISABLED"
+	identityDisabledMsg = "Identity is not yet available"
+
 	// destinationAPIPort is the port exposed by the linkerd-destination service
 	destinationAPIPort = 8086
 )
@@ -241,11 +244,12 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	// supported type is found. Otherwise, conf is left unmodified.
 
 	// When injecting the linkerd proxy into a linkerd controller pod. The linkerd proxy's
-	// LINKERD2_PROXY_CONTROL_URL variable must be set to localhost for the following reasons:
+	// LINKERD2_PROXY_DESTINATION_SVC_ADDR variable must be set to localhost for
+	// the following reasons:
 	//	1. According to https://github.com/kubernetes/minikube/issues/1568, minikube has an issue
 	//     where pods are unable to connect to themselves through their associated service IP.
-	//     Setting the LINKERD2_PROXY_CONTROL_URL to localhost allows the proxy to bypass kube DNS
-	//     name resolution as a workaround to this issue.
+	//     Setting the LINKERD2_PROXY_DESTINATION_SVC_ADDR to localhost allows the
+	//     proxy to bypass kube DNS name resolution as a workaround to this issue.
 	//  2. We avoid the TLS overhead in encrypting and decrypting intra-pod traffic i.e. traffic
 	//     between containers in the same pod.
 	//  3. Using a Service IP instead of localhost would mean intra-pod traffic would be load-balanced
@@ -394,12 +398,12 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 				Value: fmt.Sprintf("%dms", defaultKeepaliveMs),
 			},
 			{
-				Name:      "K8S_NS",
+				Name:      "_pod_ns",
 				ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.namespace"}},
 			},
 			{
 				Name:  envDestinationContext,
-				Value: "ns:$(K8S_NS)",
+				Value: "ns:$(_pod_ns)",
 			},
 		},
 		ReadinessProbe: conf.proxyReadinessProbe(),
@@ -426,8 +430,8 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	}
 
 	sidecar.Env = append(sidecar.Env, v1.EnvVar{
-		Name:  "LINKERD2_PROXY_IDENTITY_DISABLED",
-		Value: "Identity configuration is unavailable",
+		Name:  envIdentityDisabled,
+		Value: identityDisabledMsg,
 	})
 	if idctx := conf.globalConfig.GetIdentityContext(); idctx != nil {
 		log.Warn("Ignoring Identity configuration.")
@@ -468,11 +472,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.globalConfig.GetVersion())
 
-	if conf.globalConfig.GetIdentityContext() != nil {
-		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeOptional)
-	} else {
-		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
-	}
+	patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 
 	for k, v := range conf.podLabels {
 		patch.addPodLabel(k, v)

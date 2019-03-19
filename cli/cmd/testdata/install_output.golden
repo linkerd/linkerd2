@@ -210,14 +210,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: K8S_NS
+        - name: _pod_ns
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(K8S_NS)
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity configuration is unavailable
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -495,14 +495,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: K8S_NS
+        - name: _pod_ns
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(K8S_NS)
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity configuration is unavailable
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -680,16 +680,16 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: K8S_NS
+        - name: _pod_ns
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(K8S_NS)
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity configuration is unavailable
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -934,14 +934,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: K8S_NS
+        - name: _pod_ns
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(K8S_NS)
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity configuration is unavailable
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1141,14 +1141,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: K8S_NS
+        - name: _pod_ns
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(K8S_NS)
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity configuration is unavailable
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

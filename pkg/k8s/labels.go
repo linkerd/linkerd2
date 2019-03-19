@@ -152,12 +152,6 @@ const (
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = "disabled"
 
-	// IdentityModeOptional is assigned to IdentityModeAnnotation to
-	// optionally configure the proxy to participate in automatic identity.
-	//
-	// Deprecated.
-	IdentityModeOptional = "optional"
-
 	/*
 	 * Component Names
 	 */

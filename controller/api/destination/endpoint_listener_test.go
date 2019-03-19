@@ -214,7 +214,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Annotations: map[string]string{
-					pkgK8s.IdentityModeAnnotation: pkgK8s.IdentityModeOptional,
+					pkgK8s.IdentityModeAnnotation: "FIXME",
 				},
 				Labels: map[string]string{
 					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
@@ -266,7 +266,7 @@ func TestEndpointListener(t *testing.T) {
 				Name:      expectedPodName,
 				Namespace: expectedPodNamespace,
 				Annotations: map[string]string{
-					pkgK8s.IdentityModeAnnotation: pkgK8s.IdentityModeOptional,
+					pkgK8s.IdentityModeAnnotation: "FIXME",
 				},
 				Labels: map[string]string{
 					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
