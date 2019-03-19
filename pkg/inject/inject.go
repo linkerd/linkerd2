@@ -73,45 +73,50 @@ var injectableKinds = []string{
 	k8s.StatefulSet,
 }
 
-// objMeta provides a generic struct to parse the names of Kubernetes objects
-type objMeta struct {
-	*metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-}
-
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	configs       *config.All
-	nsAnnotations map[string]string
-	meta          metav1.TypeMeta
-	obj           runtime.Object
-	workLoadMeta  *metav1.ObjectMeta
-	podMeta       objMeta
-	podLabels     map[string]string
-	podSpec       *v1.PodSpec
-
+	configs                *config.All
+	nsAnnotations          map[string]string
 	destinationDNSOverride string
 	identityDNSOverride    string
 	proxyOutboundCapacity  map[string]uint
+
+	workload struct {
+		obj      runtime.Object
+		meta     *metav1.ObjectMeta
+		metaType metav1.TypeMeta
+	}
+
+	pod struct {
+		// Meta is the pod's metadata. It's exported so that the YAML marshaling
+		// will work in the ParseMeta() function.
+		Meta   *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+		labels map[string]string
+		spec   *v1.PodSpec
+	}
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
 func NewResourceConfig(configs *config.All) *ResourceConfig {
-	return &ResourceConfig{
+	config := &ResourceConfig{
 		configs:               configs,
-		podLabels:             map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()},
 		proxyOutboundCapacity: map[string]uint{},
 	}
+
+	config.pod.Meta = &metav1.ObjectMeta{}
+	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
+	return config
 }
 
 // String satisfies the Stringer interface
 func (conf *ResourceConfig) String() string {
 	l := []string{}
 
-	if conf.meta.Kind != "" {
-		l = append(l, conf.meta.Kind)
+	if conf.workload.metaType.Kind != "" {
+		l = append(l, conf.workload.metaType.Kind)
 	}
-	if conf.workLoadMeta != nil {
-		l = append(l, fmt.Sprintf("%s.%s", conf.workLoadMeta.GetName(), conf.workLoadMeta.GetNamespace()))
+	if conf.workload.meta != nil {
+		l = append(l, fmt.Sprintf("%s.%s", conf.workload.meta.GetName(), conf.workload.meta.GetNamespace()))
 	}
 
 	return strings.Join(l, "/")
@@ -119,7 +124,7 @@ func (conf *ResourceConfig) String() string {
 
 // WithKind enriches ResourceConfig with the workload kind
 func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
-	conf.meta = metav1.TypeMeta{Kind: kind}
+	conf.workload.metaType = metav1.TypeMeta{Kind: kind}
 	return conf
 }
 
@@ -140,7 +145,7 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
-	return yaml.Marshal(conf.obj)
+	return yaml.Marshal(conf.workload.obj)
 }
 
 // ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
@@ -155,13 +160,13 @@ func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
 // ParseMeta extracts metadata from bytes.
 // It returns false if the workload's payload is empty
 func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
-	if err := yaml.Unmarshal(bytes, &conf.meta); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.workload.metaType); err != nil {
 		return false, err
 	}
-	if err := yaml.Unmarshal(bytes, &conf.podMeta); err != nil {
+	if err := yaml.Unmarshal(bytes, &conf.pod); err != nil {
 		return false, err
 	}
-	return conf.podMeta.ObjectMeta != nil, nil
+	return conf.pod.Meta != nil, nil
 }
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
@@ -170,14 +175,14 @@ func (conf *ResourceConfig) GetPatch(
 	shouldInject func(*ResourceConfig, Report) bool,
 ) (*Patch, []Report, error) {
 	report := newReport(conf)
-	log.Infof("received %s/%s", strings.ToLower(conf.meta.Kind), report.Name)
+	log.Infof("received %s/%s", strings.ToLower(conf.workload.metaType.Kind), report.Name)
 
 	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
 	}
 
 	var patch *Patch
-	if strings.ToLower(conf.meta.Kind) == k8s.Pod {
+	if strings.ToLower(conf.workload.metaType.Kind) == k8s.Pod {
 		patch = NewPatchPod()
 	} else {
 		patch = NewPatchDeployment()
@@ -186,7 +191,7 @@ func (conf *ResourceConfig) GetPatch(
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
 	// serialization of the modified object.
-	if conf.podSpec != nil {
+	if conf.pod.spec != nil {
 		report.update(conf)
 		if shouldInject(conf, report) {
 			conf.injectPodSpec(patch)
@@ -202,7 +207,7 @@ func (conf *ResourceConfig) GetPatch(
 // KindInjectable returns true if the resource in conf can be injected with a proxy
 func (conf *ResourceConfig) KindInjectable() bool {
 	for _, kind := range injectableKinds {
-		if strings.ToLower(conf.meta.Kind) == kind {
+		if strings.ToLower(conf.workload.metaType.Kind) == kind {
 			return true
 		}
 	}
@@ -211,7 +216,7 @@ func (conf *ResourceConfig) KindInjectable() bool {
 
 // Note this switch must be kept in sync with injectableKinds (declared above)
 func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
-	switch strings.ToLower(conf.meta.Kind) {
+	switch strings.ToLower(conf.workload.metaType.Kind) {
 	case k8s.Deployment:
 		return &v1beta1.Deployment{}
 	case k8s.ReplicationController:
@@ -284,9 +289,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			}
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1.ReplicationController:
@@ -294,9 +299,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
 	case *v1beta1.ReplicaSet:
@@ -304,9 +309,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
@@ -314,9 +319,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyJobLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1beta1.DaemonSet:
@@ -324,9 +329,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
@@ -334,9 +339,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.workLoadMeta = &v.ObjectMeta
-		conf.podLabels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.workload.obj = v
+		conf.workload.meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
 	case *v1.Pod:
@@ -344,17 +349,17 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		conf.obj = v
-		conf.podSpec = &v.Spec
-		conf.podMeta = objMeta{&v.ObjectMeta}
+		conf.workload.obj = v
+		conf.pod.spec = &v.Spec
+		conf.pod.Meta = &v.ObjectMeta
 	}
 
 	return nil
 }
 
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
-	conf.podSpec = &template.Spec
-	conf.podMeta = objMeta{&template.ObjectMeta}
+	conf.pod.spec = &template.Spec
+	conf.pod.Meta = &template.ObjectMeta
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
@@ -438,7 +443,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	// easily identifiable at that level.
 	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
 	// not just the one in Linkerd's Control Plane.
-	for _, container := range conf.podSpec.Containers {
+	for _, container := range conf.pod.spec.Containers {
 		if capacity, ok := conf.proxyOutboundCapacity[container.Image]; ok {
 			sidecar.Env = append(sidecar.Env,
 				v1.EnvVar{
@@ -503,7 +508,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		},
 	}...)
 
-	if len(conf.podSpec.Volumes) == 0 {
+	if len(conf.pod.spec.Volumes) == 0 {
 		patch.addVolumeRoot()
 	}
 	patch.addVolume(&v1.Volume{
@@ -540,7 +545,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
 			RunAsUser:    &runAsUser,
 		},
 	}
-	if len(conf.podSpec.InitContainers) == 0 {
+	if len(conf.pod.spec.InitContainers) == 0 {
 		patch.addInitContainerRoot()
 	}
 	patch.addInitContainer(initContainer)
@@ -549,7 +554,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	if len(conf.podMeta.Annotations) == 0 {
+	if len(conf.pod.Meta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
@@ -560,20 +565,20 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
-	for k, v := range conf.podLabels {
+	for k, v := range conf.pod.labels {
 		patch.addPodLabel(k, v)
 	}
 }
 
 // AddRootLabels adds all the pod labels into the root workload (e.g. Deployment)
 func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
-	for k, v := range conf.podLabels {
+	for k, v := range conf.pod.labels {
 		patch.addRootLabel(k, v)
 	}
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
-	return conf.podMeta.Annotations[annotation]
+	return conf.pod.Meta.Annotations[annotation]
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
@@ -887,7 +892,7 @@ func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
 		return false
 	}
 
-	podAnnotation := conf.podMeta.Annotations[k8s.ProxyInjectAnnotation]
+	podAnnotation := conf.pod.Meta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
 		return true
