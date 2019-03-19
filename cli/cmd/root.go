@@ -263,7 +263,6 @@ type proxyConfigOptions struct {
 	proxyMemoryRequest      string
 	proxyCPULimit           string
 	proxyMemoryLimit        string
-	tls                     string
 	disableExternalProfiles bool
 	noInitContainer         bool
 }
@@ -292,7 +291,6 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyMemoryRequest:      "",
 		proxyCPULimit:           "",
 		proxyMemoryLimit:        "",
-		tls:                     "",
 		disableExternalProfiles: false,
 		noInitContainer:         false,
 	}
