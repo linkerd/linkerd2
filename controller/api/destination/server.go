@@ -108,6 +108,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			proxyNS = parts[2]
 		}
 	}
+	if proxyNS != "" {
+		log.Debugf("Looking up profile given context: ns:%s", proxyNS)
+	}
 
 	err = s.resolver.streamProfiles(host, proxyNS, listener)
 	if err != nil {
