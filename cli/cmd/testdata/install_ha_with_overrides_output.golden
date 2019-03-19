@@ -200,28 +200,30 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://localhost.:8086
-        - name: LINKERD2_PROXY_CONTROL_LISTENER
-          value: tcp://0.0.0.0:4190
-        - name: LINKERD2_PROXY_METRICS_LISTENER
-          value: tcp://0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-          value: tcp://127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTENER
-          value: tcp://0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: localhost.:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+          value: 0.0.0.0:4190
+        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+          value: 0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+          value: 127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+          value: 0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_ID
-          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
+        - name: _pod_ns
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+          value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_IDENTITY_DISABLED
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -234,12 +236,12 @@ spec:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
-          name: linkerd-metrics
+          name: linkerd-admin
         readinessProbe:
           httpGet:
-            path: /metrics
+            path: /ready
             port: 4191
-          initialDelaySeconds: 10
+          initialDelaySeconds: 2
         resources:
           requests:
             cpu: 400m
@@ -291,7 +293,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"dev-undefined","identityContext":null}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"metricsPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"400m","requestMemory":"300Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"400m","requestMemory":"300Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":false}
 ---
 ###
 ### Service Profile CRD
@@ -488,28 +490,30 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_CONTROL_LISTENER
-          value: tcp://0.0.0.0:4190
-        - name: LINKERD2_PROXY_METRICS_LISTENER
-          value: tcp://0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-          value: tcp://127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTENER
-          value: tcp://0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-destination.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+          value: 0.0.0.0:4190
+        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+          value: 0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+          value: 127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+          value: 0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_ID
-          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
+        - name: _pod_ns
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+          value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_IDENTITY_DISABLED
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -522,12 +526,12 @@ spec:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
-          name: linkerd-metrics
+          name: linkerd-admin
         readinessProbe:
           httpGet:
-            path: /metrics
+            path: /ready
             port: 4191
-          initialDelaySeconds: 10
+          initialDelaySeconds: 2
         resources:
           requests:
             cpu: 400m
@@ -676,30 +680,32 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_CONTROL_LISTENER
-          value: tcp://0.0.0.0:4190
-        - name: LINKERD2_PROXY_METRICS_LISTENER
-          value: tcp://0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-          value: tcp://127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTENER
-          value: tcp://0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-destination.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+          value: 0.0.0.0:4190
+        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+          value: 0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+          value: 127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+          value: 0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_ID
-          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
+        - name: _pod_ns
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+          value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
+        - name: LINKERD2_PROXY_IDENTITY_DISABLED
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -712,12 +718,12 @@ spec:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
-          name: linkerd-metrics
+          name: linkerd-admin
         readinessProbe:
           httpGet:
-            path: /metrics
+            path: /ready
             port: 4191
-          initialDelaySeconds: 10
+          initialDelaySeconds: 2
         resources:
           requests:
             cpu: 400m
@@ -817,7 +823,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^linkerd-proxy;linkerd-metrics;linkerd$
+        regex: ^linkerd-proxy;linkerd-admin;linkerd$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -933,28 +939,30 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
-        - name: LINKERD2_PROXY_CONTROL_URL
-          value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_CONTROL_LISTENER
-          value: tcp://0.0.0.0:4190
-        - name: LINKERD2_PROXY_METRICS_LISTENER
-          value: tcp://0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTENER
-          value: tcp://127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTENER
-          value: tcp://0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-destination.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+          value: 0.0.0.0:4190
+        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+          value: 0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+          value: 127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+          value: 0.0.0.0:4143
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
-        - name: LINKERD2_PROXY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_ID
-          value: ns:$(LINKERD2_PROXY_POD_NAMESPACE)
+        - name: _pod_ns
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+          value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_IDENTITY_DISABLED
+          value: Identity is not yet available
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -967,12 +975,12 @@ spec:
         - containerPort: 4143
           name: linkerd-proxy
         - containerPort: 4191
-          name: linkerd-metrics
+          name: linkerd-admin
         readinessProbe:
           httpGet:
-            path: /metrics
+            path: /ready
             port: 4191
-          initialDelaySeconds: 10
+          initialDelaySeconds: 2
         resources:
           requests:
             cpu: 400m

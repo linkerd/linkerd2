@@ -34,7 +34,7 @@ type cniPluginOptions struct {
 	linkerdVersion      string
 	dockerRegistry      string
 	proxyControlPort    uint
-	proxyMetricsPort    uint
+	proxyAdminPort      uint
 	inboundPort         uint
 	outboundPort        uint
 	ignoreInboundPorts  []uint
@@ -51,7 +51,7 @@ func newCNIPluginOptions() *cniPluginOptions {
 		linkerdVersion:      version.Version,
 		dockerRegistry:      defaultDockerRegistry,
 		proxyControlPort:    4190,
-		proxyMetricsPort:    4191,
+		proxyAdminPort:      4191,
 		inboundPort:         4143,
 		outboundPort:        4140,
 		ignoreInboundPorts:  nil,
@@ -113,7 +113,7 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
-	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
+	cmd.PersistentFlags().UintVar(&options.proxyAdminPort, "admin-port", options.proxyAdminPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin.")
@@ -131,7 +131,7 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 
 	ignoreInboundPorts := []string{
 		fmt.Sprintf("%d", options.proxyControlPort),
-		fmt.Sprintf("%d", options.proxyMetricsPort),
+		fmt.Sprintf("%d", options.proxyAdminPort),
 	}
 	for _, p := range options.ignoreInboundPorts {
 		ignoreInboundPorts = append(ignoreInboundPorts, fmt.Sprintf("%d", p))

@@ -114,8 +114,8 @@ const (
 	// ProxyInboundPortAnnotation can be used to override the inboundPort config.
 	ProxyInboundPortAnnotation = ProxyConfigAnnotationsPrefix + "/inbound-port"
 
-	// ProxyMetricsPortAnnotation can be used to override the metricsPort config.
-	ProxyMetricsPortAnnotation = ProxyConfigAnnotationsPrefix + "/metrics-port"
+	// ProxyAdminPortAnnotation can be used to override the adminPort config.
+	ProxyAdminPortAnnotation = ProxyConfigAnnotationsPrefix + "/admin-port"
 
 	// ProxyOutboundPortAnnotation can be used to override the outboundPort
 	// config.
@@ -144,15 +144,13 @@ const (
 	// disableExternalProfilesAnnotation config.
 	ProxyDisableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/disable-external-profiles"
 
+	// IdentityModeDefault is assigned to IdentityModeAnnotation to
+	// use the control plane's default identity scheme.
+	IdentityModeDefault = "default"
+
 	// IdentityModeDisabled is assigned to IdentityModeAnnotation to
 	// disable the proxy from participating in automatic identity.
 	IdentityModeDisabled = "disabled"
-
-	// IdentityModeOptional is assigned to IdentityModeAnnotation to
-	// optionally configure the proxy to participate in automatic identity.
-	//
-	// Will be deprecated soon.
-	IdentityModeOptional = "optional"
 
 	/*
 	 * Component Names
@@ -164,11 +162,11 @@ const (
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
-	// ProxyPortName is the name of the Linkerd Proxy's proxy port
+	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
-	// ProxyMetricsPortName is the name of the Linkerd Proxy's metrics port
-	ProxyMetricsPortName = "linkerd-metrics"
+	// ProxyAdminPortName is the name of the Linkerd Proxy's metrics port.
+	ProxyAdminPortName = "linkerd-admin"
 
 	// ProxyInjectorWebhookConfig is the name of the mutating webhook
 	// configuration resource of the proxy-injector webhook.
@@ -178,13 +176,13 @@ const (
 	 * Mount paths
 	 */
 
-	// MountPathBase is the base directory of the mount path
-	MountPathBase = "/var/linkerd-io"
+	// MountPathBase is the base directory of the mount path.
+	MountPathBase = "/var/run/linkerd"
 
-	// MountPathGlobalConfig is the path at which the global config file is mounted
+	// MountPathGlobalConfig is the path at which the global config file is mounted.
 	MountPathGlobalConfig = MountPathBase + "/config/global"
 
-	// MountPathProxyConfig is the path at which the global config file is mounted
+	// MountPathProxyConfig is the path at which the global config file is mounted.
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
 )
 

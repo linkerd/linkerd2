@@ -258,7 +258,7 @@ type proxyConfigOptions struct {
 	proxyUID                int64
 	proxyLogLevel           string
 	proxyControlPort        uint
-	proxyMetricsPort        uint
+	proxyAdminPort          uint
 	proxyCPURequest         string
 	proxyMemoryRequest      string
 	proxyCPULimit           string
@@ -286,7 +286,7 @@ func newProxyConfigOptions() *proxyConfigOptions {
 		proxyUID:                2102,
 		proxyLogLevel:           "warn,linkerd2_proxy=info",
 		proxyControlPort:        4190,
-		proxyMetricsPort:        4191,
+		proxyAdminPort:          4191,
 		proxyCPURequest:         "",
 		proxyMemoryRequest:      "",
 		proxyCPULimit:           "",
@@ -310,7 +310,7 @@ func newConfig() configs {
 		IgnoreInboundPorts:      nil,
 		IgnoreOutboundPorts:     nil,
 		InboundPort:             &config.Port{Port: 4143},
-		MetricsPort:             &config.Port{Port: 4191},
+		AdminPort:               &config.Port{Port: 4191},
 		OutboundPort:            &config.Port{Port: 4140},
 		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
 		ProxyUid:                2102,
@@ -401,7 +401,7 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	cmd.PersistentFlags().StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
-	cmd.PersistentFlags().UintVar(&options.proxyMetricsPort, "metrics-port", options.proxyMetricsPort, "Proxy port to serve metrics on")
+	cmd.PersistentFlags().UintVar(&options.proxyAdminPort, "admin-port", options.proxyAdminPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().StringVar(&options.proxyCPURequest, "proxy-cpu-request", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	cmd.PersistentFlags().StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")

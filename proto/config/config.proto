@@ -30,7 +30,7 @@ message Proxy {
   repeated Port ignore_inbound_ports = 4;
   repeated Port ignore_outbound_ports = 5;
   Port inbound_port = 6;
-  Port metrics_port = 7;
+  Port admin_port = 7;
   Port outbound_port = 8;
 
   ResourceRequirements resource = 9;
