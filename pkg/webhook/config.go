@@ -30,7 +30,7 @@ type Config struct {
 // Create deletes the webhook config if it already exists and then creates
 // a new one
 func (c *Config) Create() (string, error) {
-	exists, err := c.exists()
+	exists, err := c.Exists()
 	if err != nil {
 		return "", err
 	}
@@ -65,7 +65,8 @@ func (c *Config) Create() (string, error) {
 	return c.Ops.Create(buf)
 }
 
-func (c *Config) exists() (bool, error) {
+// Exists returns true if the webhook already exists
+func (c *Config) Exists() (bool, error) {
 	if err := c.Ops.Get(); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil

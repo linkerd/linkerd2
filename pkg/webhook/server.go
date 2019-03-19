@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -126,13 +126,8 @@ func tlsConfig(rootCA *pkgTls.CA, name, controllerNamespace string) (*tls.Config
 	// must use the service short name in this TLS identity as the k8s api server
 	// looks for the webhook at <svc_name>.<namespace>.svc, without the cluster
 	// domain.
-	tlsIdentity := k8s.TLSIdentity{
-		Name:                name,
-		Kind:                k8s.Service,
-		Namespace:           controllerNamespace,
-		ControllerNamespace: controllerNamespace,
-	}
-	dnsName := tlsIdentity.ToDNSName()
+	dnsName := fmt.Sprintf("%s.%s.svc", name, controllerNamespace)
+
 	cred, err := rootCA.GenerateEndEntityCred(dnsName)
 	if err != nil {
 		return nil, err
