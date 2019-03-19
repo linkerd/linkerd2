@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"testing"
 )
 
@@ -11,6 +12,10 @@ func TestRender(t *testing.T) {
 	// value to facilitate testing.
 	defaultControlPlaneNamespace := controlPlaneNamespace
 	defaultOptions := newInstallOptions()
+	defaultOptions.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
+	defaultOptions.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+	defaultOptions.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
+
 	defaultConfig, err := validateAndBuildConfig(defaultOptions)
 	if err != nil {
 		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
@@ -45,14 +50,17 @@ func TestRender(t *testing.T) {
 		NoInitContainer:          false,
 		GlobalConfig:             "GlobalConfig",
 		ProxyConfig:              "ProxyConfig",
+		Identity:                 defaultConfig.Identity,
 	}
 
 	haOptions := newInstallOptions()
 	haOptions.highAvailability = true
+	*haOptions.identityOptions = *defaultOptions.identityOptions
 	haConfig, _ := validateAndBuildConfig(haOptions)
 	haConfig.UUID = defaultConfig.UUID
 
 	haWithOverridesOptions := newInstallOptions()
+	*haWithOverridesOptions.identityOptions = *defaultOptions.identityOptions
 	haWithOverridesOptions.highAvailability = true
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
@@ -61,11 +69,13 @@ func TestRender(t *testing.T) {
 	haWithOverridesConfig.UUID = defaultConfig.UUID
 
 	noInitContainerOptions := newInstallOptions()
+	*noInitContainerOptions.identityOptions = *defaultOptions.identityOptions
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
 	noInitContainerConfig.UUID = defaultConfig.UUID
 
 	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
+	*noInitContainerWithProxyAutoInjectOptions.identityOptions = *defaultOptions.identityOptions
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
 	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)

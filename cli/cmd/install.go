@@ -2,16 +2,21 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/linkerd/linkerd2/cli/static"
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,55 +27,91 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type installConfig struct {
-	Namespace                string
-	ControllerImage          string
-	WebImage                 string
-	PrometheusImage          string
-	PrometheusVolumeName     string
-	GrafanaImage             string
-	GrafanaVolumeName        string
-	ControllerReplicas       uint
-	ImagePullPolicy          string
-	UUID                     string
-	CliVersion               string
-	ControllerLogLevel       string
-	PrometheusLogLevel       string
-	ControllerComponentLabel string
-	CreatedByAnnotation      string
-	ProxyContainerName       string
-	ProxyAutoInjectEnabled   bool
-	ProxyInjectAnnotation    string
-	ProxyInjectDisabled      string
-	EnableHA                 bool
-	ControllerUID            int64
-	EnableH2Upgrade          bool
-	NoInitContainer          bool
-	GlobalConfig             string
-	ProxyConfig              string
-}
+type (
+	installConfig struct {
+		Namespace                string
+		ControllerImage          string
+		WebImage                 string
+		PrometheusImage          string
+		PrometheusVolumeName     string
+		GrafanaImage             string
+		GrafanaVolumeName        string
+		ControllerReplicas       uint
+		ImagePullPolicy          string
+		UUID                     string
+		CliVersion               string
+		ControllerLogLevel       string
+		PrometheusLogLevel       string
+		ControllerComponentLabel string
+		CreatedByAnnotation      string
+		ProxyContainerName       string
+		ProxyAutoInjectEnabled   bool
+		ProxyInjectAnnotation    string
+		ProxyInjectDisabled      string
+		EnableHA                 bool
+		ControllerUID            int64
+		EnableH2Upgrade          bool
+		NoInitContainer          bool
+		GlobalConfig             string
+		ProxyConfig              string
 
-// installOptions holds values for command line flags that apply to the install
-// command. All fields in this struct should have corresponding flags added in
-// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
-// in order to hold values for command line flags that apply to both inject and
-// install.
-type installOptions struct {
-	controllerReplicas uint
-	controllerLogLevel string
-	proxyAutoInject    bool
-	highAvailability   bool
-	controllerUID      int64
-	disableH2Upgrade   bool
-	*proxyConfigOptions
-}
+		Identity *installIdentityConfig
+	}
+
+	installIdentityConfig struct {
+		TrustDomain     string
+		TrustAnchorsPEM string
+
+		Issuer *issuerConfig
+	}
+
+	issuerConfig struct {
+		ClockSkewAllowance string
+		IssuanceLifetime   string
+
+		KeyPEM, CrtPEM string
+
+		CrtExpiry time.Time
+
+		CrtExpiryAnnotation string
+	}
+
+	// installOptions holds values for command line flags that apply to the install
+	// command. All fields in this struct should have corresponding flags added in
+	// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
+	// in order to hold values for command line flags that apply to both inject and
+	// install.
+	installOptions struct {
+		controllerReplicas uint
+		controllerLogLevel string
+		proxyAutoInject    bool
+		highAvailability   bool
+		controllerUID      int64
+		disableH2Upgrade   bool
+		identityOptions    *installIdentityOptions
+		*proxyConfigOptions
+	}
+
+	installIdentityOptions struct {
+		trustDomain string
+
+		issuanceLifetime   time.Duration
+		clockSkewAllowance time.Duration
+
+		trustPEMFile, crtPEMFile, keyPEMFile string
+	}
+)
 
 const (
-	prometheusProxyOutboundCapacity = 10000
-	defaultControllerReplicas       = 1
-	defaultHAControllerReplicas     = 3
+	prometheusProxyOutboundCapacity   = 10000
+	defaultControllerReplicas         = 1
+	defaultHAControllerReplicas       = 3
+	defaultIdentityTrustDomain        = "cluster.local"
+	defaultIdentityIssuanceLifetime   = 2 * time.Minute
+	defaultIdentityClockSkewAllowance = 2 * time.Minute
 
 	nsTemplateName             = "templates/namespace.yaml"
+	identityTemplateName       = "templates/identity.yaml"
 	controllerTemplateName     = "templates/controller.yaml"
 	webTemplateName            = "templates/web.yaml"
 	prometheusTemplateName     = "templates/prometheus.yaml"
@@ -88,6 +129,11 @@ func newInstallOptions() *installOptions {
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
 		proxyConfigOptions: newProxyConfigOptions(),
+		identityOptions: &installIdentityOptions{
+			trustDomain:        defaultIdentityTrustDomain,
+			issuanceLifetime:   defaultIdentityIssuanceLifetime,
+			clockSkewAllowance: defaultIdentityClockSkewAllowance,
+		},
 	}
 }
 
@@ -99,6 +145,8 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes configs to install Linkerd",
 		Long:  "Output Kubernetes configs to install Linkerd.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// TODO check with a config already exists in the API and fail if it does.
+
 			config, err := validateAndBuildConfig(options)
 			if err != nil {
 				return err
@@ -109,12 +157,56 @@ func newCmdInstall() *cobra.Command {
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
-	cmd.PersistentFlags().UintVar(&options.controllerReplicas, "controller-replicas", options.controllerReplicas, "Replicas of the controller to deploy")
-	cmd.PersistentFlags().StringVar(&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel, "Log level for the controller and web components")
-	cmd.PersistentFlags().BoolVar(&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject, "Enable proxy sidecar auto-injection via a webhook (default false)")
-	cmd.PersistentFlags().BoolVar(&options.highAvailability, "ha", options.highAvailability, "Experimental: Enable HA deployment config for the control plane (default false)")
-	cmd.PersistentFlags().Int64Var(&options.controllerUID, "controller-uid", options.controllerUID, "Run the control plane components under this user ID")
-	cmd.PersistentFlags().BoolVar(&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade, "Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)")
+	cmd.PersistentFlags().UintVar(
+		&options.controllerReplicas, "controller-replicas", options.controllerReplicas,
+		"Replicas of the controller to deploy",
+	)
+	cmd.PersistentFlags().StringVar(
+		&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel,
+		"Log level for the controller and web components",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject,
+		"Enable proxy sidecar auto-injection via a webhook (default false)",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&options.highAvailability, "ha", options.highAvailability,
+		"Experimental: Enable HA deployment config for the control plane (default false)",
+	)
+	cmd.PersistentFlags().Int64Var(
+		&options.controllerUID, "controller-uid", options.controllerUID,
+		"Run the control plane components under this user ID",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
+		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
+	)
+
+	cmd.PersistentFlags().StringVar(
+		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
+		"Configures the name suffix use for identities.",
+	)
+	cmd.PersistentFlags().StringVar(
+		&options.identityOptions.trustPEMFile, "identity-trust-anchors-file", options.identityOptions.trustPEMFile,
+		"A path to a PEM-encoded file containing Linkerd Identity trust anchors (generated by default)",
+	)
+	cmd.PersistentFlags().StringVar(
+		&options.identityOptions.crtPEMFile, "identity-issuer-certificate-file", options.identityOptions.crtPEMFile,
+		"A path to a PEM-encoded file containing the Linkerd Identity issuer certificate (generated by default)",
+	)
+	cmd.PersistentFlags().StringVar(
+		&options.identityOptions.keyPEMFile, "identity-issuer-key-file", options.identityOptions.keyPEMFile,
+		"A path to a PEM-encoded file containing the Linkerd Identity issuer private key (generated by default)",
+	)
+	cmd.PersistentFlags().DurationVar(
+		&options.identityOptions.clockSkewAllowance, "identity-clock-skew-allowance", options.identityOptions.clockSkewAllowance,
+		"The amount of time to allow for clock skew within a Linkerd cluster",
+	)
+	cmd.PersistentFlags().DurationVar(
+		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
+		"The amount of time for which the Identity issuer should certfy identity",
+	)
+
 	return cmd
 }
 
@@ -135,8 +227,90 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		options.proxyMemoryRequest = "20Mi"
 	}
 
+	var identity *installIdentityConfig
+	if idopts := options.identityOptions; idopts != nil {
+		trustDomain := options.identityOptions.trustDomain
+		if trustDomain == "" {
+			return nil, errors.New("Trust domain must be specified")
+		}
+		issuerName := fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, trustDomain)
+
+		// Load signing material from options...
+		if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
+			if idopts.trustPEMFile == "" {
+				return nil, errors.New("a trust anchors file must be specified if other credentials are provided")
+			}
+			if idopts.crtPEMFile == "" {
+				return nil, errors.New("a certificate file must be specified if other credentials are provided")
+			}
+			if idopts.keyPEMFile == "" {
+				return nil, errors.New("a private key file must be specified if other credentials are provided")
+			}
+
+			// Validate credentials...
+			fmt.Println("Reading creds")
+			creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println("Reading trust")
+			trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
+			if err != nil {
+				return nil, err
+			}
+			trustAnchorsPEM := string(trustb)
+			fmt.Println("Decoding trust")
+			roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println("Verifying")
+			issuerName := "" // TODO restrict issuer name?
+			if err := creds.Verify(roots, issuerName); err != nil {
+				return nil, fmt.Errorf("Credentials cannot be validated: %s", err)
+			}
+
+			identity = &installIdentityConfig{
+				TrustDomain:     idopts.trustDomain,
+				TrustAnchorsPEM: trustAnchorsPEM,
+				Issuer: &issuerConfig{
+					ClockSkewAllowance:  options.identityOptions.clockSkewAllowance.String(),
+					IssuanceLifetime:    options.identityOptions.issuanceLifetime.String(),
+					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+
+					KeyPEM:    creds.EncodePrivateKeyPEM(),
+					CrtPEM:    creds.EncodeCertificatePEM(),
+					CrtExpiry: creds.Crt.Certificate.NotAfter,
+				},
+			}
+		} else {
+			// Generate new signing material...
+
+			root, err := tls.GenerateRootCAWithDefaults(issuerName)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to create root certificate for identity: %s", err)
+			}
+
+			identity = &installIdentityConfig{
+				TrustDomain:     trustDomain,
+				TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
+				Issuer: &issuerConfig{
+					ClockSkewAllowance:  options.identityOptions.clockSkewAllowance.String(),
+					IssuanceLifetime:    options.identityOptions.issuanceLifetime.String(),
+					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+
+					KeyPEM:    root.Cred.EncodePrivateKeyPEM(),
+					CrtPEM:    root.Cred.Crt.EncodeCertificatePEM(),
+					CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
+				},
+			}
+		}
+	}
+
 	jsonMarshaler := jsonpb.Marshaler{EmitDefaults: true}
-	globalConfig, err := jsonMarshaler.MarshalToString(globalConfig(options))
+	globalConfig, err := jsonMarshaler.MarshalToString(globalConfig(options, identity))
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +351,7 @@ func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
 		NoInitContainer:          options.noInitContainer,
 		GlobalConfig:             globalConfig,
 		ProxyConfig:              proxyConfig,
+		Identity:                 identity,
 	}, nil
 }
 
@@ -191,6 +366,7 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: nsTemplateName},
+		{Name: identityTemplateName},
 		{Name: controllerTemplateName},
 		{Name: serviceprofileTemplateName},
 		{Name: webTemplateName},
@@ -251,6 +427,29 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
 	pbConfig := injectOptionsToConfigs(injectOptions)
 
+	// injectOptionsToConfigs does NOT set an identity context if none exists,
+	// since it can't be enabled at inject-time if it's not enabled at
+	// install-time.
+	if config.Identity != nil {
+		id := config.Identity
+		il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
+		if err != nil {
+			il = defaultIdentityIssuanceLifetime
+		}
+
+		csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
+		if err != nil {
+			csa = defaultIdentityClockSkewAllowance
+		}
+
+		pbConfig.global.IdentityContext = &pb.IdentityContext{
+			TrustDomain:        id.TrustDomain,
+			TrustAnchorsPem:    id.TrustAnchorsPEM,
+			IssuanceLifetime:   ptypes.DurationProto(il),
+			ClockSkewAllowance: ptypes.DurationProto(csa),
+		}
+	}
+
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
 		configs: pbConfig,
 		proxyOutboundCapacity: map[string]uint{
@@ -280,10 +479,28 @@ func readIntoBytes(filename string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func globalConfig(options *installOptions) *config.Global {
-	var identityContext *config.IdentityContext
+func globalConfig(options *installOptions, id *installIdentityConfig) *pb.Global {
+	var identityContext *pb.IdentityContext
+	if id != nil {
+		il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
+		if err != nil {
+			il = defaultIdentityIssuanceLifetime
+		}
 
-	return &config.Global{
+		csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
+		if err != nil {
+			csa = defaultIdentityClockSkewAllowance
+		}
+
+		identityContext = &pb.IdentityContext{
+			TrustDomain:        id.TrustDomain,
+			TrustAnchorsPem:    id.TrustAnchorsPEM,
+			IssuanceLifetime:   ptypes.DurationProto(il),
+			ClockSkewAllowance: ptypes.DurationProto(csa),
+		}
+	}
+
+	return &pb.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Version:          options.linkerdVersion,
@@ -291,48 +508,48 @@ func globalConfig(options *installOptions) *config.Global {
 	}
 }
 
-func proxyConfig(options *installOptions) *config.Proxy {
-	ignoreInboundPorts := []*config.Port{}
+func proxyConfig(options *installOptions) *pb.Proxy {
+	ignoreInboundPorts := []*pb.Port{}
 	for _, port := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
+		ignoreInboundPorts = append(ignoreInboundPorts, &pb.Port{Port: uint32(port)})
 	}
 
-	ignoreOutboundPorts := []*config.Port{}
+	ignoreOutboundPorts := []*pb.Port{}
 	for _, port := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
+		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.Port{Port: uint32(port)})
 	}
 
-	return &config.Proxy{
-		ProxyImage: &config.Image{
+	return &pb.Proxy{
+		ProxyImage: &pb.Image{
 			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
-		ProxyInitImage: &config.Image{
+		ProxyInitImage: &pb.Image{
 			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 		},
-		ControlPort: &config.Port{
+		ControlPort: &pb.Port{
 			Port: uint32(options.proxyControlPort),
 		},
 		IgnoreInboundPorts:  ignoreInboundPorts,
 		IgnoreOutboundPorts: ignoreOutboundPorts,
-		InboundPort: &config.Port{
+		InboundPort: &pb.Port{
 			Port: uint32(options.inboundPort),
 		},
 		AdminPort: &config.Port{
 			Port: uint32(options.proxyAdminPort),
 		},
-		OutboundPort: &config.Port{
+		OutboundPort: &pb.Port{
 			Port: uint32(options.outboundPort),
 		},
-		Resource: &config.ResourceRequirements{
+		Resource: &pb.ResourceRequirements{
 			RequestCpu:    options.proxyCPURequest,
 			RequestMemory: options.proxyMemoryRequest,
 			LimitCpu:      options.proxyCPULimit,
 			LimitMemory:   options.proxyMemoryLimit,
 		},
 		ProxyUid: options.proxyUID,
-		LogLevel: &config.LogLevel{
+		LogLevel: &pb.LogLevel{
 			Level: options.proxyLogLevel,
 		},
 		DisableExternalProfiles: options.disableExternalProfiles,
