@@ -40,7 +40,7 @@ spec:
           containerPort: 8443
         volumeMounts:
         - name: config
-          mountPath: /var/linkerd-io/config
+          mountPath: /var/run/linkerd/config
         livenessProbe:
           httpGet:
             path: /ping
