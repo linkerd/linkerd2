@@ -1,3 +1,49 @@
+## edge-19.3.3
+
+**Significant Update** This edge release introduces a new TLS Identity system
+into the default Linkerd installation, replacing `tls=optional` and the
+`linkerd-ca` controller. Now, proxies generate ephemeral private keys into a
+tmpfs directory and dynamically refresh certificates, authenticated by
+Kubernetes ServiceAccount tokens, via the newly-introduced Identity controller.
+
+Now, all meshed HTTP communication is private and authenticated by default.
+
+* CLI
+  * Changed `install` to accept or generate an issuer Secrets for the Identity
+    controller.
+  * Changed `install` to fail in the case of a conflict with an existing
+    installation; this can be disabled with the `--ignore-cluster` flag
+  * Changed `inject` to require fetching a configuration from the control plane;
+    this can be disabled with the `--ignore-cluster` and `--disable-identity`
+    flags, though this will prevent the injected pods from participating in mesh
+    identity.
+  * Removed the `--tls=optional` flag from the `linkerd install` command, since
+    TLS is now enabled by default
+  * Added the ability to adjust the Prometheus log level
+* Proxy
+  * **Fixed** a stream leak between the proxy and control plane that could cause
+    the `linkerd-controller` pod to use an excessive amount of memory.
+  * Introduced per-proxy private key generation and dynamic certificate renewal.
+  * Added a readiness check endpoint on `:4191/ready` so that Kubernetes doesn't
+    consider pods ready until they have acquired a certificate from the Identity
+    controller.
+  * The proxy's connect timeouts have been updated, especially to improve
+    reconnect behavior between the proxy and control plane.
+* Web UI
+  * Added TCP statistics to the Linkerd Pod Grafana dashboard
+  * Fixed the behavior of the Top query 'Start' button if a user's query returns
+    no data
+  * Added stable sorting for table rows
+  * Fixed an issue with the order of tables returned from a Top Routes query
+  * Added text wrap for paths in the modal for expanded Tap query data
+* Internal
+  * Improved the `bin/go-run` script for the build process so that on failure,
+    all associated background processes are terminated
+
+Special thanks to @liquidslr for many useful UI and log changes, and to @mmalone
+and @sourishkrout at @smallstep for collaboration and advice on the Identity
+system!
+
 ## edge-19.3.2
 
 * Controller
