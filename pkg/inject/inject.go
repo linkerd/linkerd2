@@ -369,8 +369,9 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
+	saVolumeMount := conf.serviceAccountVolumeMount()
 	if !conf.configs.GetGlobal().GetCniEnabled() {
-		conf.injectProxyInit(patch)
+		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
 	proxyUID := conf.proxyUID()
@@ -460,6 +461,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
+	if saVolumeMount != nil {
+		sidecar.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
+	}
+
 	idctx := conf.configs.GetGlobal().GetIdentityContext()
 	if idctx == nil {
 		sidecar.Env = append(sidecar.Env, v1.EnvVar{
@@ -532,7 +537,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	patch.addContainer(&sidecar)
 }
 
-func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
+func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.VolumeMount) {
 	nonRoot := false
 	runAsUser := int64(0)
 	initContainer := &v1.Container{
@@ -550,7 +555,6 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
 			RunAsUser:    &runAsUser,
 		},
 	}
-	saVolumeMount := conf.serviceAccountVolumeMount()
 	if saVolumeMount != nil {
 		initContainer.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
 	}
