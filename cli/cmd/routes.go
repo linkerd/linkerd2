@@ -60,7 +60,7 @@ This command will only display traffic which is sent to a service that has a Ser
 				return fmt.Errorf("error creating metrics request while making routes request: %v", err)
 			}
 
-			output, err := requestRouteStatsFromAPI(cliPublicAPIClient(), req, options)
+			output, err := requestRouteStatsFromAPI(checkPublicAPIClientOrExit(), req, options)
 			if err != nil {
 				return err
 			}

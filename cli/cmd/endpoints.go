@@ -74,7 +74,7 @@ requests.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(cliPublicAPIClient())
+			endpoints, err := requestEndpointsFromAPI(checkPublicAPIClientOrExit())
 			if err != nil {
 				return fmt.Errorf("Endpoints API error: %s", err)
 			}
