@@ -37,6 +37,7 @@ var (
 		"linkerd-web":        1,
 		"linkerd-prometheus": 1,
 		"linkerd-controller": 1,
+		"linkerd-identity":   1,
 	}
 )
 
