@@ -35,15 +35,17 @@ func TestMain(m *testing.M) {
 var (
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
-		"linkerd-grafana",
-		"linkerd-prometheus",
 		"linkerd-destination",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-prometheus",
 		"linkerd-web",
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
 		"linkerd-controller": {1, []string{"destination", "public-api", "tap"}},
 		"linkerd-grafana":    {1, []string{}},
+		"linkerd-identity":   {1, []string{"identity"}},
 		"linkerd-prometheus": {1, []string{}},
 		"linkerd-web":        {1, []string{"web"}},
 	}
