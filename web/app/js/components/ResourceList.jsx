@@ -17,7 +17,7 @@ export class ResourceListBase extends React.Component {
 
   static propTypes = {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-    error:  apiErrorPropType,
+    error: apiErrorPropType,
     loading: PropTypes.bool.isRequired,
     resource: PropTypes.string.isRequired,
   }
@@ -48,7 +48,14 @@ export class ResourceListBase extends React.Component {
       <React.Fragment>
         <MetricsTable
           resource={this.props.resource}
-          metrics={processedMetrics} />
+          metrics={processedMetrics}
+          title="HTTP metrics" />
+
+        <MetricsTable
+          resource={this.props.resource}
+          isTcpTable={true}
+          metrics={processedMetrics}
+          title="TCP metrics" />
       </React.Fragment>
     );
   }
@@ -68,7 +75,7 @@ export class ResourceListBase extends React.Component {
 
 export default withREST(
   ResourceListBase,
-  ({api, resource}) => [api.fetchMetrics(api.urlsForResource(resource))],
+  ({ api, resource }) => [api.fetchMetrics(api.urlsForResource(resource, '', true))],
   {
     resetProps: ['resource'],
   },

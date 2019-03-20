@@ -16,6 +16,7 @@ import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
+import _isNil from 'lodash/isNil';
 import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { withContext } from './util/AppContext.jsx';
@@ -67,6 +68,7 @@ export class ResourceDetailBase extends React.Component {
       resourceType: resource.type,
       resource,
       lastMetricReceivedTime: Date.now(),
+      isTcpOnly: false, // whether this resource only has TCP traffic
       pollingInterval: 2000,
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
@@ -125,7 +127,7 @@ export class ResourceDetailBase extends React.Component {
     this.api.setCurrentRequests([
       // inbound stats for this resource
       this.api.fetchMetrics(
-        `${this.api.urlsForResource(resource.type, resource.namespace)}&resource_name=${resource.name}`
+        `${this.api.urlsForResource(resource.type, resource.namespace, true)}&resource_name=${resource.name}`
       ),
       // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
       this.api.fetchPods(resource.namespace),
@@ -181,8 +183,20 @@ export class ResourceDetailBase extends React.Component {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
+        let isTcpOnly = false;
+        let resMetrics = resourceMetrics[0];
+        if (!_isEmpty(resMetrics) && !_isEmpty(resMetrics.tcp)) {
+          let { tcp } = resMetrics;
+
+          if (_isNil(resMetrics.stats) &&
+            (tcp.openConnections > 0 || tcp.readBytes > 0 || tcp.writeBytes > 0)) {
+            isTcpOnly = true;
+          }
+        }
+
+        // figure out when the last traffic this resource received was so we can show a no traffic message
         let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
-        if (!_isEmpty(resourceMetrics[0]) && resourceMetrics[0].totalRequests !== 0) {
+        if ((!_isEmpty(resourceMetrics[0]) && resourceMetrics[0].totalRequests !== 0) || isTcpOnly) {
           lastMetricReceivedTime = Date.now();
         }
 
@@ -193,6 +207,7 @@ export class ResourceDetailBase extends React.Component {
           upstreamMetrics,
           downstreamMetrics,
           lastMetricReceivedTime,
+          isTcpOnly,
           loaded: true,
           pendingRequests: false,
           error: null,
@@ -238,7 +253,8 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics,
       unmeshedSources,
       resourceIsMeshed,
-      lastMetricReceivedTime
+      lastMetricReceivedTime,
+      isTcpOnly,
     } = this.state;
 
     let query = {
@@ -295,50 +311,40 @@ export class ResourceDetailBase extends React.Component {
           unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
-        <TopRoutesTabs
+        {isTcpOnly ? null : <TopRoutesTabs
           query={query}
           pathPrefix={this.props.pathPrefix}
           updateUnmeshedSources={this.updateUnmeshedSources}
           disableTop={!resourceIsMeshed} />
-
-        {_isEmpty(upstreams) ? null : (
-          <React.Fragment>
-            <MetricsTable
-              resource="multi_resource"
-              title="Inbound"
-              metrics={upstreamMetrics} />
-          </React.Fragment>
-        )
         }
 
-        {_isEmpty(this.state.downstreamMetrics) ? null : (
-          <React.Fragment>
-            <MetricsTable
-              resource="multi_resource"
-              title="Outbound"
-              metrics={downstreamMetrics} />
-          </React.Fragment>
-        )
+        {_isEmpty(upstreams) ? null :
+        <MetricsTable
+          resource="multi_resource"
+          title="Inbound"
+          metrics={upstreamMetrics} />
+        }
+
+        {_isEmpty(this.state.downstreamMetrics) ? null :
+        <MetricsTable
+          resource="multi_resource"
+          title="Outbound"
+          metrics={downstreamMetrics} />
         }
 
         {
-          this.state.resource.type === "pod" ? null : (
-            <React.Fragment>
-              <MetricsTable
-                resource="pod"
-                title="Pods"
-                metrics={this.state.podMetrics} />
-            </React.Fragment>
-          )
-        }
-
-        <React.Fragment>
+          this.state.resource.type === "pod" || isTcpOnly ? null :
           <MetricsTable
             resource="pod"
-            title="TCP"
-            isTcpTable={true}
+            title="Pods"
             metrics={this.state.podMetrics} />
-        </React.Fragment>
+        }
+
+        <MetricsTable
+          resource="pod"
+          title="TCP"
+          isTcpTable={true}
+          metrics={this.state.podMetrics} />
       </div>
     );
   }

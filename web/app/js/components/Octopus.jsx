@@ -22,7 +22,7 @@ import _slice from 'lodash/slice';
 import _sortBy from 'lodash/sortBy';
 import _take from 'lodash/take';
 import _times from 'lodash/times';
-import { getSuccessRateClassification } from './util/MetricUtils.jsx' ;
+import { getSuccessRateClassification } from './util/MetricUtils.jsx';
 import { withStyles } from "@material-ui/core/styles";
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
@@ -105,6 +105,11 @@ class Octopus extends React.Component {
     let classification = getSuccessRateClassification(resource.successRate);
     let Progress = StyledProgress(classification);
 
+    // if the resource only has TCP stats, display those instead
+    let showTcp = false;
+    if (_isNil(resource.successRate && _isNil(resource.requestRate))) {
+      showTcp = true;
+    }
     return (
       <Grid item key={resource.type + "-" + resource.name} >
         <Card className={type === "neighbor" ? classes.neighborNode : classes.centerNode} title={display}>
@@ -117,24 +122,50 @@ class Octopus extends React.Component {
             <Progress variant="determinate" value={resource.successRate * 100} />
 
             <Table padding="dense">
-              <TableBody>
-                <TableRow>
-                  <TableCell><Typography>SR</Typography></TableCell>
-                  <TableCell numeric={true}><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><Typography>RPS</Typography></TableCell>
-                  <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><Typography>P99</Typography></TableCell>
-                  <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
-                </TableRow>
-              </TableBody>
+              {showTcp ? this.renderTCPStats(resource) : this.renderHttpStats(resource)}
             </Table>
           </CardContent>
         </Card>
       </Grid>
+    );
+  }
+
+  renderHttpStats(resource) {
+    return (
+      <TableBody>
+        <TableRow>
+          <TableCell><Typography>SR</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell><Typography>RPS</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell><Typography>P99</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
+        </TableRow>
+      </TableBody>
+    );
+  }
+
+  renderTCPStats(resource) {
+    let { tcp } = resource;
+    return (
+      <TableBody>
+        <TableRow>
+          <TableCell><Typography>Conn</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](tcp.openConnections)}</Typography></TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell><Typography>Read</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.readRate)}</Typography></TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell><Typography>Write</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.writeRate)}</Typography></TableCell>
+        </TableRow>
+      </TableBody>
     );
   }
 
@@ -210,7 +241,7 @@ class Octopus extends React.Component {
   }
 
   render() {
-    let { resource, neighbors, unmeshedSources, classes} = this.props;
+    let { resource, neighbors, unmeshedSources, classes } = this.props;
 
     if (_isEmpty(resource)) {
       return null;
@@ -268,7 +299,7 @@ class Octopus extends React.Component {
               alignItems="center"
               item
               xs={3}>
-              { display.downstreams.displayed.map(n => this.renderResourceCard(n, "neighbor"))}
+              {display.downstreams.displayed.map(n => this.renderResourceCard(n, "neighbor"))}
               {_isEmpty(display.downstreams.collapsed) ? null : this.renderCollapsedNeighbors(display.downstreams.collapsed)}
             </Grid>
           </Grid>
