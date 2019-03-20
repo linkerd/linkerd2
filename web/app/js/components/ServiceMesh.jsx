@@ -47,9 +47,10 @@ const getPodClassification = pod => {
 };
 
 const componentsToDeployNames = {
-  "Grafana" : "linkerd-grafana",
-  "Prometheus": "linkerd-prometheus",
   "Destination": "linkerd-controller",
+  "Grafana": "linkerd-grafana",
+  "Identity": "linkerd-identity",
+  "Prometheus": "linkerd-prometheus",
   "Public API": "linkerd-controller",
   "Tap": "linkerd-controller",
   "Web UI": "linkerd-web"
