@@ -99,7 +99,7 @@ func DecodePEMCertPool(txt string) (pool *x509.CertPool, err error) {
 func decodeCertificatePEM(crtb []byte) (*x509.Certificate, []byte, error) {
 	block, crtb := pem.Decode(crtb)
 	if block == nil {
-		return nil, crtb, nil
+		return nil, crtb, errors.New("not a PEM certificate")
 	}
 	if block.Type != "CERTIFICATE" {
 		return nil, nil, nil

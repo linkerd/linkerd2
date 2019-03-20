@@ -26,8 +26,8 @@ import (
 // TODO watch issuerPath for changes
 // TODO restrict servicetoken audiences (and lifetimes)
 func main() {
-	addr := flag.String("addr", ":8083", "address to serve on")
-	adminAddr := flag.String("admin-addr", ":9996", "address of HTTP admin server")
+	addr := flag.String("addr", ":8080", "address to serve on")
+	adminAddr := flag.String("admin-addr", ":9990", "address of HTTP admin server")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	issuerPath := flag.String("issuer",
 		"/var/run/linkerd/identity/issuer",
