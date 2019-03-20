@@ -152,8 +152,7 @@ func TestStat(t *testing.T) {
 
 func testStatCall(exp paramsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-	queryTCP := exp.options.outputFormat == wideOutput || exp.options.outputFormat == jsonOutput
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, queryTCP)
+	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, true)
 
 	mockClient.StatSummaryResponseToReturn = &response
 
