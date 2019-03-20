@@ -103,7 +103,7 @@ func newCmdProfile() *cobra.Command {
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, os.Stdout)
 			} else if options.tap != "" {
-				return profiles.RenderTapOutputProfile(cliPublicAPIClient(), options.tap, options.namespace, options.name, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
+				return profiles.RenderTapOutputProfile(checkPublicAPIClientOrExit(), options.tap, options.namespace, options.name, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, os.Stdout)
 			}

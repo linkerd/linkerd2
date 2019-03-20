@@ -112,7 +112,7 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, cliPublicAPIClient(), req, wide)
+			return requestTapByResourceFromAPI(os.Stdout, checkPublicAPIClientOrExit(), req, wide)
 		},
 	}
 
