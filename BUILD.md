@@ -247,12 +247,14 @@ These commands assume working [Go](https://golang.org) and
 
 #### First time setup
 
-Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
+1. Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
 
-```bash
-brew install yarn
-bin/web setup
-```
+    ```bash
+    brew install yarn
+    bin/web setup
+    ```
+
+1. Install Linkerd on a Kubernetes cluster.
 
 #### Run web standalone
 
@@ -264,13 +266,28 @@ The web server will be running on `localhost:8084`.
 
 #### Webpack dev server
 
-To develop with a webpack dev server, run:
+To develop with a webpack dev server:
 
-```bash
-bin/web dev
-```
+1. Start the development server.
 
-Note: you'll want to install Linkerd2 on a Kubernetes cluster first.
+    ```bash
+    bin/web dev
+    ```
+
+    Note: this will start up:
+
+    - `web` on :8084. This is the golang process that serves the dashboard.
+    - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
+      javascript.
+    - `controller` is port-forwarded from the Kubernetes cluster via `kubectl`
+      on :8085
+    - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl`
+      on :3000
+
+1. Go to [http://localhost:8084](http://localhost:8084) to see everything
+   running.
+
+#### Dependencies
 
 To add a JS dependency:
 

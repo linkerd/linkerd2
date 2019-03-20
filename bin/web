@@ -40,22 +40,14 @@ function check-for-linkerd {
 }
 
 function dev {
-  build
-
   while getopts "p:" opt; do
     case "$opt" in
       p) DEV_PORT=$OPTARG
     esac
   done
 
-  check-for-linkerd && (
-    port-forward controller 8085 &
-    port-forward grafana 3000 &
-  )
-
   cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
-  cd $ROOT/web && \
-    ../bin/go-run . $*
+  run
 }
 
 function build {
@@ -86,6 +78,11 @@ function port-forward {
 }
 
 function run {
+  # Stop everything in the process group (in the background) whenever the
+  # parent process experiences an error and exits.
+  trap "exit" INT TERM
+  trap "kill 0" EXIT
+
   build
 
   check-for-linkerd && (
@@ -93,8 +90,8 @@ function run {
     port-forward grafana 3000 &
   )
 
-  cd $ROOT/web
-  ../bin/go-run . $*
+  cd $ROOT/web && \
+    ../bin/go-run . $*
 }
 
 function setup {
