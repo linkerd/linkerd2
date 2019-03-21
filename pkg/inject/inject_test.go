@@ -65,7 +65,8 @@ func TestConfigAccessors(t *testing.T) {
 		DisableExternalProfiles: false,
 	}
 	globalConfig := &config.Global{LinkerdNamespace: "linkerd"}
-	resourceConfig := NewResourceConfig(globalConfig, proxyConfig).WithKind("Deployment")
+	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
+	resourceConfig := NewResourceConfig(configs).WithKind("Deployment")
 
 	var testCases = []struct {
 		id       string

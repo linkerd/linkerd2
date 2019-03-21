@@ -79,7 +79,7 @@ metadata:
   name: linkerd-identity
   namespace: linkerd
 spec:
-  replicas: 3
+  replicas: 2
   strategy: {}
   template:
     metadata:

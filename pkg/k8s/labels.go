@@ -63,7 +63,7 @@ const (
 
 	// IdentityIssuerExpiryAnnotation indicates the time at which this set of identity
 	// issuer credentials will cease to be valid.
-	IdentityIssuerExpiryAnnotation = "linkerd.io/identity-issuer-expiry"
+	IdentityIssuerExpiryAnnotation = Prefix + "/identity-issuer-expiry"
 
 	// ProxyVersionAnnotation indicates the version of the injected data plane
 	// (e.g. v0.1.3).
@@ -159,6 +159,9 @@ const (
 	/*
 	 * Component Names
 	 */
+
+	// ConfigConfigMapName is the name of hte ConfigMap containing the linkerd controller configuration.
+	ConfigConfigMapName = "linkerd-config"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"

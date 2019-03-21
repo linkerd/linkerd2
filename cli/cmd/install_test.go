@@ -5,34 +5,29 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/linkerd/linkerd2/controller/gen/config"
 )
 
 func TestRender(t *testing.T) {
-	// The default configuration, with the random UUID overridden with a fixed
-	// value to facilitate testing.
-	defaultControlPlaneNamespace := controlPlaneNamespace
-	defaultOptions := newInstallOptions()
-	defaultOptions.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
-	defaultOptions.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
-	defaultOptions.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
-
-	defaultConfig, err := validateAndBuildConfig(defaultOptions)
+	defaultOptions := testInstallOptions()
+	defaultValues, defaultConfig, err := defaultOptions.validateAndBuild()
 	if err != nil {
-		t.Fatalf("Unexpected error from validateAndBuildConfig(): %v", err)
+		t.Fatalf("Unexpected error validating options: %v", err)
 	}
-
-	defaultConfig.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	defaultValues.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
-	metaConfig := installConfig{
+	metaOptions := testInstallOptions()
+	metaConfig := metaOptions.configs(nil)
+	metaConfig.Global.LinkerdNamespace = "Namespace"
+	metaValues := &installValues{
 		Namespace:                "Namespace",
 		ControllerImage:          "ControllerImage",
 		WebImage:                 "WebImage",
 		PrometheusImage:          "PrometheusImage",
-		PrometheusVolumeName:     "data",
 		GrafanaImage:             "GrafanaImage",
-		GrafanaVolumeName:        "data",
 		ControllerReplicas:       1,
 		ImagePullPolicy:          "ImagePullPolicy",
 		UUID:                     "UUID",
@@ -50,58 +45,53 @@ func TestRender(t *testing.T) {
 		NoInitContainer:          false,
 		GlobalConfig:             "GlobalConfig",
 		ProxyConfig:              "ProxyConfig",
-		Identity:                 defaultConfig.Identity,
+		Identity:                 defaultValues.Identity,
 	}
 
-	haOptions := newInstallOptions()
+	haOptions := testInstallOptions()
 	haOptions.highAvailability = true
-	*haOptions.identityOptions = *defaultOptions.identityOptions
-	haConfig, _ := validateAndBuildConfig(haOptions)
-	haConfig.UUID = defaultConfig.UUID
+	haValues, haConfig, _ := haOptions.validateAndBuild()
+	haValues.UUID = defaultValues.UUID
 
-	haWithOverridesOptions := newInstallOptions()
-	*haWithOverridesOptions.identityOptions = *defaultOptions.identityOptions
+	haWithOverridesOptions := testInstallOptions()
 	haWithOverridesOptions.highAvailability = true
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesConfig, _ := validateAndBuildConfig(haWithOverridesOptions)
-	haWithOverridesConfig.UUID = defaultConfig.UUID
+	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild()
+	haWithOverridesValues.UUID = defaultValues.UUID
 
-	noInitContainerOptions := newInstallOptions()
-	*noInitContainerOptions.identityOptions = *defaultOptions.identityOptions
+	noInitContainerOptions := testInstallOptions()
 	noInitContainerOptions.noInitContainer = true
-	noInitContainerConfig, _ := validateAndBuildConfig(noInitContainerOptions)
-	noInitContainerConfig.UUID = defaultConfig.UUID
+	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild()
+	noInitContainerValues.UUID = defaultValues.UUID
 
-	noInitContainerWithProxyAutoInjectOptions := newInstallOptions()
-	*noInitContainerWithProxyAutoInjectOptions.identityOptions = *defaultOptions.identityOptions
+	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectConfig, _ := validateAndBuildConfig(noInitContainerWithProxyAutoInjectOptions)
-	noInitContainerWithProxyAutoInjectConfig.UUID = defaultConfig.UUID
+	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild()
+	noInitContainerWithProxyAutoInjectValues.UUID = defaultValues.UUID
 
 	testCases := []struct {
-		config                installConfig
-		options               *installOptions
-		controlPlaneNamespace string
-		goldenFileName        string
+		values         *installValues
+		configs        *config.All
+		goldenFileName string
 	}{
-		{*defaultConfig, defaultOptions, defaultControlPlaneNamespace, "install_default.golden"},
-		{metaConfig, defaultOptions, metaConfig.Namespace, "install_output.golden"},
-		{*haConfig, haOptions, haConfig.Namespace, "install_ha_output.golden"},
-		{*haWithOverridesConfig, haWithOverridesOptions, haWithOverridesConfig.Namespace, "install_ha_with_overrides_output.golden"},
-		{*noInitContainerConfig, noInitContainerOptions, noInitContainerConfig.Namespace, "install_no_init_container.golden"},
-		{*noInitContainerWithProxyAutoInjectConfig, noInitContainerWithProxyAutoInjectOptions, noInitContainerWithProxyAutoInjectConfig.Namespace, "install_no_init_container_auto_inject.golden"},
+		{defaultValues, defaultConfig, "install_default.golden"},
+		{metaValues, metaConfig, "install_output.golden"},
+		{haValues, haConfig, "install_ha_output.golden"},
+		{haWithOverridesValues, haWithOverridesConfig, "install_ha_with_overrides_output.golden"},
+		{noInitContainerValues, noInitContainerConfig, "install_no_init_container.golden"},
+		{noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, "install_no_init_container_auto_inject.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
-			controlPlaneNamespace = tc.controlPlaneNamespace
+			controlPlaneNamespace = tc.configs.GetGlobal().GetLinkerdNamespace()
 
 			var buf bytes.Buffer
-			if err := render(tc.config, &buf, tc.options); err != nil {
+			if err := render(tc.values, &buf, tc.configs); err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
@@ -109,15 +99,24 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func testInstallOptions() *installOptions {
+	o := defaultInstallOptions()
+	o.ignoreCluster = true
+	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
+	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
+	return o
+}
+
 func TestValidate(t *testing.T) {
 	t.Run("Accepts the default options as valid", func(t *testing.T) {
-		if err := newInstallOptions().validate(); err != nil {
+		if err := testInstallOptions().validate(); err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 	})
 
 	t.Run("Rejects invalid controller log level", func(t *testing.T) {
-		options := newInstallOptions()
+		options := testInstallOptions()
 		options.controllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
@@ -147,7 +146,7 @@ func TestValidate(t *testing.T) {
 			{"warn,linkerd2_proxy=foobar", false},
 		}
 
-		options := newInstallOptions()
+		options := testInstallOptions()
 		for _, tc := range testCases {
 			options.proxyLogLevel = tc.input
 			err := options.validate()

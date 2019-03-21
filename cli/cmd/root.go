@@ -9,16 +9,15 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
-	defaultNamespace = "linkerd"
+	defaultNamespace      = "linkerd"
+	defaultDockerRegistry = "gcr.io/linkerd-io"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -188,12 +187,12 @@ type proxyConfigOptions struct {
 	initImage               string
 	dockerRegistry          string
 	imagePullPolicy         string
-	inboundPort             uint
-	outboundPort            uint
 	ignoreInboundPorts      []uint
 	ignoreOutboundPorts     []uint
 	proxyUID                int64
 	proxyLogLevel           string
+	proxyInboundPort        uint
+	proxyOutboundPort       uint
 	proxyControlPort        uint
 	proxyAdminPort          uint
 	proxyCPURequest         string
@@ -202,59 +201,6 @@ type proxyConfigOptions struct {
 	proxyMemoryLimit        string
 	disableExternalProfiles bool
 	noInitContainer         bool
-}
-
-const (
-	defaultDockerRegistry = "gcr.io/linkerd-io"
-)
-
-// Deprecated. Use newConfig
-func newProxyConfigOptions() *proxyConfigOptions {
-	return &proxyConfigOptions{
-		linkerdVersion:          version.Version,
-		proxyImage:              defaultDockerRegistry + "/proxy",
-		initImage:               defaultDockerRegistry + "/proxy-init",
-		dockerRegistry:          defaultDockerRegistry,
-		imagePullPolicy:         "IfNotPresent",
-		inboundPort:             4143,
-		outboundPort:            4140,
-		ignoreInboundPorts:      nil,
-		ignoreOutboundPorts:     nil,
-		proxyUID:                2102,
-		proxyLogLevel:           "warn,linkerd2_proxy=info",
-		proxyControlPort:        4190,
-		proxyAdminPort:          4191,
-		proxyCPURequest:         "",
-		proxyMemoryRequest:      "",
-		proxyCPULimit:           "",
-		proxyMemoryLimit:        "",
-		disableExternalProfiles: false,
-		noInitContainer:         false,
-	}
-}
-
-func newConfig() configs {
-	globalConfig := &config.Global{
-		LinkerdNamespace: defaultNamespace,
-		CniEnabled:       false,
-		Version:          version.Version,
-		IdentityContext:  nil,
-	}
-	proxyConfig := &config.Proxy{
-		ProxyImage:              &config.Image{ImageName: defaultDockerRegistry + "/proxy", PullPolicy: "IfNotPresent"},
-		ProxyInitImage:          &config.Image{ImageName: defaultDockerRegistry + "/proxy-init", PullPolicy: "IfNotPresent"},
-		ControlPort:             &config.Port{Port: 4190},
-		IgnoreInboundPorts:      nil,
-		IgnoreOutboundPorts:     nil,
-		InboundPort:             &config.Port{Port: 4143},
-		AdminPort:               &config.Port{Port: 4191},
-		OutboundPort:            &config.Port{Port: 4140},
-		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
-		ProxyUid:                2102,
-		LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
-		DisableExternalProfiles: false,
-	}
-	return configs{globalConfig, proxyConfig}
 }
 
 func (options *proxyConfigOptions) validate() error {
@@ -331,8 +277,8 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 	cmd.PersistentFlags().StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
 	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.PersistentFlags().StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
-	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
-	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
+	cmd.PersistentFlags().UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
+	cmd.PersistentFlags().UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")

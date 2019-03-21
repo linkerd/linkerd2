@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +11,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -26,15 +29,17 @@ const (
 )
 
 type injectOptions struct {
+	ignoreCluster, disableIdentity bool
 	*proxyConfigOptions
 }
 
 type resourceTransformerInject struct {
-	configs
+	configs *config.All
+
 	proxyOutboundCapacity map[string]uint
 }
 
-func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
 	return transformInput(inputs, errWriter, outWriter, resourceTransformerInject{
 		configs: conf,
 	})
@@ -42,7 +47,10 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf confi
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
-		proxyConfigOptions: newProxyConfigOptions(),
+		ignoreCluster: false,
+
+		// No proxy config overrides.
+		proxyConfigOptions: &proxyConfigOptions{},
 	}
 }
 
@@ -79,20 +87,32 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			conf := injectOptionsToConfigs(options)
+			configs, err := options.fetchConfigsOrDefault()
+			if err != nil {
+				return err
+			}
 
-			exitCode := uninjectAndInject(in, stderr, stdout, conf)
+			options.overrideConfigs(configs)
+			exitCode := uninjectAndInject(in, stderr, stdout, configs)
 			os.Exit(exitCode)
 			return nil
 		},
 	}
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	cmd.PersistentFlags().BoolVar(
+		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&options.disableIdentity, "disable-identity", options.disableIdentity,
+		"Disables resources from participating in identity",
+	)
 
 	return cmd
 }
 
-func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
 	var out bytes.Buffer
 	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, conf); exitCode != 0 {
 		return exitCode
@@ -101,7 +121,7 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf 
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.global, rt.proxy)
+	conf := inject.NewResourceConfig(rt.configs)
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
@@ -249,48 +269,77 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-// TODO: this is just a temporary function to convert command-line options to GlobalConfig
-// and ProxyConfig, until we come up with an abstraction over those GRPC structs
-func injectOptionsToConfigs(options *injectOptions) configs {
-	var idContext *config.IdentityContext
-	globalConfig := &config.Global{
-		LinkerdNamespace: controlPlaneNamespace,
-		CniEnabled:       options.noInitContainer,
-		Version:          options.linkerdVersion,
-		IdentityContext:  idContext,
+func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
+	if options.ignoreCluster {
+		if !options.disableIdentity {
+			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
+		}
+
+		install := defaultInstallOptions()
+		return install.configs(nil), nil
 	}
-	var ignoreInboundPorts []*config.Port
-	for _, port := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, &config.Port{Port: uint32(port)})
+
+	api := checkPublicAPIClientOrExit()
+	return api.Config(context.Background(), &public.Empty{})
+}
+
+// overrideConfigs uses command-line overrides to update the provided configs
+func (options *injectOptions) overrideConfigs(configs *config.All) {
+	if len(options.ignoreInboundPorts) > 0 {
+		configs.Proxy.IgnoreInboundPorts = toPorts(options.ignoreInboundPorts)
 	}
-	var ignoreOutboundPorts []*config.Port
-	for _, port := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, &config.Port{Port: uint32(port)})
+	if len(options.ignoreOutboundPorts) > 0 {
+		configs.Proxy.IgnoreOutboundPorts = toPorts(options.ignoreOutboundPorts)
 	}
-	proxyConfig := &config.Proxy{
-		ProxyImage: &config.Image{
-			ImageName:  registryOverride(options.proxyImage, options.dockerRegistry),
-			PullPolicy: options.imagePullPolicy,
-		},
-		ProxyInitImage: &config.Image{
-			ImageName:  registryOverride(options.initImage, options.dockerRegistry),
-			PullPolicy: options.imagePullPolicy,
-		},
-		ControlPort:         &config.Port{Port: uint32(options.proxyControlPort)},
-		IgnoreInboundPorts:  ignoreInboundPorts,
-		IgnoreOutboundPorts: ignoreOutboundPorts,
-		InboundPort:         &config.Port{Port: uint32(options.inboundPort)},
-		AdminPort:           &config.Port{Port: uint32(options.proxyAdminPort)},
-		OutboundPort:        &config.Port{Port: uint32(options.outboundPort)},
-		Resource: &config.ResourceRequirements{
-			RequestCpu:    options.proxyCPURequest,
-			RequestMemory: options.proxyMemoryRequest,
-			LimitCpu:      options.proxyCPULimit,
-			LimitMemory:   options.proxyMemoryLimit,
-		},
-		ProxyUid:                options.proxyUID,
-		LogLevel:                &config.LogLevel{Level: options.proxyLogLevel},
-		DisableExternalProfiles: options.disableExternalProfiles,
+
+	if options.proxyAdminPort != 0 {
+		configs.Proxy.AdminPort = &config.Port{Port: uint32(options.proxyAdminPort)}
 	}
-	return configs{globalConfig, proxyConfig}
+	if options.proxyControlPort != 0 {
+		configs.Proxy.ControlPort = &config.Port{Port: uint32(options.proxyControlPort)}
+	}
+	if options.proxyInboundPort != 0 {
+		configs.Proxy.InboundPort = &config.Port{Port: uint32(options.proxyInboundPort)}
+	}
+	if options.proxyOutboundPort != 0 {
+		configs.Proxy.OutboundPort = &config.Port{Port: uint32(options.proxyOutboundPort)}
+	}
+
+	if options.dockerRegistry != "" {
+		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
+		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
+	}
+
+	if options.proxyUID != 0 {
+		configs.Proxy.ProxyUid = options.proxyUID
+	}
+
+	if options.proxyLogLevel != "" {
+		configs.Proxy.LogLevel = &config.LogLevel{Level: options.proxyLogLevel}
+	}
+
+	if options.disableExternalProfiles {
+		configs.Proxy.DisableExternalProfiles = true
+	}
+
+	if options.proxyCPURequest != "" {
+		configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+	}
+	if options.proxyCPULimit != "" {
+		configs.Proxy.Resource.LimitCpu = options.proxyCPULimit
+	}
+	if options.proxyMemoryRequest != "" {
+		configs.Proxy.Resource.RequestMemory = options.proxyMemoryRequest
+	}
+	if options.proxyMemoryLimit != "" {
+		configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
+	}
+}
+
+func toPorts(ints []uint) []*config.Port {
+	ports := make([]*config.Port, len(ints))
+	for i, p := range ints {
+		ports[i] = &config.Port{Port: uint32(p)}
+	}
+	return ports
 }
