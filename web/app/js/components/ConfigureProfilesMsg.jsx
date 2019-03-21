@@ -41,8 +41,8 @@ const styles = theme => ({
   },
 });
 
-const dns1035ServiceFmt = '^[a-z]([-a-z0-9]*[a-z0-9])?$';
-const dns1035NamespaceFmt = '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$';
+const dns1123ServiceFmt = '^[a-z]([-a-z0-9]*[a-z0-9])?$';
+const dns1123NamespaceFmt = '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$';
 
 class ConfigureProfilesMsg extends React.Component {
   constructor(props) {
@@ -85,8 +85,8 @@ class ConfigureProfilesMsg extends React.Component {
   validateFields = (type, name) => {
     let match;
     let error = this.state.error;
-    let serviceNameRegexp = RegExp(dns1035ServiceFmt);
-    let namespaceNameRegexp = RegExp(dns1035NamespaceFmt);
+    let serviceNameRegexp = RegExp(dns1123ServiceFmt);
+    let namespaceNameRegexp = RegExp(dns1123NamespaceFmt);
 
     type === 'service' ? match = serviceNameRegexp.test(name) : match = namespaceNameRegexp.test(name);
     error[type] = !match;
@@ -123,6 +123,18 @@ class ConfigureProfilesMsg extends React.Component {
       );
     }
 
+
+    let disableDownloadButton = _isEmpty(query.service) || _isEmpty(query.namespace) ||
+      error.service || error.namespace;
+    let downloadButton = (
+      <Button
+        disabled={disableDownloadButton}
+        onClick={() => this.handleClose(downloadUrl)}
+        color="primary">
+        Download
+      </Button>
+    );
+
     return (
       <React.Fragment>
         {button}
@@ -148,9 +160,8 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.service && (
                 <FormHelperText id="component-error-text">
-                  The Service name must consist of lower case alphanumeric
-                  characters or &#45; and must start and end with an
-                  alphanumeric character
+                  Service name must consist of lower case alphanumeric characters or &#45;
+                  start with an alphabetic character, and end with an alphanumeric character
                 </FormHelperText>
               )}
             </FormControl>
@@ -166,9 +177,8 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.namespace && (
                 <FormHelperText id="component-error-text">
-                  The Namespace name must consist of lower case alphanumeric
-                  characters or &#45; and must start and end with an
-                  alphanumeric character
+                  Namespace must consist of lower case alphanumeric characters or &#45;
+                  and must start and end with an alphanumeric character
                 </FormHelperText>
               )}
             </FormControl>
@@ -177,17 +187,13 @@ class ConfigureProfilesMsg extends React.Component {
             <Button onClick={this.handleClose} color="primary">
               Cancel
             </Button>
-            <a href={downloadUrl} style={{ textDecoration: 'none' }}>
-              <Button
-                disabled={_isEmpty(query.service) ||
-                  _isEmpty(query.namespace) ||
-                  error.service ||
-                  error.namespace}
-                onClick={() => this.handleClose(downloadUrl)}
-                color="primary">
-                Download
-              </Button>
-            </a>
+            {disableDownloadButton ?
+              downloadButton :
+              <a
+                href={disableDownloadButton ? '' : downloadUrl}
+                style={{ textDecoration: 'none' }}>{downloadButton}
+              </a>
+            }
           </DialogActions>
         </Dialog>
       </React.Fragment>
@@ -222,7 +228,7 @@ ConfigureProfilesMsg.propTypes = {
 };
 
 ConfigureProfilesMsg.defaultProps = {
-  showAsIcon: false,
+  showAsIcon: false
 };
 
 export default withContext(withStyles(styles, { withTheme: true })(ConfigureProfilesMsg));
