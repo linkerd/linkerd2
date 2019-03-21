@@ -184,11 +184,11 @@ export class ResourceDetailBase extends React.Component {
         }
 
         let isTcpOnly = false;
-        let resMetrics = resourceMetrics[0];
-        if (!_isEmpty(resMetrics) && !_isEmpty(resMetrics.tcp)) {
-          let { tcp } = resMetrics;
+        let metric = resourceMetrics[0];
+        if (!_isEmpty(metric) && !_isEmpty(metric.tcp)) {
+          let { tcp } = metric;
 
-          if (_isNil(resMetrics.stats) &&
+          if (_isNil(metric.stats) &&
             (tcp.openConnections > 0 || tcp.readBytes > 0 || tcp.writeBytes > 0)) {
             isTcpOnly = true;
           }
@@ -196,7 +196,7 @@ export class ResourceDetailBase extends React.Component {
 
         // figure out when the last traffic this resource received was so we can show a no traffic message
         let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
-        if ((!_isEmpty(resourceMetrics[0]) && resourceMetrics[0].totalRequests !== 0) || isTcpOnly) {
+        if ((!_isEmpty(metric) && metric.totalRequests !== 0) || isTcpOnly) {
           lastMetricReceivedTime = Date.now();
         }
 
