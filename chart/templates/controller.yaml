@@ -136,6 +136,9 @@ spec:
           containerPort: 8086
         - name: admin-http
           containerPort: 9996
+        volumeMounts:
+        - name: config
+          mountPath: /var/run/linkerd/config
         image: {{.Values.ControllerImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:

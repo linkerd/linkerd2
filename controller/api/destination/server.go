@@ -20,8 +20,9 @@ type server struct {
 	k8sAPI          *k8s.API
 	resolver        streamingDestinationResolver
 	enableH2Upgrade bool
-	controllerNS    string
-	log             *log.Entry
+	controllerNS,
+	identityTrustDomain string
+	log *log.Entry
 }
 
 // NewServer returns a new instance of the destination server.
@@ -38,7 +39,7 @@ type server struct {
 // API.
 func NewServer(
 	addr, k8sDNSZone string,
-	controllerNS string,
+	controllerNS, identityTrustDomain string,
 	enableH2Upgrade bool,
 	k8sAPI *k8s.API,
 	done chan struct{},
@@ -49,10 +50,11 @@ func NewServer(
 	}
 
 	srv := server{
-		k8sAPI:          k8sAPI,
-		resolver:        resolver,
-		enableH2Upgrade: enableH2Upgrade,
-		controllerNS:    controllerNS,
+		k8sAPI:              k8sAPI,
+		resolver:            resolver,
+		enableH2Upgrade:     enableH2Upgrade,
+		controllerNS:        controllerNS,
+		identityTrustDomain: identityTrustDomain,
 		log: log.WithFields(log.Fields{
 			"addr":      addr,
 			"component": "server",
@@ -161,7 +163,7 @@ func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsPar
 }
 
 func (s *server) streamResolution(host string, port int, stream pb.Destination_GetServer) error {
-	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableH2Upgrade, s.controllerNS)
+	listener := newEndpointListener(stream, s.k8sAPI.GetOwnerKindAndName, s.enableH2Upgrade, s.controllerNS, s.identityTrustDomain)
 
 	resolverCanResolve, err := s.resolver.canResolve(host, port)
 	if err != nil {
