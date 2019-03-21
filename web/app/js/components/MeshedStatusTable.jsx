@@ -22,7 +22,7 @@ const namespacesColumns = PrefixedLink => [
   {
     title: "Namespace",
     dataIndex: "namespace",
-    sorter: (a, b) => a.namespace.localeCompare(b.namespace),
+    sorter: d => d.namespace,
     render: d => {
       return  (
         <React.Fragment>
