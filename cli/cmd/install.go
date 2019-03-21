@@ -523,9 +523,9 @@ func linkerdConfigAlreadyExistsInCluster() (bool, error) {
 	if _, err = c.Get(k8s.ConfigConfigMapName, metav1.GetOptions{}); err != nil {
 		if kerrors.IsNotFound(err) {
 			return false, nil
-		} else {
-			return false, err
 		}
+
+		return false, err
 	}
 
 	return true, nil
