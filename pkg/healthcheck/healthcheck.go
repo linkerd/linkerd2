@@ -164,15 +164,14 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI                *k8s.KubernetesAPI
-	httpClient             *http.Client
-	clientset              kubernetes.Interface
-	kubeVersion            *k8sVersion.Info
-	controlPlanePods       []corev1.Pod
-	controlPlaneReplicaSet []v1beta1.ReplicaSet
-	apiClient              public.APIClient
-	latestVersions         version.Channels
-	serverVersion          string
+	kubeAPI          *k8s.KubernetesAPI
+	httpClient       *http.Client
+	clientset        kubernetes.Interface
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []corev1.Pod
+	apiClient        public.APIClient
+	latestVersions   version.Channels
+	serverVersion    string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -355,16 +354,17 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "correct pod secuirty policies",
+					description: "correct pod security policies",
 					hintAnchor:  "l5d-existence-psp",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						var err error
-						hc.controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSetByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						var controlPlaneReplicaSet []v1beta1.ReplicaSet
+						controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSetByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
-						return checkPodSecurityPolicies(hc.controlPlaneReplicaSet)
+						return checkPodSecurityPolicies(controlPlaneReplicaSet)
 					},
 				},
 				{
@@ -863,12 +863,10 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 	statuses := make(map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
-
 		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
 			// All control plane pods should have a name that results in at least 4
 			// substrings when string.Split on '-'
-
 			if len(parts) >= 4 {
 				name := strings.Join(parts[1:len(parts)-2], "-")
 				if _, found := statuses[name]; !found {
@@ -978,7 +976,7 @@ func checkPodSecurityPolicies(rst []v1beta1.ReplicaSet) error {
 	for _, rs := range rst {
 		for _, r := range rs.Status.Conditions {
 			if strings.Contains(r.Message, "unable to validate against any pod security policy") {
-				return fmt.Errorf("Invalid pod secuirty policy for the replicaset %s", rs.Name)
+				return fmt.Errorf("Invalid pod security policy for the replicaset %s", rs.Name)
 			}
 		}
 	}
