@@ -227,7 +227,7 @@ func TestConfigAccessors(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := resourceConfig.parse(data); err != nil {
+			if err := resourceConfig.Parse(data); err != nil {
 				t.Fatal(err)
 			}
 

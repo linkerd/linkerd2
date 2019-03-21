@@ -2,20 +2,19 @@ package injector
 
 import (
 	"fmt"
-	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 )
 
@@ -23,21 +22,21 @@ import (
 // requests by injecting sidecar container spec into the pod spec during pod
 // creation.
 type Webhook struct {
-	client              kubernetes.Interface
+	k8sAPI              *k8s.API
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	noInitContainer     bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
+func NewWebhook(api *k8s.API, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
 	)
 
 	return &Webhook{
-		client:              client,
+		k8sAPI:              api,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		noInitContainer:     noInitContainer,
@@ -89,27 +88,30 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	globalConfig, err := config.Global(k8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	proxyConfig, err := config.Proxy(k8s.MountPathProxyConfig)
+	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	namespace, err := w.client.CoreV1().Namespaces().Get(request.Namespace, metav1.GetOptions{})
+	namespaces, err := w.k8sAPI.GetObjects("", pkgK8s.Namespace, request.Namespace)
 	if err != nil {
 		return nil, err
 	}
-	nsAnnotations := namespace.GetAnnotations()
+	if len(namespaces) == 0 {
+		return nil, fmt.Errorf("namespace \"%s\" not found", request.Namespace)
+	}
+	nsAnnotations := namespaces[0].(*v1.Namespace).GetAnnotations()
 
 	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
 	conf := inject.NewResourceConfig(configs).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
-	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
+	nonEmpty, err := conf.ParseMeta(request.Object.Raw, request.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +124,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return admissionResponse, nil
 	}
 
-	p, _, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
+	p, reports, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
 	if err != nil {
 		return nil, err
 	}
@@ -133,26 +135,21 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 
-	if refs := conf.GetOwnerReferences(); len(refs) > 0 {
-		// assuming just one owner reference
-		k, v, err := w.parentRefLabel(request.Namespace, refs[0])
-		if err != nil {
-			return nil, err
-		}
-		p.AddPodLabel(k, v)
-	} else {
-		// When adding workloads through `kubectl apply` the spec template labels are
-		// automatically copied to the workload's main metadata section.
-		// This doesn't happen when adding labels through the webhook. So we manually
-		// add them to remain consistent.
-		conf.AddRootLabels(p)
+	key, name, err := w.getLabelForParent(conf)
+	if err != nil {
+		return nil, err
+	}
+	if key != "" && name != "" {
+		p.AddPodLabel(key, name)
 	}
 
 	patchJSON, err := p.Marshal()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("patch generated for: %s", conf)
+	// TODO: refactor GetPatch() so it only returns one report item
+	r := reports[0]
+	log.Infof("patch generated for: %s", r.ResName())
 	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
@@ -162,35 +159,27 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-func (w *Webhook) parentRefLabel(ns string, ref metav1.OwnerReference) (string, string, error) {
-	var key string
-	switch strings.ToLower(ref.Kind) {
-	case k8s.Deployment:
-		key = k8s.ProxyDeploymentLabel
-	case k8s.ReplicationController:
-		key = k8s.ProxyReplicationControllerLabel
-		rs, err := w.client.CoreV1().ReplicationControllers(ns).Get(ref.Name, v1.GetOptions{})
-		if err != nil {
-			return "", "", err
-		}
-		for _, ref := range rs.OwnerReferences {
-			return w.parentRefLabel(ns, ref)
-		}
-	case k8s.ReplicaSet:
-		key = k8s.ProxyReplicaSetLabel
-		rs, err := w.client.ExtensionsV1beta1().ReplicaSets(ns).Get(ref.Name, v1.GetOptions{})
-		if err != nil {
-			return "", "", err
-		}
-		for _, ref := range rs.OwnerReferences {
-			return w.parentRefLabel(ns, ref)
-		}
-	case k8s.Job:
-		key = k8s.ProxyJobLabel
-	case k8s.DaemonSet:
-		key = k8s.ProxyDaemonSetLabel
-	case k8s.StatefulSet:
-		key = k8s.ProxyStatefulSetLabel
+func (w *Webhook) getLabelForParent(conf *inject.ResourceConfig) (string, string, error) {
+	pod, err := conf.GetPod()
+	if err != nil {
+		return "", "", err
 	}
-	return key, ref.Name, nil
+	if kind, name := w.k8sAPI.GetOwnerKindAndName(pod); kind != pkgK8s.Pod {
+		switch kind {
+		case pkgK8s.Deployment:
+			return pkgK8s.ProxyDeploymentLabel, name, nil
+		case pkgK8s.ReplicationController:
+			return pkgK8s.ProxyReplicationControllerLabel, name, nil
+		case pkgK8s.ReplicaSet:
+			return pkgK8s.ProxyReplicaSetLabel, name, nil
+		case pkgK8s.Job:
+			return pkgK8s.ProxyJobLabel, name, nil
+		case pkgK8s.DaemonSet:
+			return pkgK8s.ProxyDaemonSetLabel, name, nil
+		case pkgK8s.StatefulSet:
+			return pkgK8s.ProxyStatefulSetLabel, name, nil
+		}
+		return "", "", fmt.Errorf("unsupported parent kind \"%s\"", kind)
+	}
+	return "", "", nil
 }

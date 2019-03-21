@@ -27,9 +27,9 @@ func main() {
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, os.Kill)
 
-	k8sClient, err := k8s.NewClientSet(*kubeconfig)
+	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, k8s.NS, k8s.RS)
 	if err != nil {
-		log.Fatalf("failed to initialize Kubernetes client: %s", err)
+		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
 	rootCA, err := tls.GenerateRootCAWithDefaults("Proxy Injector Mutating Webhook Admission Controller CA")
@@ -37,7 +37,7 @@ func main() {
 		log.Fatalf("failed to create root CA: %s", err)
 	}
 
-	webhookConfig, err := injector.NewWebhookConfig(k8sClient, *controllerNamespace, *webhookServiceName, rootCA)
+	webhookConfig, err := injector.NewWebhookConfig(k8sAPI, *controllerNamespace, *webhookServiceName, rootCA)
 	if err != nil {
 		log.Fatalf("failed to read the trust anchor file: %s", err)
 	}
@@ -48,10 +48,12 @@ func main() {
 	}
 	log.Infof("created mutating webhook configuration: %s", mwc.ObjectMeta.SelfLink)
 
-	s, err := injector.NewWebhookServer(k8sClient, *addr, *controllerNamespace, *noInitContainer, rootCA)
+	s, err := injector.NewWebhookServer(k8sAPI, *addr, *controllerNamespace, *noInitContainer, rootCA)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
+
+	k8sAPI.Sync()
 
 	go func() {
 		log.Infof("listening at %s", *addr)

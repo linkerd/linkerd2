@@ -34,14 +34,14 @@ func TestPatch(t *testing.T) {
 		createdBy           = "linkerd/cli v18.8.4"
 	)
 
-	actual := NewPatchDeployment()
+	actual := NewPatch(k8sPkg.Deployment)
 	actual.addContainer(sidecar)
 	actual.addInitContainerRoot()
 	actual.addInitContainer(init)
 	actual.AddPodLabel(k8sPkg.ControllerNSLabel, controllerNamespace)
 	actual.addPodAnnotation(k8sPkg.CreatedByAnnotation, createdBy)
 
-	expected := NewPatchDeployment()
+	expected := NewPatch(k8sPkg.Deployment)
 	expected.patchOps = []*patchOp{
 		{Op: "add", Path: expected.patchPathContainer, Value: sidecar},
 		{Op: "add", Path: expected.patchPathInitContainerRoot, Value: []*v1.Container{}},

@@ -119,7 +119,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	nonEmpty, err := conf.ParseMeta(bytes)
+	nonEmpty, err := conf.ParseMeta(bytes, "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -142,7 +142,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if patchJSON == nil {
 		return bytes, reports, nil
 	}
-	log.Infof("patch generated for: %s", conf)
+	// TODO: refactor GetPatch() for it to return just one report item
+	r := reports[0]
+	log.Infof("patch generated for: %s", r.ResName())
 	log.Debugf("patch: %s", patchJSON)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {

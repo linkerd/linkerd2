@@ -27,9 +27,11 @@ func newReport(conf *ResourceConfig) Report {
 	var name string
 	if m := conf.pod.Meta; m != nil {
 		name = m.Name
-	} else if m.GenerateName != "" {
-		name = m.GenerateName
+		if name == "" {
+			name = m.GenerateName
+		}
 	}
+
 	return Report{
 		Kind: strings.ToLower(conf.workload.metaType.Kind),
 		Name: name,
@@ -37,13 +39,13 @@ func newReport(conf *ResourceConfig) Report {
 }
 
 // ResName returns a string "Kind/Name" for the workload referred in the report r
-func (r Report) ResName() string {
+func (r *Report) ResName() string {
 	return fmt.Sprintf("%s/%s", r.Kind, r.Name)
 }
 
 // Injectable returns false if the report flags indicate that the workload is on a host network
 // or there is already a sidecar or the resource is not supported or inject is explicitly disabled
-func (r Report) Injectable() bool {
+func (r *Report) Injectable() bool {
 	return !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled
 }
 
