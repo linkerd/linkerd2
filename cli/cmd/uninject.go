@@ -5,23 +5,24 @@ import (
 	"io"
 	"os"
 
+	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/spf13/cobra"
 )
 
 type resourceTransformerUninject struct {
-	configs
+	configs *config.All
 }
 
 type resourceTransformerUninjectSilent struct {
-	configs
+	configs *config.All
 }
 
-func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
 	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{conf})
 }
 
-func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf configs) int {
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
 	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{conf})
 }
 
@@ -52,7 +53,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, configs{})
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -62,7 +63,7 @@ sub-folders, or coming from stdin.`,
 }
 
 func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.global, rt.proxy)
+	conf := inject.NewResourceConfig(rt.configs)
 
 	report, err := conf.ParseMetaAndYaml(bytes)
 	if err != nil {

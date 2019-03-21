@@ -15,36 +15,38 @@ import (
 )
 
 var (
-	factory      *fake.Factory
-	globalConfig = &config.Global{
-		LinkerdNamespace: "linkerd",
-		CniEnabled:       false,
-		IdentityContext:  nil,
-	}
-	proxyConfig = &config.Proxy{
-		ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
-		ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
-		ControlPort:             &config.Port{Port: 4190},
-		IgnoreInboundPorts:      nil,
-		IgnoreOutboundPorts:     nil,
-		InboundPort:             &config.Port{Port: 4143},
-		AdminPort:               &config.Port{Port: 4191},
-		OutboundPort:            &config.Port{Port: 4140},
-		Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
-		ProxyUid:                2102,
-		LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
-		DisableExternalProfiles: false,
+	factory *fake.Factory
+	configs = &config.All{
+		Global: &config.Global{
+			LinkerdNamespace: "linkerd",
+			CniEnabled:       false,
+			IdentityContext:  nil,
+		},
+		Proxy: &config.Proxy{
+			ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
+			ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
+			ControlPort:             &config.Port{Port: 4190},
+			IgnoreInboundPorts:      nil,
+			IgnoreOutboundPorts:     nil,
+			InboundPort:             &config.Port{Port: 4143},
+			AdminPort:               &config.Port{Port: 4191},
+			OutboundPort:            &config.Port{Port: 4140},
+			Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
+			ProxyUid:                2102,
+			LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
+			DisableExternalProfiles: false,
+		},
 	}
 )
 
 func confNsEnabled() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(globalConfig, proxyConfig).
+		NewResourceConfig(configs).
 		WithNsAnnotations(map[string]string{k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled})
 }
 
 func confNsDisabled() *inject.ResourceConfig {
-	return inject.NewResourceConfig(globalConfig, proxyConfig).WithNsAnnotations(map[string]string{})
+	return inject.NewResourceConfig(configs).WithNsAnnotations(map[string]string{})
 }
 
 func TestGetPatch(t *testing.T) {

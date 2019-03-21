@@ -3,6 +3,7 @@ package injector
 import (
 	"fmt"
 
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -102,7 +103,8 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	}
 	nsAnnotations := namespace.GetAnnotations()
 
-	conf := inject.NewResourceConfig(globalConfig, proxyConfig).
+	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
+	conf := inject.NewResourceConfig(configs).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
 	nonEmpty, err := conf.ParseMeta(request.Object.Raw)

@@ -70,8 +70,7 @@ type objMeta struct {
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	globalConfig           *config.Global
-	proxyConfig            *config.Proxy
+	configs                *config.All
 	nsAnnotations          map[string]string
 	meta                   metav1.TypeMeta
 	obj                    runtime.Object
@@ -84,11 +83,10 @@ type ResourceConfig struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(globalConfig *config.Global, proxyConfig *config.Proxy) *ResourceConfig {
+func NewResourceConfig(configs *config.All) *ResourceConfig {
 	return &ResourceConfig{
-		globalConfig:          globalConfig,
-		proxyConfig:           proxyConfig,
-		podLabels:             map[string]string{k8s.ControllerNSLabel: globalConfig.GetLinkerdNamespace()},
+		configs:               configs,
+		podLabels:             map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()},
 		proxyOutboundCapacity: map[string]uint{},
 	}
 }
@@ -265,7 +263,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		if v.Name == controllerPodName && v.Namespace == conf.globalConfig.GetLinkerdNamespace() {
+		if v.Name == controllerPodName && v.Namespace == conf.configs.GetGlobal().GetLinkerdNamespace() {
 			conf.destinationDNSOverride = localhostDNSOverride
 		}
 
@@ -344,7 +342,7 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
-	if !conf.globalConfig.GetCniEnabled() {
+	if !conf.configs.GetGlobal().GetCniEnabled() {
 		conf.injectProxyInit(patch)
 	}
 
@@ -433,7 +431,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		Name:  envIdentityDisabled,
 		Value: identityDisabledMsg,
 	})
-	if idctx := conf.globalConfig.GetIdentityContext(); idctx != nil {
+	if idctx := conf.configs.GetGlobal().GetIdentityContext(); idctx != nil {
 		log.Warn("Ignoring Identity configuration.")
 	}
 
@@ -470,7 +468,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	if len(conf.podMeta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
-	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.globalConfig.GetVersion())
+	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
 
 	patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 
@@ -491,25 +489,25 @@ func (conf *ResourceConfig) getOverride(annotation string) string {
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyImage(), conf.globalConfig.GetVersion())
+	return fmt.Sprintf("%s:%s", conf.proxyImage(), conf.configs.GetGlobal().GetVersion())
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.globalConfig.GetVersion())
+	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.configs.GetGlobal().GetVersion())
 }
 
 func (conf *ResourceConfig) proxyImage() string {
 	if override := conf.getOverride(k8s.ProxyImageAnnotation); override != "" {
 		return override
 	}
-	return conf.proxyConfig.GetProxyImage().GetImageName()
+	return conf.configs.GetProxy().GetProxyImage().GetImageName()
 }
 
 func (conf *ResourceConfig) proxyImagePullPolicy() v1.PullPolicy {
 	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
 		return v1.PullPolicy(override)
 	}
-	return v1.PullPolicy(conf.proxyConfig.GetProxyImage().GetPullPolicy())
+	return v1.PullPolicy(conf.configs.GetProxy().GetProxyImage().GetPullPolicy())
 }
 
 func (conf *ResourceConfig) proxyControlPort() int32 {
@@ -520,7 +518,7 @@ func (conf *ResourceConfig) proxyControlPort() int32 {
 		}
 	}
 
-	return int32(conf.proxyConfig.GetControlPort().GetPort())
+	return int32(conf.configs.GetProxy().GetControlPort().GetPort())
 }
 
 func (conf *ResourceConfig) proxyInboundPort() int32 {
@@ -531,7 +529,7 @@ func (conf *ResourceConfig) proxyInboundPort() int32 {
 		}
 	}
 
-	return int32(conf.proxyConfig.GetInboundPort().GetPort())
+	return int32(conf.configs.GetProxy().GetInboundPort().GetPort())
 }
 
 func (conf *ResourceConfig) proxyAdminPort() int32 {
@@ -541,7 +539,7 @@ func (conf *ResourceConfig) proxyAdminPort() int32 {
 			return int32(adminPort)
 		}
 	}
-	return int32(conf.proxyConfig.GetAdminPort().GetPort())
+	return int32(conf.configs.GetProxy().GetAdminPort().GetPort())
 }
 
 func (conf *ResourceConfig) proxyOutboundPort() int32 {
@@ -552,7 +550,7 @@ func (conf *ResourceConfig) proxyOutboundPort() int32 {
 		}
 	}
 
-	return int32(conf.proxyConfig.GetOutboundPort().GetPort())
+	return int32(conf.configs.GetProxy().GetOutboundPort().GetPort())
 }
 
 func (conf *ResourceConfig) proxyLogLevel() string {
@@ -560,7 +558,7 @@ func (conf *ResourceConfig) proxyLogLevel() string {
 		return override
 	}
 
-	return conf.proxyConfig.GetLogLevel().GetLevel()
+	return conf.configs.GetProxy().GetLogLevel().GetLevel()
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements {
@@ -579,7 +577,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 
 	if override := conf.getOverride(k8s.ProxyCPURequestAnnotation); override != "" {
 		requestCPU, err = k8sResource.ParseQuantity(override)
-	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestCpu(); defaultRequest != "" {
+	} else if defaultRequest := conf.configs.GetProxy().GetResource().GetRequestCpu(); defaultRequest != "" {
 		requestCPU, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
@@ -591,7 +589,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 
 	if override := conf.getOverride(k8s.ProxyMemoryRequestAnnotation); override != "" {
 		requestMemory, err = k8sResource.ParseQuantity(override)
-	} else if defaultRequest := conf.proxyConfig.GetResource().GetRequestMemory(); defaultRequest != "" {
+	} else if defaultRequest := conf.configs.GetProxy().GetResource().GetRequestMemory(); defaultRequest != "" {
 		requestMemory, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
@@ -603,7 +601,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 
 	if override := conf.getOverride(k8s.ProxyCPULimitAnnotation); override != "" {
 		limitCPU, err = k8sResource.ParseQuantity(override)
-	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitCpu(); defaultLimit != "" {
+	} else if defaultLimit := conf.configs.GetProxy().GetResource().GetLimitCpu(); defaultLimit != "" {
 		limitCPU, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
@@ -615,7 +613,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 
 	if override := conf.getOverride(k8s.ProxyMemoryLimitAnnotation); override != "" {
 		limitMemory, err = k8sResource.ParseQuantity(override)
-	} else if defaultLimit := conf.proxyConfig.GetResource().GetLimitMemory(); defaultLimit != "" {
+	} else if defaultLimit := conf.configs.GetProxy().GetResource().GetLimitMemory(); defaultLimit != "" {
 		limitMemory, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
@@ -629,7 +627,8 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 }
 
 func (conf *ResourceConfig) proxyDestinationAddr() string {
-	dns := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", conf.globalConfig.GetLinkerdNamespace())
+	ns := conf.configs.GetGlobal().GetLinkerdNamespace()
+	dns := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", ns)
 	if conf.destinationDNSOverride != "" {
 		dns = conf.destinationDNSOverride
 	}
@@ -660,7 +659,7 @@ func (conf *ResourceConfig) proxyUID() int64 {
 		}
 	}
 
-	return conf.proxyConfig.GetProxyUid()
+	return conf.configs.GetProxy().GetProxyUid()
 }
 
 func (conf *ResourceConfig) proxyReadinessProbe() *v1.Probe {
@@ -702,14 +701,14 @@ func (conf *ResourceConfig) proxyInitImage() string {
 	if override := conf.getOverride(k8s.ProxyInitImageAnnotation); override != "" {
 		return override
 	}
-	return conf.proxyConfig.GetProxyInitImage().GetImageName()
+	return conf.configs.GetProxy().GetProxyInitImage().GetImageName()
 }
 
 func (conf *ResourceConfig) proxyInitImagePullPolicy() v1.PullPolicy {
 	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
 		return v1.PullPolicy(override)
 	}
-	return v1.PullPolicy(conf.proxyConfig.GetProxyInitImage().GetPullPolicy())
+	return v1.PullPolicy(conf.configs.GetProxy().GetProxyInitImage().GetPullPolicy())
 }
 
 func (conf *ResourceConfig) proxyInitArgs() []string {
@@ -748,7 +747,7 @@ func (conf *ResourceConfig) proxyInboundSkipPorts() string {
 	}
 
 	ports := []string{}
-	for _, port := range conf.proxyConfig.GetIgnoreInboundPorts() {
+	for _, port := range conf.configs.GetProxy().GetIgnoreInboundPorts() {
 		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
 		ports = append(ports, portStr)
 	}
@@ -761,7 +760,7 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 	}
 
 	ports := []string{}
-	for _, port := range conf.proxyConfig.GetIgnoreOutboundPorts() {
+	for _, port := range conf.configs.GetProxy().GetIgnoreOutboundPorts() {
 		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
 		ports = append(ports, portStr)
 	}

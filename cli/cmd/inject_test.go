@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 )
 
 type testCase struct {
 	inputFileName    string
 	goldenFileName   string
 	reportFileName   string
-	testInjectConfig configs
+	testInjectConfig *config.All
 }
 
 func mkFilename(filename string, verbose bool) string {
@@ -47,22 +49,30 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
-func TestUninjectAndInject(t *testing.T) {
-	defaultConfig := newConfig()
-	defaultConfig.global.Version = "testinjectversion"
+func testInstallConfig() *pb.All {
+	_, c, err := testInstallOptions().validateAndBuild()
+	if err != nil {
+		log.Fatalf("test install options must be valid: %s", err)
+	}
+	return c
+}
 
-	proxyResourceConfig := newConfig()
-	proxyResourceConfig.global.Version = defaultConfig.global.Version
-	proxyResourceConfig.proxy.Resource = &config.ResourceRequirements{
+func TestUninjectAndInject(t *testing.T) {
+	defaultConfig := testInstallConfig()
+	defaultConfig.Global.Version = "testinjectversion"
+
+	proxyResourceConfig := testInstallConfig()
+	proxyResourceConfig.Global.Version = defaultConfig.Global.Version
+	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
 		RequestCpu:    "110m",
 		RequestMemory: "100Mi",
 		LimitCpu:      "160m",
 		LimitMemory:   "150Mi",
 	}
 
-	noInitContainerConfig := newConfig()
-	noInitContainerConfig.global.Version = defaultConfig.global.Version
-	noInitContainerConfig.global.CniEnabled = true
+	noInitContainerConfig := testInstallConfig()
+	noInitContainerConfig.Global.Version = defaultConfig.Global.Version
+	noInitContainerConfig.Global.CniEnabled = true
 
 	testCases := []testCase{
 		{
@@ -190,8 +200,8 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	testConfig := newConfig()
-	testConfig.global.Version = "testinjectversion"
+	testConfig := testInstallConfig()
+	testConfig.Global.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -258,8 +268,8 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	conf := injectOptionsToConfigs(newInjectOptions())
-	if exitCode := runInjectCmd(in, errBuf, actual, conf); exitCode != 0 {
+	configs := testInstallConfig()
+	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 	diffTestdata(t, tc.expectedFile, actual.String())
@@ -276,7 +286,8 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	if exitCode := runInjectCmd(in, errBuf, actual, newConfig()); exitCode != 0 {
+	configs := testInstallConfig()
+	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 

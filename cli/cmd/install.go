@@ -17,9 +17,14 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/version"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
@@ -28,14 +33,12 @@ import (
 )
 
 type (
-	installConfig struct {
+	installValues struct {
 		Namespace                string
 		ControllerImage          string
 		WebImage                 string
 		PrometheusImage          string
-		PrometheusVolumeName     string
 		GrafanaImage             string
-		GrafanaVolumeName        string
 		ControllerReplicas       uint
 		ImagePullPolicy          string
 		UUID                     string
@@ -55,19 +58,19 @@ type (
 		GlobalConfig             string
 		ProxyConfig              string
 
-		Identity *installIdentityConfig
+		Identity *installIdentityValues
 	}
 
-	installIdentityConfig struct {
+	installIdentityValues struct {
 		Replicas uint
 
 		TrustDomain     string
 		TrustAnchorsPEM string
 
-		Issuer *issuerConfig
+		Issuer *issuerValues
 	}
 
-	issuerConfig struct {
+	issuerValues struct {
 		ClockSkewAllowance string
 		IssuanceLifetime   string
 
@@ -95,6 +98,7 @@ type (
 	}
 
 	installIdentityOptions struct {
+		replicas    uint
 		trustDomain string
 
 		issuanceLifetime   time.Duration
@@ -105,6 +109,7 @@ type (
 )
 
 const (
+	prometheusImage                   = "prom/prometheus:v2.7.1"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
 	defaultHAControllerReplicas       = 3
@@ -122,7 +127,13 @@ const (
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
-func newInstallOptions() *installOptions {
+// newInstallOptionsWithDefaults initializes install options with default
+// control plane and proxy options.
+//
+// These options may be overridden on the CLI at install-time and will be
+// persisted in Linkerd's control plane configuration to be used at
+// injection-time.
+func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
 		controllerReplicas: defaultControllerReplicas,
 		controllerLogLevel: "info",
@@ -130,7 +141,28 @@ func newInstallOptions() *installOptions {
 		highAvailability:   false,
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
-		proxyConfigOptions: newProxyConfigOptions(),
+		proxyConfigOptions: &proxyConfigOptions{
+			linkerdVersion:          version.Version,
+			ignoreCluster:           false,
+			proxyImage:              defaultDockerRegistry + "/proxy",
+			initImage:               defaultDockerRegistry + "/proxy-init",
+			dockerRegistry:          defaultDockerRegistry,
+			imagePullPolicy:         "IfNotPresent",
+			ignoreInboundPorts:      nil,
+			ignoreOutboundPorts:     nil,
+			proxyUID:                2102,
+			proxyLogLevel:           "warn,linkerd2_proxy=info",
+			proxyControlPort:        4190,
+			proxyAdminPort:          4191,
+			proxyInboundPort:        4143,
+			proxyOutboundPort:       4140,
+			proxyCPURequest:         "",
+			proxyMemoryRequest:      "",
+			proxyCPULimit:           "",
+			proxyMemoryLimit:        "",
+			disableExternalProfiles: false,
+			noInitContainer:         false,
+		},
 		identityOptions: &installIdentityOptions{
 			trustDomain:        defaultIdentityTrustDomain,
 			issuanceLifetime:   defaultIdentityIssuanceLifetime,
@@ -140,21 +172,18 @@ func newInstallOptions() *installOptions {
 }
 
 func newCmdInstall() *cobra.Command {
-	options := newInstallOptions()
+	options := newInstallOptionsWithDefaults()
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
 		Short: "Output Kubernetes configs to install Linkerd",
 		Long:  "Output Kubernetes configs to install Linkerd.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO check with a config already exists in the API and fail if it does.
-
-			config, err := validateAndBuildConfig(options)
+			values, configs, err := options.validateAndBuild()
 			if err != nil {
 				return err
 			}
-
-			return render(*config, os.Stdout, options)
+			return render(values, os.Stdout, configs)
 		},
 	}
 
@@ -183,7 +212,6 @@ func newCmdInstall() *cobra.Command {
 		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
 		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 	)
-
 	cmd.PersistentFlags().StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
 		"Configures the name suffix used for identities.",
@@ -212,157 +240,120 @@ func newCmdInstall() *cobra.Command {
 	return cmd
 }
 
-func validateAndBuildConfig(options *installOptions) (*installConfig, error) {
-	if err := options.validate(); err != nil {
-		return nil, err
+func (options *installOptions) validate() error {
+	if options.identityOptions == nil {
+		// Programmer error: identityOptions may be empty, but it must be set by the constructor.
+		panic("missing identity options")
 	}
 
-	if options.highAvailability && options.controllerReplicas == defaultControllerReplicas {
-		options.controllerReplicas = defaultHAControllerReplicas
+	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	if options.highAvailability && options.proxyCPURequest == "" {
-		options.proxyCPURequest = "10m"
+	if err := options.proxyConfigOptions.validate(); err != nil {
+		return err
 	}
 
-	if options.highAvailability && options.proxyMemoryRequest == "" {
-		options.proxyMemoryRequest = "20Mi"
-	}
-
-	var identity *installIdentityConfig
-	if idopts := options.identityOptions; idopts != nil {
-		trustDomain := idopts.trustDomain
-		if trustDomain == "" {
-			return nil, errors.New("Trust domain must be specified")
+	if !options.ignoreCluster {
+		exists, err := linkerdConfigAlreadyExistsInCluster()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Unable to connect to a Kubernetes cluster to check for configuration. If this expected, use the --ignore-cluster flag.")
+			os.Exit(1)
 		}
-		issuerName := fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, trustDomain)
-
-		identityReplicas := uint(1)
-		if options.highAvailability {
-			identityReplicas = 3
-		}
-
-		// Load signing material from options...
-		if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
-			if idopts.trustPEMFile == "" {
-				return nil, errors.New("a trust anchors file must be specified if other credentials are provided")
-			}
-			if idopts.crtPEMFile == "" {
-				return nil, errors.New("a certificate file must be specified if other credentials are provided")
-			}
-			if idopts.keyPEMFile == "" {
-				return nil, errors.New("a private key file must be specified if other credentials are provided")
-			}
-
-			// Validate credentials...
-			creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
-			if err != nil {
-				return nil, err
-			}
-
-			trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
-			if err != nil {
-				return nil, err
-			}
-			trustAnchorsPEM := string(trustb)
-			roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
-			if err != nil {
-				return nil, err
-			}
-
-			issuerName := "" // TODO restrict issuer name?
-			if err := creds.Verify(roots, issuerName); err != nil {
-				return nil, fmt.Errorf("Credentials cannot be validated: %s", err)
-			}
-
-			identity = &installIdentityConfig{
-				Replicas:        identityReplicas,
-				TrustDomain:     idopts.trustDomain,
-				TrustAnchorsPEM: trustAnchorsPEM,
-				Issuer: &issuerConfig{
-					ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-					IssuanceLifetime:    idopts.issuanceLifetime.String(),
-					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-					KeyPEM:    creds.EncodePrivateKeyPEM(),
-					CrtPEM:    creds.EncodeCertificatePEM(),
-					CrtExpiry: creds.Crt.Certificate.NotAfter,
-				},
-			}
-		} else {
-			// Generate new signing material...
-
-			root, err := tls.GenerateRootCAWithDefaults(issuerName)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to create root certificate for identity: %s", err)
-			}
-
-			identity = &installIdentityConfig{
-				Replicas:        identityReplicas,
-				TrustDomain:     trustDomain,
-				TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-				Issuer: &issuerConfig{
-					ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-					IssuanceLifetime:    idopts.issuanceLifetime.String(),
-					CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-					KeyPEM:    root.Cred.EncodePrivateKeyPEM(),
-					CrtPEM:    root.Cred.Crt.EncodeCertificatePEM(),
-					CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
-				},
-			}
+		if exists {
+			fmt.Fprintln(os.Stderr, "You are already running a control plane. If you would like to ignore its configuration, use the --ignore-cluster flag.")
+			os.Exit(1)
 		}
 	}
 
-	jsonMarshaler := jsonpb.Marshaler{EmitDefaults: true}
-	globalConfig, err := jsonMarshaler.MarshalToString(globalConfig(options, identity))
-	if err != nil {
-		return nil, err
-	}
-
-	proxyConfig, err := jsonMarshaler.MarshalToString(proxyConfig(options))
-	if err != nil {
-		return nil, err
-	}
-
-	prometheusLogLevel := options.controllerLogLevel
-	if prometheusLogLevel == "panic" || prometheusLogLevel == "fatal" {
-		prometheusLogLevel = "error"
-	}
-
-	return &installConfig{
-		Namespace:                controlPlaneNamespace,
-		ControllerImage:          fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
-		WebImage:                 fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		PrometheusImage:          "prom/prometheus:v2.7.1",
-		PrometheusVolumeName:     "data",
-		GrafanaImage:             fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
-		GrafanaVolumeName:        "data",
-		ControllerReplicas:       options.controllerReplicas,
-		ImagePullPolicy:          options.imagePullPolicy,
-		UUID:                     uuid.NewV4().String(),
-		CliVersion:               k8s.CreatedByAnnotationValue(),
-		ControllerLogLevel:       options.controllerLogLevel,
-		PrometheusLogLevel:       prometheusLogLevel,
-		ControllerComponentLabel: k8s.ControllerComponentLabel,
-		ControllerUID:            options.controllerUID,
-		CreatedByAnnotation:      k8s.CreatedByAnnotation,
-		ProxyContainerName:       k8s.ProxyContainerName,
-		ProxyAutoInjectEnabled:   options.proxyAutoInject,
-		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
-		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
-		EnableHA:                 options.highAvailability,
-		EnableH2Upgrade:          !options.disableH2Upgrade,
-		NoInitContainer:          options.noInitContainer,
-		GlobalConfig:             globalConfig,
-		ProxyConfig:              proxyConfig,
-		Identity:                 identity,
-	}, nil
+	return nil
 }
 
-func render(config installConfig, w io.Writer, options *installOptions) error {
+func (options *installOptions) validateAndBuild() (*installValues, *pb.All, error) {
+	if err := options.validate(); err != nil {
+		return nil, nil, err
+	}
+
+	if options.highAvailability {
+		if options.controllerReplicas == defaultControllerReplicas {
+			options.controllerReplicas = defaultHAControllerReplicas
+		}
+
+		if options.proxyCPURequest == "" {
+			options.proxyCPURequest = "10m"
+		}
+
+		if options.proxyMemoryRequest == "" {
+			options.proxyMemoryRequest = "20Mi"
+		}
+	}
+
+	options.identityOptions.replicas = options.controllerReplicas
+	identityValues, err := options.identityOptions.validateAndBuild()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	configs := options.configs(identityValues.toIdentityContext())
+
+	j := jsonpb.Marshaler{EmitDefaults: true}
+	globalConfig, err := j.MarshalToString(configs.GetGlobal())
+	if err != nil {
+		return nil, nil, err
+	}
+	proxyConfig, err := j.MarshalToString(configs.GetProxy())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	values := &installValues{
+		// Container images:
+		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
+		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
+		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		PrometheusImage: prometheusImage,
+		ImagePullPolicy: options.imagePullPolicy,
+
+		// Kubernetes labels/annotations/resourcse:
+		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		CliVersion:               k8s.CreatedByAnnotationValue(),
+		ControllerComponentLabel: k8s.ControllerComponentLabel,
+		ProxyContainerName:       k8s.ProxyContainerName,
+		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
+		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
+
+		// Controller configuration:
+		Namespace:              controlPlaneNamespace,
+		UUID:                   uuid.NewV4().String(),
+		ControllerLogLevel:     options.controllerLogLevel,
+		ControllerUID:          options.controllerUID,
+		EnableHA:               options.highAvailability,
+		EnableH2Upgrade:        !options.disableH2Upgrade,
+		NoInitContainer:        options.noInitContainer,
+		ControllerReplicas:     options.controllerReplicas,
+		ProxyAutoInjectEnabled: options.proxyAutoInject,
+		PrometheusLogLevel:     toPromLogLevel(options.controllerLogLevel),
+
+		GlobalConfig: globalConfig,
+		ProxyConfig:  proxyConfig,
+		Identity:     identityValues,
+	}
+
+	return values, configs, nil
+}
+
+func toPromLogLevel(level string) string {
+	switch level {
+	case "panic", "fatal":
+		return "error"
+	default:
+		return level
+	}
+}
+
+func render(values *installValues, w io.Writer, configs *pb.All) error {
 	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(config)
+	rawValues, err := yaml.Marshal(values)
 	if err != nil {
 		return err
 	}
@@ -420,37 +411,17 @@ func render(config installConfig, w io.Writer, options *installOptions) error {
 		}
 	}
 
-	injectOptions := newInjectOptions()
-
-	*injectOptions.proxyConfigOptions = *options.proxyConfigOptions
-
 	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
 	// Once Kubernetes supports sidecar containers, this may be removed, as that
 	// will guarantee the proxy is running prior to control-plane startup.
-	injectOptions.ignoreOutboundPorts = append(injectOptions.ignoreOutboundPorts, 443)
-
-	// TODO: Fetch GlobalConfig and ProxyConfig from the ConfigMap/API
-	pbConfig := injectOptionsToConfigs(injectOptions)
-
-	// injectOptionsToConfigs does NOT set an identity context if none exists,
-	// since it can't be enabled at inject-time if it's not enabled at
-	// install-time.
-	pbConfig.global.IdentityContext = config.Identity.toIdentityContext()
+	configs.Proxy.IgnoreOutboundPorts = append(configs.Proxy.IgnoreOutboundPorts, &config.Port{Port: 443})
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
-		configs: pbConfig,
+		configs: configs,
 		proxyOutboundCapacity: map[string]uint{
-			config.PrometheusImage: prometheusProxyOutboundCapacity,
+			values.PrometheusImage: prometheusProxyOutboundCapacity,
 		},
 	})
-}
-
-func (options *installOptions) validate() error {
-	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
-		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
-	}
-
-	return options.proxyConfigOptions.validate()
 }
 
 func readIntoBytes(filename string) ([]byte, error) {
@@ -466,16 +437,23 @@ func readIntoBytes(filename string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func globalConfig(options *installOptions, id *installIdentityConfig) *pb.Global {
+func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
+	return &pb.All{
+		Global: options.globalConfig(identity),
+		Proxy:  options.proxyConfig(),
+	}
+}
+
+func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
 	return &pb.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Version:          options.linkerdVersion,
-		IdentityContext:  id.toIdentityContext(),
+		IdentityContext:  identity,
 	}
 }
 
-func proxyConfig(options *installOptions) *pb.Proxy {
+func (options *installOptions) proxyConfig() *pb.Proxy {
 	ignoreInboundPorts := []*pb.Port{}
 	for _, port := range options.ignoreInboundPorts {
 		ignoreInboundPorts = append(ignoreInboundPorts, &pb.Port{Port: uint32(port)})
@@ -501,13 +479,13 @@ func proxyConfig(options *installOptions) *pb.Proxy {
 		IgnoreInboundPorts:  ignoreInboundPorts,
 		IgnoreOutboundPorts: ignoreOutboundPorts,
 		InboundPort: &pb.Port{
-			Port: uint32(options.inboundPort),
+			Port: uint32(options.proxyInboundPort),
 		},
 		AdminPort: &config.Port{
 			Port: uint32(options.proxyAdminPort),
 		},
 		OutboundPort: &pb.Port{
-			Port: uint32(options.outboundPort),
+			Port: uint32(options.proxyOutboundPort),
 		},
 		Resource: &pb.ResourceRequirements{
 			RequestCpu:    options.proxyCPURequest,
@@ -523,24 +501,174 @@ func proxyConfig(options *installOptions) *pb.Proxy {
 	}
 }
 
-func (id *installIdentityConfig) toIdentityContext() *pb.IdentityContext {
-	if id == nil {
+// linkerdConfigAlreadyExistsInCluster checks the kubernetes API to determine
+// whether a config exists.
+//
+// This bypasses the public API so that public API errors cannot cause us to
+// misdiagnose a controller error to indicate that no control plane exists.
+//
+// If we cannot determine whether the configuration exists, an error is returned.
+func linkerdConfigAlreadyExistsInCluster() (bool, error) {
+	api, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	if err != nil {
+		return false, err
+	}
+
+	k, err := kubernetes.NewForConfig(api.Config)
+	if err != nil {
+		return false, err
+	}
+
+	c := k.CoreV1().ConfigMaps(controlPlaneNamespace)
+	if _, err = c.Get(k8s.ConfigConfigMapName, metav1.GetOptions{}); err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (idopts *installIdentityOptions) validate() error {
+	if idopts == nil {
 		return nil
 	}
 
-	il, err := time.ParseDuration(id.Issuer.IssuanceLifetime)
+	if idopts.trustDomain == "" {
+		if errs := validation.IsDNS1123Subdomain(idopts.trustDomain); len(errs) > 0 {
+			return fmt.Errorf("invalid trust domain '%s': %s", idopts.trustDomain, errs[0])
+		}
+	}
+
+	if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
+		if idopts.trustPEMFile == "" {
+			return errors.New("a trust anchors file must be specified if other credentials are provided")
+		}
+		if idopts.crtPEMFile == "" {
+			return errors.New("a certificate file must be specified if other credentials are provided")
+		}
+		if idopts.keyPEMFile == "" {
+			return errors.New("a private key file must be specified if other credentials are provided")
+		}
+
+		for _, f := range []string{idopts.trustPEMFile, idopts.crtPEMFile, idopts.keyPEMFile} {
+			stat, err := os.Stat(f)
+			if err != nil {
+				return fmt.Errorf("missing file: %s", err)
+			}
+			if stat.IsDir() {
+				return fmt.Errorf("not a file: %s", f)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (idopts *installIdentityOptions) validateAndBuild() (*installIdentityValues, error) {
+	if idopts == nil {
+		return nil, nil
+	}
+
+	if err := idopts.validate(); err != nil {
+		return nil, err
+	}
+
+	if idopts.trustPEMFile != "" && idopts.crtPEMFile != "" && idopts.keyPEMFile != "" {
+		return idopts.readValues()
+	}
+
+	return idopts.genValues()
+}
+
+func (idopts *installIdentityOptions) issuerName() string {
+	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
+}
+
+func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error) {
+	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
+	}
+
+	return &installIdentityValues{
+		Replicas:        idopts.replicas,
+		TrustDomain:     idopts.trustDomain,
+		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
+		Issuer: &issuerValues{
+			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+			IssuanceLifetime:    idopts.issuanceLifetime.String(),
+			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+
+			KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+			CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+
+			CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
+		},
+	}, nil
+}
+
+// readValues attempts to read an issuer configuration from disk
+// to produce an `installIdentityValues`.
+//
+// The identity options must have already been validated.
+func (idopts *installIdentityOptions) readValues() (*installIdentityValues, error) {
+	creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
+	if err != nil {
+		return nil, err
+	}
+
+	trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
+	if err != nil {
+		return nil, err
+	}
+	trustAnchorsPEM := string(trustb)
+	roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := creds.Verify(roots, idopts.issuerName()); err != nil {
+		return nil, fmt.Errorf("invalid credentials: %s", err)
+	}
+
+	return &installIdentityValues{
+		Replicas:        idopts.replicas,
+		TrustDomain:     idopts.trustDomain,
+		TrustAnchorsPEM: trustAnchorsPEM,
+		Issuer: &issuerValues{
+			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+			IssuanceLifetime:    idopts.issuanceLifetime.String(),
+			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+
+			KeyPEM: creds.EncodePrivateKeyPEM(),
+			CrtPEM: creds.EncodeCertificatePEM(),
+
+			CrtExpiry: creds.Crt.Certificate.NotAfter,
+		},
+	}, nil
+}
+
+func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
+	if idvals == nil {
+		return nil
+	}
+
+	il, err := time.ParseDuration(idvals.Issuer.IssuanceLifetime)
 	if err != nil {
 		il = defaultIdentityIssuanceLifetime
 	}
 
-	csa, err := time.ParseDuration(id.Issuer.ClockSkewAllowance)
+	csa, err := time.ParseDuration(idvals.Issuer.ClockSkewAllowance)
 	if err != nil {
 		csa = defaultIdentityClockSkewAllowance
 	}
 
 	return &pb.IdentityContext{
-		TrustDomain:        id.TrustDomain,
-		TrustAnchorsPem:    id.TrustAnchorsPEM,
+		TrustDomain:        idvals.TrustDomain,
+		TrustAnchorsPem:    idvals.TrustAnchorsPEM,
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}

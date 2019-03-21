@@ -93,7 +93,7 @@ func TestUninjectYAML(t *testing.T) {
 			output := new(bytes.Buffer)
 			report := new(bytes.Buffer)
 
-			exitCode := runUninjectCmd(read, report, output, configs{nil, nil})
+			exitCode := runUninjectCmd(read, report, output, nil)
 			if exitCode != 0 {
 				t.Errorf("Failed to inject %s\n", tc.inputFileName)
 			}

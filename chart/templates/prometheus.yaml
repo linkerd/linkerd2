@@ -69,7 +69,7 @@ spec:
     spec:
       serviceAccountName: linkerd-prometheus
       volumes:
-      - name: {{.Values.PrometheusVolumeName}}
+      - name: data
         emptyDir: {}
       - name: prometheus-config
         configMap:
@@ -80,15 +80,15 @@ spec:
         - name: admin-http
           containerPort: 9090
         volumeMounts:
-        - name: {{.Values.PrometheusVolumeName}}
-          mountPath: /{{.Values.PrometheusVolumeName}}
+        - name: data
+          mountPath: /data
         - name: prometheus-config
           mountPath: /etc/prometheus
           readOnly: true
         image: {{.Values.PrometheusImage}}
         imagePullPolicy: {{.Values.ImagePullPolicy}}
         args:
-        - "--storage.tsdb.path=/{{.Values.PrometheusVolumeName}}"
+        - "--storage.tsdb.path=/data"
         - "--storage.tsdb.retention=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
         - "--log.level={{.Values.PrometheusLogLevel}}"

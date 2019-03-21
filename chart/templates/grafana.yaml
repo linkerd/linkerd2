@@ -46,7 +46,7 @@ spec:
         {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       volumes:
-      - name: {{.Values.GrafanaVolumeName}}
+      - name: data
         emptyDir: {}
       - name: grafana-config
         configMap:
@@ -65,10 +65,10 @@ spec:
           containerPort: 3000
         env:
         - name: GF_PATHS_DATA
-          value: /{{.Values.GrafanaVolumeName}}
+          value: /data
         volumeMounts:
-        - name: {{.Values.GrafanaVolumeName}}
-          mountPath: /{{.Values.GrafanaVolumeName}}
+        - name: data
+          mountPath: /data
         - name: grafana-config
           mountPath: /etc/grafana
           readOnly: true
