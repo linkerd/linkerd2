@@ -160,7 +160,7 @@ const (
 	 * Component Names
 	 */
 
-	// ConfigConfigMapName is the name of hte ConfigMap containing the linkerd controller configuration.
+	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
 
 	// InitContainerName is the name assigned to the injected init container.
