@@ -156,9 +156,12 @@ func TestValidate(t *testing.T) {
 			if !tc.valid && err == nil {
 				t.Fatalf("Expected error string \"%s is not a valid proxy log level\", got nothing", tc.input)
 			}
-			expectedErr := "\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging"
-			if !tc.valid && err.Error() != fmt.Sprintf(expectedErr, tc.input) {
-				t.Fatalf("Expected error string \""+expectedErr+"\"", tc.input, err)
+			expectedErr := fmt.Sprintf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging", tc.input)
+			if tc.input == "" {
+				expectedErr = "--proxy-log-level must not be empty"
+			}
+			if !tc.valid && err.Error() != expectedErr {
+				t.Fatalf("Expected error string \"%s\", got \"%s\"; input=\"%s\"", expectedErr, err, tc.input)
 			}
 		}
 	})

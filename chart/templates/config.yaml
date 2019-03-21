@@ -1,0 +1,21 @@
+{{with .Values -}}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: controller
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+data:
+  {{- if .GlobalConfig}}
+  global: |
+    {{.GlobalConfig}}
+  {{- end}}
+  {{- if .ProxyConfig}}
+  proxy: |
+    {{.ProxyConfig}}
+  {{- end }}
+{{- end}}

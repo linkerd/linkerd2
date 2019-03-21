@@ -118,6 +118,7 @@ const (
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 
 	nsTemplateName             = "templates/namespace.yaml"
+	configTemplateName         = "templates/config.yaml"
 	identityTemplateName       = "templates/identity.yaml"
 	controllerTemplateName     = "templates/controller.yaml"
 	webTemplateName            = "templates/web.yaml"
@@ -253,6 +254,9 @@ func (options *installOptions) validate() error {
 	if err := options.proxyConfigOptions.validate(); err != nil {
 		return err
 	}
+	if options.proxyLogLevel == "" {
+		return errors.New("--proxy-log-level must not be empty")
+	}
 
 	if !options.ignoreCluster {
 		exists, err := linkerdConfigAlreadyExistsInCluster()
@@ -362,6 +366,7 @@ func render(values *installValues, w io.Writer, configs *pb.All) error {
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: nsTemplateName},
+		{Name: configTemplateName},
 		{Name: identityTemplateName},
 		{Name: controllerTemplateName},
 		{Name: serviceprofileTemplateName},
