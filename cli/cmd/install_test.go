@@ -100,7 +100,7 @@ func TestRender(t *testing.T) {
 }
 
 func testInstallOptions() *installOptions {
-	o := defaultInstallOptions()
+	o := newInstallOptionsWithDefaults()
 	o.ignoreCluster = true
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")

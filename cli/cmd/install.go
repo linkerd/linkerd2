@@ -93,7 +93,6 @@ type (
 		highAvailability   bool
 		controllerUID      int64
 		disableH2Upgrade   bool
-		ignoreCluster      bool
 		identityOptions    *installIdentityOptions
 		*proxyConfigOptions
 	}
@@ -128,7 +127,13 @@ const (
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
 
-func defaultInstallOptions() *installOptions {
+// newInstallOptionsWithDefaults initializes install options with default
+// control plane and proxy options.
+//
+// These options may be overridden on the CLI at install-time and will be
+// persisted in Linkerd's control plane configuration to be used at
+// injection-time.
+func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
 		controllerReplicas: defaultControllerReplicas,
 		controllerLogLevel: "info",
@@ -136,9 +141,9 @@ func defaultInstallOptions() *installOptions {
 		highAvailability:   false,
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
-		ignoreCluster:      false,
 		proxyConfigOptions: &proxyConfigOptions{
 			linkerdVersion:          version.Version,
+			ignoreCluster:           false,
 			proxyImage:              defaultDockerRegistry + "/proxy",
 			initImage:               defaultDockerRegistry + "/proxy-init",
 			dockerRegistry:          defaultDockerRegistry,
@@ -167,7 +172,7 @@ func defaultInstallOptions() *installOptions {
 }
 
 func newCmdInstall() *cobra.Command {
-	options := defaultInstallOptions()
+	options := newInstallOptionsWithDefaults()
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
@@ -207,10 +212,6 @@ func newCmdInstall() *cobra.Command {
 		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
 		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 	)
-	cmd.PersistentFlags().BoolVar(
-		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
-		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
-	)
 	cmd.PersistentFlags().StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
 		"Configures the name suffix used for identities.",
@@ -241,7 +242,8 @@ func newCmdInstall() *cobra.Command {
 
 func (options *installOptions) validate() error {
 	if options.identityOptions == nil {
-		log.Fatal("missing identity options")
+		// Programmer error: identityOptions may be empty, but it must be set by the constructor.
+		panic("missing identity options")
 	}
 
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
@@ -255,10 +257,12 @@ func (options *installOptions) validate() error {
 	if !options.ignoreCluster {
 		exists, err := linkerdConfigAlreadyExistsInCluster()
 		if err != nil {
-			return fmt.Errorf("Unable to connect to a Kubernetes cluster to check for configuration. If this expected, use the --ignore-cluster flag.")
+			fmt.Fprintln(os.Stderr, "Unable to connect to a Kubernetes cluster to check for configuration. If this expected, use the --ignore-cluster flag.")
+			os.Exit(1)
 		}
 		if exists {
-			return fmt.Errorf("You are already running a control plane. If you would like to ignore its configuration, use the --ignore-cluster flag.")
+			fmt.Fprintln(os.Stderr, "You are already running a control plane. If you would like to ignore its configuration, use the --ignore-cluster flag.")
+			os.Exit(1)
 		}
 	}
 
@@ -338,14 +342,13 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 	return values, configs, nil
 }
 
-func toPromLogLevel(level string) (prom string) {
+func toPromLogLevel(level string) string {
 	switch level {
 	case "panic", "fatal":
-		prom = "error"
+		return "error"
 	default:
-		prom = level
+		return level
 	}
-	return
 }
 
 func render(values *installValues, w io.Writer, configs *pb.All) error {
@@ -587,7 +590,7 @@ func (idopts *installIdentityOptions) issuerName() string {
 func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate root certificate for identity: %s", err)
+		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
 	return &installIdentityValues{

@@ -201,6 +201,8 @@ type proxyConfigOptions struct {
 	proxyMemoryLimit        string
 	disableExternalProfiles bool
 	noInitContainer         bool
+	// ignoreCluster is not validated by validate().
+	ignoreCluster bool
 }
 
 func (options *proxyConfigOptions) validate() error {
@@ -301,4 +303,9 @@ func addProxyConfigFlags(cmd *cobra.Command, options *proxyConfigOptions) {
 
 	cmd.PersistentFlags().MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	cmd.PersistentFlags().MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
+
+	cmd.PersistentFlags().BoolVar(
+		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
+		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
+	)
 }

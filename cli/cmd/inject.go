@@ -29,7 +29,7 @@ const (
 )
 
 type injectOptions struct {
-	ignoreCluster, disableIdentity bool
+	disableIdentity bool
 	*proxyConfigOptions
 }
 
@@ -47,8 +47,6 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *conf
 
 func newInjectOptions() *injectOptions {
 	return &injectOptions{
-		ignoreCluster: false,
-
 		// No proxy config overrides.
 		proxyConfigOptions: &proxyConfigOptions{},
 	}
@@ -101,12 +99,8 @@ sub-folders, or coming from stdin.`,
 
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().BoolVar(
-		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
-		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
-	)
-	cmd.PersistentFlags().BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
-		"Disables resources from participating in identity",
+		"Disables resources from participating in TLS identity",
 	)
 
 	return cmd
@@ -275,7 +269,7 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
 		}
 
-		install := defaultInstallOptions()
+		install := newInstallOptionsWithDefaults()
 		return install.configs(nil), nil
 	}
 
