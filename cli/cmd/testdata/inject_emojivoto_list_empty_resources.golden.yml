@@ -16,7 +16,7 @@ items:
       metadata:
         annotations:
           linkerd.io/created-by: linkerd/cli dev-undefined
-          linkerd.io/identity-mode: disabled
+          linkerd.io/identity-mode: default
           linkerd.io/proxy-version: testinjectversion
         creationTimestamp: null
         labels:
@@ -65,8 +65,38 @@ items:
                 fieldPath: metadata.namespace
           - name: LINKERD2_PROXY_DESTINATION_CONTEXT
             value: ns:$(_pod_ns)
-          - name: LINKERD2_PROXY_IDENTITY_DISABLED
-            value: Identity is not yet available
+          - name: LINKERD2_PROXY_IDENTITY_DIR
+            value: /var/run/linkerd/identity/end-entity
+          - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+            value: |
+              -----BEGIN CERTIFICATE-----
+              MIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy
+              LmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE
+              AxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0
+              xtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364
+              6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF
+              BQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
+              AiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv
+              OLO4Zsk1XrGZHGsmyiEyvYF9lpY=
+              -----END CERTIFICATE-----
+          - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
+            value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
+            value: linkerd-identity.linkerd.svc.cluster.local:8080
+          - name: _pod_sa
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.serviceAccountName
+          - name: _l5d_ns
+            value: linkerd
+          - name: _l5d_trustdomain
+            value: cluster.local
+          - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
+            value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
+            value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+            value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
           image: gcr.io/linkerd-io/proxy:testinjectversion
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -89,6 +119,9 @@ items:
           securityContext:
             runAsUser: 2102
           terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+          - mountPath: /var/run/linkerd/identity/end-entity
+            name: linkerd-identity-end-entity
         initContainers:
         - args:
           - --incoming-proxy-port
@@ -111,6 +144,10 @@ items:
             runAsNonRoot: false
             runAsUser: 0
           terminationMessagePolicy: FallbackToLogsOnError
+        volumes:
+        - emptyDir:
+            medium: Memory
+          name: linkerd-identity-end-entity
   status: {}
 - apiVersion: apps/v1beta1
   kind: Deployment
@@ -128,7 +165,7 @@ items:
       metadata:
         annotations:
           linkerd.io/created-by: linkerd/cli dev-undefined
-          linkerd.io/identity-mode: disabled
+          linkerd.io/identity-mode: default
           linkerd.io/proxy-version: testinjectversion
         creationTimestamp: null
         labels:
@@ -172,8 +209,38 @@ items:
                 fieldPath: metadata.namespace
           - name: LINKERD2_PROXY_DESTINATION_CONTEXT
             value: ns:$(_pod_ns)
-          - name: LINKERD2_PROXY_IDENTITY_DISABLED
-            value: Identity is not yet available
+          - name: LINKERD2_PROXY_IDENTITY_DIR
+            value: /var/run/linkerd/identity/end-entity
+          - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+            value: |
+              -----BEGIN CERTIFICATE-----
+              MIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy
+              LmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE
+              AxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0
+              xtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364
+              6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF
+              BQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
+              AiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv
+              OLO4Zsk1XrGZHGsmyiEyvYF9lpY=
+              -----END CERTIFICATE-----
+          - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
+            value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
+            value: linkerd-identity.linkerd.svc.cluster.local:8080
+          - name: _pod_sa
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.serviceAccountName
+          - name: _l5d_ns
+            value: linkerd
+          - name: _l5d_trustdomain
+            value: cluster.local
+          - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
+            value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
+            value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+            value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
           image: gcr.io/linkerd-io/proxy:testinjectversion
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -196,6 +263,9 @@ items:
           securityContext:
             runAsUser: 2102
           terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+          - mountPath: /var/run/linkerd/identity/end-entity
+            name: linkerd-identity-end-entity
         initContainers:
         - args:
           - --incoming-proxy-port
@@ -218,6 +288,10 @@ items:
             runAsNonRoot: false
             runAsUser: 0
           terminationMessagePolicy: FallbackToLogsOnError
+        volumes:
+        - emptyDir:
+            medium: Memory
+          name: linkerd-identity-end-entity
   status: {}
 - null
 - null

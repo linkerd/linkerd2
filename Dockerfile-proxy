@@ -10,10 +10,24 @@ RUN (proxy=$(bin/fetch-proxy $PROXY_VERSION) && \
     mv "$proxy" linkerd2-proxy && \
     echo "$version" >version.txt)
 
+## compile proxy-identity agent
+FROM gcr.io/linkerd-io/go-deps:3835cca1 as golang
+WORKDIR /go/src/github.com/linkerd/linkerd2
+ENV CGO_ENABLED=0 GOOS=linux
+COPY pkg/flags pkg/flags
+COPY pkg/tls pkg/tls
+COPY pkg/version pkg/version
+RUN go build ./pkg/...
+COPY proxy-identity proxy-identity
+RUN CGO_ENABLED=0 GOOS=linux go install ./proxy-identity
+
 FROM $RUNTIME_IMAGE as runtime
-WORKDIR /linkerd
-COPY --from=fetch /build/target/proxy/LICENSE ./LICENSE
-COPY --from=fetch /build/linkerd2-proxy ./linkerd2-proxy
-COPY --from=fetch /build/version.txt ./linkerd2-proxy-version.txt
+COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
+COPY --from=fetch /build/version.txt /usr/lib/linkerd/linkerd2-proxy-version.txt
+COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
+COPY --from=golang /go/bin/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
+COPY proxy-identity/run-proxy.sh /usr/bin/linkerd2-proxy-run
+ARG LINKERD_VERSION
+ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd2_proxy=info
-ENTRYPOINT ["./linkerd2-proxy"]
+ENTRYPOINT ["/usr/bin/linkerd2-proxy-run"]

@@ -169,6 +169,10 @@ const (
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
+	// IdentityEndEntityVolumeName is the name assigned the temporary end-entity
+	// volume mounted into each proxy to store identity credentials.
+	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
+
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
 
@@ -191,6 +195,16 @@ const (
 
 	// MountPathProxyConfig is the path at which the global config file is mounted.
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
+
+	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
+	// store identity credentials.
+	MountPathEndEntity = MountPathBase + "/identity/end-entity"
+
+	// IdentityServiceAcountTokenPath is the path to the kbuernetes service
+	// account token used by proxies to privision identity.
+	//
+	// In the future, this should be changed to a time- and audience-scoped secret.
+	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 // CreatedByAnnotationValue returns the value associated with
