@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 )
 
 type testCase struct {
@@ -47,11 +49,19 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
+func testInstallConfig() *pb.All {
+	_, c, err := testInstallOptions().validateAndBuild()
+	if err != nil {
+		log.Fatalf("test install options must be valid: %s", err)
+	}
+	return c
+}
+
 func TestUninjectAndInject(t *testing.T) {
-	_, defaultConfig, _ := testInstallOptions().validateAndBuild()
+	defaultConfig := testInstallConfig()
 	defaultConfig.Global.Version = "testinjectversion"
 
-	_, proxyResourceConfig, _ := testInstallOptions().validateAndBuild()
+	proxyResourceConfig := testInstallConfig()
 	proxyResourceConfig.Global.Version = defaultConfig.Global.Version
 	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
 		RequestCpu:    "110m",
@@ -60,7 +70,7 @@ func TestUninjectAndInject(t *testing.T) {
 		LimitMemory:   "150Mi",
 	}
 
-	_, noInitContainerConfig, _ := testInstallOptions().validateAndBuild()
+	noInitContainerConfig := testInstallConfig()
 	noInitContainerConfig.Global.Version = defaultConfig.Global.Version
 	noInitContainerConfig.Global.CniEnabled = true
 
@@ -190,7 +200,7 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	_, testConfig, _ := testInstallOptions().validateAndBuild()
+	testConfig := testInstallConfig()
 	testConfig.Global.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
@@ -258,7 +268,7 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	_, configs, _ := testInstallOptions().validateAndBuild()
+	configs := testInstallConfig()
 	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
@@ -276,7 +286,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	_, configs, _ := testInstallOptions().validateAndBuild()
+	configs := testInstallConfig()
 	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
