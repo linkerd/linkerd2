@@ -287,21 +287,26 @@ func (options *injectOptions) overrideConfigs(configs *config.All) {
 	}
 
 	if options.proxyAdminPort != 0 {
-		configs.Proxy.AdminPort = &config.Port{Port: uint32(options.proxyAdminPort)}
+		configs.Proxy.AdminPort = toPort(options.proxyAdminPort)
 	}
 	if options.proxyControlPort != 0 {
-		configs.Proxy.ControlPort = &config.Port{Port: uint32(options.proxyControlPort)}
+		configs.Proxy.ControlPort = toPort(options.proxyControlPort)
 	}
 	if options.proxyInboundPort != 0 {
-		configs.Proxy.InboundPort = &config.Port{Port: uint32(options.proxyInboundPort)}
+		configs.Proxy.InboundPort = toPort(options.proxyInboundPort)
 	}
 	if options.proxyOutboundPort != 0 {
-		configs.Proxy.OutboundPort = &config.Port{Port: uint32(options.proxyOutboundPort)}
+		configs.Proxy.OutboundPort = toPort(options.proxyOutboundPort)
 	}
 
 	if options.dockerRegistry != "" {
 		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
 		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
+	}
+
+	if options.imagePullPolicy != "" {
+		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
+		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
 	}
 
 	if options.proxyUID != 0 {
@@ -330,10 +335,14 @@ func (options *injectOptions) overrideConfigs(configs *config.All) {
 	}
 }
 
+func toPort(p uint) *config.Port {
+	return &config.Port{Port: uint32(p)}
+}
+
 func toPorts(ints []uint) []*config.Port {
 	ports := make([]*config.Port, len(ints))
 	for i, p := range ints {
-		ports[i] = &config.Port{Port: uint32(p)}
+		ports[i] = toPort(p)
 	}
 	return ports
 }
