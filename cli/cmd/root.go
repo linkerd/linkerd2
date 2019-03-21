@@ -206,15 +206,15 @@ type proxyConfigOptions struct {
 }
 
 func (options *proxyConfigOptions) validate() error {
-	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
+	if options.linkerdVersion != "" && !alphaNumDashDot.MatchString(options.linkerdVersion) {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
 	}
 
-	if !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
+	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
 	}
 
-	if options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
+	if options.imagePullPolicy != "" && options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
 
@@ -256,7 +256,7 @@ func (options *proxyConfigOptions) validate() error {
 		}
 	}
 
-	if !validProxyLogLevel.MatchString(options.proxyLogLevel) {
+	if options.proxyLogLevel != "" && !validProxyLogLevel.MatchString(options.proxyLogLevel) {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
 			options.proxyLogLevel)
 	}

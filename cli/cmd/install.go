@@ -254,6 +254,9 @@ func (options *installOptions) validate() error {
 	if err := options.proxyConfigOptions.validate(); err != nil {
 		return err
 	}
+	if options.proxyLogLevel == "" {
+		return errors.New("--proxy-log-level must not be empty")
+	}
 
 	if !options.ignoreCluster {
 		exists, err := linkerdConfigAlreadyExistsInCluster()
