@@ -22,15 +22,15 @@ Now, all meshed HTTP communication is private and authenticated by default.
   * Added the ability to adjust the Prometheus log level
 * Proxy
   * **Fixed** a stream leak between the proxy and control plane that could cause
-    the `linkerd-controller` pod to use an excessive amount of memory.
-  * Introduced per-proxy private key generation and dynamic certificate renewal.
+    the `linkerd-controller` pod to use an excessive amount of memory
+  * Introduced per-proxy private key generation and dynamic certificate renewal
   * Added a readiness check endpoint on `:4191/ready` so that Kubernetes doesn't
     consider pods ready until they have acquired a certificate from the Identity
-    controller.
+    controller
   * The proxy's connect timeouts have been updated, especially to improve
-    reconnect behavior between the proxy and control plane.
+    reconnect behavior between the proxy and control plane
 * Web UI
-  * Added TCP statistics to the Linkerd Pod Grafana dashboard
+  * Added TCP stats to the Linkerd Pod Grafana dashboard
   * Fixed the behavior of the Top query 'Start' button if a user's query returns
     no data
   * Added stable sorting for table rows
