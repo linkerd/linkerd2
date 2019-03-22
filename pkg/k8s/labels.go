@@ -213,12 +213,29 @@ func CreatedByAnnotationValue() string {
 	return fmt.Sprintf("linkerd/cli %s", version.Version)
 }
 
+// GetServiceAccountAndNS returns the pod's serviceaccount and namespace.
+func GetServiceAccountAndNS(pod *corev1.Pod) (sa string, ns string) {
+	sa = pod.Spec.ServiceAccountName
+	if sa == "" {
+		sa = "default"
+	}
+
+	ns = pod.GetNamespace()
+	if ns == "" {
+		ns = "default"
+	}
+
+	return
+}
+
 // GetPodLabels returns the set of prometheus owner labels for a given pod
 func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]string {
 	labels := map[string]string{"pod": pod.Name}
 
 	l5dLabel := KindToL5DLabel(ownerKind)
 	labels[l5dLabel] = ownerName
+
+	labels["serviceaccount"], _ = GetServiceAccountAndNS(pod)
 
 	if controllerNS := pod.Labels[ControllerNSLabel]; controllerNS != "" {
 		labels["control_plane_ns"] = controllerNS

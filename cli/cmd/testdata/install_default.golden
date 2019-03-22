@@ -416,6 +416,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
       - args:
         - tap
         - -controller-namespace=linkerd

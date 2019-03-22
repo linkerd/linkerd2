@@ -94,7 +94,8 @@ func diffUpdateAddresses(oldAddrs, newAddrs []*updateAddress) ([]*updateAddress,
 
 // implements the endpointUpdateListener interface
 type endpointListener struct {
-	controllerNS     string
+	controllerNS,
+	identityTrustDomain string
 	stream           pb.Destination_GetServer
 	ownerKindAndName ownerKindAndNameFn
 	labels           map[string]string
@@ -107,15 +108,16 @@ func newEndpointListener(
 	stream pb.Destination_GetServer,
 	ownerKindAndName ownerKindAndNameFn,
 	enableH2Upgrade bool,
-	controllerNS string,
+	controllerNS, identityTrustDomain string,
 ) *endpointListener {
 	return &endpointListener{
-		controllerNS:     controllerNS,
-		stream:           stream,
-		ownerKindAndName: ownerKindAndName,
-		labels:           make(map[string]string),
-		enableH2Upgrade:  enableH2Upgrade,
-		stopCh:           make(chan struct{}),
+		controllerNS:        controllerNS,
+		identityTrustDomain: identityTrustDomain,
+		stream:              stream,
+		ownerKindAndName:    ownerKindAndName,
+		labels:              make(map[string]string),
+		enableH2Upgrade:     enableH2Upgrade,
+		stopCh:              make(chan struct{}),
 		log: log.WithFields(log.Fields{
 			"component": "endpoint-listener",
 		}),
@@ -213,18 +215,14 @@ func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAd
 	}
 }
 
-// TODO: restore TLS identities
-//nolint
 func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
 	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
-	ownerKind, ownerName := l.ownerKindAndName(pod)
-	labels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
+	sa, ns := pkgK8s.GetServiceAccountAndNS(pod)
+	ok, on := l.ownerKindAndName(pod)
+	labels := pkgK8s.GetPodLabels(ok, on, pod)
 
-	// If the pod is controlled by us, then it can be hinted that this destination
-	// knows H2 (and handles our orig-proto translation). Note that this check
-	// does not verify that the pod's control plane matches the control plane
-	// where the destination service is running; all pods injected for all control
-	// planes are considered valid for providing the H2 hint.
+	// If the pod is controlled by any Linkerd control plane, then it can be hinted
+	// that this destination knows H2 (and handles our orig-proto translation).
 	var hint *pb.ProtocolHint
 	if l.enableH2Upgrade && controllerNS != "" {
 		hint = &pb.ProtocolHint{
@@ -234,5 +232,25 @@ func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, 
 		}
 	}
 
-	return labels, hint, nil
+	// If the pod is controlled by the same Linkerd control plane, then it can
+	// participate in identity with peers.
+	//
+	// TODO this should be relaxed to match a trust domain annotation so that
+	// multiple meshes can participate in identity if they share trust roots.
+	var identity *pb.TlsIdentity
+	if l.identityTrustDomain != "" &&
+		controllerNS == l.controllerNS &&
+		pod.Annotations[pkgK8s.IdentityModeAnnotation] == pkgK8s.IdentityModeDefault {
+
+		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNS, l.identityTrustDomain)
+		identity = &pb.TlsIdentity{
+			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
+				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
+					Name: id,
+				},
+			},
+		}
+	}
+
+	return labels, hint, identity
 }

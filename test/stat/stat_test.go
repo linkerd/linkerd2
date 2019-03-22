@@ -67,6 +67,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	for _, tt := range []struct {
 		args         []string
 		expectedRows map[string]string
+		skipTLS      bool
 	}{
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
@@ -77,6 +78,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-prometheus": "1/1",
 				"linkerd-web":        "1/1",
 			},
+			skipTLS: true,
 		},
 		{
 			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
@@ -107,6 +109,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			expectedRows: map[string]string{
 				TestHelper.GetLinkerdNamespace(): "5/5",
 			},
+			skipTLS: true,
 		},
 		{
 			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", "au/" + prometheusAuthority},
@@ -135,7 +138,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				}
 
 				for name, meshed := range tt.expectedRows {
-					if err := validateRowStats(name, meshed, rowStats); err != nil {
+					if err := validateRowStats(name, meshed, rowStats, tt.skipTLS); err != nil {
 						return err
 					}
 				}
@@ -195,7 +198,7 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 	return rowStats, nil
 }
 
-func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowStat) error {
+func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowStat, skipTLS bool) error {
 	stat, ok := rowStats[name]
 	if !ok {
 		return fmt.Errorf("No stats found for [%s]", name)
@@ -232,11 +235,12 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 			name, stat.p99Latency)
 	}
 
-	// this should be 100.00% when control plane is TLSed by default
-	expectedTLSRate := "0%"
-	if stat.tlsPercent != expectedTLSRate {
-		return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
-			expectedTLSRate, name, stat.tlsPercent)
+	if !skipTLS {
+		expectedTLSRate := "100%"
+		if stat.tlsPercent != expectedTLSRate {
+			return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
+				expectedTLSRate, name, stat.tlsPercent)
+		}
 	}
 
 	return nil

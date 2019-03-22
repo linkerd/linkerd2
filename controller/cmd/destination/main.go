@@ -10,7 +10,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,6 +22,7 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableH2Upgrade := flag.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
+	disableIdentity := flag.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	flags.ConfigureAndParse()
 
@@ -41,7 +44,27 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	server, err := destination.NewServer(*addr, *k8sDNSZone, *controllerNamespace, *enableH2Upgrade, k8sAPI, done)
+	trustDomain := ""
+	if *disableIdentity {
+		log.Info("Identity is disabled")
+	} else {
+		global, err := config.Global(consts.MountPathGlobalConfig)
+		if err != nil {
+			log.Fatalf("Failed to load global config: %s", err)
+		}
+
+		trustDomain = global.GetIdentityContext().GetTrustDomain()
+	}
+
+	server, err := destination.NewServer(
+		*addr,
+		*k8sDNSZone,
+		*controllerNamespace,
+		trustDomain,
+		*enableH2Upgrade,
+		k8sAPI,
+		done,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

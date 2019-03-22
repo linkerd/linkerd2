@@ -63,14 +63,14 @@ func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 // checkEndEntityDir checks that the provided directory path exists and is
 // suitable to write key material to, returning the Key, CSR, and Crt paths.
 //
-// If the directory does not exist or if it has incorrect permissions, we assume
-// that the wrong directory was specified incorrectly, instead of trying to
+// If the directory does not exist, we assume that the wrong directory was
+// specified incorrectly, instead of trying to
 // create or repair the directory. In practice, this directory should be tmpfs
 // so that credentials are not written to disk, so we want to be extra sensitive
 // to an incorrectly specified path.
 //
 // If the key, CSR, and/or Crt paths refer to existing files, it is assumed that
-// multiple instances of this process are running, and an error is returned.
+// the proxy has been restarted and these credentials are NOT recreated.
 func checkEndEntityDir(dir string) (string, string, error) {
 	if dir == "" {
 		return "", "", errors.New("no end entity directory specified")

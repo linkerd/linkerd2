@@ -13,11 +13,15 @@ func TestGetPodLabels(t *testing.T) {
 	t.Run("Maps proxy labels to prometheus labels", func(t *testing.T) {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-pod",
+				Name:      "test-pod",
+				Namespace: "test-ns",
 				Labels: map[string]string{
 					ControllerNSLabel:                      "linkerd-namespace",
 					appsv1.DefaultDeploymentUniqueLabelKey: "test-pth",
 				},
+			},
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "test-sa",
 			},
 		}
 
@@ -29,6 +33,7 @@ func TestGetPodLabels(t *testing.T) {
 			"deployment":        "test-deployment",
 			"pod":               "test-pod",
 			"pod_template_hash": "test-pth",
+			"serviceaccount":    "test-sa",
 		}
 
 		podLabels := GetPodLabels(ownerKind, ownerName, pod)
