@@ -200,8 +200,8 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
-	// IdentityServiceAccountTokenPath is the path to the kbuernetes service
-	// account token used by proxies to privision identity.
+	// IdentityServiceAccountTokenPath is the path to the kubernetes service
+	// account token used by proxies to provision identity.
 	//
 	// In the future, this should be changed to a time- and audience-scoped secret.
 	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
