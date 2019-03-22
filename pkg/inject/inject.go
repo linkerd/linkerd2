@@ -25,7 +25,8 @@ const (
 	// must be in absolute form for the proxy to special-case it.
 	localhostDNSOverride = "localhost."
 
-	controllerPodName = "linkerd-controller"
+	controllerDeployName = "linkerd-controller"
+	identityDeployName   = "linkerd-identity"
 
 	// defaultKeepaliveMs is used in the proxy configuration for remote connections
 	defaultKeepaliveMs = 10000
@@ -45,12 +46,21 @@ const (
 	envDestinationContext         = "LINKERD2_PROXY_DESTINATION_CONTEXT"
 	envDestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
 	envDestinationSvcAddr         = "LINKERD2_PROXY_DESTINATION_SVC_ADDR"
-
-	envIdentityDisabled = "LINKERD2_PROXY_IDENTITY_DISABLED"
-	identityDisabledMsg = "Identity is not yet available"
+	envDestinationSvcName         = "LINKERD2_PROXY_DESTINATION_SVC_NAME"
 
 	// destinationAPIPort is the port exposed by the linkerd-destination service
 	destinationAPIPort = 8086
+
+	envIdentityDisabled     = "LINKERD2_PROXY_IDENTITY_DISABLED"
+	envIdentityDir          = "LINKERD2_PROXY_IDENTITY_DIR"
+	envIdentityLocalName    = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
+	envIdentitySvcAddr      = "LINKERD2_PROXY_IDENTITY_SVC_ADDR"
+	envIdentitySvcName      = "LINKERD2_PROXY_IDENTITY_SVC_NAME"
+	envIdentityTokenFile    = "LINKERD2_PROXY_IDENTITY_TOKEN_FILE"
+	envIdentityTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+
+	identityAPIPort     = 8080
+	identityDisabledMsg = "Identity is not yet available"
 )
 
 var injectableKinds = []string{
@@ -70,15 +80,17 @@ type objMeta struct {
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	configs                *config.All
-	nsAnnotations          map[string]string
-	meta                   metav1.TypeMeta
-	obj                    runtime.Object
-	workLoadMeta           *metav1.ObjectMeta
-	podMeta                objMeta
-	podLabels              map[string]string
-	podSpec                *v1.PodSpec
+	configs       *config.All
+	nsAnnotations map[string]string
+	meta          metav1.TypeMeta
+	obj           runtime.Object
+	workLoadMeta  *metav1.ObjectMeta
+	podMeta       objMeta
+	podLabels     map[string]string
+	podSpec       *v1.PodSpec
+
 	destinationDNSOverride string
+	identityDNSOverride    string
 	proxyOutboundCapacity  map[string]uint
 }
 
@@ -263,8 +275,13 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			return err
 		}
 
-		if v.Name == controllerPodName && v.Namespace == conf.configs.GetGlobal().GetLinkerdNamespace() {
-			conf.destinationDNSOverride = localhostDNSOverride
+		if v.Namespace == conf.configs.GetGlobal().GetLinkerdNamespace() {
+			switch v.Name {
+			case controllerDeployName:
+				conf.destinationDNSOverride = localhostDNSOverride
+			case identityDeployName:
+				conf.identityDNSOverride = localhostDNSOverride
+			}
 		}
 
 		conf.obj = v
@@ -354,8 +371,14 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		SecurityContext:          &v1.SecurityContext{RunAsUser: &proxyUID},
 		Ports: []v1.ContainerPort{
-			{Name: k8s.ProxyPortName, ContainerPort: conf.proxyInboundPort()},
-			{Name: k8s.ProxyAdminPortName, ContainerPort: conf.proxyAdminPort()},
+			{
+				Name:          k8s.ProxyPortName,
+				ContainerPort: conf.proxyInboundPort(),
+			},
+			{
+				Name:          k8s.ProxyAdminPortName,
+				ContainerPort: conf.proxyAdminPort(),
+			},
 		},
 		Resources: conf.proxyResourceRequirements(),
 		Env: []v1.EnvVar{
@@ -427,14 +450,75 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
-	sidecar.Env = append(sidecar.Env, v1.EnvVar{
-		Name:  envIdentityDisabled,
-		Value: identityDisabledMsg,
-	})
-	if idctx := conf.configs.GetGlobal().GetIdentityContext(); idctx != nil {
-		log.Warn("Ignoring Identity configuration.")
+	idctx := conf.configs.GetGlobal().GetIdentityContext()
+	if idctx == nil {
+		sidecar.Env = append(sidecar.Env, v1.EnvVar{
+			Name:  envIdentityDisabled,
+			Value: identityDisabledMsg,
+		})
+		patch.addContainer(&sidecar)
+		return
 	}
 
+	sidecar.Env = append(sidecar.Env, []v1.EnvVar{
+		{
+			Name:  envIdentityDir,
+			Value: k8s.MountPathEndEntity,
+		},
+		{
+			Name:  envIdentityTrustAnchors,
+			Value: idctx.GetTrustAnchorsPem(),
+		},
+		{
+			Name:  envIdentityTokenFile,
+			Value: k8s.IdentityServiceAccountTokenPath,
+		},
+		{
+			Name:  envIdentitySvcAddr,
+			Value: conf.proxyIdentityAddr(),
+		},
+		{
+			Name:      "_pod_sa",
+			ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "spec.serviceAccountName"}},
+		},
+		{
+			Name:  "_l5d_ns",
+			Value: conf.configs.GetGlobal().GetLinkerdNamespace(),
+		},
+		{
+			Name:  "_l5d_trustdomain",
+			Value: idctx.GetTrustDomain(),
+		},
+		{
+			Name:  envIdentityLocalName,
+			Value: "$(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
+		},
+		{
+			Name:  envIdentitySvcName,
+			Value: "linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
+		},
+		{
+			Name:  envDestinationSvcName,
+			Value: "linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
+		},
+	}...)
+
+	if len(conf.podSpec.Volumes) == 0 {
+		patch.addVolumeRoot()
+	}
+	patch.addVolume(&v1.Volume{
+		Name: k8s.IdentityEndEntityVolumeName,
+		VolumeSource: v1.VolumeSource{
+			EmptyDir: &v1.EmptyDirVolumeSource{
+				Medium: "Memory",
+			},
+		},
+	})
+	sidecar.VolumeMounts = append(sidecar.VolumeMounts, v1.VolumeMount{
+		Name:      k8s.IdentityEndEntityVolumeName,
+		MountPath: k8s.MountPathEndEntity,
+		ReadOnly:  false,
+	})
 	patch.addContainer(&sidecar)
 }
 
@@ -470,7 +554,11 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
 
-	patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
+	if conf.configs.GetGlobal().GetIdentityContext() != nil {
+		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
+	} else {
+		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
+	}
 
 	for k, v := range conf.podLabels {
 		patch.addPodLabel(k, v)
@@ -633,6 +721,14 @@ func (conf *ResourceConfig) proxyDestinationAddr() string {
 		dns = conf.destinationDNSOverride
 	}
 	return fmt.Sprintf("%s:%d", dns, destinationAPIPort)
+}
+
+func (conf *ResourceConfig) proxyIdentityAddr() string {
+	dns := fmt.Sprintf("linkerd-identity.%s.svc.cluster.local", conf.configs.GetGlobal().GetLinkerdNamespace())
+	if conf.identityDNSOverride != "" {
+		dns = conf.identityDNSOverride
+	}
+	return fmt.Sprintf("%s:%d", dns, identityAPIPort)
 }
 
 func (conf *ResourceConfig) proxyControlListenAddr() string {

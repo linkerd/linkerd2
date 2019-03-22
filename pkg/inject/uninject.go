@@ -46,6 +46,14 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 		}
 	}
 	t.Containers = containers
+
+	volumes := []v1.Volume{}
+	for _, volume := range t.Volumes {
+		if volume.Name != k8s.IdentityEndEntityVolumeName {
+			volumes = append(volumes, volume)
+		}
+	}
+	t.Volumes = volumes
 }
 
 func uninjectObjectMeta(t *metav1.ObjectMeta) {
