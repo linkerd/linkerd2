@@ -281,7 +281,6 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.destinationDNSOverride = localhostDNSOverride
 			case identityDeployName:
 				conf.identityDNSOverride = localhostDNSOverride
-			default:
 			}
 		}
 

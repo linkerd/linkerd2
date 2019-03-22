@@ -81,8 +81,6 @@ func (p *Patch) addInitContainer(container *corev1.Container) {
 	})
 }
 
-// TODO use with new identity injection
-//nolint:unused
 func (p *Patch) addVolumeRoot() {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
@@ -91,8 +89,6 @@ func (p *Patch) addVolumeRoot() {
 	})
 }
 
-// TODO use with new identity injection
-//nolint:unused
 func (p *Patch) addVolume(volume *corev1.Volume) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
