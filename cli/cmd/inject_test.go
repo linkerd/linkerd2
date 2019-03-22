@@ -39,8 +39,12 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
+	transformer := &resourceTransformerInject{
+		configs:             tc.testInjectConfig,
+		overrideAnnotations: map[string]string{},
+	}
 
-	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, tc.testInjectConfig); exitCode != 0 {
+	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
 	diffTestdata(t, tc.goldenFileName, output.String())
@@ -211,7 +215,8 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, testConfig)
+	transformer := &resourceTransformerInject{configs: testConfig}
+	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
@@ -268,8 +273,8 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	configs := testInstallConfig()
-	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
+	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 	diffTestdata(t, tc.expectedFile, actual.String())
@@ -286,8 +291,8 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	configs := testInstallConfig()
-	if exitCode := runInjectCmd(in, errBuf, actual, configs); exitCode != 0 {
+	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -121,18 +120,14 @@ func (p *Patch) addPodAnnotationsRoot() {
 	})
 }
 
-func (p *Patch) addPodAnnotation(key, value string) {
+// AddPodAnnotation creates an 'add' JSON patch operation structure to append
+// the given annotation and value.
+func (p *Patch) AddPodAnnotation(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodAnnotations + "/" + escapeKey(key),
 		Value: value,
 	})
-}
-
-// AddCreatedByPodAnnotation tags the pod so that we can tell apart injections
-// from the CLI and the webhook
-func (p *Patch) AddCreatedByPodAnnotation(s string) {
-	p.addPodAnnotation(k8s.CreatedByAnnotation, s)
 }
 
 // IsEmpty returns true if the patch doesn't contain any operations

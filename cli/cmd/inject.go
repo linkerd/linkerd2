@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -34,15 +35,13 @@ type injectOptions struct {
 }
 
 type resourceTransformerInject struct {
-	configs *config.All
-
+	configs               *config.All
+	overrideAnnotations   map[string]string
 	proxyOutboundCapacity map[string]uint
 }
 
-func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerInject{
-		configs: conf,
-	})
+func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
+	return transformInput(inputs, errWriter, outWriter, transformer)
 }
 
 func newInjectOptions() *injectOptions {
@@ -89,9 +88,14 @@ sub-folders, or coming from stdin.`,
 			if err != nil {
 				return err
 			}
+			overrideAnnotations := map[string]string{}
+			options.overrideConfigs(configs, overrideAnnotations)
 
-			options.overrideConfigs(configs)
-			exitCode := uninjectAndInject(in, stderr, stdout, configs)
+			transformer := &resourceTransformerInject{
+				configs:             configs,
+				overrideAnnotations: overrideAnnotations,
+			}
+			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
 			return nil
 		},
@@ -106,12 +110,12 @@ sub-folders, or coming from stdin.`,
 	return cmd
 }
 
-func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
+func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
 	var out bytes.Buffer
-	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, conf); exitCode != 0 {
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, transformer.configs); exitCode != 0 {
 		return exitCode
 	}
-	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, conf)
+	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, transformer)
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
@@ -134,7 +138,12 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if p.IsEmpty() {
 		return bytes, reports, nil
 	}
-	p.AddCreatedByPodAnnotation(k8s.CreatedByAnnotationValue())
+
+	for annotation, value := range rt.overrideAnnotations {
+		p.AddPodAnnotation(annotation, value)
+	}
+	p.AddPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
+
 	patchJSON, err := p.Marshal()
 	if err != nil {
 		return nil, nil, err
@@ -282,65 +291,85 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 }
 
 // overrideConfigs uses command-line overrides to update the provided configs
-func (options *injectOptions) overrideConfigs(configs *config.All) {
+func (options *injectOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
 	if len(options.ignoreInboundPorts) > 0 {
 		configs.Proxy.IgnoreInboundPorts = toPorts(options.ignoreInboundPorts)
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = parsePorts(configs.Proxy.IgnoreInboundPorts)
 	}
 	if len(options.ignoreOutboundPorts) > 0 {
 		configs.Proxy.IgnoreOutboundPorts = toPorts(options.ignoreOutboundPorts)
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = parsePorts(configs.Proxy.IgnoreOutboundPorts)
 	}
 
 	if options.proxyAdminPort != 0 {
 		configs.Proxy.AdminPort = toPort(options.proxyAdminPort)
+		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = parsePort(configs.Proxy.AdminPort)
 	}
 	if options.proxyControlPort != 0 {
 		configs.Proxy.ControlPort = toPort(options.proxyControlPort)
+		overrideAnnotations[k8s.ProxyControlPortAnnotation] = parsePort(configs.Proxy.ControlPort)
 	}
 	if options.proxyInboundPort != 0 {
 		configs.Proxy.InboundPort = toPort(options.proxyInboundPort)
+		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = parsePort(configs.Proxy.InboundPort)
 	}
 	if options.proxyOutboundPort != 0 {
 		configs.Proxy.OutboundPort = toPort(options.proxyOutboundPort)
+		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = parsePort(configs.Proxy.OutboundPort)
 	}
 
 	if options.dockerRegistry != "" {
 		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
 		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
 	}
 
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
+		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
 	}
 
 	if options.proxyUID != 0 {
 		configs.Proxy.ProxyUid = options.proxyUID
+		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(options.proxyUID, 10)
 	}
 
 	if options.proxyLogLevel != "" {
 		configs.Proxy.LogLevel = &config.LogLevel{Level: options.proxyLogLevel}
+		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
 	if options.disableExternalProfiles {
 		configs.Proxy.DisableExternalProfiles = true
+		overrideAnnotations[k8s.ProxyDisableExternalProfilesAnnotation] = "true"
 	}
 
 	if options.proxyCPURequest != "" {
 		configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = options.proxyCPURequest
 	}
 	if options.proxyCPULimit != "" {
 		configs.Proxy.Resource.LimitCpu = options.proxyCPULimit
+		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = options.proxyCPULimit
 	}
 	if options.proxyMemoryRequest != "" {
 		configs.Proxy.Resource.RequestMemory = options.proxyMemoryRequest
+		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = options.proxyMemoryRequest
 	}
 	if options.proxyMemoryLimit != "" {
 		configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
+		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
 	}
 }
 
 func toPort(p uint) *config.Port {
 	return &config.Port{Port: uint32(p)}
+}
+
+func parsePort(port *config.Port) string {
+	return strconv.FormatUint(uint64(port.GetPort()), 10)
 }
 
 func toPorts(ints []uint) []*config.Port {
@@ -349,4 +378,13 @@ func toPorts(ints []uint) []*config.Port {
 		ports[i] = toPort(p)
 	}
 	return ports
+}
+
+func parsePorts(ports []*config.Port) string {
+	var str string
+	for _, port := range ports {
+		str += parsePort(port) + ","
+	}
+
+	return strings.TrimSuffix(str, ",")
 }
