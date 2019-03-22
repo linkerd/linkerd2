@@ -260,6 +260,57 @@ func TestEndpointListener(t *testing.T) {
 		}
 	})
 
+	t.Run("Does not send TlsIdentity for non-default identity-modes", func(t *testing.T) {
+		expectedPodName := "pod1"
+		expectedPodNamespace := thisNS
+		expectedControllerNamespace := "other-linkerd-namespace"
+		expectedPodDeployment := podDeployment
+
+		podForAddedAddress1 := &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      expectedPodName,
+				Namespace: expectedPodNamespace,
+				Annotations: map[string]string{
+					pkgK8s.IdentityModeAnnotation: "optional",
+				},
+				Labels: map[string]string{
+					pkgK8s.ControllerNSLabel:    expectedControllerNamespace,
+					pkgK8s.ProxyDeploymentLabel: expectedPodDeployment,
+				},
+			},
+			Status: v1.PodStatus{
+				Phase: v1.PodRunning,
+			},
+		}
+
+		ownerKindAndName := func(pod *v1.Pod) (string, string) {
+			return deploymentKind, expectedPodDeployment
+		}
+
+		mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+		listener := newEndpointListener(
+			mockGetServer,
+			ownerKindAndName,
+			false,
+			expectedControllerNamespace,
+			"trust.domain",
+		)
+
+		add := []*updateAddress{
+			{address: addedAddress1, pod: podForAddedAddress1},
+		}
+		listener.Update(add, nil)
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		if addrs[0].TlsIdentity != nil {
+			t.Fatalf("Expected no TlsIdentity to be sent, but got [%v]", addrs[0].TlsIdentity)
+		}
+	})
+
 	t.Run("Does not send TlsIdentity for other meshes", func(t *testing.T) {
 		expectedPodName := "pod1"
 		expectedPodNamespace := thisNS
