@@ -340,11 +340,8 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		"LATENCY_P95",
 		"LATENCY_P99",
 		"TLS",
+		"TCP CONN",
 	}...)
-
-	if resourceType != k8s.Authority {
-		headers = append(headers, "TCP CONNECTIONS")
-	}
 
 	if showTCPStats(options, resourceType) {
 		headers = append(headers, []string{
@@ -364,15 +361,14 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
-		// don't show TCP Connections for Authorities
-		if resourceType == k8s.Authority {
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
-			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
-		}
-
 		if showTCPStats(options, resourceType) {
 			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fB/s\t%.1fB/s\t\n"
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
+		}
+
+		// always show TCP Connections as - for Authorities
+		if resourceType == k8s.Authority {
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t-\t\n"
 		}
 
 		if options.allNamespaces {
