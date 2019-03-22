@@ -1,15 +1,17 @@
 ## edge-19.3.3
 
-**Significant Update** This edge release introduces a new TLS Identity system
-into the default Linkerd installation, replacing `tls=optional` and the
-`linkerd-ca` controller. Now, proxies generate ephemeral private keys into a
-tmpfs directory and dynamically refresh certificates, authenticated by
-Kubernetes ServiceAccount tokens, via the newly-introduced Identity controller.
+**Significant Update**:
+
+This edge release introduces a new TLS Identity system into the default Linkerd
+installation, replacing `tls=optional` and the `linkerd-ca` controller. Now,
+proxies generate ephemeral private keys into a tmpfs directory and dynamically
+refresh certificates, authenticated by Kubernetes ServiceAccount tokens, via the
+newly-introduced Identity controller.
 
 Now, all meshed HTTP communication is private and authenticated by default.
 
 * CLI
-  * Changed `install` to accept or generate an issuer Secrets for the Identity
+  * Changed `install` to accept or generate an issuer Secret for the Identity
     controller.
   * Changed `install` to fail in the case of a conflict with an existing
     installation; this can be disabled with the `--ignore-cluster` flag
@@ -20,7 +22,7 @@ Now, all meshed HTTP communication is private and authenticated by default.
   * Removed the `--tls=optional` flag from the `linkerd install` command, since
     TLS is now enabled by default
   * Added the ability to adjust the Prometheus log level
-* Proxy
+* Proxyß
   * **Fixed** a stream leak between the proxy and control plane that could cause
     the `linkerd-controller` pod to use an excessive amount of memory
   * Introduced per-proxy private key generation and dynamic certificate renewal
