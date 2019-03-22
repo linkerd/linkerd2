@@ -7,4 +7,4 @@ if [ -z "${LINKERD2_PROXY_IDENTITY_DISABLED:-}" ]; then
         -name "$LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
 fi
 
-/usr/lib/linkerd/linkerd2-proxy
+exec /usr/lib/linkerd/linkerd2-proxy
