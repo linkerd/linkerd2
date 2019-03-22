@@ -52,7 +52,7 @@ func main() {
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 	if pem == "" {
-		err = fmt.Errorf("%s must be set", envTrustAnchors)
+		err = fmt.Errorf("'%s' must be set", envTrustAnchors)
 		return
 	}
 
@@ -73,7 +73,7 @@ func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 // multiple instances of this process are running, and an error is returned.
 func checkEndEntityDir(dir string) (string, string, error) {
 	if dir == "" {
-		return "", "", errors.New("No end entity directory specified")
+		return "", "", errors.New("no end entity directory specified")
 	}
 
 	s, err := os.Stat(dir)
@@ -81,20 +81,17 @@ func checkEndEntityDir(dir string) (string, string, error) {
 		return "", "", err
 	}
 	if !s.IsDir() {
-		return "", "", fmt.Errorf("Not a directory: %s", dir)
+		return "", "", fmt.Errorf("not a directory: %s", dir)
 	}
-	// if s.Mode().Perm()&0002 == 0002 {
-	// 	return "", "", "", fmt.Errorf("Must not be world-writeable: %s; got %s", dir, s.Mode().Perm())
-	// }
 
 	keyPath := filepath.Join(dir, "key.p8")
 	if err = checkNotExists(keyPath); err != nil {
-		log.Info(err.Error())
+		log.Infof("Using with pre-existing key: %s", keyPath)
 	}
 
 	csrPath := filepath.Join(dir, "csr.der")
 	if err = checkNotExists(csrPath); err != nil {
-		log.Info(err.Error())
+		log.Infof("Using with pre-existing CSR: %s", keyPath)
 	}
 
 	return keyPath, csrPath, nil
@@ -103,7 +100,7 @@ func checkEndEntityDir(dir string) (string, string, error) {
 func checkNotExists(p string) (err error) {
 	_, err = os.Stat(p)
 	if err == nil {
-		err = fmt.Errorf("Already exists: %s", p)
+		err = fmt.Errorf("already exists: %s", p)
 	} else if os.IsNotExist(err) {
 		err = nil
 	}
@@ -124,18 +121,18 @@ func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
 
 func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	if id == "" {
-		return nil, errors.New("A non-empty identity is required")
+		return nil, errors.New("a non-empty identity is required")
 	}
 
 	// TODO do proper DNS name validation.
 	csr := x509.CertificateRequest{DNSNames: []string{id}}
 	csrb, err := x509.CreateCertificateRequest(rand.Reader, &csr, key)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create CSR: %s", err)
+		return nil, fmt.Errorf("failed to create CSR: %s", err)
 	}
 
 	if err = ioutil.WriteFile(p, csrb, 0600); err != nil {
-		return nil, fmt.Errorf("Failed to write CSR: %s", err)
+		return nil, fmt.Errorf("failed to write CSR: %s", err)
 	}
 
 	return csrb, nil
