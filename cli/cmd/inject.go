@@ -341,8 +341,8 @@ func (options *injectOptions) overrideConfigs(configs *config.All, overrideAnnot
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
+	configs.Proxy.DisableExternalProfiles = options.disableExternalProfiles
 	if options.disableExternalProfiles {
-		configs.Proxy.DisableExternalProfiles = true
 		overrideAnnotations[k8s.ProxyDisableExternalProfilesAnnotation] = "true"
 	}
 
