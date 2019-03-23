@@ -1,0 +1,71 @@
+openapi: 3.0.1
+paths:
+  /:
+    get: {}
+
+  /books:
+    post: {}
+
+  /books/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      x-linkerd-retry: true
+  /books/{id}/edit:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+
+  /books/{id}/delete:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /authors:
+    post: {}
+
+  /authors/{id}:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+
+  /authors/{id}/edit:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64          
+
+  /authors/{id}/delete:
+    post:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64

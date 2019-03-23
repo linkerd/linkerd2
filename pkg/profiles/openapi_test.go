@@ -28,6 +28,9 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 										},
 									},
 								},
+								VendorExtensible: spec.VendorExtensible{
+									Extensions: spec.Extensions.Add("x-linkerd-retry", true),
+								},
 							},
 						},
 					},
@@ -61,6 +64,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 							IsFailure: true,
 						},
 					},
+					IsRetryable: true,
 				},
 			},
 		},
