@@ -47,8 +47,8 @@ func RenderOpenAPI(fileName, namespace, name string, w io.Writer) error {
 	return writeProfile(profile, w)
 }
 
-// getXLinkerdValue takes (value,ok) from Extensions.GetBool and simply returns the value
-func getXLinkerdValue(value bool, ok bool) bool {
+// getXLinkerdRetryValue takes (value,ok) from Extensions.GetBool and simply returns the value
+func getXLinkerdRetryValue(value bool, ok bool) bool {
 	return value
 }
 
@@ -76,31 +76,31 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name string) sp.Se
 		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses, getXLinkerdValue(item.Delete.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses, getXLinkerdRetryValue(item.Delete.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Get != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses, getXLinkerdValue(item.Get.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses, getXLinkerdRetryValue(item.Get.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Head != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses, getXLinkerdValue(item.Head.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses, getXLinkerdRetryValue(item.Head.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Options != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses, getXLinkerdValue(item.Options.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses, getXLinkerdRetryValue(item.Options.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Patch != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses, getXLinkerdValue(item.Patch.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses, getXLinkerdRetryValue(item.Patch.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Post != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses, getXLinkerdValue(item.Post.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses, getXLinkerdRetryValue(item.Post.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 		if item.Put != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses, getXLinkerdValue(item.Put.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
+			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses, getXLinkerdRetryValue(item.Put.VendorExtensible.Extensions.GetBool("x-linkerd-retry")))
 			routes = append(routes, spec)
 		}
 	}
