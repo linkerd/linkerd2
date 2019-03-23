@@ -11,7 +11,7 @@ import (
 func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
-	var xLinkerdRetry spec.Extensions
+	xLinkerdRetry := make(spec.Extensions)
 	xLinkerdRetry.Add("x-linkerd-retry", true)
 	swagger := spec.Swagger{
 		SwaggerProps: spec.SwaggerProps{
