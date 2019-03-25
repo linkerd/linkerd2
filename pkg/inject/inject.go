@@ -2,7 +2,6 @@ package inject
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -74,6 +73,10 @@ var injectableKinds = []string{
 	k8s.StatefulSet,
 }
 
+// OwnerRetrieverFunc is a function that returns a pod's owner reference
+// kind and name
+type OwnerRetrieverFunc func(*v1.Pod) (string, string)
+
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
 	configs                *config.All
@@ -81,6 +84,7 @@ type ResourceConfig struct {
 	destinationDNSOverride string
 	identityDNSOverride    string
 	proxyOutboundCapacity  map[string]uint
+	ownerRetriever         OwnerRetrieverFunc
 
 	workload struct {
 		obj      runtime.Object
@@ -130,6 +134,13 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 	return conf
 }
 
+// WithOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
+// the kind and name of the workload's owner reference
+func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
+	conf.ownerRetriever = f
+	return conf
+}
+
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.workload.obj)
@@ -137,26 +148,21 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 
 // ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
 func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
-	if _, err := conf.ParseMeta(bytes, ""); err != nil {
+	if _, err := conf.ParseMeta(bytes); err != nil {
 		return nil, err
 	}
 	r := newReport(conf)
-	return &r, conf.Parse(bytes)
+	return &r, conf.parse(bytes)
 }
 
 // ParseMeta extracts metadata from bytes.
-// If bytes doesn't contain the namespace (webhook case) then it must be
-// provided in the second argument.
 // It returns false if the workload's payload is empty.
-func (conf *ResourceConfig) ParseMeta(bytes []byte, ns string) (bool, error) {
+func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.workload.metaType); err != nil {
 		return false, err
 	}
 	if err := yaml.Unmarshal(bytes, &conf.pod); err != nil {
 		return false, err
-	}
-	if ns != "" {
-		conf.pod.Meta.Namespace = ns
 	}
 	return conf.pod.Meta != nil, nil
 }
@@ -169,7 +175,7 @@ func (conf *ResourceConfig) GetPatch(
 	report := newReport(conf)
 	log.Infof("received %s/%s", strings.ToLower(conf.workload.metaType.Kind), report.Name)
 
-	if err := conf.Parse(bytes); err != nil {
+	if err := conf.parse(bytes); err != nil {
 		return nil, nil, err
 	}
 
@@ -233,9 +239,9 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	return yaml.Marshal(obj)
 }
 
-// Parse parses the bytes payload, filling the gaps in ResourceConfig
+// parse parses the bytes payload, filling the gaps in ResourceConfig
 // depending on the workload kind
-func (conf *ResourceConfig) Parse(bytes []byte) error {
+func (conf *ResourceConfig) parse(bytes []byte) error {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
 	// version we support then it will provide a representation of that
@@ -340,10 +346,25 @@ func (conf *ResourceConfig) Parse(bytes []byte) error {
 
 		conf.workload.obj = v
 		conf.pod.spec = &v.Spec
-		ns := conf.pod.Meta.Namespace
 		conf.pod.Meta = &v.ObjectMeta
-		if ns != "" {
-			conf.pod.Meta.Namespace = ns
+
+		if conf.ownerRetriever != nil {
+			kind, name := conf.ownerRetriever(v)
+			switch kind {
+			case k8s.Deployment:
+				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
+			case k8s.ReplicationController:
+				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = name
+			case k8s.ReplicaSet:
+				conf.pod.labels[k8s.ProxyReplicaSetLabel] = name
+			case k8s.Job:
+				conf.pod.labels[k8s.ProxyJobLabel] = name
+			case k8s.DaemonSet:
+				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
+			case k8s.StatefulSet:
+				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
+			case k8s.Pod:
+			}
 		}
 	}
 
@@ -353,15 +374,6 @@ func (conf *ResourceConfig) Parse(bytes []byte) error {
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.pod.spec = &template.Spec
 	conf.pod.Meta = &template.ObjectMeta
-}
-
-// GetPod returns the parsed object as a *v1.Pod variable
-func (conf *ResourceConfig) GetPod() (*v1.Pod, error) {
-	pod, ok := conf.workload.obj.(*v1.Pod)
-	if !ok {
-		return nil, errors.New("the webhook payload doesn't correspond to a pod")
-	}
-	return pod, nil
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
@@ -588,11 +600,13 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
-	if len(conf.pod.Meta.Labels) == 0 {
-		patch.addPodLabelsRoot()
-	}
-	for k, v := range conf.pod.labels {
-		patch.AddPodLabel(k, v)
+	if len(conf.pod.labels) > 0 {
+		if len(conf.pod.Meta.Labels) == 0 {
+			patch.addPodLabelsRoot()
+		}
+		for k, v := range conf.pod.labels {
+			patch.addPodLabel(k, v)
+		}
 	}
 }
 

@@ -98,20 +98,18 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return nil, err
 	}
 
-	namespaces, err := w.k8sAPI.GetObjects("", pkgK8s.Namespace, request.Namespace)
+	namespace, err := w.k8sAPI.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
-	if len(namespaces) == 0 {
-		return nil, fmt.Errorf("namespace \"%s\" not found", request.Namespace)
-	}
-	nsAnnotations := namespaces[0].(*v1.Namespace).GetAnnotations()
+	nsAnnotations := namespace.GetAnnotations()
 
 	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
 	conf := inject.NewResourceConfig(configs).
+		WithOwnerRetriever(w.ownerRetriever(request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
-	nonEmpty, err := conf.ParseMeta(request.Object.Raw, request.Namespace)
+	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
@@ -135,21 +133,15 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 
-	key, name, err := w.getLabelForParent(conf)
-	if err != nil {
-		return nil, err
-	}
-	if key != "" && name != "" {
-		p.AddPodLabel(key, name)
-	}
-
 	patchJSON, err := p.Marshal()
 	if err != nil {
 		return nil, err
 	}
 	// TODO: refactor GetPatch() so it only returns one report item
-	r := reports[0]
-	log.Infof("patch generated for: %s", r.ResName())
+	if len(reports) > 0 {
+		r := reports[0]
+		log.Infof("patch generated for: %s", r.ResName())
+	}
 	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
@@ -159,27 +151,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-func (w *Webhook) getLabelForParent(conf *inject.ResourceConfig) (string, string, error) {
-	pod, err := conf.GetPod()
-	if err != nil {
-		return "", "", err
+func (w *Webhook) ownerRetriever(ns string) inject.OwnerRetrieverFunc {
+	return func(p *v1.Pod) (string, string) {
+		p.SetNamespace(ns)
+		return w.k8sAPI.GetOwnerKindAndName(p)
 	}
-	if kind, name := w.k8sAPI.GetOwnerKindAndName(pod); kind != pkgK8s.Pod {
-		switch kind {
-		case pkgK8s.Deployment:
-			return pkgK8s.ProxyDeploymentLabel, name, nil
-		case pkgK8s.ReplicationController:
-			return pkgK8s.ProxyReplicationControllerLabel, name, nil
-		case pkgK8s.ReplicaSet:
-			return pkgK8s.ProxyReplicaSetLabel, name, nil
-		case pkgK8s.Job:
-			return pkgK8s.ProxyJobLabel, name, nil
-		case pkgK8s.DaemonSet:
-			return pkgK8s.ProxyDaemonSetLabel, name, nil
-		case pkgK8s.StatefulSet:
-			return pkgK8s.ProxyStatefulSetLabel, name, nil
-		}
-		return "", "", fmt.Errorf("unsupported parent kind \"%s\"", kind)
-	}
-	return "", "", nil
 }

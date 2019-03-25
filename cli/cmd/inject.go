@@ -119,7 +119,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	nonEmpty, err := conf.ParseMeta(bytes, "")
+	nonEmpty, err := conf.ParseMeta(bytes)
 	if err != nil {
 		return nil, nil, err
 	}

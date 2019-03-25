@@ -105,7 +105,7 @@ func (p *Patch) addPodLabelsRoot() {
 }
 
 // AddPodLabel appends the label with the provided key and value
-func (p *Patch) AddPodLabel(key, value string) {
+func (p *Patch) addPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodLabels + "/" + escapeKey(key),
