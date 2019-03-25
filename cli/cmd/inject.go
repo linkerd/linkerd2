@@ -131,6 +131,14 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		r := inject.Report{UnsupportedResource: true}
 		return bytes, []inject.Report{r}, nil
 	}
+
+	conf.AppendPodAnnotations(map[string]string{
+		k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
+	})
+	if len(rt.overrideAnnotations) > 0 {
+		conf.AppendPodAnnotations(rt.overrideAnnotations)
+	}
+
 	p, reports, err := conf.GetPatch(bytes, inject.ShouldInjectCLI)
 	if err != nil {
 		return nil, nil, err
@@ -138,11 +146,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if p.IsEmpty() {
 		return bytes, reports, nil
 	}
-
-	for annotation, value := range rt.overrideAnnotations {
-		p.AddPodAnnotation(annotation, value)
-	}
-	p.AddPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 
 	patchJSON, err := p.Marshal()
 	if err != nil {
@@ -290,7 +293,9 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 	return api.Config(context.Background(), &public.Empty{})
 }
 
-// overrideConfigs uses command-line overrides to update the provided configs
+// overrideConfigs uses command-line overrides to update the provided configs.
+// the overrideAnnotations map keeps track of which configs are overridden, by
+// storing the corresponding annotations and values.
 func (options *injectOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
 	if len(options.ignoreInboundPorts) > 0 {
 		configs.Proxy.IgnoreInboundPorts = toPorts(options.ignoreInboundPorts)
@@ -350,6 +355,9 @@ func (options *injectOptions) overrideConfigs(configs *config.All, overrideAnnot
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
+	// keep track of this option because its true/false value results in different
+	// values being assigned to the LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+	// env var. Its annotation is added only if its value is true.
 	configs.Proxy.DisableExternalProfiles = options.disableExternalProfiles
 	if options.disableExternalProfiles {
 		overrideAnnotations[k8s.ProxyDisableExternalProfilesAnnotation] = "true"

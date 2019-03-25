@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -120,9 +121,7 @@ func (p *Patch) addPodAnnotationsRoot() {
 	})
 }
 
-// AddPodAnnotation creates an 'add' JSON patch operation structure to append
-// the given annotation and value.
-func (p *Patch) AddPodAnnotation(key, value string) {
+func (p *Patch) addPodAnnotation(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodAnnotations + "/" + escapeKey(key),

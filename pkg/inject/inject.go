@@ -95,9 +95,10 @@ type ResourceConfig struct {
 	pod struct {
 		// Meta is the pod's metadata. It's exported so that the YAML marshaling
 		// will work in the ParseMeta() function.
-		Meta   *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-		labels map[string]string
-		spec   *v1.PodSpec
+		Meta        *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+		labels      map[string]string
+		annotations map[string]string
+		spec        *v1.PodSpec
 	}
 }
 
@@ -110,6 +111,7 @@ func NewResourceConfig(configs *config.All) *ResourceConfig {
 
 	config.pod.Meta = &metav1.ObjectMeta{}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
+	config.pod.annotations = map[string]string{}
 	return config
 }
 
@@ -139,6 +141,13 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
 	conf.ownerRetriever = f
 	return conf
+}
+
+// AppendPodAnnotations appends the given annotations to the pod spec in conf
+func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) {
+	for annotation, value := range annotations {
+		conf.pod.annotations[annotation] = value
+	}
 }
 
 // YamlMarshalObj returns the yaml for the workload in conf
@@ -187,8 +196,8 @@ func (conf *ResourceConfig) GetPatch(
 	if conf.pod.spec != nil {
 		report.update(conf)
 		if shouldInject(conf, report) {
-			conf.injectPodSpec(patch)
 			conf.injectObjectMeta(patch)
+			conf.injectPodSpec(patch)
 		}
 	} else {
 		report.UnsupportedResource = true
@@ -365,6 +374,10 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
 		}
+	}
+
+	if conf.pod.Meta.Annotations == nil {
+		conf.pod.Meta.Annotations = map[string]string{}
 	}
 
 	return nil
@@ -553,7 +566,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.Volu
 		Image:                    conf.taggedProxyInitImage(),
 		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args:                     conf.proxyInitArgs(),
+		Args: conf.proxyInitArgs(),
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -591,12 +604,12 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	if len(conf.pod.Meta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
-	patch.AddPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
+	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
 
 	if conf.configs.GetGlobal().GetIdentityContext() != nil {
-		patch.AddPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
+		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
 	} else {
-		patch.AddPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
+		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
 	if len(conf.pod.labels) > 0 {
@@ -607,6 +620,17 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 			patch.addPodLabel(k, v)
 		}
 	}
+
+	for k, v := range conf.pod.annotations {
+		patch.addPodAnnotation(k, v)
+	}
+
+	// append any additional pod annotations to the pod's meta.
+	// for e.g., annotations that were converted from CLI inject options.
+	for annotation, value := range conf.pod.annotations {
+		conf.pod.Meta.Annotations[annotation] = value
+	}
+
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
