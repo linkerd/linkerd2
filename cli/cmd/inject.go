@@ -123,13 +123,15 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	nonEmpty, err := conf.ParseMeta(bytes)
+
+	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	if !nonEmpty {
-		r := inject.Report{UnsupportedResource: true}
-		return bytes, []inject.Report{r}, nil
+	reports := []inject.Report{*report}
+
+	if !report.Injectable() {
+		return bytes, reports, nil
 	}
 
 	conf.AppendPodAnnotations(map[string]string{
@@ -139,7 +141,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	p, reports, err := conf.GetPatch(bytes, inject.ShouldInjectCLI)
+	p, err := conf.GetPatch(bytes)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -19,13 +19,25 @@ type Report struct {
 	UDP                 bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource bool
 	InjectDisabled      bool
+
+	// Uninjected consists of two boolean flags to indicate if a proxy and
+	// proxy-init containers have been uninjected in this report
+	Uninjected struct {
+		// Proxy is true if a proxy container has been uninjected
+		Proxy bool
+
+		// ProxyInit is true if a proxy-init cnotainer has been uninjected
+		ProxyInit bool
+	}
 }
 
 // newReport returns a new Report struct, initialized with the Kind and Name
 // from conf
 func newReport(conf *ResourceConfig) Report {
 	var name string
-	if m := conf.pod.Meta; m != nil {
+	if m := conf.workload.meta; m != nil {
+		name = m.Name
+	} else if m := conf.pod.meta; m != nil {
 		name = m.Name
 		if name == "" {
 			name = m.GenerateName
@@ -51,7 +63,7 @@ func (r *Report) Injectable() bool {
 
 // update updates the report for the provided resource conf.
 func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.pod.Meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	r.InjectDisabled = conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled || conf.nsAnnotations[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
 	r.HostNetwork = conf.pod.spec.HostNetwork
 	r.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 	r.UDP = checkUDPPorts(conf.pod.spec)

@@ -105,27 +105,30 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	nsAnnotations := namespace.GetAnnotations()
 
 	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
-	conf := inject.NewResourceConfig(configs).
+	resourceConfig := inject.NewResourceConfig(configs).
 		WithOwnerRetriever(w.ownerRetriever(request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
-	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
+	report, err := resourceConfig.ParseMetaAndYAML(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
+	log.Infof("received %s ", report.ResName())
 
 	admissionResponse := &admissionv1beta1.AdmissionResponse{
 		UID:     request.UID,
 		Allowed: true,
 	}
-	if !nonEmpty {
+
+	if !report.Injectable() {
+		log.Infof("skipped %s ", report.ResName())
 		return admissionResponse, nil
 	}
 
 	conf.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	p, reports, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
+	p, err := resourceConfig.GetPatch(request.Object.Raw)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +141,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	// TODO: refactor GetPatch() so it only returns one report item
-	if len(reports) > 0 {
-		r := reports[0]
-		log.Infof("patch generated for: %s", r.ResName())
-	}
+	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch

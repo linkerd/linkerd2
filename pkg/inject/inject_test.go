@@ -41,8 +41,8 @@ type expectedProxyConfigs struct {
 
 func TestConfigAccessors(t *testing.T) {
 	// this test uses an annotated deployment and a proxyConfig object to verify
-	// all the proxy config accessors. The first test run ensures that the
-	// accessors picks up the pod-level config annotations. The second test run
+	// all the proxy config accessors. The first test suite ensures that the
+	// accessors picks up the pod-level config annotations. The second test suite
 	// ensures that the defaults in the config map is used.
 
 	proxyConfig := &config.Proxy{
@@ -66,7 +66,6 @@ func TestConfigAccessors(t *testing.T) {
 	}
 	globalConfig := &config.Global{LinkerdNamespace: "linkerd"}
 	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
-	resourceConfig := NewResourceConfig(configs).WithKind("Deployment")
 
 	var testCases = []struct {
 		id       string
@@ -227,7 +226,8 @@ func TestConfigAccessors(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if _, err := resourceConfig.ParseMetaAndYaml(data); err != nil {
+			resourceConfig := NewResourceConfig(configs).WithKind("Deployment")
+			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}
 

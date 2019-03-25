@@ -93,9 +93,7 @@ type ResourceConfig struct {
 	}
 
 	pod struct {
-		// Meta is the pod's metadata. It's exported so that the YAML marshaling
-		// will work in the ParseMeta() function.
-		Meta        *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+		meta        *metav1.ObjectMeta
 		labels      map[string]string
 		annotations map[string]string
 		spec        *v1.PodSpec
@@ -109,7 +107,7 @@ func NewResourceConfig(configs *config.All) *ResourceConfig {
 		proxyOutboundCapacity: map[string]uint{},
 	}
 
-	config.pod.Meta = &metav1.ObjectMeta{}
+	config.pod.meta = &metav1.ObjectMeta{}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
 	config.pod.annotations = map[string]string{}
 	return config
@@ -155,55 +153,32 @@ func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.workload.obj)
 }
 
-// ParseMetaAndYaml fills conf fields with both the metatada and the workload contents
-func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
-	if _, err := conf.ParseMeta(bytes); err != nil {
+// ParseMetaAndYAML extracts the workload metadata and pod specs from the given
+// input bytes. The results are stored in the conf's fields.
+func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
+	if err := conf.parse(bytes); err != nil {
 		return nil, err
 	}
-	r := newReport(conf)
-	return &r, conf.parse(bytes)
-}
 
-// ParseMeta extracts metadata from bytes.
-// It returns false if the workload's payload is empty.
-func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
-	if err := yaml.Unmarshal(bytes, &conf.workload.metaType); err != nil {
-		return false, err
+	r := newReport(conf)
+	if conf.pod.meta != nil && conf.pod.spec != nil {
+		r.update(conf)
+	} else {
+		r.UnsupportedResource = true
 	}
-	if err := yaml.Unmarshal(bytes, &conf.pod); err != nil {
-		return false, err
-	}
-	return conf.pod.Meta != nil, nil
+
+	return &r, nil
 }
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
-func (conf *ResourceConfig) GetPatch(
-	bytes []byte,
-	shouldInject func(*ResourceConfig, Report) bool,
-) (*Patch, []Report, error) {
-	report := newReport(conf)
-	log.Infof("received %s/%s", strings.ToLower(conf.workload.metaType.Kind), report.Name)
-
-	if err := conf.parse(bytes); err != nil {
-		return nil, nil, err
-	}
-
+func (conf *ResourceConfig) GetPatch(bytes []byte) (*Patch, error) {
 	patch := NewPatch(conf.workload.metaType.Kind)
-
-	// If we don't inject anything into the pod template then output the
-	// original serialization of the original object. Otherwise, output the
-	// serialization of the modified object.
 	if conf.pod.spec != nil {
-		report.update(conf)
-		if shouldInject(conf, report) {
-			conf.injectObjectMeta(patch)
-			conf.injectPodSpec(patch)
-		}
-	} else {
-		report.UnsupportedResource = true
+		conf.injectObjectMeta(patch)
+		conf.injectPodSpec(patch)
 	}
 
-	return patch, []Report{report}, nil
+	return patch, nil
 }
 
 // KindInjectable returns true if the resource in conf can be injected with a proxy
@@ -276,6 +251,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	//	   containers to be self contained.
 	//  4. We skip recording telemetry for intra-pod traffic within the control plane.
 
+	if err := yaml.Unmarshal(bytes, &conf.workload.metaType); err != nil {
+		return err
+	}
 	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
@@ -355,7 +333,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 		conf.workload.obj = v
 		conf.pod.spec = &v.Spec
-		conf.pod.Meta = &v.ObjectMeta
+		conf.pod.meta = &v.ObjectMeta
 
 		if conf.ownerRetriever != nil {
 			kind, name := conf.ownerRetriever(v)
@@ -376,8 +354,8 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 	}
 
-	if conf.pod.Meta.Annotations == nil {
-		conf.pod.Meta.Annotations = map[string]string{}
+	if conf.pod.meta.Annotations == nil {
+		conf.pod.meta.Annotations = map[string]string{}
 	}
 
 	return nil
@@ -385,7 +363,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 
 func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 	conf.pod.spec = &template.Spec
-	conf.pod.Meta = &template.ObjectMeta
+	conf.pod.meta = &template.ObjectMeta
 }
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
@@ -566,7 +544,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.Volu
 		Image:                    conf.taggedProxyInitImage(),
 		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args:                     conf.proxyInitArgs(),
+		Args: conf.proxyInitArgs(),
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
@@ -601,7 +579,7 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *v1.VolumeMount {
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	if len(conf.pod.Meta.Annotations) == 0 {
+	if len(conf.pod.meta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
@@ -613,7 +591,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	}
 
 	if len(conf.pod.labels) > 0 {
-		if len(conf.pod.Meta.Labels) == 0 {
+		if len(conf.pod.meta.Labels) == 0 {
 			patch.addPodLabelsRoot()
 		}
 		for k, v := range conf.pod.labels {
@@ -626,12 +604,12 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 
 		// append any additional pod annotations to the pod's meta.
 		// for e.g., annotations that were converted from CLI inject options.
-		conf.pod.Meta.Annotations[k] = v
+		conf.pod.meta.Annotations[k] = v
 	}
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
-	return conf.pod.Meta.Annotations[annotation]
+	return conf.pod.meta.Annotations[annotation]
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
@@ -924,37 +902,4 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		ports = append(ports, portStr)
 	}
 	return strings.Join(ports, ",")
-}
-
-// ShouldInjectCLI is used by CLI inject to determine whether or not a given
-// workload should be injected. It shouldn't if:
-// - it contains any known sidecars; or
-// - is on a HostNetwork; or
-// - the pod is annotated with "linkerd.io/inject: disabled".
-func ShouldInjectCLI(_ *ResourceConfig, r Report) bool {
-	return r.Injectable()
-}
-
-// ShouldInjectWebhook determines whether or not the given workload should be
-// injected. It shouldn't if:
-// - it contains any known sidecars; or
-// - is on a HostNetwork; or
-// - the pod is annotated with "linkerd.io/inject: disabled".
-// Additionally, a workload should be injected if:
-// - the workload's namespace has the linkerd.io/inject annotation set to
-//   "enabled", and the workload's pod spec does not have the
-//   linkerd.io/inject annotation set to "disabled"; or
-// - the workload's pod spec has the linkerd.io/inject annotation set to "enabled"
-func ShouldInjectWebhook(conf *ResourceConfig, r Report) bool {
-	if !r.Injectable() {
-		return false
-	}
-
-	podAnnotation := conf.pod.Meta.Annotations[k8s.ProxyInjectAnnotation]
-	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
-	if nsAnnotation == k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectDisabled {
-		return true
-	}
-
-	return podAnnotation == k8s.ProxyInjectEnabled
 }

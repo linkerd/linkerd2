@@ -21,7 +21,7 @@ func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
 		uninjectObjectMeta(conf.workload.meta)
 	}
 
-	uninjectObjectMeta(conf.pod.Meta)
+	uninjectObjectMeta(conf.pod.meta)
 	return conf.YamlMarshalObj()
 }
 
@@ -34,7 +34,7 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 		if container.Name != k8s.InitContainerName {
 			initContainers = append(initContainers, container)
 		} else {
-			report.Sidecar = true
+			report.Uninjected.ProxyInit = true
 		}
 	}
 	t.InitContainers = initContainers
@@ -43,6 +43,8 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	for _, container := range t.Containers {
 		if container.Name != k8s.ProxyContainerName {
 			containers = append(containers, container)
+		} else {
+			report.Uninjected.Proxy = true
 		}
 	}
 	t.Containers = containers
