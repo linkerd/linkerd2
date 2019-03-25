@@ -160,14 +160,7 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 		return nil, err
 	}
 
-	r := newReport(conf)
-	if conf.pod.meta != nil && conf.pod.spec != nil {
-		r.update(conf)
-	} else {
-		r.UnsupportedResource = true
-	}
-
-	return &r, nil
+	return newReport(conf), nil
 }
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any
@@ -446,7 +439,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	// We key off of any container image in the pod. Ideally we would instead key
 	// off of something at the top-level of the PodSpec, but there is nothing
 	// easily identifiable at that level.
-	// Currently this will bet set on any proxy that gets injected into a Prometheus pod,
+	// Currently this will be set on any proxy that gets injected into a Prometheus pod,
 	// not just the one in Linkerd's Control Plane.
 	for _, container := range conf.pod.spec.Containers {
 		if capacity, ok := conf.proxyOutboundCapacity[container.Image]; ok {

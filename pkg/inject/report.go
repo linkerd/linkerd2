@@ -26,14 +26,14 @@ type Report struct {
 		// Proxy is true if a proxy container has been uninjected
 		Proxy bool
 
-		// ProxyInit is true if a proxy-init cnotainer has been uninjected
+		// ProxyInit is true if a proxy-init container has been uninjected
 		ProxyInit bool
 	}
 }
 
 // newReport returns a new Report struct, initialized with the Kind and Name
 // from conf
-func newReport(conf *ResourceConfig) Report {
+func newReport(conf *ResourceConfig) *Report {
 	var name string
 	if m := conf.workload.meta; m != nil {
 		name = m.Name
@@ -44,10 +44,17 @@ func newReport(conf *ResourceConfig) Report {
 		}
 	}
 
-	return Report{
+	report := &Report{
 		Kind: strings.ToLower(conf.workload.metaType.Kind),
 		Name: name,
 	}
+	if conf.pod.meta != nil && conf.pod.spec != nil {
+		report.update(conf)
+	} else {
+		report.UnsupportedResource = true
+	}
+
+	return report
 }
 
 // ResName returns a string "Kind/Name" for the workload referred in the report r
@@ -63,7 +70,7 @@ func (r *Report) Injectable() bool {
 
 // update updates the report for the provided resource conf.
 func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled || conf.nsAnnotations[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
+	r.InjectDisabled = conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled || (conf.nsAnnotations[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled && conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] != k8s.ProxyInjectEnabled)
 	r.HostNetwork = conf.pod.spec.HostNetwork
 	r.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 	r.UDP = checkUDPPorts(conf.pod.spec)

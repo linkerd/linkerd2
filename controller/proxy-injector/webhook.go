@@ -113,7 +113,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("received %s ", report.ResName())
+	log.Infof("received %s", report.ResName())
 
 	admissionResponse := &admissionv1beta1.AdmissionResponse{
 		UID:     request.UID,

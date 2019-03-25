@@ -129,6 +129,7 @@ func TestInjectable(t *testing.T) {
 		testCase := testCase
 		t.Run(fmt.Sprintf("test case #%d", i), func(t *testing.T) {
 			resourceConfig := &ResourceConfig{}
+			resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
 			resourceConfig.pod.spec = testCase.podSpec
 			resourceConfig.pod.meta = testCase.podMeta
 
