@@ -88,8 +88,11 @@ type ResourceConfig struct {
 
 	workload struct {
 		obj      runtime.Object
-		meta     *metav1.ObjectMeta
 		metaType metav1.TypeMeta
+
+		// Meta is the workload's metadata. It's exported so that metadata of
+		// non-workload resources can be unmarshalled by the YAML parser
+		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	}
 
 	pod struct {
@@ -265,7 +268,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -275,7 +278,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
@@ -285,7 +288,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -295,7 +298,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -305,7 +308,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -315,7 +318,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 		conf.workload.obj = v
-		conf.workload.meta = &v.ObjectMeta
+		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
@@ -344,6 +347,12 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			case k8s.StatefulSet:
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
+		}
+
+	default:
+		// other resources like namespace, secret, config map etc.
+		if err := yaml.Unmarshal(bytes, &conf.workload); err != nil {
+			return err
 		}
 	}
 
@@ -537,7 +546,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.Volu
 		Image:                    conf.taggedProxyInitImage(),
 		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: conf.proxyInitArgs(),
+		Args:                     conf.proxyInitArgs(),
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},

@@ -35,7 +35,7 @@ type Report struct {
 // from conf
 func newReport(conf *ResourceConfig) *Report {
 	var name string
-	if m := conf.workload.meta; m != nil {
+	if m := conf.workload.Meta; m != nil {
 		name = m.Name
 	} else if m := conf.pod.meta; m != nil {
 		name = m.Name

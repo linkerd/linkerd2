@@ -17,8 +17,8 @@ func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
 
 	conf.uninjectPodSpec(report)
 
-	if conf.workload.meta != nil {
-		uninjectObjectMeta(conf.workload.meta)
+	if conf.workload.Meta != nil {
+		uninjectObjectMeta(conf.workload.Meta)
 	}
 
 	uninjectObjectMeta(conf.pod.meta)
