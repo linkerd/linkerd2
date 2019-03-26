@@ -370,7 +370,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
 		}
 
-		if showTcpConns(resourceType) {
+		if resourceType == k8s.Authority {
 			// always show TCP Connections as - for Authorities
 			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t-\t\n"
 		}
