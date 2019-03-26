@@ -54,7 +54,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 }
 
 func testInstallConfig() *pb.All {
-	_, c, err := testInstallOptions().validateAndBuild()
+	_, c, err := testInstallOptions().validateAndBuild(nil)
 	if err != nil {
 		log.Fatalf("test install options must be valid: %s", err)
 	}

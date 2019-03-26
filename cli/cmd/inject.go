@@ -295,7 +295,7 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 // overrideConfigs uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
-func (options *injectOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
+func (options *proxyConfigOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
 	if options.linkerdVersion != "" {
 		configs.Global.Version = options.linkerdVersion
 	}

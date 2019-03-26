@@ -11,7 +11,7 @@ import (
 
 func TestRender(t *testing.T) {
 	defaultOptions := testInstallOptions()
-	defaultValues, defaultConfig, err := defaultOptions.validateAndBuild()
+	defaultValues, defaultConfig, err := defaultOptions.validateAndBuild(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestRender(t *testing.T) {
 	haOptions := testInstallOptions()
 	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
-	haValues, haConfig, _ := haOptions.validateAndBuild()
+	haValues, haConfig, _ := haOptions.validateAndBuild(nil)
 
 	haWithOverridesOptions := testInstallOptions()
 	haWithOverridesOptions.recordedFlags = []*config.Install_Flag{
@@ -66,12 +66,12 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild()
+	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild(nil)
 
 	noInitContainerOptions := testInstallOptions()
 	noInitContainerOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	noInitContainerOptions.noInitContainer = true
-	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild()
+	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild(nil)
 
 	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.recordedFlags = []*config.Install_Flag{
@@ -80,7 +80,7 @@ func TestRender(t *testing.T) {
 	}
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild()
+	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild(nil)
 
 	testCases := []struct {
 		values         *installValues
