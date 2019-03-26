@@ -623,14 +623,11 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 
 	for k, v := range conf.pod.annotations {
 		patch.addPodAnnotation(k, v)
-	}
 
-	// append any additional pod annotations to the pod's meta.
-	// for e.g., annotations that were converted from CLI inject options.
-	for annotation, value := range conf.pod.annotations {
-		conf.pod.Meta.Annotations[annotation] = value
+		// append any additional pod annotations to the pod's meta.
+		// for e.g., annotations that were converted from CLI inject options.
+		conf.pod.Meta.Annotations[k] = v
 	}
-
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
