@@ -107,9 +107,10 @@ class Octopus extends React.Component {
 
     // if the resource only has TCP stats, display those instead
     let showTcp = false;
-    if (_isNil(resource.successRate && _isNil(resource.requestRate))) {
+    if (_isNil(resource.successRate) && _isNil(resource.requestRate)) {
       showTcp = true;
     }
+
     return (
       <Grid item key={resource.type + "-" + resource.name} >
         <Card className={type === "neighbor" ? classes.neighborNode : classes.centerNode} title={display}>

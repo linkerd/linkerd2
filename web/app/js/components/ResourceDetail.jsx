@@ -183,20 +183,23 @@ export class ResourceDetailBase extends React.Component {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
-        let isTcpOnly = false;
+        let hasHttp = false;
+        let hasTcp = false;
         let metric = resourceMetrics[0];
-        if (!_isEmpty(metric) && !_isEmpty(metric.tcp)) {
-          let { tcp } = metric;
+        if (!_isEmpty(metric)) {
+          hasHttp = !_isEmpty(metric.stats) && metric.totalRequests !== 0;
 
-          if (_isNil(metric.stats) &&
-            (tcp.openConnections > 0 || tcp.readBytes > 0 || tcp.writeBytes > 0)) {
-            isTcpOnly = true;
+          if (!_isEmpty(metric.tcp)) {
+            let { tcp } = metric;
+            hasTcp = tcp.openConnections > 0 || tcp.readBytes > 0 || tcp.writeBytes > 0;
           }
         }
 
+        let isTcpOnly = !hasHttp && hasTcp;
+
         // figure out when the last traffic this resource received was so we can show a no traffic message
         let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
-        if ((!_isEmpty(metric) && metric.totalRequests !== 0) || isTcpOnly) {
+        if (hasHttp || hasTcp) {
           lastMetricReceivedTime = Date.now();
         }
 
