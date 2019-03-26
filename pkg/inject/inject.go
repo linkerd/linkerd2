@@ -566,7 +566,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.Volu
 		Image:                    conf.taggedProxyInitImage(),
 		ImagePullPolicy:          conf.proxyInitImagePullPolicy(),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Args: conf.proxyInitArgs(),
+		Args:                     conf.proxyInitArgs(),
 		SecurityContext: &v1.SecurityContext{
 			Capabilities: &v1.Capabilities{
 				Add: []v1.Capability{v1.Capability("NET_ADMIN")},
