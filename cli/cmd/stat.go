@@ -340,17 +340,17 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		"MESHED",
 		"SUCCESS",
 		"RPS",
-		"LATENCY_P50",
-		"LATENCY_P95",
-		"LATENCY_P99",
+		"LATENCY-P50",
+		"LATENCY-P95",
+		"LATENCY-P99",
 		"TLS",
-		"TCP CONN",
+		"TCP-CONN",
 	}...)
 
 	if showTCPBytes(options, resourceType) {
 		headers = append(headers, []string{
-			"READ BYTES/SEC",
-			"WRITE BYTES/SEC",
+			"READ-BYTES/SEC",
+			"WRITE-BYTES/SEC",
 		}...)
 	}
 
