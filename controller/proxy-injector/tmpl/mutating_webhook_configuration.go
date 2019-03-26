@@ -8,7 +8,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: {{ .WebhookConfigName }}
 webhooks:
-- name: {{ .WebhookServiceName }}
+- name: linkerd-proxy-injector.linkerd.io
   clientConfig:
     service:
       name: linkerd-proxy-injector

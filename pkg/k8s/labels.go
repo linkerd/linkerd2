@@ -179,13 +179,17 @@ const (
 	// ProxyAdminPortName is the name of the Linkerd Proxy's metrics port.
 	ProxyAdminPortName = "linkerd-admin"
 
-	// ProxyInjectorWebhookConfig is the name of the mutating webhook
-	// configuration resource of the proxy-injector webhook.
-	ProxyInjectorWebhookConfig = "linkerd-proxy-injector-webhook-config"
+	// ProxyInjectorWebhookServiceName is the name of the mutating webhook service
+	ProxyInjectorWebhookServiceName = "linkerd-proxy-injector"
 
-	// SPValidatorWebhookConfig is the name of the mutating webhook
-	// configuration resource of the service profile validator webhook.
-	SPValidatorWebhookConfig = "linkerd-sp-validator-webhook-config"
+	// ProxyInjectorWebhookConfigName is the name of the mutating webhook configuration
+	ProxyInjectorWebhookConfigName = ProxyInjectorWebhookServiceName + "-webhook-config"
+
+	// SPValidatorWebhookServiceName is the name of the validating webhook service
+	SPValidatorWebhookServiceName = "linkerd-sp-validator"
+
+	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
+	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
 
 	/*
 	 * Mount paths

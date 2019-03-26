@@ -12,24 +12,17 @@ import (
 )
 
 // Ops satisfies the ConfigOps interface for managing MutatingWebhook configs
-type Ops struct {
-	api kubernetes.Interface
-}
-
-// NewOps returns a new instance of Ops
-func NewOps(api kubernetes.Interface) *Ops {
-	return &Ops{api: api}
-}
+type Ops struct{}
 
 // Create persists the Mutating webhook config and returns its SelfLink
-func (o *Ops) Create(buf *bytes.Buffer) (string, error) {
+func (*Ops) Create(client kubernetes.Interface, buf *bytes.Buffer) (string, error) {
 	var config arv1beta1.MutatingWebhookConfiguration
 	if err := yaml.Unmarshal(buf.Bytes(), &config); err != nil {
 		log.Infof("failed to unmarshal mutating webhook configuration: %s\n%s\n", err, buf.String())
 		return "", err
 	}
 
-	obj, err := o.api.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
+	obj, err := client.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
 	if err != nil {
 		return "", err
 	}
@@ -37,14 +30,14 @@ func (o *Ops) Create(buf *bytes.Buffer) (string, error) {
 }
 
 // Get returns an error if the Mutating webhook doesn't exist
-func (o *Ops) Get() error {
-	_, err := o.api.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
-		Get(k8sPkg.ProxyInjectorWebhookConfig, metav1.GetOptions{})
+func (*Ops) Get(client kubernetes.Interface) error {
+	_, err := client.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
+		Get(k8sPkg.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	return err
 }
 
 // Delete removes the Mutating webhook from the cluster
-func (o *Ops) Delete() error {
-	return o.api.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Delete(
-		k8sPkg.ProxyInjectorWebhookConfig, &metav1.DeleteOptions{})
+func (*Ops) Delete(client kubernetes.Interface) error {
+	return client.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Delete(
+		k8sPkg.ProxyInjectorWebhookConfigName, &metav1.DeleteOptions{})
 }

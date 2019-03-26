@@ -442,7 +442,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9990
+            port: 9997
           initialDelaySeconds: 10
         name: sp-validator
         ports:
@@ -452,7 +452,7 @@ spec:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9990
+            port: 9997
         resources: {}
         securityContext:
           runAsUser: 2103

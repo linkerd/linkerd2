@@ -30,17 +30,17 @@ func TestCreate(t *testing.T) {
 	}{
 		{
 			testName:    "Mutating webhook",
-			configName:  k8sPkg.ProxyInjectorWebhookConfig,
+			configName:  k8sPkg.ProxyInjectorWebhookConfigName,
 			serviceName: "mutatingwebhook.linkerd.io",
 			templateStr: injectorTmpl.MutatingWebhookConfigurationSpec,
-			ops:         injector.NewOps(client),
+			ops:         &injector.Ops{},
 		},
 		{
 			testName:    "Validating webhook",
-			configName:  k8sPkg.SPValidatorWebhookConfig,
+			configName:  k8sPkg.SPValidatorWebhookConfigName,
 			serviceName: "validatingwebhook.linkerd.io",
 			templateStr: validatorTmpl.ValidatingWebhookConfigurationSpec,
-			ops:         validator.NewOps(client),
+			ops:         &validator.Ops{},
 		},
 	}
 
@@ -48,12 +48,13 @@ func TestCreate(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf(tc.testName), func(t *testing.T) {
 			webhookConfig := &Config{
-				ControllerNamespace: "linkerd",
 				WebhookConfigName:   tc.configName,
 				WebhookServiceName:  tc.serviceName,
-				RootCA:              rootCA,
 				TemplateStr:         tc.templateStr,
 				Ops:                 tc.ops,
+				client:              client,
+				controllerNamespace: "linkerd",
+				rootCA:              rootCA,
 			}
 
 			// expect configuration to not exist

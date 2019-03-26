@@ -8,7 +8,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ .WebhookConfigName }}
 webhooks:
-- name: {{ .WebhookServiceName }}
+- name: linkerd-sp-validator.linkerd.io
   clientConfig:
     service:
       name: linkerd-sp-validator
