@@ -142,7 +142,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if patchJSON == nil {
 		return bytes, reports, nil
 	}
-	log.Infof("patch generated for: %s", conf)
+	// TODO: refactor GetPatch() for it to return just one report item
+	if len(reports) > 0 {
+		r := reports[0]
+		log.Infof("patch generated for: %s", r.ResName())
+	}
 	log.Debugf("patch: %s", patchJSON)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {

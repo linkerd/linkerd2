@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
@@ -20,9 +21,12 @@ var (
 
 func init() {
 	// create a webhook which uses its fake client to seed the sidecar configmap
-	fakeClient := fake.NewClient("")
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		panic(err)
+	}
 
-	webhook, err := NewWebhook(fakeClient, fake.DefaultControllerNamespace, false)
+	webhook, err := NewWebhook(k8sAPI, fake.DefaultControllerNamespace, false)
 	if err != nil {
 		panic(err)
 	}
@@ -73,13 +77,12 @@ func TestNewWebhookServer(t *testing.T) {
 		log.Fatalf("failed to create root CA: %s", err)
 	}
 
-	var (
-		addr       = ":7070"
-		kubeconfig = ""
-	)
-	fakeClient := fake.NewClient(kubeconfig)
-
-	server, err := NewWebhookServer(fakeClient, addr, fake.DefaultControllerNamespace, false, rootCA)
+	addr := ":7070"
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+	server, err := NewWebhookServer(k8sAPI, addr, fake.DefaultControllerNamespace, false, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

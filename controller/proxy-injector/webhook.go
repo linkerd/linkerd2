@@ -4,16 +4,17 @@ import (
 	"fmt"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 )
 
@@ -21,21 +22,21 @@ import (
 // requests by injecting sidecar container spec into the pod spec during pod
 // creation.
 type Webhook struct {
-	client              kubernetes.Interface
+	k8sAPI              *k8s.API
 	deserializer        runtime.Decoder
 	controllerNamespace string
 	noInitContainer     bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(client kubernetes.Interface, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
+func NewWebhook(api *k8s.API, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
 	)
 
 	return &Webhook{
-		client:              client,
+		k8sAPI:              api,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
 		noInitContainer:     noInitContainer,
@@ -87,17 +88,17 @@ func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error)
 func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	globalConfig, err := config.Global(k8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	proxyConfig, err := config.Proxy(k8s.MountPathProxyConfig)
+	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	namespace, err := w.client.CoreV1().Namespaces().Get(request.Namespace, metav1.GetOptions{})
+	namespace, err := w.k8sAPI.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +106,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
 	conf := inject.NewResourceConfig(configs).
+		WithOwnerRetriever(w.ownerRetriever(request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
 	nonEmpty, err := conf.ParseMeta(request.Object.Raw)
@@ -120,7 +122,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return admissionResponse, nil
 	}
 
-	p, _, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
+	p, reports, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
 	if err != nil {
 		return nil, err
 	}
@@ -131,17 +133,15 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 
-	// When adding workloads through `kubectl apply` the spec template labels are
-	// automatically copied to the workload's main metadata section.
-	// This doesn't happen when adding labels through the webhook. So we manually
-	// add them to remain consistent.
-	conf.AddRootLabels(p)
-
 	patchJSON, err := p.Marshal()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("patch generated for: %s", conf)
+	// TODO: refactor GetPatch() so it only returns one report item
+	if len(reports) > 0 {
+		r := reports[0]
+		log.Infof("patch generated for: %s", r.ResName())
+	}
 	log.Debugf("patch: %s", patchJSON)
 
 	patchType := admissionv1beta1.PatchTypeJSONPatch
@@ -149,4 +149,11 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	admissionResponse.PatchType = &patchType
 
 	return admissionResponse, nil
+}
+
+func (w *Webhook) ownerRetriever(ns string) inject.OwnerRetrieverFunc {
+	return func(p *v1.Pod) (string, string) {
+		p.SetNamespace(ns)
+		return w.k8sAPI.GetOwnerKindAndName(p)
+	}
 }

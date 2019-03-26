@@ -24,8 +24,21 @@ type Patch struct {
 	patchPathPodAnnotations    string
 }
 
-// NewPatchDeployment returns a new instance of Patch for Deployment-like workloads
-func NewPatchDeployment() *Patch {
+// NewPatch returns a new instance of Patch for any kind of workload kind
+func NewPatch(kind string) *Patch {
+	if strings.ToLower(kind) == k8s.Pod {
+		return &Patch{
+			patchOps:                   []*patchOp{},
+			patchPathContainer:         "/spec/containers/-",
+			patchPathInitContainerRoot: "/spec/initContainers",
+			patchPathInitContainer:     "/spec/initContainers/-",
+			patchPathVolumeRoot:        "/spec/volumes",
+			patchPathVolume:            "/spec/volumes/-",
+			patchPathPodLabels:         patchPathRootLabels,
+			patchPathPodAnnotations:    "/metadata/annotations",
+		}
+	}
+
 	return &Patch{
 		patchOps:                   []*patchOp{},
 		patchPathContainer:         "/spec/template/spec/containers/-",
@@ -35,20 +48,6 @@ func NewPatchDeployment() *Patch {
 		patchPathVolume:            "/spec/template/spec/volumes/-",
 		patchPathPodLabels:         "/spec/template/metadata/labels",
 		patchPathPodAnnotations:    "/spec/template/metadata/annotations",
-	}
-}
-
-// NewPatchPod returns a new instance of Patch for Pod workloads
-func NewPatchPod() *Patch {
-	return &Patch{
-		patchOps:                   []*patchOp{},
-		patchPathContainer:         "/spec/containers/-",
-		patchPathInitContainerRoot: "/spec/initContainers",
-		patchPathInitContainer:     "/spec/initContainers/-",
-		patchPathVolumeRoot:        "/spec/volumes",
-		patchPathVolume:            "/spec/volumes/-",
-		patchPathPodLabels:         patchPathRootLabels,
-		patchPathPodAnnotations:    "/metadata/annotations",
 	}
 }
 
@@ -97,18 +96,19 @@ func (p *Patch) addVolume(volume *corev1.Volume) {
 	})
 }
 
+func (p *Patch) addPodLabelsRoot() {
+	p.patchOps = append(p.patchOps, &patchOp{
+		Op:    "add",
+		Path:  p.patchPathPodLabels,
+		Value: map[string]string{},
+	})
+}
+
+// AddPodLabel appends the label with the provided key and value
 func (p *Patch) addPodLabel(key, value string) {
 	p.patchOps = append(p.patchOps, &patchOp{
 		Op:    "add",
 		Path:  p.patchPathPodLabels + "/" + escapeKey(key),
-		Value: value,
-	})
-}
-
-func (p *Patch) addRootLabel(key, value string) {
-	p.patchOps = append(p.patchOps, &patchOp{
-		Op:    "add",
-		Path:  patchPathRootLabels + "/" + escapeKey(key),
 		Value: value,
 	})
 }

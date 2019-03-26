@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/kubernetes"
 )
 
 // WebhookServer is the webhook's HTTP server. It has an embedded webhook which
@@ -21,7 +21,7 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+func NewWebhookServer(api *k8s.API, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
 	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewWebhookServer(client kubernetes.Interface, addr, controllerNamespace str
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(client, controllerNamespace, noInitContainer)
+	webhook, err := NewWebhook(api, controllerNamespace, noInitContainer)
 	if err != nil {
 		return nil, err
 	}

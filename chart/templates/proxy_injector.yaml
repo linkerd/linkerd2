@@ -80,7 +80,13 @@ rules:
   verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
-  verbs: ["get"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
