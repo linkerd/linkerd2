@@ -95,9 +95,10 @@ type ResourceConfig struct {
 	pod struct {
 		// Meta is the pod's metadata. It's exported so that the YAML marshaling
 		// will work in the ParseMeta() function.
-		Meta   *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-		labels map[string]string
-		spec   *v1.PodSpec
+		Meta        *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+		labels      map[string]string
+		annotations map[string]string
+		spec        *v1.PodSpec
 	}
 }
 
@@ -110,6 +111,7 @@ func NewResourceConfig(configs *config.All) *ResourceConfig {
 
 	config.pod.Meta = &metav1.ObjectMeta{}
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
+	config.pod.annotations = map[string]string{}
 	return config
 }
 
@@ -139,6 +141,13 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
 	conf.ownerRetriever = f
 	return conf
+}
+
+// AppendPodAnnotations appends the given annotations to the pod spec in conf
+func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) {
+	for annotation, value := range annotations {
+		conf.pod.annotations[annotation] = value
+	}
 }
 
 // YamlMarshalObj returns the yaml for the workload in conf
@@ -187,8 +196,8 @@ func (conf *ResourceConfig) GetPatch(
 	if conf.pod.spec != nil {
 		report.update(conf)
 		if shouldInject(conf, report) {
-			conf.injectPodSpec(patch)
 			conf.injectObjectMeta(patch)
+			conf.injectPodSpec(patch)
 		}
 	} else {
 		report.UnsupportedResource = true
@@ -365,6 +374,10 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
 		}
+	}
+
+	if conf.pod.Meta.Annotations == nil {
+		conf.pod.Meta.Annotations = map[string]string{}
 	}
 
 	return nil
@@ -607,6 +620,14 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 			patch.addPodLabel(k, v)
 		}
 	}
+
+	for k, v := range conf.pod.annotations {
+		patch.addPodAnnotation(k, v)
+
+		// append any additional pod annotations to the pod's meta.
+		// for e.g., annotations that were converted from CLI inject options.
+		conf.pod.Meta.Annotations[k] = v
+	}
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
@@ -820,11 +841,16 @@ func (conf *ResourceConfig) proxyLivenessProbe() *v1.Probe {
 }
 
 func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
-	if overrides := conf.getOverride(k8s.ProxyDisableExternalProfilesAnnotation); overrides != "" {
-		disableExternalProfiles, err := strconv.ParseBool(overrides)
-		if err == nil && disableExternalProfiles {
-			return internalProfileSuffix
+	disableExternalProfiles := conf.configs.GetProxy().GetDisableExternalProfiles()
+	if override := conf.getOverride(k8s.ProxyDisableExternalProfilesAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			disableExternalProfiles = value
 		}
+	}
+
+	if disableExternalProfiles {
+		return internalProfileSuffix
 	}
 
 	return defaultProfileSuffix

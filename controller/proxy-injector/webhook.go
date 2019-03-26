@@ -122,6 +122,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return admissionResponse, nil
 	}
 
+	conf.AppendPodAnnotations(map[string]string{
+		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
+	})
 	p, reports, err := conf.GetPatch(request.Object.Raw, inject.ShouldInjectWebhook)
 	if err != nil {
 		return nil, err
@@ -130,8 +133,6 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	if p.IsEmpty() {
 		return admissionResponse, nil
 	}
-
-	p.AddCreatedByPodAnnotation(fmt.Sprintf("linkerd/proxy-injector %s", version.Version))
 
 	patchJSON, err := p.Marshal()
 	if err != nil {

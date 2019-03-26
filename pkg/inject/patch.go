@@ -129,12 +129,6 @@ func (p *Patch) addPodAnnotation(key, value string) {
 	})
 }
 
-// AddCreatedByPodAnnotation tags the pod so that we can tell apart injections
-// from the CLI and the webhook
-func (p *Patch) AddCreatedByPodAnnotation(s string) {
-	p.addPodAnnotation(k8s.CreatedByAnnotation, s)
-}
-
 // IsEmpty returns true if the patch doesn't contain any operations
 func (p *Patch) IsEmpty() bool {
 	return len(p.patchOps) == 0
