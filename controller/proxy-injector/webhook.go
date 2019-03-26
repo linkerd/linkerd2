@@ -125,7 +125,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return admissionResponse, nil
 	}
 
-	conf.AppendPodAnnotations(map[string]string{
+	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
 	p, err := resourceConfig.GetPatch(request.Object.Raw)
