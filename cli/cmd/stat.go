@@ -320,9 +320,13 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 	}
 }
 
-func showTCPStats(options *statOptions, resourceType string) bool {
+func showTCPBytes(options *statOptions, resourceType string) bool {
 	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
 		resourceType != k8s.Authority
+}
+
+func showTcpConns(resourceType string) bool {
+	return resourceType != k8s.Authority
 }
 
 func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
@@ -343,7 +347,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		"TCP CONN",
 	}...)
 
-	if showTCPStats(options, resourceType) {
+	if showTCPBytes(options, resourceType) {
 		headers = append(headers, []string{
 			"READ BYTES/SEC",
 			"WRITE BYTES/SEC",
@@ -361,13 +365,13 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
-		if showTCPStats(options, resourceType) {
+		if showTCPBytes(options, resourceType) {
 			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fB/s\t%.1fB/s\t\n"
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
 		}
 
-		// always show TCP Connections as - for Authorities
-		if resourceType == k8s.Authority {
+		if showTcpConns(resourceType) {
+			// always show TCP Connections as - for Authorities
 			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t-\t\n"
 		}
 
@@ -397,11 +401,11 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 				stats[key].tlsPercent * 100,
 			}...)
 
-			if resourceType != k8s.Authority {
+			if showTcpConns(resourceType) {
 				values = append(values, stats[key].tcpOpenConnections)
 			}
 
-			if showTCPStats(options, resourceType) {
+			if showTCPBytes(options, resourceType) {
 				values = append(values, []interface{}{
 					stats[key].tcpReadBytes,
 					stats[key].tcpWriteBytes,
@@ -462,7 +466,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
 
-					if resourceType != k8s.Authority {
+					if showTcpConns(resourceType) {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
 						entry.TCPReadBytes = &stats[key].tcpReadBytes
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
