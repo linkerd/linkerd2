@@ -22,14 +22,15 @@ func TestMain(m *testing.M) {
 }
 
 type rowStat struct {
-	name       string
-	meshed     string
-	success    string
-	rps        string
-	p50Latency string
-	p95Latency string
-	p99Latency string
-	tlsPercent string
+	name               string
+	meshed             string
+	success            string
+	rps                string
+	p50Latency         string
+	p95Latency         string
+	p99Latency         string
+	tlsPercent         string
+	tcpOpenConnections string
 }
 
 //////////////////////
@@ -176,7 +177,7 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 	for _, row := range rows {
 		fields := strings.Fields(row)
 
-		expectedColumnCount := 8
+		expectedColumnCount := 9
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
 				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
@@ -184,14 +185,15 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 		}
 
 		rowStats[fields[0]] = &rowStat{
-			name:       fields[0],
-			meshed:     fields[1],
-			success:    fields[2],
-			rps:        fields[3],
-			p50Latency: fields[4],
-			p95Latency: fields[5],
-			p99Latency: fields[6],
-			tlsPercent: fields[7],
+			name:               fields[0],
+			meshed:             fields[1],
+			success:            fields[2],
+			rps:                fields[3],
+			p50Latency:         fields[4],
+			p95Latency:         fields[5],
+			p99Latency:         fields[6],
+			tlsPercent:         fields[7],
+			tcpOpenConnections: fields[8],
 		}
 	}
 
@@ -241,6 +243,10 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 			return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
 				expectedTLSRate, name, stat.tlsPercent)
 		}
+	}
+
+	if stat.tcpOpenConnections == "0" {
+		return fmt.Errorf("Expected >0 TCP Connections, got [%s]", stat.tcpOpenConnections)
 	}
 
 	return nil
