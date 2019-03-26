@@ -73,6 +73,10 @@ var injectableKinds = []string{
 	k8s.StatefulSet,
 }
 
+// OwnerRetrieverFunc is a function that returns a pod's owner reference
+// kind and name
+type OwnerRetrieverFunc func(*v1.Pod) (string, string)
+
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
 	configs                *config.All
@@ -80,6 +84,7 @@ type ResourceConfig struct {
 	destinationDNSOverride string
 	identityDNSOverride    string
 	proxyOutboundCapacity  map[string]uint
+	ownerRetriever         OwnerRetrieverFunc
 
 	workload struct {
 		obj      runtime.Object
@@ -108,20 +113,6 @@ func NewResourceConfig(configs *config.All) *ResourceConfig {
 	return config
 }
 
-// String satisfies the Stringer interface
-func (conf *ResourceConfig) String() string {
-	l := []string{}
-
-	if conf.workload.metaType.Kind != "" {
-		l = append(l, conf.workload.metaType.Kind)
-	}
-	if conf.workload.meta != nil {
-		l = append(l, fmt.Sprintf("%s.%s", conf.workload.meta.GetName(), conf.workload.meta.GetNamespace()))
-	}
-
-	return strings.Join(l, "/")
-}
-
 // WithKind enriches ResourceConfig with the workload kind
 func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
 	conf.workload.metaType = metav1.TypeMeta{Kind: kind}
@@ -143,6 +134,13 @@ func (conf *ResourceConfig) WithProxyOutboundCapacity(m map[string]uint) *Resour
 	return conf
 }
 
+// WithOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
+// the kind and name of the workload's owner reference
+func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
+	conf.ownerRetriever = f
+	return conf
+}
+
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.workload.obj)
@@ -158,7 +156,7 @@ func (conf *ResourceConfig) ParseMetaAndYaml(bytes []byte) (*Report, error) {
 }
 
 // ParseMeta extracts metadata from bytes.
-// It returns false if the workload's payload is empty
+// It returns false if the workload's payload is empty.
 func (conf *ResourceConfig) ParseMeta(bytes []byte) (bool, error) {
 	if err := yaml.Unmarshal(bytes, &conf.workload.metaType); err != nil {
 		return false, err
@@ -181,12 +179,7 @@ func (conf *ResourceConfig) GetPatch(
 		return nil, nil, err
 	}
 
-	var patch *Patch
-	if strings.ToLower(conf.workload.metaType.Kind) == k8s.Pod {
-		patch = NewPatchPod()
-	} else {
-		patch = NewPatchDeployment()
-	}
+	patch := NewPatch(conf.workload.metaType.Kind)
 
 	// If we don't inject anything into the pod template then output the
 	// original serialization of the original object. Otherwise, output the
@@ -246,6 +239,8 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	return yaml.Marshal(obj)
 }
 
+// parse parses the bytes payload, filling the gaps in ResourceConfig
+// depending on the workload kind
 func (conf *ResourceConfig) parse(bytes []byte) error {
 	// The Kubernetes API is versioned and each version has an API modeled
 	// with its own distinct Go types. If we tell `yaml.Unmarshal()` which
@@ -352,6 +347,24 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.pod.spec = &v.Spec
 		conf.pod.Meta = &v.ObjectMeta
+
+		if conf.ownerRetriever != nil {
+			kind, name := conf.ownerRetriever(v)
+			switch kind {
+			case k8s.Deployment:
+				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
+			case k8s.ReplicationController:
+				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = name
+			case k8s.ReplicaSet:
+				conf.pod.labels[k8s.ProxyReplicaSetLabel] = name
+			case k8s.Job:
+				conf.pod.labels[k8s.ProxyJobLabel] = name
+			case k8s.DaemonSet:
+				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
+			case k8s.StatefulSet:
+				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
+			}
+		}
 	}
 
 	return nil
@@ -364,8 +377,9 @@ func (conf *ResourceConfig) complete(template *v1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
+	saVolumeMount := conf.serviceAccountVolumeMount()
 	if !conf.configs.GetGlobal().GetCniEnabled() {
-		conf.injectProxyInit(patch)
+		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
 	proxyUID := conf.proxyUID()
@@ -455,6 +469,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
+	if saVolumeMount != nil {
+		sidecar.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
+	}
+
 	idctx := conf.configs.GetGlobal().GetIdentityContext()
 	if idctx == nil {
 		sidecar.Env = append(sidecar.Env, v1.EnvVar{
@@ -527,7 +545,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	patch.addContainer(&sidecar)
 }
 
-func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
+func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.VolumeMount) {
 	nonRoot := false
 	runAsUser := int64(0)
 	initContainer := &v1.Container{
@@ -545,10 +563,26 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch) {
 			RunAsUser:    &runAsUser,
 		},
 	}
+	if saVolumeMount != nil {
+		initContainer.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
+	}
 	if len(conf.pod.spec.InitContainers) == 0 {
 		patch.addInitContainerRoot()
 	}
 	patch.addInitContainer(initContainer)
+}
+
+func (conf *ResourceConfig) serviceAccountVolumeMount() *v1.VolumeMount {
+	// Probably always true, but wanna be super-safe
+	if containers := conf.pod.spec.Containers; len(containers) > 0 {
+		for _, vm := range containers[0].VolumeMounts {
+			if vm.MountPath == k8s.MountPathServiceAccount {
+				vm := vm // pin
+				return &vm
+			}
+		}
+	}
+	return nil
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -565,15 +599,13 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
 	}
 
-	for k, v := range conf.pod.labels {
-		patch.addPodLabel(k, v)
-	}
-}
-
-// AddRootLabels adds all the pod labels into the root workload (e.g. Deployment)
-func (conf *ResourceConfig) AddRootLabels(patch *Patch) {
-	for k, v := range conf.pod.labels {
-		patch.addRootLabel(k, v)
+	if len(conf.pod.labels) > 0 {
+		if len(conf.pod.Meta.Labels) == 0 {
+			patch.addPodLabelsRoot()
+		}
+		for k, v := range conf.pod.labels {
+			patch.addPodLabel(k, v)
+		}
 	}
 }
 

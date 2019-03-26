@@ -190,6 +190,10 @@ const (
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
+	// MountPathServiceAccount is the default path where Kuberenetes stores
+	// the service account token
+	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
+
 	// MountPathGlobalConfig is the path at which the global config file is mounted.
 	MountPathGlobalConfig = MountPathBase + "/config/global"
 

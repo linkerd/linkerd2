@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/tls"
 )
@@ -16,14 +17,17 @@ func TestCreate(t *testing.T) {
 	)
 	log.SetOutput(ioutil.Discard)
 
-	client := fake.NewClient("")
+	k8sAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
 
 	rootCA, err := tls.GenerateRootCAWithDefaults("Test CA")
 	if err != nil {
 		t.Fatalf("failed to create root CA: %s", err)
 	}
 
-	webhookConfig, err := NewWebhookConfig(client, namespace, webhookServiceName, rootCA)
+	webhookConfig, err := NewWebhookConfig(k8sAPI, namespace, webhookServiceName, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}

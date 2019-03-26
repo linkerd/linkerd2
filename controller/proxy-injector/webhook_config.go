@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"text/template"
 
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -12,7 +13,6 @@ import (
 	arv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 )
 
@@ -22,11 +22,11 @@ type WebhookConfig struct {
 	webhookServiceName  string
 	trustAnchor         []byte
 	configTemplate      *template.Template
-	k8sAPI              kubernetes.Interface
+	k8sAPI              *k8s.API
 }
 
 // NewWebhookConfig returns a new instance of initiator.
-func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookServiceName string, rootCA *tls.CA) (*WebhookConfig, error) {
+func NewWebhookConfig(api *k8s.API, controllerNamespace, webhookServiceName string, rootCA *tls.CA) (*WebhookConfig, error) {
 	trustAnchor := rootCA.Cred.EncodeCertificatePEM()
 
 	t := template.New(k8sPkg.ProxyInjectorWebhookConfig)
@@ -36,7 +36,7 @@ func NewWebhookConfig(client kubernetes.Interface, controllerNamespace, webhookS
 		webhookServiceName:  webhookServiceName,
 		trustAnchor:         []byte(trustAnchor),
 		configTemplate:      template.Must(t.Parse(tmpl.MutatingWebhookConfigurationSpec)),
-		k8sAPI:              client,
+		k8sAPI:              api,
 	}, nil
 }
 
@@ -97,15 +97,18 @@ func (w *WebhookConfig) create() (*arv1beta1.MutatingWebhookConfiguration, error
 		return nil, err
 	}
 
-	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
+	return w.k8sAPI.Client.
+		AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Create(&config)
 }
 
 func (w *WebhookConfig) get() (*arv1beta1.MutatingWebhookConfiguration, error) {
-	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
+	return w.k8sAPI.Client.
+		AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
 		Get(k8sPkg.ProxyInjectorWebhookConfig, metav1.GetOptions{})
 }
 
 func (w *WebhookConfig) delete() error {
-	return w.k8sAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Delete(
-		k8sPkg.ProxyInjectorWebhookConfig, &metav1.DeleteOptions{})
+	return w.k8sAPI.Client.
+		AdmissionregistrationV1beta1().MutatingWebhookConfigurations().
+		Delete(k8sPkg.ProxyInjectorWebhookConfig, &metav1.DeleteOptions{})
 }
