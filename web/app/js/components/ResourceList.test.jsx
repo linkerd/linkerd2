@@ -25,7 +25,7 @@ describe('Tests for <ResourceListBase>', () => {
     const err = component.find(ErrorBanner);
     expect(err).toHaveLength(1);
     expect(component.find(Spinner)).toHaveLength(0);
-    expect(component.find(MetricsTable)).toHaveLength(1);
+    expect(component.find(MetricsTable)).toHaveLength(2);
     expect(err.props().message.statusText).toEqual(msg);
   });
 
@@ -52,7 +52,7 @@ describe('Tests for <ResourceListBase>', () => {
 
     expect(component.find(ErrorBanner)).toHaveLength(0);
     expect(component.find(Spinner)).toHaveLength(0);
-    expect(component.find(MetricsTable)).toHaveLength(1);
+    expect(component.find(MetricsTable)).toHaveLength(2);
   });
 
   it('renders a metrics table', () => {
@@ -69,9 +69,11 @@ describe('Tests for <ResourceListBase>', () => {
 
     expect(component.find(ErrorBanner)).toHaveLength(0);
     expect(component.find(Spinner)).toHaveLength(0);
-    expect(metrics).toHaveLength(1);
+    expect(metrics).toHaveLength(2);
 
-    expect(metrics.props().resource).toEqual(resource);
-    expect(metrics.props().metrics).toHaveLength(1);
+    expect(metrics.at(0).props().resource).toEqual(resource);
+    expect(metrics.at(1).props().resource).toEqual(resource);
+    expect(metrics.at(0).props().metrics).toHaveLength(1);
+    expect(metrics.at(1).props().metrics).toHaveLength(1);
   });
 });
