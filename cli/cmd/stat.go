@@ -315,7 +315,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, w, maxNameLength, maxNamespaceLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, options)
 		}
 	}
 }
@@ -329,7 +329,7 @@ func showTCPConns(resourceType string) bool {
 	return resourceType != k8s.Authority
 }
 
-func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	headers := make([]string, 0)
 	if options.allNamespaces {
 		headers = append(headers,
@@ -360,7 +360,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 
 	sortedKeys := sortStatsKeys(stats)
 	for _, key := range sortedKeys {
-		namespace, name := namespaceName(resourceType, key)
+		namespace, name := namespaceName(resourceTypeLabel, key)
 		values := make([]interface{}, 0)
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t\n"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
