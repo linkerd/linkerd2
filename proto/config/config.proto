@@ -21,7 +21,7 @@ message Global {
 
   // If present, indicates that the Mutating Webhook Admission Controller should
   // be configured to automatically inject proxies.
-  AutoinjectContext autoinject_context = 6;
+  AutoInjectContext auto_inject_context = 6;
 
   string installation_uuid= 5;
 }
@@ -61,7 +61,7 @@ message ResourceRequirements {
 }
 
 // Currently, this is basically a boolean.
-message AutoinjectContext {}
+message AutoInjectContext {}
 
 message IdentityContext {
   string trust_domain = 1;

@@ -457,14 +457,14 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		id = options.overrideUUIDForTest
 	}
 
-	var autoInjectContext *pb.AutoinjectContext
+	var autoInjectContext *pb.AutoInjectContext
 	if options.proxyAutoInject {
-		autoInjectContext = &pb.AutoinjectContext{}
+		autoInjectContext = &pb.AutoInjectContext{}
 	}
 
 	return &pb.Global{
 		LinkerdNamespace:  controlPlaneNamespace,
-		AutoinjectContext: autoInjectContext,
+		AutoInjectContext: autoInjectContext,
 		CniEnabled:        options.noInitContainer,
 		Version:           options.linkerdVersion,
 		IdentityContext:   identity,
