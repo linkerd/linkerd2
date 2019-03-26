@@ -95,6 +95,8 @@ type (
 		disableH2Upgrade   bool
 		identityOptions    *installIdentityOptions
 		*proxyConfigOptions
+
+		overrideUUIDForTest string
 	}
 
 	installIdentityOptions struct {
@@ -328,7 +330,7 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 
 		// Controller configuration:
 		Namespace:              controlPlaneNamespace,
-		UUID:                   uuid.NewV4().String(),
+		UUID:                   configs.GetGlobal().GetInstallationUuid(),
 		ControllerLogLevel:     options.controllerLogLevel,
 		ControllerUID:          options.controllerUID,
 		EnableHA:               options.highAvailability,
@@ -450,11 +452,17 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 }
 
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
+	id := uuid.NewV4().String()
+	if options.overrideUUIDForTest != "" {
+		id = options.overrideUUIDForTest
+	}
+
 	return &pb.Global{
 		LinkerdNamespace: controlPlaneNamespace,
 		CniEnabled:       options.noInitContainer,
 		Version:          options.linkerdVersion,
 		IdentityContext:  identity,
+		InstallationUuid: id,
 	}
 }
 

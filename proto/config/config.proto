@@ -20,6 +20,8 @@ message Global {
   // Otherwise, a non-null struct indicates the equivalence
   // of --tls=optional.
   IdentityContext identity_context = 4;
+
+  string installation_uuid= 5;
 }
 
 message Proxy {

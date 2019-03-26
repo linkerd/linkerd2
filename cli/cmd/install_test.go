@@ -15,7 +15,6 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
-	defaultValues.UUID = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
@@ -51,7 +50,6 @@ func TestRender(t *testing.T) {
 	haOptions := testInstallOptions()
 	haOptions.highAvailability = true
 	haValues, haConfig, _ := haOptions.validateAndBuild()
-	haValues.UUID = defaultValues.UUID
 
 	haWithOverridesOptions := testInstallOptions()
 	haWithOverridesOptions.highAvailability = true
@@ -59,18 +57,15 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild()
-	haWithOverridesValues.UUID = defaultValues.UUID
 
 	noInitContainerOptions := testInstallOptions()
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild()
-	noInitContainerValues.UUID = defaultValues.UUID
 
 	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
 	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild()
-	noInitContainerWithProxyAutoInjectValues.UUID = defaultValues.UUID
 
 	testCases := []struct {
 		values         *installValues
@@ -102,6 +97,7 @@ func TestRender(t *testing.T) {
 func testInstallOptions() *installOptions {
 	o := newInstallOptionsWithDefaults()
 	o.ignoreCluster = true
+	o.overrideUUIDForTest = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
