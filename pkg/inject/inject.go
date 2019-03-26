@@ -350,7 +350,8 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		}
 
 	default:
-		// other resources like namespace, secret, config map etc.
+		// unmarshal the metadata of other resource kinds like namespace, secret,
+		// config map etc. to be used in the report struct
 		if err := yaml.Unmarshal(bytes, &conf.workload); err != nil {
 			return err
 		}
