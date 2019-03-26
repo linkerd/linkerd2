@@ -325,7 +325,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 		resourceType != k8s.Authority
 }
 
-func showTcpConns(resourceType string) bool {
+func showTCPConns(resourceType string) bool {
 	return resourceType != k8s.Authority
 }
 
@@ -401,7 +401,7 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 				stats[key].tlsPercent * 100,
 			}...)
 
-			if showTcpConns(resourceType) {
+			if showTCPConns(resourceType) {
 				values = append(values, stats[key].tcpOpenConnections)
 			}
 
@@ -466,7 +466,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
 
-					if showTcpConns(resourceType) {
+					if showTCPConns(resourceType) {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
 						entry.TCPReadBytes = &stats[key].tcpReadBytes
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
