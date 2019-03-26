@@ -16,10 +16,12 @@ message Global {
   bool cni_enabled = 2;
   string version = 3;
 
-  // null indicates TLS is disabled.
-  // Otherwise, a non-null struct indicates the equivalence
-  // of --tls=optional.
+  // If present, configures identity.
   IdentityContext identity_context = 4;
+
+  // If present, indicates that the Mutating Webhook Admission Controller should
+  // be configured to automatically inject proxies.
+  AutoInjectContext auto_inject_context = 6;
 
   string installation_uuid= 5;
 }
@@ -57,6 +59,9 @@ message ResourceRequirements {
   string limit_cpu = 3;
   string limit_memory = 4;
 }
+
+// Currently, this is basically a boolean.
+message AutoInjectContext {}
 
 message IdentityContext {
   string trust_domain = 1;
