@@ -363,7 +363,6 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
 			case k8s.StatefulSet:
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
-			case k8s.Pod:
 			}
 		}
 	}

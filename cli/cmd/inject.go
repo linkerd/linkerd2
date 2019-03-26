@@ -143,8 +143,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 	// TODO: refactor GetPatch() for it to return just one report item
-	r := reports[0]
-	log.Infof("patch generated for: %s", r.ResName())
+	if len(reports) > 0 {
+		r := reports[0]
+		log.Infof("patch generated for: %s", r.ResName())
+	}
 	log.Debugf("patch: %s", patchJSON)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
