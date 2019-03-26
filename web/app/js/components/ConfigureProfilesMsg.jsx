@@ -41,8 +41,10 @@ const styles = theme => ({
   },
 });
 
-const dns1123ServiceFmt = '^[a-z]([-a-z0-9]*[a-z0-9])?$';
+const dns1035ServiceFmt = '^[a-z]([-a-z0-9]*[a-z0-9])?$';
 const dns1123NamespaceFmt = '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$';
+const serviceNameRegexp = RegExp(dns1035ServiceFmt);
+const namespaceNameRegexp = RegExp(dns1123NamespaceFmt);
 
 class ConfigureProfilesMsg extends React.Component {
   constructor(props) {
@@ -65,11 +67,13 @@ class ConfigureProfilesMsg extends React.Component {
   };
 
   handleClose = () => {
-    let state = this.state;
-    state.error['namespace'] = false;
-    state.error['service'] = false;
-    state.open = false;
-    this.setState(state);
+    this.setState({
+      error: {
+        namespace: false,
+        service: false
+      },
+      open: false
+    });
   };
 
   handleChange = name => {
@@ -83,12 +87,11 @@ class ConfigureProfilesMsg extends React.Component {
   };
 
   validateFields = (type, name) => {
-    let match;
     let error = this.state.error;
-    let serviceNameRegexp = RegExp(dns1123ServiceFmt);
-    let namespaceNameRegexp = RegExp(dns1123NamespaceFmt);
+    let match = type === 'service' ?
+      serviceNameRegexp.test(name) :
+      namespaceNameRegexp.test(name);
 
-    type === 'service' ? match = serviceNameRegexp.test(name) : match = namespaceNameRegexp.test(name);
     error[type] = !match;
     this.setState({ error });
   };
@@ -150,7 +153,7 @@ class ConfigureProfilesMsg extends React.Component {
             </DialogContentText>
             <FormControl
               className={classes.textField}
-              onBlur={() => this.validateFields('service', query.service)}
+              onChange={() => this.validateFields('service', query.service)}
               error={error.service}>
               <InputLabel htmlFor="component-error">Service</InputLabel>
               <Input
@@ -167,7 +170,7 @@ class ConfigureProfilesMsg extends React.Component {
             </FormControl>
             <FormControl
               className={classes.textField}
-              onBlur={() => this.validateFields('namespace', query.namespace)}
+              onChange={() => this.validateFields('namespace', query.namespace)}
               error={error.namespace}>
               <InputLabel htmlFor="component-error">Namespace</InputLabel>
               <Input
