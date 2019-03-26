@@ -16,7 +16,6 @@ import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
-import _isNil from 'lodash/isNil';
 import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { withContext } from './util/AppContext.jsx';
