@@ -360,7 +360,7 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(ctx context.Context) error {
 						var err error
 						var controlPlaneReplicaSet []v1beta1.ReplicaSet
-						controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSets(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSetByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
