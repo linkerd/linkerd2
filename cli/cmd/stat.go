@@ -315,17 +315,21 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, w, maxNameLength, maxNamespaceLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, options)
 		}
 	}
 }
 
-func showTCPStats(options *statOptions, resourceType string) bool {
+func showTCPBytes(options *statOptions, resourceType string) bool {
 	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
-		resourceType != k8s.Authority
+		showTCPConns(resourceType)
 }
 
-func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func showTCPConns(resourceType string) bool {
+	return resourceType != k8s.Authority
+}
+
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
 	headers := make([]string, 0)
 	if options.allNamespaces {
 		headers = append(headers,
@@ -340,13 +344,13 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 		"LATENCY_P95",
 		"LATENCY_P99",
 		"TLS",
+		"TCP_CONN",
 	}...)
 
-	if showTCPStats(options, resourceType) {
+	if showTCPBytes(options, resourceType) {
 		headers = append(headers, []string{
-			"TCP CONNECTIONS",
-			"READ BYTES/SEC",
-			"WRITE BYTES/SEC",
+			"READ_BYTES/SEC",
+			"WRITE_BYTES/SEC",
 		}...)
 	}
 
@@ -356,14 +360,19 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 
 	sortedKeys := sortStatsKeys(stats)
 	for _, key := range sortedKeys {
-		namespace, name := namespaceName(resourceType, key)
+		namespace, name := namespaceName(resourceTypeLabel, key)
 		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t\n"
-		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t\n"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 
-		if showTCPStats(options, resourceType) {
+		if showTCPBytes(options, resourceType) {
 			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fB/s\t%.1fB/s\t\n"
 			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
+		}
+
+		if !showTCPConns(resourceType) {
+			// always show TCP Connections as - for Authorities
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t-\t\n"
 		}
 
 		if options.allNamespaces {
@@ -392,9 +401,12 @@ func printSingleStatTable(stats map[string]*row, resourceType string, w *tabwrit
 				stats[key].tlsPercent * 100,
 			}...)
 
-			if showTCPStats(options, resourceType) {
+			if showTCPConns(resourceType) {
+				values = append(values, stats[key].tcpOpenConnections)
+			}
+
+			if showTCPBytes(options, resourceType) {
 				values = append(values, []interface{}{
-					stats[key].tcpOpenConnections,
 					stats[key].tcpReadBytes,
 					stats[key].tcpWriteBytes,
 				}...)
@@ -454,7 +466,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp99 = &stats[key].latencyP99
 					entry.TLS = &stats[key].tlsPercent
 
-					if resourceType != k8s.Authority {
+					if showTCPConns(resourceType) {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
 						entry.TCPReadBytes = &stats[key].tcpReadBytes
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
@@ -523,7 +535,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			FromName:      fromRes.Name,
 			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
-			TCPStats:      showTCPStats(options, target.Type),
+			TCPStats:      true,
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)
