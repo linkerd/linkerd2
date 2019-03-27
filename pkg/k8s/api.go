@@ -151,12 +151,9 @@ func NewAPI(configPath, kubeContext string) (*KubernetesAPI, error) {
 	return &KubernetesAPI{Config: config}, nil
 }
 
-// GetReplicaSetByNamespace returns all replicasets in a given namespace
-func (kubeAPI *KubernetesAPI) GetReplicaSetByNamespace(ctx context.Context, client *http.Client, namespace string) ([]v1beta1.ReplicaSet, error) {
-	return kubeAPI.getReplicaSets(ctx, client, "/apis/extensions/v1beta1/namespaces/"+namespace+"/replicasets")
-}
-
-func (kubeAPI *KubernetesAPI) getReplicaSets(ctx context.Context, client *http.Client, path string) ([]v1beta1.ReplicaSet, error) {
+// GetReplicaSets returns all replicasets in a given namespace
+func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, client *http.Client, namespace string) ([]v1beta1.ReplicaSet, error) {
+	path := "/apis/extensions/v1beta1/namespaces/" + namespace + "/replicasets"
 	rsp, err := kubeAPI.getRequest(ctx, client, path)
 	if err != nil {
 		return nil, err
