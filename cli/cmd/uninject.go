@@ -63,9 +63,9 @@ sub-folders, or coming from stdin.`,
 }
 
 func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.configs)
+	conf := inject.NewResourceConfig(rt.configs, inject.OriginWebhook)
 
-	report, err := conf.ParseMetaAndYaml(bytes)
+	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -91,7 +91,7 @@ func (resourceTransformerUninject) generateReport(reports []inject.Report, outpu
 	output.Write([]byte("\n"))
 
 	for _, r := range reports {
-		if r.Sidecar {
+		if r.Uninjected.Proxy || r.Uninjected.ProxyInit {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" uninjected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {

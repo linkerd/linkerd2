@@ -27,7 +27,6 @@ func TestRender(t *testing.T) {
 		WebImage:                 "WebImage",
 		PrometheusImage:          "PrometheusImage",
 		GrafanaImage:             "GrafanaImage",
-		ControllerReplicas:       1,
 		ImagePullPolicy:          "ImagePullPolicy",
 		UUID:                     "UUID",
 		CliVersion:               "CliVersion",
@@ -44,6 +43,7 @@ func TestRender(t *testing.T) {
 		NoInitContainer:          false,
 		GlobalConfig:             "GlobalConfig",
 		ProxyConfig:              "ProxyConfig",
+		ControllerReplicas:       1,
 		Identity:                 defaultValues.Identity,
 	}
 
@@ -98,8 +98,8 @@ func TestRender(t *testing.T) {
 			controlPlaneNamespace = tc.configs.GetGlobal().GetLinkerdNamespace()
 
 			var buf bytes.Buffer
-			if err := render(tc.values, &buf, tc.configs); err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+			if err := tc.values.render(&buf, tc.configs); err != nil {
+				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
 		})

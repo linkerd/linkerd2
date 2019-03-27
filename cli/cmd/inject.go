@@ -119,17 +119,19 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, trans
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.configs)
+	conf := inject.NewResourceConfig(rt.configs, inject.OriginCLI)
 	if len(rt.proxyOutboundCapacity) > 0 {
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
-	nonEmpty, err := conf.ParseMeta(bytes)
+
+	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	if !nonEmpty {
-		r := inject.Report{UnsupportedResource: true}
-		return bytes, []inject.Report{r}, nil
+	reports := []inject.Report{*report}
+
+	if !report.Injectable() {
+		return bytes, reports, nil
 	}
 
 	conf.AppendPodAnnotations(map[string]string{
@@ -139,7 +141,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	p, reports, err := conf.GetPatch(bytes, inject.ShouldInjectCLI)
+	p, err := conf.GetPatch(bytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,11 +156,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if patchJSON == nil {
 		return bytes, reports, nil
 	}
-	// TODO: refactor GetPatch() for it to return just one report item
-	if len(reports) > 0 {
-		r := reports[0]
-		log.Infof("patch generated for: %s", r.ResName())
-	}
+	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {

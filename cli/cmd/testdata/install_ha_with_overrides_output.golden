@@ -133,7 +133,7 @@ spec:
         resources:
           requests:
             cpu: 10m
-            memory: 50Mi
+            memory: 10Mi
         securityContext:
           runAsUser: 2103
         volumeMounts:

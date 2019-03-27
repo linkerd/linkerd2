@@ -123,12 +123,9 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 20m
-            memory: 50Mi
-        {{- end }}
+        {{ with .PublicAPIResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       - name: destination
@@ -158,12 +155,9 @@ spec:
             path: /ready
             port: 9996
           failureThreshold: 7
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 20m
-            memory: 50Mi
-        {{- end }}
+        {{ with .DestinationResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       - name: tap
@@ -188,12 +182,9 @@ spec:
             path: /ready
             port: 9998
           failureThreshold: 7
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 20m
-            memory: 50Mi
-        {{- end }}
+        {{ with .TapResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:

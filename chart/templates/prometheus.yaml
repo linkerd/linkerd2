@@ -105,12 +105,9 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 300m
-            memory: 300Mi
-        {{- end }}
+        {{ with .PrometheusResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: 65534
 ---
