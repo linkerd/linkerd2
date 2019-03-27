@@ -9,10 +9,10 @@
     <meta name="keywords" content="Linkerd">
     <link rel="icon" type="image/png" href="{{.Contents.PathPrefix}}dist/img/favicon.png">
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,900" rel="stylesheet">
-    {{- template "script-tags" . }}
+    {{ template "script-tags" . }}
   </head>
   <body>
-    {{- template "content" .Contents }}
+    {{ template "content" .Contents }}
   </body>
 </html>
 {{ end }}
