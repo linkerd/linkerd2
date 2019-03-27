@@ -21,6 +21,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -95,6 +96,8 @@ type (
 		disableH2Upgrade   bool
 		identityOptions    *installIdentityOptions
 		*proxyConfigOptions
+
+		recordedFlags []*pb.InstallContext_Flag
 
 		overrideUUIDForTest string
 	}
@@ -182,6 +185,7 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes configs to install Linkerd",
 		Long:  "Output Kubernetes configs to install Linkerd.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.recordFlags(cmd)
 			values, configs, err := options.validateAndBuild()
 			if err != nil {
 				return err
@@ -241,6 +245,15 @@ func newCmdInstall() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func (options *installOptions) recordFlags(cmd *cobra.Command) {
+	cmd.Flags().Visit(func(flag *pflag.Flag) {
+		options.recordedFlags = append(options.recordedFlags, &pb.InstallContext_Flag{
+			Name:  flag.Name,
+			Value: flag.Value.String(),
+		})
+	})
 }
 
 func (options *installOptions) validate() error {
@@ -330,13 +343,13 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 
 		// Controller configuration:
 		Namespace:              controlPlaneNamespace,
-		UUID:                   configs.GetGlobal().GetInstallationUuid(),
+		UUID:                   configs.GetGlobal().GetInstallContext().GetUuid(),
+		ControllerReplicas:     options.controllerReplicas,
 		ControllerLogLevel:     options.controllerLogLevel,
 		ControllerUID:          options.controllerUID,
 		EnableHA:               options.highAvailability,
 		EnableH2Upgrade:        !options.disableH2Upgrade,
 		NoInitContainer:        options.noInitContainer,
-		ControllerReplicas:     options.controllerReplicas,
 		ProxyAutoInjectEnabled: options.proxyAutoInject,
 		PrometheusLogLevel:     toPromLogLevel(options.controllerLogLevel),
 
@@ -452,9 +465,9 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 }
 
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
-	id := uuid.NewV4().String()
+	installID := uuid.NewV4().String()
 	if options.overrideUUIDForTest != "" {
-		id = options.overrideUUIDForTest
+		installID = options.overrideUUIDForTest
 	}
 
 	var autoInjectContext *pb.AutoInjectContext
@@ -468,7 +481,11 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		CniEnabled:        options.noInitContainer,
 		Version:           options.linkerdVersion,
 		IdentityContext:   identity,
-		InstallationUuid:  id,
+		InstallContext: &pb.InstallContext{
+			Uuid:       installID,
+			CliVersion: version.Version,
+			Flags:      options.recordedFlags,
+		},
 	}
 }
 

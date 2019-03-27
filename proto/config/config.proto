@@ -19,11 +19,14 @@ message Global {
   // If present, configures identity.
   IdentityContext identity_context = 4;
 
+  // Stores information about the last installation/upgrade.
+  //
+  // Useful for driving upgrades.
+  InstallContext install_context = 5;
+
   // If present, indicates that the Mutating Webhook Admission Controller should
   // be configured to automatically inject proxies.
   AutoInjectContext auto_inject_context = 6;
-
-  string installation_uuid= 5;
 }
 
 message Proxy {
@@ -69,6 +72,23 @@ message IdentityContext {
 
   google.protobuf.Duration issuance_lifetime = 3;
   google.protobuf.Duration clock_skew_allowance = 4;
+}
+
+message InstallContext {
+  // The unique ID fr this installation. Does not change on upgrade.
+  string uuid = 1;
+
+  // The CLI version that drove the last install or upgrade.
+  string cli_version = 2;
+
+  // The CLI arguments to the install (or upgrade) command, indicating the
+  // installer's intent.
+  repeated Flag flags = 3;
+
+  message Flag {
+    string name = 1;
+    string value = 2;
+  }
 }
 
 message LogLevel {

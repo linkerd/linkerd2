@@ -48,10 +48,17 @@ func TestRender(t *testing.T) {
 	}
 
 	haOptions := testInstallOptions()
+	haOptions.recordedFlags = []*config.InstallContext_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
 	haValues, haConfig, _ := haOptions.validateAndBuild()
 
 	haWithOverridesOptions := testInstallOptions()
+	haWithOverridesOptions.recordedFlags = []*config.InstallContext_Flag{
+		{Name: "ha", Value: "true"},
+		{Name: "controller-replicas", Value: "2"},
+		{Name: "proxy-cpu-request", Value: "400m"},
+		{Name: "proxy-memory-request", Value: "300Mi"},
+	}
 	haWithOverridesOptions.highAvailability = true
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
@@ -59,10 +66,15 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild()
 
 	noInitContainerOptions := testInstallOptions()
+	noInitContainerOptions.recordedFlags = []*config.InstallContext_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild()
 
 	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
+	noInitContainerWithProxyAutoInjectOptions.recordedFlags = []*config.InstallContext_Flag{
+		{Name: "linkerd-cni-enabled", Value: "true"},
+		{Name: "proxy-auto-inject", Value: "true"},
+	}
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
 	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
 	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild()
