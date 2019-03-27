@@ -85,7 +85,7 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 }
 
 func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
-	// truth table of the effects of the inject annotation:
+	// truth table of the effects of the inject annotation on the webhook:
 	//
 	// namespace | pod      | inject?  | return
 	// --------- | -------- | -------- | ------
