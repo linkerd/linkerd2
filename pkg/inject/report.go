@@ -85,22 +85,22 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 }
 
 func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
-	// truth table of the effects of the inject annotation on the webhook:
+	// truth table of the effects of the inject annotation:
 	//
-	// namespace | pod      | inject?  | return
-	// --------- | -------- | -------- | ------
-	// enabled   | enabled  | yes      | false
-	// enabled   | ""       | yes      | false
-	// enabled   | disabled | no       | true
-	// disabled  | enabled  | yes      | false
-	// ""        | enabled  | yes      | false
-	// disabled  | disabled | no       | true
-	// ""        | disabled | no       | true
-	// disabled  | ""       | no       | true
-	// ""        | ""       | no       | true
-	//
-	// for CLI, only the 'disabled' annotation is taken into consideration
-	// for its opt-out effect
+	// origin  | namespace | pod      | inject?  | return
+	// ------- | --------- | -------- | -------- | ------
+	// webhook | enabled   | enabled  | yes      | false
+	// webhook | enabled   | ""       | yes      | false
+	// webhook | enabled   | disabled | no       | true
+	// webhook | disabled  | enabled  | yes      | false
+	// webhook | ""        | enabled  | yes      | false
+	// webhook | disabled  | disabled | no       | true
+	// webhook | ""        | disabled | no       | true
+	// webhook | disabled  | ""       | no       | true
+	// webhook | ""        | ""       | no       | true
+	// cli     | n/a       | enabled  | yes      | false
+	// cli     | n/a       | ""       | yes      | false
+	// cli     | n/a       | disabled | no       | true
 
 	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
