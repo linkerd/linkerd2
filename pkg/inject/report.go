@@ -48,8 +48,12 @@ func newReport(conf *ResourceConfig) *Report {
 		Kind: strings.ToLower(conf.workload.metaType.Kind),
 		Name: name,
 	}
+
 	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.update(conf)
+		report.InjectDisabled = report.disableByAnnotation(conf)
+		report.HostNetwork = conf.pod.spec.HostNetwork
+		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
+		report.UDP = checkUDPPorts(conf.pod.spec)
 	} else {
 		report.UnsupportedResource = true
 	}
@@ -68,14 +72,6 @@ func (r *Report) Injectable() bool {
 	return !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled
 }
 
-// update updates the report for the provided resource conf.
-func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled || (conf.nsAnnotations[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled && conf.pod.meta.GetAnnotations()[k8s.ProxyInjectAnnotation] != k8s.ProxyInjectEnabled)
-	r.HostNetwork = conf.pod.spec.HostNetwork
-	r.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
-	r.UDP = checkUDPPorts(conf.pod.spec)
-}
-
 func checkUDPPorts(t *v1.PodSpec) bool {
 	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
@@ -86,4 +82,36 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
+	// truth table of the effects of the inject annotation:
+	//
+	// namespace | pod      | inject?  | return
+	// --------- | -------- | -------- | ------
+	// enabled   | enabled  | yes      | false
+	// enabled   | ""       | yes      | false
+	// enabled   | disabled | no       | true
+	// disabled  | enabled  | yes      | false
+	// ""        | enabled  | yes      | false
+	// disabled  | disabled | no       | true
+	// ""        | disabled | no       | true
+	// disabled  | ""       | no       | true
+	// ""        | ""       | no       | true
+	//
+	// for CLI, only the 'disabled' annotation is taken into consideration
+	// for its opt-out effect
+
+	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
+	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
+
+	if conf.origin == OriginCLI {
+		return podAnnotation == k8s.ProxyInjectDisabled
+	}
+
+	if nsAnnotation == k8s.ProxyInjectEnabled {
+		return podAnnotation == k8s.ProxyInjectDisabled
+	}
+
+	return podAnnotation != k8s.ProxyInjectEnabled
 }

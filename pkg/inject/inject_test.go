@@ -226,7 +226,7 @@ func TestConfigAccessors(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig := NewResourceConfig(configs).WithKind("Deployment")
+			resourceConfig := NewResourceConfig(configs, OriginUnknown).WithKind("Deployment")
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}

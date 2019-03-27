@@ -61,6 +61,18 @@ const (
 
 	identityAPIPort     = 8080
 	identityDisabledMsg = "Identity is not yet available"
+
+	// OriginCLI is the value of the ResourceConfig's 'origin' field if the input
+	// YAML comes from the CLI
+	OriginCLI Origin = iota
+
+	// OriginWebhook is the value of the ResourceConfig's 'origin' field if the input
+	// YAML comes from the CLI
+	OriginWebhook
+
+	// OriginUnknown is the value of the ResourceConfig's 'origin' field if the
+	// input YAML comes from an unknown source
+	OriginUnknown
 )
 
 var injectableKinds = []string{
@@ -72,6 +84,10 @@ var injectableKinds = []string{
 	k8s.ReplicationController,
 	k8s.StatefulSet,
 }
+
+// Origin defines where the input YAML comes from. Refer the ResourceConfig's
+// 'origin' field
+type Origin int
 
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
 // kind and name
@@ -85,6 +101,7 @@ type ResourceConfig struct {
 	identityDNSOverride    string
 	proxyOutboundCapacity  map[string]uint
 	ownerRetriever         OwnerRetrieverFunc
+	origin                 Origin
 
 	workload struct {
 		obj      runtime.Object
@@ -104,10 +121,11 @@ type ResourceConfig struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(configs *config.All) *ResourceConfig {
+func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	config := &ResourceConfig{
 		configs:               configs,
 		proxyOutboundCapacity: map[string]uint{},
+		origin:                origin,
 	}
 
 	config.pod.meta = &metav1.ObjectMeta{}
@@ -149,6 +167,14 @@ func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) 
 	for annotation, value := range annotations {
 		conf.pod.annotations[annotation] = value
 	}
+}
+
+// CreatedByCLI returns true if the pod is annotated with linkerd.io/created-by: linkerd/cli
+func (conf *ResourceConfig) CreatedByCLI() bool {
+	if conf.pod.annotations == nil {
+		return false
+	}
+	return strings.Contains(conf.pod.annotations[k8s.CreatedByAnnotation], "")
 }
 
 // YamlMarshalObj returns the yaml for the workload in conf

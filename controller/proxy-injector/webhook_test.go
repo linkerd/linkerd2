@@ -41,12 +41,12 @@ var (
 
 func confNsEnabled() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(configs).
+		NewResourceConfig(configs, inject.OriginWebhook).
 		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
 }
 
 func confNsDisabled() *inject.ResourceConfig {
-	return inject.NewResourceConfig(configs).WithNsAnnotations(map[string]string{})
+	return inject.NewResourceConfig(configs, inject.OriginWebhook).WithNsAnnotations(map[string]string{})
 }
 
 func TestGetPatch(t *testing.T) {

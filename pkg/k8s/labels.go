@@ -214,7 +214,7 @@ const (
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
-	return fmt.Sprintf("linkerd/cli %s", version.Version)
+	return fmt.Sprintf("%s %s", "linkerd/cli", version.Version)
 }
 
 // GetServiceAccountAndNS returns the pod's serviceaccount and namespace.
