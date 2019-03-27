@@ -245,8 +245,8 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 		}
 	}
 
-	if stat.tcpOpenConnections == "0" {
-		return fmt.Errorf("Expected >0 TCP Connections, got [%s]", stat.tcpOpenConnections)
+	if stat.tcpOpenConnections != "0" {
+		return fmt.Errorf("Expected 0 TCP Connections, got [%s]", stat.tcpOpenConnections)
 	}
 
 	return nil
