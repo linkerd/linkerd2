@@ -62,7 +62,7 @@ type (
 		IdentityResources,
 		PrometheusResources,
 		ProxyInjectorResources,
-		PublicApiResources,
+		PublicAPIResources,
 		TapResources,
 		WebResources *resources
 
@@ -365,25 +365,25 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 
 	if options.highAvailability {
 		defaultConstraints := &resources{
-			CPU:    constraints{Request: "20m", Limit: ""},
-			Memory: constraints{Request: "50Mi", Limit: ""},
+			CPU:    constraints{Request: "20m"},
+			Memory: constraints{Request: "50Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
-		values.DestinationResources = defaultConstraints
-		values.GrafanaResources = defaultConstraints
-		values.ProxyInjectorResources = defaultConstraints
-		values.PublicApiResources = defaultConstraints
-		values.TapResources = defaultConstraints
-		values.WebResources = defaultConstraints
+		values.DestinationResources = &*defaultConstraints
+		values.GrafanaResources = &*defaultConstraints
+		values.ProxyInjectorResources = &*defaultConstraints
+		values.PublicAPIResources = &*defaultConstraints
+		values.TapResources = &*defaultConstraints
+		values.WebResources = &*defaultConstraints
 
 		values.IdentityResources = &resources{
-			CPU:    constraints{Request: "10m", Limit: ""},
-			Memory: constraints{Request: "10Mi", Limit: ""},
+			CPU:    constraints{Request: "10m"},
+			Memory: constraints{Request: "10Mi"},
 		}
 
 		values.PrometheusResources = &resources{
-			CPU:    constraints{Request: "300m", Limit: ""},
-			Memory: constraints{Request: "300Mi", Limit: ""},
+			CPU:    constraints{Request: "300m"},
+			Memory: constraints{Request: "300Mi"},
 		}
 	}
 
