@@ -53,14 +53,8 @@ spec:
             port: 9995
           failureThreshold: 7
         {{ with .ProxyInjectorResources -}}
-        resources:
-          requests:
-            {{- with .CPU.Request}}cpu: {{.}}{{end}}
-            {{- with .Memory.Request}}memory: {{.}}{{end}}
-          limits:
-            {{- with .CPU.Limit}}cpu: {{.}}{{end}}
-            {{- with .Memory.Limit}}memory: {{.}}{{end}}
-        {{- end }}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
