@@ -88,12 +88,13 @@ class ConfigureProfilesMsg extends React.Component {
 
   validateFields = (type, name) => {
     let error = this.state.error;
-    let match = type === 'service' ?
+    let match = name ? (type === 'service' ?
       serviceNameRegexp.test(name) :
-      namespaceNameRegexp.test(name);
+      namespaceNameRegexp.test(name)) : true;
 
     error[type] = !match;
     this.setState({ error });
+
   };
 
   renderDownloadProfileForm = () => {
@@ -153,7 +154,7 @@ class ConfigureProfilesMsg extends React.Component {
             </DialogContentText>
             <FormControl
               className={classes.textField}
-              onChange={() => this.validateFields('service', query.service)}
+              onBlur={() => this.validateFields('service', query.service)}
               error={error.service}>
               <InputLabel htmlFor="component-error">Service</InputLabel>
               <Input
@@ -170,7 +171,7 @@ class ConfigureProfilesMsg extends React.Component {
             </FormControl>
             <FormControl
               className={classes.textField}
-              onChange={() => this.validateFields('namespace', query.namespace)}
+              onBlur={() => this.validateFields('namespace', query.namespace)}
               error={error.namespace}>
               <InputLabel htmlFor="component-error">Namespace</InputLabel>
               <Input
