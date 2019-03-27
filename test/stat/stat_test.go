@@ -238,7 +238,7 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 	}
 
 	if !skipTLS {
-		expectedTLSRate := "0%"
+		expectedTLSRate := "100%"
 		if stat.tlsPercent != expectedTLSRate {
 			return fmt.Errorf("Expected tls rate [%s] for [%s], got [%s]",
 				expectedTLSRate, name, stat.tlsPercent)
