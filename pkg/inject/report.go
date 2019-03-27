@@ -19,23 +19,46 @@ type Report struct {
 	UDP                 bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource bool
 	InjectDisabled      bool
+
+	// Uninjected consists of two boolean flags to indicate if a proxy and
+	// proxy-init containers have been uninjected in this report
+	Uninjected struct {
+		// Proxy is true if a proxy container has been uninjected
+		Proxy bool
+
+		// ProxyInit is true if a proxy-init container has been uninjected
+		ProxyInit bool
+	}
 }
 
 // newReport returns a new Report struct, initialized with the Kind and Name
 // from conf
-func newReport(conf *ResourceConfig) Report {
+func newReport(conf *ResourceConfig) *Report {
 	var name string
-	if m := conf.pod.Meta; m != nil {
+	if m := conf.workload.Meta; m != nil {
+		name = m.Name
+	} else if m := conf.pod.meta; m != nil {
 		name = m.Name
 		if name == "" {
 			name = m.GenerateName
 		}
 	}
 
-	return Report{
+	report := &Report{
 		Kind: strings.ToLower(conf.workload.metaType.Kind),
 		Name: name,
 	}
+
+	if conf.pod.meta != nil && conf.pod.spec != nil {
+		report.InjectDisabled = report.disableByAnnotation(conf)
+		report.HostNetwork = conf.pod.spec.HostNetwork
+		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
+		report.UDP = checkUDPPorts(conf.pod.spec)
+	} else {
+		report.UnsupportedResource = true
+	}
+
+	return report
 }
 
 // ResName returns a string "Kind/Name" for the workload referred in the report r
@@ -49,14 +72,6 @@ func (r *Report) Injectable() bool {
 	return !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled
 }
 
-// update updates the report for the provided resource conf.
-func (r *Report) update(conf *ResourceConfig) {
-	r.InjectDisabled = conf.pod.Meta.GetAnnotations()[k8s.ProxyInjectAnnotation] == k8s.ProxyInjectDisabled
-	r.HostNetwork = conf.pod.spec.HostNetwork
-	r.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
-	r.UDP = checkUDPPorts(conf.pod.spec)
-}
-
 func checkUDPPorts(t *v1.PodSpec) bool {
 	// Check for ports with `protocol: UDP`, which will not be routed by Linkerd
 	for _, container := range t.Containers {
@@ -67,4 +82,36 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
+	// truth table of the effects of the inject annotation:
+	//
+	// origin  | namespace | pod      | inject?  | return
+	// ------- | --------- | -------- | -------- | ------
+	// webhook | enabled   | enabled  | yes      | false
+	// webhook | enabled   | ""       | yes      | false
+	// webhook | enabled   | disabled | no       | true
+	// webhook | disabled  | enabled  | yes      | false
+	// webhook | ""        | enabled  | yes      | false
+	// webhook | disabled  | disabled | no       | true
+	// webhook | ""        | disabled | no       | true
+	// webhook | disabled  | ""       | no       | true
+	// webhook | ""        | ""       | no       | true
+	// cli     | n/a       | enabled  | yes      | false
+	// cli     | n/a       | ""       | yes      | false
+	// cli     | n/a       | disabled | no       | true
+
+	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
+	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
+
+	if conf.origin == OriginCLI {
+		return podAnnotation == k8s.ProxyInjectDisabled
+	}
+
+	if nsAnnotation == k8s.ProxyInjectEnabled {
+		return podAnnotation == k8s.ProxyInjectDisabled
+	}
+
+	return podAnnotation != k8s.ProxyInjectEnabled
 }
