@@ -98,104 +98,147 @@ func TestInjectable(t *testing.T) {
 }
 
 func TestDisableByAnnotation(t *testing.T) {
-	var testCases = []struct {
-		podMeta       *metav1.ObjectMeta
-		nsAnnotations map[string]string
-		expected      bool
-	}{
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
+	t.Run("webhook origin", func(t *testing.T) {
+		var testCases = []struct {
+			podMeta       *metav1.ObjectMeta
+			nsAnnotations map[string]string
+			expected      bool
+		}{
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+					},
+				},
+				expected: false,
+			},
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+					},
+				},
+				nsAnnotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 				},
+				expected: false,
 			},
-			expected: false,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+					},
+				},
+				nsAnnotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+				expected: false,
+			},
+			{
+				podMeta: &metav1.ObjectMeta{},
+				nsAnnotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 				},
+				expected: false,
 			},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+					},
+				},
+				nsAnnotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+				expected: true,
 			},
-			expected: false,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+					},
+				},
+				nsAnnotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 				},
+				expected: true,
 			},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+					},
+				},
+				nsAnnotations: map[string]string{},
+				expected:      true,
 			},
-			expected: false,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-			},
-			expected: false,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
+			{
+				podMeta: &metav1.ObjectMeta{},
+				nsAnnotations: map[string]string{
 					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
 				},
+				expected: true,
 			},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+			{
+				podMeta:       &metav1.ObjectMeta{},
+				nsAnnotations: map[string]string{},
+				expected:      true,
 			},
-			expected: true,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
-					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
-				},
-			},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-			},
-			expected: true,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{
-				Annotations: map[string]string{
-					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
-				},
-			},
-			nsAnnotations: map[string]string{},
-			expected:      true,
-		},
-		{
-			podMeta: &metav1.ObjectMeta{},
-			nsAnnotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
-			},
-			expected: true,
-		},
-		{
-			podMeta:       &metav1.ObjectMeta{},
-			nsAnnotations: map[string]string{},
-			expected:      true,
-		},
-	}
+		}
 
-	for i, testCase := range testCases {
-		testCase := testCase
-		t.Run(fmt.Sprintf("test case #%d", i), func(t *testing.T) {
-			resourceConfig := &ResourceConfig{}
-			resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
-			resourceConfig.pod.meta = testCase.podMeta
+		for i, testCase := range testCases {
+			testCase := testCase
+			t.Run(fmt.Sprintf("test case #%d", i), func(t *testing.T) {
+				resourceConfig := &ResourceConfig{origin: OriginWebhook}
+				resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
+				resourceConfig.pod.meta = testCase.podMeta
 
-			report := newReport(resourceConfig)
-			if actual := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
-				t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
-			}
-		})
-	}
+				report := newReport(resourceConfig)
+				if actual := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+				}
+			})
+		}
+	})
+
+	t.Run("CLI origin", func(t *testing.T) {
+		var testCases = []struct {
+			podMeta  *metav1.ObjectMeta
+			expected bool
+		}{
+			{
+				podMeta:  &metav1.ObjectMeta{},
+				expected: false,
+			},
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+					},
+				},
+				expected: false,
+			},
+			{
+				podMeta: &metav1.ObjectMeta{
+					Annotations: map[string]string{
+						k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+					},
+				},
+				expected: true,
+			},
+		}
+
+		for i, testCase := range testCases {
+			testCase := testCase
+			t.Run(fmt.Sprintf("test case #%d", i), func(t *testing.T) {
+				resourceConfig := &ResourceConfig{origin: OriginCLI}
+				resourceConfig.pod.meta = testCase.podMeta
+
+				report := newReport(resourceConfig)
+				if actual := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
+				}
+			})
+		}
+	})
 }
