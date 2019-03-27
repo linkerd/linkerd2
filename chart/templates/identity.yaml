@@ -115,12 +115,9 @@ spec:
             path: /ready
             port: 9990
           failureThreshold: 7
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 10m
-            memory: 50Mi
-        {{- end }}
+        {{ with .IdentityResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:

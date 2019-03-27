@@ -84,11 +84,8 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 20m
-            memory: 50Mi
+        {{- with .GrafanaResources }}
+        {{- template "resources" . }}
         {{- end }}
         securityContext:
           runAsUser: 472

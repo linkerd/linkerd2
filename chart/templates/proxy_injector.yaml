@@ -52,11 +52,14 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .EnableHA }}
+        {{ with .ProxyInjectorResources -}}
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            {{- with .CPU.Request}}cpu: {{.}}{{end}}
+            {{- with .Memory.Request}}memory: {{.}}{{end}}
+          limits:
+            {{- with .CPU.Limit}}cpu: {{.}}{{end}}
+            {{- with .Memory.Limit}}memory: {{.}}{{end}}
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
