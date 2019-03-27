@@ -245,8 +245,11 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 		}
 	}
 
-	if stat.tcpOpenConnections != "0" {
-		return fmt.Errorf("Expected 0 TCP Connections, got [%s]", stat.tcpOpenConnections)
+	if stat.tcpOpenConnections != "-" {
+		tcpConn, err := strconv.Atoi(stat.tcpOpenConnections)
+		if err != nil {
+			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.tcpOpenConnections err.Error())
+		}
 	}
 
 	return nil
