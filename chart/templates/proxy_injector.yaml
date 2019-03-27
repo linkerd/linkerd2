@@ -1,4 +1,5 @@
-{{ if .Values.ProxyAutoInjectEnabled }}
+{{with .Values -}}
+{{if .ProxyAutoInjectEnabled -}}
 ---
 ###
 ### Proxy Injector
@@ -8,33 +9,33 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: proxy-injector
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.ControllerComponentLabel}}: proxy-injector
+      {{.ControllerComponentLabel}}: proxy-injector
   template:
     metadata:
       labels:
-        {{.Values.ControllerComponentLabel}}: proxy-injector
+        {{.ControllerComponentLabel}}: proxy-injector
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-proxy-injector
       containers:
       - name: proxy-injector
-        image: {{.Values.ControllerImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-injector"
-        - "-controller-namespace={{.Values.Namespace}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
-        - "-no-init-container={{.Values.NoInitContainer}}"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
+        - "-no-init-container={{.NoInitContainer}}"
         ports:
         - name: proxy-injector
           containerPort: 8443
@@ -51,14 +52,14 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.ControllerUID}}
       volumes:
       - name: config
         configMap:
@@ -68,12 +69,12 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["mutatingwebhookconfigurations"]
@@ -91,33 +92,34 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: proxy-injector
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: proxy-injector
   ports:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
 ---
-{{ end -}}
+{{end -}}
+{{end -}}

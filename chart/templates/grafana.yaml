@@ -1,3 +1,4 @@
+{{with .Values -}}
 ---
 ###
 ### Grafana
@@ -7,21 +8,21 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: grafana
+    {{.ControllerComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: grafana
+    {{.ControllerComponentLabel}}: grafana
   ports:
   - name: http
     port: 3000
@@ -31,19 +32,19 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-grafana
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: grafana
+    {{.ControllerComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.Values.ControllerComponentLabel}}: grafana
+        {{.ControllerComponentLabel}}: grafana
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       volumes:
       - name: data
@@ -72,8 +73,8 @@ spec:
         - name: grafana-config
           mountPath: /etc/grafana
           readOnly: true
-        image: {{.Values.GrafanaImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.GrafanaImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /api/health
@@ -83,7 +84,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
@@ -97,11 +98,11 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-grafana-config
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: grafana
+    {{.ControllerComponentLabel}}: grafana
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
   grafana.ini: |-
     instance_name = linkerd-grafana
@@ -129,7 +130,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090
+      url: http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"
@@ -148,3 +149,4 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
+{{end -}}
