@@ -79,6 +79,7 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
 		healthcheck.LinkerdVersionChecks,
+		healthcheck.ClusterDNSDomainChecks,
 	}
 
 	if options.preInstallOnly {

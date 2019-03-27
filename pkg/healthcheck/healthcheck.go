@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,6 +84,12 @@ const (
 	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
+
+	// ClusterDNSDomainChecks adds checks to validate clusterDomain is set for
+	// cluster.local.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	ClusterDNSDomainChecks CategoryID = "cluster-dns-domain"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -562,6 +569,46 @@ func (hc *HealthChecker) allCategories() []category {
 						for _, pod := range pods {
 							if pod.ProxyVersion != version.Version {
 								return fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)
+							}
+						}
+						return nil
+					},
+				},
+			},
+		},
+		{
+			id: ClusterDNSDomainChecks,
+			checkers: []checker{
+				{
+					description: "clusterDomain is set to 'cluster.local'",
+					hintAnchor:  "k8s-version",
+					check: func(context.Context) error {
+						nodes, err := hc.clientset.CoreV1().Nodes().List(metav1.ListOptions{})
+						if err != nil {
+							return fmt.Errorf("could not get list of nodes: %v", err)
+						}
+						for _, node := range nodes.Items {
+							req := hc.clientset.CoreV1().RESTClient().Get()
+							res := req.RequestURI(fmt.Sprintf("/api/v1/nodes/%s/proxy/configz", node.Name)).Do()
+							body, err := res.Raw()
+
+							if err != nil {
+								return fmt.Errorf("could not read body: %v", err)
+							}
+
+							var response struct {
+								KubeletConfig struct {
+									ClusterDomain string `json:"clusterDomain"`
+								} `json:"kubeletconfig"`
+							}
+
+							if err := json.Unmarshal(body, &response); err != nil {
+								return fmt.Errorf("could not unmarshal response: %v", err)
+							}
+
+							if response.KubeletConfig.ClusterDomain != "cluster.local" {
+								return fmt.Errorf("clusterDomain is set %q for node %q",
+									response.KubeletConfig.ClusterDomain, node.Name)
 							}
 						}
 						return nil
