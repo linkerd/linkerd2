@@ -74,12 +74,9 @@ spec:
             path: /ready
             port: 9994
           failureThreshold: 7
-        {{- if .EnableHA }}
-        resources:
-          requests:
-            cpu: 20m
-            memory: 50Mi
-        {{- end }}
+        {{ with .WebResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
       serviceAccountName: linkerd-web

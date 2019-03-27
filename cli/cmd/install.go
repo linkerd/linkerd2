@@ -39,10 +39,10 @@ type (
 		WebImage                 string
 		PrometheusImage          string
 		GrafanaImage             string
-		ControllerReplicas       uint
 		ImagePullPolicy          string
 		UUID                     string
 		CliVersion               string
+		ControllerReplicas       uint
 		ControllerLogLevel       string
 		PrometheusLogLevel       string
 		ControllerComponentLabel string
@@ -51,15 +51,26 @@ type (
 		ProxyAutoInjectEnabled   bool
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
-		EnableHA                 bool
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
 		GlobalConfig             string
 		ProxyConfig              string
 
+		DestinationResources,
+		GrafanaResources,
+		IdentityResources,
+		PrometheusResources,
+		ProxyInjectorResources,
+		PublicAPIResources,
+		TapResources,
+		WebResources *resources
+
 		Identity *installIdentityValues
 	}
+
+	resources   struct{ CPU, Memory constraints }
+	constraints struct{ Request, Limit string }
 
 	installIdentityValues struct {
 		Replicas uint
@@ -126,6 +137,7 @@ const (
 	webTemplateName            = "templates/web.yaml"
 	prometheusTemplateName     = "templates/prometheus.yaml"
 	grafanaTemplateName        = "templates/grafana.yaml"
+	resourcesTemplateName      = "templates/_resources.yaml"
 	serviceprofileTemplateName = "templates/serviceprofile.yaml"
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
 )
@@ -166,11 +178,15 @@ func newInstallOptionsWithDefaults() *installOptions {
 			disableExternalProfiles: false,
 			noInitContainer:         false,
 		},
-		identityOptions: &installIdentityOptions{
-			trustDomain:        defaultIdentityTrustDomain,
-			issuanceLifetime:   defaultIdentityIssuanceLifetime,
-			clockSkewAllowance: defaultIdentityClockSkewAllowance,
-		},
+		identityOptions: newInstallIdentityOptionsWithDefaults(),
+	}
+}
+
+func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
+	return &installIdentityOptions{
+		trustDomain:        defaultIdentityTrustDomain,
+		issuanceLifetime:   defaultIdentityIssuanceLifetime,
+		clockSkewAllowance: defaultIdentityClockSkewAllowance,
 	}
 }
 
@@ -186,10 +202,14 @@ func newCmdInstall() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return render(values, os.Stdout, configs)
+			return values.render(os.Stdout, configs)
 		},
 	}
 
+	return options.configure(cmd)
+}
+
+func (options *installOptions) configure(cmd *cobra.Command) *cobra.Command {
 	addProxyConfigFlags(cmd, options.proxyConfigOptions)
 	cmd.PersistentFlags().UintVar(
 		&options.controllerReplicas, "controller-replicas", options.controllerReplicas,
@@ -239,7 +259,6 @@ func newCmdInstall() *cobra.Command {
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
 		"The amount of time for which the Identity issuer should certify identity",
 	)
-
 	return cmd
 }
 
@@ -331,18 +350,41 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 		// Controller configuration:
 		Namespace:              controlPlaneNamespace,
 		UUID:                   configs.GetGlobal().GetInstallationUuid(),
+		ControllerReplicas:     options.controllerReplicas,
 		ControllerLogLevel:     options.controllerLogLevel,
 		ControllerUID:          options.controllerUID,
-		EnableHA:               options.highAvailability,
 		EnableH2Upgrade:        !options.disableH2Upgrade,
 		NoInitContainer:        options.noInitContainer,
-		ControllerReplicas:     options.controllerReplicas,
 		ProxyAutoInjectEnabled: options.proxyAutoInject,
 		PrometheusLogLevel:     toPromLogLevel(options.controllerLogLevel),
 
 		GlobalConfig: globalConfig,
 		ProxyConfig:  proxyConfig,
 		Identity:     identityValues,
+	}
+
+	if options.highAvailability {
+		defaultConstraints := &resources{
+			CPU:    constraints{Request: "20m"},
+			Memory: constraints{Request: "50Mi"},
+		}
+		// Copy constraints to each so that further modification isn't global.
+		values.DestinationResources = &*defaultConstraints
+		values.GrafanaResources = &*defaultConstraints
+		values.ProxyInjectorResources = &*defaultConstraints
+		values.PublicAPIResources = &*defaultConstraints
+		values.TapResources = &*defaultConstraints
+		values.WebResources = &*defaultConstraints
+
+		values.IdentityResources = &resources{
+			CPU:    constraints{Request: "10m"},
+			Memory: constraints{Request: "10Mi"},
+		}
+
+		values.PrometheusResources = &resources{
+			CPU:    constraints{Request: "300m"},
+			Memory: constraints{Request: "300Mi"},
+		}
 	}
 
 	return values, configs, nil
@@ -357,7 +399,7 @@ func toPromLogLevel(level string) string {
 	}
 }
 
-func render(values *installValues, w io.Writer, configs *pb.All) error {
+func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -369,6 +411,7 @@ func render(values *installValues, w io.Writer, configs *pb.All) error {
 		{Name: chartutil.ChartfileName},
 		{Name: nsTemplateName},
 		{Name: configTemplateName},
+		{Name: resourcesTemplateName},
 		{Name: identityTemplateName},
 		{Name: controllerTemplateName},
 		{Name: serviceprofileTemplateName},
