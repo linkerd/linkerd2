@@ -88,13 +88,18 @@ class ConfigureProfilesMsg extends React.Component {
 
   validateFields = (type, name) => {
     let error = this.state.error;
-    let match = name ? (type === 'service' ?
-      serviceNameRegexp.test(name) :
-      namespaceNameRegexp.test(name)) : true;
 
-    error[type] = !match;
+    if (_isEmpty(name)) {
+      error[type] = false;
+    } else {
+      let match = type === 'service' ?
+        serviceNameRegexp.test(name) :
+        namespaceNameRegexp.test(name);
+
+      error[type] = !match;
+    }
+
     this.setState({ error });
-
   };
 
   renderDownloadProfileForm = () => {
