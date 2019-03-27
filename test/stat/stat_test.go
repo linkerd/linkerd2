@@ -3,6 +3,7 @@ package get
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -248,7 +249,7 @@ func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowSt
 	if stat.tcpOpenConnections != "-" {
 		tcpConn, err := strconv.Atoi(stat.tcpOpenConnections)
 		if err != nil {
-			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.tcpOpenConnections err.Error())
+			return fmt.Errorf("Error parsing number of TCP connections [%s]: %s", stat.tcpOpenConnections, err.Error())
 		}
 	}
 
