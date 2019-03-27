@@ -194,6 +194,68 @@ To cleanup the namespaces after the test has finished, run:
 $ bin/test-cleanup
 ```
 
+### Testing the dashboard
+
+We use WebdriverIO to test how the web dashboard looks and operates locally in
+Chrome. For cross-browser testing, we use SauceLabs, which runs simulataneous
+tests on different browsers in the cloud.
+
+Whether you are running the tests locally or in the cloud, you'll first run
+`bin/web dev` which will start up the dashboard at `localhost:7777`.
+
+To run a local WebdriverIO instance that will run the tests on a local instance
+of Chrome, run:
+
+```bash
+$ bin/web integration local
+```
+
+To run cross-browser tests via SauceLabs, you need to do a few things first:
+
+1. Sign up for a (free) SauceLabs sub-account for the account 'buoyant'. If you
+   are not a Buoyant staffer, the best way to get an account invite is to ask in
+   the [Linkerd Slack channel](https://slack.linkerd.io).
+
+2. Once you have your username and key, set them as permanent environment
+   variables. This keeps your credentials private, and means that everyone on
+   the team can run the tests via their unique login without modifying the
+   authentication credentials in the test files. Open your `~/.bash_profile`
+   file and add:
+
+```
+export SAUCE_USERNAME="your Sauce username"
+export SAUCE_ACCESS_KEY="your Sauce access key"
+```
+
+3. Now you'll [download Sauce
+   Connect](https://wiki.saucelabs.com/display/DOCS/Sauce+Connect+Proxy), the
+   proxy server that will open a secure tunnel between a SauceLabs VM and the
+   Linkerd dashboard instance you're running on `localhost:7777`. You'll want to
+   save it in a separate directory than the rest of your development files. Once
+   you've downloaded it, navigate to its directory and run:
+
+```bash
+$ bin/sc -u $SAUCE_USERNAME -k $SAUCE_ACCESS_KEY
+```
+
+Wait until you see `Sauce Connect is up, you may start your tests` in your
+terminal. Open a separate terminal window and run:
+
+```bash
+$ bin/web integration cloud
+```
+
+SauceLabs will start running the tests in the cloud. If any tests fail, you'll
+immediately get the URL in your terminal window with a video of the test and
+information about what happened. The test(s) will also appear in [your SauceLabs
+archives](https://app.saucelabs.com/archives) a minute or so after they end.
+(Depending on time of day and server load, it may take longer for the tests to
+appear in the archives.)
+
+4. When you're finished, close the tunnel by pressing `CTRL-C` in the Sauce
+   Connect window. If you forget to do this, it will close on its own after a
+   few minutes.
+
 ## Writing tests
 
 To add a new test, create a new subdirectory inside the `test/` directory.

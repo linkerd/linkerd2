@@ -262,7 +262,7 @@ These commands assume working [Go](https://golang.org) and
 bin/web run
 ```
 
-The web server will be running on `localhost:8084`.
+The web server will be running on `localhost:7777`.
 
 #### Webpack dev server
 
@@ -276,7 +276,7 @@ To develop with a webpack dev server:
 
     Note: this will start up:
 
-    - `web` on :8084. This is the golang process that serves the dashboard.
+    - `web` on :7777. This is the golang process that serves the dashboard.
     - `webpack-dev-server` on :8080 to manage rebuilding/reloading of the
       javascript.
     - `controller` is port-forwarded from the Kubernetes cluster via `kubectl`
@@ -284,7 +284,7 @@ To develop with a webpack dev server:
     - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl`
       on :3000
 
-1. Go to [http://localhost:8084](http://localhost:8084) to see everything
+2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.
 
 #### Dependencies
