@@ -1,3 +1,4 @@
+{{with .Values -}}
 ---
 ###
 ### Service Profile CRD
@@ -8,7 +9,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -103,3 +104,4 @@ spec:
                                 type: object
                             not:
                               type: object
+{{end -}}

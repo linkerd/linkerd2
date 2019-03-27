@@ -1,3 +1,4 @@
+{{with .Values -}}
 ---
 ###
 ### Controller
@@ -7,12 +8,12 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-controller
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -30,29 +31,29 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-controller
+  name: linkerd-{{.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-controller-api
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: controller
   ports:
   - name: http
     port: 8085
@@ -62,15 +63,15 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: controller
   ports:
   - name: grpc
     port: 8086
@@ -80,19 +81,19 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-controller
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: controller
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: {{.Values.ControllerReplicas}}
+  replicas: {{.ControllerReplicas}}
   template:
     metadata:
       labels:
-        {{.Values.ControllerComponentLabel}}: controller
+        {{.ControllerComponentLabel}}: controller
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-controller
       containers:
@@ -105,13 +106,13 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
-        image: {{.Values.ControllerImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "public-api"
-        - "-prometheus-url=http://linkerd-prometheus.{{.Values.Namespace}}.svc.cluster.local:9090"
-        - "-controller-namespace={{.Values.Namespace}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -122,14 +123,14 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.ControllerUID}}
       - name: destination
         ports:
         - name: grpc
@@ -139,14 +140,14 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
-        image: {{.Values.ControllerImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "destination"
         - "-addr=:8086"
-        - "-controller-namespace={{.Values.Namespace}}"
-        - "-enable-h2-upgrade={{.Values.EnableH2Upgrade}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-controller-namespace={{.Namespace}}"
+        - "-enable-h2-upgrade={{.EnableH2Upgrade}}"
+        - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -157,26 +158,26 @@ spec:
             path: /ready
             port: 9996
           failureThreshold: 7
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.ControllerUID}}
       - name: tap
         ports:
         - name: grpc
           containerPort: 8088
         - name: admin-http
           containerPort: 9998
-        image: {{.Values.ControllerImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "tap"
-        - "-controller-namespace={{.Values.Namespace}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -187,15 +188,16 @@ spec:
             path: /ready
             port: 9998
           failureThreshold: 7
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.ControllerUID}}
       volumes:
       - name: config
         configMap:
           name: linkerd-config
+{{end -}}

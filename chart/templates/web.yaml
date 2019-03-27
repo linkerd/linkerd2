@@ -1,3 +1,4 @@
+{{with .Values -}}
 ---
 ###
 ### Web
@@ -7,21 +8,21 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: web
+    {{.ControllerComponentLabel}}: web
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: web
+    {{.ControllerComponentLabel}}: web
   ports:
   - name: http
     port: 8084
@@ -34,19 +35,19 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: linkerd-web
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: web
+    {{.ControllerComponentLabel}}: web
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        {{.Values.ControllerComponentLabel}}: web
+        {{.ControllerComponentLabel}}: web
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       containers:
       - name: web
@@ -55,14 +56,14 @@ spec:
           containerPort: 8084
         - name: admin-http
           containerPort: 9994
-        image: {{.Values.WebImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.WebImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "-api-addr=linkerd-controller-api.{{.Values.Namespace}}.svc.cluster.local:8085"
-        - "-grafana-addr=linkerd-grafana.{{.Values.Namespace}}.svc.cluster.local:3000"
-        - "-uuid={{.Values.UUID}}"
-        - "-controller-namespace={{.Values.Namespace}}"
-        - "-log-level={{.Values.ControllerLogLevel}}"
+        - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
+        - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.cluster.local:3000"
+        - "-uuid={{.UUID}}"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
             path: /ping
@@ -73,12 +74,13 @@ spec:
             path: /ready
             port: 9994
           failureThreshold: 7
-        {{- if .Values.EnableHA }}
+        {{- if .EnableHA }}
         resources:
           requests:
             cpu: 20m
             memory: 50Mi
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.ControllerUID}}
       serviceAccountName: linkerd-web
+{{end -}}

@@ -1,9 +1,11 @@
+{{with .Values -}}
 ---
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{.Values.Namespace}}
-  {{- if .Values.ProxyAutoInjectEnabled }}
+  name: {{.Namespace}}
+  {{- if .ProxyAutoInjectEnabled }}
   annotations:
-    {{.Values.ProxyInjectAnnotation}}: {{.Values.ProxyInjectDisabled}}
+    {{.ProxyInjectAnnotation}}: {{.ProxyInjectDisabled}}
   {{- end }}
+{{end -}}
