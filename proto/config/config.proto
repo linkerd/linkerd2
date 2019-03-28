@@ -78,7 +78,7 @@ message LogLevel {
 //
 // Useful for driving upgrades.
 message Install {
-  // The unique ID fr this installation. Does not change on upgrade.
+  // The unique ID for this installation. Does not change on upgrade.
   string uuid = 1;
 
   // The CLI version that drove the last install or upgrade.
