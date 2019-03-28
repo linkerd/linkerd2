@@ -558,6 +558,9 @@ func stripPort(address string) string {
 func (t *topTable) renderHeaders() {
 	tbprint(0, 0, "(press q to quit)")
 	x := 0
+	y := 0
+	width, _ := termbox.Size()
+	NoOfRows := len(t.rows)
 	for _, col := range t.columns {
 		if !col.display {
 			continue
@@ -566,7 +569,11 @@ func (t *topTable) renderHeaders() {
 		if col.rightAlign {
 			padding = col.width - runewidth.StringWidth(col.header)
 		}
-		tbprintBold(x+padding, headerHeight-1, col.header)
+		if x+padding >= width {
+			x = 0
+			y = NoOfRows + 2
+		}
+		tbprintBold(x+padding, y+headerHeight-1, col.header)
 		x += col.width + columnSpacing
 	}
 }
@@ -590,10 +597,11 @@ func (t *topTable) renderBody() {
 	sort.SliceStable(t.rows, func(i, j int) bool {
 		return t.rows[i].count > t.rows[j].count
 	})
-
+	NoOfRows := len(t.rows)
 	for i, row := range t.rows {
 		x := 0
-
+		y := 0
+		width, _ := termbox.Size()
 		for _, col := range t.columns {
 			if !col.display {
 				continue
@@ -603,7 +611,11 @@ func (t *topTable) renderBody() {
 			if col.rightAlign {
 				padding = col.width - runewidth.StringWidth(value)
 			}
-			tbprint(x+padding, i+headerHeight, value)
+			if x+padding >= width {
+				x = 0
+				y = NoOfRows + 2
+			}
+			tbprint(x+padding, y+i+headerHeight, value)
 			x += col.width + columnSpacing
 		}
 	}
