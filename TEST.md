@@ -318,6 +318,35 @@ eval $(minikube docker-env)
 ./run_tests.sh
 ```
 
+# Scale tests
+
+The scale tests deploy a single Linkerd control-plane, and then scale up
+multiple sample apps across multiple replicas across multiple namespaces.
+
+Prequisites:
+- a `linkerd` CLI binary
+- Linkerd Docker images associated with the `linkerd` CLI binary
+- a Kubernetes cluster with sufficient resources to run 100s of pods
+
+## Run tests
+
+```bash
+bin/test-scale
+usage: test-scale /path/to/linkerd [namespace]
+```
+
+For example, to test a newly built Linkerd CLI:
+
+```bash
+bin/test-scale `pwd`/bin/linkerd
+```
+
+## Cleanup
+
+```bash
+bin/test-cleanup l5d-scale
+```
+
 # Test against multiple cloud providers
 
 The [`bin/test-clouds`](bin/test-clouds) script runs the integration tests
