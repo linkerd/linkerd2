@@ -41,7 +41,7 @@ func TestRender(t *testing.T) {
 		ControllerUID:            2103,
 		EnableH2Upgrade:          true,
 		NoInitContainer:          false,
-		Configs: configValues{
+		Configs: configJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",

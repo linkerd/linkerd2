@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"io/ioutil"
+	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -42,4 +43,47 @@ func unmarshalConfig(filepath string, msg proto.Message) error {
 	}
 
 	return nil
+}
+
+func unmarshal(json string, msg proto.Message) error {
+	u := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	return u.Unmarshal(strings.NewReader(json), msg)
+}
+
+// FromConfigMap builds a configuration by reading a map with the keys "global"
+// and "proxy", each containing JSON values.
+func FromConfigMap(configMap map[string]string) (*pb.All, error) {
+	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
+
+	if err := unmarshal(configMap["global"], c.Global); err != nil {
+		return nil, err
+	}
+
+	if err := unmarshal(configMap["proxy"], c.Proxy); err != nil {
+		return nil, err
+	}
+
+	if err := unmarshal(configMap["install"], c.Install); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// ToJSON encode the configuration to JSON, i.e. to be stored in a ConfigMap.
+func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+
+	global, err = m.MarshalToString(configs.GetGlobal())
+	if err != nil {
+		return
+	}
+
+	proxy, err = m.MarshalToString(configs.GetProxy())
+	if err != nil {
+		return
+	}
+
+	install, err = m.MarshalToString(configs.GetInstall())
+	return
 }

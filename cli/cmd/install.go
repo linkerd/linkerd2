@@ -10,11 +10,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/linkerd/linkerd2/cli/static"
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -56,7 +55,7 @@ type (
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
 
-		Configs configValues
+		Configs configJSONs
 
 		DestinationResources,
 		GrafanaResources,
@@ -70,7 +69,7 @@ type (
 		Identity *installIdentityValues
 	}
 
-	configValues struct{ Global, Proxy, Install string }
+	configJSONs struct{ Global, Proxy, Install string }
 
 	resources   struct{ CPU, Memory constraints }
 	constraints struct{ Request, Limit string }
@@ -275,12 +274,21 @@ func (options *installOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 }
 
 func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
+	if flags == nil {
+		return
+	}
+
 	flags.VisitAll(func(f *pflag.Flag) {
-		if f.Changed && f.Name != "ignore-cluster" {
-			options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
-				Name:  f.Name,
-				Value: f.Value.String(),
-			})
+		if f.Changed {
+			switch f.Name {
+			case "ignore-cluster", "linkerd-version":
+				// Thse flags don't make sense to record.
+			default:
+				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
+					Name:  f.Name,
+					Value: f.Value.String(),
+				})
+			}
 		}
 	})
 }
@@ -344,16 +352,7 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 
 	configs := options.configs(identityValues.toIdentityContext())
 
-	j := jsonpb.Marshaler{EmitDefaults: true}
-	globalJSON, err := j.MarshalToString(configs.GetGlobal())
-	if err != nil {
-		return nil, nil, err
-	}
-	proxyJSON, err := j.MarshalToString(configs.GetProxy())
-	if err != nil {
-		return nil, nil, err
-	}
-	installJSON, err := j.MarshalToString(configs.GetInstall())
+	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,7 +384,7 @@ func (options *installOptions) validateAndBuild() (*installValues, *pb.All, erro
 		ProxyAutoInjectEnabled: options.proxyAutoInject,
 		PrometheusLogLevel:     toPromLogLevel(options.controllerLogLevel),
 
-		Configs: configValues{
+		Configs: configJSONs{
 			Global:  globalJSON,
 			Proxy:   proxyJSON,
 			Install: installJSON,
@@ -495,7 +494,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
 	// Once Kubernetes supports sidecar containers, this may be removed, as that
 	// will guarantee the proxy is running prior to control-plane startup.
-	configs.Proxy.IgnoreOutboundPorts = append(configs.Proxy.IgnoreOutboundPorts, &config.Port{Port: 443})
+	configs.Proxy.IgnoreOutboundPorts = append(configs.Proxy.IgnoreOutboundPorts, &pb.Port{Port: 443})
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
 		configs: configs,
@@ -582,7 +581,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		InboundPort: &pb.Port{
 			Port: uint32(options.proxyInboundPort),
 		},
-		AdminPort: &config.Port{
+		AdminPort: &pb.Port{
 			Port: uint32(options.proxyAdminPort),
 		},
 		OutboundPort: &pb.Port{
