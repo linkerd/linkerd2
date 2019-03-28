@@ -64,11 +64,11 @@ var (
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
+		`.* linkerd-web-.*-.* linkerd-proxy WARN \[.*\] linkerd2_proxy::proxy::canonicalize failed to refine linkerd-controller-api..*.svc.cluster.local: deadline has elapsed; using original name`,
+		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 
 		// prometheus scrape failures of control-plane
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: .*`,
-
-		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 	}, "|"))
 )
 
@@ -145,6 +145,20 @@ func TestVersionPostInstall(t *testing.T) {
 	err := TestHelper.CheckVersion(TestHelper.GetVersion())
 	if err != nil {
 		t.Fatalf("Version command failed\n%s", err.Error())
+	}
+}
+
+func TestInstallSP(t *testing.T) {
+	cmd := []string{"install-sp"}
+
+	out, _, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("linkerd install-sp command failed\n%s", out)
+	}
+
+	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	if err != nil {
+		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 }
 
@@ -243,6 +257,26 @@ func TestInject(t *testing.T) {
 	if !strings.Contains(output, expectedStringInPayload) {
 		t.Fatalf("Expected application response to contain string [%s], but it was [%s]",
 			expectedStringInPayload, output)
+	}
+}
+
+func TestServiceProfileDeploy(t *testing.T) {
+	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/master/api.proto")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v %s", err, bbProto)
+	}
+
+	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
+
+	cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
+	bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v %s", err, stderr)
+	}
+
+	out, err := TestHelper.KubectlApply(bbSP, prefixedNs)
+	if err != nil {
+		t.Fatalf("kubectl apply command failed: %s\n%s", err, out)
 	}
 }
 

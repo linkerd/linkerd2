@@ -106,9 +106,10 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 	return h.namespace + "-" + testName
 }
 
-// CombinedOutput executes a shell command and returns the output.
-func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, string, error) {
+// combinedOutput executes a shell command and returns the output.
+func (h *TestHelper) combinedOutput(stdin string, name string, arg ...string) (string, string, error) {
 	command := exec.Command(name, arg...)
+	command.Stdin = strings.NewReader(stdin)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 
@@ -119,8 +120,14 @@ func (h *TestHelper) CombinedOutput(name string, arg ...string) (string, string,
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
 // flag.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
+	return h.PipeToLinkerdRun("", arg...)
+}
+
+// PipeToLinkerdRun executes a linkerd command appended with the
+// --linkerd-namespace flag, and provides a string at Stdin.
+func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
 	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
-	return h.CombinedOutput(h.linkerd, withNamespace...)
+	return h.combinedOutput(stdin, h.linkerd, withNamespace...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the
