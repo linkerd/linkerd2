@@ -10,12 +10,16 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
-  {{- if .GlobalConfig}}
+  {{- with .Configs.Global}}
   global: |
-    {{.GlobalConfig}}
+    {{.}}
   {{- end}}
-  {{- if .ProxyConfig}}
+  {{- with .Configs.Proxy}}
   proxy: |
-    {{.ProxyConfig}}
+    {{.}}
+  {{- end }}
+  {{- with .Configs.Install}}
+  install: |
+    {{.}}
   {{- end }}
 {{- end}}

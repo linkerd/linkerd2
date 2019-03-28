@@ -41,19 +41,22 @@ func TestRender(t *testing.T) {
 		ControllerUID:            2103,
 		EnableH2Upgrade:          true,
 		NoInitContainer:          false,
-		GlobalConfig:             "GlobalConfig",
-		ProxyConfig:              "ProxyConfig",
-		ControllerReplicas:       1,
-		Identity:                 defaultValues.Identity,
+		Configs: configValues{
+			Global:  "GlobalConfig",
+			Proxy:   "ProxyConfig",
+			Install: "InstallConfig",
+		},
+		ControllerReplicas: 1,
+		Identity:           defaultValues.Identity,
 	}
 
 	haOptions := testInstallOptions()
-	haOptions.recordedFlags = []*config.InstallContext_Flag{{Name: "ha", Value: "true"}}
+	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
 	haValues, haConfig, _ := haOptions.validateAndBuild()
 
 	haWithOverridesOptions := testInstallOptions()
-	haWithOverridesOptions.recordedFlags = []*config.InstallContext_Flag{
+	haWithOverridesOptions.recordedFlags = []*config.Install_Flag{
 		{Name: "ha", Value: "true"},
 		{Name: "controller-replicas", Value: "2"},
 		{Name: "proxy-cpu-request", Value: "400m"},
@@ -66,12 +69,12 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild()
 
 	noInitContainerOptions := testInstallOptions()
-	noInitContainerOptions.recordedFlags = []*config.InstallContext_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
+	noInitContainerOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild()
 
 	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
-	noInitContainerWithProxyAutoInjectOptions.recordedFlags = []*config.InstallContext_Flag{
+	noInitContainerWithProxyAutoInjectOptions.recordedFlags = []*config.Install_Flag{
 		{Name: "linkerd-cni-enabled", Value: "true"},
 		{Name: "proxy-auto-inject", Value: "true"},
 	}

@@ -20,6 +20,8 @@ data:
     GlobalConfig
   proxy: |
     ProxyConfig
+  install: |
+    InstallConfig
 ---
 ###
 ### Identity Controller Service
