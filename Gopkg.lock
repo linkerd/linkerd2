@@ -1283,6 +1283,7 @@
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/cobra/doc",
+    "github.com/spf13/pflag",
     "github.com/wercker/stern/stern",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
