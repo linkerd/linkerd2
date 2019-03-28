@@ -5,5 +5,8 @@ const assert = require('assert');
     browser.url('http://localhost:7777/tap');
     const link = $('.linkerd-word-logo');
     link.click();
+    const breadcrumbHeader = $('.breadcrumb-link');
+    const pageTitle = breadcrumbHeader.getText();
+    assert.equal(pageTitle, 'Overview');
   });
   });
