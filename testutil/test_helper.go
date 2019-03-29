@@ -130,7 +130,7 @@ func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 // --linkerd-namespace flag, and provides a string at Stdin.
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
 	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
-	return h.combinedOutput(h.linkerd, withParams...)
+	return h.combinedOutput(stdin, h.linkerd, withParams...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the
