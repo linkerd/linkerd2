@@ -301,10 +301,5 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
 
-	flags.BoolVar(
-		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
-		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
-	)
-
 	return flags
 }
