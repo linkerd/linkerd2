@@ -91,7 +91,7 @@ function run {
   )
 
   cd $ROOT/web && \
-    ../bin/go-run . $*
+    ../bin/go-run . --addr=:7777 $*
 }
 
 function setup {
@@ -102,6 +102,20 @@ function setup {
 function test {
   cd $ROOT/web/app
   yarn jest "$*"
+}
+
+function integration {
+  if [[ "$#" -ne 1 || ($1 != "cloud" && $1 != "local") ]]; then
+    echo "usage: bin/web integration (cloud|local)" >&2
+    exit 1
+  fi
+  if [ $1 = "cloud" ]; then
+    cd $ROOT/web/app && \
+    ./node_modules/wdio/node_modules/.bin/wdio ./integration/wdio-sauce.conf.js
+  else
+    cd $ROOT/web/app && \
+    ./node_modules/wdio/node_modules/.bin/wdio ./integration/wdio.conf.js
+  fi
 }
 
 function main {

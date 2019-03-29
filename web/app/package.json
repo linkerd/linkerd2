@@ -25,6 +25,7 @@
     "whatwg-fetch": "2.0.3"
   },
   "devDependencies": {
+    "@wdio/cli": "^5.7.6",
     "babel-core": "6.26.0",
     "babel-eslint": "8.0.3",
     "babel-jest": "23.6.0",
@@ -34,6 +35,7 @@
     "babel-preset-env": "1.7.0",
     "babel-preset-react-app": "3.1.1",
     "babel-runtime": "^6.26.0",
+    "chromedriver": "^2.46.0",
     "clean-webpack-plugin": "1.0.0",
     "css-loader": "0.28.7",
     "enzyme": "3.7.0",
@@ -58,6 +60,10 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "0.21.0",
     "url-loader": "1.0.1",
+    "wdio": "^3.0.3",
+    "wdio-chromedriver-service": "^5.0.1",
+    "wdio-mocha-framework": "^0.6.4",
+    "webdriverio": "^5.7.6",
     "webpack": "4.20.2",
     "webpack-bundle-analyzer": "^3.0.3",
     "webpack-cli": "3.0.7",
