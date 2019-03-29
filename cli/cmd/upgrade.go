@@ -172,13 +172,13 @@ func fetchIssuer(k *kubernetes.Clientset, trustPEM string) (string, string, time
 		return "", "", time.Time{}, err
 	}
 
-	keyPEM := string(secret.Data["key.pem"])
+	keyPEM := string(secret.Data[k8s.IdentityIssuerKeyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
 
-	crtPEM := string(secret.Data["crt.pem"])
+	crtPEM := string(secret.Data[k8s.IdentityIssuerCrtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
 		return "", "", time.Time{}, err

@@ -173,9 +173,14 @@ const (
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
 
-	// IdentityIssuerSecretName is the name assigned the temporary end-entity
-	// volume mounted into each proxy to store identity credentials.
+	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
+
+	// IdentityIssuerKeyName is the issuer's private key file.
+	IdentityIssuerKeyName = "key.pem"
+
+	// IdentityIssuerKeyName is the issuer's certificate file.
+	IdentityIssuerCrtName = "crt.pem"
 
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"
