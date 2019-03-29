@@ -22,7 +22,7 @@ function check_linkerd_binary(){
 function check_if_k8s_reachable(){
     printf "Checking if there is a Kubernetes cluster available..."
     exit_code=0
-    kubectl --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
+    kubectl --context=$k8s_context --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
     if [ $exit_code -ne 0 ]; then
         printf "\\nFailed to connect to Kubernetes cluster\\n"
         exit $exit_code
@@ -32,27 +32,28 @@ function check_if_k8s_reachable(){
 
 function run_test(){
     printf "Running test [%s] %s\\n" "$(basename "$1")" "$2"
-    go test -v "$1" -linkerd "$linkerd_path" -linkerd-namespace "$linkerd_namespace" -integration-tests "$2"
+    go test -v "$1" --linkerd="$linkerd_path" --linkerd-namespace="$linkerd_namespace" --k8s-context="$k8s_context" --integration-tests "$2"
 }
 
 linkerd_path=$1
 
 if [ -z "$linkerd_path" ]; then
-    echo "usage: $(basename "$0") /path/to/linkerd [namespace]" >&2
+    echo "usage: $(basename "$0") /path/to/linkerd [namespace] [k8s-context]" >&2
     exit 64
 fi
-
-check_linkerd_binary
-check_if_k8s_reachable
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 test_directory="$bindir/../test"
 linkerd_version=$($linkerd_path version --client --short)
 linkerd_namespace=${2:-l5d-integration}
+k8s_context=${3:-""}
+
+check_linkerd_binary
+check_if_k8s_reachable
 
 printf "==================RUNNING ALL TESTS==================\\n"
 
-printf "Testing Linkerd version [%s] namespace [%s]\\n" "$linkerd_version" "$linkerd_namespace"
+printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linkerd_version" "$linkerd_namespace" "$k8s_context"
 
 exit_code=0
 

@@ -1,0 +1,69 @@
+#!/bin/bash
+
+#
+# Run integration tests on 4 cloud providers:
+# - Amazon (EKS)
+# - DigitalOcean (DO)
+# - Google (GKE)
+# - Microsoft (AKS)
+#
+# This script assumes you have a working Kubernetes cluster set up on each Cloud
+# provider, and that Kubernetes contexts are configured via the environment
+# variables $AKS $DO $EKS $GKE.
+#
+# For example:
+# export AKS=my-aks-cluster
+# export DO=do-nyc1-my-cluster
+# export EKS=arn:aws:eks:us-east-1:123456789012:cluster/my-cluster
+# export GKE=gke_my-project_us-east1-b_my-cluster
+#
+# For more information on configuring access to multiple clusters, see:
+# https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/#define-clusters-users-and-contexts
+
+set -e
+
+# TODO: share this with test-run
+function check_linkerd_binary(){
+    printf "Checking the linkerd binary..."
+    if [[ "$linkerd_path" != /* ]]; then
+        printf "\\n[%s] is not an absolute path\\n" "$linkerd_path"
+        exit 1
+    fi
+    if [ ! -x "$linkerd_path" ]; then
+        printf "\\n[%s] does not exist or is not executable\\n" "$linkerd_path"
+        exit 1
+    fi
+    exit_code=0
+    "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to run linkerd version command\\n"
+        exit $exit_code
+    fi
+    printf "[ok]\\n"
+}
+
+if [ "$#" -ne 1 ]; then
+    echo "usage: $(basename "$0") /path/to/linkerd" >&2
+    exit 64
+fi
+
+for CLUSTER in AKS DO EKS GKE; do
+    if [ -z "${!CLUSTER}" ]; then
+        echo "\$$CLUSTER not set" >&2
+        exit 64
+    fi
+done
+
+linkerd_path=$1
+check_linkerd_binary
+
+printf "\nKicking off tests for:\n- $AKS\n- $DO\n- $EKS\n- $GKE\n\n"
+
+trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
+for CLUSTER in $AKS $DO $EKS $GKE; do
+    bin/test-run $linkerd_path l5d-integration-cloud $CLUSTER | while IFS= read -r line; do printf '[%s] %s\n' "$CLUSTER" "$line"; done &
+done
+
+wait
+
+# TODO propagate error code
