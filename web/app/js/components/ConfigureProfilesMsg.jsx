@@ -68,11 +68,15 @@ class ConfigureProfilesMsg extends React.Component {
 
   handleClose = () => {
     this.setState({
+      open: false,
       error: {
-        namespace: false,
-        service: false
+        service: false,
+        namespace: false
       },
-      open: false
+      query: {
+        service: '',
+        namespace: ''
+      }
     });
   };
 
