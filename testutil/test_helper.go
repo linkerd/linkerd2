@@ -71,15 +71,10 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-<<<<<<< HEAD
 		k8sContext: *k8sContext,
 		linkerd:    *linkerd,
 		namespace:  ns,
-=======
-		linkerd:    *linkerd,
-		namespace:  ns,
 		autoInject: *autoInject,
->>>>>>> a66735ec... Introduce auto inject integration tests
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
