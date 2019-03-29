@@ -1,7 +1,7 @@
 package config
 
 import (
-	"bytes"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -10,8 +10,6 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	log "github.com/sirupsen/logrus"
 )
-
-var unmarshaler = jsonpb.Unmarshaler{}
 
 // Global returns the Global protobuf config from the linkerd-config ConfigMap
 func Global(filepath string) (*pb.Global, error) {
@@ -30,22 +28,20 @@ func Proxy(filepath string) (*pb.Proxy, error) {
 func unmarshalConfig(filepath string, msg proto.Message) error {
 	configJSON, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		log.Errorf("error reading %s: %s", filepath, err)
-		return err
+		return fmt.Errorf("failed to read config file: %s", err)
 	}
 
 	log.Debugf("%s config JSON: %s", filepath, configJSON)
-
-	err = unmarshaler.Unmarshal(bytes.NewReader(configJSON), msg)
-	if err != nil {
-		log.Errorf("error unmarshaling %s: %s", filepath, err)
-		return err
+	if err = unmarshal(string(configJSON), msg); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON from: %s: %s", filepath, err)
 	}
 
 	return nil
 }
 
 func unmarshal(json string, msg proto.Message) error {
+	// If we're using older code to read a newer config, blowing up during decoding
+	// is not helpful. We should detect that through other means.
 	u := jsonpb.Unmarshaler{AllowUnknownFields: true}
 	return u.Unmarshal(strings.NewReader(json), msg)
 }
