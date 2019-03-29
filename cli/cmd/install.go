@@ -111,7 +111,8 @@ type (
 
 		recordedFlags []*pb.Install_Flag
 
-		overrideUUIDForTest string
+		// A function pointer that can be overridden for tests
+		generateUUID func() string
 	}
 
 	installIdentityOptions struct {
@@ -183,6 +184,10 @@ func newInstallOptionsWithDefaults() *installOptions {
 			noInitContainer:         false,
 		},
 		identityOptions: newInstallIdentityOptionsWithDefaults(),
+
+		generateUUID: func() string {
+			return uuid.NewV4().String()
+		},
 	}
 }
 
@@ -557,9 +562,9 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 }
 
 func (options *installOptions) installConfig() *pb.Install {
-	installID := uuid.NewV4().String()
-	if options.overrideUUIDForTest != "" {
-		installID = options.overrideUUIDForTest
+	installID := ""
+	if options.generateUUID != nil {
+		installID = options.generateUUID()
 	}
 
 	return &pb.Install{

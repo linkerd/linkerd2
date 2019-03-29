@@ -272,9 +272,6 @@ func registryOverride(image, registry string) string {
 	return strings.Replace(image, defaultDockerRegistry, registry, 1)
 }
 
-// addProxyConfigFlags adds command line flags for all fields in the
-// proxyConfigOptions struct. To keep things organized, the flags should be
-// added in the order that they're defined in the proxyConfigOptions struct.
 func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("proxy", e)
 	flags.StringVarP(&options.linkerdVersion, "linkerd-version", "v", options.linkerdVersion, "Tag to be used for Linkerd images")
@@ -300,9 +297,6 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	flags.StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	flags.MarkHidden("proxy-memory")
-	flags.MarkHidden("proxy-cpu")
-
 	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
 

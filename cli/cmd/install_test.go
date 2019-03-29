@@ -112,7 +112,9 @@ func TestRender(t *testing.T) {
 func testInstallOptions() *installOptions {
 	o := newInstallOptionsWithDefaults()
 	o.ignoreCluster = true
-	o.overrideUUIDForTest = "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	o.generateUUID = func() string {
+		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
+	}
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
