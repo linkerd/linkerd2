@@ -222,7 +222,7 @@ OR
 bin/web dev
 ```
 
-### Local
+#### Local
 
 To run a local WebdriverIO instance that will run the tests on a local instance
 of Chrome, run:
@@ -231,7 +231,7 @@ of Chrome, run:
 bin/web integration local
 ```
 
-### Cloud
+#### Cloud
 
 To run cross-browser tests via SauceLabs, you need to do a few things first:
 
