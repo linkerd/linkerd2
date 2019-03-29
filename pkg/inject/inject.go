@@ -636,11 +636,11 @@ func (conf *ResourceConfig) getOverride(annotation string) string {
 }
 
 func (conf *ResourceConfig) taggedProxyImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyImage(), conf.configs.GetGlobal().GetVersion())
+	return fmt.Sprintf("%s:%s", conf.proxyImage(), conf.proxyVersion())
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.configs.GetGlobal().GetVersion())
+	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.proxyVersion())
 }
 
 func (conf *ResourceConfig) proxyImage() string {
@@ -655,6 +655,13 @@ func (conf *ResourceConfig) proxyImagePullPolicy() v1.PullPolicy {
 		return v1.PullPolicy(override)
 	}
 	return v1.PullPolicy(conf.configs.GetProxy().GetProxyImage().GetPullPolicy())
+}
+
+func (conf *ResourceConfig) proxyVersion() string {
+	if override := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); override != "" {
+		return override
+	}
+	return conf.configs.GetGlobal().GetVersion()
 }
 
 func (conf *ResourceConfig) proxyControlPort() int32 {

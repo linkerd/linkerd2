@@ -65,6 +65,9 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
 	defaultConfig.Global.Version = "testinjectversion"
 
+	overrideConfig := testInstallConfig()
+	overrideConfig.Global.Version = "override"
+
 	proxyResourceConfig := testInstallConfig()
 	proxyResourceConfig.Global.Version = defaultConfig.Global.Version
 	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
@@ -179,7 +182,7 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			testInjectConfig: defaultConfig,
+			testInjectConfig: overrideConfig,
 		},
 	}
 
