@@ -112,7 +112,7 @@ func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(api.Config)
 }
 
-// fetchIdentityValue checks the kubernetes API to fetch an existing
+// fetchConfigs checks the kubernetes API to fetch an existing
 // linkerd configuration.
 //
 // This bypasses the public API so that upgrades can proceed when the API pod is
