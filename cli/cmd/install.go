@@ -180,7 +180,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 			proxyMemoryRequest:      "",
 			proxyCPULimit:           "",
 			proxyMemoryLimit:        "",
-			disableExternalProfiles: false,
+			disableExternalProfiles: true,
 			noInitContainer:         false,
 		},
 		identityOptions: newInstallIdentityOptionsWithDefaults(),
