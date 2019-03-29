@@ -27,6 +27,7 @@ type tapEvent struct {
 	path       string
 	httpStatus string
 	grpcStatus string
+	tls        string
 	lineCount  int
 }
 
@@ -37,6 +38,7 @@ var (
 		path:       "/buoyantio.bb.TheService/theFunction",
 		httpStatus: "200",
 		grpcStatus: "OK",
+		tls:        "true",
 		lineCount:  3,
 	}
 
@@ -46,6 +48,7 @@ var (
 		path:       "/buoyantio.bb.TheService/theFunction",
 		httpStatus: "200",
 		grpcStatus: "Unknown",
+		tls:        "true",
 		lineCount:  3,
 	}
 
@@ -55,6 +58,7 @@ var (
 		path:       "/",
 		httpStatus: "200",
 		grpcStatus: "",
+		tls:        "true",
 		lineCount:  3,
 	}
 
@@ -64,6 +68,7 @@ var (
 		path:       "/",
 		httpStatus: "500",
 		grpcStatus: "",
+		tls:        "true",
 		lineCount:  3,
 	}
 )
@@ -191,6 +196,7 @@ func tap(target string, arg ...string) ([]*tapEvent, error) {
 			tapEventByID[fields["id"]] = obj
 		}
 		obj.lineCount++
+		obj.tls = fields["tls"]
 
 		switch fields["type"] {
 		case "req":
