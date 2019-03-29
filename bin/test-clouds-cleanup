@@ -11,7 +11,14 @@
 # provider, and that Kubernetes contexts are configured via environment
 # variables.
 
-set -eu
+set -e
+
+for CLUSTER in AKS DO EKS GKE; do
+  if [ -z "${!CLUSTER}" ]; then
+    echo "\$$CLUSTER not set" >&2
+    exit 64
+  fi
+done
 
 for CLUSTER in $AKS $DO $EKS $GKE
 do

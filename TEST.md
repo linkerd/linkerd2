@@ -244,6 +244,17 @@ This script assumes you have a working Kubernetes cluster set up on each Cloud
 provider, and that Kubernetes contexts are configured via environment
 variables.
 
+For example:
+```bash
+export AKS=my-aks-cluster
+export DO=do-nyc1-my-cluster
+export EKS=arn:aws:eks:us-east-1:123456789012:cluster/my-cluster
+export GKE=gke_my-project_us-east1-b_my-cluster
+```
+
+For more information on configuring access to multiple clusters, see:
+https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/#define-clusters-users-and-contexts
+
 ```bash
 bin/test-clouds `pwd`/bin/linkerd
 ```
