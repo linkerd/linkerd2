@@ -633,14 +633,14 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 // This bypasses the public API so that public API errors cannot cause us to
 // misdiagnose a controller error to indicate that no control plane exists.
 func exitIfClusterExists() {
-	api, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	kubeConfig, err := k8s.GetConfig(kubeconfigPath, kubeContext)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
 
-	k, err := kubernetes.NewForConfig(api.Config)
+	k, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)

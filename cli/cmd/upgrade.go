@@ -103,12 +103,12 @@ func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
 		return nil, errors.New("--ignore-cluster cannot be used with upgrade")
 	}
 
-	api, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	c, err := k8s.GetConfig(kubeconfigPath, kubeContext)
 	if err != nil {
 		return nil, err
 	}
 
-	return kubernetes.NewForConfig(api.Config)
+	return kubernetes.NewForConfig(c)
 }
 
 // fetchConfigs checks the kubernetes API to fetch an existing
