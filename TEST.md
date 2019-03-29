@@ -218,7 +218,7 @@ bin/web run
 ```
 OR
 ```bash
-# with webpack
+# with webpack-dev-server
 bin/web dev
 ```
 
