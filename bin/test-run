@@ -58,6 +58,7 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 exit_code=0
 
 run_test "$test_directory/install_test.go" || exit_code=$?
+run_test "$test_directory/install_test.go" "--proxy-auto-inject" || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done

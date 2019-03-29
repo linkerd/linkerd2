@@ -21,6 +21,7 @@ type TestHelper struct {
 	linkerd    string
 	version    string
 	namespace  string
+	autoInject bool
 	httpClient http.Client
 	KubernetesHelper
 }
@@ -36,6 +37,7 @@ func NewTestHelper() *TestHelper {
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	autoInject := flag.Bool("proxy-auto-inject", false, "enable proxy sidecar auto-injection in tests")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -64,11 +66,20 @@ func NewTestHelper() *TestHelper {
 	}
 
 	ns := *namespace
+	if *autoInject {
+		ns += "-auto-inject"
+	}
 
 	testHelper := &TestHelper{
+<<<<<<< HEAD
 		k8sContext: *k8sContext,
 		linkerd:    *linkerd,
 		namespace:  ns,
+=======
+		linkerd:    *linkerd,
+		namespace:  ns,
+		autoInject: *autoInject,
+>>>>>>> a66735ec... Introduce auto inject integration tests
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -109,15 +120,10 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 	return h.namespace + "-" + testName
 }
 
-// combinedOutput executes a shell command and returns the output.
-func (h *TestHelper) combinedOutput(stdin string, name string, arg ...string) (string, string, error) {
-	command := exec.Command(name, arg...)
-	command.Stdin = strings.NewReader(stdin)
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-
-	stdout, err := command.Output()
-	return string(stdout), stderr.String(), err
+// AutoInject returns whether or not Proxy Auto Inject is enabled for the given
+// test.
+func (h *TestHelper) AutoInject() bool {
+	return h.autoInject
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
@@ -130,7 +136,7 @@ func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 // --linkerd-namespace flag, and provides a string at Stdin.
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
 	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
-	return h.combinedOutput(stdin, h.linkerd, withParams...)
+	return combinedOutput(stdin, h.linkerd, withParams...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the
@@ -162,11 +168,10 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 // ValidateOutput validates a string against the contents of a file in the
 // test's testdata directory.
 func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
-	b, err := ioutil.ReadFile("testdata/" + fixtureFile)
+	expected, err := ReadFile("testdata/" + fixtureFile)
 	if err != nil {
 		return err
 	}
-	expected := string(b)
 
 	if out != expected {
 		return fmt.Errorf(
@@ -243,4 +248,24 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	})
 
 	return body, err
+}
+
+// ReadFile reads a file from disk and returns the contents as a string.
+func ReadFile(file string) (string, error) {
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// combinedOutput executes a shell command and returns the output.
+func combinedOutput(stdin string, name string, arg ...string) (string, string, error) {
+	command := exec.Command(name, arg...)
+	command.Stdin = strings.NewReader(stdin)
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+
+	stdout, err := command.Output()
+	return string(stdout), stderr.String(), err
 }

@@ -56,11 +56,11 @@ var (
 	knownErrorsRegex = regexp.MustCompile(strings.Join([]string{
 
 		// k8s hitting readiness endpoints before components are ready
-		`.* linkerd-(controller|identity|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|web)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*:4191\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
 
-		`.* linkerd-(controller|identity|grafana|prometheus|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
@@ -105,6 +105,10 @@ func TestInstall(t *testing.T) {
 		"--controller-log-level", "debug",
 		"--proxy-log-level", "warn,linkerd2_proxy=debug",
 		"--linkerd-version", TestHelper.GetVersion(),
+	}
+	if TestHelper.AutoInject() {
+		cmd = append(cmd, []string{"--proxy-auto-inject"}...)
+		linkerdDeployReplicas["linkerd-proxy-injector"] = deploySpec{1, []string{"proxy-injector"}}
 	}
 
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -218,19 +222,35 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestInject(t *testing.T) {
-	cmd := []string{"inject", "testdata/smoke_test.yaml"}
-
-	out, injectReport, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
-	}
-
-	err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
-	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
-	}
+	var out string
+	var err error
 
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
+
+	if TestHelper.AutoInject() {
+		out, err = testutil.ReadFile("testdata/smoke_test.yaml")
+		if err != nil {
+			t.Fatalf("failed to read smoke test file: %s", err)
+		}
+		err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, true)
+		if err != nil {
+			t.Fatalf("failed to create %s namespace with auto inject enabled: %s", prefixedNs, err)
+		}
+	} else {
+		cmd := []string{"inject", "testdata/smoke_test.yaml"}
+
+		var injectReport string
+		out, injectReport, err = TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+		}
+
+		err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
+		if err != nil {
+			t.Fatalf("Received unexpected output\n%s", err.Error())
+		}
+	}
+
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
