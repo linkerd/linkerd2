@@ -9,6 +9,7 @@ option go_package = "github.com/linkerd/linkerd2/controller/gen/config";
 message All {
   Global global = 1;
   Proxy proxy = 2;
+  Install install = 3;
 }
 
 message Global {
@@ -22,8 +23,6 @@ message Global {
   // If present, indicates that the Mutating Webhook Admission Controller should
   // be configured to automatically inject proxies.
   AutoInjectContext auto_inject_context = 6;
-
-  string installation_uuid= 5;
 }
 
 message Proxy {
@@ -73,4 +72,24 @@ message IdentityContext {
 
 message LogLevel {
   string level = 1;
+}
+
+// Stores information about the last installation/upgrade.
+//
+// Useful for driving upgrades.
+message Install {
+  // The unique ID for this installation. Does not change on upgrade.
+  string uuid = 1;
+
+  // The CLI version that drove the last install or upgrade.
+  string cli_version = 2;
+
+  // The CLI arguments to the install (or upgrade) command, indicating the
+  // installer's intent.
+  repeated Flag flags = 3;
+
+  message Flag {
+    string name = 1;
+    string value = 2;
+  }
 }

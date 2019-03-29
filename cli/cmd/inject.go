@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"sigs.k8s.io/yaml"
 )
 
@@ -101,7 +102,7 @@ sub-folders, or coming from stdin.`,
 		},
 	}
 
-	addProxyConfigFlags(cmd, options.proxyConfigOptions)
+	cmd.PersistentFlags().AddFlagSet(options.proxyConfigOptions.flagSet(pflag.ExitOnError))
 	cmd.PersistentFlags().BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
