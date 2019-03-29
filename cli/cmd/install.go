@@ -656,7 +656,7 @@ func exitIfClusterExists() {
 		os.Exit(1)
 	}
 
-	fmt.Fprintln(os.Stderr, "You are already running a control plane. If you would like to ignore its configuration, use the --ignore-cluster flag.")
+	fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
 	os.Exit(1)
 }
 
