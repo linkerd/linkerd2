@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#
+# Cleans up integration tests from 4 cloud providers:
+# - Amazon (EKS)
+# - DigitalOcean (DO)
+# - Google (GKE)
+# - Microsoft (AKS)
+#
+# This script assumes you have a working Kubernetes cluster set up on each Cloud
+# provider, and that Kubernetes contexts are configured via environment
+# variables.
+
+set -eu
+
+for CLUSTER in $AKS $DO $EKS $GKE
+do
+  printf "\n$CLUSTER\n"
+  bin/test-cleanup l5d-integration-cloud $CLUSTER
+done

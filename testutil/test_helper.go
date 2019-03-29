@@ -17,6 +17,7 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
+	k8sContext string
 	linkerd    string
 	version    string
 	namespace  string
@@ -32,6 +33,7 @@ func NewTestHelper() *TestHelper {
 		os.Exit(code)
 	}
 
+	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
@@ -64,8 +66,9 @@ func NewTestHelper() *TestHelper {
 	ns := *namespace
 
 	testHelper := &TestHelper{
-		linkerd:   *linkerd,
-		namespace: ns,
+		k8sContext: *k8sContext,
+		linkerd:    *linkerd,
+		namespace:  ns,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -74,7 +77,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper(testHelper.RetryFor)
+	kubernetesHelper, err := NewKubernetesHelper(testHelper.k8sContext, testHelper.RetryFor)
 	if err != nil {
 		exit(1, "error creating kubernetes helper: "+err.Error())
 	}
@@ -126,16 +129,16 @@ func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 // PipeToLinkerdRun executes a linkerd command appended with the
 // --linkerd-namespace flag, and provides a string at Stdin.
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
-	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
-	return h.combinedOutput(stdin, h.linkerd, withNamespace...)
+	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
+	return h.CombinedOutput(h.linkerd, withParams...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the
 // --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
 func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
-	withNamespace := append(arg, "--linkerd-namespace", h.namespace)
-	cmd := exec.Command(h.linkerd, withNamespace...)
+	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
+	cmd := exec.Command(h.linkerd, withParams...)
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {

@@ -30,9 +30,11 @@ TestMain function. For example:
 Calling NewTestHelper adds the following command line flags:
 
 	-linkerd string
-			path to the linkerd binary to test
+		path to the linkerd binary to test
 	-linkerd-namespace string
-			the namespace where linkerd is installed (default "linkerd")
+		the namespace where linkerd is installed (default "linkerd")
+	-k8s-context string
+		the kubernetes context associated with the test cluster (default "")
 	-integration-tests
 		must be provided to run the integration tests
 

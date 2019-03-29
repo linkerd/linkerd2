@@ -3,26 +3,27 @@
 set -eu
 
 linkerd_namespace=${1:-l5d-integration}
+k8s_context=${2:-""}
 
 if [ -z "$linkerd_namespace" ]; then
-    echo "usage: $(basename "$0") <namespace>" >&2
+    echo "usage: $(basename "$0") <namespace> [k8s-context]">&2
     exit 64
 fi
 
-echo "cleaning up namespace [${linkerd_namespace}] and associated test namespaces"
+echo "cleaning up namespace [${linkerd_namespace}] in k8s-context [${k8s_context}] and associated test namespaces"
 
-if ! namespaces=$(kubectl get ns -oname | grep -E "/$linkerd_namespace(-|$)"); then
+if ! namespaces=$(kubectl --context=$k8s_context get ns -oname | grep -E "/$linkerd_namespace(-|$)"); then
   echo "no namespaces found for [$linkerd_namespace]" >&2
 fi
 
-if ! clusterrolebindings=$(kubectl get clusterrolebindings -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
+if ! clusterrolebindings=$(kubectl --context=$k8s_context get clusterrolebindings -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
   echo "no clusterrolebindings found for [$linkerd_namespace]" >&2
 fi
 
-if ! clusterroles=$(kubectl get clusterroles -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
+if ! clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
   echo "no clusterroles found for [$linkerd_namespace]" >&2
 fi
 
 if [[ $namespaces || $clusterrolebindings || $clusterroles ]]; then
-  kubectl delete --wait=false $namespaces $clusterrolebindings $clusterroles
+  kubectl --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles
 fi

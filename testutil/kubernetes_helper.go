@@ -21,14 +21,15 @@ import (
 // KubernetesHelper provides Kubernetes-related test helpers. It connects to the
 // Kubernetes API using the environment's configured kubeconfig file.
 type KubernetesHelper struct {
-	clientset *kubernetes.Clientset
-	retryFor  func(time.Duration, func() error) error
+	k8sContext string
+	clientset  *kubernetes.Clientset
+	retryFor   func(time.Duration, func() error) error
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
-func NewKubernetesHelper(retryFor func(time.Duration, func() error) error) (*KubernetesHelper, error) {
+func NewKubernetesHelper(k8sContext string, retryFor func(time.Duration, func() error) error) (*KubernetesHelper, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	overrides := &clientcmd.ConfigOverrides{}
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: k8sContext}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
 	config, err := kubeConfig.ClientConfig()
 	if err != nil {
@@ -41,8 +42,9 @@ func NewKubernetesHelper(retryFor func(time.Duration, func() error) error) (*Kub
 	}
 
 	return &KubernetesHelper{
-		clientset: clientset,
-		retryFor:  retryFor,
+		clientset:  clientset,
+		k8sContext: k8sContext,
+		retryFor:   retryFor,
 	}, nil
 }
 
@@ -81,7 +83,7 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 		return "", err
 	}
 
-	cmd := exec.Command("kubectl", "apply", "-f", "-", "--namespace", namespace)
+	cmd := exec.Command("kubectl", "--context="+h.k8sContext, "apply", "-f", "-", "--namespace", namespace)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -89,7 +91,8 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 
 // Kubectl executes an arbitrary Kubectl command
 func (h *KubernetesHelper) Kubectl(arg ...string) (string, error) {
-	cmd := exec.Command("kubectl", arg...)
+	withContext := append(arg, "--context="+h.k8sContext)
+	cmd := exec.Command("kubectl", withContext...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -234,7 +237,7 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 // tests can use for access to the given deployment. Note that the port-forward
 // remains running for the duration of the test.
 func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) (string, error) {
-	config, err := k8s.GetConfig("", "")
+	config, err := k8s.GetConfig("", h.k8sContext)
 	if err != nil {
 		return "", err
 	}

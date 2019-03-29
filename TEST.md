@@ -230,3 +230,26 @@ cd proxy-init/integration_test
 eval $(minikube docker-env)
 ./run_tests.sh
 ```
+
+# Test against multiple cloud providers
+
+The [`bin/test-clouds`](bin/test-clouds) script runs the integration tests
+against 4 cloud providers:
+- Amazon (EKS)
+- DigitalOcean (DO)
+- Google (GKE)
+- Microsoft (AKS)
+
+This script assumes you have a working Kubernetes cluster set up on each Cloud
+provider, and that Kubernetes contexts are configured via environment
+variables.
+
+```bash
+bin/test-clouds `pwd`/bin/linkerd
+```
+
+To cleanup all integration tests:
+
+```bash
+bin/test-clouds-cleanup
+```
