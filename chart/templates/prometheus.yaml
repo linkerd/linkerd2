@@ -90,7 +90,7 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "--storage.tsdb.path=/data"
-        - "--storage.tsdb.retention=6h"
+        - "--storage.tsdb.retention.time=6h"
         - "--config.file=/etc/prometheus/prometheus.yml"
         - "--log.level={{.PrometheusLogLevel}}"
         readinessProbe:
