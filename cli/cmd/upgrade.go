@@ -91,7 +91,6 @@ func newCmdUpgrade() *cobra.Command {
 
 func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 	for _, i := range install.GetFlags() {
-		fmt.Printf("flags: setting: %s %s\n", i.GetName(), i.GetValue())
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
 			f.Value.Set(i.GetValue())
 			f.Changed = true

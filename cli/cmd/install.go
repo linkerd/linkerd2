@@ -333,7 +333,6 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 			case "ignore-cluster", "linkerd-version":
 				// These flags don't make sense to record.
 			default:
-				fmt.Printf("flags %s %v\n", f.Name, f.Changed)
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
 					Name:  f.Name,
 					Value: f.Value.String(),
