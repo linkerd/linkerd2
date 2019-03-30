@@ -377,11 +377,12 @@ func getTrafficByResourceFromAPI(client pb.ApiClient, req *pb.TapByResourceReque
 
 	requestCh := make(chan topRequest, 100)
 	done := make(chan struct{})
-
+	scrollLeft := make(chan int)
+	scrollRight := make(chan int)
 	go recvEvents(rsp, requestCh, done)
-	go pollInput(done)
+	go pollInput(done, scrollLeft, scrollRight)
 
-	renderTable(table, requestCh, done)
+	renderTable(table, requestCh, done, scrollLeft, scrollRight)
 
 	return nil
 }
@@ -433,7 +434,7 @@ func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topReques
 	}
 }
 
-func pollInput(done chan<- struct{}) {
+func pollInput(done chan<- struct{}, scrollLeft chan<- int, scrollRight chan<- int) {
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
@@ -441,13 +442,20 @@ func pollInput(done chan<- struct{}) {
 				close(done)
 				return
 			}
+			if ev.Ch == 'a' || ev.Key == termbox.KeyCtrlC {
+				scrollLeft <- 1
+			}
+			if ev.Ch == 'd' || ev.Key == termbox.KeyCtrlC {
+				scrollRight <- 1
+			}
+
 		}
 	}
 }
 
-func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}) {
+func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}, scrollLeft <-chan int, scrollRight <-chan int) {
 	ticker := time.NewTicker(100 * time.Millisecond)
-
+	scrollXpos := 0
 	for {
 		select {
 		case <-done:
@@ -455,12 +463,31 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 		case req := <-requestCh:
 			table.insert(req)
 		case <-ticker.C:
-			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			table.adjustColumnWidths()
-			table.renderHeaders()
-			table.renderBody()
-			termbox.Flush()
+			select {
+			case <-scrollLeft:
+				scrollXpos = scrollXpos - 10
+				termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+				table.adjustColumnWidths()
+				table.renderHeaders(scrollXpos)
+				table.renderBody(scrollXpos)
+				termbox.Flush()
+			case <-scrollRight:
+				scrollXpos = scrollXpos + 10
+				termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+				table.adjustColumnWidths()
+				table.renderHeaders(scrollXpos)
+				table.renderBody(scrollXpos)
+				termbox.Flush()
+			default:
+				termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+				table.adjustColumnWidths()
+				table.renderHeaders(scrollXpos)
+				table.renderBody(scrollXpos)
+				termbox.Flush()
+			}
+
 		}
+
 	}
 }
 
@@ -555,12 +582,11 @@ func stripPort(address string) string {
 	return strings.Split(address, ":")[0]
 }
 
-func (t *topTable) renderHeaders() {
+func (t *topTable) renderHeaders(scrollXpos int) {
 	tbprint(0, 0, "(press q to quit)")
-	x := 0
-	y := 0
-	width, _ := termbox.Size()
-	NoOfRows := len(t.rows)
+	tbprint(0, 1, "(press a to scroll left, d to scroll right)")
+
+	x := scrollXpos
 	for _, col := range t.columns {
 		if !col.display {
 			continue
@@ -569,11 +595,7 @@ func (t *topTable) renderHeaders() {
 		if col.rightAlign {
 			padding = col.width - runewidth.StringWidth(col.header)
 		}
-		if x+padding >= width {
-			x = 0
-			y = NoOfRows + 2
-		}
-		tbprintBold(x+padding, y+headerHeight-1, col.header)
+		tbprintBold(x+padding, headerHeight-1, col.header)
 		x += col.width + columnSpacing
 	}
 }
@@ -593,15 +615,12 @@ func (t *topTable) adjustColumnWidths() {
 	}
 }
 
-func (t *topTable) renderBody() {
+func (t *topTable) renderBody(scrollXpos int) {
 	sort.SliceStable(t.rows, func(i, j int) bool {
 		return t.rows[i].count > t.rows[j].count
 	})
-	NoOfRows := len(t.rows)
 	for i, row := range t.rows {
-		x := 0
-		y := 0
-		width, _ := termbox.Size()
+		x := scrollXpos
 		for _, col := range t.columns {
 			if !col.display {
 				continue
@@ -611,11 +630,7 @@ func (t *topTable) renderBody() {
 			if col.rightAlign {
 				padding = col.width - runewidth.StringWidth(value)
 			}
-			if x+padding >= width {
-				x = 0
-				y = NoOfRows + 2
-			}
-			tbprint(x+padding, y+i+headerHeight, value)
+			tbprint(x+padding, i+headerHeight, value)
 			x += col.width + columnSpacing
 		}
 	}
