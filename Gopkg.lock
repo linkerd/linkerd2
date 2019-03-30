@@ -857,6 +857,14 @@
   version = "v1.9.2"
 
 [[projects]]
+  digest = "1:d507b81e744f12d9ad26818dd2c2fa5eda03326e02c31c58483d7d1940c93c68"
+  name = "gopkg.in/cheggaaa/pb.v1"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f907f6f5dd81f77c2bbc1cde92e4c5a04720cb11"
+  version = "v1.0.28"
+
+[[projects]]
   digest = "1:e5d1fb981765b6f7513f793a3fcaac7158408cca77f75f7311ac82cc88e9c445"
   name = "gopkg.in/inf.v0"
   packages = ["."]
@@ -1291,6 +1299,7 @@
     "google.golang.org/grpc/metadata",
     "google.golang.org/grpc/status",
     "google.golang.org/grpc/test/bufconn",
+    "gopkg.in/cheggaaa/pb.v1",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
