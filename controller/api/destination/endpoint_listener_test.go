@@ -7,7 +7,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	pkgAddr "github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -424,7 +423,7 @@ func TestUpdateAddress(t *testing.T) {
 func checkAddress(t *testing.T, addr *pb.WeightedAddr, expectedAddress *net.TcpAddress) {
 	actualAddress := addr.Addr
 	actualWeight := addr.Weight
-	expectedWeight := uint32(pkgAddr.DefaultWeight)
+	expectedWeight := uint32(10000)
 
 	if !reflect.DeepEqual(actualAddress, expectedAddress) || actualWeight != expectedWeight {
 		t.Fatalf("Expected added address to be [%+v] and weight to be [%d], but it was [%+v] and [%d]", expectedAddress, expectedWeight, actualAddress, actualWeight)

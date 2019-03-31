@@ -43,3 +43,31 @@ func TestGetPodLabels(t *testing.T) {
 		}
 	})
 }
+
+func TestGetPodWeight(t *testing.T) {
+	t.Run("Maps annotations to weights", func(t *testing.T) {
+		type testCase struct {
+			s string
+			n uint32
+		}
+
+		for _, tc := range []testCase{
+			{s: "1m", n: 10},
+			{s: "10m", n: 100},
+			{s: "200m", n: 2000},
+			{s: "1", n: 10000},
+			{s: "", n: 10000},
+		} {
+			pod := &corev1.Pod{}
+			if tc.s != "" {
+				pod.ObjectMeta.Annotations = map[string]string{
+					ProxyPodWeightAnnotation: tc.s,
+				}
+			}
+
+			if w := GetPodWeight(pod); w != tc.n {
+				t.Errorf("Unexpected weight for '%s': %d; expected %d", tc.s, w, tc.n)
+			}
+		}
+	})
+}

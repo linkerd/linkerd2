@@ -204,18 +204,20 @@ func (l *endpointListener) NoEndpoints(exists bool) {
 }
 
 func (l *endpointListener) toWeightedAddr(address *updateAddress) *pb.WeightedAddr {
-	labels, hint, tlsIdentity := l.getAddrMetadata(address.pod)
+	weight, labels, hint, tlsIdentity := l.getAddrMetadata(address.pod)
 
 	return &pb.WeightedAddr{
 		Addr:         address.address,
-		Weight:       addr.DefaultWeight,
+		Weight:       weight,
 		MetricLabels: labels,
 		TlsIdentity:  tlsIdentity,
 		ProtocolHint: hint,
 	}
 }
 
-func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
+func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (uint32, map[string]string, *pb.ProtocolHint, *pb.TlsIdentity) {
+	weight := pkgK8s.GetPodWeight(pod)
+
 	controllerNS := pod.Labels[pkgK8s.ControllerNSLabel]
 	sa, ns := pkgK8s.GetServiceAccountAndNS(pod)
 	ok, on := l.ownerKindAndName(pod)
@@ -252,5 +254,5 @@ func (l *endpointListener) getAddrMetadata(pod *corev1.Pod) (map[string]string, 
 		}
 	}
 
-	return labels, hint, identity
+	return weight, labels, hint, identity
 }

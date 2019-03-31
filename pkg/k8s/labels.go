@@ -9,8 +9,10 @@ import (
 	"fmt"
 
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -154,6 +156,14 @@ const (
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
 
+	// ProxyPodWeightAnnotation configures an individual pod's
+	// traffic weighting.
+	//
+	// Values are specified as other Kubernetes resources so that 100m == 0.1.
+	//
+	// The default weight is 1.0 (or 1000m).
+	ProxyPodWeightAnnotation = ProxyConfigAnnotationsPrefix + "/pod-weight"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -247,6 +257,42 @@ const (
 // CreatedByAnnotation.
 func CreatedByAnnotationValue() string {
 	return fmt.Sprintf("linkerd/cli %s", version.Version)
+}
+
+// GetPodWeight retrieves a pod's weight, accounting for annotation overrides.
+func GetPodWeight(pod *corev1.Pod) uint32 {
+	if w := pod.Annotations[ProxyPodWeightAnnotation]; w != "" {
+		log.Debugf("%s: %s=%s", pod.Name, ProxyPodWeightAnnotation, w)
+		w, err := parseWeight(w)
+		if err != nil {
+			log.Warnf("Could not parse weight override on %s: %s", pod.Name, err)
+		} else {
+			return w * 10 // from Millis to Tenths of a milli
+		}
+	} else {
+		log.Debugf("%s has no weight override", pod.Name)
+	}
+
+	return 10000
+}
+
+func parseWeight(w string) (uint32, error) {
+	q, err := resource.ParseQuantity(w)
+	if err != nil {
+		return 0, err
+	}
+
+	v := q.MilliValue()
+	if v < 0 {
+		return 0, nil
+	}
+
+	max := ^uint32(0)
+	if v > int64(max) {
+		return ^uint32(max), nil
+	}
+
+	return uint32(v), nil
 }
 
 // GetServiceAccountAndNS returns the pod's serviceaccount and namespace.
