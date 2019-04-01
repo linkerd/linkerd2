@@ -25,7 +25,7 @@ func newUpgradeOptionsWithDefaults() *upgradeOptions {
 
 func newCmdUpgrade() *cobra.Command {
 	options := newUpgradeOptionsWithDefaults()
-	flags := options.flagSet(pflag.ExitOnError)
+	flags := options.recordableFlagSet(pflag.ExitOnError)
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [flags]",
@@ -102,10 +102,6 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 			f.Changed = true
 		}
 	}
-}
-
-func (options *upgradeOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
-	return options.baseFlagSet(e)
 }
 
 func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
