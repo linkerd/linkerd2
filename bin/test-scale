@@ -10,7 +10,7 @@
 # Usage:
 # test-scale /path/to/linkerd [namespace]
 
-set -eu
+set -e
 
 NAMESPACES=5
 REPLICAS=5
