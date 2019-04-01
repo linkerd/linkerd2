@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# This test script deploys the following:
+# - 1 Linkerd control-plane
+# - 5 NAMESPACES x 5 REPLICAS of each:
+#   - Emojivoto demo app
+#   - Books demo app
+#   - Lifecycle / bb test environment
+#
+# Usage:
+# test-scale /path/to/linkerd [namespace]
+
+set -e
+
+NAMESPACES=5
+REPLICAS=5
+
+# TODO: share these functions with test-run
+
+function check_linkerd_binary(){
+    printf "Checking the linkerd binary..."
+    if [[ "$linkerd_path" != /* ]]; then
+        printf "\\n[%s] is not an absolute path\\n" "$linkerd_path"
+        exit 1
+    fi
+    if [ ! -x "$linkerd_path" ]; then
+        printf "\\n[%s] does not exist or is not executable\\n" "$linkerd_path"
+        exit 1
+    fi
+    exit_code=0
+    "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to run linkerd version command\\n"
+        exit $exit_code
+    fi
+    printf "[ok]\\n"
+}
+
+function check_if_k8s_reachable(){
+    printf "Checking if there is a Kubernetes cluster available..."
+    exit_code=0
+    kubectl --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to connect to Kubernetes cluster\\n"
+        exit $exit_code
+    fi
+    printf "[ok]\\n"
+}
+
+linkerd_path=$1
+
+if [ -z "$linkerd_path" ]; then
+    echo "usage: $(basename "$0") /path/to/linkerd [namespace]" >&2
+    exit 64
+fi
+
+check_linkerd_binary
+check_if_k8s_reachable
+
+linkerd_version=$($linkerd_path version --client --short)
+linkerd_namespace=${2:-l5d-scale}
+
+#
+# Deploy Linkerd
+#
+
+$linkerd_path -l $linkerd_namespace install | kubectl apply -f -
+$linkerd_path -l $linkerd_namespace check --expected-version=$linkerd_version
+$linkerd_path -l $linkerd_namespace install-sp | kubectl apply -f -
+
+#
+# Deploy Books
+#
+
+BOOKS_BACKEND=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-backend.yml)
+
+AUTHORS_SP=$(curl -s https://run.linkerd.io/booksapp/authors.swagger)
+BOOKS_SP=$(curl -s https://run.linkerd.io/booksapp/books.swagger)
+WEBAPP_SP=$(curl -s https://run.linkerd.io/booksapp/webapp.swagger)
+
+# deploy books backend and service profiles to N namespaces
+for i in $(eval echo {1..$NAMESPACES}); do
+    booksns=$linkerd_namespace-books-$i
+    kubectl create ns $booksns
+    echo "$BOOKS_BACKEND" | kubectl apply -n $booksns -f -
+
+    echo "$AUTHORS_SP" | bin/linkerd profile -n $booksns authors --open-api - | kubectl apply -f -
+    echo "$BOOKS_SP"   | bin/linkerd profile -n $booksns books   --open-api - | kubectl apply -f -
+    echo "$WEBAPP_SP"  | bin/linkerd profile -n $booksns webapp  --open-api - | kubectl apply -f -
+done
+
+BOOKS_APP=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-app.yml)
+
+# add "-sleep=10ms" param to the traffic app (~100rps)
+traffic_param="        - \"webapp:7000\""
+sleep_param=$(cat <<-END
+        - "-sleep=10ms"
+        - "webapp:7000"
+END
+)
+BOOKS_APP=$(echo "${BOOKS_APP/$traffic_param/$sleep_param}")
+
+# inject
+BOOKS_APP=$(echo "$BOOKS_APP" | $linkerd_path -l $linkerd_namespace inject -)
+
+# deploy books apps to N namespaces
+for i in $(eval echo {1..$NAMESPACES}); do
+    booksns=$linkerd_namespace-books-$i
+    echo "waiting for $booksns mysql-init to complete..."
+    kubectl -n $booksns wait --for=condition=complete --timeout=5m job/mysql-init
+
+    echo "$BOOKS_APP" | kubectl apply -n $booksns -f -
+    kubectl -n $booksns scale --replicas=$REPLICAS deploy/authors deploy/books deploy/webapp
+done
+
+#
+# Deploy Emojivoto
+#
+
+EMOJIVOTO=$(curl -s https://run.linkerd.io/emojivoto.yml)
+
+# delete namespace
+EMOJIVOTO=$(echo "$EMOJIVOTO" | tail -n +6)
+emojins="namespace: emojivoto"
+EMOJIVOTO=$(echo "${EMOJIVOTO//$emojins/}")
+emojins=".emojivoto:"
+newns=":"
+EMOJIVOTO=$(echo "${EMOJIVOTO//$emojins/$newns}")
+
+# inject
+EMOJIVOTO=$(echo "$EMOJIVOTO" | $linkerd_path -l $linkerd_namespace inject -)
+
+for i in $(eval echo {1..$NAMESPACES}); do
+    emojins=$linkerd_namespace-emoji-$i
+
+    kubectl create ns $emojins
+    echo "$EMOJIVOTO" | kubectl apply -n $emojins -f -
+
+    kubectl -n $emojins scale --replicas=$REPLICAS deploy/emoji deploy/voting deploy/web
+done
+
+#
+# Lifecyle / bb
+#
+
+LIFECYCLE=$(curl -s https://raw.githubusercontent.com/linkerd/linkerd-examples/master/lifecycle/lifecycle.yml)
+
+# inject
+LIFECYCLE=$(echo "$LIFECYCLE" | $linkerd_path -l $linkerd_namespace inject -)
+
+for i in $(eval echo {1..$NAMESPACES}); do
+    lifecyclens=$linkerd_namespace-lifecycle-$i
+
+    kubectl create ns $lifecyclens
+    echo "$LIFECYCLE" | kubectl apply -n $lifecyclens -f -
+
+    kubectl -n $lifecyclens scale --replicas=$REPLICAS deploy/bb-broadcast deploy/bb-p2p deploy/bb-terminus
+done
+
+#
+# Watch performance
+#
+
+watch $linkerd_path -l $linkerd_namespace stat ns
