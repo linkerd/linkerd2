@@ -865,10 +865,20 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 		if !found {
 			return fmt.Errorf("No running pods for \"linkerd-%s\"", name)
 		}
+
+		podStatus := make(map[string]bool)
+
 		for _, container := range containers {
-			if !container.Ready {
+			if _, err := podStatus[container.Name]; err {
+				podStatus[container.Name] = container.Ready
+			} else {
+				podStatus[container.Name] = podStatus[container.Name] || container.Ready
+			}
+		}
+		for podName, status := range podStatus {
+			if !status {
 				return fmt.Errorf("The \"linkerd-%s\" pod's \"%s\" container is not ready", name,
-					container.Name)
+					podName)
 			}
 		}
 	}
