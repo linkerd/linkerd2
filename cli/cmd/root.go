@@ -112,6 +112,7 @@ func init() {
 	RootCmd.AddCommand(newCmdTap())
 	RootCmd.AddCommand(newCmdTop())
 	RootCmd.AddCommand(newCmdUninject())
+	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
 }
 
@@ -299,11 +300,6 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
 	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
-
-	flags.BoolVar(
-		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
-		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
-	)
 
 	return flags
 }
