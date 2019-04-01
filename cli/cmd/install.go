@@ -224,7 +224,7 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	// Some flags are not available during upgrade, etc.
-	cmd.PersistentFlags().AddFlagSet(options.installOnlyFlagSet(pflag.ExitOnError))
+	cmd.PersistentFlags().AddFlagSet(options.flagSet(pflag.ExitOnError))
 
 	return cmd
 }
@@ -252,7 +252,7 @@ func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installV
 }
 
 // flagSet returns flags usable during install or upgrade.
-func (options *installOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
+func (options *installOptions) baseFlagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("install", e)
 
 	flags.AddFlagSet(options.proxyConfigOptions.flagSet(e))
@@ -294,8 +294,8 @@ func (options *installOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 }
 
 // installOnlyFlagSet includes flags that are only accessible at install-time and not at upgrade-time.
-func (options *installOptions) installOnlyFlagSet(e pflag.ErrorHandling) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("install", e)
+func (options *installOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
+	flags := options.baseFlagSet(e)
 
 	flags.StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,

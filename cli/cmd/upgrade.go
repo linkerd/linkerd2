@@ -104,6 +104,10 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 	}
 }
 
+func (options *upgradeOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
+	return options.baseFlagSet(e)
+}
+
 func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
 	if options.ignoreCluster {
 		panic("ignore cluster must be unset") // Programmer error.
