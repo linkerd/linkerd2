@@ -185,25 +185,25 @@ func getPercentTLS(stats *pb.BasicStats) float64 {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	linkerdVersion          string
-	proxyImage              string
-	initImage               string
-	dockerRegistry          string
-	imagePullPolicy         string
-	ignoreInboundPorts      []uint
-	ignoreOutboundPorts     []uint
-	proxyUID                int64
-	proxyLogLevel           string
-	proxyInboundPort        uint
-	proxyOutboundPort       uint
-	proxyControlPort        uint
-	proxyAdminPort          uint
-	proxyCPURequest         string
-	proxyMemoryRequest      string
-	proxyCPULimit           string
-	proxyMemoryLimit        string
-	disableExternalProfiles bool
-	noInitContainer         bool
+	linkerdVersion         string
+	proxyImage             string
+	initImage              string
+	dockerRegistry         string
+	imagePullPolicy        string
+	ignoreInboundPorts     []uint
+	ignoreOutboundPorts    []uint
+	proxyUID               int64
+	proxyLogLevel          string
+	proxyInboundPort       uint
+	proxyOutboundPort      uint
+	proxyControlPort       uint
+	proxyAdminPort         uint
+	proxyCPURequest        string
+	proxyMemoryRequest     string
+	proxyCPULimit          string
+	proxyMemoryLimit       string
+	enableExternalProfiles bool
+	noInitContainer        bool
 	// ignoreCluster is not validated by validate().
 	ignoreCluster bool
 }
@@ -292,7 +292,7 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	flags.StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
 	flags.StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
-	flags.BoolVar(&options.disableExternalProfiles, "disable-external-profiles", options.disableExternalProfiles, "Disables service profiles for non-Kubernetes services")
+	flags.BoolVar(&options.enableExternalProfiles, "enable-external-profiles", options.enableExternalProfiles, "Enable service profiles for non-Kubernetes services")
 	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer, "Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
 
 	// Deprecated flags
