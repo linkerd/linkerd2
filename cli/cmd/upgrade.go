@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -31,7 +30,11 @@ func newCmdUpgrade() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade [flags]",
 		Short: "Output Kubernetes configs to upgrade an existing Linkerd control plane",
-		Long:  "Output Kubernetes configs to upgrade an existing Linkerd control plane.",
+		Long: `Output Kubernetes configs to upgrade an existing Linkerd control plane.
+
+Note that the default flag values for this command come from the Linkerd control
+plane. The default values displayed in the Flags section below only apply to the
+install command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// We need a Kubernetes client to fetch configs and issuer secrets.
 			k, err := options.newK8s()
@@ -50,6 +53,9 @@ func newCmdUpgrade() *cobra.Command {
 
 			// We recorded flags during a prior install. If we haven't overridden the
 			// flag on this upgrade, reset that prior value as if it were specified now.
+			//
+			// This implies that the default flag values for the upgrade command come
+			// from the control-plane, and not from the defaults specified in the FlagSet.
 			setOptionsFromInstall(flags, configs.GetInstall())
 
 			if err = options.validate(); err != nil {
@@ -100,7 +106,7 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 
 func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
 	if options.ignoreCluster {
-		return nil, errors.New("--ignore-cluster cannot be used with upgrade")
+		panic("ignore cluster must be unset") // Programmer error.
 	}
 
 	c, err := k8s.GetConfig(kubeconfigPath, kubeContext)

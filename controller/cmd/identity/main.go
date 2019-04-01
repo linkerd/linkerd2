@@ -60,7 +60,10 @@ func main() {
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
-	creds, err := tls.ReadPEMCreds(filepath.Join(*issuerPath, "key.pem"), filepath.Join(*issuerPath, "crt.pem"))
+	creds, err := tls.ReadPEMCreds(
+		filepath.Join(*issuerPath, consts.IdentityIssuerKeyName),
+		filepath.Join(*issuerPath, consts.IdentityIssuerCrtName),
+	)
 	if err != nil {
 		log.Fatalf("Failed to read CA from %s: %s", *issuerPath, err)
 	}
