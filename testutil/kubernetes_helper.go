@@ -55,11 +55,22 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
 }
 
 // CreateNamespaceIfNotExists creates a namespace if it does not already exist.
-func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string) error {
+func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, autoInject bool) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+			},
+		}
+		if autoInject {
+			ns.GetObjectMeta().SetAnnotations(
+				map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			)
+		}
 		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
 
 		if err != nil {
@@ -78,7 +89,7 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 		namespace = "default"
 	}
 
-	err := h.CreateNamespaceIfNotExists(namespace)
+	err := h.CreateNamespaceIfNotExists(namespace, false)
 	if err != nil {
 		return "", err
 	}
