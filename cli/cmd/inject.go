@@ -366,9 +366,9 @@ func (options *proxyConfigOptions) overrideConfigs(configs *config.All, override
 	// keep track of this option because its true/false value results in different
 	// values being assigned to the LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
 	// env var. Its annotation is added only if its value is true.
-	configs.Proxy.DisableExternalProfiles = options.disableExternalProfiles
-	if options.disableExternalProfiles {
-		overrideAnnotations[k8s.ProxyDisableExternalProfilesAnnotation] = "true"
+	configs.Proxy.DisableExternalProfiles = !options.enableExternalProfiles
+	if options.enableExternalProfiles {
+		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = "true"
 	}
 
 	if options.proxyCPURequest != "" {

@@ -144,9 +144,9 @@ const (
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
-	// ProxyDisableExternalProfilesAnnotation can be used to override the
+	// ProxyEnableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.
-	ProxyDisableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/disable-external-profiles"
+	ProxyEnableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/enable-external-profiles"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.

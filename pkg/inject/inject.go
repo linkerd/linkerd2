@@ -843,10 +843,10 @@ func (conf *ResourceConfig) proxyLivenessProbe() *v1.Probe {
 
 func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
 	disableExternalProfiles := conf.configs.GetProxy().GetDisableExternalProfiles()
-	if override := conf.getOverride(k8s.ProxyDisableExternalProfilesAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyEnableExternalProfilesAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
-			disableExternalProfiles = value
+			disableExternalProfiles = !value
 		}
 	}
 
