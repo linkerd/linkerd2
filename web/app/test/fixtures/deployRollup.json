@@ -16,8 +16,7 @@
                 "latencyMsP50": "1",
                 "latencyMsP95": "2",
                 "latencyMsP99": "7",
-                "successCount": "135",
-                "tlsRequestCount": "100"
+                "successCount": "135"
               },
               "tcpStats": {
                 "openConnections": "221",

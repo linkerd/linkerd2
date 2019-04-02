@@ -143,7 +143,6 @@ const requestInitSection = d => (
       {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
       {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
       {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
-      {itemDisplay("TLS", _get(d, "base.tls"))}
     </List>
   </React.Fragment>
 );

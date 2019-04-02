@@ -10,7 +10,6 @@ import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
-import _isNil from 'lodash/isNil';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
@@ -73,13 +72,6 @@ const httpStatColumns = [
     isNumeric: true,
     render: d => metricToFormatter["LATENCY"](d.P99),
     sorter: d => d.P99
-  },
-  {
-    title: "TLS",
-    dataIndex: "tlsRequestPercent",
-    isNumeric: true,
-    render: d => _isNil(d.tlsRequestPercent) || d.tlsRequestPercent.get() === -1 ? "---" : d.tlsRequestPercent.prettyRate(),
-    sorter: d => d.tlsRequestPercent ? d.tlsRequestPercent.get() : -1
   },
 
 ];
