@@ -58,7 +58,7 @@ func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
 
 	if err := unmarshal(configMap["global"], c.Global); err != nil {
-		return nil, fmt.Errorf("invlaid global config: %s", err)
+		return nil, fmt.Errorf("invalid global config: %s", err)
 	}
 
 	if err := unmarshal(configMap["proxy"], c.Proxy); err != nil {
