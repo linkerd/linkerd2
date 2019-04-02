@@ -52,18 +52,18 @@ func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
 
 	if err := unmarshal(configMap["global"], c.Global); err != nil {
-		return nil, fmt.Errorf("global: %s", err)
+		return nil, fmt.Errorf("invlaid global config: %s", err)
 	}
 
 	if err := unmarshal(configMap["proxy"], c.Proxy); err != nil {
-		return nil, fmt.Errorf("proxy: %s", err)
+		return nil, fmt.Errorf("invalid proxy config: %s", err)
 	}
 
-	// This instal config may not exist when upgrading from previous control plane
+	// This install config may not exist when upgrading from previous control plane
 	// versions.
-	if json := configMap["install"]; json != "" {
+	if json, ok := configMap["install"]; ok {
 		if err := unmarshal(json, c.Install); err != nil {
-			return nil, fmt.Errorf("install: %s", err)
+			return nil, fmt.Errorf("invalid install config: %s", err)
 		}
 	}
 
