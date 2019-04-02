@@ -118,6 +118,7 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 	}
 
 	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
+	fmt.Fprintf(w, "Install with: linkerd install | kubectl apply -f -\n\n")
 
 	return nil
 }
