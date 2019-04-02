@@ -148,8 +148,8 @@ const (
 	// disableExternalProfilesAnnotation config.
 	ProxyEnableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/enable-external-profiles"
 
-	// ProxyVersionOverrideAnnotation can be used to override the linkerd-version config.
-	ProxyVersionOverrideAnnotation = ProxyConfigAnnotationsPrefix + "/linkerd-version"
+	// ProxyVersionOverrideAnnotation can be used to override the proxy version config.
+	ProxyVersionOverrideAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-version"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
