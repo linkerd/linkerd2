@@ -40,6 +40,12 @@ func unmarshalFile(filepath string, msg proto.Message) error {
 }
 
 func unmarshal(json string, msg proto.Message) error {
+	// If a config is missing, then just leave the message as nil and return
+	// without an error.
+	if json == "" {
+		return nil
+	}
+
 	// If we're using older code to read a newer config, blowing up during decoding
 	// is not helpful. We should detect that through other means.
 	u := jsonpb.Unmarshaler{AllowUnknownFields: true}
@@ -59,12 +65,8 @@ func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 		return nil, fmt.Errorf("invalid proxy config: %s", err)
 	}
 
-	// This install config may not exist when upgrading from previous control plane
-	// versions.
-	if json, ok := configMap["install"]; ok {
-		if err := unmarshal(json, c.Install); err != nil {
-			return nil, fmt.Errorf("invalid install config: %s", err)
-		}
+	if err := unmarshal(configMap["install"], c.Install); err != nil {
+		return nil, fmt.Errorf("invalid install config: %s", err)
 	}
 
 	return c, nil
