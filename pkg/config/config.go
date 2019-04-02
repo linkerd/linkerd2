@@ -59,8 +59,12 @@ func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 		return nil, fmt.Errorf("proxy: %s", err)
 	}
 
-	if err := unmarshal(configMap["install"], c.Install); err != nil {
-		return nil, fmt.Errorf("install: %s", err)
+	// This instal config may not exist when upgrading from previous control plane
+	// versions.
+	if json := configMap["install"]; json != "" {
+		if err := unmarshal(json, c.Install); err != nil {
+			return nil, fmt.Errorf("install: %s", err)
+		}
 	}
 
 	return c, nil
