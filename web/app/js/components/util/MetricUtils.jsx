@@ -79,14 +79,6 @@ const getSuccessRate = row => {
   }
 };
 
-const getTlsRequestPercentage = row => {
-  if (_isEmpty(row.stats)) {
-    return null;
-  }
-  let tlsRequests = parseInt(_get(row, ["stats", "tlsRequestCount"], 0), 10);
-  return new Percentage(tlsRequests, getTotalRequests(row));
-};
-
 const getLatency = row => {
   if (_isEmpty(row.stats)) {
     return {};
@@ -130,7 +122,6 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tcp: getTcpStats(row),
-      tlsRequestPercent: getTlsRequestPercentage(row),
       added: runningPodCount > 0 && meshedPodCount > 0,
       pods: {
         totalPods: row.runningPodCount,
@@ -154,7 +145,6 @@ export const processTopRoutesResults = rows => {
     requestRate: getRequestRate(row),
     successRate: getSuccessRate(row),
     latency: getLatency(row),
-    tlsRequestPercent: getTlsRequestPercentage(row),
   }
   ));
 };
@@ -239,7 +229,6 @@ export const emptyMetric = {
   requestRate: null,
   successRate: null,
   latency: null,
-  tlsRequestPercent: null,
   added: false,
   pods: {
     totalPods: null,
@@ -266,7 +255,6 @@ export const metricsPropType = PropTypes.shape({
             latencyMsP50: PropTypes.string,
             latencyMsP95: PropTypes.string,
             latencyMsP99: PropTypes.string,
-            tlsRequestCount: PropTypes.string,
             successCount: PropTypes.string,
           }),
           timeWindow: PropTypes.string,

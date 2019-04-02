@@ -20,8 +20,7 @@
                   "failureCount": "0",
                   "latencyMsP50": "1",
                   "latencyMsP95": "1",
-                  "latencyMsP99": "2",
-                  "tlsRequestCount": "0"
+                  "latencyMsP99": "2"
                 },
                 "errorsByPod": {}
               }
@@ -63,8 +62,7 @@
                   "failureCount": "12",
                   "latencyMsP50": "1",
                   "latencyMsP95": "9",
-                  "latencyMsP99": "10",
-                  "tlsRequestCount": "0"
+                  "latencyMsP99": "10"
                 },
                 "errorsByPod": {}
               }
@@ -95,8 +93,7 @@
                   "failureCount": "12",
                   "latencyMsP50": "2",
                   "latencyMsP95": "3",
-                  "latencyMsP99": "4",
-                  "tlsRequestCount": "0"
+                  "latencyMsP99": "4"
                 },
                 "errorsByPod": {}
               }

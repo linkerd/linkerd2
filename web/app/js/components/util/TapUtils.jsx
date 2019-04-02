@@ -147,17 +147,6 @@ export const processTapEvent = jsonString => {
   d.destination.owner = extractPodOwner(d.destinationMeta.labels);
   d.destination.namespace = _get(d, "destinationMeta.labels.namespace", null);
 
-  switch (d.proxyDirection) {
-    case "INBOUND":
-      d.tls = _get(d, "sourceMeta.labels.tls", "");
-      break;
-    case "OUTBOUND":
-      d.tls = _get(d, "destinationMeta.labels.tls", "");
-      break;
-    default:
-      // too old for TLS
-  }
-
   if (_isNil(d.http)) {
     this.setState({ error: "Undefined request type"});
   } else {
