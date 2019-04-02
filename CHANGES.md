@@ -7,6 +7,8 @@
   * **Breaking Change** Removed the `--disable-external-profiles` flag from the `install` command; external profiles are now disabled by default and can be enabled with the new `--enable-external-profiles` flag
 * Controller
   * The auto-inject admission controller webhook is updated to watch pods creation and update events; with this change, proxy auto-injection now works for all kinds of workloads, including StatefulSets, DaemonSets, Jobs, etc
+* Proxy
+  * Some `l5d-*` informational headers have been temporarily removed from requests and responses because they could leak information to external clients
 * Web UI
   * The topology graph now shows TCP stats if no HTTP stats are available
   * The resource detail page no longer shows blank tables if the resource only has TCP traffic
