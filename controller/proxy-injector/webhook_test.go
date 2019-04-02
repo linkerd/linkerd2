@@ -1,7 +1,10 @@
 package injector
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
@@ -10,9 +13,12 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+type unmarshalledPatch []map[string]interface{}
 
 var (
 	factory *fake.Factory
@@ -68,35 +74,46 @@ func TestGetPatch(t *testing.T) {
 			expected bool
 		}{
 			{
-				filename: "deployment-inject-empty.yaml",
+				filename: "pod-inject-empty.yaml",
 				ns:       nsEnabled,
 				conf:     confNsEnabled(),
 				expected: true,
 			},
 			{
-				filename: "deployment-inject-enabled.yaml",
+				filename: "pod-inject-enabled.yaml",
 				ns:       nsEnabled,
 				conf:     confNsEnabled(),
 				expected: true,
 			},
 			{
-				filename: "deployment-inject-enabled.yaml",
+				filename: "pod-inject-enabled.yaml",
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
 				expected: true,
 			},
 		}
 
+		expectedPatchBytes, err := factory.FileContents("pod.patch.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		expectedPatch, err := sortedPatch(expectedPatchBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+
 		for id, testCase := range testCases {
 			testCase := testCase // pin
 			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-				deployment, err := factory.HTTPRequestBody(testCase.filename)
+				pod, err := factory.FileContents(testCase.filename)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
 
-				fakeReq := getFakeReq(deployment)
-				fullConf := testCase.conf.WithKind(fakeReq.Kind.Kind)
+				fakeReq := getFakeReq(pod)
+				fullConf := testCase.conf.
+					WithKind(fakeReq.Kind.Kind).
+					WithOwnerRetriever(ownerRetriever)
 				_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
 				if err != nil {
 					t.Fatal(err)
@@ -114,15 +131,22 @@ func TestGetPatch(t *testing.T) {
 				if patchStr != "[]" && !testCase.expected {
 					t.Fatalf("Did not expect injection for file '%s'", testCase.filename)
 				}
-				if patchStr == "[]" && testCase.expected {
-					t.Fatalf("Was expecting injection for file '%s'", testCase.filename)
+
+				actualPatch, err := sortedPatch(patchJSON)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
 				}
+				if !reflect.DeepEqual(expectedPatch, actualPatch) {
+					t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
+						expectedPatchBytes, patchJSON)
+				}
+
 			})
 		}
 	})
 
 	t.Run("by checking container spec", func(t *testing.T) {
-		deployment, err := factory.HTTPRequestBody("deployment-with-injected-proxy.yaml")
+		deployment, err := factory.FileContents("deployment-with-injected-proxy.yaml")
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -142,9 +166,32 @@ func TestGetPatch(t *testing.T) {
 
 func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	return &admissionv1beta1.AdmissionRequest{
-		Kind:      metav1.GroupVersionKind{Kind: "Deployment"},
+		Kind:      metav1.GroupVersionKind{Kind: "Pod"},
 		Name:      "foobar",
 		Namespace: "linkerd",
 		Object:    runtime.RawExtension{Raw: b},
 	}
+}
+
+func ownerRetriever(p *v1.Pod) (string, string) {
+	return pkgK8s.Deployment, "owner-deployment"
+}
+
+// Added annotations are backed by map, so we need to sort before
+// being able to do the comparison
+func sortedPatch(patchJSON []byte) (unmarshalledPatch, error) {
+	var actualPatch unmarshalledPatch
+	err := json.Unmarshal(patchJSON, &actualPatch)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(actualPatch)
+	return actualPatch, nil
+}
+
+func (u unmarshalledPatch) Len() int      { return len(u) }
+func (u unmarshalledPatch) Swap(i, j int) { u[i], u[j] = u[j], u[i] }
+func (u unmarshalledPatch) Less(i, j int) bool {
+	return u[i]["path"].(string) < u[j]["path"].(string)
 }
