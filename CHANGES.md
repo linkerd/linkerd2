@@ -1,15 +1,14 @@
 ## edge-19.4.1
 
 * CLI
-  * Introduced an `upgrade` command! This allows an existing Linkerd Control Plane to be reinstalled or reconfigured
+  * Introduced an `upgrade` command! This allows an existing Linkerd control plane to be reinstalled or reconfigured; it is particularly useful for automatically reusing flags set in the previous `install` or `upgrade`
   * The `inject` command proxy options are now converted into config annotations; the annotations ensure that these configs are persisted in subsequent resource updates
-  * Always show open TCP connections in the CLI
   * The `stat` command now always shows the number of open TCP connections
   * **Breaking Change** Removed the `--disable-external-profiles` flag from the `install` command; external profiles are now disabled by default and can be enabled with the new `--enable-external-profiles` flag
 * Controller
-  * The webhook config now reacts to changes in pods instead of deployments; this means pods parented not only by Depoloyments, but any kind of workload like Daemonsets and Statefulsets can be auto-injected.
+  * The auto-inject admission controller webhook is updated to watch pods creation and update events; with this change, proxy auto-injection now works for all kinds of workloads, including StatefulSets, DaemonSets, Jobs, etc
 * Web UI
-  * The Octopus graph now shows TCP stats if no HTTP stats are available
+  * The topology graph now shows TCP stats if no HTTP stats are available
   * The resource detail page no longer shows blank tables if the resource only has TCP traffic
   * Added validation to the "new service profile" form (thanks @liquidslr!)
 
