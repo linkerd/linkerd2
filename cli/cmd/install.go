@@ -62,6 +62,7 @@ type (
 		IdentityResources,
 		PrometheusResources,
 		ProxyInjectorResources,
+		SPValidatorResources,
 		PublicAPIResources,
 		TapResources,
 		WebResources *resources
@@ -447,6 +448,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		*values.GrafanaResources = *defaultConstraints
 		*values.ProxyInjectorResources = *defaultConstraints
 		*values.PublicAPIResources = *defaultConstraints
+		*values.SPValidatorResources = *defaultConstraints
 		*values.TapResources = *defaultConstraints
 		*values.WebResources = *defaultConstraints
 

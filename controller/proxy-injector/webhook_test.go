@@ -3,6 +3,7 @@ package injector
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -20,7 +21,6 @@ import (
 type unmarshalledPatch []map[string]interface{}
 
 var (
-	factory *fake.Factory
 	configs = &config.All{
 		Global: &config.Global{
 			LinkerdNamespace: "linkerd",
@@ -55,6 +55,7 @@ func confNsDisabled() *inject.ResourceConfig {
 }
 
 func TestGetPatch(t *testing.T) {
+	factory := fake.NewFactory(filepath.Join("fake", "data"))
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
