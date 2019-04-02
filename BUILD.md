@@ -231,7 +231,6 @@ go test ./cli/cmd/... --update
 
 ##### Pretty-printed diffs for templated text
 
-
 When running `go test`, mismatched text is usually displayed as a compact
 diff. If you prefer to see the full text of the mismatch with colorized
 output, you can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or

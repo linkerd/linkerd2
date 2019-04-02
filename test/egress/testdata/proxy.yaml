@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: http-egress-https-post
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
           - "http-egress"
           - "--h1-server-port"
@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
       - name: http-egress-http-post
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
           - "http-egress"
           - "--h1-server-port"
@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
       - name: http-egress-https-get
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
           - "http-egress"
           - "--h1-server-port"
@@ -137,7 +137,7 @@ spec:
     spec:
       containers:
       - name: http-egress-http-get
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
           - "http-egress"
           - "--h1-server-port"
@@ -178,7 +178,7 @@ spec:
     spec:
       containers:
       - name: egress-test-not-www-get
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
           - "http-egress"
           - "--h1-server-port"

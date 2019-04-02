@@ -45,7 +45,7 @@ type rowStat struct {
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 
-	pods, err := TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
+	pods, err := TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
 	if err != nil {
 		t.Fatalf("Failed to get pods for prometheus: %s", err)
 	}
@@ -54,7 +54,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	pods, err = TestHelper.GetPodsForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-controller")
+	pods, err = TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-controller")
 	if err != nil {
 		t.Fatalf("Failed to get pods for controller: %s", err)
 	}

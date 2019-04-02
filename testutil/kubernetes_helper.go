@@ -55,21 +55,15 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
 }
 
 // CreateNamespaceIfNotExists creates a namespace if it does not already exist.
-func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, autoInject bool) error {
+func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotations map[string]string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: namespace,
+				Annotations: annotations,
+				Name:        namespace,
 			},
-		}
-		if autoInject {
-			ns.GetObjectMeta().SetAnnotations(
-				map[string]string{
-					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-				},
-			)
 		}
 		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
 
@@ -89,21 +83,19 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 		namespace = "default"
 	}
 
-	err := h.CreateNamespaceIfNotExists(namespace, false)
+	err := h.CreateNamespaceIfNotExists(namespace, nil)
 	if err != nil {
 		return "", err
 	}
 
-	cmd := exec.Command("kubectl", "--context="+h.k8sContext, "apply", "-f", "-", "--namespace", namespace)
-	cmd.Stdin = strings.NewReader(stdin)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return h.Kubectl(stdin, "apply", "-f", "-", "--namespace", namespace)
 }
 
 // Kubectl executes an arbitrary Kubectl command
-func (h *KubernetesHelper) Kubectl(arg ...string) (string, error) {
+func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) {
 	withContext := append(arg, "--context="+h.k8sContext)
 	cmd := exec.Command("kubectl", withContext...)
+	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -211,7 +203,7 @@ func (h *KubernetesHelper) CheckService(namespace string, serviceName string) er
 }
 
 // GetPodsForDeployment returns all pods for the given deployment
-func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]string, error) {
+func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]corev1.Pod, error) {
 	deploy, err := h.clientset.AppsV1beta2().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -224,8 +216,18 @@ func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName
 		return nil, err
 	}
 
+	return podList.Items, nil
+}
+
+// GetPodNamesForDeployment returns all pod names for the given deployment
+func (h *KubernetesHelper) GetPodNamesForDeployment(namespace string, deploymentName string) ([]string, error) {
+	podList, err := h.GetPodsForDeployment(namespace, deploymentName)
+	if err != nil {
+		return nil, err
+	}
+
 	pods := make([]string, 0)
-	for _, pod := range podList.Items {
+	for _, pod := range podList {
 		pods = append(pods, pod.Name)
 	}
 

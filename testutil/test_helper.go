@@ -128,7 +128,7 @@ func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 // PipeToLinkerdRun executes a linkerd command appended with the
 // --linkerd-namespace flag, and provides a string at Stdin.
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
-	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
+	withParams := append([]string{"--linkerd-namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
 	return combinedOutput(stdin, h.linkerd, withParams...)
 }
 
@@ -136,7 +136,7 @@ func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, stri
 // --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
 func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
-	withParams := append(arg, "--linkerd-namespace", h.namespace, "--context="+h.k8sContext)
+	withParams := append([]string{"--linkerd-namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
 	cmd := exec.Command(h.linkerd, withParams...)
 
 	cmdReader, err := cmd.StdoutPipe()

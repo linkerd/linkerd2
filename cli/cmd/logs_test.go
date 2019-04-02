@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/wercker/stern/stern"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -71,7 +72,7 @@ func TestNewSternConfig(t *testing.T) {
 	for _, tt := range flagTestCases {
 		tt := tt // pin
 		components := []string{"grafana", "prometheus", "web", "controller"}
-		containers := []string{"tap", "linkerd-proxy", "destination"}
+		containers := []string{"tap", k8s.ProxyContainerName, "destination"}
 
 		flags := &logsOptions{controlPlaneComponent: tt.testComponent, container: tt.testContainer}
 		config, err := flags.toSternConfig(components, containers)
