@@ -14,6 +14,7 @@ spec:
     metadata:
       annotations:
         config.linkerd.io/admin-port: "9998"
+        config.linkerd.io/linkerd-version: override
         config.linkerd.io/proxy-cpu-limit: "1"
         config.linkerd.io/proxy-cpu-request: "0.5"
         config.linkerd.io/proxy-memory-limit: 256Mi
@@ -22,7 +23,7 @@ spec:
         config.linkerd.io/skip-outbound-ports: "9999"
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: testinjectversion
+        linkerd.io/proxy-version: override
       creationTimestamp: null
       labels:
         app: web-svc
@@ -102,7 +103,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:testinjectversion
+        image: gcr.io/linkerd-io/proxy:override
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -145,7 +146,7 @@ spec:
         - 7777,8888,4190,9998
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:testinjectversion
+        image: gcr.io/linkerd-io/proxy-init:override
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
