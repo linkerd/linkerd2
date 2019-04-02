@@ -207,7 +207,6 @@ type rowStats struct {
 	dst                string
 	requestRate        float64
 	successRate        float64
-	tlsPercent         float64
 	latencyP50         uint64
 	latencyP95         uint64
 	latencyP99         uint64
@@ -275,7 +274,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			statTables[resourceKey][key].rowStats = &rowStats{
 				requestRate:        getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
 				successRate:        getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),
-				tlsPercent:         getPercentTLS(r.Stats),
 				latencyP50:         r.Stats.LatencyMsP50,
 				latencyP95:         r.Stats.LatencyMsP95,
 				latencyP99:         r.Stats.LatencyMsP99,
@@ -343,7 +341,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99",
-		"TLS",
 		"TCP_CONN",
 	}...)
 
@@ -362,17 +359,17 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 	for _, key := range sortedKeys {
 		namespace, name := namespaceName(resourceTypeLabel, key)
 		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t\n"
-		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%d\t\n"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
 
 		if showTCPBytes(options, resourceType) {
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t%d\t%.1fB/s\t%.1fB/s\t\n"
-			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%d\t%.1fB/s\t%.1fB/s\t\n"
+			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
 		}
 
 		if !showTCPConns(resourceType) {
 			// always show TCP Connections as - for Authorities
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%.f%%\t-\t\n"
+			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t-\t\n"
 		}
 
 		if options.allNamespaces {
@@ -398,7 +395,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 				stats[key].latencyP50,
 				stats[key].latencyP95,
 				stats[key].latencyP99,
-				stats[key].tlsPercent * 100,
 			}...)
 
 			if showTCPConns(resourceType) {
@@ -438,7 +434,6 @@ type jsonStats struct {
 	LatencyMSp50   *uint64  `json:"latency_ms_p50"`
 	LatencyMSp95   *uint64  `json:"latency_ms_p95"`
 	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
-	TLS            *float64 `json:"tls"`
 	TCPConnections *uint64  `json:"tcp_open_connections"`
 	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
 	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
@@ -464,7 +459,6 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					entry.LatencyMSp50 = &stats[key].latencyP50
 					entry.LatencyMSp95 = &stats[key].latencyP95
 					entry.LatencyMSp99 = &stats[key].latencyP99
-					entry.TLS = &stats[key].tlsPercent
 
 					if showTCPConns(resourceType) {
 						entry.TCPConnections = &stats[key].tcpOpenConnections
