@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +51,10 @@ install command.`,
 			if err != nil {
 				return fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 			}
+
+			// If the install config needs to be repaired--either because it did not
+			// exist or because it is missing expected fields, repair it.
+			options.repairInstall(configs.Install)
 
 			// We recorded flags during a prior install. If we haven't overridden the
 			// flag on this upgrade, reset that prior value as if it were specified now.
@@ -115,6 +120,21 @@ func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
 	}
 
 	return kubernetes.NewForConfig(c)
+}
+
+func (options *upgradeOptions) repairInstall(install *pb.Install) {
+	if install == nil {
+		install = &pb.Install{}
+	}
+
+	if install.GetUuid() == "" {
+		install.Uuid = options.generateUUID()
+	}
+
+	// ALWAYS update the CLI version to the most recent.
+	install.CliVersion = version.Version
+
+	// Install flags are updated separately.
 }
 
 // fetchConfigs checks the kubernetes API to fetch an existing
