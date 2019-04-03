@@ -1,6 +1,7 @@
 package serviceprofiles
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -8,73 +9,109 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-// Assumptions:
-// Linkerd control plane already installed
-// Linkerd helper is aware of control plane
-
 var TestHelper *testutil.TestHelper
+
+type testCase struct {
+	namespace   string
+	injectYAML  string
+	deployments []string
+	deployName  string
+	spName      string
+}
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	code := m.Run()
+	out, err := TestHelper.Kubectl("delete", "ns", "emojivoto")
+	if err != nil {
+		os.Exit(code)
+	}
+
+	fmt.Println(out)
+
+	out, err = TestHelper.Kubectl("delete", "ns", "booksapp")
+	if err != nil {
+		os.Exit(code)
+	}
+	fmt.Println(out)
+	os.Exit(code)
 }
 
 func TestServiceProfilesFromTap(t *testing.T) {
-	//install emojivoto
-	cmd := []string{"inject", "testdata/emojivoto.yml"}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+	testCases := []testCase{
+		{
+			namespace:   "emojivoto",
+			injectYAML:  "emojivoto.yml",
+			deployments: []string{"emoji", "vote-bot", "voting", "web"},
+			deployName:  "deploy/voting",
+			spName:      "voting-svc",
+		},
+		{
+			namespace:   "booksapp",
+			injectYAML:  "booksapp.yml",
+			deployments: []string{"webapp", "authors", "books", "traffic"},
+			deployName:  "deploy/books",
+			spName:      "books-svc",
+		},
 	}
 
-	out, err = TestHelper.KubectlApply(out, "emojivoto")
-	if err != nil {
-		t.Fatalf("kubectl apply command failed:\n%s", out)
-	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("service profiles from tap: %s", tc.namespace), func(t *testing.T) {
+			cmd := []string{"inject", fmt.Sprintf("testdata/%s", tc.injectYAML)}
+			out, stdout, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+			}
 
-	// confirm we've installed emojivoto
-	for _, deploy := range []string{"emoji", "vote-bot", "voting", "web"} {
-		err = TestHelper.CheckPods("emojivoto", deploy, 1)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s\n", err.Error())
-		}
-	}
+			out, err = TestHelper.KubectlApply(out, tc.namespace)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed:\n%s", out)
+			}
 
-	// run routes before: Expected Default route only
-	cmd = []string{"routes", "--namespace", "emojivoto", "deploy/voting"}
-	out, _, err = TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err)
-	}
-	routes := parseRouteDetails(out)
-	if len(routes) > 1 {
-		t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
-	}
+			for _, deploy := range tc.deployments {
+				err = TestHelper.CheckPods(tc.namespace, deploy, 1)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s\n", err.Error())
+				}
+			}
 
-	// run service profile from tap command
-	cmd = []string{"profile", "--namespace", "emojivoto", "voting-svc", "--tap", "deploy/voting", "--tap-route-limit", "5"}
-	out, _, err = TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("profile command failed: %s\n", err.Error())
-	}
+			// run routes before: Expected default route only
+			cmd = []string{"routes", "--namespace", tc.namespace, tc.deployName}
+			out, _, err = TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Fatalf("routes command failed: %s\n", err)
+			}
+			routes := parseRouteDetails(out)
+			if len(routes) > 1 {
+				t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
+			}
 
-	out, err = TestHelper.KubectlApply(out, "emojivoto")
-	if err != nil {
-		t.Fatalf("kubectl apply command failed:\n%s", out)
-	}
+			// run service profile from tap command
+			cmd = []string{"profile", "--namespace", tc.namespace, tc.spName, "--tap", tc.deployName, "--tap-route-limit", "5", "--tap-duration", "10s"}
+			out, stdout, err = TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stdout)
+			}
 
-	// run routes: Expected more than default route
-	cmd = []string{"routes", "--namespace", "emojivoto", "deploy/voting"}
-	out, rep, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err.Error())
-	}
+			out, err = TestHelper.KubectlApply(out, tc.namespace)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed:\n%s", out)
+			}
 
-	routes = parseRouteDetails(rep)
-	for _, route := range routes {
-		if len(route) <= 1 {
-			t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(route))
-		}
+			// run routes: Expected more than default route
+			cmd = []string{"routes", "--namespace", tc.namespace, tc.deployName}
+			out, rep, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Fatalf("routes command failed: %s\n", err.Error())
+			}
+
+			routes = parseRouteDetails(rep)
+			for _, route := range routes {
+				if len(route) <= 1 {
+					t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(route))
+				}
+			}
+		})
 	}
 }
 
