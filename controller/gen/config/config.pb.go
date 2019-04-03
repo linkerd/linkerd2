@@ -32,7 +32,7 @@ func (m *All) Reset()         { *m = All{} }
 func (m *All) String() string { return proto.CompactTextString(m) }
 func (*All) ProtoMessage()    {}
 func (*All) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{0}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{0}
 }
 func (m *All) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_All.Unmarshal(m, b)
@@ -91,7 +91,7 @@ func (m *Global) Reset()         { *m = Global{} }
 func (m *Global) String() string { return proto.CompactTextString(m) }
 func (*Global) ProtoMessage()    {}
 func (*Global) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{1}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{1}
 }
 func (m *Global) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Global.Unmarshal(m, b)
@@ -168,7 +168,7 @@ func (m *Proxy) Reset()         { *m = Proxy{} }
 func (m *Proxy) String() string { return proto.CompactTextString(m) }
 func (*Proxy) ProtoMessage()    {}
 func (*Proxy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{2}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{2}
 }
 func (m *Proxy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Proxy.Unmarshal(m, b)
@@ -284,7 +284,7 @@ func (m *Image) Reset()         { *m = Image{} }
 func (m *Image) String() string { return proto.CompactTextString(m) }
 func (*Image) ProtoMessage()    {}
 func (*Image) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{3}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{3}
 }
 func (m *Image) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Image.Unmarshal(m, b)
@@ -329,7 +329,7 @@ func (m *Port) Reset()         { *m = Port{} }
 func (m *Port) String() string { return proto.CompactTextString(m) }
 func (*Port) ProtoMessage()    {}
 func (*Port) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{4}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{4}
 }
 func (m *Port) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Port.Unmarshal(m, b)
@@ -370,7 +370,7 @@ func (m *ResourceRequirements) Reset()         { *m = ResourceRequirements{} }
 func (m *ResourceRequirements) String() string { return proto.CompactTextString(m) }
 func (*ResourceRequirements) ProtoMessage()    {}
 func (*ResourceRequirements) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{5}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{5}
 }
 func (m *ResourceRequirements) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResourceRequirements.Unmarshal(m, b)
@@ -429,7 +429,7 @@ func (m *AutoInjectContext) Reset()         { *m = AutoInjectContext{} }
 func (m *AutoInjectContext) String() string { return proto.CompactTextString(m) }
 func (*AutoInjectContext) ProtoMessage()    {}
 func (*AutoInjectContext) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{6}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{6}
 }
 func (m *AutoInjectContext) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AutoInjectContext.Unmarshal(m, b)
@@ -463,7 +463,7 @@ func (m *IdentityContext) Reset()         { *m = IdentityContext{} }
 func (m *IdentityContext) String() string { return proto.CompactTextString(m) }
 func (*IdentityContext) ProtoMessage()    {}
 func (*IdentityContext) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{7}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{7}
 }
 func (m *IdentityContext) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IdentityContext.Unmarshal(m, b)
@@ -522,7 +522,7 @@ func (m *LogLevel) Reset()         { *m = LogLevel{} }
 func (m *LogLevel) String() string { return proto.CompactTextString(m) }
 func (*LogLevel) ProtoMessage()    {}
 func (*LogLevel) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{8}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{8}
 }
 func (m *LogLevel) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLevel.Unmarshal(m, b)
@@ -553,7 +553,7 @@ func (m *LogLevel) GetLevel() string {
 //
 // Useful for driving upgrades.
 type Install struct {
-	// The unique ID fr this installation. Does not change on upgrade.
+	// The unique ID for this installation. Does not change on upgrade.
 	Uuid string `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	// The CLI version that drove the last install or upgrade.
 	CliVersion string `protobuf:"bytes,2,opt,name=cli_version,json=cliVersion,proto3" json:"cli_version,omitempty"`
@@ -569,7 +569,7 @@ func (m *Install) Reset()         { *m = Install{} }
 func (m *Install) String() string { return proto.CompactTextString(m) }
 func (*Install) ProtoMessage()    {}
 func (*Install) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{9}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{9}
 }
 func (m *Install) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Install.Unmarshal(m, b)
@@ -622,7 +622,7 @@ func (m *Install_Flag) Reset()         { *m = Install_Flag{} }
 func (m *Install_Flag) String() string { return proto.CompactTextString(m) }
 func (*Install_Flag) ProtoMessage()    {}
 func (*Install_Flag) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_0f2e36314897e9fa, []int{9, 0}
+	return fileDescriptor_config_60b7129b7a79a23f, []int{9, 0}
 }
 func (m *Install_Flag) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Install_Flag.Unmarshal(m, b)
@@ -670,9 +670,9 @@ func init() {
 	proto.RegisterType((*Install_Flag)(nil), "linkerd2.config.Install.Flag")
 }
 
-func init() { proto.RegisterFile("config/config.proto", fileDescriptor_config_0f2e36314897e9fa) }
+func init() { proto.RegisterFile("config/config.proto", fileDescriptor_config_60b7129b7a79a23f) }
 
-var fileDescriptor_config_0f2e36314897e9fa = []byte{
+var fileDescriptor_config_60b7129b7a79a23f = []byte{
 	// 918 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x55, 0xcf, 0x6f, 0x23, 0x35,
 	0x14, 0x56, 0xda, 0xa4, 0x4d, 0x5e, 0xd2, 0x6d, 0xe3, 0x76, 0xd9, 0x69, 0xd1, 0x42, 0x18, 0x69,

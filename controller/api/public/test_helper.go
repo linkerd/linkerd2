@@ -178,12 +178,11 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 
 		if basicStats {
 			statTableRow.Stats = &pb.BasicStats{
-				SuccessCount:    123,
-				FailureCount:    0,
-				LatencyMsP50:    123,
-				LatencyMsP95:    123,
-				LatencyMsP99:    123,
-				TlsRequestCount: 123,
+				SuccessCount: 123,
+				FailureCount: 0,
+				LatencyMsP50: 123,
+				LatencyMsP95: 123,
+				LatencyMsP99: 123,
 			}
 		}
 
