@@ -17,7 +17,6 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	k8sContext string
 	linkerd    string
 	version    string
 	namespace  string
@@ -71,7 +70,6 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-		k8sContext: *k8sContext,
 		linkerd:    *linkerd,
 		namespace:  ns,
 		autoInject: *autoInject,
@@ -83,7 +81,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper(testHelper.k8sContext, testHelper.RetryFor)
+	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
 	if err != nil {
 		exit(1, "error creating kubernetes helper: "+err.Error())
 	}
