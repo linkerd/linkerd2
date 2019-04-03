@@ -4,5 +4,5 @@
       "plugins": ["transform-react-remove-prop-types"]
     }
   },
-  "presets": ["react-app"]
+  "presets": ["env", "react-app"]
 }
