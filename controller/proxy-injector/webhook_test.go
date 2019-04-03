@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
@@ -97,7 +96,7 @@ func TestGetPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
-		expectedPatch, err := sortedPatch(expectedPatchBytes)
+		expectedPatch, err := unmarshalPatch(expectedPatchBytes)
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -132,7 +131,7 @@ func TestGetPatch(t *testing.T) {
 					t.Fatalf("Did not expect injection for file '%s'", testCase.filename)
 				}
 
-				actualPatch, err := sortedPatch(patchJSON)
+				actualPatch, err := unmarshalPatch(patchJSON)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
@@ -177,21 +176,12 @@ func ownerRetriever(p *v1.Pod) (string, string) {
 	return pkgK8s.Deployment, "owner-deployment"
 }
 
-// Added annotations are backed by map, so we need to sort before
-// being able to do the comparison
-func sortedPatch(patchJSON []byte) (unmarshalledPatch, error) {
+func unmarshalPatch(patchJSON []byte) (unmarshalledPatch, error) {
 	var actualPatch unmarshalledPatch
 	err := json.Unmarshal(patchJSON, &actualPatch)
 	if err != nil {
 		return nil, err
 	}
 
-	sort.Sort(actualPatch)
 	return actualPatch, nil
-}
-
-func (u unmarshalledPatch) Len() int      { return len(u) }
-func (u unmarshalledPatch) Swap(i, j int) { u[i], u[j] = u[j], u[i] }
-func (u unmarshalledPatch) Less(i, j int) bool {
-	return u[i]["path"].(string) < u[j]["path"].(string)
 }

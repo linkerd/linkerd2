@@ -3,6 +3,7 @@ package inject
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -617,17 +618,17 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 		if len(conf.pod.meta.Labels) == 0 {
 			patch.addPodLabelsRoot()
 		}
-		for k, v := range conf.pod.labels {
-			patch.addPodLabel(k, v)
+		for _, k := range sortedKeys(conf.pod.labels) {
+			patch.addPodLabel(k, conf.pod.labels[k])
 		}
 	}
 
-	for k, v := range conf.pod.annotations {
-		patch.addPodAnnotation(k, v)
+	for _, k := range sortedKeys(conf.pod.annotations) {
+		patch.addPodAnnotation(k, conf.pod.annotations[k])
 
 		// append any additional pod annotations to the pod's meta.
 		// for e.g., annotations that were converted from CLI inject options.
-		conf.pod.meta.Annotations[k] = v
+		conf.pod.meta.Annotations[k] = conf.pod.annotations[k]
 	}
 }
 
@@ -925,4 +926,15 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		ports = append(ports, portStr)
 	}
 	return strings.Join(ports, ",")
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := []string{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
