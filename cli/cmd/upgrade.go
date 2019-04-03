@@ -16,8 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const upgradeURL = "https://linkerd.io/upgrade/"
-const upgradeInstructions = "\nYou're on your way to upgrading Linkerd! Visit this URL for installation instructions: " + upgradeURL + "\n"
+const okMessage = "You're on your way to upgrading Linkerd!\nVisit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
+const failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting"
 
 type (
 	upgradeOptions struct{ *installOptions }
@@ -43,7 +43,7 @@ install command.`,
 			// We need a Kubernetes client to fetch configs and issuer secrets.
 			k, err := options.newK8s()
 			if err != nil {
-				return fmt.Errorf("failed to create a kubernetes client: %s", err)
+				upgradeErrorf("failed to create a kubernetes client: %s", err)
 			}
 
 			// We fetch the configs directly from kubernetes because we need to be able
@@ -52,7 +52,7 @@ install command.`,
 			// control plane.
 			configs, err := fetchConfigs(k)
 			if err != nil {
-				return fmt.Errorf("could not fetch configs from kubernetes: %s", err)
+				upgradeErrorf("could not fetch configs from kubernetes: %s", err)
 			}
 
 			// If the install config needs to be repaired--either because it did not
@@ -80,22 +80,20 @@ install command.`,
 
 			values, err := options.buildValuesWithoutIdentity(configs)
 			if err != nil {
-				return fmt.Errorf("could not build install configuration: %s", err)
+				upgradeErrorf("could not build install configuration: %s", err)
 			}
 
 			identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Unable to fetch the existing issuer credentials from Kubernetes.")
-				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-				os.Exit(1)
+				upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s\n", err)
 			}
 			values.Identity = identityValues
 
 			if err = values.render(os.Stdout, configs); err != nil {
-				return fmt.Errorf("could not render install configuration: %s", err)
+				upgradeErrorf("could not render install configuration: %s", err)
 			}
 
-			fmt.Fprintf(os.Stderr, upgradeInstructions)
+			fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
 
 			return nil
 		},
@@ -220,4 +218,11 @@ func fetchIssuer(k *kubernetes.Clientset, trustPEM string) (string, string, time
 	}
 
 	return keyPEM, crtPEM, crt.Certificate.NotAfter, nil
+}
+
+//prints the error message and quits the upgrade process
+func upgradeErrorf(format string, a ...interface{}) {
+	template := fmt.Sprintf("%s %s\n%s\n", failStatus, format, failMessage)
+	fmt.Fprintf(os.Stderr, template, a...)
+	os.Exit(1)
 }
