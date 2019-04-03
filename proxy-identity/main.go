@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"flag"
 	"fmt"
@@ -120,12 +121,15 @@ func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
 }
 
 func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
+	// TODO do proper DNS name validation.
 	if id == "" {
 		return nil, errors.New("a non-empty identity is required")
 	}
 
-	// TODO do proper DNS name validation.
-	csr := x509.CertificateRequest{DNSNames: []string{id}}
+	csr := x509.CertificateRequest{
+		Subject:  pkix.Name{CommonName: id},
+		DNSNames: []string{id},
+	}
 	csrb, err := x509.CreateCertificateRequest(rand.Reader, &csr, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CSR: %s", err)
