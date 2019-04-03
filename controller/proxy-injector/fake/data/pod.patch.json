@@ -1,0 +1,150 @@
+[
+  {
+    "op": "add",
+    "path": "/metadata/annotations/linkerd.io~1proxy-version",
+    "value": ""
+  },
+  {
+    "op": "add",
+    "path": "/metadata/annotations/linkerd.io~1identity-mode",
+    "value": "disabled"
+  },
+  {
+    "op": "add",
+    "path": "/metadata/labels/linkerd.io~1control-plane-ns",
+    "value": "linkerd"
+  },
+  {
+    "op": "add",
+    "path": "/metadata/labels/linkerd.io~1proxy-deployment",
+    "value": "owner-deployment"
+  },
+  {
+    "op": "add",
+    "path": "/spec/initContainers",
+    "value": []
+  },
+  {
+    "op": "add",
+    "path": "/spec/initContainers/-",
+    "value": {
+      "name": "linkerd-init",
+      "image": "gcr.io/linkerd-io/proxy-init:",
+      "args": [
+        "--incoming-proxy-port",
+        "4143",
+        "--outgoing-proxy-port",
+        "4140",
+        "--proxy-uid",
+        "2102",
+        "--inbound-ports-to-ignore",
+        "4190,4191"
+      ],
+      "resources": {},
+      "terminationMessagePolicy": "FallbackToLogsOnError",
+      "imagePullPolicy": "IfNotPresent",
+      "securityContext": {
+        "capabilities": {
+          "add": [
+            "NET_ADMIN"
+          ]
+        },
+        "privileged": false,
+        "runAsUser": 0,
+        "runAsNonRoot": false
+      }
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/containers/-",
+    "value": {
+      "name": "linkerd-proxy",
+      "image": "gcr.io/linkerd-io/proxy:",
+      "ports": [
+        {
+          "name": "linkerd-proxy",
+          "containerPort": 4143
+        },
+        {
+          "name": "linkerd-admin",
+          "containerPort": 4191
+        }
+      ],
+      "env": [
+        {
+          "name": "LINKERD2_PROXY_LOG",
+          "value": "warn,linkerd2_proxy=info"
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
+          "value": "linkerd-destination.linkerd.svc.cluster.local:8086"
+        },
+        {
+          "name": "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
+          "value": "0.0.0.0:4190"
+        },
+        {
+          "name": "LINKERD2_PROXY_ADMIN_LISTEN_ADDR",
+          "value": "0.0.0.0:4191"
+        },
+        {
+          "name": "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR",
+          "value": "127.0.0.1:4140"
+        },
+        {
+          "name": "LINKERD2_PROXY_INBOUND_LISTEN_ADDR",
+          "value": "0.0.0.0:4143"
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
+          "value": "."
+        },
+        {
+          "name": "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
+          "value": "10000ms"
+        },
+        {
+          "name": "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
+          "value": "10000ms"
+        },
+        {
+          "name": "_pod_ns",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.namespace"
+            }
+          }
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
+          "value": "ns:$(_pod_ns)"
+        },
+        {
+          "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
+          "value": "Identity is not yet available"
+        }
+      ],
+      "resources": {},
+      "livenessProbe": {
+        "httpGet": {
+          "path": "/metrics",
+          "port": 4191
+        },
+        "initialDelaySeconds": 10
+      },
+      "readinessProbe": {
+        "httpGet": {
+          "path": "/ready",
+          "port": 4191
+        },
+        "initialDelaySeconds": 2
+      },
+      "terminationMessagePolicy": "FallbackToLogsOnError",
+      "imagePullPolicy": "IfNotPresent",
+      "securityContext": {
+        "runAsUser": 2102
+      }
+    }
+  }
+]

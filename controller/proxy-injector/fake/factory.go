@@ -28,10 +28,10 @@ func NewFactory(rootDir string) *Factory {
 	return &Factory{rootDir: rootDir}
 }
 
-// HTTPRequestBody returns the content of the specified file as a slice of
+// FileContents returns the content of the specified file as a slice of
 // bytes. If the file doesn't exist in the 'fake/data' folder, an error will be
 // returned.
-func (f *Factory) HTTPRequestBody(filename string) ([]byte, error) {
+func (f *Factory) FileContents(filename string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(f.rootDir, filename))
 }
 
