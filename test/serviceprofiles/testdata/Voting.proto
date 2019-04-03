@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package emojivoto.v1;
+
+message VotingResult {
+    string Shortcode = 1;
+    int32 Votes = 2;
+}
+
+message VoteRequest {
+}
+
+message VoteResponse {
+}
+
+message ResultsRequest {
+}
+
+message ResultsResponse {
+    repeated VotingResult results = 1;
+}
+
+service VotingService {
+    rpc VotePoop (VoteRequest) returns (VoteResponse);
+    rpc VoteJoy (VoteRequest) returns (VoteResponse);
+    rpc VoteSunglasses (VoteRequest) returns (VoteResponse);
+    rpc VoteRelaxed (VoteRequest) returns (VoteResponse);
+    rpc VoteStuckOutTongueWinkingEye (VoteRequest) returns (VoteResponse);
+    rpc VoteMoneyMouthFace (VoteRequest) returns (VoteResponse);
+    rpc VoteFlushed (VoteRequest) returns (VoteResponse);
+    rpc VoteMask (VoteRequest) returns (VoteResponse);
+    rpc VoteNerdFace (VoteRequest) returns (VoteResponse);
+    rpc VoteGhost (VoteRequest) returns (VoteResponse);
+    rpc VoteSkullAndCrossbones (VoteRequest) returns (VoteResponse);
+    rpc VoteHeartEyesCat (VoteRequest) returns (VoteResponse);
+    rpc VoteHearNoEvil (VoteRequest) returns (VoteResponse);
+    rpc VoteSeeNoEvil (VoteRequest) returns (VoteResponse);
+    rpc VoteSpeakNoEvil (VoteRequest) returns (VoteResponse);
+    rpc VoteBoy (VoteRequest) returns (VoteResponse);
+    rpc VoteGirl (VoteRequest) returns (VoteResponse);
+    rpc VoteMan (VoteRequest) returns (VoteResponse);
+    rpc VoteWoman (VoteRequest) returns (VoteResponse);
+    rpc VoteOlderMan (VoteRequest) returns (VoteResponse);
+    rpc VotePoliceman (VoteRequest) returns (VoteResponse);
+    rpc VoteGuardsman (VoteRequest) returns (VoteResponse);
+    rpc VoteConstructionWorkerMan (VoteRequest) returns (VoteResponse);
+    rpc VotePrince (VoteRequest) returns (VoteResponse);
+    rpc VotePrincess (VoteRequest) returns (VoteResponse);
+    rpc VoteManInTuxedo (VoteRequest) returns (VoteResponse);
+    rpc VoteBrideWithVeil (VoteRequest) returns (VoteResponse);
+    rpc VoteMrsClaus (VoteRequest) returns (VoteResponse);
+    rpc VoteSanta (VoteRequest) returns (VoteResponse);
+    rpc VoteTurkey (VoteRequest) returns (VoteResponse);
+    rpc VoteRabbit (VoteRequest) returns (VoteResponse);
+    rpc VoteNoGoodWoman (VoteRequest) returns (VoteResponse);
+    rpc VoteOkWoman (VoteRequest) returns (VoteResponse);
+    rpc VoteRaisingHandWoman (VoteRequest) returns (VoteResponse);
+    rpc VoteBowingMan (VoteRequest) returns (VoteResponse);
+    rpc VoteManFacepalming (VoteRequest) returns (VoteResponse);
+    rpc VoteWomanShrugging (VoteRequest) returns (VoteResponse);
+    rpc VoteMassageWoman (VoteRequest) returns (VoteResponse);
+    rpc VoteWalkingMan (VoteRequest) returns (VoteResponse);
+    rpc VoteRunningMan (VoteRequest) returns (VoteResponse);
+    rpc VoteDancer (VoteRequest) returns (VoteResponse);
+    rpc VoteManDancing (VoteRequest) returns (VoteResponse);
+    rpc VoteDancingWomen (VoteRequest) returns (VoteResponse);
+    rpc VoteRainbow (VoteRequest) returns (VoteResponse);
+    rpc VoteSkier (VoteRequest) returns (VoteResponse);
+    rpc VoteGolfingMan (VoteRequest) returns (VoteResponse);
+    rpc VoteSurfingMan (VoteRequest) returns (VoteResponse);
+    rpc VoteBasketballMan (VoteRequest) returns (VoteResponse);
+    rpc VoteBikingMan (VoteRequest) returns (VoteResponse);
+    rpc VotePointUp2 (VoteRequest) returns (VoteResponse);
+    rpc VoteVulcanSalute (VoteRequest) returns (VoteResponse);
+    rpc VoteMetal (VoteRequest) returns (VoteResponse);
+    rpc VoteCallMeHand (VoteRequest) returns (VoteResponse);
+    rpc VoteThumbsup (VoteRequest) returns (VoteResponse);
+    rpc VoteWave (VoteRequest) returns (VoteResponse);
+    rpc VoteClap (VoteRequest) returns (VoteResponse);
+    rpc VoteRaisedHands (VoteRequest) returns (VoteResponse);
+    rpc VotePray (VoteRequest) returns (VoteResponse);
+    rpc VoteDog (VoteRequest) returns (VoteResponse);
+    rpc VoteCat2 (VoteRequest) returns (VoteResponse);
+    rpc VotePig (VoteRequest) returns (VoteResponse);
+    rpc VoteHatchingChick (VoteRequest) returns (VoteResponse);
+    rpc VoteSnail (VoteRequest) returns (VoteResponse);
+    rpc VoteBacon (VoteRequest) returns (VoteResponse);
+    rpc VotePizza (VoteRequest) returns (VoteResponse);
+    rpc VoteTaco (VoteRequest) returns (VoteResponse);
+    rpc VoteBurrito (VoteRequest) returns (VoteResponse);
+    rpc VoteRamen (VoteRequest) returns (VoteResponse);
+    rpc VoteDoughnut (VoteRequest) returns (VoteResponse);
+    rpc VoteChampagne (VoteRequest) returns (VoteResponse);
+    rpc VoteTropicalDrink (VoteRequest) returns (VoteResponse);
+    rpc VoteBeer (VoteRequest) returns (VoteResponse);
+    rpc VoteTumblerGlass (VoteRequest) returns (VoteResponse);
+    rpc VoteWorldMap (VoteRequest) returns (VoteResponse);
+    rpc VoteBeachUmbrella (VoteRequest) returns (VoteResponse);
+    rpc VoteMountainSnow (VoteRequest) returns (VoteResponse);
+    rpc VoteCamping (VoteRequest) returns (VoteResponse);
+    rpc VoteSteamLocomotive (VoteRequest) returns (VoteResponse);
+    rpc VoteFlightDeparture (VoteRequest) returns (VoteResponse);
+    rpc VoteRocket (VoteRequest) returns (VoteResponse);
+    rpc VoteStar2 (VoteRequest) returns (VoteResponse);
+    rpc VoteSunBehindSmallCloud (VoteRequest) returns (VoteResponse);
+    rpc VoteCloudWithRain (VoteRequest) returns (VoteResponse);
+    rpc VoteFire (VoteRequest) returns (VoteResponse);
+    rpc VoteJackOLantern (VoteRequest) returns (VoteResponse);
+    rpc VoteBalloon (VoteRequest) returns (VoteResponse);
+    rpc VoteTada (VoteRequest) returns (VoteResponse);
+    rpc VoteTrophy (VoteRequest) returns (VoteResponse);
+    rpc VoteIphone (VoteRequest) returns (VoteResponse);
+    rpc VotePager (VoteRequest) returns (VoteResponse);
+    rpc VoteFax (VoteRequest) returns (VoteResponse);
+    rpc VoteBulb (VoteRequest) returns (VoteResponse);
+    rpc VoteMoneyWithWings (VoteRequest) returns (VoteResponse);
+    rpc VoteCrystalBall (VoteRequest) returns (VoteResponse);
+    rpc VoteUnderage (VoteRequest) returns (VoteResponse);
+    rpc VoteInterrobang (VoteRequest) returns (VoteResponse);
+    rpc Vote100 (VoteRequest) returns (VoteResponse);
+    rpc VoteCheckeredFlag (VoteRequest) returns (VoteResponse);
+    rpc VoteCrossedSwords (VoteRequest) returns (VoteResponse);
+    rpc VoteFloppyDisk (VoteRequest) returns (VoteResponse);
+    rpc Results (ResultsRequest) returns (ResultsResponse);
+}
