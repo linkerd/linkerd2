@@ -160,9 +160,12 @@ func checkCSR(csr *x509.CertificateRequest, identity string) error {
 		return fmt.Errorf("CSR name does not match requested identity: csr=%s; req=%s", csr.DNSNames[0], identity)
 	}
 
-	if csr.Subject.CommonName != "" {
-		return errors.New("CommonName must be empty")
+	switch csr.Subject.CommonName {
+	case "", identity:
+	default:
+		return fmt.Errorf("invalid CommonName: %s", csr.Subject.CommonName)
 	}
+
 	if len(csr.EmailAddresses) > 0 {
 		return errors.New("cannot validate email addresses")
 	}
