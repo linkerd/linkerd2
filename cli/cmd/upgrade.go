@@ -16,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const upgradeURL = "https://linkerd.io/2/tasks/upgrade/"
+
 type (
 	upgradeOptions struct{ *installOptions }
 )
@@ -91,6 +93,8 @@ install command.`,
 			if err = values.render(os.Stdout, configs); err != nil {
 				return fmt.Errorf("could not render install configuration: %s", err)
 			}
+
+			fmt.Println("\nYou're on your way to upgrading Linkerd! Visit this URL for installation instructions:", upgradeURL)
 
 			return nil
 		},
