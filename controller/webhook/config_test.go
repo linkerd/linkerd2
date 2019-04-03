@@ -9,7 +9,6 @@ import (
 	injectorTmpl "github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	validator "github.com/linkerd/linkerd2/controller/sp-validator"
 	validatorTmpl "github.com/linkerd/linkerd2/controller/sp-validator/tmpl"
-	k8sPkg "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 )
 
@@ -26,22 +25,16 @@ func TestCreate(t *testing.T) {
 
 	testCases := []struct {
 		testName    string
-		configName  string
-		serviceName string
 		templateStr string
 		ops         ConfigOps
 	}{
 		{
 			testName:    "Mutating webhook",
-			configName:  k8sPkg.ProxyInjectorWebhookConfigName,
-			serviceName: "mutatingwebhook.linkerd.io",
 			templateStr: injectorTmpl.MutatingWebhookConfigurationSpec,
 			ops:         &injector.Ops{},
 		},
 		{
 			testName:    "Validating webhook",
-			configName:  k8sPkg.SPValidatorWebhookConfigName,
-			serviceName: "validatingwebhook.linkerd.io",
 			templateStr: validatorTmpl.ValidatingWebhookConfigurationSpec,
 			ops:         &validator.Ops{},
 		},
@@ -51,11 +44,9 @@ func TestCreate(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf(tc.testName), func(t *testing.T) {
 			webhookConfig := &Config{
-				WebhookConfigName:   tc.configName,
-				WebhookServiceName:  tc.serviceName,
 				TemplateStr:         tc.templateStr,
 				Ops:                 tc.ops,
-				api:                 k8sAPI,
+				client:              k8sAPI.Client.AdmissionregistrationV1beta1(),
 				controllerNamespace: "linkerd",
 				rootCA:              rootCA,
 			}

@@ -62,8 +62,8 @@ type (
 		IdentityResources,
 		PrometheusResources,
 		ProxyInjectorResources,
-		SPValidatorResources,
 		PublicAPIResources,
+		SPValidatorResources,
 		TapResources,
 		WebResources *resources
 

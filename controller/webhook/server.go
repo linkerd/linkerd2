@@ -118,8 +118,8 @@ func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 }
 
 // Shutdown initiates a graceful shutdown of the underlying HTTP server.
-func (s *Server) Shutdown() error {
-	return s.Server.Shutdown(context.Background())
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.Server.Shutdown(ctx)
 }
 
 func tlsConfig(rootCA *pkgTls.CA, name, controllerNamespace string) (*tls.Config, error) {

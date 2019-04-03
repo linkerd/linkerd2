@@ -5,28 +5,25 @@ import (
 	"encoding/base64"
 	"html/template"
 
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	clientArv1beta1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1"
 )
 
 // ConfigOps declares the methods used to manage the webhook configs in the cluster
 type ConfigOps interface {
-	Create(*k8s.API, *bytes.Buffer) (string, error)
-	Get(*k8s.API) error
-	Delete(*k8s.API) error
+	Create(clientArv1beta1.AdmissionregistrationV1beta1Interface, *bytes.Buffer) (string, error)
+	Delete(clientArv1beta1.AdmissionregistrationV1beta1Interface) error
+	Exists(clientArv1beta1.AdmissionregistrationV1beta1Interface) error
+	Name() string
 }
 
 // Config contains all the necessary data to build and persist the webhook resource
 type Config struct {
-	MetricsPort         uint32
-	WebhookConfigName   string
-	WebhookServiceName  string
 	TemplateStr         string
 	Ops                 ConfigOps
-	Handler             handlerFunc
-	api                 *k8s.API
+	client              clientArv1beta1.AdmissionregistrationV1beta1Interface
 	controllerNamespace string
 	rootCA              *tls.CA
 }
@@ -41,7 +38,7 @@ func (c *Config) Create() (string, error) {
 
 	if exists {
 		log.Info("deleting existing webhook configuration")
-		if err := c.Ops.Delete(c.api); err != nil {
+		if err := c.Ops.Delete(c.client); err != nil {
 			return "", err
 		}
 	}
@@ -54,7 +51,7 @@ func (c *Config) Create() (string, error) {
 			ControllerNamespace string
 			CABundle            string
 		}{
-			WebhookConfigName:   c.WebhookConfigName,
+			WebhookConfigName:   c.Ops.Name(),
 			ControllerNamespace: c.controllerNamespace,
 			CABundle:            base64.StdEncoding.EncodeToString(trustAnchor),
 		}
@@ -64,12 +61,12 @@ func (c *Config) Create() (string, error) {
 		return "", err
 	}
 
-	return c.Ops.Create(c.api, buf)
+	return c.Ops.Create(c.client, buf)
 }
 
 // Exists returns true if the webhook already exists
 func (c *Config) Exists() (bool, error) {
-	if err := c.Ops.Get(c.api); err != nil {
+	if err := c.Ops.Exists(c.client); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}

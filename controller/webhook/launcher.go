@@ -1,10 +1,12 @@
 package webhook
 
 import (
+	"context"
 	"flag"
 	"os"
 	"os/signal"
 	"strconv"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -14,8 +16,8 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(config *Config) {
-	p := strconv.FormatUint(uint64(config.MetricsPort), 10)
+func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, serviceName string, handler handlerFunc) {
+	p := strconv.FormatUint(uint64(metricsPort), 10)
 	metricsAddr := flag.String("metrics-addr", ":"+p, "address to serve scrapable metrics on")
 	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
@@ -26,17 +28,17 @@ func Launch(config *Config) {
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, os.Kill)
 
-	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, k8s.NS, k8s.RS)
+	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, APIResources...)
 	if err != nil {
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	rootCA, err := tls.GenerateRootCAWithDefaults(config.WebhookServiceName)
+	rootCA, err := tls.GenerateRootCAWithDefaults(serviceName)
 	if err != nil {
 		log.Fatalf("failed to create root CA: %s", err)
 	}
 
-	config.api = k8sAPI
+	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()
 	config.controllerNamespace = *controllerNamespace
 	config.rootCA = rootCA
 
@@ -46,7 +48,7 @@ func Launch(config *Config) {
 	}
 	log.Infof("created webhook configuration: %s", selfLink)
 
-	s, err := NewServer(k8sAPI, *addr, config.WebhookServiceName, *controllerNamespace, rootCA, config.Handler)
+	s, err := NewServer(k8sAPI, *addr, serviceName, *controllerNamespace, rootCA, handler)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
@@ -58,7 +60,9 @@ func Launch(config *Config) {
 
 	<-stop
 	log.Info("shutting down webhook server")
-	if err := s.Shutdown(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err)
 	}
 }
