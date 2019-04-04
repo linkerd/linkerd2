@@ -9,10 +9,12 @@ import (
 )
 
 func main() {
-	webhook.Launch(&webhook.Config{
+	config := &webhook.Config{
 		TemplateStr: tmpl.MutatingWebhookConfigurationSpec,
 		Ops:         &injector.Ops{},
-	},
+	}
+	webhook.Launch(
+		config,
 		[]k8s.APIResource{k8s.NS, k8s.RS},
 		9995,
 		pkgK8s.ProxyInjectorWebhookServiceName,

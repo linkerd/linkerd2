@@ -9,10 +9,12 @@ import (
 )
 
 func main() {
-	webhook.Launch(&webhook.Config{
+	config := &webhook.Config{
 		TemplateStr: tmpl.ValidatingWebhookConfigurationSpec,
 		Ops:         &validator.Ops{},
-	},
+	}
+	webhook.Launch(
+		config,
 		[]k8s.APIResource{},
 		9997,
 		pkgK8s.SPValidatorWebhookServiceName,

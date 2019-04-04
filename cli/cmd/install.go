@@ -147,6 +147,7 @@ const (
 	resourcesTemplateName      = "templates/_resources.yaml"
 	serviceprofileTemplateName = "templates/serviceprofile.yaml"
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
+	spValidatorTemplateName    = "templates/sp_validator.yaml"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -495,6 +496,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		{Name: prometheusTemplateName},
 		{Name: grafanaTemplateName},
 		{Name: proxyInjectorTemplateName},
+		{Name: spValidatorTemplateName},
 	}
 
 	// Read templates into bytes

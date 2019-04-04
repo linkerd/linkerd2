@@ -15,7 +15,7 @@ func AdmitSP(
 	admissionResponse := &admissionv1beta1.AdmissionResponse{Allowed: true}
 	if err := profiles.Validate(request.Object.Raw); err != nil {
 		admissionResponse.Allowed = false
-		admissionResponse.Result = &metav1.Status{Message: err.Error()}
+		admissionResponse.Result = &metav1.Status{Message: err.Error(), Code: 400}
 	}
 	return admissionResponse, nil
 }

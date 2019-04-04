@@ -113,7 +113,7 @@ func TestGetPatch(t *testing.T) {
 				fakeReq := getFakeReq(pod)
 				fullConf := testCase.conf.
 					WithKind(fakeReq.Kind.Kind).
-					WithOwnerRetriever(ownerRetriever)
+					WithOwnerRetriever(ownerRetrieverFake)
 				_, err = fullConf.ParseMetaAndYAML(fakeReq.Object.Raw)
 				if err != nil {
 					t.Fatal(err)
@@ -173,7 +173,7 @@ func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	}
 }
 
-func ownerRetriever(p *v1.Pod) (string, string) {
+func ownerRetrieverFake(p *v1.Pod) (string, string) {
 	return pkgK8s.Deployment, "owner-deployment"
 }
 
