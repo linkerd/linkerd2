@@ -25,11 +25,10 @@ type Webhook struct {
 	k8sAPI              *k8s.API
 	deserializer        runtime.Decoder
 	controllerNamespace string
-	noInitContainer     bool
 }
 
 // NewWebhook returns a new instance of Webhook.
-func NewWebhook(api *k8s.API, controllerNamespace string, noInitContainer bool) (*Webhook, error) {
+func NewWebhook(api *k8s.API, controllerNamespace string) (*Webhook, error) {
 	var (
 		scheme = runtime.NewScheme()
 		codecs = serializer.NewCodecFactory(scheme)
@@ -39,7 +38,6 @@ func NewWebhook(api *k8s.API, controllerNamespace string, noInitContainer bool) 
 		k8sAPI:              api,
 		deserializer:        codecs.UniversalDeserializer(),
 		controllerNamespace: controllerNamespace,
-		noInitContainer:     noInitContainer,
 	}, nil
 }
 

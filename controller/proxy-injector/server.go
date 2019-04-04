@@ -21,7 +21,7 @@ type WebhookServer struct {
 }
 
 // NewWebhookServer returns a new instance of the WebhookServer.
-func NewWebhookServer(api *k8s.API, addr, controllerNamespace string, noInitContainer bool, rootCA *pkgTls.CA) (*WebhookServer, error) {
+func NewWebhookServer(api *k8s.API, addr, controllerNamespace string, rootCA *pkgTls.CA) (*WebhookServer, error) {
 	c, err := tlsConfig(rootCA, controllerNamespace)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func NewWebhookServer(api *k8s.API, addr, controllerNamespace string, noInitCont
 		TLSConfig: c,
 	}
 
-	webhook, err := NewWebhook(api, controllerNamespace, noInitContainer)
+	webhook, err := NewWebhook(api, controllerNamespace)
 	if err != nil {
 		return nil, err
 	}

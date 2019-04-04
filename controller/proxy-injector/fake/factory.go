@@ -14,7 +14,6 @@ import (
 const (
 	DefaultControllerNamespace = "linkerd"
 	DefaultNamespace           = "default"
-	DefaultNoInitContainer     = false
 )
 
 // Factory is a factory that can convert in-file YAML content into Kubernetes
