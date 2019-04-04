@@ -136,7 +136,59 @@ func TestServiceProfilesFromSwagger(t *testing.T) {
 }
 
 func TestServiceProfilesFromProto(t *testing.T) {
+	// Check that authors only has one route
+	routes, err := getRoutes("deploy/emoji", "emojivoto", TestHelper)
+	if err != nil {
+		t.Fatalf("routes command failed: %s\n", err)
+	}
 
+	if len(routes) > 1 {
+		t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
+	}
+
+	// apply proto profile
+	cmd := []string{"profile", "--namespace", "emojivoto", "emoji-svc", "--proto", "testdata/Emoji.proto"}
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stderr)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "emojivoto")
+	if err != nil {
+		t.Fatalf("kubectl apply command failed:\n%s", err)
+	}
+
+	expectedRoutes := []string{
+		"FindByShortcode",
+		"ListAll",
+		"[DEFAULT]",
+	}
+
+	// check that authors now has more than one route
+	routes, err = getRoutes("deploy/emoji", "emojivoto", TestHelper)
+	if err != nil {
+		t.Fatalf("routes command failed: %s\n", err)
+	}
+
+	if !assertExpectedRoutes(expectedRoutes, routes) {
+		t.Fatalf("Unexepected routes: Expected\n %s\nbut got:\n%s\n",
+			strings.Join(expectedRoutes, "\n"), strings.Join(routes, "\n"))
+	}
+}
+
+func assertExpectedRoutes(expected, actual []string) bool {
+	for _, expectedRoute := range expected {
+		containsRoute := false
+		for _, actualRoute := range actual {
+			if strings.HasPrefix(actualRoute, expectedRoute) {
+				containsRoute = true
+			}
+		}
+		if !containsRoute {
+			return false
+		}
+	}
+	return true
 }
 
 func getRoutes(deployName, namespace string, helper *testutil.TestHelper) ([]string, error) {
