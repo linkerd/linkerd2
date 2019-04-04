@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"time"
@@ -16,8 +17,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const okMessage = "You're on your way to upgrading Linkerd!\nVisit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
-const failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting"
+const (
+	okMessage   = "You're on your way to upgrading Linkerd!\nVisit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps\n"
+	failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+)
 
 type (
 	upgradeOptions struct{ *installOptions }
@@ -85,13 +88,18 @@ install command.`,
 
 			identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
 			if err != nil {
-				upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s\n", err)
+				upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
 			}
 			values.Identity = identityValues
 
-			if err = values.render(os.Stdout, configs); err != nil {
+			// rendering to a buffer and printing full contents of buffer after
+			// render is complete, to ensure that okStatus prints separately
+			var buf bytes.Buffer
+			if err = values.render(&buf, configs); err != nil {
 				upgradeErrorf("could not render install configuration: %s", err)
 			}
+
+			buf.WriteTo(os.Stdout)
 
 			fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
 
