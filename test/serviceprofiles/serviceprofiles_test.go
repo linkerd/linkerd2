@@ -46,11 +46,11 @@ func TestServiceProfilesFromTap(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("service profiles from tap: %s", tc.namespace), func(t *testing.T) {
+		t.Run(fmt.Sprintf("service profiles from tap:%s", tc.namespace), func(t *testing.T) {
 			cmd := []string{"inject", fmt.Sprintf("testdata/%s", tc.injectYAML)}
-			out, stdout, err := TestHelper.LinkerdRun(cmd...)
+			out, _, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+				t.Fatalf("linkerd inject command failed: %s\n", err)
 			}
 
 			out, err = TestHelper.KubectlApply(out, tc.namespace)
@@ -65,21 +65,31 @@ func TestServiceProfilesFromTap(t *testing.T) {
 				}
 			}
 
-			// run routes before: Expected default route only
+			// run routes: Expect default route only
 			routes, err := getRoutes(tc.deployName, tc.namespace, TestHelper)
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
 
 			if len(routes) > 1 {
-				t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
+				t.Fatalf("Expected route details for service to be at most 1 but got %d\n", len(routes))
 			}
 
 			// run service profile from tap command
-			cmd = []string{"profile", "--namespace", tc.namespace, tc.spName, "--tap", tc.deployName, "--tap-route-limit", "5", "--tap-duration", "10s"}
-			out, stdout, err = TestHelper.LinkerdRun(cmd...)
+			cmd = []string{
+				"profile",
+				"--namespace",
+				tc.namespace,
+				tc.spName,
+				"--tap",
+				tc.deployName,
+				"--tap-route-limit",
+				"5",
+				"--tap-duration",
+				"10s"}
+			out, _, err = TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stdout)
+				t.Fatalf("profile command failed: %s\n", err.Error())
 			}
 
 			out, err = TestHelper.KubectlApply(out, tc.namespace)
@@ -94,7 +104,7 @@ func TestServiceProfilesFromTap(t *testing.T) {
 			}
 			for _, route := range routes {
 				if len(route) <= 1 {
-					t.Fatalf("Expected route details for service to be greater than or equal to 1 but got %d\n", len(route))
+					t.Fatalf("Expected routes for service to be greater than or equal to 1 but got %d\n", len(route))
 				}
 			}
 		})
@@ -113,9 +123,9 @@ func TestServiceProfilesFromSwagger(t *testing.T) {
 	}
 	// apply swagger profile
 	cmd := []string{"profile", "--namespace", "booksapp", "authors", "--open-api", "testdata/authors.swagger"}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stderr)
+		t.Fatalf("profile command failed: %s\n", err.Error())
 	}
 
 	out, err = TestHelper.KubectlApply(out, "booksapp")
@@ -136,8 +146,9 @@ func TestServiceProfilesFromSwagger(t *testing.T) {
 }
 
 func TestServiceProfilesFromProto(t *testing.T) {
+	namespace := "emojivoto"
 	// Check that authors only has one route
-	routes, err := getRoutes("deploy/emoji", "emojivoto", TestHelper)
+	routes, err := getRoutes("deploy/emoji", namespace, TestHelper)
 	if err != nil {
 		t.Fatalf("routes command failed: %s\n", err)
 	}
@@ -147,13 +158,13 @@ func TestServiceProfilesFromProto(t *testing.T) {
 	}
 
 	// apply proto profile
-	cmd := []string{"profile", "--namespace", "emojivoto", "emoji-svc", "--proto", "testdata/Emoji.proto"}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	cmd := []string{"profile", "--namespace", namespace, "emoji-svc", "--proto", "testdata/Emoji.proto"}
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stderr)
+		t.Fatalf("profile command failed: %s\n", err.Error())
 	}
 
-	out, err = TestHelper.KubectlApply(out, "emojivoto")
+	out, err = TestHelper.KubectlApply(out, namespace)
 	if err != nil {
 		t.Fatalf("kubectl apply command failed:\n%s", err)
 	}
