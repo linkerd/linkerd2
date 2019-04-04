@@ -1361,7 +1361,6 @@ spec:
         - proxy-injector
         - -controller-namespace=linkerd
         - -log-level=info
-        - -no-init-container=true
         image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

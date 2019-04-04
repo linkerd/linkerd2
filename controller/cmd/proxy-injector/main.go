@@ -20,7 +20,6 @@ func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	webhookServiceName := flag.String("webhook-service", "linkerd-proxy-injector.linkerd.io", "name of the admission webhook")
-	noInitContainer := flag.Bool("no-init-container", false, "whether to use an init container or the linkerd-cni plugin")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -48,7 +47,7 @@ func main() {
 	}
 	log.Infof("created mutating webhook configuration: %s", mwc.ObjectMeta.SelfLink)
 
-	s, err := injector.NewWebhookServer(k8sAPI, *addr, *controllerNamespace, *noInitContainer, rootCA)
+	s, err := injector.NewWebhookServer(k8sAPI, *addr, *controllerNamespace, rootCA)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

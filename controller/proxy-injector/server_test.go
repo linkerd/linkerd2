@@ -26,7 +26,7 @@ func init() {
 		panic(err)
 	}
 
-	webhook, err := NewWebhook(k8sAPI, fake.DefaultControllerNamespace, false)
+	webhook, err := NewWebhook(k8sAPI, fake.DefaultControllerNamespace)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +82,7 @@ func TestNewWebhookServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
-	server, err := NewWebhookServer(k8sAPI, addr, fake.DefaultControllerNamespace, false, rootCA)
+	server, err := NewWebhookServer(k8sAPI, addr, fake.DefaultControllerNamespace, rootCA)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
