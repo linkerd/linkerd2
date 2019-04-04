@@ -1,3 +1,3 @@
-NAMESPACE    NAME    MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99    TLS   TCP_CONN
-emojivoto1   emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms   100%        123
-emojivoto2   emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms   100%        123
+NAMESPACE    NAME    MESHED   SUCCESS      RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99   TCP_CONN
+emojivoto1   emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms        123
+emojivoto2   emoji      1/2   100.00%   2.0rps         123ms         123ms         123ms        123

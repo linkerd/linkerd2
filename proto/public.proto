@@ -337,9 +337,8 @@ message BasicStats {
   uint64 latency_ms_p50 = 3;
   uint64 latency_ms_p95 = 4;
   uint64 latency_ms_p99 = 5;
-  uint64 tls_request_count = 6;
-  uint64 actual_success_count = 7;
-  uint64 actual_failure_count = 8;
+  uint64 actual_success_count = 6;
+  uint64 actual_failure_count = 7;
 }
 
 message TcpStats {

@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/fatih/color"
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -169,16 +168,6 @@ func getSuccessRate(success, failure uint64) float64 {
 		return 0.0
 	}
 	return float64(success) / float64(success+failure)
-}
-
-// getPercentTLS calculates the percent of traffic that is TLS, from Public API
-// BasicStats.
-func getPercentTLS(stats *pb.BasicStats) float64 {
-	reqTotal := stats.SuccessCount + stats.FailureCount
-	if reqTotal == 0 {
-		return 0.0
-	}
-	return float64(stats.TlsRequestCount) / float64(reqTotal)
 }
 
 // proxyConfigOptions holds values for command line flags that apply to both the

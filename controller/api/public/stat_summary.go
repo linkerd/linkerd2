@@ -378,10 +378,6 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				case failure:
 					basicStats[resource].FailureCount += value
 				}
-				switch string(sample.Metric[model.LabelName("tls")]) {
-				case "true":
-					basicStats[resource].TlsRequestCount += value
-				}
 			case promLatencyP50:
 				addBasicStats()
 				basicStats[resource].LatencyMsP50 = value
