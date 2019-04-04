@@ -46,7 +46,7 @@ install command.`,
 			// We need a Kubernetes client to fetch configs and issuer secrets.
 			k, err := options.newK8s()
 			if err != nil {
-				upgradeErrorf("failed to create a kubernetes client: %s", err)
+				upgradeErrorf("Failed to create a kubernetes client: %s", err)
 			}
 
 			// We fetch the configs directly from kubernetes because we need to be able
@@ -55,7 +55,7 @@ install command.`,
 			// control plane.
 			configs, err := fetchConfigs(k)
 			if err != nil {
-				upgradeErrorf("could not fetch configs from kubernetes: %s", err)
+				upgradeErrorf("Could not fetch configs from kubernetes: %s", err)
 			}
 
 			// If the install config needs to be repaired--either because it did not
@@ -83,7 +83,7 @@ install command.`,
 
 			values, err := options.buildValuesWithoutIdentity(configs)
 			if err != nil {
-				upgradeErrorf("could not build install configuration: %s", err)
+				upgradeErrorf("Could not build install configuration: %s", err)
 			}
 
 			identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
@@ -96,7 +96,7 @@ install command.`,
 			// render is complete, to ensure that okStatus prints separately
 			var buf bytes.Buffer
 			if err = values.render(&buf, configs); err != nil {
-				upgradeErrorf("could not render install configuration: %s", err)
+				upgradeErrorf("Could not render install configuration: %s", err)
 			}
 
 			buf.WriteTo(os.Stdout)
@@ -228,7 +228,7 @@ func fetchIssuer(k *kubernetes.Clientset, trustPEM string) (string, string, time
 	return keyPEM, crtPEM, crt.Certificate.NotAfter, nil
 }
 
-//prints the error message and quits the upgrade process
+// upgradeErrorf prints the error message and quits the upgrade process
 func upgradeErrorf(format string, a ...interface{}) {
 	template := fmt.Sprintf("%s %s\n%s\n", failStatus, format, failMessage)
 	fmt.Fprintf(os.Stderr, template, a...)
