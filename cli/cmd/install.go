@@ -106,6 +106,7 @@ type (
 		highAvailability   bool
 		controllerUID      int64
 		disableH2Upgrade   bool
+		noInitContainer    bool
 		identityOptions    *installIdentityOptions
 		*proxyConfigOptions
 
@@ -161,6 +162,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 		highAvailability:   false,
 		controllerUID:      2103,
 		disableH2Upgrade:   false,
+		noInitContainer:    false,
 		proxyConfigOptions: &proxyConfigOptions{
 			linkerdVersion:         version.Version,
 			ignoreCluster:          false,
@@ -181,7 +183,6 @@ func newInstallOptionsWithDefaults() *installOptions {
 			proxyCPULimit:          "",
 			proxyMemoryLimit:       "",
 			enableExternalProfiles: false,
-			noInitContainer:        false,
 		},
 		identityOptions: newInstallIdentityOptionsWithDefaults(),
 
@@ -264,6 +265,11 @@ func (options *installOptions) recordableFlagSet(e pflag.ErrorHandling) *pflag.F
 		&options.controllerReplicas, "controller-replicas", options.controllerReplicas,
 		"Replicas of the controller to deploy",
 	)
+
+	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
+		"Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+	)
+
 	flags.StringVar(
 		&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel,
 		"Log level for the controller and web components",
