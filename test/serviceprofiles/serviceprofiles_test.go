@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cloudflare/cfssl/log"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -22,18 +23,7 @@ type testCase struct {
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	code := m.Run()
-	out, err := TestHelper.Kubectl("delete", "ns", "emojivoto")
-	if err != nil {
-		os.Exit(code)
-	}
-
-	fmt.Println(out)
-
-	out, err = TestHelper.Kubectl("delete", "ns", "booksapp")
-	if err != nil {
-		os.Exit(code)
-	}
-	fmt.Println(out)
+	tearDown()
 	os.Exit(code)
 }
 
@@ -76,12 +66,11 @@ func TestServiceProfilesFromTap(t *testing.T) {
 			}
 
 			// run routes before: Expected default route only
-			cmd = []string{"routes", "--namespace", tc.namespace, tc.deployName}
-			out, _, err = TestHelper.LinkerdRun(cmd...)
+			routes, err := getRoutes(tc.deployName, tc.namespace, TestHelper)
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
-			routes := parseRouteDetails(out)
+
 			if len(routes) > 1 {
 				t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
 			}
@@ -99,20 +88,66 @@ func TestServiceProfilesFromTap(t *testing.T) {
 			}
 
 			// run routes: Expected more than default route
-			cmd = []string{"routes", "--namespace", tc.namespace, tc.deployName}
-			out, rep, err := TestHelper.LinkerdRun(cmd...)
+			routes, err = getRoutes(tc.deployName, tc.namespace, TestHelper)
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err.Error())
 			}
-
-			routes = parseRouteDetails(rep)
 			for _, route := range routes {
 				if len(route) <= 1 {
-					t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(route))
+					t.Fatalf("Expected route details for service to be greater than or equal to 1 but got %d\n", len(route))
 				}
 			}
 		})
 	}
+}
+
+func TestServiceProfilesFromSwagger(t *testing.T) {
+	// Check that authors only has one route
+	routes, err := getRoutes("deploy/authors", "booksapp", TestHelper)
+	if err != nil {
+		t.Fatalf("routes command failed: %s\n", err)
+	}
+
+	if len(routes) > 1 {
+		t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
+	}
+	// apply swagger profile
+	cmd := []string{"profile", "--namespace", "booksapp", "authors", "--open-api", "testdata/authors.swagger"}
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("profile command failed: %s\n%s\n", err.Error(), stderr)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "booksapp")
+	if err != nil {
+		t.Fatalf("kubectl apply command failed:\n%s", err)
+	}
+
+	// check that authors now has more than one route
+	routes, err = getRoutes("deploy/authors", "booksapp", TestHelper)
+	if err != nil {
+		t.Fatalf("routes command failed: %s\n", err)
+	}
+
+	if len(routes) <= 1 {
+		t.Fatalf("Expected route details for service to be greater than 1 but got %d\n", len(routes))
+	}
+
+}
+
+func TestServiceProfilesFromProto(t *testing.T) {
+
+}
+
+func getRoutes(deployName, namespace string, helper *testutil.TestHelper) ([]string, error) {
+	cmd := []string{"routes", "--namespace", namespace, deployName}
+	out, stderr, err := helper.LinkerdRun(cmd...)
+	if err != nil {
+		log.Infof("error getting routes: %s\n", stderr)
+		return nil, err
+	}
+	routes := parseRouteDetails(out)
+	return routes, nil
 }
 
 func parseRouteDetails(cliOutput string) []string {
@@ -126,4 +161,17 @@ func parseRouteDetails(cliOutput string) []string {
 
 	}
 	return cliLines
+}
+
+func tearDown() {
+	out, err := TestHelper.Kubectl("delete", "ns", "emojivoto")
+	if err != nil {
+		log.Errorf("Unexpected error occurred: %s\n", out)
+	}
+
+	out, err = TestHelper.Kubectl("delete", "ns", "booksapp")
+	if err != nil {
+		log.Errorf("Unexpected error occurred: %s\n", out)
+	}
+
 }
