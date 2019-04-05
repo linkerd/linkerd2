@@ -681,7 +681,6 @@ spec:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
-        - -uuid=deaab91a-f4ab-448a-b7d1-c832a2fa0a60
         - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/web:dev-undefined
@@ -705,6 +704,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -789,6 +791,9 @@ spec:
           name: linkerd-identity-end-entity
       serviceAccountName: linkerd-web
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
