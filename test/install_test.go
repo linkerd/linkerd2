@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -16,10 +17,6 @@ type deploySpec struct {
 	replicas   int
 	containers []string
 }
-
-const (
-	proxyContainer = "linkerd-proxy"
-)
 
 //////////////////////
 ///   TEST SETUP   ///
@@ -56,11 +53,13 @@ var (
 	knownErrorsRegex = regexp.MustCompile(strings.Join([]string{
 
 		// k8s hitting readiness endpoints before components are ready
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::app::errors unexpected error: an IO error occurred: Connection reset by peer (os error 104)`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*\)`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
 
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] admin={server=admin listen=127\.0\.0\.1:4191 remote=.*} linkerd2_proxy::control::serve_http error serving admin: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
@@ -233,7 +232,9 @@ func TestInject(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to read smoke test file: %s", err)
 		}
-		err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, true)
+		err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
+			k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+		})
 		if err != nil {
 			t.Fatalf("failed to create %s namespace with auto inject enabled: %s", prefixedNs, err)
 		}
@@ -326,15 +327,15 @@ func TestCheckProxy(t *testing.T) {
 
 func TestLogs(t *testing.T) {
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
-	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", proxyContainer))
+	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
 
 	for deploy, spec := range linkerdDeployReplicas {
 		deploy := strings.TrimPrefix(deploy, "linkerd-")
-		containers := append(spec.containers, proxyContainer)
+		containers := append(spec.containers, k8s.ProxyContainerName)
 
 		for _, container := range containers {
 			errRegex := controllerRegex
-			if container == proxyContainer {
+			if container == k8s.ProxyContainerName {
 				errRegex = proxyRegex
 			}
 

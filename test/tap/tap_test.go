@@ -126,7 +126,7 @@ func TestCliTap(t *testing.T) {
 
 	t.Run("tap a pod", func(t *testing.T) {
 		deploy := "t3"
-		pods, err := TestHelper.GetPodsForDeployment(prefixedNs, deploy)
+		pods, err := TestHelper.GetPodNamesForDeployment(prefixedNs, deploy)
 		if err != nil {
 			t.Fatalf("Failed to get pods for deployment [%s]\n%s", deploy, err)
 		}

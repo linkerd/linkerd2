@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: t1
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
         - terminus
         - "--grpc-server-port=9090"
@@ -59,7 +59,7 @@ spec:
     spec:
       containers:
       - name: t2
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
         - terminus
         - "--grpc-server-port=9090"
@@ -98,7 +98,7 @@ spec:
     spec:
       containers:
       - name: t3
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
         - terminus
         - "--h1-server-port=8080"
@@ -136,7 +136,7 @@ spec:
     spec:
       containers:
       - name: gateway
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args:
         - broadcast-channel
         - "--h1-server-port=8080"

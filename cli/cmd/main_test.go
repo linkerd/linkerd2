@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// readTesdtata reads a file and returns the contents of that file as a string.
+// readTestdata reads a file and returns the contents of that file as a string.
 func readTestdata(t *testing.T, fileName string) string {
 	file, err := os.Open(filepath.Join("testdata", fileName))
 	if err != nil {
@@ -49,6 +49,7 @@ func writeTestdata(t *testing.T, fileName string, data []byte) {
 	}
 }
 
+// TODO: share this with integration tests
 func diffTestdata(t *testing.T, path, actual string) {
 	expected := readTestdata(t, path)
 	if actual == expected {

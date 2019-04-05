@@ -15,12 +15,12 @@ spec:
     spec:
       containers:
       - name: http-to-grpc
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
         ports:
         - containerPort: 9090
       - name: http-to-grpc-2
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args: ["terminus", "--grpc-server-port", "90", "--response-text", "BANANA"]
         ports:
         - containerPort: 90
@@ -41,7 +41,7 @@ spec:
     spec:
       containers:
       - name: http-to-grpc
-        image: buoyantio/bb:v0.0.1
+        image: buoyantio/bb:v0.0.5
         args: ["terminus", "--grpc-server-port", "90", "--response-text", "BANANA"]
         ports:
         - containerPort: 90
