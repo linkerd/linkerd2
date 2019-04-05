@@ -430,7 +430,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 	if options.highAvailability {
 		defaultConstraints := &resources{
-			CPU:    constraints{Request: "20m"},
+			CPU:    constraints{Request: "100m"},
 			Memory: constraints{Request: "50Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
@@ -441,10 +441,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		values.TapResources = &*defaultConstraints
 		values.WebResources = &*defaultConstraints
 
-		values.IdentityResources = &resources{
-			CPU:    constraints{Request: "100m"},
-			Memory: constraints{Request: "10Mi"},
-		}
+		// The identity controller maintains no internal state, so it need not request
+		// 50Mi.
+		values.IdentityResources = &*defaultConstraints
+		values.IdentityResources.Memory = "10Mi"
 
 		values.PrometheusResources = &resources{
 			CPU:    constraints{Request: "300m"},
