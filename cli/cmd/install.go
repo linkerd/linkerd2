@@ -444,7 +444,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// The identity controller maintains no internal state, so it need not request
 		// 50Mi.
 		values.IdentityResources = &*defaultConstraints
-		values.IdentityResources.Memory = "10Mi"
+		values.IdentityResources.Memory = constraints{Request: "10Mi"}
 
 		values.PrometheusResources = &resources{
 			CPU:    constraints{Request: "300m"},
