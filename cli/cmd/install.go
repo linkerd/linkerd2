@@ -307,7 +307,7 @@ func (options *installOptions) recordableFlagSet(e pflag.ErrorHandling) *pflag.F
 // installOnlyFlagSet includes flags that are only accessible at install-time
 // and not at upgrade-time.
 func (options *installOptions) installOnlyFlagSet(e pflag.ErrorHandling) *pflag.FlagSet {
-	flags := options.recordableFlagSet(e)
+	flags := pflag.NewFlagSet("install-only", e)
 
 	flags.StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
