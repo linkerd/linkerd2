@@ -16,6 +16,7 @@ import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
+import _isNil from 'lodash/isNil';
 import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { withContext } from './util/AppContext.jsx';
@@ -176,7 +177,6 @@ export class ResourceDetailBase extends React.Component {
           podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
         }
 
-
         let resourceIsMeshed = true;
         if (!_isEmpty(this.state.resourceMetrics)) {
           resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
@@ -186,7 +186,7 @@ export class ResourceDetailBase extends React.Component {
         let hasTcp = false;
         let metric = resourceMetrics[0];
         if (!_isEmpty(metric)) {
-          hasHttp = !_isEmpty(metric.stats) && metric.totalRequests !== 0;
+          hasHttp = !_isNil(metric.requestRate) && !_isEmpty(metric.latency);
 
           if (!_isEmpty(metric.tcp)) {
             let { tcp } = metric;
