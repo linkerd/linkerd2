@@ -426,6 +426,15 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 			Proxy:   proxyJSON,
 			Install: installJSON,
 		},
+
+		DestinationResources:   &resources{},
+		GrafanaResources:       &resources{},
+		IdentityResources:      &resources{},
+		PrometheusResources:    &resources{},
+		ProxyInjectorResources: &resources{},
+		PublicAPIResources:     &resources{},
+		TapResources:           &resources{},
+		WebResources:           &resources{},
 	}
 
 	if options.highAvailability {
@@ -434,16 +443,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 			Memory: constraints{Request: "50Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
-		values.DestinationResources = &*defaultConstraints
-		values.GrafanaResources = &*defaultConstraints
-		values.ProxyInjectorResources = &*defaultConstraints
-		values.PublicAPIResources = &*defaultConstraints
-		values.TapResources = &*defaultConstraints
-		values.WebResources = &*defaultConstraints
+		*values.DestinationResources = *defaultConstraints
+		*values.GrafanaResources = *defaultConstraints
+		*values.ProxyInjectorResources = *defaultConstraints
+		*values.PublicAPIResources = *defaultConstraints
+		*values.TapResources = *defaultConstraints
+		*values.WebResources = *defaultConstraints
 
 		// The identity controller maintains no internal state, so it need not request
 		// 50Mi.
-		values.IdentityResources = &*defaultConstraints
+		*values.IdentityResources = *defaultConstraints
 		values.IdentityResources.Memory = constraints{Request: "10Mi"}
 
 		values.PrometheusResources = &resources{
