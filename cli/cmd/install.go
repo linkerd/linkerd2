@@ -435,6 +435,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		PrometheusResources:    &resources{},
 		ProxyInjectorResources: &resources{},
 		PublicAPIResources:     &resources{},
+		SPValidatorResources:   &resources{},
 		TapResources:           &resources{},
 		WebResources:           &resources{},
 	}

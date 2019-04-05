@@ -1583,7 +1583,7 @@ spec:
             port: 9997
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 2103
@@ -1664,7 +1664,7 @@ spec:
           initialDelaySeconds: 2
         resources:
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 20Mi
         securityContext:
           runAsUser: 2102
