@@ -12,78 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"sigs.k8s.io/yaml"
 )
 
-// Webhook is a Kubernetes mutating admission webhook that mutates pods admission
-// requests by injecting sidecar container spec into the pod spec during pod
-// creation.
-type Webhook struct {
-	k8sAPI              *k8s.API
-	deserializer        runtime.Decoder
-	controllerNamespace string
-}
-
-// NewWebhook returns a new instance of Webhook.
-func NewWebhook(api *k8s.API, controllerNamespace string) (*Webhook, error) {
-	var (
-		scheme = runtime.NewScheme()
-		codecs = serializer.NewCodecFactory(scheme)
-	)
-
-	return &Webhook{
-		k8sAPI:              api,
-		deserializer:        codecs.UniversalDeserializer(),
-		controllerNamespace: controllerNamespace,
-	}, nil
-}
-
-// Mutate changes the given pod spec by injecting the proxy sidecar container
-// into the spec. The admission review object returns contains the original
-// request and the response with the mutated pod spec.
-func (w *Webhook) Mutate(data []byte) *admissionv1beta1.AdmissionReview {
-	admissionReview, err := w.decode(data)
-	if err != nil {
-		log.Error("failed to decode data. Reason: ", err)
-		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
-			UID:     admissionReview.Request.UID,
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		return admissionReview
-	}
-	log.Infof("received admission review request %s", admissionReview.Request.UID)
-	log.Debugf("admission request: %+v", admissionReview.Request)
-
-	admissionResponse, err := w.inject(admissionReview.Request)
-	if err != nil {
-		log.Error("failed to inject sidecar. Reason: ", err)
-		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
-			UID:     admissionReview.Request.UID,
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		return admissionReview
-	}
-	admissionReview.Response = admissionResponse
-
-	return admissionReview
-}
-
-func (w *Webhook) decode(data []byte) (*admissionv1beta1.AdmissionReview, error) {
-	var admissionReview admissionv1beta1.AdmissionReview
-	err := yaml.Unmarshal(data, &admissionReview)
-	return &admissionReview, err
-}
-
-func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admissionv1beta1.AdmissionResponse, error) {
+// Inject returns an AdmissionResponse containing the patch, if any, to apply
+// to the pod (proxy sidecar and eventually the init container to set it up)
+func Inject(api *k8s.API,
+	request *admissionv1beta1.AdmissionRequest,
+) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
 	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
@@ -96,7 +31,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 		return nil, err
 	}
 
-	namespace, err := w.k8sAPI.NS().Lister().Get(request.Namespace)
+	namespace, err := api.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +39,7 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 
 	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
 	resourceConfig := inject.NewResourceConfig(configs, inject.OriginWebhook).
-		WithOwnerRetriever(w.ownerRetriever(request.Namespace)).
+		WithOwnerRetriever(ownerRetriever(api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
 	report, err := resourceConfig.ParseMetaAndYAML(request.Object.Raw)
@@ -149,9 +84,9 @@ func (w *Webhook) inject(request *admissionv1beta1.AdmissionRequest) (*admission
 	return admissionResponse, nil
 }
 
-func (w *Webhook) ownerRetriever(ns string) inject.OwnerRetrieverFunc {
+func ownerRetriever(api *k8s.API, ns string) inject.OwnerRetrieverFunc {
 	return func(p *v1.Pod) (string, string) {
 		p.SetNamespace(ns)
-		return w.k8sAPI.GetOwnerKindAndName(p)
+		return api.GetOwnerKindAndName(p)
 	}
 }

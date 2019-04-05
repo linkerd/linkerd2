@@ -63,6 +63,7 @@ type (
 		PrometheusResources,
 		ProxyInjectorResources,
 		PublicAPIResources,
+		SPValidatorResources,
 		TapResources,
 		WebResources *resources
 
@@ -146,6 +147,7 @@ const (
 	resourcesTemplateName      = "templates/_resources.yaml"
 	serviceprofileTemplateName = "templates/serviceprofile.yaml"
 	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
+	spValidatorTemplateName    = "templates/sp_validator.yaml"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -433,6 +435,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		PrometheusResources:    &resources{},
 		ProxyInjectorResources: &resources{},
 		PublicAPIResources:     &resources{},
+		SPValidatorResources:   &resources{},
 		TapResources:           &resources{},
 		WebResources:           &resources{},
 	}
@@ -447,6 +450,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		*values.GrafanaResources = *defaultConstraints
 		*values.ProxyInjectorResources = *defaultConstraints
 		*values.PublicAPIResources = *defaultConstraints
+		*values.SPValidatorResources = *defaultConstraints
 		*values.TapResources = *defaultConstraints
 		*values.WebResources = *defaultConstraints
 
@@ -493,6 +497,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		{Name: prometheusTemplateName},
 		{Name: grafanaTemplateName},
 		{Name: proxyInjectorTemplateName},
+		{Name: spValidatorTemplateName},
 	}
 
 	// Read templates into bytes

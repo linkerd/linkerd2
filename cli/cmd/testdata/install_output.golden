@@ -1464,3 +1464,191 @@ spec:
     port: 443
     targetPort: proxy-injector
 ---
+---
+###
+### Service Profile Validator
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: Namespace
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-Namespace-sp-validator
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingwebhookconfigurations"]
+  verbs: ["create", "get", "delete"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-Namespace-sp-validator
+subjects:
+- kind: ServiceAccount
+  name: linkerd-sp-validator
+  namespace: Namespace
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-Namespace-sp-validator
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: sp-validator
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  type: ClusterIP
+  selector:
+    ControllerComponentLabel: sp-validator
+  ports:
+  - name: sp-validator
+    port: 443
+    targetPort: sp-validator
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    CreatedByAnnotation: CliVersion
+  creationTimestamp: null
+  labels:
+    ControllerComponentLabel: sp-validator
+  name: linkerd-sp-validator
+  namespace: Namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ControllerComponentLabel: sp-validator
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        CreatedByAnnotation: CliVersion
+        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/identity-mode: disabled
+        linkerd.io/proxy-version: dev-undefined
+      creationTimestamp: null
+      labels:
+        ControllerComponentLabel: sp-validator
+        linkerd.io/control-plane-ns: Namespace
+        linkerd.io/proxy-deployment: linkerd-sp-validator
+    spec:
+      containers:
+      - args:
+        - sp-validator
+        - -controller-namespace=Namespace
+        - -log-level=ControllerLogLevel
+        image: ControllerImage
+        imagePullPolicy: ImagePullPolicy
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        name: sp-validator
+        ports:
+        - containerPort: 8443
+          name: sp-validator
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9997
+        resources: {}
+        securityContext:
+          runAsUser: 2103
+      - env:
+        - name: LINKERD2_PROXY_LOG
+          value: warn,linkerd2_proxy=info
+        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+          value: linkerd-destination.Namespace.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+          value: 0.0.0.0:4190
+        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+          value: 0.0.0.0:4191
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+          value: 127.0.0.1:4140
+        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+          value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+          value: svc.cluster.local.
+        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+          value: 10000ms
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+          value: 10000ms
+        - name: _pod_ns
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+          value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_IDENTITY_DISABLED
+          value: Identity is not yet available
+        image: gcr.io/linkerd-io/proxy:dev-undefined
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 4191
+          initialDelaySeconds: 10
+        name: linkerd-proxy
+        ports:
+        - containerPort: 4143
+          name: linkerd-proxy
+        - containerPort: 4191
+          name: linkerd-admin
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 4191
+          initialDelaySeconds: 2
+        resources: {}
+        securityContext:
+          runAsUser: 2102
+        terminationMessagePolicy: FallbackToLogsOnError
+      initContainers:
+      - args:
+        - --incoming-proxy-port
+        - "4143"
+        - --outgoing-proxy-port
+        - "4140"
+        - --proxy-uid
+        - "2102"
+        - --inbound-ports-to-ignore
+        - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        imagePullPolicy: IfNotPresent
+        name: linkerd-init
+        resources: {}
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: false
+          runAsNonRoot: false
+          runAsUser: 0
+        terminationMessagePolicy: FallbackToLogsOnError
+      serviceAccountName: linkerd-sp-validator
+      volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
+status: {}
+---

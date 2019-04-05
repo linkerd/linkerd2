@@ -379,6 +379,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodFailed, false),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
@@ -397,6 +398,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
@@ -415,6 +417,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
 
@@ -430,6 +433,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
 		}

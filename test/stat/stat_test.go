@@ -72,11 +72,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				"linkerd-controller": "1/1",
-				"linkerd-grafana":    "1/1",
-				"linkerd-identity":   "1/1",
-				"linkerd-prometheus": "1/1",
-				"linkerd-web":        "1/1",
+				"linkerd-controller":   "1/1",
+				"linkerd-grafana":      "1/1",
+				"linkerd-identity":     "1/1",
+				"linkerd-prometheus":   "1/1",
+				"linkerd-sp-validator": "1/1",
+				"linkerd-web":          "1/1",
 			},
 		},
 		{
@@ -106,7 +107,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetLinkerdNamespace(): "5/5",
+				TestHelper.GetLinkerdNamespace(): "6/6",
 			},
 		},
 		{

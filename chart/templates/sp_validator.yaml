@@ -1,0 +1,109 @@
+{{with .Values -}}
+---
+###
+### Service Profile Validator
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Namespace}}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Namespace}}-sp-validator
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingwebhookconfigurations"]
+  verbs: ["create", "get", "delete"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Namespace}}-sp-validator
+subjects:
+- kind: ServiceAccount
+  name: linkerd-sp-validator
+  namespace: {{.Namespace}}
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-{{.Namespace}}-sp-validator
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sp-validator
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: sp-validator
+  ports:
+  - name: sp-validator
+    port: 443
+    targetPort: sp-validator
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sp-validator
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{.ControllerComponentLabel}}: sp-validator
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: sp-validator
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-sp-validator
+      containers:
+      - name: sp-validator
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "sp-validator"
+        - "-controller-namespace={{.Namespace}}"
+        - "-log-level={{.ControllerLogLevel}}"
+        ports:
+        - name: sp-validator
+          containerPort: 8443
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9997
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9997
+          failureThreshold: 7
+        {{ with .SPValidatorResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
+{{end -}}
