@@ -1425,7 +1425,6 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
-# TODO: this is for creating the webhook config. Can be removed when #2176 lands.
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["list"]
@@ -1481,7 +1480,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-sp-validator
 rules:
-# TODO: this is for creating the webhook config. Can be removed when #2176 lands.
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["list"]

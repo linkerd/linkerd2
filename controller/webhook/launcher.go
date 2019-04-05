@@ -3,9 +3,10 @@ package webhook
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -17,8 +18,7 @@ import (
 
 // Launch sets up and starts the webhook and metrics servers
 func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, serviceName string, handler handlerFunc) {
-	p := strconv.FormatUint(uint64(metricsPort), 10)
-	metricsAddr := flag.String("metrics-addr", ":"+p, "address to serve scrapable metrics on")
+	metricsAddr := flag.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -26,7 +26,7 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 
 	stop := make(chan os.Signal, 1)
 	defer close(stop)
-	signal.Notify(stop, os.Interrupt, os.Kill)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, APIResources...)
 	if err != nil {

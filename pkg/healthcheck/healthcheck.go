@@ -855,7 +855,7 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "web"}
+	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
 	}

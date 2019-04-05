@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/linkerd/linkerd2/controller/k8s"
 	validator "github.com/linkerd/linkerd2/controller/sp-validator"
 	"github.com/linkerd/linkerd2/controller/sp-validator/tmpl"
 	"github.com/linkerd/linkerd2/controller/webhook"
@@ -15,7 +14,7 @@ func main() {
 	}
 	webhook.Launch(
 		config,
-		[]k8s.APIResource{},
+		nil,
 		9997,
 		pkgK8s.SPValidatorWebhookServiceName,
 		validator.AdmitSP,

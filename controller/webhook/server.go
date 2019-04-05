@@ -68,6 +68,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(data) == 0 {
+		log.Warn("received empty payload")
 		return
 	}
 
@@ -87,7 +88,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 	admissionReview, err := decode(data)
 	if err != nil {
-		log.Error("failed to decode data. Reason: ", err)
+		log.Errorf("failed to decode data. Reason: %s", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
 			UID:     admissionReview.Request.UID,
 			Allowed: false,
