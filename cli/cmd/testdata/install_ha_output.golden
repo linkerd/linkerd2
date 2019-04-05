@@ -394,7 +394,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 10Mi
+            memory: 50Mi
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -427,7 +427,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 10Mi
+            memory: 50Mi
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -458,7 +458,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 10Mi
+            memory: 50Mi
         securityContext:
           runAsUser: 2103
       - env:
@@ -769,7 +769,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 10Mi
+            memory: 50Mi
         securityContext:
           runAsUser: 2103
       - env:
@@ -1285,7 +1285,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 10Mi
+            memory: 50Mi
         securityContext:
           runAsUser: 472
         volumeMounts:
