@@ -11,7 +11,7 @@ RUN (proxy=$(bin/fetch-proxy $PROXY_VERSION) && \
     echo "$version" >version.txt)
 
 ## compile proxy-identity agent
-FROM gcr.io/linkerd-io/go-deps:f39dc9a4 as golang
+FROM gcr.io/linkerd-io/go-deps:3f016933 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 ENV CGO_ENABLED=0 GOOS=linux
 COPY pkg/flags pkg/flags
