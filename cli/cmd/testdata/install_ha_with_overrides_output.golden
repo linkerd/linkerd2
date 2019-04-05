@@ -134,7 +134,7 @@ spec:
             port: 9990
         resources:
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 10Mi
         securityContext:
           runAsUser: 2103
@@ -393,7 +393,7 @@ spec:
             port: 9995
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 2103
@@ -426,7 +426,7 @@ spec:
             port: 9996
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 2103
@@ -457,7 +457,7 @@ spec:
             port: 9998
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 2103
@@ -768,7 +768,7 @@ spec:
             port: 9994
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 2103
@@ -1284,7 +1284,7 @@ spec:
             port: 3000
         resources:
           requests:
-            cpu: 20m
+            cpu: 100m
             memory: 50Mi
         securityContext:
           runAsUser: 472
