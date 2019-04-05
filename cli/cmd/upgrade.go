@@ -49,48 +49,10 @@ install command.`,
 				upgradeErrorf("Failed to create a kubernetes client: %s", err)
 			}
 
-			// We fetch the configs directly from kubernetes because we need to be able
-			// to upgrade/reinstall the control plane when the API is not available; and
-			// this also serves as a passive check that we have privileges to access this
-			// control plane.
-			configs, err := fetchConfigs(k)
+			values, configs, err := options.validateAndBuild(k, flags)
 			if err != nil {
-				upgradeErrorf("Could not fetch configs from kubernetes: %s", err)
-			}
-
-			// If the install config needs to be repaired--either because it did not
-			// exist or because it is missing expected fields, repair it.
-			options.repairInstall(configs.Install)
-
-			// We recorded flags during a prior install. If we haven't overridden the
-			// flag on this upgrade, reset that prior value as if it were specified now.
-			//
-			// This implies that the default flag values for the upgrade command come
-			// from the control-plane, and not from the defaults specified in the FlagSet.
-			setOptionsFromInstall(flags, configs.GetInstall())
-
-			if err = options.validate(); err != nil {
 				return err
 			}
-
-			// Save off the updated set of flags into the installOptions so it gets
-			// persisted with the upgraded config.
-			options.recordFlags(flags)
-
-			// Update the configs from the synthesized options.
-			options.overrideConfigs(configs, map[string]string{})
-			configs.GetInstall().Flags = options.recordedFlags
-
-			values, err := options.buildValuesWithoutIdentity(configs)
-			if err != nil {
-				upgradeErrorf("Could not build install configuration: %s", err)
-			}
-
-			identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
-			if err != nil {
-				upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
-			}
-			values.Identity = identityValues
 
 			// rendering to a buffer and printing full contents of buffer after
 			// render is complete, to ensure that okStatus prints separately
@@ -111,6 +73,53 @@ install command.`,
 	return cmd
 }
 
+func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+	// We fetch the configs directly from kubernetes because we need to be able
+	// to upgrade/reinstall the control plane when the API is not available; and
+	// this also serves as a passive check that we have privileges to access this
+	// control plane.
+	configs, err := fetchConfigs(k)
+	if err != nil {
+		upgradeErrorf("Could not fetch configs from kubernetes: %s", err)
+	}
+
+	// If the install config needs to be repaired--either because it did not
+	// exist or because it is missing expected fields, repair it.
+	options.repairInstall(configs.Install)
+
+	// We recorded flags during a prior install. If we haven't overridden the
+	// flag on this upgrade, reset that prior value as if it were specified now.
+	//
+	// This implies that the default flag values for the upgrade command come
+	// from the control-plane, and not from the defaults specified in the FlagSet.
+	setOptionsFromInstall(flags, configs.GetInstall())
+
+	if err = options.validate(); err != nil {
+		return nil, nil, err
+	}
+
+	// Save off the updated set of flags into the installOptions so it gets
+	// persisted with the upgraded config.
+	options.recordFlags(flags)
+
+	// Update the configs from the synthesized options.
+	options.overrideConfigs(configs, map[string]string{})
+	configs.GetInstall().Flags = options.recordedFlags
+
+	values, err := options.buildValuesWithoutIdentity(configs)
+	if err != nil {
+		upgradeErrorf("Could not build install configuration: %s", err)
+	}
+
+	identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
+	if err != nil {
+		upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
+	}
+	values.Identity = identityValues
+
+	return values, configs, nil
+}
+
 func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 	for _, i := range install.GetFlags() {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
@@ -120,7 +129,7 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 	}
 }
 
-func (options *upgradeOptions) newK8s() (*kubernetes.Clientset, error) {
+func (options *upgradeOptions) newK8s() (kubernetes.Interface, error) {
 	if options.ignoreCluster {
 		panic("ignore cluster must be unset") // Programmer error.
 	}
@@ -153,7 +162,7 @@ func (options *upgradeOptions) repairInstall(install *pb.Install) {
 //
 // This bypasses the public API so that upgrades can proceed when the API pod is
 // not available.
-func fetchConfigs(k *kubernetes.Clientset) (*pb.All, error) {
+func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
 	configMap, err := k.CoreV1().
 		ConfigMaps(controlPlaneNamespace).
 		Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
@@ -169,7 +178,7 @@ func fetchConfigs(k *kubernetes.Clientset) (*pb.All, error) {
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k *kubernetes.Clientset, replicas uint, idctx *pb.IdentityContext) (*installIdentityValues, error) {
+func fetchIdentityValues(k kubernetes.Interface, replicas uint, idctx *pb.IdentityContext) (*installIdentityValues, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -195,7 +204,7 @@ func fetchIdentityValues(k *kubernetes.Clientset, replicas uint, idctx *pb.Ident
 	}, nil
 }
 
-func fetchIssuer(k *kubernetes.Clientset, trustPEM string) (string, string, time.Time, error) {
+func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, error) {
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
