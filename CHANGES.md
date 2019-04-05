@@ -13,7 +13,9 @@
     prevents Kubernetes from accepting invalid service profiles
   * Added support for the `config.linkerd.io/proxy-version` annotation on pod
     specs; this will override the injected proxy version
-  * Changed the default CPU request from `10m` to `100m` for HA deployments
+  * Changed the default CPU request from `10m` to `100m` for HA deployments;
+    this will help some intermittent liveness/readiness probes from failing due
+    to tight resource constraints
 * Proxy
   * The `CommonName` field on CSRs is now set to the proxy's identity name
 * Web UI
