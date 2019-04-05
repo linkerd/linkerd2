@@ -134,7 +134,7 @@ spec:
             port: 9990
         resources:
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 10Mi
         securityContext:
           runAsUser: 2103

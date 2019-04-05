@@ -375,7 +375,7 @@ func (options *installOptions) validate() error {
 		}
 
 		if options.proxyCPURequest == "" {
-			options.proxyCPURequest = "10m"
+			options.proxyCPURequest = "100m"
 		}
 
 		if options.proxyMemoryRequest == "" {
@@ -442,7 +442,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		values.WebResources = &*defaultConstraints
 
 		values.IdentityResources = &resources{
-			CPU:    constraints{Request: "10m"},
+			CPU:    constraints{Request: "100m"},
 			Memory: constraints{Request: "10Mi"},
 		}
 
