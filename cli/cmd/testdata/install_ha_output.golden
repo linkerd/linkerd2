@@ -393,8 +393,8 @@ spec:
             port: 9995
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 10Mi
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -426,8 +426,8 @@ spec:
             port: 9996
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 10Mi
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -457,8 +457,8 @@ spec:
             port: 9998
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 10Mi
         securityContext:
           runAsUser: 2103
       - env:
@@ -768,8 +768,8 @@ spec:
             port: 9994
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 10Mi
         securityContext:
           runAsUser: 2103
       - env:
@@ -1284,8 +1284,8 @@ spec:
             port: 3000
         resources:
           requests:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 10Mi
         securityContext:
           runAsUser: 472
         volumeMounts:
