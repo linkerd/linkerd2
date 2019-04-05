@@ -1,3 +1,27 @@
+## edge-19.4.2
+
+* CLI
+  * Removed TLS metrics from the `stat` command; this is in preparation for
+    surfacing identity metrics in a clearer way
+  * The `upgrade` command now outputs a URL that explains next steps for
+    upgrading
+  * **Breaking Change:** The `--linkerd-cni-enabled` flag has been removed from
+    the `inject` command; CNI is configured at the cluster level with the
+    `install` command and no longer applies to the `inject` command
+* Controller
+  * Service profile validation is now performed via a webhook endpoint; this
+    prevents Kubernetes from accepting invalid service profiles
+  * Added support for the `config.linkerd.io/proxy-version` annotation on pod
+    specs; this will override the injected proxy version
+  * Changed the default CPU request from `10m` to `100m` for HA deployments;
+    this will help some intermittent liveness/readiness probes from failing due
+    to tight resource constraints
+* Proxy
+  * The `CommonName` field on CSRs is now set to the proxy's identity name
+* Web UI
+  * Removed TLS columns from the dashboard tables; this is in preparation for
+    surfacing identity metrics in a clearer way
+
 ## edge-19.4.1
 
 * CLI
