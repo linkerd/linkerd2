@@ -14,6 +14,6 @@ rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_tag.sh
 
 # Default to a pinned commit SHA of the proxy.
-PROXY_VERSION="${PROXY_VERSION:-f2d907b}"
+PROXY_VERSION="${PROXY_VERSION:-b634c3a}"
 
 docker_build proxy "$(head_root_tag)" $rootdir/Dockerfile-proxy --build-arg PROXY_VERSION=$PROXY_VERSION
