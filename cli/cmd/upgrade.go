@@ -111,11 +111,23 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 		upgradeErrorf("Could not build install configuration: %s", err)
 	}
 
-	identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
-	if err != nil {
-		upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
+	idctx := configs.GetGlobal().GetIdentityContext()
+	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
+		// If there wasn't an idctx, or if it doesn't specify the required fields, we
+		// must be upgrading from a version that didn't support identity, so generate it anew...
+		v, err := options.installOptions.identityOptions.genValues()
+		if err != nil {
+			upgradeErrorf("Unable to generate issuer credentials.\nError: %s", err)
+		}
+		values.Identity = v
+		configs.GetGlobal().IdentityContext = v.toIdentityContext()
+	} else {
+		v, err := fetchIdentityValues(k, options.controllerReplicas, idctx)
+		if err != nil {
+			upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
+		}
+		values.Identity = v
 	}
-	values.Identity = identityValues
 
 	return values, configs, nil
 }

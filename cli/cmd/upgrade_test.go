@@ -47,7 +47,7 @@ data:
 
 	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
 	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
+		t.Fatalf("Error mocking k8s client: %s", err)
 	}
 
 	values, configs, err := options.validateAndBuild(clientset, flags)
@@ -60,4 +60,51 @@ data:
 		t.Fatalf("could not render upgrade configuration: %s", err)
 	}
 	diffTestdata(t, "upgrade_default.golden", buf.String())
+}
+
+func TestUpgradeFromNonIdentityConfig(t *testing.T) {
+	k8sConfigs := []string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli edge-19.4.1
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":null,"autoInjectContext":null}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
+  install: |
+    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"edge-19.3.1","flags":[]}
+`,
+	}
+
+	options := newUpgradeOptionsWithDefaults()
+	flags := options.recordableFlagSet(pflag.ExitOnError)
+
+	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("Error mocking k8s client: %s", err)
+	}
+
+	values, configs, err := options.validateAndBuild(clientset, flags)
+	if err != nil {
+		t.Fatalf("validateAndBuild failed with %s", err)
+	}
+
+	if values.Identity == nil ||
+		values.Identity.TrustAnchorsPEM == "" ||
+		values.Identity.TrustDomain == "" ||
+		values.Identity.Issuer == nil ||
+		values.Identity.Issuer.CrtPEM == "" ||
+		values.Identity.Issuer.KeyPEM == "" {
+		t.Fatalf("issuer values not generated")
+	}
+	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
+		t.Fatalf("issuer config not generated")
+	}
 }
