@@ -1,5 +1,6 @@
 import CloseIcon from '@material-ui/icons/Close';
 import FilterListIcon from '@material-ui/icons/FilterList';
+import Hidden from '@material-ui/core/Hidden';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -27,9 +28,11 @@ const styles = theme => ({
     marginBottom: theme.spacing.unit * 3,
     overflowX: 'auto',
   },
-  table: {},
   activeSortIcon: {
     opacity: 1,
+  },
+  toolbar: {
+    paddingLeft: "24px"
   },
   toolbarIcon: {
     cursor: "pointer",
@@ -140,7 +143,7 @@ class BaseTable extends React.Component {
 
   renderToolbar = (classes, title) => {
     return (
-      <Toolbar>
+      <Toolbar className={classes.toolbar}>
         <Typography
           className={classes.title}
           variant="h5">
@@ -153,9 +156,11 @@ class BaseTable extends React.Component {
             placeholder="Filter by text"
             autoFocus />}
         {!this.state.showFilter &&
+        <Hidden smDown>
           <FilterListIcon
             className={classes.toolbarIcon}
-            onClick={this.handleFilterToggle} />}
+            onClick={this.handleFilterToggle} />
+        </Hidden>}
         {this.state.showFilter &&
           <CloseIcon
             className={classes.toolbarIcon}

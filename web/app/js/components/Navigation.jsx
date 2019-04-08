@@ -13,7 +13,6 @@ import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
-import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import MenuIcon from '@material-ui/icons/Menu';
@@ -122,9 +121,6 @@ const styles = theme => {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
     },
-    helpMenuItem: {
-      outline: "none",
-    },
     shrinkIcon: {
       fontSize: "18px",
       paddingLeft: "3px",
@@ -142,6 +138,7 @@ class NavigationBase extends React.Component {
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
+    this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
 
     this.state = this.getInitialState();
   }
@@ -160,6 +157,12 @@ class NavigationBase extends React.Component {
   componentDidMount() {
     this.fetchVersion();
     this.fetchLatestCommunityUpdate();
+    this.updateWindowDimensions();
+    window.addEventListener("resize", this.updateWindowDimensions);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.updateWindowDimensions);
   }
 
   fetchVersion() {
@@ -238,6 +241,15 @@ class NavigationBase extends React.Component {
     );
   }
 
+  updateWindowDimensions() {
+    let browserWidth = window.innerWidth;
+    if (browserWidth < 960) {
+      this.setState({ drawerOpen: false });
+    } else {
+      this.setState({ drawerOpen: true });
+    }
+  }
+
   render() {
     const { classes, ChildComponent, ...otherProps } = this.props;
 
@@ -283,32 +295,32 @@ class NavigationBase extends React.Component {
           <Divider />
 
           <MenuList>
-            <ListItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.helpMenuItem}>
-              <ListItemIcon><LibraryBooksIcon /></ListItemIcon>
+            <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
+              <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
               <ListItemText primary="Documentation" />
-            </ListItem>
+            </MenuItem>
             { this.menuItem("/community", "Community",
               <Badge
                 classes={{ badge: classes.badge }}
                 invisible={this.state.hideUpdateBadge}
                 badgeContent="1">
-                <SentimentVerySatisfiedIcon />
+                <SentimentVerySatisfiedIcon className={classes.shrinkIcon} />
               </Badge>, this.handleCommunityClick
               ) }
-            <ListItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.helpMenuItem}>
-              <ListItemIcon><EmailIcon /></ListItemIcon>
+            <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
+              <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
               <ListItemText primary="Join the Mailing List" />
-            </ListItem>
+            </MenuItem>
 
-            <ListItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.helpMenuItem}>
+            <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon>{slackIcon}</ListItemIcon>
               <ListItemText primary="Join us on Slack" />
-            </ListItem>
+            </MenuItem>
 
-            <ListItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.helpMenuItem}>
+            <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon>{githubIcon}</ListItemIcon>
               <ListItemText primary="File an Issue" />
-            </ListItem>
+            </MenuItem>
           </MenuList>
 
           {
