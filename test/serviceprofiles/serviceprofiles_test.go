@@ -67,60 +67,62 @@ func TestServiceProfiles(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		routes, err := getRoutes(tc.deployName, tc.namespace)
-		if err != nil {
-			t.Fatalf("routes command failed: %s\n", err)
-		}
-
-		initialExpectedRoutes := []string{"[DEFAULT]"}
-
-		if !assertExpectedRoutes(initialExpectedRoutes, routes) {
-			t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
-				strings.Join(initialExpectedRoutes, "\n"),
-				strings.Join(routes, "\n"),
-			)
-		}
-
-		sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
-		cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
-		if tc.sourceName == "tap" {
-			tc.args = []string{
-				tc.deployName,
-				"--tap-route-limit",
-				"5",
-				"--tap-duration",
-				"10s",
+		t.Run(tc.sourceName, func(t *testing.T) {
+			routes, err := getRoutes(tc.deployName, tc.namespace)
+			if err != nil {
+				t.Fatalf("routes command failed: %s\n", err)
 			}
-		}
 
-		if tc.sourceName == "open-api" {
-			tc.args = []string{
-				"testdata/t3.swagger",
+			initialExpectedRoutes := []string{"[DEFAULT]"}
+
+			if !assertExpectedRoutes(initialExpectedRoutes, routes) {
+				t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
+					strings.Join(initialExpectedRoutes, "\n"),
+					strings.Join(routes, "\n"),
+				)
 			}
-		}
 
-		cmd = append(cmd, tc.args...)
-		out, _, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			t.Fatalf("profile command failed: %s\n", err.Error())
-		}
+			sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
+			cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
+			if tc.sourceName == "tap" {
+				tc.args = []string{
+					tc.deployName,
+					"--tap-route-limit",
+					"5",
+					"--tap-duration",
+					"10s",
+				}
+			}
 
-		_, err = TestHelper.KubectlApply(out, tc.namespace)
-		if err != nil {
-			t.Fatalf("kubectl apply command failed:\n%s", err)
-		}
+			if tc.sourceName == "open-api" {
+				tc.args = []string{
+					"testdata/t3.swagger",
+				}
+			}
 
-		routes, err = getRoutes(tc.deployName, tc.namespace)
-		if err != nil {
-			t.Fatalf("routes command failed: %s\n", err)
-		}
+			cmd = append(cmd, tc.args...)
+			out, _, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Fatalf("profile command failed: %s\n", err.Error())
+			}
 
-		if !assertExpectedRoutes(tc.expectedRoutes, routes) {
-			t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
-				strings.Join(tc.expectedRoutes, "\n"),
-				strings.Join(routes, "\n"),
-			)
-		}
+			_, err = TestHelper.KubectlApply(out, tc.namespace)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed:\n%s", err)
+			}
+
+			routes, err = getRoutes(tc.deployName, tc.namespace)
+			if err != nil {
+				t.Fatalf("routes command failed: %s\n", err)
+			}
+
+			if !assertExpectedRoutes(tc.expectedRoutes, routes) {
+				t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
+					strings.Join(tc.expectedRoutes, "\n"),
+					strings.Join(routes, "\n"),
+				)
+			}
+		})
 	}
 }
 
