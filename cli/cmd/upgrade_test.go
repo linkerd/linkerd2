@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/pflag"
 )
@@ -114,9 +116,17 @@ data:
 		values.Identity.Issuer == nil ||
 		values.Identity.Issuer.CrtPEM == "" ||
 		values.Identity.Issuer.KeyPEM == "" {
-		t.Fatalf("issuer values not generated")
+		t.Errorf("issuer values not generated")
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
-		t.Fatalf("issuer config not generated")
+		t.Errorf("identity config not generated")
+	}
+
+	global := pb.Global{}
+	if err := json.Unmarshal([]byte(values.Configs.Global), &global); err != nil {
+		t.Fatalf("Could not unmarshal global config: %s", err)
+	}
+	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
+		t.Errorf("identity config not serialized")
 	}
 }

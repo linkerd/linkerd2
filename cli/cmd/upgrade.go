@@ -106,28 +106,30 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 	options.overrideConfigs(configs, map[string]string{})
 	configs.GetInstall().Flags = options.recordedFlags
 
-	values, err := options.buildValuesWithoutIdentity(configs)
-	if err != nil {
-		upgradeErrorf("Could not build install configuration: %s", err)
-	}
-
+	var identity *installIdentityValues
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
 		// must be upgrading from a version that didn't support identity, so generate it anew...
-		v, err := options.installOptions.identityOptions.genValues()
+		identity, err = options.installOptions.identityOptions.genValues()
 		if err != nil {
 			upgradeErrorf("Unable to generate issuer credentials.\nError: %s", err)
 		}
-		values.Identity = v
-		configs.GetGlobal().IdentityContext = v.toIdentityContext()
+		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
 	} else {
-		v, err := fetchIdentityValues(k, options.controllerReplicas, idctx)
+		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
 		if err != nil {
 			upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
 		}
-		values.Identity = v
 	}
+
+	// Values have to be generated after any missing identity is generated,
+	// otherwise it will be missing from the generated configmap.
+	values, err := options.buildValuesWithoutIdentity(configs)
+	if err != nil {
+		upgradeErrorf("Could not build install configuration: %s", err)
+	}
+	values.Identity = identity
 
 	return values, configs, nil
 }
