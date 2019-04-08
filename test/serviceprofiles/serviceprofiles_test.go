@@ -75,12 +75,7 @@ func TestServiceProfiles(t *testing.T) {
 
 			initialExpectedRoutes := []string{"[DEFAULT]"}
 
-			if !assertExpectedRoutes(initialExpectedRoutes, routes) {
-				t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
-					strings.Join(initialExpectedRoutes, "\n"),
-					strings.Join(routes, "\n"),
-				)
-			}
+			assertExpectedRoutes(initialExpectedRoutes, routes, t)
 
 			sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
 			cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
@@ -116,20 +111,15 @@ func TestServiceProfiles(t *testing.T) {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
 
-			if !assertExpectedRoutes(tc.expectedRoutes, routes) {
-				t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
-					strings.Join(tc.expectedRoutes, "\n"),
-					strings.Join(routes, "\n"),
-				)
-			}
+			assertExpectedRoutes(tc.expectedRoutes, routes, t)
 		})
 	}
 }
 
-func assertExpectedRoutes(expected, actual []string) bool {
+func assertExpectedRoutes(expected, actual []string, t *testing.T) {
 
 	if len(expected) != len(actual) {
-		return false
+		t.Errorf("mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
 	}
 
 	for _, expectedRoute := range expected {
@@ -137,13 +127,13 @@ func assertExpectedRoutes(expected, actual []string) bool {
 		for _, actualRoute := range actual {
 			if strings.HasPrefix(actualRoute, expectedRoute) {
 				containsRoute = true
+				break
 			}
 		}
 		if !containsRoute {
-			return false
+			t.Errorf("Expected route %s not found in %v", expectedRoute, actual)
 		}
 	}
-	return true
 }
 
 func getRoutes(deployName, namespace string) ([]string, error) {
@@ -158,7 +148,7 @@ func getRoutes(deployName, namespace string) ([]string, error) {
 
 func parseRouteDetails(cliOutput string) []string {
 	var cliLines []string
-	routesByDeployment := strings.SplitAfter(cliOutput, "\n")
+	routesByDeployment := strings.Split(cliOutput, "\n")
 	for _, routes := range routesByDeployment {
 		routes = strings.TrimSpace(routes)
 		if routes != "" && !strings.HasPrefix(routes, "ROUTE") {
