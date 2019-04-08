@@ -105,7 +105,7 @@ func TestServiceProfiles(t *testing.T) {
 			t.Fatalf("profile command failed: %s\n", err.Error())
 		}
 
-		out, err = TestHelper.KubectlApply(out, tc.namespace)
+		_, err = TestHelper.KubectlApply(out, tc.namespace)
 		if err != nil {
 			t.Fatalf("kubectl apply command failed:\n%s", err)
 		}
