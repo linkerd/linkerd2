@@ -40,7 +40,7 @@ func main() {
 
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
-		log.Fatalf("failed to take global config %v", err)
+		log.Warnf("failed to load uuid from install config: %s", err)
 	}
 	uuid := installConfig.GetUuid()
 
