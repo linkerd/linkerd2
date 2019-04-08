@@ -6,188 +6,130 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudflare/cfssl/log"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
 var TestHelper *testutil.TestHelper
 
 type testCase struct {
-	namespace   string
-	injectYAML  string
-	deployments []string
-	deployName  string
-	spName      string
+	args           []string
+	deployName     string
+	expectedRoutes []string
+	namespace      string
+	sourceName     string
+	spName         string
 }
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	code := m.Run()
-	tearDown()
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
-func TestServiceProfilesFromTap(t *testing.T) {
+func TestServiceProfiles(t *testing.T) {
+
+	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
+	out, _, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
+	if err != nil {
+		t.Fatalf("linkerd inject command failed\n%s", out)
+	}
+
+	out, err = TestHelper.KubectlApply(out, testNamespace)
+	if err != nil {
+		t.Fatalf("kubectl apply command failed\n%s", out)
+	}
+
+	// wait for deployments to start
+	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
+		if err := TestHelper.CheckPods(testNamespace, deploy, 1); err != nil {
+			t.Error(err)
+		}
+
+		if err := TestHelper.CheckDeployment(testNamespace, deploy, 1); err != nil {
+			t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err))
+		}
+	}
+
 	testCases := []testCase{
 		{
-			namespace:   "emojivoto",
-			injectYAML:  "emojivoto.yml",
-			deployments: []string{"emoji", "vote-bot", "voting", "web"},
-			deployName:  "deploy/voting",
-			spName:      "voting-svc",
+			sourceName:     "tap",
+			namespace:      testNamespace,
+			deployName:     "deploy/t1",
+			spName:         "t1-svc",
+			expectedRoutes: []string{"POST /buoyantio.bb.TheService/theFunction", "[DEFAULT]"},
 		},
 		{
-			namespace:   "booksapp",
-			injectYAML:  "booksapp.yml",
-			deployments: []string{"webapp", "authors", "books", "traffic"},
-			deployName:  "deploy/books",
-			spName:      "books-svc",
+			sourceName:     "open-api",
+			namespace:      testNamespace,
+			spName:         "t3-svc",
+			deployName:     "deploy/t3",
+			expectedRoutes: []string{"DELETE /testpath", "GET /testpath", "PATCH /testpath", "POST /testpath", "[DEFAULT]"},
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("service profiles from tap:%s", tc.namespace), func(t *testing.T) {
-			cmd := []string{"inject", fmt.Sprintf("testdata/%s", tc.injectYAML)}
-			out, _, err := TestHelper.LinkerdRun(cmd...)
-			if err != nil {
-				t.Fatalf("linkerd inject command failed: %s\n", err)
-			}
+		routes, err := getRoutes(tc.deployName, tc.namespace)
+		if err != nil {
+			t.Fatalf("routes command failed: %s\n", err)
+		}
 
-			out, err = TestHelper.KubectlApply(out, tc.namespace)
-			if err != nil {
-				t.Fatalf("kubectl apply command failed:\n%s", out)
-			}
+		initialExpectedRoutes := []string{"[DEFAULT]"}
 
-			for _, deploy := range tc.deployments {
-				err = TestHelper.CheckPods(tc.namespace, deploy, 1)
-				if err != nil {
-					t.Fatalf("Unexpected error: %s\n", err.Error())
-				}
-			}
+		if !assertExpectedRoutes(initialExpectedRoutes, routes) {
+			t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
+				strings.Join(initialExpectedRoutes, "\n"),
+				strings.Join(routes, "\n"),
+			)
+		}
 
-			// run routes: Expect default route only
-			routes, err := getRoutes(tc.deployName, tc.namespace, TestHelper)
-			if err != nil {
-				t.Fatalf("routes command failed: %s\n", err)
-			}
-
-			if len(routes) > 1 {
-				t.Fatalf("Expected route details for service to be at most 1 but got %d\n", len(routes))
-			}
-
-			// run service profile from tap command
-			cmd = []string{
-				"profile",
-				"--namespace",
-				tc.namespace,
-				tc.spName,
-				"--tap",
+		sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
+		cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
+		if tc.sourceName == "tap" {
+			tc.args = []string{
 				tc.deployName,
 				"--tap-route-limit",
 				"5",
 				"--tap-duration",
-				"10s"}
-			out, _, err = TestHelper.LinkerdRun(cmd...)
-			if err != nil {
-				t.Fatalf("profile command failed: %s\n", err.Error())
+				"10s",
 			}
+		}
 
-			out, err = TestHelper.KubectlApply(out, tc.namespace)
-			if err != nil {
-				t.Fatalf("kubectl apply command failed:\n%s", out)
+		if tc.sourceName == "open-api" {
+			tc.args = []string{
+				"testdata/t3.swagger",
 			}
+		}
 
-			// run routes: Expected more than default route
-			routes, err = getRoutes(tc.deployName, tc.namespace, TestHelper)
-			if err != nil {
-				t.Fatalf("routes command failed: %s\n", err.Error())
-			}
-			for _, route := range routes {
-				if len(route) <= 1 {
-					t.Fatalf("Expected routes for service to be greater than or equal to 1 but got %d\n", len(route))
-				}
-			}
-		})
-	}
-}
+		cmd = append(cmd, tc.args...)
+		out, _, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			t.Fatalf("profile command failed: %s\n", err.Error())
+		}
 
-func TestServiceProfilesFromSwagger(t *testing.T) {
-	// Check that authors only has one route
-	routes, err := getRoutes("deploy/authors", "booksapp", TestHelper)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err)
-	}
+		out, err = TestHelper.KubectlApply(out, tc.namespace)
+		if err != nil {
+			t.Fatalf("kubectl apply command failed:\n%s", err)
+		}
 
-	if len(routes) > 1 {
-		t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
-	}
-	// apply swagger profile
-	cmd := []string{"profile", "--namespace", "booksapp", "authors", "--open-api", "testdata/authors.swagger"}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("profile command failed: %s\n", err.Error())
-	}
+		routes, err = getRoutes(tc.deployName, tc.namespace)
+		if err != nil {
+			t.Fatalf("routes command failed: %s\n", err)
+		}
 
-	out, err = TestHelper.KubectlApply(out, "booksapp")
-	if err != nil {
-		t.Fatalf("kubectl apply command failed:\n%s", err)
-	}
-
-	// check that authors now has more than one route
-	routes, err = getRoutes("deploy/authors", "booksapp", TestHelper)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err)
-	}
-
-	if len(routes) <= 1 {
-		t.Fatalf("Expected route details for service to be greater than 1 but got %d\n", len(routes))
-	}
-
-}
-
-func TestServiceProfilesFromProto(t *testing.T) {
-	namespace := "emojivoto"
-	// Check that authors only has one route
-	routes, err := getRoutes("deploy/emoji", namespace, TestHelper)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err)
-	}
-
-	if len(routes) > 1 {
-		t.Fatalf("Expected route details for service to be at-most 1 but got %d\n", len(routes))
-	}
-
-	// apply proto profile
-	cmd := []string{"profile", "--namespace", namespace, "emoji-svc", "--proto", "testdata/Emoji.proto"}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("profile command failed: %s\n", err.Error())
-	}
-
-	out, err = TestHelper.KubectlApply(out, namespace)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed:\n%s", err)
-	}
-
-	expectedRoutes := []string{
-		"FindByShortcode",
-		"ListAll",
-		"[DEFAULT]",
-	}
-
-	// check that authors now has more than one route
-	routes, err = getRoutes("deploy/emoji", "emojivoto", TestHelper)
-	if err != nil {
-		t.Fatalf("routes command failed: %s\n", err)
-	}
-
-	if !assertExpectedRoutes(expectedRoutes, routes) {
-		t.Fatalf("Unexepected routes: Expected\n %s\nbut got:\n%s\n",
-			strings.Join(expectedRoutes, "\n"), strings.Join(routes, "\n"))
+		if !assertExpectedRoutes(tc.expectedRoutes, routes) {
+			t.Fatalf("Expected routes to have prefixes:\n%s\nbut got:\n%s",
+				strings.Join(tc.expectedRoutes, "\n"),
+				strings.Join(routes, "\n"),
+			)
+		}
 	}
 }
 
 func assertExpectedRoutes(expected, actual []string) bool {
+
+	if len(expected) != len(actual) {
+		return false
+	}
+
 	for _, expectedRoute := range expected {
 		containsRoute := false
 		for _, actualRoute := range actual {
@@ -202,11 +144,10 @@ func assertExpectedRoutes(expected, actual []string) bool {
 	return true
 }
 
-func getRoutes(deployName, namespace string, helper *testutil.TestHelper) ([]string, error) {
+func getRoutes(deployName, namespace string) ([]string, error) {
 	cmd := []string{"routes", "--namespace", namespace, deployName}
-	out, stderr, err := helper.LinkerdRun(cmd...)
+	out, _, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		log.Infof("error getting routes: %s\n", stderr)
 		return nil, err
 	}
 	routes := parseRouteDetails(out)
@@ -215,7 +156,7 @@ func getRoutes(deployName, namespace string, helper *testutil.TestHelper) ([]str
 
 func parseRouteDetails(cliOutput string) []string {
 	var cliLines []string
-	routesByDeployment := strings.SplitAfter(cliOutput, "\n") //FIXME use regular split
+	routesByDeployment := strings.SplitAfter(cliOutput, "\n")
 	for _, routes := range routesByDeployment {
 		routes = strings.TrimSpace(routes)
 		if routes != "" && !strings.HasPrefix(routes, "ROUTE") {
@@ -224,17 +165,4 @@ func parseRouteDetails(cliOutput string) []string {
 
 	}
 	return cliLines
-}
-
-func tearDown() {
-	out, err := TestHelper.Kubectl("delete", "ns", "emojivoto")
-	if err != nil {
-		log.Errorf("Unexpected error occurred: %s\n", out)
-	}
-
-	out, err = TestHelper.Kubectl("delete", "ns", "booksapp")
-	if err != nil {
-		log.Errorf("Unexpected error occurred: %s\n", out)
-	}
-
 }
