@@ -592,14 +592,6 @@
   version = "v1.5.2"
 
 [[projects]]
-  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = ""
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
-
-[[projects]]
   digest = "1:3962f553b77bf6c03fc07cd687a22dd3b00fe11aa14d31194f5505f5bb65cdc8"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
@@ -1260,6 +1252,7 @@
     "github.com/golang/protobuf/protoc-gen-go",
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/duration",
+    "github.com/google/uuid",
     "github.com/gorilla/websocket",
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/julienschmidt/httprouter",
@@ -1277,7 +1270,6 @@
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/common/model",
-    "github.com/satori/go.uuid",
     "github.com/sergi/go-diff/diffmatchpatch",
     "github.com/shurcooL/vfsgen",
     "github.com/sirupsen/logrus",

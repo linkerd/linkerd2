@@ -302,6 +302,7 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 // storing the corresponding annotations and values.
 func (options *proxyConfigOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
 	if options.linkerdVersion != "" {
+		configs.Global.Version = options.linkerdVersion
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.linkerdVersion
 	}
 

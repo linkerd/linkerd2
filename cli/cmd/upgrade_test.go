@@ -8,6 +8,14 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const upgradeVersion = "TEST-VERSION"
+
+func testUpgradeOptions() *upgradeOptions {
+	o := newUpgradeOptionsWithDefaults()
+	o.linkerdVersion = upgradeVersion
+	return o
+}
+
 func TestRenderUpgrade(t *testing.T) {
 	k8sConfigs := []string{`
 kind: ConfigMap
@@ -42,7 +50,7 @@ data:
   key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`,
 	}
 
-	options := newUpgradeOptionsWithDefaults()
+	options := testUpgradeOptions()
 	flags := options.recordableFlagSet(pflag.ExitOnError)
 
 	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
@@ -53,6 +61,10 @@ data:
 	values, configs, err := options.validateAndBuild(clientset, flags)
 	if err != nil {
 		t.Fatalf("validateAndBuild failed with %s", err)
+	}
+
+	if configs.GetGlobal().GetVersion() != upgradeVersion {
+		t.Errorf("version not upgraded in config")
 	}
 
 	var buf bytes.Buffer
