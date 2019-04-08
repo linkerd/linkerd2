@@ -211,7 +211,7 @@ func runChecksJSON(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	var outputJSON []*checkCategory
 	var currentCategory *checkCategory
 
-	collectJsonOutput := func(result *healthcheck.CheckResult) {
+	collectJSONOutput := func(result *healthcheck.CheckResult) {
 		if lastCategory != result.Category {
 			currentCategory = &checkCategory{
 				Name:   string(result.Category),
@@ -246,7 +246,7 @@ func runChecksJSON(w io.Writer, hc *healthcheck.HealthChecker) bool {
 		}
 	}
 
-	result := hc.RunChecks(collectJsonOutput)
+	result := hc.RunChecks(collectJSONOutput)
 	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
 	if err == nil {
 		fmt.Fprint(w, string(resultJSON))
