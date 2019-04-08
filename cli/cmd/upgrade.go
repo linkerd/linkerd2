@@ -106,16 +106,30 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 	options.overrideConfigs(configs, map[string]string{})
 	configs.GetInstall().Flags = options.recordedFlags
 
+	var identity *installIdentityValues
+	idctx := configs.GetGlobal().GetIdentityContext()
+	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
+		// If there wasn't an idctx, or if it doesn't specify the required fields, we
+		// must be upgrading from a version that didn't support identity, so generate it anew...
+		identity, err = options.installOptions.identityOptions.genValues()
+		if err != nil {
+			upgradeErrorf("Unable to generate issuer credentials.\nError: %s", err)
+		}
+		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+	} else {
+		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
+		if err != nil {
+			upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
+		}
+	}
+
+	// Values have to be generated after any missing identity is generated,
+	// otherwise it will be missing from the generated configmap.
 	values, err := options.buildValuesWithoutIdentity(configs)
 	if err != nil {
 		upgradeErrorf("Could not build install configuration: %s", err)
 	}
-
-	identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
-	if err != nil {
-		upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
-	}
-	values.Identity = identityValues
+	values.Identity = identity
 
 	return values, configs, nil
 }
@@ -126,6 +140,13 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 			f.Value.Set(i.GetValue())
 			f.Changed = true
 		}
+	}
+}
+func (options *upgradeOptions) overrideConfigs(configs *pb.All, overrideAnnotations map[string]string) {
+	options.installOptions.overrideConfigs(configs, overrideAnnotations)
+
+	if options.proxyAutoInject {
+		configs.GetGlobal().AutoInjectContext = &pb.AutoInjectContext{}
 	}
 }
 

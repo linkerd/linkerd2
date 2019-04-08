@@ -262,6 +262,7 @@ func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installV
 }
 
 // recordableFlagSet returns flags usable during install or upgrade.
+//nolint:unparam
 func (options *installOptions) recordableFlagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("install", e)
 
