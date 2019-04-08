@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/uuid"
 	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
-	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -189,7 +189,11 @@ func newInstallOptionsWithDefaults() *installOptions {
 		identityOptions: newInstallIdentityOptionsWithDefaults(),
 
 		generateUUID: func() string {
-			return uuid.NewV4().String()
+			id, err := uuid.NewRandom()
+			if err != nil {
+				log.Fatalf("Could not generate UUID: %s", err)
+			}
+			return id.String()
 		},
 	}
 }
