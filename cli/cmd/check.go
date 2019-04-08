@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ type checkOptions struct {
 	wait            time.Duration
 	namespace       string
 	cniEnabled      bool
+	output          string
 }
 
 func newCheckOptions() *checkOptions {
@@ -30,6 +32,7 @@ func newCheckOptions() *checkOptions {
 		wait:            300 * time.Second,
 		namespace:       "",
 		cniEnabled:      false,
+		output:          "basic",
 	}
 }
 
@@ -66,6 +69,7 @@ non-zero exit code.`,
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "output", "o", options.output, "Output format. One of: basic, json  (default: basic)")
 
 	return cmd
 }
@@ -107,7 +111,7 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	success := runChecks(w, hc)
+	success := runChecks(w, hc, options.output)
 
 	// this empty line separates final results from the checks list in the output
 	fmt.Fprintln(w, "")
@@ -126,10 +130,20 @@ func (o *checkOptions) validate() error {
 	if o.preInstallOnly && o.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
+	if o.output != "basic" && o.output != "json" {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: json, basic", o.output)
+	}
 	return nil
 }
 
-func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
+func runChecks(w io.Writer, hc *healthcheck.HealthChecker, output string) bool {
+	if output == "json" {
+		return runChecksJSON(w, hc)
+	}
+	return runChecksBasic(w, hc)
+}
+
+func runChecksBasic(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = w
@@ -171,4 +185,73 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	}
 
 	return hc.RunChecks(prettyPrintResults)
+}
+
+type checkCategory struct {
+	Name   string   `json:"categoryName"`
+	Checks []*check `json:"checks"`
+}
+
+type check struct {
+	Description string      `json:"description"`
+	Hint        string      `json:"hint"`
+	Result      checkResult `json:"result"`
+}
+
+type checkResult string
+
+const (
+	checkSuccess checkResult = "success"
+	checkWarn    checkResult = "warning"
+	checkErr     checkResult = "error"
+)
+
+func runChecksJSON(w io.Writer, hc *healthcheck.HealthChecker) bool {
+	var lastCategory healthcheck.CategoryID
+	var outputJSON []*checkCategory
+	var currentCategory *checkCategory
+
+	collectJsonOutput := func(result *healthcheck.CheckResult) {
+		if lastCategory != result.Category {
+			currentCategory = &checkCategory{
+				Name:   string(result.Category),
+				Checks: []*check{},
+			}
+			outputJSON = append(outputJSON, currentCategory)
+
+			lastCategory = result.Category
+		}
+
+		if !result.Retry {
+			// ignore checks that are going to be retried, we want only final results
+			status := checkSuccess
+			if result.Err != nil {
+				status = checkErr
+				if result.Warning {
+					status = checkWarn
+				}
+			}
+
+			var hint string
+			if result.Err != nil && result.HintAnchor != "" {
+				hint = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+			}
+
+			currentCheck := &check{
+				Description: result.Description,
+				Result:      status,
+				Hint:        hint,
+			}
+			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
+		}
+	}
+
+	result := hc.RunChecks(collectJsonOutput)
+	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
+	if err == nil {
+		fmt.Fprint(w, string(resultJSON))
+	} else {
+		fmt.Fprintf(w, "JSON serialization of the check result failed with %s", err)
+	}
+	return result
 }
