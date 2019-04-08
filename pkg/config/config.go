@@ -25,6 +25,13 @@ func Proxy(filepath string) (*pb.Proxy, error) {
 	return config, err
 }
 
+// Install returns the Install protobuf config from the linkerd-config ConfigMap
+func Install(filepath string) (*pb.Install, error) {
+	config := &pb.Install{}
+	err := unmarshalFile(filepath, config)
+	return config, err
+}
+
 func unmarshalFile(filepath string, msg proto.Message) error {
 	configJSON, err := ioutil.ReadFile(filepath)
 	if err != nil {

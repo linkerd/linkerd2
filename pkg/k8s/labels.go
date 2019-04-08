@@ -220,6 +220,9 @@ const (
 	// MountPathProxyConfig is the path at which the global config file is mounted.
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
 
+	// MountPathInstallConfig is the path at which the install config file is mounted.
+	MountPathInstallConfig = MountPathBase + "/config/install"
+
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
