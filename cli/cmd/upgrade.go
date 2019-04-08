@@ -142,6 +142,13 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 		}
 	}
 }
+func (options *upgradeOptions) overrideConfigs(configs *pb.All, overrideAnnotations map[string]string) {
+	options.proxyConfigOptions.overrideConfigs(configs, overrideAnnotations)
+
+	if options.proxyAutoInject {
+		configs.GetGlobal().AutoInjectContext = &pb.AutoInjectContext{}
+	}
+}
 
 func (options *upgradeOptions) newK8s() (kubernetes.Interface, error) {
 	if options.ignoreCluster {

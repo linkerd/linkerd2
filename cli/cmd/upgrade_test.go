@@ -76,7 +76,7 @@ data:
 	diffTestdata(t, "upgrade_default.golden", buf.String())
 }
 
-func TestUpgradeFromNonIdentityConfig(t *testing.T) {
+func TestUpgradeFromOldConfig(t *testing.T) {
 	k8sConfigs := []string{`
 kind: ConfigMap
 apiVersion: v1
@@ -98,6 +98,7 @@ data:
 	}
 
 	options := newUpgradeOptionsWithDefaults()
+	options.proxyAutoInject = true
 	flags := options.recordableFlagSet(pflag.ExitOnError)
 
 	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
@@ -121,6 +122,9 @@ data:
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not generated")
 	}
+	if configs.GetGlobal().GetAutoInjectContext() == nil {
+		t.Errorf("autoinject config not generated")
+	}
 
 	global := pb.Global{}
 	if err := json.Unmarshal([]byte(values.Configs.Global), &global); err != nil {
@@ -128,5 +132,8 @@ data:
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not serialized")
+	}
+	if configs.GetGlobal().GetAutoInjectContext() == nil {
+		t.Errorf("autoinject config not serialized")
 	}
 }
