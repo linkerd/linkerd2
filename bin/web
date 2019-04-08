@@ -111,10 +111,10 @@ function integration {
   fi
   if [ $1 = "cloud" ]; then
     cd $ROOT/web/app && \
-    ./node_modules/wdio/node_modules/.bin/wdio ./integration/wdio-sauce.conf.js
+    ./node_modules/.bin/wdio ./integration/wdio-sauce.conf.js
   else
     cd $ROOT/web/app && \
-    ./node_modules/wdio/node_modules/.bin/wdio ./integration/wdio.conf.js
+    ./node_modules/.bin/wdio ./integration/wdio.conf.js
   fi
 }
 
