@@ -5,11 +5,10 @@
     @jon-walton for the issue report!)
   * **Fixed** `linkerd upgrade` command not installing the identity service when
     it was not already installed
-* Internal
-  * Updated web component to read the UUID from the `linkerd-config` ConfigMap
-    (thanks @KatherineMelnyk!)
-  * Replaced UUID generation with a more secure version
-  * Updated web integration tests with newer webdriverio libraries
+  * Eliminate false-positive vulnerability warnings related to go.uuid
+
+Special thanks to @KatherineMelnyk for updating the web component to read the
+UUID from the `linkerd-config` ConfigMap!
 
 ## edge-19.4.2
 
