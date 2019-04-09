@@ -28,9 +28,9 @@ func TestMain(m *testing.M) {
 func TestServiceProfiles(t *testing.T) {
 
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	out, _, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
+	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
 	if err != nil {
-		t.Fatalf("linkerd inject command failed\n%s", out)
+		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
@@ -67,6 +67,7 @@ func TestServiceProfiles(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc // pin
 		t.Run(tc.sourceName, func(t *testing.T) {
 			routes, err := getRoutes(tc.deployName, tc.namespace)
 			if err != nil {
@@ -96,9 +97,9 @@ func TestServiceProfiles(t *testing.T) {
 			}
 
 			cmd = append(cmd, tc.args...)
-			out, _, err := TestHelper.LinkerdRun(cmd...)
+			out, stderr, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				t.Fatalf("profile command failed: %s\n", err.Error())
+				t.Fatalf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
 			}
 
 			_, err = TestHelper.KubectlApply(out, tc.namespace)
