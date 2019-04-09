@@ -35,6 +35,28 @@ function run_test(){
     go test -v "$1" --linkerd="$linkerd_path" --linkerd-namespace="$linkerd_namespace" --k8s-context="$k8s_context" --integration-tests "$2"
 }
 
+function install_edge() {
+  tmp=$(mktemp -d -t l5dbin.XXX)
+  trap "rm -rf $tmp" EXIT
+
+  curl -s https://run.linkerd.io/install-edge | HOME=$tmp sh
+
+  local linkerd_path=$tmp/.linkerd2/bin/linkerd
+  $linkerd_path install --proxy-auto-inject --linkerd-namespace="$linkerd_namespace" | kubectl apply -f - > /dev/null 2>&1
+  $linkerd_path check --linkerd-namespace="$linkerd_namespace" > /dev/null 2>&1
+}
+
+function run_upgrade_test() {
+  local linkerd_namespace="$linkerd_namespace"-upgrade
+  local edge_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "edge-[0-9]*.[0-9]*.[0-9]*")
+
+  printf "Installing release [%s] namespace [%s]\n" "$edge_version" "$linkerd_namespace"
+  install_edge
+
+  printf "Upgrading release [%s] to [%s]\n" "$edge_version" "$linkerd_version"
+  run_test "$test_directory/install_test.go" "--upgrade-from-version=$edge_version" "--linkerd-namespace=$linkerd_namespace" || exit_code=$?
+}
+
 linkerd_path=$1
 
 if [ -z "$linkerd_path" ]; then
@@ -58,7 +80,8 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 exit_code=0
 
 run_test "$test_directory/install_test.go" || exit_code=$?
-run_test "$test_directory/install_test.go" "--proxy-auto-inject" || exit_code=$?
+
+run_upgrade_test
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" || exit_code=$?
 done
