@@ -962,23 +962,40 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
+	var podName []string
 	for _, pod := range pods {
 		for _, node := range pod.Status.Conditions {
-			if node.Status == "False" && node.Message == "no nodes available to schedule pods" {
-				return fmt.Errorf("No node available for the pod %s", pod.Name)
+			if strings.Contains(node.Message, "Insufficient cpu") || (node.Status == "False" && node.Message == "no nodes available to schedule pods") {
+				podName = append(podName, pod.Name)
 			}
 		}
 	}
+
+	if len(podName) != 0 {
+		for _, name := range podName {
+			fmt.Println(name)
+		}
+		return fmt.Errorf("No node available for the above pods")
+	}
+
 	return nil
 }
 
 func checkPodSecurityPolicies(rst []v1beta1.ReplicaSet) error {
+	var replicaSets []string
 	for _, rs := range rst {
 		for _, r := range rs.Status.Conditions {
 			if strings.Contains(r.Message, "unable to validate against any pod security policy") {
-				return fmt.Errorf("Invalid pod security policy for the replicaset %s", rs.Name)
+				replicaSets = append(replicaSets, rs.Name)
 			}
 		}
+	}
+
+	if len(replicaSets) != 0 {
+		for _, name := range replicaSets {
+			fmt.Println(name)
+		}
+		return fmt.Errorf("Invalid pod security policy for the above replicaset")
 	}
 
 	return nil
