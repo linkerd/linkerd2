@@ -84,9 +84,9 @@ func TestServiceProfiles(t *testing.T) {
 				tc.args = []string{
 					tc.deployName,
 					"--tap-route-limit",
-					"5",
+					"1",
 					"--tap-duration",
-					"10s",
+					"25s",
 				}
 			}
 
