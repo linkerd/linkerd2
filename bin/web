@@ -14,12 +14,14 @@ USAGE: web <command>
   * build - build the assets
   * dev - run a dev server (with live reloading). Options:
       -p $DEV_PORT
+  * integration (cloud|local) - run the integration tests
+      Note: Sauce Connect tunnel must be open for cloud tests
   * port-forward - setup a tunnel to a controller component and port
       Example: port-forward controller 8085
   * run - run a local server (sans. reloading)
   * setup - get the environment setup for development
       Note: any command line options are passed on to yarn
-  * test - run the tests
+  * test - run the unit tests
       Note: any command line options are passed on to the test runner (jest)
 USAGE
 }; function --help { -h ;}
