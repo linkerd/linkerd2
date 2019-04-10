@@ -22,11 +22,13 @@ import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
-const styles = ({
-  grid: {
-    width: '100%'
-  }
-});
+const styles = () => {
+  return {
+    grid: {
+      width: '100%'
+    }
+  };
+};
 
 class NamespaceLanding extends React.Component {
   static propTypes = {
@@ -227,4 +229,4 @@ class NamespaceLanding extends React.Component {
   }
 }
 
-export default withContext(withStyles(styles, { withTheme: true })(NamespaceLanding));
+export default withContext(withStyles(styles)(NamespaceLanding));

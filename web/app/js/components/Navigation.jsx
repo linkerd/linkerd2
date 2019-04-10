@@ -34,6 +34,7 @@ import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
 const localStorageKey = "linkerd-updates-last-clicked";
+const minBrowserWidth = 960;
 
 const styles = theme => {
   const drawerWidth = theme.spacing.unit * 31;
@@ -243,7 +244,7 @@ class NavigationBase extends React.Component {
 
   updateWindowDimensions() {
     let browserWidth = window.innerWidth;
-    if (browserWidth < 960) {
+    if (browserWidth < minBrowserWidth) {
       this.setState({ drawerOpen: false });
     } else {
       this.setState({ drawerOpen: true });
