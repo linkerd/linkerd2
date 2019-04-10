@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const upgradeVersion = "TEST-VERSION"
@@ -81,9 +84,7 @@ data:
 			}
 
 			values, configs, err := options.validateAndBuild(clientset, flags)
-			if (err == nil && tc.err != nil) ||
-				(err != nil && tc.err == nil) ||
-				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {
+			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
 			} else if err == nil {
 				if configs.GetGlobal().GetVersion() != upgradeVersion {
@@ -164,11 +165,10 @@ data:
 
 func TestFetchConfigs(t *testing.T) {
 	options := testInstallOptions()
-	values, _, err := options.validateAndBuild(nil)
+	_, exp, err := options.validateAndBuild(nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
-	exp := options.configs(values.Identity.toIdentityContext())
 
 	testCases := []struct {
 		k8sConfigs []string
@@ -227,7 +227,7 @@ data:
 		{
 			nil,
 			nil,
-			errors.New("configmaps \"linkerd-config\" not found"),
+			k8sErrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "linkerd-config"),
 		},
 	}
 
@@ -240,10 +240,8 @@ data:
 			}
 
 			configs, err := fetchConfigs(clientset)
-			if (err == nil && tc.err != nil) ||
-				(err != nil && tc.err == nil) ||
-				((err != nil && tc.err != nil) && (err.Error() != tc.err.Error())) {
-				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}
 
 			if !proto.Equal(configs, tc.expected) {
