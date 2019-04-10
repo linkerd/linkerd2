@@ -28,7 +28,7 @@ func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
 		_, err := generateKubernetesAPIURLFor(serverURL, namespace, extraPath)
 
 		if err == nil {
-			t.Fatalf("Expected error when tryiong to generate URL with extra path without leading slash, got nothing")
+			t.Fatalf("Expected error when trying to generate URL with extra path without leading slash, got nothing")
 		}
 	})
 }

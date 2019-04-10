@@ -22,12 +22,16 @@ const (
 	failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
 )
 
-type (
-	upgradeOptions struct{ *installOptions }
-)
+type upgradeOptions struct {
+	manifests string
+	*installOptions
+}
 
 func newUpgradeOptionsWithDefaults() *upgradeOptions {
-	return &upgradeOptions{newInstallOptionsWithDefaults()}
+	return &upgradeOptions{
+		"",
+		newInstallOptionsWithDefaults(),
+	}
 }
 
 func newCmdUpgrade() *cobra.Command {
@@ -48,14 +52,28 @@ install command.`,
 			}
 
 			// We need a Kubernetes client to fetch configs and issuer secrets.
-			c, err := k8s.GetConfig(kubeconfigPath, kubeContext)
-			if err != nil {
-				upgradeErrorf("Failed to get kubernetes config: %s", err)
-			}
+			var k kubernetes.Interface
+			var err error
+			if options.manifests != "" {
+				readers, err := read(options.manifests)
+				if err != nil {
+					upgradeErrorf("Failed to parse manifests from %s: %s", options.manifests, err)
+				}
 
-			k, err := kubernetes.NewForConfig(c)
-			if err != nil {
-				upgradeErrorf("Failed to create a kubernetes client: %s", err)
+				k, _, err = k8s.NewFakeClientSetsFromManifests(readers)
+				if err != nil {
+					upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
+				}
+			} else {
+				c, err := k8s.GetConfig(kubeconfigPath, kubeContext)
+				if err != nil {
+					upgradeErrorf("Failed to get kubernetes config: %s", err)
+				}
+
+				k, err = kubernetes.NewForConfig(c)
+				if err != nil {
+					upgradeErrorf("Failed to create a kubernetes client: %s", err)
+				}
 			}
 
 			values, configs, err := options.validateAndBuild(k, flags)
@@ -77,6 +95,13 @@ install command.`,
 			return nil
 		},
 	}
+
+	// add this flag directly rather than as part of the FlagSet because we do not
+	// want it persisted into linkerd-config/install ConfigMap
+	cmd.PersistentFlags().StringVar(
+		&options.manifests, "from-manifests", options.manifests,
+		"Read config from a Linkerd install YAML rather than from Kubernetes",
+	)
 
 	cmd.PersistentFlags().AddFlagSet(flags)
 	return cmd
