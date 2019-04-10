@@ -32,7 +32,7 @@ func newCheckOptions() *checkOptions {
 		wait:            300 * time.Second,
 		namespace:       "",
 		cniEnabled:      false,
-		output:          "basic",
+		output:          tableOutput,
 	}
 }
 
@@ -58,7 +58,7 @@ non-zero exit code.`,
   linkerd check --proxy --namespace app`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, options)
+			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
 
@@ -69,12 +69,12 @@ non-zero exit code.`,
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	cmd.PersistentFlags().BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
-	cmd.PersistentFlags().StringVarP(&options.namespace, "output", "o", options.output, "Output format. One of: basic, json  (default: basic)")
+	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 
 	return cmd
 }
 
-func configureAndRunChecks(w io.Writer, options *checkOptions) error {
+func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -111,17 +111,11 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	success := runChecks(w, hc, options.output)
-
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(w, "")
+	success := runChecks(wout, werr, hc, options.output)
 
 	if !success {
-		fmt.Fprintf(w, "Status check results are %s\n", failStatus)
 		os.Exit(2)
 	}
-
-	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
 
 	return nil
 }
@@ -130,32 +124,32 @@ func (o *checkOptions) validate() error {
 	if o.preInstallOnly && o.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
-	if o.output != "basic" && o.output != "json" {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: json, basic", o.output)
+	if o.output != tableOutput && o.output != jsonOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", o.output, jsonOutput, tableOutput)
 	}
 	return nil
 }
 
-func runChecks(w io.Writer, hc *healthcheck.HealthChecker, output string) bool {
-	if output == "json" {
-		return runChecksJSON(w, hc)
+func runChecks(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker, output string) bool {
+	if output == jsonOutput {
+		return runChecksJSON(wout, werr, hc)
 	}
-	return runChecksBasic(w, hc)
+	return runChecksTable(wout, hc)
 }
 
-func runChecksBasic(w io.Writer, hc *healthcheck.HealthChecker) bool {
+func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = w
+	spin.Writer = wout
 
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
 		if lastCategory != result.Category {
 			if lastCategory != "" {
-				fmt.Fprintln(w)
+				fmt.Fprintln(wout)
 			}
 
-			fmt.Fprintln(w, result.Category)
-			fmt.Fprintln(w, strings.Repeat("-", len(result.Category)))
+			fmt.Fprintln(wout, result.Category)
+			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
 
 			lastCategory = result.Category
 		}
@@ -175,16 +169,26 @@ func runChecksBasic(w io.Writer, hc *healthcheck.HealthChecker) bool {
 			}
 		}
 
-		fmt.Fprintf(w, "%s %s\n", status, result.Description)
+		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
-			fmt.Fprintf(w, "    %s\n", result.Err)
+			fmt.Fprintf(wout, "    %s\n", result.Err)
 			if result.HintAnchor != "" {
-				fmt.Fprintf(w, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
+				fmt.Fprintf(wout, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
 			}
 		}
 	}
 
-	return hc.RunChecks(prettyPrintResults)
+	success := hc.RunChecks(prettyPrintResults)
+	// this empty line separates final results from the checks list in the output
+	fmt.Fprintln(wout, "")
+
+	if !success {
+		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+	} else {
+		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	}
+
+	return success
 }
 
 type checkCategory struct {
@@ -206,7 +210,7 @@ const (
 	checkErr     checkResult = "error"
 )
 
-func runChecksJSON(w io.Writer, hc *healthcheck.HealthChecker) bool {
+func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
 	var outputJSON []*checkCategory
 	var currentCategory *checkCategory
@@ -249,9 +253,9 @@ func runChecksJSON(w io.Writer, hc *healthcheck.HealthChecker) bool {
 	result := hc.RunChecks(collectJSONOutput)
 	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
 	if err == nil {
-		fmt.Fprint(w, string(resultJSON))
+		fmt.Fprint(wout, string(resultJSON))
 	} else {
-		fmt.Fprintf(w, "JSON serialization of the check result failed with %s", err)
+		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
 	}
 	return result
 }
