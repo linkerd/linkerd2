@@ -1,89 +1,89 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: hello
+  name: hello-timeouts
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hello
+      app: hello-timeouts
   template:
     metadata:
       labels:
-        app: hello
+        app: hello-timeouts
     spec:
       containers:
-      - name: hello
+      - name: hello-timeouts
         image: buoyantio/helloworld:0.1.6
         args:
-        - "-addr=:7777"
+        - "-addr=:8888"
         - "-text=Hello"
-        - "-target=world-svc:7778/testpath"
+        - "-target=world-timeouts-svc:8889/testpath"
         ports:
         - name: service
-          containerPort: 7777
+          containerPort: 8888
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello-svc
+  name: hello-timeouts-svc
 spec:
   selector:
-    app: hello
+    app: hello-timeouts
   ports:
   - name: http
-    port: 7777
-    targetPort: 7777
+    port: 8888
+    targetPort: 8888
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: world
+  name: world-timeouts
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: world
+      app: world-timeouts
   template:
     metadata:
       labels:
-        app: world
+        app: world-timeouts
     spec:
       containers:
-      - name: world
+      - name: world-timeouts
         image: buoyantio/helloworld:0.1.6
         args:
-        - "-addr=:7778"
+        - "-addr=:8889"
         - "-text=World"
-        - "-failure-rate=0.5"
+        - "-failure-rate=1.0"
         ports:
         - name: service
-          containerPort: 7778
+          containerPort: 8889
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: world-svc
+  name: world-timeouts-svc
 spec:
   selector:
-    app: world
+    app: world-timeouts
   ports:
   - name: http
-    port: 7778
-    targetPort: 7778
+    port: 8889
+    targetPort: 8889
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hello-slow-cooker
+  name: hello-timeouts-slow-cooker
 spec:
   template:
     metadata:
       labels:
-        app: hello-slow-cooker
+        app: hello-timeouts-slow-cooker
     spec:
       containers:
-      - name: hello-slow-cooker
+      - name: hello-timeouts-slow-cooker
         image: buoyantio/slow_cooker:1.1.1
         command:
         - "/bin/sh"
@@ -91,5 +91,5 @@ spec:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-svc:7777/testpath
+          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-timeouts-svc:8888/testpath
       restartPolicy: OnFailure

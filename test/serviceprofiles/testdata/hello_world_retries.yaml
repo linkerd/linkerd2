@@ -1,0 +1,95 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: hello-retries
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-retries
+  template:
+    metadata:
+      labels:
+        app: hello-retries
+    spec:
+      containers:
+      - name: hello-retries
+        image: buoyantio/helloworld:0.1.6
+        args:
+        - "-addr=:7777"
+        - "-text=Hello"
+        - "-target=world-retries-svc:7778/testpath"
+        ports:
+        - name: service
+          containerPort: 7777
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-retries-svc
+spec:
+  selector:
+    app: hello-retries
+  ports:
+  - name: http
+    port: 7777
+    targetPort: 7777
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: world-retries
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: world-retries
+  template:
+    metadata:
+      labels:
+        app: world-retries
+    spec:
+      containers:
+      - name: world-retries
+        image: buoyantio/helloworld:0.1.6
+        args:
+        - "-addr=:7778"
+        - "-text=World"
+        - "-failure-rate=0.5"
+        ports:
+        - name: service
+          containerPort: 7778
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: world-retries-svc
+spec:
+  selector:
+    app: world-retries
+  ports:
+  - name: http
+    port: 7778
+    targetPort: 7778
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-retries-slow-cooker
+spec:
+  template:
+    metadata:
+      labels:
+        app: hello-retries-slow-cooker
+    spec:
+      containers:
+      - name: hello-retries-slow-cooker
+        image: buoyantio/slow_cooker:1.1.1
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          sleep 15 # wait for pods to start
+          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-retries-svc:7777/testpath
+      restartPolicy: OnFailure
