@@ -47,13 +47,16 @@ function install_edge() {
     curl -s https://run.linkerd.io/install-edge | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local edge_namespace=${1}
+    local edge_namespace="$1"
     $linkerd_path install --linkerd-namespace="$edge_namespace" | kubectl apply -f - > /dev/null 2>&1
     $linkerd_path check --linkerd-namespace="$edge_namespace" > /dev/null 2>&1
 }
 
+# Run the upgrade test by upgrading the most-recent edge release to the HEAD of
+# this branch.
+# $1 - namespace to use for the edge release
 function run_upgrade_test() {
-    local edge_namespace="$linkerd_namespace"-upgrade
+    local edge_namespace="$1"
     local edge_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "edge-[0-9]*.[0-9]*.[0-9]*")
 
     printf "Installing release [%s] namespace [%s]\n" "$edge_version" "$edge_namespace"
@@ -85,10 +88,10 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 
 exit_code=0
 
-run_test "$test_directory/install_test.go" --linkerd-namespace=${linkerd_namespace} || exit_code=$?
-run_upgrade_test
+run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace || exit_code=$?
+run_upgrade_test "$linkerd_namespace"-upgrade
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
-    run_test "$test" --linkerd-namespace=${linkerd_namespace} || exit_code=$?
+    run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
 done
 
 if [ $exit_code -eq 0 ]; then
