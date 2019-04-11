@@ -180,11 +180,9 @@ func TestServiceProfileMetrics(t *testing.T) {
 				"profile",
 				"--namespace",
 				testNamespace,
+				"--open-api",
+				"testdata/world.swagger",
 				testSP,
-				"--tap",
-				testDownstreamDeploy,
-				"--tap-duration",
-				"25s",
 			}
 
 			out, stderr, err = TestHelper.LinkerdRun(cmd...)
@@ -204,10 +202,11 @@ func TestServiceProfileMetrics(t *testing.T) {
 			}
 			switch tc.test {
 			case "retries":
-				// If the effective success rate is >= we aren't seeing any failures so we can't test retries.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess >= 1 }
+				// If the effective success rate is not equal to the actual success rate retries might already
+				// be applied so we fail the test.
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess != rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
-				assertion.expected = "< 1"
+				assertion.expected = "Effective Success == Actual Success"
 				assertRouteStat(assertion, t)
 			case "timeouts":
 				// If the P99 latency is greater than 250ms retries are probably happening before applying
@@ -246,9 +245,9 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 			switch tc.test {
 			case "retries":
-				// If we get an effective success rate of less than 100% retries aren't happening.
-				// after we applied our modified service profile.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess < 1 }
+				// If we get an effective success rate of less than or equal to the actual success rate requests are not
+				// being retried successfully after we applied our modified service profile.
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess <= rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
 				assertion.expected = ">= 1"
 				assertRouteStat(assertion, t)
