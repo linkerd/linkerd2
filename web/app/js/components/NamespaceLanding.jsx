@@ -6,6 +6,7 @@ import Accordion from './util/Accordion.jsx';
 import Divider from '@material-ui/core/Divider';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
+import Hidden from '@material-ui/core/Hidden';
 import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -19,6 +20,15 @@ import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { friendlyTitle } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
+
+const styles = () => {
+  return {
+    grid: {
+      width: '100%'
+    }
+  };
+};
 
 class NamespaceLanding extends React.Component {
   static propTypes = {
@@ -29,6 +39,7 @@ class NamespaceLanding extends React.Component {
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
+    classes: PropTypes.shape({}).isRequired,
     controllerNamespace: PropTypes.string.isRequired
   }
 
@@ -123,12 +134,14 @@ class NamespaceLanding extends React.Component {
   }
 
   renderResourceSection(resource, metrics) {
+    const classes = this.props.classes;
     if (_isEmpty(metrics)) {
       return null;
     }
+
     return (
       <Grid container direction="column" justify="center">
-        <Grid item>
+        <Grid className={classes.grid} item>
           <MetricsTable
             title={friendlyTitle(resource).plural}
             resource={resource}
@@ -140,6 +153,7 @@ class NamespaceLanding extends React.Component {
   }
 
   renderNamespaceSection(namespace) {
+    const classes = this.props.classes;
     if (!_has(this.state.metricsByNs, namespace)) {
       return <Spinner />;
     }
@@ -149,8 +163,10 @@ class NamespaceLanding extends React.Component {
 
     return (
       <Grid container direction="column" spacing={16}>
-        <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
-        <Grid item><Divider /></Grid>
+        <Hidden smDown>
+          <Grid item><Typography variant="h4">Namespace: {namespace}</Typography></Grid>
+          <Grid item><Divider /></Grid>
+        </Hidden>
         <Grid item>{noMetrics ? <div>No resources detected.</div> : null}</Grid>
 
         {this.renderResourceSection("deployment", metrics.deployment)}
@@ -164,7 +180,7 @@ class NamespaceLanding extends React.Component {
         {
           noMetrics ? null :
           <Grid container direction="column" justify="center">
-            <Grid item>
+            <Grid className={classes.grid} item>
               <MetricsTable
                 title="TCP"
                 resource="pod"
@@ -213,4 +229,4 @@ class NamespaceLanding extends React.Component {
   }
 }
 
-export default withContext(NamespaceLanding);
+export default withContext(withStyles(styles)(NamespaceLanding));
