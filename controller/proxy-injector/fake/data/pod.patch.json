@@ -122,7 +122,7 @@
         },
         {
           "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
-          "value": "Identity is not yet available"
+          "value": "disabled"
         }
       ],
       "resources": {},

@@ -169,7 +169,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -440,7 +440,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -712,7 +712,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -903,7 +903,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1155,7 +1155,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1360,7 +1360,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1604,7 +1604,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
