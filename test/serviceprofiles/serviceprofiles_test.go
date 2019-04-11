@@ -1,7 +1,6 @@
 package serviceprofiles
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -270,7 +269,7 @@ func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
 	err := TestHelper.RetryFor(10*time.Second, func() error {
 		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
 		if err != nil {
-			return fmt.Errorf("routes command failed: %s\n", err)
+			return fmt.Errorf("routes command failed: %s", err)
 		}
 		assertExpectedRoutes([]string{"GET /testpath", "[DEFAULT]"}, routes, t)
 
@@ -327,7 +326,7 @@ func getRoutes(deployName, namespace string, isWideOutput bool, additionalArgs [
 	var list map[string][]*rowStat
 	err = yaml.Unmarshal([]byte(out), &list)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Error: %s stderr: %s", err.Error(), stderr))
+		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err.Error(), stderr))
 	}
 	return list[deployName], nil
 }
