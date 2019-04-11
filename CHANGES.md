@@ -1,11 +1,11 @@
 ## edge-19.4.4
 * Proxy
   * **Fixed** a connection starvation issue where TLS discovery detection on
-    on slow or idle connections could block all other connections from being
+    slow or idle connections could block all other connections from being
     accepted on the inbound listener of the proxy
 * CLI
   * **Fixed** `inject` to allow the `--disable-identity` flag to be used
-    without having to specify the `--ingore-cluster` flag
+    without having to specify the `--ignore-cluster` flag
 * Web UI
   * The Overview page in the Linkerd dashboard now renders appropriately when
     viewed on mobile devices
