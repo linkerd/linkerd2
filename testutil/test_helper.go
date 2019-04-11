@@ -21,7 +21,7 @@ type TestHelper struct {
 	version            string
 	namespace          string
 	autoInject         bool
-	upgradeFromversion string
+	upgradeFromVersion string
 	httpClient         http.Client
 	KubernetesHelper
 }
@@ -66,16 +66,11 @@ func NewTestHelper() *TestHelper {
 		log.SetLevel(log.PanicLevel)
 	}
 
-	ns := *namespace
-	if *autoInject {
-		ns += "-auto-inject"
-	}
-
 	testHelper := &TestHelper{
 		linkerd:            *linkerd,
-		namespace:          ns,
+		namespace:          *namespace,
 		autoInject:         *autoInject,
-		upgradeFromversion: *upgradeFromVersion,
+		upgradeFromVersion: *upgradeFromVersion,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -122,9 +117,9 @@ func (h *TestHelper) AutoInject() bool {
 	return h.autoInject
 }
 
-// UpgradeFrom returns the base version of the upgrade test.
-func (h *TestHelper) UpgradeFrom() string {
-	return h.upgradeFromversion
+// UpgradeFromVersion returns the base version of the upgrade test.
+func (h *TestHelper) UpgradeFromVersion() string {
+	return h.upgradeFromVersion
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace

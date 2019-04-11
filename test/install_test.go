@@ -83,8 +83,8 @@ var (
 
 func TestVersionPreInstall(t *testing.T) {
 	version := "unavailable"
-	if TestHelper.UpgradeFrom() != "" {
-		version = TestHelper.UpgradeFrom()
+	if TestHelper.UpgradeFromVersion() != "" {
+		version = TestHelper.UpgradeFromVersion()
 	}
 
 	err := TestHelper.CheckVersion(version)
@@ -94,7 +94,7 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestCheckPreInstall(t *testing.T) {
-	if TestHelper.UpgradeFrom() != "" {
+	if TestHelper.UpgradeFromVersion() != "" {
 		t.Skip("Skipping pre-install check for upgrade test")
 	}
 
@@ -121,8 +121,11 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 	)
 
-	if TestHelper.UpgradeFrom() != "" {
+	if TestHelper.UpgradeFromVersion() != "" {
 		cmd = "upgrade"
+	}
+
+	if TestHelper.AutoInject() {
 		args = append(args, "--proxy-auto-inject")
 		linkerdDeployReplicas["linkerd-proxy-injector"] = deploySpec{1, []string{"proxy-injector"}}
 	}
