@@ -238,9 +238,9 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("error marshalling service profile: %s", bytes)
 			}
 
-			_, err = TestHelper.KubectlApply(string(bytes), testNamespace)
+			out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
 			if err != nil {
-				t.Errorf("kubectl apply command failed:\n%s", err)
+				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
 			}
 
 			switch tc.test {
@@ -249,7 +249,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 				// being retried successfully after we applied our modified service profile.
 				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess <= rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
-				assertion.expected = ">= 1"
+				assertion.expected = ">= Actual Success"
 				assertRouteStat(assertion, t)
 				// If we get a P99 latency of less than 250ms then we aren't hitting the timeout limit
 				// after setting up the timeout in service profile. hello-timeouts-service always fails
