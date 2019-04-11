@@ -61,7 +61,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
+          value: disabled
         image: proxy-image:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -60,8 +60,7 @@ const (
 	envIdentityTokenFile    = "LINKERD2_PROXY_IDENTITY_TOKEN_FILE"
 	envIdentityTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 
-	identityAPIPort     = 8080
-	identityDisabledMsg = "Identity is not yet available"
+	identityAPIPort = 8080
 )
 
 var injectableKinds = []string{
@@ -492,7 +491,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	if idctx == nil {
 		sidecar.Env = append(sidecar.Env, v1.EnvVar{
 			Name:  envIdentityDisabled,
-			Value: identityDisabledMsg,
+			Value: k8s.IdentityModeDisabled,
 		})
 		patch.addContainer(&sidecar)
 		return

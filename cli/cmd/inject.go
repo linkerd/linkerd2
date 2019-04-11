@@ -294,7 +294,15 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 	}
 
 	api := checkPublicAPIClientOrExit()
-	return api.Config(context.Background(), &public.Empty{})
+	config, err := api.Config(context.Background(), &public.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	if options.disableIdentity {
+		config.Global.IdentityContext = nil
+	}
+	return config, nil
 }
 
 // overrideConfigs uses command-line overrides to update the provided configs.
