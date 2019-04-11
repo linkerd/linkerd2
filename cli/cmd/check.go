@@ -211,22 +211,19 @@ const (
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
-	var lastCategory healthcheck.CategoryID
 	var outputJSON []*checkCategory
-	var currentCategory *checkCategory
 
 	collectJSONOutput := func(result *healthcheck.CheckResult) {
-		if lastCategory != result.Category {
-			currentCategory = &checkCategory{
-				Name:   string(result.Category),
+		categoryName := string(result.Category)
+		if outputJSON == nil || outputJSON[len(outputJSON)-1].Name != categoryName {
+			outputJSON = append(outputJSON, &checkCategory{
+				Name:   categoryName,
 				Checks: []*check{},
-			}
-			outputJSON = append(outputJSON, currentCategory)
-
-			lastCategory = result.Category
+			})
 		}
 
 		if !result.Retry {
+			currentCategory := outputJSON[len(outputJSON)-1]
 			// ignore checks that are going to be retried, we want only final results
 			status := checkSuccess
 			if result.Err != nil {
