@@ -15,13 +15,8 @@ var TestHelper *testutil.TestHelper
 
 type rowStat struct {
 	Route            string  `json:"route"`
-	Authority        string  `json:"authority"`
-	Success          float64 `json:"success"`
 	EffectiveSuccess float64 `json:"effective_success"`
 	ActualSuccess    float64 `json:"actual_success"`
-	RPS              float64 `json:"rps"`
-	LatencyP50       int     `json:"latency_ms_p50"`
-	LatencyP95       int     `json:"latency_ms_p95"`
 	LatencyP99       int     `json:"latency_ms_p99"`
 }
 
@@ -204,14 +199,14 @@ func TestServiceProfileMetrics(t *testing.T) {
 			case "retries":
 				// If the effective success rate is not equal to the actual success rate retries might already
 				// be applied so we fail the test.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess != rt.ActualSuccess }
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess == rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
 				assertion.expected = "Effective Success == Actual Success"
 				assertRouteStat(assertion, t)
 			case "timeouts":
 				// If the P99 latency is greater than 250ms retries are probably happening before applying
 				// the service profile so we fail the test.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 >= 250 }
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 < 250 }
 				assertion.routeProperty = "P99 Latency"
 				assertion.expected = "< 250"
 				assertRouteStat(assertion, t)
@@ -247,15 +242,15 @@ func TestServiceProfileMetrics(t *testing.T) {
 			case "retries":
 				// If we get an effective success rate of less than or equal to the actual success rate requests are not
 				// being retried successfully after we applied our modified service profile.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess <= rt.ActualSuccess }
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess > rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
-				assertion.expected = ">= Actual Success"
+				assertion.expected = "> Actual Success"
 				assertRouteStat(assertion, t)
 				// If we get a P99 latency of less than 250ms then we aren't hitting the timeout limit
 				// after setting up the timeout in service profile. hello-timeouts-service always fails
 				// so we expect all request latencies to be at least half the total timeout set.
 			case "timeouts":
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 < 250 }
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 >= 250 }
 				assertion.routeProperty = "P99 Latency"
 				assertion.expected = ">= 250"
 				assertRouteStat(assertion, t)
@@ -265,7 +260,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 }
 
 func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
+	err := TestHelper.RetryFor(1*time.Minute, func() error {
 		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
@@ -273,7 +268,7 @@ func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
 		assertExpectedRoutes([]string{"GET /testpath", "[DEFAULT]"}, routes, t)
 
 		for _, route := range routes {
-			if route.Route == "GET /testpath" && assertion.assertFunc(route) {
+			if route.Route == "GET /testpath" && !assertion.assertFunc(route) {
 				return fmt.Errorf("expected route property [%s] to be [%s]. in [%+v]",
 					assertion.routeProperty, assertion.expected, route)
 			}
@@ -317,7 +312,7 @@ func getRoutes(deployName, namespace string, isWideOutput bool, additionalArgs [
 		cmd = append(cmd, "-owide")
 	}
 
-	cmd = append(cmd, "--output", "json")
+	cmd = append(cmd, "--output", "json", "--time-window", "10s")
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return nil, err
