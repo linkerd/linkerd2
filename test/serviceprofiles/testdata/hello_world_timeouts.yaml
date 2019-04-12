@@ -56,6 +56,7 @@ spec:
         - "-addr=:8889"
         - "-text=World"
         - "-failure-rate=1.0"
+        - "-latency=10s"
         ports:
         - name: service
           containerPort: 8889

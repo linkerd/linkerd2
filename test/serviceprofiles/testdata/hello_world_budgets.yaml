@@ -1,0 +1,96 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+    name: hello-budgets
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: hello-budgets
+    template:
+        metadata:
+            labels:
+                app: hello-budgets
+        spec:
+            containers:
+            - name: hello-budgets
+              image: buoyantio/helloworld:0.1.6
+              args:
+              - "-addr=:6666"
+              - "-text=Hello"
+              - "-target=world-budgets-svc:6667/testpath"
+              ports:
+              - name: service
+                containerPort: 6666
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: hello-budgets-svc
+spec:
+    selector:
+        app: hello-budgets
+    ports:
+    - name: http
+      port: 6666
+      targetPort: 6666
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+    name: world-budgets
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: world-budgets
+    template:
+        metadata:
+            labels:
+                app: world-budgets
+        spec:
+            containers:
+            - name: world-budgets
+              image: buoyantio/helloworld:0.1.6
+              args:
+              - "-addr=:6667"
+              - "-text=World"
+              - "-failure-rate=1.0"
+              - "-latency=10ms"
+              ports:
+              - name: service
+                containerPort: 6667
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: world-budgets-svc
+spec:
+    selector:
+        app: world-budgets
+    ports:
+    - name: http
+      port: 6667
+      targetPort: 6667
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: hello-budgets-slow-cooker
+spec:
+    template:
+        metadata:
+            labels:
+                app: hello-budgets-slow-cooker
+        spec:
+            containers:
+            - name: hello-budgets-slow-cooker
+              image: buoyantio/slow_cooker:1.1.1
+              command:
+              - "/bin/sh"
+              args:
+              - "-c"
+              - |
+                  sleep 15 # wait for pods to start
+                  slow_cooker -metric-addr 0.0.0.0:9998 http://hello-budgets-svc:6666/testpath
+            restartPolicy: OnFailure

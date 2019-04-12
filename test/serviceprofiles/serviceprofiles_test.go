@@ -138,30 +138,23 @@ func TestServiceProfiles(t *testing.T) {
 func TestServiceProfileMetrics(t *testing.T) {
 
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	testCases := []struct {
-		injectYAML string
-		test       string
-	}{
-		{
-			"hello_world_retries.yaml",
-			"retries",
-		},
-		{
-			"hello_world_timeouts.yaml",
-			"timeouts",
-		},
+	testCases := []string{
+		"retries",
+		"timeouts",
+		"budgets",
 	}
 
 	for _, tc := range testCases {
 		var (
 			tc                   = tc
-			testSP               = fmt.Sprintf("world-%s-svc", tc.test)
-			testDownstreamDeploy = fmt.Sprintf("deployment/world-%s", tc.test)
-			testUpstreamDeploy   = fmt.Sprintf("deployment/hello-%s", tc.test)
+			testSP               = fmt.Sprintf("world-%s-svc", tc)
+			testDownstreamDeploy = fmt.Sprintf("deployment/world-%s", tc)
+			testUpstreamDeploy   = fmt.Sprintf("deployment/hello-%s", tc)
+			testYAML             = fmt.Sprintf("testdata/hello_world_%s.yaml", tc)
 		)
 
-		t.Run(tc.test, func(t *testing.T) {
-			out, stderr, err := TestHelper.LinkerdRun("inject", fmt.Sprintf("testdata/%s", tc.injectYAML))
+		t.Run(tc, func(t *testing.T) {
+			out, stderr, err := TestHelper.LinkerdRun("inject", testYAML)
 			if err != nil {
 				t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 			}
@@ -195,22 +188,22 @@ func TestServiceProfileMetrics(t *testing.T) {
 				downstream: testDownstreamDeploy,
 				namespace:  testNamespace,
 			}
-			switch tc.test {
+			switch tc {
 			case "retries":
 				// If the effective success rate is not equal to the actual success rate retries might already
 				// be applied so we fail the test.
 				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess == rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
 				assertion.expected = "Effective Success == Actual Success"
-				assertRouteStat(assertion, t)
-			case "timeouts":
-				// If the P99 latency is greater than 250ms retries are probably happening before applying
-				// the service profile so we fail the test.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 < 250 }
+			case "timeouts", "budgets":
+				// If the P99 latency is greater than 500ms retries are probably happening before applying
+				// the service profile and we can't reliably test the service profile.
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 < 500 }
 				assertion.routeProperty = "P99 Latency"
-				assertion.expected = "< 250"
-				assertRouteStat(assertion, t)
+				assertion.expected = "< 500ms"
 			}
+
+			assertRouteStat(assertion, t)
 
 			profile := &sp.ServiceProfile{}
 
@@ -224,6 +217,14 @@ func TestServiceProfileMetrics(t *testing.T) {
 				if route.Name == "GET /testpath" {
 					route.IsRetryable = true
 					route.Timeout = "500ms"
+
+					if tc == "budgets" {
+						profile.Spec.RetryBudget = &sp.RetryBudget{
+							RetryRatio:          1.0,
+							MinRetriesPerSecond: 10,
+							TTL:                 "10s",
+						}
+					}
 					break
 				}
 			}
@@ -238,23 +239,22 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
 			}
 
-			switch tc.test {
+			switch tc {
 			case "retries":
 				// If we get an effective success rate of less than or equal to the actual success rate requests are not
 				// being retried successfully after we applied our modified service profile.
 				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess > rt.ActualSuccess }
 				assertion.routeProperty = "Effective Success"
 				assertion.expected = "> Actual Success"
-				assertRouteStat(assertion, t)
 				// If we get a P99 latency of less than 250ms then we aren't hitting the timeout limit
-				// after setting up the timeout in service profile. hello-timeouts-service always fails
-				// so we expect all request latencies to be at least half the total timeout set.
-			case "timeouts":
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 >= 250 }
+				// set in in service profile. hello-timeouts-service and hello-budgets always fails
+				// so we expect all request latencies to be greater than or equal to the timeout set.
+			case "timeouts", "budgets":
+				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 >= 500 }
 				assertion.routeProperty = "P99 Latency"
-				assertion.expected = ">= 250"
-				assertRouteStat(assertion, t)
+				assertion.expected = ">= 500ms"
 			}
+			assertRouteStat(assertion, t)
 		})
 	}
 }
