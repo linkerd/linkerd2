@@ -260,7 +260,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 }
 
 func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
-	err := TestHelper.RetryFor(1*time.Minute, func() error {
+	err := TestHelper.RetryFor(2*time.Minute, func() error {
 		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
@@ -312,7 +312,7 @@ func getRoutes(deployName, namespace string, isWideOutput bool, additionalArgs [
 		cmd = append(cmd, "-owide")
 	}
 
-	cmd = append(cmd, "--output", "json", "--time-window", "10s")
+	cmd = append(cmd, "--output", "json")
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return nil, err
