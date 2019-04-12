@@ -265,7 +265,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 }
 
 func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
-	err := TestHelper.RetryFor(1*time.Minute, func() error {
+	err := TestHelper.RetryFor(2*time.Minute, func() error {
 		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
