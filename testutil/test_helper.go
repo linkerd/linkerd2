@@ -17,11 +17,12 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	linkerd    string
-	version    string
-	namespace  string
-	autoInject bool
-	httpClient http.Client
+	linkerd            string
+	version            string
+	namespace          string
+	autoInject         bool
+	upgradeFromVersion string
+	httpClient         http.Client
 	KubernetesHelper
 }
 
@@ -37,6 +38,7 @@ func NewTestHelper() *TestHelper {
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	autoInject := flag.Bool("proxy-auto-inject", false, "enable proxy sidecar auto-injection in tests")
+	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -64,15 +66,11 @@ func NewTestHelper() *TestHelper {
 		log.SetLevel(log.PanicLevel)
 	}
 
-	ns := *namespace
-	if *autoInject {
-		ns += "-auto-inject"
-	}
-
 	testHelper := &TestHelper{
-		linkerd:    *linkerd,
-		namespace:  ns,
-		autoInject: *autoInject,
+		linkerd:            *linkerd,
+		namespace:          *namespace,
+		autoInject:         *autoInject,
+		upgradeFromVersion: *upgradeFromVersion,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -117,6 +115,11 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 // test.
 func (h *TestHelper) AutoInject() bool {
 	return h.autoInject
+}
+
+// UpgradeFromVersion returns the base version of the upgrade test.
+func (h *TestHelper) UpgradeFromVersion() string {
+	return h.upgradeFromVersion
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace

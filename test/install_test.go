@@ -60,6 +60,7 @@ var (
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::app::errors unexpected error: an IO error occurred: Connection reset by peer \(os error 104\)`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: operation timed out after 1s`,
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
 
 		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
@@ -81,13 +82,22 @@ var (
 // Later tests depend on the success of earlier tests
 
 func TestVersionPreInstall(t *testing.T) {
-	err := TestHelper.CheckVersion("unavailable")
+	version := "unavailable"
+	if TestHelper.UpgradeFromVersion() != "" {
+		version = TestHelper.UpgradeFromVersion()
+	}
+
+	err := TestHelper.CheckVersion(version)
 	if err != nil {
 		t.Fatalf("Version command failed\n%s", err.Error())
 	}
 }
 
 func TestCheckPreInstall(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		t.Skip("Skipping pre-install check for upgrade test")
+	}
+
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
 	out, _, err := TestHelper.LinkerdRun(cmd...)
@@ -101,18 +111,27 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-func TestInstall(t *testing.T) {
-	cmd := []string{"install",
-		"--controller-log-level", "debug",
-		"--proxy-log-level", "warn,linkerd2_proxy=debug",
-		"--linkerd-version", TestHelper.GetVersion(),
+func TestInstallOrUpgrade(t *testing.T) {
+	var (
+		cmd  = "install"
+		args = []string{
+			"--controller-log-level", "debug",
+			"--proxy-log-level", "warn,linkerd2_proxy=debug",
+			"--linkerd-version", TestHelper.GetVersion(),
+		}
+	)
+
+	if TestHelper.UpgradeFromVersion() != "" {
+		cmd = "upgrade"
 	}
+
 	if TestHelper.AutoInject() {
-		cmd = append(cmd, []string{"--proxy-auto-inject"}...)
+		args = append(args, "--proxy-auto-inject")
 		linkerdDeployReplicas["linkerd-proxy-injector"] = deploySpec{1, []string{"proxy-injector"}}
 	}
 
-	out, _, err := TestHelper.LinkerdRun(cmd...)
+	exec := append([]string{cmd}, args...)
+	out, _, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		t.Fatalf("linkerd install command failed\n%s", out)
 	}
