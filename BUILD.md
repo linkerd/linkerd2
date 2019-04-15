@@ -99,22 +99,25 @@ linkerd2_components
 Depending on use case, there are several configurations with which to develop
 and run Linkerd2:
 
-- [Comprehensive](#comprehensive): Integrated configuration using Minikube, most
+- [Comprehensive](#comprehensive): Integrated configuration using kubernetes for Docker, most
   closely matches release.
 - [Web](#web): Development of the Linkerd2 Dashboard.
 
 ### Comprehensive
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
-them onto Minikube. This setup most closely parallels our recommended production
+them onto local kubernetes cluster. This setup most closely parallels our recommended production
 installation, documented at https://linkerd.io/2/getting-started/.
 
 These commands assume a working
-[Minikube](https://github.com/kubernetes/minikube) environment.
-
+[Kubernetes for Docker](https://blog.docker.com/2018/01/docker-mac-kubernetes/) environment.
 ```bash
-# build all docker images, using minikube as our docker repo
-DOCKER_TRACE=1 bin/mkube bin/docker-build
+# build all docker images
+DOCKER_TRACE=1 bin/docker-build
+
+# Only needed if you are using https://github.com/kubernetes-sigs/kind
+docker images  --filter "dangling=false" | grep gcr.io/linkerd-io | \ 
+awk ' {printf "%s:%s\n", $1, $2}' | xargs -n 1 kind load docker-image
 
 # install linkerd
 bin/linkerd install | kubectl apply -f -
@@ -132,8 +135,8 @@ bin/linkerd dashboard
 # install the demo app
 curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
 
-# view demo app
-minikube -n emojivoto service web-svc
+# view demo app at http://localhost:8080
+kubectl -n emojivoto port-forward  svc/web-svc 8080:80
 
 # view details per deployment
 bin/linkerd -n emojivoto stat deployments
@@ -191,7 +194,7 @@ LINKERD_SKIP_DEP=1 bin/build-cli-bin
 #### Running the control plane for development
 
 Linkerd2's control plane is composed of several Go microservices. You can run
-these components in a Kubernetes (or Minikube) cluster, or even locally.
+these components in a Kubernetes cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
@@ -430,10 +433,6 @@ build_architecture
     "linkerd" -> "build-cli-bin";
 
     "lint";
-
-    "minikube-start-hyperv.bat";
-
-    "mkube";
 
     "protoc" -> ".protoc";
 

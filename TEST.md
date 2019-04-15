@@ -160,14 +160,15 @@ You can also test a locally-built version of the `linkerd` CLI. Note, however,
 that this requires that you build the corresponding Linkerd docker images and
 publish them to a docker registry that's accessible from the Kubernetes cluster
 where you're running the tests. As a result, local testing mostly applies to
-[minikube](https://github.com/kubernetes/minikube), since you can build the
-images directly into minikube's local docker registry, as described below.
+[Kubernetes for Docker](https://blog.docker.com/2018/01/docker-mac-kubernetes/) 
+since you can build the images directly into docker's local registry, 
+as described below.
 
-To test your current branch on minikube, first build all of the Linkerd images
-in your minikube environment, by running:
+To test your current branch on Kubernetes for Docker, first build all of the Linkerd 
+images, by running:
 
 ```bash
-$ DOCKER_TRACE=1 bin/mkube bin/docker-build
+$ DOCKER_TRACE=1 bin/docker-build
 ```
 
 That command also copies the corresponding `linkerd` binaries into the
@@ -301,20 +302,19 @@ $ godoc github.com/linkerd/linkerd2/testutil | less
 
 The `proxy-init/` directory contains a separate set of integration tests, which
 can be run in your Kubernetes cluster. The instructions below assume that you
-are using [minikube](https://github.com/kubernetes/minikube).
+are using [Kubernetes for Docker](https://blog.docker.com/2018/01/docker-mac-kubernetes/).
 
 Start by building and tagging the `proxy-init` image required for the test:
 
 ```bash
-DOCKER_TRACE=1 bin/mkube bin/docker-build-proxy-init
-bin/mkube docker tag gcr.io/linkerd-io/proxy-init:`bin/root-tag` gcr.io/linkerd-io/proxy-init:latest
+DOCKER_TRACE=1 bin/docker-build-proxy-init
+docker tag gcr.io/linkerd-io/proxy-init:`bin/root-tag` gcr.io/linkerd-io/proxy-init:latest
 ```
 
 The run the tests with:
 
 ```bash
 cd proxy-init/integration_test
-eval $(minikube docker-env)
 ./run_tests.sh
 ```
 
