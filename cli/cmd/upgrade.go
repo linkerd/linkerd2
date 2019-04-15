@@ -29,8 +29,8 @@ type upgradeOptions struct {
 
 func newUpgradeOptionsWithDefaults() *upgradeOptions {
 	return &upgradeOptions{
-		"",
-		newInstallOptionsWithDefaults(),
+		manifests:      "",
+		installOptions: newInstallOptionsWithDefaults(),
 	}
 }
 
