@@ -114,7 +114,7 @@ spec:
       - args:
         - identity
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:TEST-VERSION
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -235,7 +235,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -368,7 +368,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:TEST-VERSION
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -398,7 +398,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:TEST-VERSION
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -426,7 +426,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:TEST-VERSION
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -542,7 +542,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -731,7 +731,7 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/web:TEST-VERSION
+        image: gcr.io/linkerd-io/web:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -850,7 +850,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1077,7 +1077,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1246,7 +1246,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:TEST-VERSION
+        image: gcr.io/linkerd-io/grafana:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1365,7 +1365,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1539,7 +1539,7 @@ spec:
         - sp-validator
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:TEST-VERSION
+        image: gcr.io/linkerd-io/controller:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1653,7 +1653,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy-init:dev-undefined
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}

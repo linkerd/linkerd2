@@ -19,7 +19,7 @@ const upgradeVersion = "TEST-VERSION"
 
 func testUpgradeOptions() *upgradeOptions {
 	o := newUpgradeOptionsWithDefaults()
-	o.linkerdVersion = upgradeVersion
+	o.proxyVersion = upgradeVersion
 	return o
 }
 

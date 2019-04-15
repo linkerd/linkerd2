@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -640,7 +641,8 @@ func (conf *ResourceConfig) taggedProxyImage() string {
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.proxyVersion())
+	// proxy-init image version isn't overridable. See GH #2614.
+	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), version.Version)
 }
 
 func (conf *ResourceConfig) proxyImage() string {

@@ -167,6 +167,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 		noInitContainer:    false,
 		proxyConfigOptions: &proxyConfigOptions{
 			linkerdVersion:         version.Version,
+			proxyVersion:           version.Version,
 			ignoreCluster:          false,
 			proxyImage:             defaultDockerRegistry + "/proxy",
 			initImage:              defaultDockerRegistry + "/proxy-init",
@@ -348,7 +349,7 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
-			case "ignore-cluster", "linkerd-version":
+			case "ignore-cluster", "linkerd-version", "proxy-version":
 				// These flags don't make sense to record.
 			default:
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
@@ -404,9 +405,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 	values := &installValues{
 		// Container images:
-		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, options.linkerdVersion),
-		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, options.linkerdVersion),
-		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, options.linkerdVersion),
+		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, version.Version),
+		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, version.Version),
+		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, version.Version),
 		PrometheusImage: prometheusImage,
 		ImagePullPolicy: options.imagePullPolicy,
 
@@ -591,7 +592,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		LinkerdNamespace:  controlPlaneNamespace,
 		AutoInjectContext: autoInjectContext,
 		CniEnabled:        options.noInitContainer,
-		Version:           options.linkerdVersion,
+		Version:           options.proxyVersion,
 		IdentityContext:   identity,
 	}
 }

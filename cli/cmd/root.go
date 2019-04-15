@@ -175,6 +175,7 @@ func getSuccessRate(success, failure uint64) float64 {
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
 	linkerdVersion         string
+	proxyVersion           string
 	proxyImage             string
 	initImage              string
 	dockerRegistry         string
@@ -199,6 +200,10 @@ type proxyConfigOptions struct {
 func (options *proxyConfigOptions) validate() error {
 	if options.linkerdVersion != "" && !alphaNumDashDot.MatchString(options.linkerdVersion) {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
+	}
+
+	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
+		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}
 
 	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
@@ -263,7 +268,7 @@ func registryOverride(image, registry string) string {
 
 func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("proxy", e)
-	flags.StringVarP(&options.linkerdVersion, "linkerd-version", "v", options.linkerdVersion, "Tag to be used for Linkerd images")
+	flags.StringVarP(&options.proxyVersion, "proxy-version", "v", options.proxyVersion, "Tag to be used for the Linkerd proxy images")
 	flags.StringVar(&options.proxyImage, "proxy-image", options.proxyImage, "Linkerd proxy container image name")
 	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
 	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
@@ -285,8 +290,10 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	flags.StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
+	flags.StringVarP(&options.linkerdVersion, "linkerd-version", "", options.linkerdVersion, "Tag to be used for Linkerd images")
 	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
+	flags.MarkDeprecated("linkerd-version", "use --proxy-version instead")
 
 	return flags
 }

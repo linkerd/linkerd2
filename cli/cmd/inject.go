@@ -309,9 +309,9 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
 func (options *proxyConfigOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
-	if options.linkerdVersion != "" {
-		configs.Global.Version = options.linkerdVersion
-		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.linkerdVersion
+	if options.proxyVersion != "" {
+		configs.Global.Version = options.proxyVersion
+		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
