@@ -2,10 +2,16 @@ exports.config = {
   runner: 'local',
   user: process.env.SAUCE_USERNAME,
   key: process.env.SAUCE_ACCESS_KEY,
+  service: ['sauce'],
   sauceConnect: true,
   specs: [
-      './integration/specs/*.js'
+      './integration/specs/**/*.js'
   ],
+    suites: {
+    sidebar: [
+        './integration/specs/sidebar/*.js'
+    ]
+},
   // Patterns to exclude.
   exclude: [
       // 'path/to/excluded/files'
@@ -17,12 +23,12 @@ exports.config = {
   ],
   bail: 0,
   baseUrl: 'http://localhost',
-  waitforTimeout: 10000,
-  connectionRetryTimeout: 90000,
+  waitforTimeout: 1000000,
+  connectionRetryTimeout: 90000000,
   connectionRetryCount: 3,
   framework: 'mocha',
   mochaOpts: {
       ui: 'bdd',
-      timeout: 60000
+      timeout: 6000000
   }
 }

@@ -230,7 +230,12 @@ of Chrome, run:
 ```bash
 bin/web integration local
 ```
+This command runs all the tests inside the web/app/integration/specs directory
+The following components are currently available for testing:
+sidebar
 
+The tests currently check if the UI is in order.
+Note that if adding UI elements, add them after the pre-existings ones so as to not hamper the test's ordering.
 #### Cloud
 
 To run cross-browser tests via SauceLabs, you need to do a few things first:
@@ -281,6 +286,12 @@ To run cross-browser tests via SauceLabs, you need to do a few things first:
    Connect window. If you forget to do this, it will close on its own after a
    few minutes.
 
+This command runs all the tests inside the web/app/integration/specs directory
+The following components are currently available for testing:
+sidebar
+
+The tests currently check if the UI is in order.
+Note that if adding UI elements, add them after the pre-existings ones so as to not effect the test's ordering.
 ## Writing tests
 
 To add a new test, create a new subdirectory inside the `test/` directory.

@@ -4,13 +4,18 @@ exports.config = {
   services: ['chromedriver'],
   runner: 'local',
   specs: [
-      './integration/specs/*.js'
-  ],
+    './integration/specs/**/*.js'
+],
+suites: {
+  sidebar: [
+      './integration/specs/sidebar/*.js'
+  ]
+},
   exclude: [
       // 'path/to/excluded/files'
   ],
   maxInstances: 10,
-  capabilities: [{browserName: 'chrome', platform: 'OS X 10.13', version: '69.0'}],
+  capabilities: [{browserName: 'chrome',}],
   bail: 0,
   baseUrl: 'http://localhost',
   waitforTimeout: 10000,
