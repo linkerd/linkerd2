@@ -22,7 +22,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 `--tls=optional`, manually delete the `linkerd-ca` deployment after upgrading.
 Also, `--single-namespace` mode is no longer supported. For full details on
 upgrading to this release, please see the
-[upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-3-0).
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-3-0).
 
 **Special thanks to**: @codeman9, @harsh-98, @huynq0911, @KatherineMelnyk,
 @liquidslr, @paranoidaditya, @Pothulapati, @TwinProduction, and @yb172!
@@ -456,7 +456,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 
 **Upgrade notes**: The default behavior for proxy auto injection and service
 profile ownership has changed as part of this release. Please see the
-[upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-2-0)
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-2-0)
 for more details.
 
 **Special thanks to**: @alenkacz, @codeman9, @jonrichards, @radu-matei, @yeya24,
