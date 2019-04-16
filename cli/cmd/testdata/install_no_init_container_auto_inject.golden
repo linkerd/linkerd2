@@ -1333,6 +1333,12 @@ data:
 ### Proxy Injector
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: linkerd
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1479,12 +1485,6 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 status: {}
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector
-  namespace: linkerd
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
