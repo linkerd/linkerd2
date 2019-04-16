@@ -103,8 +103,6 @@ upgrading to this release, please see the
   * Updated the `mutatingwebhookconfiguration` so that it is recreated when the
     proxy injector is restarted, so that the MWC always picks up the latest
     config template during version upgrade
-  * Updated the auto-inject admission controller webhook to respond to UPDATE
-    events for deployment workloads
   * Updated destination service to return TLS identities only when the
     destination pod is TLS-aware and is in the same controller namespace
   * Lessen klog level to improve security
@@ -121,7 +119,6 @@ upgrading to this release, please see the
   * **Fixed** a connection starvation issue where TLS discovery detection on
     slow or idle connections could block all other connections from being
     accepted on the inbound listener of the proxy
-  * The `CommonName` field on CSRs is now set to the proxy's identity name
   * Some `l5d-*` informational headers have been temporarily removed from
     requests and responses because they could leak information to external
     clients
