@@ -13,7 +13,7 @@ Among the many improvements to the web dashboard, we've added a Community page
 to surface news and updates from linkerd.io.
 
 For more details, see the announcement blog post:
-https://blog.linkerd.io/2019/04/16/announcing-linkerd-2-3/
+https://linkerd.io/2019/04/16/announcing-linkerd-2.3/
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
