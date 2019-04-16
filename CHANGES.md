@@ -103,7 +103,7 @@ upgrading to this release, please see the
   * Updated destination service to return TLS identities only when the
     destination pod is TLS-aware and is in the same controller namespace
   * Lessen klog level to improve security
-  * Updated control-plane components to query Kubernetes at startup to determine
+  * Updated control plane components to query Kubernetes at startup to determine
     authorized namespaces and if ServiceProfile support is available
   * Modified the stats payload to include the following TCP stats:
     `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
@@ -366,7 +366,7 @@ system!
   * Updated destination service to return TLS identities only when the
     destination pod is TLS-aware and is in the same controller namespace
   * Lessen klog level to improve security
-  * Updated control-plane components to query Kubernetes at startup to determine
+  * Updated control plane components to query Kubernetes at startup to determine
     authorized namespaces and if ServiceProfile support is available
   * Modified the stats payload to include the following TCP stats:
     `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
