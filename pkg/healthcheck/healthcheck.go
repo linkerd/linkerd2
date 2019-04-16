@@ -965,17 +965,15 @@ func checkUnschedulablePods(pods []corev1.Pod) error {
 	var podName []string
 	for _, pod := range pods {
 		for _, node := range pod.Status.Conditions {
-			if strings.Contains(node.Message, "Insufficient cpu") || (node.Status == "False" && node.Message == "no nodes available to schedule pods") {
+			if node.Reason == "Unschedulable" {
 				podName = append(podName, pod.Name)
 			}
 		}
 	}
 
 	if len(podName) != 0 {
-		for _, name := range podName {
-			fmt.Println(name)
-		}
-		return fmt.Errorf("No node available for the above pods")
+		pods := strings.Join(podName, ",")
+		return fmt.Errorf("No node available for the pods %s", pods)
 	}
 
 	return nil
@@ -992,10 +990,8 @@ func checkPodSecurityPolicies(rst []v1beta1.ReplicaSet) error {
 	}
 
 	if len(replicaSets) != 0 {
-		for _, name := range replicaSets {
-			fmt.Println(name)
-		}
-		return fmt.Errorf("Invalid pod security policy for the above replicaset")
+		replicasets := strings.Join(replicaSets, ",")
+		return fmt.Errorf("Invalid pod security policy for the replicasets %s", replicasets)
 	}
 
 	return nil
