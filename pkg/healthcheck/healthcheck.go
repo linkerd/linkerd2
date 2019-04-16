@@ -964,8 +964,8 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 func checkUnschedulablePods(pods []corev1.Pod) error {
 	var podName []string
 	for _, pod := range pods {
-		for _, node := range pod.Status.Conditions {
-			if node.Reason == "Unschedulable" {
+		for _, condition := range pod.Status.Conditions {
+			if condition.Reason == "Unschedulable" {
 				podName = append(podName, pod.Name)
 			}
 		}
