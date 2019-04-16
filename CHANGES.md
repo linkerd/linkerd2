@@ -1,15 +1,16 @@
 ## stable-2.3.0
 
-This stable release introduces a new TLS Identity system into the default
-Linkerd installation, replacing `--tls=optional` and the `linkerd-ca`
+This stable release introduces a new TLS-based service identity system into the
+default Linkerd installation, replacing `--tls=optional` and the `linkerd-ca`
 controller. Now, proxies generate ephemeral private keys into a tmpfs directory
 and dynamically refresh certificates, authenticated by Kubernetes ServiceAccount
-tokens, via the newly-introduced Identity controller.
+tokens, and tied to ServiceAccounts as the identity primitive
 
-Now, all meshed HTTP communication is private and authenticated by default.
+In this release, all meshed HTTP communication is private and authenticated by
+default.
 
-Among the many improvements to the Web UI, we've added a Community page to
-surface news and updates from linkerd.io.
+Among the many improvements to the web dashboard, we've added a Community page
+to surface news and updates from linkerd.io.
 
 For more details, see the announcement blog post:
 https://blog.linkerd.io/2019/04/16/announcing-linkerd-2-3/
@@ -48,7 +49,8 @@ upgrading to this release, please see the
     controller
   * Changed `install` to fail in the case of a conflict with an existing
     installation; this can be disabled with the `--ignore-cluster` flag
-  * Added the ability to adjust the Prometheus log level
+  * Added the ability to adjust the Prometheus log level via
+    `--controller-log-level`
   * Implemented `--proxy-cpu-limit` and `--proxy-memory-limit` for setting the
     proxy resources limits (`--proxy-cpu` and `--proxy-memory` were deprecated in
     favor of `proxy-cpu-request` and `proxy-memory-request`) (thanks @TwinProduction!)
@@ -81,7 +83,8 @@ upgrading to this release, please see the
   * Added a new public API endpoint for fetching control plane configuration
   * **Breaking change** Removed support for running the control plane in
     single-namespace mode, which was severely limited in the number of features
-    it supported due to not having access to cluster-wide resources
+    it supported due to not having access to cluster-wide resources; the end
+    goal being Linkerd degrading gracefully depending on its privileges
   * Updated automatic proxy injection and CLI injection to support overriding
     inject defaults via pod spec annotations
   * Added support for the `config.linkerd.io/proxy-version` annotation on pod
@@ -432,7 +435,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     the config
   * Added a `-cover` parameter to track code coverage in go tests
     (more info in TEST.md)
-  * Added integration tests for `single-namespace`
+  * Added integration tests for `--single-namespace`
   * Renamed a function in a test that was shadowing a go built-in function
     (thanks @huynq0911!)
 
