@@ -1,18 +1,12 @@
 ## stable-2.3.0
 
-### Announcing Linkerd 2.3 🎈
-
 This stable release introduces a new TLS Identity system into the default
-Linkerd installation, replacing `tls=optional` and the `linkerd-ca` controller.
-Now, proxies generate ephemeral private keys into a tmpfs directory and
-dynamically refresh certificates, authenticated by Kubernetes ServiceAccount
+Linkerd installation, replacing `--tls=optional` and the `linkerd-ca`
+controller. Now, proxies generate ephemeral private keys into a tmpfs directory
+and dynamically refresh certificates, authenticated by Kubernetes ServiceAccount
 tokens, via the newly-introduced Identity controller.
 
 Now, all meshed HTTP communication is private and authenticated by default.
-
-In the CLI, this release includes 2 new commands:
-* `linkerd metrics` fetches metrics directly from a Linkerd proxy
-* `linkerd upgrade` upgrades your existing Linkerd installation
 
 Among the many improvements to the Web UI, we've added a Community page to
 surface news and updates from linkerd.io.
@@ -22,10 +16,10 @@ https://blog.linkerd.io/2019/04/16/announcing-linkerd-2-3/
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
-**Upgrade notes**: The `linkerd-ca` controller is deprecated in favor of the
+**Upgrade notes**: The `linkerd-ca` controller has been removed in favor of the
 `linkerd-identity` controller. If you had previously installed Linkerd with
-`tls=optional`, you will need to manually delete `linkerd-ca` after upgrading.
-Also, `single-namespace` mode is no longer supported. For full details on
+`--tls=optional`, manually delete the `linkerd-ca` deployment after upgrading.
+Also, `--single-namespace` mode is no longer supported. For full details on
 upgrading to this release, please see the
 [upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-3-0).
 
@@ -48,8 +42,8 @@ upgrading to this release, please see the
   * **Breaking change** Removed the `--api-port` flag from the `inject` and
     `install` commands, since there's no benefit to running the control plane's
     destination API on a non-default port (thanks, @paranoidaditya)
-  * Removed the `--tls=optional` flag from the `linkerd install` command, since
-    TLS is now enabled by default
+  * **Breaking change** Removed the `--tls=optional` flag from the
+    `linkerd install` command, since TLS is now enabled by default
   * Changed `install` to accept or generate an issuer Secret for the Identity
     controller
   * Changed `install` to fail in the case of a conflict with an existing
@@ -81,7 +75,7 @@ upgrading to this release, please see the
   * The `stat` command now always shows the number of open TCP connections
   * Removed TLS metrics from the `stat` command; this is in preparation for
     surfacing identity metrics in a clearer way
-  * Unhid the `install-cni` command and its flags, and tweaked their descriptions
+  * Exposed the `install-cni` command and its flags, and tweaked their descriptions
   * Eliminated false-positive vulnerability warnings related to go.uuid
 * Controller
   * Added a new public API endpoint for fetching control plane configuration
@@ -143,8 +137,8 @@ upgrading to this release, please see the
   * Added TCP stats to the Linkerd Pod Grafana dashboard
   * Added TCP stat tables on the namespace landing page and resource detail page
   * The topology graph now shows TCP stats if no HTTP stats are available
-  * The resource detail page no longer shows blank tables if the resource only
-    has TCP traffic
+  * Improved table display on the resource detail page for resources with
+    TCP-only traffic
   * Updated the resource detail page to start displaying a table with TCP stats
   * Modified the Grafana variable queries to use a TCP-based metric, so that
     if there is only TCP traffic then the dropdowns don't end up empty
@@ -254,8 +248,8 @@ UUID from the `linkerd-config` ConfigMap!
     clients
 * Web UI
   * The topology graph now shows TCP stats if no HTTP stats are available
-  * The resource detail page no longer shows blank tables if the resource only
-    has TCP traffic
+  * Improved table display on the resource detail page for resources with
+    TCP-only traffic
   * Added validation to the "new service profile" form (thanks @liquidslr!)
 
 ## edge-19.3.3
@@ -263,7 +257,7 @@ UUID from the `linkerd-config` ConfigMap!
 **Significant Update**
 
 This edge release introduces a new TLS Identity system into the default Linkerd
-installation, replacing `tls=optional` and the `linkerd-ca` controller. Now,
+installation, replacing `--tls=optional` and the `linkerd-ca` controller. Now,
 proxies generate ephemeral private keys into a tmpfs directory and dynamically
 refresh certificates, authenticated by Kubernetes ServiceAccount tokens, via the
 newly-introduced Identity controller.
@@ -279,8 +273,8 @@ Now, all meshed HTTP communication is private and authenticated by default.
     this can be disabled with the `--ignore-cluster` and `--disable-identity`
     flags, though this will prevent the injected pods from participating in mesh
     identity
-  * Removed the `--tls=optional` flag from the `linkerd install` command, since
-    TLS is now enabled by default
+  * **Breaking change** Removed the `--tls=optional` flag from the
+    `linkerd install` command, since TLS is now enabled by default
   * Added the ability to adjust the Prometheus log level
 * Proxy
   * **Fixed** a stream leak between the proxy and the control plane that could
@@ -410,7 +404,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     @TwinProduction!)
   * Updated the `inject` and `uninject` subcommands to issue warnings when
     resources lack a `Kind` property (thanks @Pothulapati!)
-  * Unhid the `install-cni` command and its flags, and tweaked their
+  * Exposed the `install-cni` command and its flags, and tweaked their
     descriptions
   * Fixed handling of kubeconfig server urls that include paths
   * Updated the description of the `--proxy-auto-inject` flag to indicate that
