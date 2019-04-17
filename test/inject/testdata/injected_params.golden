@@ -13,6 +13,7 @@ spec:
       annotations:
         config.linkerd.io/admin-port: "789"
         config.linkerd.io/control-port: "123"
+        config.linkerd.io/disable-identity: "true"
         config.linkerd.io/enable-external-profiles: "true"
         config.linkerd.io/image-pull-policy: Never
         config.linkerd.io/inbound-port: "678"

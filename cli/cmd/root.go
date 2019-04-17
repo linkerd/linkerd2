@@ -193,7 +193,8 @@ type proxyConfigOptions struct {
 	proxyMemoryLimit       string
 	enableExternalProfiles bool
 	// ignoreCluster is not validated by validate().
-	ignoreCluster bool
+	ignoreCluster   bool
+	disableIdentity bool
 }
 
 func (options *proxyConfigOptions) validate() error {

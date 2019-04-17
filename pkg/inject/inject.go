@@ -488,7 +488,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		sidecar.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
 	}
 
-	idctx := conf.configs.GetGlobal().GetIdentityContext()
+	idctx := conf.identityContext()
 	if idctx == nil {
 		sidecar.Env = append(sidecar.Env, v1.EnvVar{
 			Name:  envIdentityDisabled,
@@ -608,7 +608,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetProxy().GetProxyVersion())
 
-	if conf.configs.GetGlobal().GetIdentityContext() != nil {
+	if conf.identityContext() != nil {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
 	} else {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDisabled)
@@ -721,6 +721,17 @@ func (conf *ResourceConfig) proxyLogLevel() string {
 	}
 
 	return conf.configs.GetProxy().GetLogLevel().GetLevel()
+}
+
+func (conf *ResourceConfig) identityContext() *config.IdentityContext {
+	if override := conf.getOverride(k8s.ProxyDisableIdentityAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		if err == nil && value {
+			return nil
+		}
+	}
+
+	return conf.configs.GetGlobal().GetIdentityContext()
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements {
