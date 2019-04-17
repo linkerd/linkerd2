@@ -136,6 +136,27 @@ func TestInstallOrUpgrade(t *testing.T) {
 		t.Fatalf("linkerd install command failed\n%s", out)
 	}
 
+	// test `linkerd upgrade --from-manifests`
+	if TestHelper.UpgradeFromVersion() != "" {
+		manifests, err := TestHelper.Kubectl("",
+			"--namespace", TestHelper.GetLinkerdNamespace(),
+			"get", "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName,
+			"-oyaml",
+		)
+		if err != nil {
+			t.Fatalf("kubectl get command failed with %s\n%s", err, out)
+		}
+		exec = append(exec, "--from-manifests", "-")
+		upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
+		if err != nil {
+			t.Fatalf("linkerd upgrade --from-manifests command failed with %s\n%s\n%s", err, stderr, upgradeFromManifests)
+		}
+
+		if out != upgradeFromManifests {
+			t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+		}
+	}
+
 	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
