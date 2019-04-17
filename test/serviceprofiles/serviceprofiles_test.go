@@ -1,8 +1,10 @@
 package serviceprofiles
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,7 +19,6 @@ type rowStat struct {
 	Route            string  `json:"route"`
 	EffectiveSuccess float64 `json:"effective_success"`
 	ActualSuccess    float64 `json:"actual_success"`
-	LatencyP99       int     `json:"latency_ms_p99"`
 }
 
 type testCase struct {
@@ -30,12 +31,10 @@ type testCase struct {
 }
 
 type routeStatAssertion struct {
-	upstream      string
-	downstream    string
-	namespace     string
-	routeProperty string
-	expected      string
-	assertFunc    func(stat *rowStat) bool
+	upstream   string
+	downstream string
+	namespace  string
+	assertFunc func(stat *rowStat) error
 }
 
 func TestMain(m *testing.M) {
@@ -137,16 +136,10 @@ func TestServiceProfiles(t *testing.T) {
 
 func TestServiceProfileMetrics(t *testing.T) {
 
-	const (
-		retries  = "retries"
-		timeouts = "timeouts"
-		budgets  = "budgets"
-	)
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
 	testCases := []string{
-		retries,
-		timeouts,
-		budgets,
+		"retries",
+		"latency",
 	}
 
 	for _, tc := range testCases {
@@ -169,6 +162,12 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed\n%s", out)
 			}
 
+			assertion := &routeStatAssertion{
+				upstream:   testUpstreamDeploy,
+				downstream: testDownstreamDeploy,
+				namespace:  testNamespace,
+			}
+
 			cmd := []string{
 				"profile",
 				"--namespace",
@@ -188,27 +187,14 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s", err)
 			}
 
-			assertion := &routeStatAssertion{
-				upstream:   testUpstreamDeploy,
-				downstream: testDownstreamDeploy,
-				namespace:  testNamespace,
-			}
-			switch tc {
-			case retries:
-				// If the effective success rate is not equal to the actual success rate retries might already
-				// be applied so we fail the test.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess == rt.ActualSuccess }
-				assertion.routeProperty = "Effective Success"
-				assertion.expected = "Effective Success == Actual Success"
-			case timeouts, budgets:
-				// If the P99 latency is greater than 500ms retries are probably happening before applying
-				// the service profile and we can't reliably test the service profile.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 < 500 }
-				assertion.routeProperty = "P99 Latency"
-				assertion.expected = "< 500ms"
-			}
-
-			assertRouteStat(assertion, t)
+			assertRouteStat(assertion, t, func(stat *rowStat) error {
+				if stat.EffectiveSuccess != stat.ActualSuccess {
+					return fmt.Errorf(
+						"expected Effective Success to be equal to Actual Success but got: Effective [%.2f] <> Actual [%.2f]",
+						stat.EffectiveSuccess, stat.ActualSuccess)
+				}
+				return nil
+			})
 
 			profile := &sp.ServiceProfile{}
 
@@ -221,15 +207,6 @@ func TestServiceProfileMetrics(t *testing.T) {
 			for _, route := range profile.Spec.Routes {
 				if route.Name == "GET /testpath" {
 					route.IsRetryable = true
-					route.Timeout = "500ms"
-
-					if tc == budgets {
-						profile.Spec.RetryBudget = &sp.RetryBudget{
-							RetryRatio:          1.0,
-							MinRetriesPerSecond: 10,
-							TTL:                 "10s",
-						}
-					}
 					break
 				}
 			}
@@ -244,41 +221,40 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
 			}
 
-			switch tc {
-			case retries:
-				// If we get an effective success rate of less than or equal to the actual success rate requests are not
-				// being retried successfully after we applied our modified service profile.
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.EffectiveSuccess > rt.ActualSuccess }
-				assertion.routeProperty = "Effective Success"
-				assertion.expected = "> Actual Success"
-				// If we get a P99 latency of less than 250ms then we aren't hitting the timeout limit
-				// set in in service profile. hello-timeouts-service and hello-budgets always fails
-				// so we expect all request latencies to be greater than or equal to the timeout set.
-			case timeouts, budgets:
-				assertion.assertFunc = func(rt *rowStat) bool { return rt.LatencyP99 >= 500 }
-				assertion.routeProperty = "P99 Latency"
-				assertion.expected = ">= 500ms"
-			}
-			assertRouteStat(assertion, t)
+			assertRouteStat(assertion, t, func(stat *rowStat) error {
+				if stat.EffectiveSuccess <= stat.ActualSuccess {
+					return fmt.Errorf(
+						"expected Effective Success to be greater than Actual Success but got: Effective [%f] <> Actual [%f]",
+						stat.EffectiveSuccess, stat.ActualSuccess)
+				}
+				return nil
+			})
 		})
 	}
 }
 
-func assertRouteStat(assertion *routeStatAssertion, t *testing.T) {
+func assertRouteStat(assertion *routeStatAssertion, t *testing.T, assertFn func(stat *rowStat) error) {
+	const routePath = "GET /testpath"
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
 		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
 		}
-		assertExpectedRoutes([]string{"GET /testpath", "[DEFAULT]"}, routes, t)
+
+		var testRoute *rowStat
+		assertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes, t)
 
 		for _, route := range routes {
-			if route.Route == "GET /testpath" && !assertion.assertFunc(route) {
-				return fmt.Errorf("expected route property [%s] to be [%s]. in [%+v]",
-					assertion.routeProperty, assertion.expected, route)
+			if route.Route == routePath {
+				testRoute = route
 			}
 		}
-		return nil
+
+		if testRoute == nil {
+			return errors.New("expected test route not to be nil")
+		}
+
+		return assertFn(testRoute)
 	})
 
 	if err != nil {
@@ -301,7 +277,11 @@ func assertExpectedRoutes(expected []string, actual []*rowStat, t *testing.T) {
 			}
 		}
 		if !containsRoute {
-			t.Errorf("Expected route %s not found in %v", expectedRoute, actual)
+			sb := strings.Builder{}
+			for _, route := range actual {
+				sb.WriteString(fmt.Sprintf("%s ", route.Route))
+			}
+			t.Errorf("Expected route %s not found in %+v", expectedRoute, sb.String())
 		}
 	}
 }
