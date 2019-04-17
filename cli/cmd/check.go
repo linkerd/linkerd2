@@ -10,6 +10,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -148,8 +149,10 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 
 		spin.Stop()
 		if result.Retry {
-			spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
-			spin.Color("bold")
+			if isatty.IsTerminal(os.Stdout.Fd()) {
+				spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
+				spin.Color("bold") // this calls spin.Restart()
+			}
 			return
 		}
 
