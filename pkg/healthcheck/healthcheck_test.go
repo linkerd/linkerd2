@@ -16,6 +16,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type observer struct {
+	results []string
+}
+
+func newObserver() *observer {
+	return &observer{
+		results: []string{},
+	}
+}
+func (o *observer) resultFn(result *CheckResult) {
+	res := fmt.Sprintf("%s %s", result.Category, result.Description)
+	if result.Err != nil {
+		res += fmt.Sprintf(": %s", result.Err)
+	}
+	o.results = append(o.results, res)
+}
+
+func (hc *HealthChecker) addCheckAsCategory(
+	testCategoryID CategoryID,
+	categoryID CategoryID,
+	desc string,
+) {
+	testCategory := category{
+		id:       testCategoryID,
+		checkers: []checker{},
+	}
+
+	for _, cat := range hc.categories {
+		if cat.id == categoryID {
+			for _, ch := range cat.checkers {
+				if ch.description == desc {
+					testCategory.checkers = append(testCategory.checkers, ch)
+					break
+				}
+			}
+			break
+		}
+	}
+	hc.addCategory(testCategory)
+}
+
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
@@ -136,15 +177,6 @@ func TestHealthChecker(t *testing.T) {
 		hc.addCategory(passingRPCCheck)
 		hc.addCategory(failingRPCCheck)
 
-		observedResults := make([]string, 0)
-		observer := func(result *CheckResult) {
-			res := fmt.Sprintf("%s %s", result.Category, result.Description)
-			if result.Err != nil {
-				res += fmt.Sprintf(": %s", result.Err)
-			}
-			observedResults = append(observedResults, res)
-		}
-
 		expectedResults := []string{
 			"cat1 desc1",
 			"cat2 desc2",
@@ -155,10 +187,11 @@ func TestHealthChecker(t *testing.T) {
 			"cat5 [rpc2] rpc desc2: rpc error",
 		}
 
-		hc.RunChecks(observer)
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(observedResults, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 
@@ -219,24 +252,16 @@ func TestHealthChecker(t *testing.T) {
 		hc.addCategory(fatalCheck)
 		hc.addCategory(passingCheck2)
 
-		observedResults := make([]string, 0)
-		observer := func(result *CheckResult) {
-			res := fmt.Sprintf("%s %s", result.Category, result.Description)
-			if result.Err != nil {
-				res += fmt.Sprintf(": %s", result.Err)
-			}
-			observedResults = append(observedResults, res)
-		}
-
 		expectedResults := []string{
 			"cat1 desc1",
 			"cat6 desc6: fatal",
 		}
 
-		hc.RunChecks(observer)
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(observedResults, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 
@@ -355,6 +380,137 @@ spec:
 				}
 			}
 		})
+	}
+}
+
+func TestConfigExists(t *testing.T) {
+	testCases := []struct {
+		k8sConfigs []string
+		results    []string
+	}{
+		{
+			[]string{},
+			[]string{"linkerd-config control plane Namespace exists: The \"test-ns\" namespace does not exist"},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator",
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d: returns expected config result", i), func(t *testing.T) {
+
+			hc := NewHealthChecker(
+				[]CategoryID{LinkerdConfigChecks},
+				&Options{
+					ControlPlaneNamespace: "test-ns",
+				},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, tc.results) {
+				t.Fatalf("Expected results %v, but got %v", tc.results, obs.results)
+			}
+		})
+	}
+}
+
+func TestCRDExists(t *testing.T) {
+	k8sConfig := `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-65149d37-siggy
+spec:
+  group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+`
+
+	hc := NewHealthChecker(
+		[]CategoryID{},
+		&Options{},
+	)
+	var err error
+	hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfig)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	hc.addCheckAsCategory("cat1", LinkerdConfigChecks, "control plane CustomResourceDefinitions exist")
+
+	expectedResults := []string{
+		"cat1 control plane CustomResourceDefinitions exist",
+	}
+
+	obs := newObserver()
+	hc.RunChecks(obs.resultFn)
+	if !reflect.DeepEqual(obs.results, expectedResults) {
+		t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+	}
+}
+
+func TestCheckControlPlanePodExistence(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{},
+		&Options{
+			ControlPlaneNamespace: "test-ns",
+		},
+	)
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: linkerd-controller-6f78cbd47-bc557
+  namespace: test-ns
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+	}
+	var err error
+	hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	// validate that this check relies on the k8s api, not on hc.controlPlanePods
+	hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks, "controller pod is running")
+
+	expectedResults := []string{
+		"cat1 controller pod is running",
+	}
+
+	obs := newObserver()
+	hc.RunChecks(obs.resultFn)
+	if !reflect.DeepEqual(obs.results, expectedResults) {
+		t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 	}
 }
 
@@ -477,38 +633,15 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 			}
 
 			// create a synethic category that only includes the "data plane namespace exists" check
-			dataPlaneNSCat := category{
-				id:       "data-plane-ns-test-cat",
-				checkers: []checker{},
-			}
+			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
 
-			for cat := range hc.categories {
-				if hc.categories[cat].id == LinkerdDataPlaneChecks {
-					for c := range hc.categories[cat].checkers {
-						if hc.categories[cat].checkers[c].description == "data plane namespace exists" {
-							dataPlaneNSCat.checkers = append(dataPlaneNSCat.checkers, hc.categories[cat].checkers[c])
-							break
-						}
-					}
-					break
-				}
-			}
-			hc.addCategory(dataPlaneNSCat)
-
-			observedResults := make([]string, 0)
-			observer := func(result *CheckResult) {
-				res := fmt.Sprintf("%s %s", result.Category, result.Description)
-				if result.Err != nil {
-					res += fmt.Sprintf(": %s", result.Err)
-				}
-				observedResults = append(observedResults, res)
-			}
 			expectedResults := []string{
 				tc.result,
 			}
-			hc.RunChecks(observer)
-			if !reflect.DeepEqual(observedResults, expectedResults) {
-				t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, expectedResults) {
+				t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 			}
 		})
 	}
