@@ -4,12 +4,6 @@
 ### Web
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-web
-  namespace: {{.Namespace}}
----
 kind: Service
 apiVersion: v1
 metadata:

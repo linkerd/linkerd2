@@ -137,17 +137,24 @@ const (
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 
-	nsTemplateName             = "templates/namespace.yaml"
-	configTemplateName         = "templates/config.yaml"
-	identityTemplateName       = "templates/identity.yaml"
-	controllerTemplateName     = "templates/controller.yaml"
-	webTemplateName            = "templates/web.yaml"
-	prometheusTemplateName     = "templates/prometheus.yaml"
-	grafanaTemplateName        = "templates/grafana.yaml"
-	resourcesTemplateName      = "templates/_resources.yaml"
-	serviceprofileTemplateName = "templates/serviceprofile.yaml"
-	proxyInjectorTemplateName  = "templates/proxy_injector.yaml"
-	spValidatorTemplateName    = "templates/sp_validator.yaml"
+	nsTemplateName                  = "templates/namespace.yaml"
+	configTemplateName              = "templates/config.yaml"
+	identityConfigTemplateName      = "templates/identity-config.yaml"
+	identityTemplateName            = "templates/identity.yaml"
+	controllerConfigTemplateName    = "templates/controller-config.yaml"
+	controllerTemplateName          = "templates/controller.yaml"
+	webConfigTemplateName           = "templates/web-config.yaml"
+	webTemplateName                 = "templates/web.yaml"
+	prometheusConfigTemplateName    = "templates/prometheus-config.yaml"
+	prometheusTemplateName          = "templates/prometheus.yaml"
+	grafanaConfigTemplateName       = "templates/grafana-config.yaml"
+	grafanaTemplateName             = "templates/grafana.yaml"
+	resourcesTemplateName           = "templates/_resources.yaml"
+	serviceprofileTemplateName      = "templates/serviceprofile.yaml"
+	proxyInjectorConfigTemplateName = "templates/proxy_injector-config.yaml"
+	proxyInjectorTemplateName       = "templates/proxy_injector.yaml"
+	spValidatorConfigTemplateName   = "templates/sp_validator-config.yaml"
+	spValidatorTemplateName         = "templates/sp_validator.yaml"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -497,13 +504,20 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		{Name: nsTemplateName},
 		{Name: configTemplateName},
 		{Name: resourcesTemplateName},
+		{Name: identityConfigTemplateName},
 		{Name: identityTemplateName},
+		{Name: controllerConfigTemplateName},
 		{Name: controllerTemplateName},
 		{Name: serviceprofileTemplateName},
+		{Name: webConfigTemplateName},
 		{Name: webTemplateName},
+		{Name: prometheusConfigTemplateName},
 		{Name: prometheusTemplateName},
+		{Name: grafanaConfigTemplateName},
 		{Name: grafanaTemplateName},
+		{Name: proxyInjectorConfigTemplateName},
 		{Name: proxyInjectorTemplateName},
+		{Name: spValidatorConfigTemplateName},
 		{Name: spValidatorTemplateName},
 	}
 

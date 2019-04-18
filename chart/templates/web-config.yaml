@@ -1,0 +1,12 @@
+{{with .Values -}}
+---
+###
+### Web Config
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Namespace}}
+{{end -}}
