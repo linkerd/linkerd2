@@ -101,14 +101,15 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controllerReplicas uint
-		controllerLogLevel string
-		proxyAutoInject    bool
-		highAvailability   bool
-		controllerUID      int64
-		disableH2Upgrade   bool
-		noInitContainer    bool
-		identityOptions    *installIdentityOptions
+		controlPlaneVersion string
+		controllerReplicas  uint
+		controllerLogLevel  string
+		proxyAutoInject     bool
+		highAvailability    bool
+		controllerUID       int64
+		disableH2Upgrade    bool
+		noInitContainer     bool
+		identityOptions     *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -158,15 +159,15 @@ const (
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controllerReplicas: defaultControllerReplicas,
-		controllerLogLevel: "info",
-		proxyAutoInject:    false,
-		highAvailability:   false,
-		controllerUID:      2103,
-		disableH2Upgrade:   false,
-		noInitContainer:    false,
+		controlPlaneVersion: version.Version,
+		controllerReplicas:  defaultControllerReplicas,
+		controllerLogLevel:  "info",
+		proxyAutoInject:     false,
+		highAvailability:    false,
+		controllerUID:       2103,
+		disableH2Upgrade:    false,
+		noInitContainer:     false,
 		proxyConfigOptions: &proxyConfigOptions{
-			linkerdVersion:         version.Version,
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
 			proxyImage:             defaultDockerRegistry + "/proxy",
@@ -308,6 +309,9 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"The amount of time to allow for clock skew within a Linkerd cluster",
 	)
 
+	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
+	flags.MarkHidden("control-plane-version")
+
 	return flags
 }
 
@@ -349,7 +353,7 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
-			case "ignore-cluster", "linkerd-version", "proxy-version":
+			case "ignore-cluster", "control-plane-version", "proxy-version":
 				// These flags don't make sense to record.
 			default:
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
@@ -362,6 +366,10 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 }
 
 func (options *installOptions) validate() error {
+	if options.controlPlaneVersion != "" && !alphaNumDashDot.MatchString(options.controlPlaneVersion) {
+		return fmt.Errorf("%s is not a valid version", options.controlPlaneVersion)
+	}
+
 	if options.identityOptions == nil {
 		// Programmer error: identityOptions may be empty, but it must be set by the constructor.
 		panic("missing identity options")
@@ -405,9 +413,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 	values := &installValues{
 		// Container images:
-		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, version.Version),
-		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, version.Version),
-		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, version.Version),
+		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
+		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
+		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
 		PrometheusImage: prometheusImage,
 		ImagePullPolicy: options.imagePullPolicy,
 
@@ -592,7 +600,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		LinkerdNamespace:  controlPlaneNamespace,
 		AutoInjectContext: autoInjectContext,
 		CniEnabled:        options.noInitContainer,
-		Version:           options.proxyVersion,
+		Version:           options.controlPlaneVersion,
 		IdentityContext:   identity,
 	}
 }
@@ -655,6 +663,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 			Level: options.proxyLogLevel,
 		},
 		DisableExternalProfiles: !options.enableExternalProfiles,
+		ProxyVersion:            options.proxyVersion,
 	}
 }
 

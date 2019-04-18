@@ -17,7 +17,7 @@ import (
 type expectedProxyConfigs struct {
 	image                      string
 	imagePullPolicy            corev1.PullPolicy
-	imageVersion               string
+	proxyVersion               string
 	controlPort                int32
 	inboundPort                int32
 	adminPort                  int32
@@ -64,6 +64,7 @@ func TestConfigAccessors(t *testing.T) {
 		ProxyUid:                8888,
 		LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
 		DisableExternalProfiles: false,
+		ProxyVersion:            "proxy-version",
 	}
 
 	globalConfig := &config.Global{
@@ -107,7 +108,7 @@ func TestConfigAccessors(t *testing.T) {
 			expected: expectedProxyConfigs{
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("Always"),
-				imageVersion:    "override",
+				proxyVersion:    "override",
 				controlPort:     int32(4000),
 				inboundPort:     int32(5000),
 				adminPort:       int32(5001),
@@ -171,7 +172,7 @@ func TestConfigAccessors(t *testing.T) {
 			expected: expectedProxyConfigs{
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("IfNotPresent"),
-				imageVersion:    "default",
+				proxyVersion:    "proxy-version",
 				controlPort:     int32(9000),
 				inboundPort:     int32(6000),
 				adminPort:       int32(6001),
@@ -255,7 +256,7 @@ func TestConfigAccessors(t *testing.T) {
 			})
 
 			t.Run("proxyVersion", func(t *testing.T) {
-				expected := testCase.expected.imageVersion
+				expected := testCase.expected.proxyVersion
 				if actual := resourceConfig.proxyVersion(); expected != actual {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
 				}

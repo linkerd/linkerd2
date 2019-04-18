@@ -42,7 +42,7 @@ message Proxy {
   LogLevel log_level = 11;
   bool disable_external_profiles = 12;
 
-  string version = 13;
+  string proxy_version = 13;
 }
 
 message Image {

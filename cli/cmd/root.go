@@ -174,7 +174,6 @@ func getSuccessRate(success, failure uint64) float64 {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	linkerdVersion         string
 	proxyVersion           string
 	proxyImage             string
 	initImage              string
@@ -198,10 +197,6 @@ type proxyConfigOptions struct {
 }
 
 func (options *proxyConfigOptions) validate() error {
-	if options.linkerdVersion != "" && !alphaNumDashDot.MatchString(options.linkerdVersion) {
-		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
-	}
-
 	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
 		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}
@@ -290,10 +285,8 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
 	flags.StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	flags.StringVarP(&options.linkerdVersion, "linkerd-version", "", options.linkerdVersion, "Tag to be used for Linkerd images")
 	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
 	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
-	flags.MarkDeprecated("linkerd-version", "use --proxy-version instead")
 
 	return flags
 }

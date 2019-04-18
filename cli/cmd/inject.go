@@ -310,7 +310,7 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 // storing the corresponding annotations and values.
 func (options *proxyConfigOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
 	if options.proxyVersion != "" {
-		configs.Global.Version = options.proxyVersion
+		configs.Proxy.ProxyVersion = options.proxyVersion
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
 	}
 

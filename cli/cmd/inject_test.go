@@ -63,13 +63,13 @@ func testInstallConfig() *pb.All {
 
 func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
-	defaultConfig.Global.Version = "testinjectversion"
+	defaultConfig.Proxy.ProxyVersion = "testinjectversion"
 
 	overrideConfig := testInstallConfig()
-	overrideConfig.Global.Version = "override"
+	overrideConfig.Proxy.ProxyVersion = "override"
 
 	proxyResourceConfig := testInstallConfig()
-	proxyResourceConfig.Global.Version = defaultConfig.Global.Version
+	proxyResourceConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
 	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
 		RequestCpu:    "110m",
 		RequestMemory: "100Mi",
@@ -78,7 +78,7 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	noInitContainerConfig := testInstallConfig()
-	noInitContainerConfig.Global.Version = defaultConfig.Global.Version
+	noInitContainerConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
 	noInitContainerConfig.Global.CniEnabled = true
 
 	testCases := []testCase{
@@ -208,7 +208,7 @@ type injectCmd struct {
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
 	testConfig := testInstallConfig()
-	testConfig.Global.Version = "testinjectversion"
+	testConfig.Proxy.ProxyVersion = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
