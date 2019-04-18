@@ -364,7 +364,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if err != nil {
 							return err
 						}
-						return checkPodSecurityPolicies(controlPlaneReplicaSet)
+						return checkControlPlaneReplicaSets(controlPlaneReplicaSet)
 					},
 				},
 				{
@@ -965,7 +965,7 @@ func checkUnschedulablePods(pods []corev1.Pod) error {
 	var podName []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
-			if condition.Reason == "Unschedulable" {
+			if condition.Reason == corev1.PodReasonUnschedulable {
 				podName = append(podName, pod.Name)
 			}
 		}
@@ -973,25 +973,24 @@ func checkUnschedulablePods(pods []corev1.Pod) error {
 
 	if len(podName) != 0 {
 		pods := strings.Join(podName, ",")
-		return fmt.Errorf("No node available for the pods %s", pods)
+		return fmt.Errorf("Unable to schedule pods: %s", pods)
 	}
 
 	return nil
 }
 
-func checkPodSecurityPolicies(rst []v1beta1.ReplicaSet) error {
-	var replicaSets []string
+func checkControlPlaneReplicaSets(rst []v1beta1.ReplicaSet) error {
+	var errors string
 	for _, rs := range rst {
 		for _, r := range rs.Status.Conditions {
-			if strings.Contains(r.Message, "unable to validate against any pod security policy") {
-				replicaSets = append(replicaSets, rs.Name)
+			if r.Type == v1beta1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
+				errors += fmt.Sprintf("%s: %s, %s\n", rs.Name, r.Reason, r.Message)
 			}
 		}
 	}
 
-	if len(replicaSets) != 0 {
-		replicasets := strings.Join(replicaSets, ",")
-		return fmt.Errorf("Invalid pod security policy for the replicasets %s", replicasets)
+	if errors != "" {
+		return fmt.Errorf("errors in creating control plane replicas %s ", errors)
 	}
 
 	return nil
