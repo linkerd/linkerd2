@@ -39,21 +39,37 @@ func newCmdUpgrade() *cobra.Command {
 	flags := options.recordableFlagSet()
 
 	cmd := &cobra.Command{
-		Use:   "upgrade [flags]",
-		Short: "Output Kubernetes configs to upgrade an existing Linkerd control plane",
+		Use:       fmt.Sprintf("upgrade [%s|%s] [flags]", configStage, controlPlaneStage),
+		Args:      cobra.OnlyValidArgs,
+		ValidArgs: []string{configStage, controlPlaneStage},
+		Short:     "Output Kubernetes configs to upgrade an existing Linkerd control plane",
 		Long: `Output Kubernetes configs to upgrade an existing Linkerd control plane.
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
 install command.`,
+
+		Example: `  # Default upgrade.
+  linkerd upgrade | kubectl apply -f -
+
+  # Similar to install, upgrade may also be broken up into two stages, by user
+  # privilege.
+  # First stage requires cluster-level privileges.
+  linkerd upgrade config | kubectl apply -f -
+  # Second stage requires namespace-level privileges.
+  linkerd upgrade control-plane | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.ignoreCluster {
 				panic("ignore cluster must be unset") // Programmer error.
 			}
 
+			stage, err := validateArgs(args, flags, nil)
+			if err != nil {
+				return err
+			}
+
 			// We need a Kubernetes client to fetch configs and issuer secrets.
 			var k kubernetes.Interface
-			var err error
 			if options.manifests != "" {
 				readers, err := read(options.manifests)
 				if err != nil {
@@ -71,7 +87,7 @@ install command.`,
 				}
 			}
 
-			values, configs, err := options.validateAndBuild(k, flags)
+			values, configs, err := options.validateAndBuild(stage, k, flags)
 			if err != nil {
 				upgradeErrorf("Failed to build upgrade configuration: %s", err)
 			}
@@ -102,7 +118,7 @@ install command.`,
 	return cmd
 }
 
-func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -162,6 +178,7 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+	values.stage = stage
 
 	return values, configs, nil
 }

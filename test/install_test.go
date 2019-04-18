@@ -124,6 +124,21 @@ func TestInstallOrUpgrade(t *testing.T) {
 
 	if TestHelper.UpgradeFromVersion() != "" {
 		cmd = "upgrade"
+
+		// test 2-stage install during upgrade
+		out, _, err := TestHelper.LinkerdRun(cmd, "config")
+		if err != nil {
+			t.Fatalf("linkerd upgrade config command failed\n%s", out)
+		}
+
+		// apply stage 1
+		out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("kubectl apply command failed\n%s", out)
+		}
+
+		// prepare for stage 2
+		args = append([]string{"control-plane"}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
