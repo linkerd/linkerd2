@@ -44,6 +44,10 @@ required = [
   revision = "5cf08d0ac778f0d708570fe143e3f82fdb9f9007"
 
 [[constraint]]
+  name = "github.com/mattn/go-isatty"
+  version = "v0.0.7"
+
+[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "v1.0.3"
 

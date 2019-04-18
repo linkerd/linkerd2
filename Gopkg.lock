@@ -450,12 +450,12 @@
   version = "v0.0.9"
 
 [[projects]]
-  digest = "1:3140e04675a6a91d2a20ea9d10bdadf6072085502e6def6768361260aee4b967"
+  digest = "1:d0600e4cf07697303f37130791b2ce4577367931416bea8ec4f601bde3f7c5bf"
   name = "github.com/mattn/go-isatty"
   packages = ["."]
   pruneopts = ""
-  revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
-  version = "v0.0.4"
+  revision = "c2a7a6ca930a4cd0bc33a3f298eb71960732a3a7"
+  version = "v0.0.7"
 
 [[projects]]
   digest = "1:81e673df85e765593a863f67cba4544cf40e8919590f04d67664940786c2b61a"
@@ -1261,6 +1261,7 @@
     "github.com/linkerd/linkerd2-proxy-api/go/identity",
     "github.com/linkerd/linkerd2-proxy-api/go/net",
     "github.com/linkerd/linkerd2-proxy-api/go/tap",
+    "github.com/mattn/go-isatty",
     "github.com/mattn/go-runewidth",
     "github.com/nsf/termbox-go",
     "github.com/pkg/browser",
