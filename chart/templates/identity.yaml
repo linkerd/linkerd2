@@ -5,6 +5,30 @@
 ### Identity Controller Service
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: {{.Namespace}}
+{{- if .Identity.Issuer}}
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: identity
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{- if .Identity.Issuer.CrtExpiryAnnotation}}
+    {{.Identity.Issuer.CrtExpiryAnnotation}}: {{.Identity.Issuer.CrtExpiry}}
+    {{- end}}
+data:
+  crt.pem: {{b64enc .Identity.Issuer.CrtPEM}}
+  key.pem: {{b64enc .Identity.Issuer.KeyPEM}}
+{{- end}}
+---
 kind: Service
 apiVersion: v1
 metadata:

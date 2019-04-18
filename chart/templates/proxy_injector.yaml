@@ -5,6 +5,12 @@
 ### Proxy Injector
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: {{.Namespace}}
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:

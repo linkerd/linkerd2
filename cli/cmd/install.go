@@ -34,6 +34,8 @@ import (
 
 type (
 	installValues struct {
+		stage string
+
 		Namespace                string
 		ControllerImage          string
 		WebImage                 string
@@ -130,6 +132,9 @@ type (
 )
 
 const (
+	configStage       = "config"
+	controlPlaneStage = "control-plane"
+
 	prometheusImage                   = "prom/prometheus:v2.7.1"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
@@ -137,25 +142,6 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
-
-	nsTemplateName                  = "templates/namespace.yaml"
-	configTemplateName              = "templates/config.yaml"
-	identityConfigTemplateName      = "templates/identity-config.yaml"
-	identityTemplateName            = "templates/identity.yaml"
-	controllerConfigTemplateName    = "templates/controller-config.yaml"
-	controllerTemplateName          = "templates/controller.yaml"
-	webConfigTemplateName           = "templates/web-config.yaml"
-	webTemplateName                 = "templates/web.yaml"
-	prometheusConfigTemplateName    = "templates/prometheus-config.yaml"
-	prometheusTemplateName          = "templates/prometheus.yaml"
-	grafanaConfigTemplateName       = "templates/grafana-config.yaml"
-	grafanaTemplateName             = "templates/grafana.yaml"
-	resourcesTemplateName           = "templates/_resources.yaml"
-	serviceprofileTemplateName      = "templates/serviceprofile.yaml"
-	proxyInjectorConfigTemplateName = "templates/proxy_injector-config.yaml"
-	proxyInjectorTemplateName       = "templates/proxy_injector.yaml"
-	spValidatorConfigTemplateName   = "templates/sp_validator-config.yaml"
-	spValidatorTemplateName         = "templates/sp_validator.yaml"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -218,20 +204,37 @@ func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 func newCmdInstall() *cobra.Command {
 	options := newInstallOptionsWithDefaults()
 
-	// The base flags are recorded separately s that they can be serialized into
+	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
 
 	cmd := &cobra.Command{
-		Use:   "install [flags]",
-		Short: "Output Kubernetes configs to install Linkerd",
-		Long:  "Output Kubernetes configs to install Linkerd.",
+		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
+		Args:      cobra.OnlyValidArgs,
+		ValidArgs: []string{configStage, controlPlaneStage},
+		Short:     "Output Kubernetes configs to install Linkerd",
+		Long: `Output Kubernetes configs to install Linkerd.
+
+This command provides Kubernetes configs necessary to install the Linkerd
+control-plane.`,
+		Example: `  # Default install.
+  linkerd install | kubectl apply -f -
+
+  # Installation may also be broken up into two stages, by user privilege.
+  # First stage requires cluster-level privileges.
+  linkerd install config | kubectl apply -f -
+  # Second stage requires namespace-level privileges.
+  linkerd install control-plane | kubectl apply -f -
+
+  # Install Linkerd into a non-default namespace.
+  linkerd install config -l linkerdtest | kubectl apply -f -
+  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !options.ignoreCluster {
 				exitIfClusterExists()
 			}
 
-			values, configs, err := options.validateAndBuild(flags)
+			values, configs, err := options.validateAndBuild(args, flags)
 			if err != nil {
 				return err
 			}
@@ -248,7 +251,34 @@ func newCmdInstall() *cobra.Command {
 	return cmd
 }
 
-func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *installOptions) validateAndBuild(args []string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+	if len(args) > 1 {
+		return nil, nil, fmt.Errorf("only zero or one argument permitted, received: %s", args)
+	}
+	stage := ""
+	if len(args) == 1 {
+		// this is guaranteed to be a valid stage via `cobra.OnlyValidArgs`
+		stage = args[0]
+	}
+
+	// only a few flags are available for config stage
+	if stage == configStage && flags != nil {
+		var err error
+		flags.VisitAll(func(f *pflag.Flag) {
+			if f.Changed {
+				switch f.Name {
+				// TODO: remove "proxy-auto-inject" when it becomes default
+				case "linkerd-namespace", "proxy-auto-inject":
+				default:
+					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
+				}
+			}
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -266,6 +296,7 @@ func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installV
 		return nil, nil, err
 	}
 	values.Identity = identityValues
+	values.stage = stage
 
 	return values, configs, nil
 }
@@ -510,24 +541,32 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		{Name: nsTemplateName},
-		{Name: configTemplateName},
-		{Name: resourcesTemplateName},
-		{Name: identityConfigTemplateName},
-		{Name: identityTemplateName},
-		{Name: controllerConfigTemplateName},
-		{Name: controllerTemplateName},
-		{Name: serviceprofileTemplateName},
-		{Name: webConfigTemplateName},
-		{Name: webTemplateName},
-		{Name: prometheusConfigTemplateName},
-		{Name: prometheusTemplateName},
-		{Name: grafanaConfigTemplateName},
-		{Name: grafanaTemplateName},
-		{Name: proxyInjectorConfigTemplateName},
-		{Name: proxyInjectorTemplateName},
-		{Name: spValidatorConfigTemplateName},
-		{Name: spValidatorTemplateName},
+	}
+
+	if values.stage == "" || values.stage == configStage {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/namespace.yaml"},
+			{Name: "templates/identity-rbac.yaml"},
+			{Name: "templates/controller-rbac.yaml"},
+			{Name: "templates/serviceprofile-crd.yaml"},
+			{Name: "templates/prometheus-rbac.yaml"},
+			{Name: "templates/proxy_injector-rbac.yaml"},
+			{Name: "templates/sp_validator-rbac.yaml"},
+		}...)
+	}
+
+	if values.stage == "" || values.stage == controlPlaneStage {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/_resources.yaml"},
+			{Name: "templates/config.yaml"},
+			{Name: "templates/identity.yaml"},
+			{Name: "templates/controller.yaml"},
+			{Name: "templates/web.yaml"},
+			{Name: "templates/prometheus.yaml"},
+			{Name: "templates/grafana.yaml"},
+			{Name: "templates/proxy_injector.yaml"},
+			{Name: "templates/sp_validator.yaml"},
+		}...)
 	}
 
 	// Read templates into bytes

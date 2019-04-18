@@ -4,6 +4,12 @@
 ### Service Profile Validator
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: {{.Namespace}}
+---
 kind: Service
 apiVersion: v1
 metadata:

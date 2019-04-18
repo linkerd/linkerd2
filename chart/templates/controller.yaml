@@ -4,6 +4,12 @@
 ### Controller
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: {{.Namespace}}
+---
 kind: Service
 apiVersion: v1
 metadata:
