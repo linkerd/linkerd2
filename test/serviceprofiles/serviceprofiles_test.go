@@ -1,12 +1,17 @@
 package serviceprofiles
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/testutil"
+	"sigs.k8s.io/yaml"
 )
 
 var TestHelper *testutil.TestHelper
@@ -53,7 +58,7 @@ func TestServiceProfiles(t *testing.T) {
 		{
 			sourceName:     "tap",
 			namespace:      testNamespace,
-			deployName:     "deploy/t1",
+			deployName:     "deployment/t1",
 			spName:         "t1-svc",
 			expectedRoutes: []string{"POST /buoyantio.bb.TheService/theFunction", "[DEFAULT]"},
 		},
@@ -61,7 +66,7 @@ func TestServiceProfiles(t *testing.T) {
 			sourceName:     "open-api",
 			namespace:      testNamespace,
 			spName:         "t3-svc",
-			deployName:     "deploy/t3",
+			deployName:     "deployment/t3",
 			expectedRoutes: []string{"DELETE /testpath", "GET /testpath", "PATCH /testpath", "POST /testpath", "[DEFAULT]"},
 		},
 	}
@@ -69,7 +74,7 @@ func TestServiceProfiles(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(tc.sourceName, func(t *testing.T) {
-			routes, err := getRoutes(tc.deployName, tc.namespace)
+			routes, err := getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
@@ -107,7 +112,7 @@ func TestServiceProfiles(t *testing.T) {
 				t.Fatalf("kubectl apply command failed:\n%s", err)
 			}
 
-			routes, err = getRoutes(tc.deployName, tc.namespace)
+			routes, err = getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
@@ -117,7 +122,129 @@ func TestServiceProfiles(t *testing.T) {
 	}
 }
 
-func assertExpectedRoutes(expected, actual []string, t *testing.T) {
+func TestServiceProfileMetrics(t *testing.T) {
+
+	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
+	testCases := []string{
+		"retries",
+		"latency",
+	}
+
+	for _, tc := range testCases {
+		var (
+			tc                   = tc
+			testSP               = fmt.Sprintf("world-%s-svc", tc)
+			testDownstreamDeploy = fmt.Sprintf("deployment/world-%s", tc)
+			testUpstreamDeploy   = fmt.Sprintf("deployment/hello-%s", tc)
+			testYAML             = fmt.Sprintf("testdata/hello_world_%s.yaml", tc)
+		)
+
+		t.Run(tc, func(t *testing.T) {
+			out, stderr, err := TestHelper.LinkerdRun("inject", testYAML)
+			if err != nil {
+				t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
+			}
+
+			out, err = TestHelper.KubectlApply(out, testNamespace)
+			if err != nil {
+				t.Errorf("kubectl apply command failed\n%s", out)
+			}
+
+			cmd := []string{
+				"profile",
+				"--namespace",
+				testNamespace,
+				"--open-api",
+				"testdata/world.swagger",
+				testSP,
+			}
+
+			out, stderr, err = TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				t.Errorf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
+			}
+
+			_, err = TestHelper.KubectlApply(out, testNamespace)
+			if err != nil {
+				t.Errorf("kubectl apply command failed:\n%s", err)
+			}
+
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+				if *stat.EffectiveSuccess != *stat.ActualSuccess {
+					return fmt.Errorf(
+						"expected Effective Success to be equal to Actual Success but got: Effective [%f] <> Actual [%f]",
+						*stat.EffectiveSuccess, *stat.ActualSuccess)
+				}
+				return nil
+			})
+
+			profile := &sp.ServiceProfile{}
+
+			// Grab the output and convert it to a service profile object for modification
+			err = yaml.Unmarshal([]byte(out), profile)
+			if err != nil {
+				t.Errorf("unable to unmarshall YAML: %s", err.Error())
+			}
+
+			for _, route := range profile.Spec.Routes {
+				if route.Name == "GET /testpath" {
+					route.IsRetryable = true
+					break
+				}
+			}
+
+			bytes, err := yaml.Marshal(profile)
+			if err != nil {
+				t.Errorf("error marshalling service profile: %s", bytes)
+			}
+
+			out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
+			if err != nil {
+				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
+			}
+
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+				if *stat.EffectiveSuccess <= *stat.ActualSuccess {
+					return fmt.Errorf(
+						"expected Effective Success to be greater than Actual Success but got: Effective [%f] <> Actual [%f]",
+						*stat.EffectiveSuccess, *stat.ActualSuccess)
+				}
+				return nil
+			})
+		})
+	}
+}
+
+func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
+	const routePath = "GET /testpath"
+	err := TestHelper.RetryFor(2*time.Minute, func() error {
+		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
+		if err != nil {
+			return fmt.Errorf("routes command failed: %s", err)
+		}
+
+		var testRoute *cmd2.JSONRouteStats
+		assertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes, t)
+
+		for _, route := range routes {
+			if route.Route == routePath {
+				testRoute = route
+			}
+		}
+
+		if testRoute == nil {
+			return errors.New("expected test route not to be nil")
+		}
+
+		return assertFn(testRoute)
+	})
+
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
+func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *testing.T) {
 
 	if len(expected) != len(actual) {
 		t.Errorf("mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
@@ -126,36 +253,41 @@ func assertExpectedRoutes(expected, actual []string, t *testing.T) {
 	for _, expectedRoute := range expected {
 		containsRoute := false
 		for _, actualRoute := range actual {
-			if strings.HasPrefix(actualRoute, expectedRoute) {
+			if actualRoute.Route == expectedRoute {
 				containsRoute = true
 				break
 			}
 		}
 		if !containsRoute {
-			t.Errorf("Expected route %s not found in %v", expectedRoute, actual)
+			sb := strings.Builder{}
+			for _, route := range actual {
+				sb.WriteString(fmt.Sprintf("%s ", route.Route))
+			}
+			t.Errorf("Expected route %s not found in %+v", expectedRoute, sb.String())
 		}
 	}
 }
 
-func getRoutes(deployName, namespace string) ([]string, error) {
+func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
 	cmd := []string{"routes", "--namespace", namespace, deployName}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
+
+	if len(additionalArgs) > 0 {
+		cmd = append(cmd, additionalArgs...)
+	}
+
+	cmd = append(cmd, "--output", "json")
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		return nil, err
 	}
-	routes := parseRouteDetails(out)
-	return routes, nil
-}
-
-func parseRouteDetails(cliOutput string) []string {
-	var cliLines []string
-	routesByDeployment := strings.Split(cliOutput, "\n")
-	for _, routes := range routesByDeployment {
-		routes = strings.TrimSpace(routes)
-		if routes != "" && !strings.HasPrefix(routes, "ROUTE") {
-			cliLines = append(cliLines, routes)
-		}
-
+	var list map[string][]*cmd2.JSONRouteStats
+	err = yaml.Unmarshal([]byte(out), &list)
+	if err != nil {
+		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err.Error(), stderr))
 	}
-	return cliLines
+
+	if deployment, ok := list[deployName]; ok {
+		return deployment, nil
+	}
+	return nil, fmt.Errorf("could not retrieve route info for %s", deployName)
 }
