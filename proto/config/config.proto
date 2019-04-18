@@ -41,6 +41,8 @@ message Proxy {
   int64 proxy_uid = 10;
   LogLevel log_level = 11;
   bool disable_external_profiles = 12;
+
+  string version = 13;
 }
 
 message Image {
