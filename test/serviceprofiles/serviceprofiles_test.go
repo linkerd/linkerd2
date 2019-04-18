@@ -8,18 +8,13 @@ import (
 	"testing"
 	"time"
 
+	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/testutil"
 	"sigs.k8s.io/yaml"
 )
 
 var TestHelper *testutil.TestHelper
-
-type rowStat struct {
-	Route            string  `json:"route"`
-	EffectiveSuccess float64 `json:"effective_success"`
-	ActualSuccess    float64 `json:"actual_success"`
-}
 
 type testCase struct {
 	args           []string
@@ -79,7 +74,7 @@ func TestServiceProfiles(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(tc.sourceName, func(t *testing.T) {
-			routes, err := getRoutes(tc.deployName, tc.namespace, false, []string{})
+			routes, err := getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
@@ -117,7 +112,7 @@ func TestServiceProfiles(t *testing.T) {
 				t.Fatalf("kubectl apply command failed:\n%s", err)
 			}
 
-			routes, err = getRoutes(tc.deployName, tc.namespace, false, []string{})
+			routes, err = getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
 				t.Fatalf("routes command failed: %s\n", err)
 			}
@@ -174,11 +169,11 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s", err)
 			}
 
-			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *rowStat) error {
-				if stat.EffectiveSuccess != stat.ActualSuccess {
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+				if *stat.EffectiveSuccess != *stat.ActualSuccess {
 					return fmt.Errorf(
-						"expected Effective Success to be equal to Actual Success but got: Effective [%.2f] <> Actual [%.2f]",
-						stat.EffectiveSuccess, stat.ActualSuccess)
+						"expected Effective Success to be equal to Actual Success but got: Effective [%f] <> Actual [%f]",
+						*stat.EffectiveSuccess, *stat.ActualSuccess)
 				}
 				return nil
 			})
@@ -208,11 +203,11 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
 			}
 
-			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *rowStat) error {
-				if stat.EffectiveSuccess <= stat.ActualSuccess {
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+				if *stat.EffectiveSuccess <= *stat.ActualSuccess {
 					return fmt.Errorf(
 						"expected Effective Success to be greater than Actual Success but got: Effective [%f] <> Actual [%f]",
-						stat.EffectiveSuccess, stat.ActualSuccess)
+						*stat.EffectiveSuccess, *stat.ActualSuccess)
 				}
 				return nil
 			})
@@ -220,15 +215,15 @@ func TestServiceProfileMetrics(t *testing.T) {
 	}
 }
 
-func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *rowStat) error) {
+func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
 	const routePath = "GET /testpath"
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		routes, err := getRoutes(upstream, namespace, true, []string{"--to", downstream})
+		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
 		}
 
-		var testRoute *rowStat
+		var testRoute *cmd2.JSONRouteStats
 		assertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes, t)
 
 		for _, route := range routes {
@@ -249,7 +244,7 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	}
 }
 
-func assertExpectedRoutes(expected []string, actual []*rowStat, t *testing.T) {
+func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *testing.T) {
 
 	if len(expected) != len(actual) {
 		t.Errorf("mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
@@ -273,15 +268,11 @@ func assertExpectedRoutes(expected []string, actual []*rowStat, t *testing.T) {
 	}
 }
 
-func getRoutes(deployName, namespace string, isWideOutput bool, additionalArgs []string) ([]*rowStat, error) {
+func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
 	cmd := []string{"routes", "--namespace", namespace, deployName}
 
 	if len(additionalArgs) > 0 {
 		cmd = append(cmd, additionalArgs...)
-	}
-
-	if isWideOutput {
-		cmd = append(cmd, "-owide")
 	}
 
 	cmd = append(cmd, "--output", "json")
@@ -289,10 +280,14 @@ func getRoutes(deployName, namespace string, isWideOutput bool, additionalArgs [
 	if err != nil {
 		return nil, err
 	}
-	var list map[string][]*rowStat
+	var list map[string][]*cmd2.JSONRouteStats
 	err = yaml.Unmarshal([]byte(out), &list)
 	if err != nil {
 		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err.Error(), stderr))
 	}
-	return list[deployName], nil
+
+	if deployment, ok := list[deployName]; ok {
+		return deployment, nil
+	}
+	return nil, fmt.Errorf("could not retrieve route info for %s", deployName)
 }

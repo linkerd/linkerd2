@@ -184,4 +184,3 @@ spec:
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure
-
