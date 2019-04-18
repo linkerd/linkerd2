@@ -30,13 +30,6 @@ type testCase struct {
 	spName         string
 }
 
-type routeStatAssertion struct {
-	upstream   string
-	downstream string
-	namespace  string
-	assertFunc func(stat *rowStat) error
-}
-
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	os.Exit(m.Run())
@@ -162,12 +155,6 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed\n%s", out)
 			}
 
-			assertion := &routeStatAssertion{
-				upstream:   testUpstreamDeploy,
-				downstream: testDownstreamDeploy,
-				namespace:  testNamespace,
-			}
-
 			cmd := []string{
 				"profile",
 				"--namespace",
@@ -187,7 +174,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s", err)
 			}
 
-			assertRouteStat(assertion, t, func(stat *rowStat) error {
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *rowStat) error {
 				if stat.EffectiveSuccess != stat.ActualSuccess {
 					return fmt.Errorf(
 						"expected Effective Success to be equal to Actual Success but got: Effective [%.2f] <> Actual [%.2f]",
@@ -221,7 +208,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
 			}
 
-			assertRouteStat(assertion, t, func(stat *rowStat) error {
+			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *rowStat) error {
 				if stat.EffectiveSuccess <= stat.ActualSuccess {
 					return fmt.Errorf(
 						"expected Effective Success to be greater than Actual Success but got: Effective [%f] <> Actual [%f]",
@@ -233,10 +220,10 @@ func TestServiceProfileMetrics(t *testing.T) {
 	}
 }
 
-func assertRouteStat(assertion *routeStatAssertion, t *testing.T, assertFn func(stat *rowStat) error) {
+func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *rowStat) error) {
 	const routePath = "GET /testpath"
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		routes, err := getRoutes(assertion.upstream, assertion.namespace, true, []string{"--to", assertion.downstream})
+		routes, err := getRoutes(upstream, namespace, true, []string{"--to", downstream})
 		if err != nil {
 			return fmt.Errorf("routes command failed: %s", err)
 		}
