@@ -41,6 +41,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
+		injectProxy:         true,
 		configs:             tc.testInjectConfig,
 		overrideAnnotations: map[string]string{},
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
@@ -228,7 +229,10 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	transformer := &resourceTransformerInject{configs: testConfig}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testConfig,
+	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
@@ -286,7 +290,10 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testInstallConfig(),
+	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
@@ -304,7 +311,10 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testInstallConfig(),
+	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}

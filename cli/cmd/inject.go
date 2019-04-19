@@ -31,6 +31,7 @@ const (
 )
 
 type resourceTransformerInject struct {
+	injectProxy           bool
 	configs               *cfg.All
 	overrideAnnotations   map[string]string
 	proxyOutboundCapacity map[string]uint
@@ -43,7 +44,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
-	var enableDebugSidecar bool
+	var advancedOption, enableDebugSidecar bool
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -82,6 +83,7 @@ sub-folders, or coming from stdin.`,
 			options.overrideConfigs(configs, overrideAnnotations)
 
 			transformer := &resourceTransformerInject{
+				injectProxy:         advancedOption,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
@@ -93,6 +95,10 @@ sub-folders, or coming from stdin.`,
 	}
 
 	flags := options.flagSet(pflag.ExitOnError)
+	flags.BoolVar(
+		&advancedOption, "advanced", advancedOption,
+		"Add the proxy container in the ouput (as opposed to just adding the annotations for the auto-injector to do it) (default false)",
+	)
 	flags.BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
@@ -137,14 +143,18 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
-	conf.AppendPodAnnotations(map[string]string{
-		k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
-	})
+	if rt.injectProxy {
+		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
+	} else {
+		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
+		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+	}
+
 	if len(rt.overrideAnnotations) > 0 {
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	p, err := conf.GetPatch(bytes)
+	p, err := conf.GetPatch(bytes, rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
