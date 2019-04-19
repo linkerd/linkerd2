@@ -972,7 +972,7 @@ func checkUnschedulablePods(pods []corev1.Pod) error {
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("%s\n", strings.Join(errors, "\n    "))
+		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
 	}
 
 	return nil
@@ -989,7 +989,7 @@ func checkControlPlaneReplicaSets(rst []v1beta1.ReplicaSet) error {
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("%s\n", strings.Join(errors, "\n   "))
+		return fmt.Errorf("%s", strings.Join(errors, "\n   "))
 	}
 
 	return nil
