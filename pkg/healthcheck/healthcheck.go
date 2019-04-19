@@ -354,7 +354,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "correct pod security policies",
+					description: "control plane components ready",
 					hintAnchor:  "l5d-existence-psp",
 					fatal:       true,
 					check: func(ctx context.Context) error {
@@ -962,35 +962,34 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 }
 
 func checkUnschedulablePods(pods []corev1.Pod) error {
-	var podName []string
+	var errors []string
 	for _, pod := range pods {
 		for _, condition := range pod.Status.Conditions {
 			if condition.Reason == corev1.PodReasonUnschedulable {
-				podName = append(podName, pod.Name)
+				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
 			}
 		}
 	}
 
-	if len(podName) != 0 {
-		pods := strings.Join(podName, ",")
-		return fmt.Errorf("Unable to schedule pods: %s", pods)
+	if len(errors) > 0 {
+		return fmt.Errorf("%s\n", strings.Join(errors, "\n    "))
 	}
 
 	return nil
 }
 
 func checkControlPlaneReplicaSets(rst []v1beta1.ReplicaSet) error {
-	var errors string
+	var errors []string
 	for _, rs := range rst {
 		for _, r := range rs.Status.Conditions {
 			if r.Type == v1beta1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
-				errors += fmt.Sprintf("%s: %s, %s\n", rs.Name, r.Reason, r.Message)
+				errors = append(errors, fmt.Sprintf("%s: %s", r.Reason, r.Message))
 			}
 		}
 	}
 
-	if errors != "" {
-		return fmt.Errorf("errors in creating control plane replicas %s ", errors)
+	if len(errors) > 0 {
+		return fmt.Errorf("%s\n", strings.Join(errors, "\n   "))
 	}
 
 	return nil
