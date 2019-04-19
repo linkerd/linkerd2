@@ -898,7 +898,7 @@ func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.F
 			if f.Changed {
 				switch f.Name {
 				// TODO: remove "proxy-auto-inject" when it becomes default
-				case "linkerd-namespace", "proxy-auto-inject":
+				case "proxy-auto-inject":
 				default:
 					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
 				}
