@@ -231,13 +231,13 @@ control-plane.`,
   linkerd install config -l linkerdtest | kubectl apply -f -
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !options.ignoreCluster {
-				exitIfClusterExists()
-			}
-
 			stage, err := validateArgs(args, flags, installOnlyFlags)
 			if err != nil {
 				return err
+			}
+
+			if !options.ignoreCluster && stage != configStage {
+				exitIfClusterExists()
 			}
 
 			values, configs, err := options.validateAndBuild(stage, flags)
