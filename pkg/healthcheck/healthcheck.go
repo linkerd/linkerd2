@@ -199,6 +199,10 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 // category. This method is attached to the HealthChecker struct because the
 // checkers directly reference other members of the struct, such as kubeAPI,
 // controlPlanePods, etc.
+//
+// Ordering is important because checks rely on specific `HealthChecker` members
+// getting populated by earlier checks, such as kubeAPI, controlPlanePods, etc.
+//
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
 // https://linkerd.io/checks/#
@@ -386,11 +390,6 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
-						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
-						if err != nil {
-							return err
-						}
 						return checkControllerRunning(hc.controlPlanePods)
 					},
 				},
