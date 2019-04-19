@@ -11,6 +11,7 @@ spec:
   template:
     metadata:
       annotations:
+        config.linkerd.io/disable-identity: "true"
         config.linkerd.io/init-image: init-image
         config.linkerd.io/proxy-image: proxy-image
         config.linkerd.io/proxy-version: proxy-version

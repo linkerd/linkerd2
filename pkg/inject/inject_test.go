@@ -15,6 +15,7 @@ import (
 )
 
 type expectedProxyConfigs struct {
+	identityContext            *config.IdentityContext
 	image                      string
 	imagePullPolicy            corev1.PullPolicy
 	proxyVersion               string
@@ -77,6 +78,7 @@ func TestConfigAccessors(t *testing.T) {
 	globalConfig := &config.Global{
 		LinkerdNamespace: "linkerd",
 		Version:          controlPlaneVersion,
+		IdentityContext:  &config.IdentityContext{},
 	}
 
 	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
@@ -91,6 +93,7 @@ func TestConfigAccessors(t *testing.T) {
 				Template: corev1.PodTemplateSpec{
 					metav1.ObjectMeta{
 						Annotations: map[string]string{
+							k8s.ProxyDisableIdentityAnnotation:        "true",
 							k8s.ProxyImageAnnotation:                  "gcr.io/linkerd-io/proxy",
 							k8s.ProxyImagePullPolicyAnnotation:        "Always",
 							k8s.ProxyInitImageAnnotation:              "gcr.io/linkerd-io/proxy-init",
@@ -178,6 +181,7 @@ func TestConfigAccessors(t *testing.T) {
 				},
 			},
 			expected: expectedProxyConfigs{
+				identityContext: &config.IdentityContext{},
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("IfNotPresent"),
 				proxyVersion:    proxyVersion,
@@ -249,6 +253,13 @@ func TestConfigAccessors(t *testing.T) {
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}
+
+			t.Run("identityContext", func(t *testing.T) {
+				expected := testCase.expected.identityContext
+				if actual := resourceConfig.identityContext(); !reflect.DeepEqual(expected, actual) {
+					t.Errorf("Expected: %+v Actual: %+v", expected, actual)
+				}
+			})
 
 			t.Run("proxyImage", func(t *testing.T) {
 				expected := testCase.expected.image

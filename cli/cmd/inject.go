@@ -30,11 +30,6 @@ const (
 	udpDesc            = "pod specs do not include UDP ports"
 )
 
-type injectOptions struct {
-	disableIdentity bool
-	*proxyConfigOptions
-}
-
 type resourceTransformerInject struct {
 	configs               *config.All
 	overrideAnnotations   map[string]string
@@ -45,15 +40,8 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 	return transformInput(inputs, errWriter, outWriter, transformer)
 }
 
-func newInjectOptions() *injectOptions {
-	return &injectOptions{
-		// No proxy config overrides.
-		proxyConfigOptions: &proxyConfigOptions{},
-	}
-}
-
 func newCmdInject() *cobra.Command {
-	options := newInjectOptions()
+	options := &proxyConfigOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -102,7 +90,7 @@ sub-folders, or coming from stdin.`,
 		},
 	}
 
-	flags := options.proxyConfigOptions.flagSet(pflag.ExitOnError)
+	flags := options.flagSet(pflag.ExitOnError)
 	flags.BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
@@ -283,7 +271,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault() (*config.All, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
@@ -299,9 +287,6 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 		return nil, err
 	}
 
-	if options.disableIdentity {
-		config.Global.IdentityContext = nil
-	}
 	return config, nil
 }
 
@@ -370,6 +355,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *config.All, override
 	if options.proxyLogLevel != "" {
 		configs.Proxy.LogLevel = &config.LogLevel{Level: options.proxyLogLevel}
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
+	}
+
+	if options.disableIdentity {
+		configs.Global.IdentityContext = nil
+		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = "true"
 	}
 
 	// keep track of this option because its true/false value results in different
