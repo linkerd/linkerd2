@@ -169,7 +169,7 @@ data:
 
 func TestFetchConfigs(t *testing.T) {
 	options := testInstallOptions()
-	_, exp, err := options.validateAndBuild([]string{}, nil)
+	_, exp, err := options.validateAndBuild("", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}

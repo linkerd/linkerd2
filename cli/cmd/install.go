@@ -207,6 +207,7 @@ func newCmdInstall() *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
+	installOnlyFlags := options.installOnlyFlagSet()
 
 	cmd := &cobra.Command{
 		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
@@ -234,7 +235,12 @@ control-plane.`,
 				exitIfClusterExists()
 			}
 
-			values, configs, err := options.validateAndBuild(args, flags)
+			stage, err := validateArgs(args, flags, installOnlyFlags)
+			if err != nil {
+				return err
+			}
+
+			values, configs, err := options.validateAndBuild(stage, flags)
 			if err != nil {
 				return err
 			}
@@ -246,39 +252,12 @@ control-plane.`,
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	// Some flags are not available during upgrade, etc.
-	cmd.PersistentFlags().AddFlagSet(options.installOnlyFlagSet())
+	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
 
 	return cmd
 }
 
-func (options *installOptions) validateAndBuild(args []string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
-	if len(args) > 1 {
-		return nil, nil, fmt.Errorf("only zero or one argument permitted, received: %s", args)
-	}
-	stage := ""
-	if len(args) == 1 {
-		// this is guaranteed to be a valid stage via `cobra.OnlyValidArgs`
-		stage = args[0]
-	}
-
-	// only a few flags are available for config stage
-	if stage == configStage && flags != nil {
-		var err error
-		flags.VisitAll(func(f *pflag.Flag) {
-			if f.Changed {
-				switch f.Name {
-				// TODO: remove "proxy-auto-inject" when it becomes default
-				case "linkerd-namespace", "proxy-auto-inject":
-				default:
-					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
-				}
-			}
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
+func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -897,4 +876,38 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}
+}
+
+func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.FlagSet) (string, error) {
+	if len(args) > 1 {
+		return "", fmt.Errorf("only zero or one argument permitted, received: %s", args)
+	} else if len(args) == 0 {
+		return "", nil
+	}
+
+	stage := args[0]
+
+	// only a few flags are available for config stage
+	if stage == configStage {
+		combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
+		combinedFlags.AddFlagSet(flags)
+		combinedFlags.AddFlagSet(installOnlyFlags)
+
+		var err error
+		combinedFlags.VisitAll(func(f *pflag.Flag) {
+			if f.Changed {
+				switch f.Name {
+				// TODO: remove "proxy-auto-inject" when it becomes default
+				case "linkerd-namespace", "proxy-auto-inject":
+				default:
+					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
+				}
+			}
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return stage, nil
 }
