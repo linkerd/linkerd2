@@ -35,6 +35,7 @@ type expectedProxyConfigs struct {
 	destinationProfileSuffixes string
 	initImage                  string
 	initImagePullPolicy        corev1.PullPolicy
+	initVersion                string
 	initArgs                   []string
 	inboundSkipPorts           string
 	outboundSkipPorts          string
@@ -45,6 +46,12 @@ func TestConfigAccessors(t *testing.T) {
 	// all the proxy config accessors. The first test suite ensures that the
 	// accessors picks up the pod-level config annotations. The second test suite
 	// ensures that the defaults in the config map is used.
+
+	var (
+		controlPlaneVersion  = "control-plane-version"
+		proxyVersion         = "proxy-version"
+		proxyVersionOverride = "proxy-version-override"
+	)
 
 	proxyConfig := &config.Proxy{
 		ProxyImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
@@ -64,12 +71,12 @@ func TestConfigAccessors(t *testing.T) {
 		ProxyUid:                8888,
 		LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
 		DisableExternalProfiles: false,
-		ProxyVersion:            "proxy-version",
+		ProxyVersion:            proxyVersion,
 	}
 
 	globalConfig := &config.Global{
 		LinkerdNamespace: "linkerd",
-		Version:          "default",
+		Version:          controlPlaneVersion,
 	}
 
 	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
@@ -100,7 +107,7 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyUIDAnnotation:                    "8500",
 							k8s.ProxyLogLevelAnnotation:               "debug,linkerd2_proxy=debug",
 							k8s.ProxyEnableExternalProfilesAnnotation: "false",
-							k8s.ProxyVersionOverrideAnnotation:        "override"},
+							k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride},
 					},
 					corev1.PodSpec{},
 				},
@@ -108,7 +115,7 @@ func TestConfigAccessors(t *testing.T) {
 			expected: expectedProxyConfigs{
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("Always"),
-				proxyVersion:    "override",
+				proxyVersion:    proxyVersionOverride,
 				controlPort:     int32(4000),
 				inboundPort:     int32(5000),
 				adminPort:       int32(5001),
@@ -151,6 +158,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: "svc.cluster.local.",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("Always"),
+				initVersion:                controlPlaneVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "5000",
 					"--outgoing-proxy-port", "5002",
@@ -172,7 +180,7 @@ func TestConfigAccessors(t *testing.T) {
 			expected: expectedProxyConfigs{
 				image:           "gcr.io/linkerd-io/proxy",
 				imagePullPolicy: corev1.PullPolicy("IfNotPresent"),
-				proxyVersion:    "proxy-version",
+				proxyVersion:    proxyVersion,
 				controlPort:     int32(9000),
 				inboundPort:     int32(6000),
 				adminPort:       int32(6001),
@@ -215,6 +223,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: ".",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("IfNotPresent"),
+				initVersion:                controlPlaneVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "6000",
 					"--outgoing-proxy-port", "6002",
@@ -258,6 +267,13 @@ func TestConfigAccessors(t *testing.T) {
 			t.Run("proxyVersion", func(t *testing.T) {
 				expected := testCase.expected.proxyVersion
 				if actual := resourceConfig.proxyVersion(); expected != actual {
+					t.Errorf("Expected: %v Actual: %v", expected, actual)
+				}
+			})
+
+			t.Run("proxyInitVersion", func(t *testing.T) {
+				expected := testCase.expected.initVersion
+				if actual := resourceConfig.proxyInitVersion(); expected != actual {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
 				}
 			})
