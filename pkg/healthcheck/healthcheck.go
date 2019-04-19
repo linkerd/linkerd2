@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
@@ -350,6 +351,33 @@ func (hc *HealthChecker) allCategories() []category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description: "control plane components ready",
+					hintAnchor:  "l5d-existence-psp",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						var err error
+						var controlPlaneReplicaSet []v1beta1.ReplicaSet
+						controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSets(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkControlPlaneReplicaSets(controlPlaneReplicaSet)
+					},
+				},
+				{
+					description: "no unschedulable pods",
+					hintAnchor:  "l5d-existence-unschedulable-pods",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						var err error
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkUnschedulablePods(hc.controlPlanePods)
 					},
 				},
 				{
@@ -925,6 +953,40 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 
 	if errMsg != "" {
 		return fmt.Errorf(errMsg)
+	}
+
+	return nil
+}
+
+func checkUnschedulablePods(pods []corev1.Pod) error {
+	var errors []string
+	for _, pod := range pods {
+		for _, condition := range pod.Status.Conditions {
+			if condition.Reason == corev1.PodReasonUnschedulable {
+				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
+	}
+
+	return nil
+}
+
+func checkControlPlaneReplicaSets(rst []v1beta1.ReplicaSet) error {
+	var errors []string
+	for _, rs := range rst {
+		for _, r := range rs.Status.Conditions {
+			if r.Type == v1beta1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
+				errors = append(errors, fmt.Sprintf("%s: %s", r.Reason, r.Message))
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "\n   "))
 	}
 
 	return nil
