@@ -110,7 +110,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: identity
@@ -174,7 +174,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -208,7 +208,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -330,7 +330,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: controller
@@ -449,7 +449,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -483,7 +483,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -661,7 +661,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: web
@@ -725,7 +725,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -759,7 +759,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -939,7 +939,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: prometheus
@@ -1008,7 +1008,7 @@ spec:
           value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1042,7 +1042,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1170,7 +1170,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: grafana
@@ -1232,7 +1232,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1266,7 +1266,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1362,7 +1362,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: proxy-injector
@@ -1423,7 +1423,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1457,7 +1457,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1575,7 +1575,7 @@ spec:
         CreatedByAnnotation: CliVersion
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: disabled
-        linkerd.io/proxy-version: dev-undefined
+        linkerd.io/proxy-version: install-proxy-version
       creationTimestamp: null
       labels:
         ControllerComponentLabel: sp-validator
@@ -1633,7 +1633,7 @@ spec:
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
-        image: gcr.io/linkerd-io/proxy:dev-undefined
+        image: gcr.io/linkerd-io/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1667,7 +1667,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}

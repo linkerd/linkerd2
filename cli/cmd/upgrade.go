@@ -141,6 +141,9 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 	if options.proxyAutoInject {
 		configs.GetGlobal().AutoInjectContext = &pb.AutoInjectContext{}
 	}
+	if options.controlPlaneVersion != "" {
+		configs.GetGlobal().Version = options.controlPlaneVersion
+	}
 	configs.GetInstall().Flags = options.recordedFlags
 
 	var identity *installIdentityValues

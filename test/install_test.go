@@ -117,7 +117,7 @@ func TestInstallOrUpgrade(t *testing.T) {
 		args = []string{
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
-			"--linkerd-version", TestHelper.GetVersion(),
+			"--proxy-version", TestHelper.GetVersion(),
 		}
 	)
 

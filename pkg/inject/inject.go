@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -605,7 +606,7 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 	if len(conf.pod.meta.Annotations) == 0 {
 		patch.addPodAnnotationsRoot()
 	}
-	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetGlobal().GetVersion())
+	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetProxy().GetProxyVersion())
 
 	if conf.configs.GetGlobal().GetIdentityContext() != nil {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
@@ -640,7 +641,7 @@ func (conf *ResourceConfig) taggedProxyImage() string {
 }
 
 func (conf *ResourceConfig) taggedProxyInitImage() string {
-	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.proxyVersion())
+	return fmt.Sprintf("%s:%s", conf.proxyInitImage(), conf.proxyInitVersion())
 }
 
 func (conf *ResourceConfig) proxyImage() string {
@@ -661,7 +662,14 @@ func (conf *ResourceConfig) proxyVersion() string {
 	if override := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetGlobal().GetVersion()
+	return conf.configs.GetProxy().GetProxyVersion()
+}
+
+func (conf *ResourceConfig) proxyInitVersion() string {
+	if version := conf.configs.GetGlobal().GetVersion(); version != "" {
+		return version
+	}
+	return version.Version
 }
 
 func (conf *ResourceConfig) proxyControlPort() int32 {
