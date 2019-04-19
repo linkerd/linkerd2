@@ -142,7 +142,7 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 		configs.GetGlobal().AutoInjectContext = &pb.AutoInjectContext{}
 	}
 	if options.controlPlaneVersion != "" {
-		configs.Global.Version = options.controlPlaneVersion
+		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
 	configs.GetInstall().Flags = options.recordedFlags
 
