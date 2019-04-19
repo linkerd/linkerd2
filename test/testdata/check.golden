@@ -11,6 +11,8 @@ kubernetes-version
 linkerd-existence
 -----------------
 √ control plane namespace exists
+√ control plane components ready
+√ no unschedulable pods
 √ controller pod is running
 √ can initialize the client
 √ can query the control plane API
