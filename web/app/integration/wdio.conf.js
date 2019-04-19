@@ -4,21 +4,29 @@ exports.config = {
   services: ['chromedriver'],
   runner: 'local',
   specs: [
-      './integration/specs/*.js'
+      './integration/specs/**/*.js'
   ],
+    suites: {
+    sidebar: [
+        './integration/specs/sidebar/*.js'
+    ],
+    daemonset: [
+        './integration/specs/daemonset/*.js'
+    ]
+},
   exclude: [
       // 'path/to/excluded/files'
   ],
   maxInstances: 10,
-  capabilities: [{browserName: 'chrome', platform: 'OS X 10.13', version: '69.0'}],
+  capabilities: [{browserName: 'chrome'}],
   bail: 0,
   baseUrl: 'http://localhost',
-  waitforTimeout: 10000,
-  connectionRetryTimeout: 90000,
+  waitforTimeout: 1000000,
+  connectionRetryTimeout: 90000000,
   connectionRetryCount: 3,
   framework: 'mocha',
   mochaOpts: {
       ui: 'bdd',
-      timeout: 60000
+      timeout: 6000000
   }
 }

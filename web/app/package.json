@@ -6,6 +6,7 @@
   "dependencies": {
     "@material-ui/core": "3.6.1",
     "@material-ui/icons": "3.0.1",
+    "@wdio/sauce-service": "^5.7.15",
     "classnames": "2.2.6",
     "d3-drag": "^1.2.3",
     "d3-force": "^2.0.0",
