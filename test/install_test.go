@@ -405,11 +405,16 @@ func TestLogs(t *testing.T) {
 				}
 
 				for _, line := range outputLines {
-					if errRegex.MatchString(line) && !knownErrorsRegex.MatchString(line) {
-						if proxy {
-							t.Skipf("Found proxy error in %s log: %s", name, line)
+					if errRegex.MatchString(line) {
+						if knownErrorsRegex.MatchString(line) {
+							// report all known logging errors in the output
+							t.Skipf("Found known error in %s log: %s", name, line)
 						} else {
-							t.Errorf("Found controller error in %s log: %s", name, line)
+							if proxy {
+								t.Skipf("Found unexpected proxy error in %s log: %s", name, line)
+							} else {
+								t.Errorf("Found unexpected controller error in %s log: %s", name, line)
+							}
 						}
 					}
 				}
