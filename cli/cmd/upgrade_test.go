@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	upgradeProxyVersion        = "TEST-VERSION"
-	upgradeControlPlaneVersion = "dev-undefined"
+	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
+	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 )
 
 func testUpgradeOptions() *upgradeOptions {

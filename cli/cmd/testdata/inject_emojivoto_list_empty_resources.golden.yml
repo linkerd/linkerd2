@@ -17,7 +17,7 @@ items:
         annotations:
           linkerd.io/created-by: linkerd/cli dev-undefined
           linkerd.io/identity-mode: default
-          linkerd.io/proxy-version: testinjectversion
+          linkerd.io/proxy-version: test-inject-proxy-version
         creationTimestamp: null
         labels:
           app: web-svc
@@ -97,7 +97,7 @@ items:
             value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
           - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
             value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-          image: gcr.io/linkerd-io/proxy:testinjectversion
+          image: gcr.io/linkerd-io/proxy:test-inject-proxy-version
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
@@ -132,7 +132,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:dev-undefined
+          image: gcr.io/linkerd-io/proxy-init:test-inject-control-plane-version
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources: {}
@@ -166,7 +166,7 @@ items:
         annotations:
           linkerd.io/created-by: linkerd/cli dev-undefined
           linkerd.io/identity-mode: default
-          linkerd.io/proxy-version: testinjectversion
+          linkerd.io/proxy-version: test-inject-proxy-version
         creationTimestamp: null
         labels:
           app: emoji-svc
@@ -241,7 +241,7 @@ items:
             value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
           - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
             value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-          image: gcr.io/linkerd-io/proxy:testinjectversion
+          image: gcr.io/linkerd-io/proxy:test-inject-proxy-version
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
@@ -276,7 +276,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:dev-undefined
+          image: gcr.io/linkerd-io/proxy-init:test-inject-control-plane-version
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources: {}

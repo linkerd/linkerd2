@@ -112,6 +112,8 @@ func TestRender(t *testing.T) {
 func testInstallOptions() *installOptions {
 	o := newInstallOptionsWithDefaults()
 	o.ignoreCluster = true
+	o.proxyVersion = "install-proxy-version"
+	o.controlPlaneVersion = "install-control-plane-version"
 	o.generateUUID = func() string {
 		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	}

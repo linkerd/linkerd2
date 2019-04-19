@@ -63,7 +63,8 @@ func testInstallConfig() *pb.All {
 
 func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
-	defaultConfig.Proxy.ProxyVersion = "testinjectversion"
+	defaultConfig.Global.Version = "test-inject-control-plane-version"
+	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
 
 	overrideConfig := testInstallConfig()
 	overrideConfig.Proxy.ProxyVersion = "override"

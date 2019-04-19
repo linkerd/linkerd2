@@ -146,7 +146,7 @@ spec:
         - 7777,8888,4190,9998
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}

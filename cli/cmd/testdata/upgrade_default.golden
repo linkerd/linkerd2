@@ -15,9 +15,9 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"dev-undefined","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"TEST-VERSION"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION"}
   install: |
     {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[]}
 ---
@@ -103,7 +103,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: identity
@@ -114,7 +114,7 @@ spec:
       - args:
         - identity
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -198,7 +198,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -235,7 +235,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -355,7 +355,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
@@ -368,7 +368,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -398,7 +398,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -426,7 +426,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -505,7 +505,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -542,7 +542,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -718,7 +718,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
@@ -731,7 +731,7 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/web:dev-undefined
+        image: gcr.io/linkerd-io/web:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -813,7 +813,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -850,7 +850,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -940,7 +940,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
@@ -1040,7 +1040,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1077,7 +1077,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1235,7 +1235,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana
@@ -1246,7 +1246,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:dev-undefined
+        image: gcr.io/linkerd-io/grafana:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1328,7 +1328,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1365,7 +1365,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
@@ -1527,7 +1527,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: TEST-VERSION
+        linkerd.io/proxy-version: UPGRADE-PROXY-VERSION
       creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: sp-validator
@@ -1539,7 +1539,7 @@ spec:
         - sp-validator
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:dev-undefined
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1616,7 +1616,7 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:TEST-VERSION
+        image: gcr.io/linkerd-io/proxy:UPGRADE-PROXY-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1653,7 +1653,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:dev-undefined
+        image: gcr.io/linkerd-io/proxy-init:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources: {}
