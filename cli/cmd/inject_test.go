@@ -20,6 +20,7 @@ type testCase struct {
 	inputFileName          string
 	goldenFileName         string
 	reportFileName         string
+	injectProxy            bool
 	testInjectConfig       *config.All
 	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
@@ -43,7 +44,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
-		injectProxy:         true,
+		injectProxy:         tc.injectProxy,
 		configs:             tc.testInjectConfig,
 		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
@@ -92,12 +93,24 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_overridden_noinject.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.ProxyAdminPortAnnotation: "1234",
+			},
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
@@ -107,96 +120,112 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
 			goldenFileName:   "inject_emojivoto_statefulset.golden.yml",
 			reportFileName:   "inject_emojivoto_statefulset.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
 			goldenFileName:   "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:   "inject_emojivoto_pod_with_requests.report",
+			injectProxy:      true,
 			testInjectConfig: proxyResourceConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_udp.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_udp.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_istio.input.yml",
 			goldenFileName:   "inject_emojivoto_istio.input.yml",
 			reportFileName:   "inject_emojivoto_istio.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
 			goldenFileName:   "inject_contour.input.yml",
 			reportFileName:   "inject_contour.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_no_init_container.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: noInitContainerConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: overrideConfig,
 		},
 		{
