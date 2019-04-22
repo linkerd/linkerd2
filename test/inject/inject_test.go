@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 
 func TestInject(t *testing.T) {
 	cmd := []string{"inject",
+		"--advanced",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
 		"--ignore-cluster",
@@ -51,6 +52,7 @@ func TestInject(t *testing.T) {
 func TestInjectParams(t *testing.T) {
 	// TODO: test config.linkerd.io/proxy-version
 	cmd := []string{"inject",
+		"--advanced",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
 		"--ignore-cluster",
