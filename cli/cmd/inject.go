@@ -43,6 +43,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
+	var enableDebugSidecar bool
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -60,7 +61,6 @@ sub-folders, or coming from stdin.`,
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) < 1 {
 				return fmt.Errorf("please specify a kubernetes resource file")
 			}
@@ -84,7 +84,7 @@ sub-folders, or coming from stdin.`,
 			transformer := &resourceTransformerInject{
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
-				enableDebugSidecar:  options.enableDebugSidecar,
+				enableDebugSidecar:  enableDebugSidecar,
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -102,7 +102,7 @@ sub-folders, or coming from stdin.`,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
 	)
 
-	flags.BoolVar(&options.enableDebugSidecar, "enable-debug-sidecar", options.enableDebugSidecar,
+	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
 		"Inject a debug sidecar for data plane debugging")
 	cmd.PersistentFlags().AddFlagSet(flags)
 
