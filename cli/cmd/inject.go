@@ -296,9 +296,6 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 		return nil, err
 	}
 
-	if options.enableDebugSidecar {
-		config.Proxy.EnableDebugSidecar = options.enableDebugSidecar
-	}
 	return config, nil
 }
 
