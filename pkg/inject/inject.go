@@ -143,7 +143,7 @@ func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
 	conf.debugSidecar = &v1.Container{
 		Name:                     k8s.DebugSidecarName,
 		ImagePullPolicy:          conf.proxyImagePullPolicy(),
-		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.proxyVersion()),
+		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
 	return conf
@@ -409,6 +409,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
+	if conf.debugSidecar != nil {
+		patch.addContainer(conf.debugSidecar)
+	}
+
 	proxyUID := conf.proxyUID()
 	sidecar := v1.Container{
 		Name:                     k8s.ProxyContainerName,
@@ -477,9 +481,6 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		LivenessProbe:  conf.proxyLivenessProbe(),
 	}
 
-	if conf.debugSidecar != nil {
-		patch.addContainer(conf.debugSidecar)
-	}
 	// Special case if the caller specifies that
 	// LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY be set on the pod.
 	// We key off of any container image in the pod. Ideally we would instead key
