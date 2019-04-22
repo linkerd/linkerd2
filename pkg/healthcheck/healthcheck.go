@@ -273,7 +273,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
+						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -354,7 +354,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
+						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -527,7 +527,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
+						return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -733,7 +733,9 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, shouldExist bool) error {
+// CheckNamespace checks whether the given namespace exists, and returns an
+// error if it does not match `shouldExist`.
+func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(ctx, hc.httpClient, namespace)
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -235,9 +237,16 @@ control-plane.`,
 			if err != nil {
 				return err
 			}
-
-			if !options.ignoreCluster && stage != configStage {
-				exitIfClusterExists()
+			if !options.ignoreCluster {
+				// TODO: consider cobra.SilenceUsage, so we can return errors from
+				// `RunE`, rather than calling `os.Exit(1)`
+				switch stage {
+				case "":
+					exitIfClusterExists()
+				case controlPlaneStage:
+					exitIfNamespaceDoesNotExist()
+					exitIfClusterExists()
+				}
 			}
 
 			values, configs, err := options.validateAndBuild(stage, flags)
@@ -733,6 +742,31 @@ func exitIfClusterExists() {
 
 	fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
 	os.Exit(1)
+}
+
+// exitIfNamespaceDoesNotExist checks the kubernetes API to determine if the
+// control-plane namespace exists, and returns an error if it does not.
+//
+// This is useful when running `linkerd install control-plane`, where the
+// namespace must exist, but `linkerd-config` should not.
+func exitIfNamespaceDoesNotExist() {
+	hc := newHealthChecker(
+		[]healthcheck.CategoryID{healthcheck.KubernetesAPIChecks},
+		time.Time{},
+	)
+
+	success := hc.RunChecks(exitOnError)
+	if !success {
+		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --ignore-cluster flag.")
+		os.Exit(1)
+	}
+
+	err := hc.CheckNamespace(context.Background(), controlPlaneNamespace, true)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to find the Linkerd control-plane namespace. If this expected, use the --ignore-cluster flag.")
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
 }
 
 func (idopts *installIdentityOptions) validate() error {
