@@ -378,6 +378,25 @@ message StatTable {
   }
 }
 
+message EdgesResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    repeated Edge edges = 1;
+  }
+}
+
+message Edge {
+  Resource src = 1;
+  Resource dst = 2;
+  string client_id = 3;
+  string server_id = 4;
+  string msg = 5;
+}
+
 message TopRoutesRequest {
   ResourceSelection selector = 1;
   string time_window = 2;
@@ -414,6 +433,8 @@ message RouteTable {
 
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
+
+  rpc Edges(StatSummaryRequest) returns (EdgesResponse) {}
 
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 
