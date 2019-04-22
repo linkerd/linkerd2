@@ -127,7 +127,6 @@ data:
 	}
 
 	options := testUpgradeOptions()
-	options.proxyAutoInject = true
 	flags := options.recordableFlagSet()
 
 	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
@@ -151,9 +150,6 @@ data:
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not generated")
 	}
-	if configs.GetGlobal().GetAutoInjectContext() == nil {
-		t.Errorf("autoinject config not generated")
-	}
 
 	global := pb.Global{}
 	if err := json.Unmarshal([]byte(values.Configs.Global), &global); err != nil {
@@ -161,9 +157,6 @@ data:
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not serialized")
-	}
-	if configs.GetGlobal().GetAutoInjectContext() == nil {
-		t.Errorf("autoinject config not serialized")
 	}
 }
 

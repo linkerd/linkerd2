@@ -45,7 +45,6 @@ func TestRender(t *testing.T) {
 		ControllerComponentLabel: "ControllerComponentLabel",
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyContainerName:       "ProxyContainerName",
-		ProxyAutoInjectEnabled:   true,
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 		ProxyInjectDisabled:      "ProxyInjectDisabled",
 		ControllerUID:            2103,
@@ -89,8 +88,7 @@ func TestRender(t *testing.T) {
 		{Name: "proxy-auto-inject", Value: "true"},
 	}
 	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
-	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild("", nil)
+	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild(nil)
 
 	testCases := []struct {
 		values         *installValues

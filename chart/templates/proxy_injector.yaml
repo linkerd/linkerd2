@@ -1,5 +1,4 @@
 {{with .Values -}}
-{{if .ProxyAutoInjectEnabled -}}
 ---
 ###
 ### Proxy Injector
@@ -79,5 +78,4 @@ spec:
     port: 443
     targetPort: proxy-injector
 ---
-{{end -}}
 {{end -}}
