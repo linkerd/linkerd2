@@ -209,14 +209,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 func (conf *ResourceConfig) GetPatch(bytes []byte, injectProxy bool) (*Patch, error) {
 	patch := NewPatch(conf.workload.metaType.Kind)
 	if conf.pod.spec != nil {
-		if len(conf.pod.meta.Annotations) == 0 {
-			patch.addPodAnnotationsRoot()
-		}
+		conf.injectPodAnnotations(patch)
 		if injectProxy {
 			conf.injectObjectMeta(patch)
 			conf.injectPodSpec(patch)
 		}
-		conf.injectPodAnnotations(patch)
 	}
 
 	return patch, nil
@@ -650,6 +647,10 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 }
 
 func (conf *ResourceConfig) injectPodAnnotations(patch *Patch) {
+	if len(conf.pod.meta.Annotations) == 0 {
+		patch.addPodAnnotationsRoot()
+	}
+
 	for _, k := range sortedKeys(conf.pod.annotations) {
 		patch.addPodAnnotation(k, conf.pod.annotations[k])
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type testCase struct {
@@ -20,6 +21,7 @@ type testCase struct {
 	goldenFileName         string
 	reportFileName         string
 	testInjectConfig       *config.All
+	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
 }
 
@@ -43,7 +45,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	transformer := &resourceTransformerInject{
 		injectProxy:         true,
 		configs:             tc.testInjectConfig,
-		overrideAnnotations: map[string]string{},
+		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 	}
 
@@ -91,6 +93,15 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.ProxyAdminPortAnnotation: "1234",
+			},
 		},
 		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
