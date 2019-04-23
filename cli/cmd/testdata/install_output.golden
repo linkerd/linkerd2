@@ -36,6 +36,12 @@ subjects:
   name: linkerd-identity
   namespace: Namespace
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: Namespace
+---
 ###
 ### Controller RBAC
 ###
@@ -68,6 +74,12 @@ roleRef:
   name: linkerd-Namespace-controller
 subjects:
 - kind: ServiceAccount
+  name: linkerd-controller
+  namespace: Namespace
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-controller
   namespace: Namespace
 ---
@@ -180,6 +192,12 @@ spec:
 ### Prometheus RBAC
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: Namespace
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -205,6 +223,12 @@ subjects:
 ###
 ### Proxy Injector RBAC
 ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: Namespace
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -241,6 +265,12 @@ roleRef:
 ###
 ### Service Profile Validator RBAC
 ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: Namespace
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -288,12 +318,6 @@ data:
 ###
 ### Identity Controller Service
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: Namespace
 ---
 kind: Secret
 apiVersion: v1
@@ -469,12 +493,6 @@ status: {}
 ###
 ### Controller
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: Namespace
 ---
 kind: Service
 apiVersion: v1
@@ -873,12 +891,6 @@ status: {}
 ###
 ### Prometheus
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: Namespace
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1360,12 +1372,6 @@ status: {}
 ### Proxy Injector
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-proxy-injector
-  namespace: Namespace
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1524,12 +1530,6 @@ spec:
 ###
 ### Service Profile Validator
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator
-  namespace: Namespace
 ---
 kind: Service
 apiVersion: v1

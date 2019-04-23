@@ -34,4 +34,10 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-controller
   namespace: {{.Namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: {{.Namespace}}
 {{end -}}

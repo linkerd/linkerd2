@@ -4,12 +4,6 @@
 ### Prometheus
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
----
 kind: ConfigMap
 apiVersion: v1
 metadata:

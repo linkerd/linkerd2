@@ -34,6 +34,12 @@ subjects:
   name: linkerd-identity
   namespace: linkerd
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: linkerd
+---
 ###
 ### Controller RBAC
 ###
@@ -66,6 +72,12 @@ roleRef:
   name: linkerd-linkerd-controller
 subjects:
 - kind: ServiceAccount
+  name: linkerd-controller
+  namespace: linkerd
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-controller
   namespace: linkerd
 ---
@@ -178,6 +190,12 @@ spec:
 ### Prometheus RBAC
 ###
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -203,6 +221,12 @@ subjects:
 ###
 ### Service Profile Validator RBAC
 ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: linkerd
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -250,12 +274,6 @@ data:
 ###
 ### Identity Controller Service
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: linkerd
 ---
 kind: Secret
 apiVersion: v1
@@ -472,12 +490,6 @@ status: {}
 ###
 ### Controller
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: linkerd
 ---
 kind: Service
 apiVersion: v1
@@ -964,12 +976,6 @@ status: {}
 ###
 ### Prometheus
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1532,12 +1538,6 @@ status: {}
 ###
 ### Service Profile Validator
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator
-  namespace: linkerd
 ---
 kind: Service
 apiVersion: v1

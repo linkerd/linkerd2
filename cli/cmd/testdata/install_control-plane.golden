@@ -20,12 +20,6 @@ data:
 ### Identity Controller Service
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: linkerd
----
 kind: Secret
 apiVersion: v1
 metadata:
@@ -235,12 +229,6 @@ status: {}
 ###
 ### Controller
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: linkerd
 ---
 kind: Service
 apiVersion: v1
@@ -709,12 +697,6 @@ status: {}
 ###
 ### Prometheus
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1265,12 +1247,6 @@ status: {}
 ###
 ### Service Profile Validator
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator
-  namespace: linkerd
 ---
 kind: Service
 apiVersion: v1

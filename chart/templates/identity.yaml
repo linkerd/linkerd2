@@ -4,12 +4,6 @@
 ###
 ### Identity Controller Service
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: {{.Namespace}}
 {{- if .Identity.Issuer}}
 ---
 kind: Secret
