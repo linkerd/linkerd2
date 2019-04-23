@@ -1,7 +1,8 @@
 package cmd
 
 // TODO: this file should probably move out of `./cli/cmd` into something like
-// `./cli/publicapi` or `./cli/pkg`
+// `./cli/publicapi` or `./cli/pkg`:
+// https://github.com/linkerd/linkerd2/issues/2735
 
 import (
 	"fmt"
