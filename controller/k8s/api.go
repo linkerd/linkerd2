@@ -330,12 +330,24 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 // singular resource type (e.g. deployment, daemonset, job, etc.)
 func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
 	if len(pod.GetOwnerReferences()) != 1 {
+		log.Debugf("unexpected owner reference count (%d): %+v", len(pod.GetOwnerReferences()), pod.GetOwnerReferences())
 		return "pod", pod.Name
 	}
 
 	parent := pod.GetOwnerReferences()[0]
 	if parent.Kind == "ReplicaSet" {
 		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+		if err != nil {
+			log.Errorf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+
+			// try again with a get request
+			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+			if err != nil {
+				log.Errorf("failed to get replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
+			} else {
+				log.Infof("successfully recovered replicaset via k8s get request: %s/%s", pod.Namespace, parent.Name)
+			}
+		}
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
 			return strings.ToLower(parent.Kind), parent.Name
 		}

@@ -14,7 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
+// newAPI constructs a mock controller/k8s.API object for testing
+// enableInformers: forces informer indexing, enabling informer lookups
+// resourceConfigs: resources available via the API, and returned as runtime.Objects
+// extraConfigs:    resources returned as runtime.Objects
+func newAPI(enableInformers bool, resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
 	k8sConfigs := []string{}
 	k8sResults := []runtime.Object{}
 
@@ -34,7 +38,9 @@ func newAPI(resourceConfigs []string, extraConfigs ...string) (*API, []runtime.O
 		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	api.Sync()
+	if enableInformers {
+		api.Sync()
+	}
 
 	return api, k8sResults, nil
 }
@@ -233,7 +239,7 @@ metadata:
 		}
 
 		for _, exp := range expectations {
-			api, k8sResults, err := newAPI(exp.k8sResResults, exp.k8sResMisc...)
+			api, k8sResults, err := newAPI(true, exp.k8sResResults, exp.k8sResMisc...)
 			if err != nil {
 				t.Fatalf("newAPI error: %s", err)
 			}
@@ -295,7 +301,7 @@ status:
 			}
 
 			for _, exp := range expectations {
-				api, k8sResults, err := newAPI(exp.k8sResResults)
+				api, k8sResults, err := newAPI(true, exp.k8sResResults)
 				if err != nil {
 					t.Fatalf("newAPI error: %s", err)
 				}
@@ -352,7 +358,7 @@ status:
 			}
 
 			for _, exp := range expectations {
-				api, _, err := newAPI(exp.k8sResResults)
+				api, _, err := newAPI(true, exp.k8sResResults)
 				if err != nil {
 					t.Fatalf("newAPI error: %s", err)
 				}
@@ -563,7 +569,7 @@ status:
 				t.Fatalf("could not decode yml: %s", err)
 			}
 
-			api, k8sResults, err := newAPI(exp.k8sResResults, exp.k8sResMisc...)
+			api, k8sResults, err := newAPI(true, exp.k8sResResults, exp.k8sResMisc...)
 			if err != nil {
 				t.Fatalf("newAPI error: %s", err)
 			}
@@ -586,7 +592,7 @@ status:
 }
 
 func TestGetOwnerKindAndName(t *testing.T) {
-	for _, tt := range []struct {
+	for i, tt := range []struct {
 		expectedOwnerKind string
 		expectedOwnerName string
 		podConfig         string
@@ -670,20 +676,29 @@ metadata:
   namespace: default`,
 		},
 	} {
-		api, objs, err := newAPI([]string{tt.podConfig}, tt.extraConfigs...)
-		if err != nil {
-			t.Fatalf("newAPI error: %s", err)
-		}
+		tt := tt // pin
+		for _, enableInformers := range []bool{
+			false,
+			true,
+		} {
+			enableInformers := enableInformers // pin
+			t.Run(fmt.Sprintf("%d/enableInformers:%t", i, enableInformers), func(t *testing.T) {
+				api, objs, err := newAPI(enableInformers, []string{tt.podConfig}, tt.extraConfigs...)
+				if err != nil {
+					t.Fatalf("newAPI error: %s", err)
+				}
 
-		pod := objs[0].(*corev1.Pod)
-		ownerKind, ownerName := api.GetOwnerKindAndName(pod)
+				pod := objs[0].(*corev1.Pod)
+				ownerKind, ownerName := api.GetOwnerKindAndName(pod)
 
-		if ownerKind != tt.expectedOwnerKind {
-			t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
-		}
+				if ownerKind != tt.expectedOwnerKind {
+					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
+				}
 
-		if ownerName != tt.expectedOwnerName {
-			t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+				if ownerName != tt.expectedOwnerName {
+					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+				}
+			})
 		}
 	}
 }
@@ -774,7 +789,7 @@ spec:
 			},
 		},
 	} {
-		api, _, err := newAPI(tt.profileConfigs)
+		api, _, err := newAPI(true, tt.profileConfigs)
 		if err != nil {
 			t.Fatalf("newAPI error: %s", err)
 		}
