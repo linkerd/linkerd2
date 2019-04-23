@@ -21,6 +21,8 @@ message Global {
 
   // If present, configures identity.
   IdentityContext identity_context = 4;
+
+  AutoInjectContext auto_inject_context = 6 [deprecated=true];
 }
 
 message Proxy {
@@ -58,6 +60,8 @@ message ResourceRequirements {
   string limit_cpu = 3;
   string limit_memory = 4;
 }
+
+message AutoInjectContext { option deprecated = true; }
 
 message IdentityContext {
   string trust_domain = 1;
