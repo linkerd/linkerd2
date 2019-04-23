@@ -1,7 +1,7 @@
 {{with .Values -}}
 ---
 ###
-### Service Profile Validator Config
+### Service Profile Validator RBAC
 ###
 ---
 kind: ServiceAccount

@@ -1,14 +1,8 @@
 {{with .Values -}}
 ---
 ###
-### Controller Config
+### Controller RBAC
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: {{.Namespace}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -38,6 +32,12 @@ roleRef:
   name: linkerd-{{.Namespace}}-controller
 subjects:
 - kind: ServiceAccount
+  name: linkerd-controller
+  namespace: {{.Namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-controller
   namespace: {{.Namespace}}
 {{end -}}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -34,6 +36,8 @@ import (
 
 type (
 	installValues struct {
+		stage string
+
 		Namespace                string
 		ControllerImage          string
 		WebImage                 string
@@ -109,6 +113,7 @@ type (
 		controllerUID       int64
 		disableH2Upgrade    bool
 		noInitContainer     bool
+		skipChecks          bool
 		identityOptions     *installIdentityOptions
 		*proxyConfigOptions
 
@@ -130,6 +135,9 @@ type (
 )
 
 const (
+	configStage       = "config"
+	controlPlaneStage = "control-plane"
+
 	prometheusImage                   = "prom/prometheus:v2.7.1"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
@@ -137,25 +145,6 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
-
-	nsTemplateName                  = "templates/namespace.yaml"
-	configTemplateName              = "templates/config.yaml"
-	identityConfigTemplateName      = "templates/identity-config.yaml"
-	identityTemplateName            = "templates/identity.yaml"
-	controllerConfigTemplateName    = "templates/controller-config.yaml"
-	controllerTemplateName          = "templates/controller.yaml"
-	webConfigTemplateName           = "templates/web-config.yaml"
-	webTemplateName                 = "templates/web.yaml"
-	prometheusConfigTemplateName    = "templates/prometheus-config.yaml"
-	prometheusTemplateName          = "templates/prometheus.yaml"
-	grafanaConfigTemplateName       = "templates/grafana-config.yaml"
-	grafanaTemplateName             = "templates/grafana.yaml"
-	resourcesTemplateName           = "templates/_resources.yaml"
-	serviceprofileTemplateName      = "templates/serviceprofile.yaml"
-	proxyInjectorConfigTemplateName = "templates/proxy_injector-config.yaml"
-	proxyInjectorTemplateName       = "templates/proxy_injector.yaml"
-	spValidatorConfigTemplateName   = "templates/sp_validator-config.yaml"
-	spValidatorTemplateName         = "templates/sp_validator.yaml"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -218,20 +207,47 @@ func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 func newCmdInstall() *cobra.Command {
 	options := newInstallOptionsWithDefaults()
 
-	// The base flags are recorded separately s that they can be serialized into
+	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
+	installOnlyFlags := options.installOnlyFlagSet()
 
 	cmd := &cobra.Command{
-		Use:   "install [flags]",
-		Short: "Output Kubernetes configs to install Linkerd",
-		Long:  "Output Kubernetes configs to install Linkerd.",
+		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
+		Args:      cobra.OnlyValidArgs,
+		ValidArgs: []string{configStage, controlPlaneStage},
+		Short:     "Output Kubernetes configs to install Linkerd",
+		Long: `Output Kubernetes configs to install Linkerd.
+
+This command provides Kubernetes configs necessary to install the Linkerd
+control-plane.`,
+		Example: `  # Default install.
+  linkerd install | kubectl apply -f -
+
+  # Installation may also be broken up into two stages, by user privilege.
+  # First stage requires cluster-level privileges.
+  linkerd install config | kubectl apply -f -
+  # Second stage requires namespace-level privileges.
+  linkerd install control-plane | kubectl apply -f -
+
+  # Install Linkerd into a non-default namespace.
+  linkerd install config -l linkerdtest | kubectl apply -f -
+  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			stage, err := validateArgs(args, flags, installOnlyFlags)
+			if err != nil {
+				return err
+			}
 			if !options.ignoreCluster {
+				// TODO: consider cobra.SilenceUsage, so we can return errors from
+				// `RunE`, rather than calling `os.Exit(1)`
 				exitIfClusterExists()
 			}
+			if !options.skipChecks && stage == controlPlaneStage {
+				exitIfNamespaceDoesNotExist()
+			}
 
-			values, configs, err := options.validateAndBuild(flags)
+			values, configs, err := options.validateAndBuild(stage, flags)
 			if err != nil {
 				return err
 			}
@@ -243,12 +259,12 @@ func newCmdInstall() *cobra.Command {
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	// Some flags are not available during upgrade, etc.
-	cmd.PersistentFlags().AddFlagSet(options.installOnlyFlagSet())
+	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
 
 	return cmd
 }
 
-func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -266,6 +282,7 @@ func (options *installOptions) validateAndBuild(flags *pflag.FlagSet) (*installV
 		return nil, nil, err
 	}
 	values.Identity = identityValues
+	values.stage = stage
 
 	return values, configs, nil
 }
@@ -347,6 +364,10 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
+	)
+	flags.BoolVar(
+		&options.skipChecks, "skip-checks", options.skipChecks,
+		`Skip checks for namespace existence, applicable for "linkerd install control-plane"`,
 	)
 
 	return flags
@@ -510,24 +531,32 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		{Name: nsTemplateName},
-		{Name: configTemplateName},
-		{Name: resourcesTemplateName},
-		{Name: identityConfigTemplateName},
-		{Name: identityTemplateName},
-		{Name: controllerConfigTemplateName},
-		{Name: controllerTemplateName},
-		{Name: serviceprofileTemplateName},
-		{Name: webConfigTemplateName},
-		{Name: webTemplateName},
-		{Name: prometheusConfigTemplateName},
-		{Name: prometheusTemplateName},
-		{Name: grafanaConfigTemplateName},
-		{Name: grafanaTemplateName},
-		{Name: proxyInjectorConfigTemplateName},
-		{Name: proxyInjectorTemplateName},
-		{Name: spValidatorConfigTemplateName},
-		{Name: spValidatorTemplateName},
+	}
+
+	if values.stage == "" || values.stage == configStage {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/namespace.yaml"},
+			{Name: "templates/identity-rbac.yaml"},
+			{Name: "templates/controller-rbac.yaml"},
+			{Name: "templates/serviceprofile-crd.yaml"},
+			{Name: "templates/prometheus-rbac.yaml"},
+			{Name: "templates/proxy_injector-rbac.yaml"},
+			{Name: "templates/sp_validator-rbac.yaml"},
+		}...)
+	}
+
+	if values.stage == "" || values.stage == controlPlaneStage {
+		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/_resources.yaml"},
+			{Name: "templates/config.yaml"},
+			{Name: "templates/identity.yaml"},
+			{Name: "templates/controller.yaml"},
+			{Name: "templates/web.yaml"},
+			{Name: "templates/prometheus.yaml"},
+			{Name: "templates/grafana.yaml"},
+			{Name: "templates/proxy_injector.yaml"},
+			{Name: "templates/sp_validator.yaml"},
+		}...)
 	}
 
 	// Read templates into bytes
@@ -717,6 +746,34 @@ func exitIfClusterExists() {
 	os.Exit(1)
 }
 
+// exitIfNamespaceDoesNotExist checks the kubernetes API to determine if the
+// control-plane namespace exists, and returns an error if it does not.
+//
+// This is useful when running `linkerd install control-plane`, where the
+// namespace must exist, but `linkerd-config` should not.
+func exitIfNamespaceDoesNotExist() {
+	hc := newHealthChecker(
+		[]healthcheck.CategoryID{healthcheck.KubernetesAPIChecks},
+		time.Time{},
+	)
+
+	success := hc.RunChecks(exitOnError)
+	if !success {
+		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --skip-checks flag.")
+		os.Exit(1)
+	}
+
+	err := hc.CheckNamespace(context.Background(), controlPlaneNamespace, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr,
+			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
+			controlPlaneNamespace, controlPlaneNamespace,
+		)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
+}
+
 func (idopts *installIdentityOptions) validate() error {
 	if idopts == nil {
 		return nil
@@ -858,4 +915,38 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}
+}
+
+func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.FlagSet) (string, error) {
+	if len(args) > 1 {
+		return "", fmt.Errorf("only zero or one argument permitted, received: %s", args)
+	} else if len(args) == 0 {
+		return "", nil
+	}
+
+	stage := args[0]
+
+	// only a few flags are available for config stage
+	if stage == configStage {
+		combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
+		combinedFlags.AddFlagSet(flags)
+		combinedFlags.AddFlagSet(installOnlyFlags)
+
+		var err error
+		combinedFlags.VisitAll(func(f *pflag.Flag) {
+			if f.Changed {
+				switch f.Name {
+				// TODO: remove "proxy-auto-inject" when it becomes default
+				case "proxy-auto-inject":
+				default:
+					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
+				}
+			}
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return stage, nil
 }

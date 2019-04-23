@@ -1,35 +1,16 @@
 ---
+###
+### Linkerd Namespace
+###
+---
 kind: Namespace
 apiVersion: v1
 metadata:
   name: linkerd
 ---
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION"}
-  install: |
-    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[]}
----
 ###
-### Identity Controller Service Config
+### Identity Controller Service RBAC
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: linkerd
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -53,6 +34,247 @@ subjects:
   name: linkerd-identity
   namespace: linkerd
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: linkerd
+---
+###
+### Controller RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-controller
+rules:
+- apiGroups: ["extensions", "apps"]
+  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
+  verbs: ["list" , "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-controller
+subjects:
+- kind: ServiceAccount
+  name: linkerd-controller
+  namespace: linkerd
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: linkerd
+---
+###
+### Service Profile CRD
+###
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  group: linkerd.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: serviceprofiles
+    singular: serviceprofile
+    kind: ServiceProfile
+    shortNames:
+    - sp
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required:
+          - routes
+          properties:
+            retryBudget:
+              required:
+              - minRetriesPerSecond
+              - retryRatio
+              - ttl
+              type: object
+              properties:
+                minRetriesPerSecond:
+                  type: integer
+                retryRatio:
+                  type: number
+                ttl:
+                  type: string
+            routes:
+              type: array
+              items:
+                type: object
+                required:
+                - name
+                - condition
+                properties:
+                  name:
+                    type: string
+                  timeout:
+                    type: string
+                  condition:
+                    type: object
+                    minProperties: 1
+                    properties:
+                      method:
+                        type: string
+                      pathRegex:
+                        type: string
+                      all:
+                        type: array
+                        items:
+                          type: object
+                      any:
+                        type: array
+                        items:
+                          type: object
+                      not:
+                        type: object
+                  responseClasses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - condition
+                      properties:
+                        isFailure:
+                          type: boolean
+                        condition:
+                          type: object
+                          properties:
+                            status:
+                              type: object
+                              minProperties: 1
+                              properties:
+                                min:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                                max:
+                                  type: integer
+                                  minimum: 100
+                                  maximum: 599
+                            all:
+                              type: array
+                              items:
+                                type: object
+                            any:
+                              type: array
+                              items:
+                                type: object
+                            not:
+                              type: object
+---
+###
+### Prometheus RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-linkerd-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd
+---
+###
+### Service Profile Validator RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: linkerd
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-sp-validator
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["validatingwebhookconfigurations"]
+  verbs: ["create", "get", "delete"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-sp-validator
+subjects:
+- kind: ServiceAccount
+  name: linkerd-sp-validator
+  namespace: linkerd
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-sp-validator
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION"}
+  install: |
+    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[]}
+---
+###
+### Identity Controller Service
+###
+---
 kind: Secret
 apiVersion: v1
 metadata:
@@ -66,10 +288,6 @@ metadata:
 data:
   crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
   key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
----
-###
-### Identity Controller Service
-###
 ---
 kind: Service
 apiVersion: v1
@@ -263,47 +481,6 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 status: {}
----
-###
-### Controller Config
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-controller
-  namespace: linkerd
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-controller
-rules:
-- apiGroups: ["extensions", "apps"]
-  resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
-  verbs: ["list" , "get", "watch"]
-- apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: ["linkerd.io"]
-  resources: ["serviceprofiles"]
-  verbs: ["list", "get", "watch"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-controller
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-controller
-subjects:
-- kind: ServiceAccount
-  name: linkerd-controller
-  namespace: linkerd
 ---
 ###
 ### Controller
@@ -573,112 +750,7 @@ spec:
 status: {}
 ---
 ###
-### Service Profile CRD
-###
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: serviceprofiles.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-spec:
-  group: linkerd.io
-  version: v1alpha1
-  scope: Namespaced
-  names:
-    plural: serviceprofiles
-    singular: serviceprofile
-    kind: ServiceProfile
-    shortNames:
-    - sp
-  validation:
-    openAPIV3Schema:
-      properties:
-        spec:
-          required:
-          - routes
-          properties:
-            retryBudget:
-              required:
-              - minRetriesPerSecond
-              - retryRatio
-              - ttl
-              type: object
-              properties:
-                minRetriesPerSecond:
-                  type: integer
-                retryRatio:
-                  type: number
-                ttl:
-                  type: string
-            routes:
-              type: array
-              items:
-                type: object
-                required:
-                - name
-                - condition
-                properties:
-                  name:
-                    type: string
-                  timeout:
-                    type: string
-                  condition:
-                    type: object
-                    minProperties: 1
-                    properties:
-                      method:
-                        type: string
-                      pathRegex:
-                        type: string
-                      all:
-                        type: array
-                        items:
-                          type: object
-                      any:
-                        type: array
-                        items:
-                          type: object
-                      not:
-                        type: object
-                  responseClasses:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                      - condition
-                      properties:
-                        isFailure:
-                          type: boolean
-                        condition:
-                          type: object
-                          properties:
-                            status:
-                              type: object
-                              minProperties: 1
-                              properties:
-                                min:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                                max:
-                                  type: integer
-                                  minimum: 100
-                                  maximum: 599
-                            all:
-                              type: array
-                              items:
-                                type: object
-                            any:
-                              type: array
-                              items:
-                                type: object
-                            not:
-                              type: object
----
-###
-### Web Config
+### Web
 ###
 ---
 kind: ServiceAccount
@@ -686,10 +758,6 @@ apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: linkerd
----
-###
-### Web
-###
 ---
 kind: Service
 apiVersion: v1
@@ -885,36 +953,8 @@ spec:
 status: {}
 ---
 ###
-### Prometheus Config
+### Prometheus
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-linkerd-prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-prometheus
-subjects:
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: linkerd
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1003,10 +1043,6 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
----
-###
-### Prometheus
-###
 ---
 kind: Service
 apiVersion: v1
@@ -1206,7 +1242,7 @@ spec:
 status: {}
 ---
 ###
-### Grafana Config
+### Grafana
 ###
 ---
 kind: ServiceAccount
@@ -1270,10 +1306,6 @@ data:
       options:
         path: /var/lib/grafana/dashboards
         homeDashboardId: linkerd-top-line
----
-###
-### Grafana
-###
 ---
 kind: Service
 apiVersion: v1
@@ -1471,42 +1503,6 @@ spec:
           medium: Memory
         name: linkerd-identity-end-entity
 status: {}
----
-###
-### Service Profile Validator Config
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator
-  namespace: linkerd
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-linkerd-sp-validator
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["list"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["validatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-linkerd-sp-validator
-subjects:
-- kind: ServiceAccount
-  name: linkerd-sp-validator
-  namespace: linkerd
-  apiGroup: ""
-roleRef:
-  kind: ClusterRole
-  name: linkerd-linkerd-sp-validator
-  apiGroup: rbac.authorization.k8s.io
 ---
 ###
 ### Service Profile Validator
