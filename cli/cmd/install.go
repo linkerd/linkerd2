@@ -113,6 +113,7 @@ type (
 		controllerUID       int64
 		disableH2Upgrade    bool
 		noInitContainer     bool
+		skipChecks          bool
 		identityOptions     *installIdentityOptions
 		*proxyConfigOptions
 
