@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -38,6 +39,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.servePing(w)
 	case "/ready":
 		h.serveReady(w)
+	case "/debug/pprof/", "/debug/pprof":
+		pprof.Index(w, req)
+	case "/debug/pprof/profile/":
+		pprof.Profile(w, req)
 	default:
 		http.NotFound(w, req)
 	}
