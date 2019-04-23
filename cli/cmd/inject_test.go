@@ -232,6 +232,7 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:          "inject_emojivoto_deployment.input.yml",
 			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
 			reportFileName:         "inject_emojivoto_deployment.report",
+			injectProxy:            true,
 			testInjectConfig:       defaultConfig,
 			enableDebugSidecarFlag: true,
 		},
