@@ -87,8 +87,6 @@ func TestInjectParams(t *testing.T) {
 	}
 }
 
-// TestAnnotationPermutations assumes a control-plane installed with
-// `--proxy-auto-inject` was installed via `install_test.go`.
 func TestAnnotationPermutations(t *testing.T) {
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
