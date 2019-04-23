@@ -759,7 +759,7 @@ func exitIfNamespaceDoesNotExist() {
 
 	success := hc.RunChecks(exitOnError)
 	if !success {
-		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --ignore-cluster flag.")
+		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --skip-checks flag.")
 		os.Exit(1)
 	}
 
