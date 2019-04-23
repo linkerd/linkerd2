@@ -841,7 +841,6 @@
     "stats",
     "status",
     "tap",
-    "test/bufconn",
     "transport",
   ]
   pruneopts = ""
@@ -1298,8 +1297,8 @@
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/metadata",
+    "google.golang.org/grpc/peer",
     "google.golang.org/grpc/status",
-    "google.golang.org/grpc/test/bufconn",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
@@ -1341,7 +1340,6 @@
     "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1",
     "k8s.io/client-go/kubernetes/typed/authentication/v1",
     "k8s.io/client-go/kubernetes/typed/authorization/v1",
-    "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
