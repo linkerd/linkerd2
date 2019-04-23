@@ -97,7 +97,7 @@ sub-folders, or coming from stdin.`,
 	flags := options.flagSet(pflag.ExitOnError)
 	flags.BoolVar(
 		&advancedOption, "advanced", advancedOption,
-		"Add the proxy container in the ouput (as opposed to just adding the annotations for the auto-injector to do it) (default false)",
+		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
 	)
 	flags.BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
