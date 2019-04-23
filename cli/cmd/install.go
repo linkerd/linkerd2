@@ -240,13 +240,10 @@ control-plane.`,
 			if !options.ignoreCluster {
 				// TODO: consider cobra.SilenceUsage, so we can return errors from
 				// `RunE`, rather than calling `os.Exit(1)`
-				switch stage {
-				case "":
-					exitIfClusterExists()
-				case controlPlaneStage:
-					exitIfNamespaceDoesNotExist()
-					exitIfClusterExists()
-				}
+				exitIfClusterExists()
+			}
+			if !options.skipChecks && stage == controlPlaneStage {
+				exitIfNamespaceDoesNotExist()
 			}
 
 			values, configs, err := options.validateAndBuild(stage, flags)
@@ -366,6 +363,10 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
+	)
+	flags.BoolVar(
+		&options.skipChecks, "skip-checks", options.skipChecks,
+		`Skip checks for namespace existence, applicable for "linkerd install control-plane"`,
 	)
 
 	return flags
@@ -763,7 +764,10 @@ func exitIfNamespaceDoesNotExist() {
 
 	err := hc.CheckNamespace(context.Background(), controlPlaneNamespace, true)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to find the Linkerd control-plane namespace. If this expected, use the --ignore-cluster flag.")
+		fmt.Fprintf(os.Stderr,
+			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
+			controlPlaneNamespace, controlPlaneNamespace,
+		)
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
