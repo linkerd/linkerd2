@@ -77,5 +77,4 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
----
 {{end -}}

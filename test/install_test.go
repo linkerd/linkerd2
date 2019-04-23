@@ -40,12 +40,13 @@ var (
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":   {1, []string{"destination", "public-api", "tap"}},
-		"linkerd-grafana":      {1, []string{}},
-		"linkerd-identity":     {1, []string{"identity"}},
-		"linkerd-prometheus":   {1, []string{}},
-		"linkerd-sp-validator": {1, []string{"sp-validator"}},
-		"linkerd-web":          {1, []string{"web"}},
+		"linkerd-controller":     {1, []string{"destination", "public-api", "tap"}},
+		"linkerd-grafana":        {1, []string{}},
+		"linkerd-identity":       {1, []string{"identity"}},
+		"linkerd-prometheus":     {1, []string{}},
+		"linkerd-sp-validator":   {1, []string{"sp-validator"}},
+		"linkerd-web":            {1, []string{"web"}},
+		"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 	}
 
 	// Linkerd commonly logs these errors during testing, remove these once
@@ -123,11 +124,6 @@ func TestInstallOrUpgrade(t *testing.T) {
 
 	if TestHelper.UpgradeFromVersion() != "" {
 		cmd = "upgrade"
-	}
-
-	if TestHelper.AutoInject() {
-		args = append(args, "--proxy-auto-inject")
-		linkerdDeployReplicas["linkerd-proxy-injector"] = deploySpec{1, []string{"proxy-injector"}}
 	}
 
 	exec := append([]string{cmd}, args...)
@@ -268,30 +264,15 @@ func TestInject(t *testing.T) {
 
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
 
-	if TestHelper.AutoInject() {
-		out, err = testutil.ReadFile("testdata/smoke_test.yaml")
-		if err != nil {
-			t.Fatalf("failed to read smoke test file: %s", err)
-		}
-		err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
-			k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-		})
-		if err != nil {
-			t.Fatalf("failed to create %s namespace with auto inject enabled: %s", prefixedNs, err)
-		}
-	} else {
-		cmd := []string{"inject", "--manual", "testdata/smoke_test.yaml"}
-
-		var injectReport string
-		out, injectReport, err = TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
-		}
-
-		err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
-		if err != nil {
-			t.Fatalf("Received unexpected output\n%s", err.Error())
-		}
+	out, err = testutil.ReadFile("testdata/smoke_test.yaml")
+	if err != nil {
+		t.Fatalf("failed to read smoke test file: %s", err)
+	}
+	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
+		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+	})
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
