@@ -1,5 +1,9 @@
 package cmd
 
+// TODO: this file should probably move out of `./cli/cmd` into something like
+// `./cli/publicapi` or `./cli/pkg`:
+// https://github.com/linkerd/linkerd2/issues/2735
+
 import (
 	"fmt"
 	"os"
@@ -46,42 +50,46 @@ func checkPublicAPIClientOrRetryOrExit(retryDeadline time.Time, apiChecks bool) 
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+	hc := newHealthChecker(checks, retryDeadline)
+
+	hc.RunChecks(exitOnError)
+	return hc.PublicAPIClient()
+}
+
+func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) *healthcheck.HealthChecker {
+	return healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
 		RetryDeadline:         retryDeadline,
 	})
+}
 
-	exitOnError := func(result *healthcheck.CheckResult) {
-		if result.Retry {
-			fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
-			return
-		}
-
-		if result.Err != nil && !result.Warning {
-			var msg string
-			switch result.Category {
-			case healthcheck.KubernetesAPIChecks:
-				msg = "Cannot connect to Kubernetes"
-			case healthcheck.LinkerdControlPlaneExistenceChecks:
-				msg = "Cannot find Linkerd"
-			case healthcheck.LinkerdAPIChecks:
-				msg = "Cannot connect to Linkerd"
-			}
-			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
-
-			checkCmd := "linkerd check"
-			if controlPlaneNamespace != defaultNamespace {
-				checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
-			}
-			fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
-
-			os.Exit(1)
-		}
+func exitOnError(result *healthcheck.CheckResult) {
+	if result.Retry {
+		fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
+		return
 	}
 
-	hc.RunChecks(exitOnError)
-	return hc.PublicAPIClient()
+	if result.Err != nil && !result.Warning {
+		var msg string
+		switch result.Category {
+		case healthcheck.KubernetesAPIChecks:
+			msg = "Cannot connect to Kubernetes"
+		case healthcheck.LinkerdControlPlaneExistenceChecks:
+			msg = "Cannot find Linkerd"
+		case healthcheck.LinkerdAPIChecks:
+			msg = "Cannot connect to Linkerd"
+		}
+		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
+
+		checkCmd := "linkerd check"
+		if controlPlaneNamespace != defaultNamespace {
+			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
+		}
+		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
+
+		os.Exit(1)
+	}
 }

@@ -2,7 +2,7 @@
 {{if .ProxyAutoInjectEnabled -}}
 ---
 ###
-### Proxy Injector Config
+### Proxy Injector RBAC
 ###
 ---
 kind: ServiceAccount

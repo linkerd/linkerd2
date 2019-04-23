@@ -16,10 +16,11 @@ import (
 )
 
 type testCase struct {
-	inputFileName    string
-	goldenFileName   string
-	reportFileName   string
-	testInjectConfig *config.All
+	inputFileName          string
+	goldenFileName         string
+	reportFileName         string
+	testInjectConfig       *config.All
+	enableDebugSidecarFlag bool
 }
 
 func mkFilename(filename string, verbose bool) string {
@@ -42,6 +43,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	transformer := &resourceTransformerInject{
 		configs:             tc.testInjectConfig,
 		overrideAnnotations: map[string]string{},
+		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 	}
 
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
@@ -54,7 +56,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 }
 
 func testInstallConfig() *pb.All {
-	_, c, err := testInstallOptions().validateAndBuild(nil)
+	_, c, err := testInstallOptions().validateAndBuild("", nil)
 	if err != nil {
 		log.Fatalf("test install options must be valid: %s", err)
 	}
@@ -184,6 +186,13 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			testInjectConfig: overrideConfig,
+		},
+		{
+			inputFileName:          "inject_emojivoto_deployment.input.yml",
+			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
+			reportFileName:         "inject_emojivoto_deployment.report",
+			testInjectConfig:       defaultConfig,
+			enableDebugSidecarFlag: true,
 		},
 	}
 

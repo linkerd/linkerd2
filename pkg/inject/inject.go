@@ -105,6 +105,7 @@ type ResourceConfig struct {
 	proxyOutboundCapacity  map[string]uint
 	ownerRetriever         OwnerRetrieverFunc
 	origin                 Origin
+	debugSidecar           *v1.Container
 
 	workload struct {
 		obj      runtime.Object
@@ -135,6 +136,17 @@ func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
 	config.pod.annotations = map[string]string{}
 	return config
+}
+
+// WithDebugSidecar enriches ResourceConfig with a debug sidecar for a resource
+func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
+	conf.debugSidecar = &v1.Container{
+		Name:                     k8s.DebugSidecarName,
+		ImagePullPolicy:          conf.proxyImagePullPolicy(),
+		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	}
+	return conf
 }
 
 // WithKind enriches ResourceConfig with the workload kind
@@ -395,6 +407,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	saVolumeMount := conf.serviceAccountVolumeMount()
 	if !conf.configs.GetGlobal().GetCniEnabled() {
 		conf.injectProxyInit(patch, saVolumeMount)
+	}
+
+	if conf.debugSidecar != nil {
+		patch.addContainer(conf.debugSidecar)
 	}
 
 	proxyUID := conf.proxyUID()

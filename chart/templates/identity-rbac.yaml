@@ -2,14 +2,8 @@
 {{if .Identity -}}
 ---
 ###
-### Identity Controller Service Config
+### Identity Controller Service RBAC
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-identity
-  namespace: {{.Namespace}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -32,23 +26,11 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Namespace}}
-{{- if .Identity.Issuer}}
 ---
-kind: Secret
+kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-identity-issuer
+  name: linkerd-identity
   namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: identity
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-    {{- if .Identity.Issuer.CrtExpiryAnnotation}}
-    {{.Identity.Issuer.CrtExpiryAnnotation}}: {{.Identity.Issuer.CrtExpiry}}
-    {{- end}}
-data:
-  crt.pem: {{b64enc .Identity.Issuer.CrtPEM}}
-  key.pem: {{b64enc .Identity.Issuer.KeyPEM}}
-{{- end}}
 {{end -}}
 {{end -}}
