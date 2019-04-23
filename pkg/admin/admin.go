@@ -48,6 +48,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		pprof.Profile(w, req)
 	case fmt.Sprintf("%strace", debugPathPrefix):
 		pprof.Trace(w, req)
+	case fmt.Sprintf("%ssymbol", debugPathPrefix):
+		pprof.Symbol(w, req)
 	default:
 		if strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
 			pprof.Index(w, req)
