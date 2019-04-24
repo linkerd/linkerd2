@@ -280,7 +280,7 @@ func TestInject(t *testing.T) {
 			t.Fatalf("failed to create %s namespace with auto inject enabled: %s", prefixedNs, err)
 		}
 	} else {
-		cmd := []string{"inject", "--advanced", "testdata/smoke_test.yaml"}
+		cmd := []string{"inject", "--manual", "testdata/smoke_test.yaml"}
 
 		var injectReport string
 		out, injectReport, err = TestHelper.LinkerdRun(cmd...)

@@ -44,7 +44,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
-	var advancedOption, enableDebugSidecar bool
+	var manualOption, enableDebugSidecar bool
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -83,7 +83,7 @@ sub-folders, or coming from stdin.`,
 			options.overrideConfigs(configs, overrideAnnotations)
 
 			transformer := &resourceTransformerInject{
-				injectProxy:         advancedOption,
+				injectProxy:         manualOption,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
@@ -96,7 +96,7 @@ sub-folders, or coming from stdin.`,
 
 	flags := options.flagSet(pflag.ExitOnError)
 	flags.BoolVar(
-		&advancedOption, "advanced", advancedOption,
+		&manualOption, "manual", manualOption,
 		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
 	)
 	flags.BoolVar(
