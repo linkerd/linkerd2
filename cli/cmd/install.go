@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -919,18 +920,14 @@ func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.F
 		combinedFlags.AddFlagSet(flags)
 		combinedFlags.AddFlagSet(installOnlyFlags)
 
-		var err error
+		invalidFlags := make([]string, 0)
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
-				switch f.Name {
-				// TODO: remove "proxy-auto-inject" when it becomes default
-				case "proxy-auto-inject":
-				default:
-					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
-				}
+				invalidFlags = append(invalidFlags, f.Name)
 			}
 		})
-		if err != nil {
+		if len(invalidFlags) > 0 {
+			err := fmt.Errorf("flags not available for config stage: --%s", strings.Join(invalidFlags, ", --"))
 			return "", err
 		}
 	}
