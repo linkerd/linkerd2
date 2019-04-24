@@ -1442,7 +1442,6 @@ spec:
     port: 443
     targetPort: proxy-injector
 ---
----
 ###
 ### Service Profile Validator
 ###
