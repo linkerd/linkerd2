@@ -73,6 +73,7 @@ func TestServiceProfiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc // pin
+		t.Skipf("Skipping TestServiceProfiles/%s", tc.sourceName)
 		t.Run(tc.sourceName, func(t *testing.T) {
 			routes, err := getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
@@ -140,6 +141,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 		)
 
 		t.Run(tc, func(t *testing.T) {
+			t.Skipf("Skipping TestServiceProfileMetrics/%s", tc)
 			out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
 			if err != nil {
 				t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
