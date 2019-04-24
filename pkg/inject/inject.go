@@ -184,6 +184,11 @@ func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) 
 	}
 }
 
+// AppendPodAnnotation appends the given single annotation to the pod spec in conf
+func (conf *ResourceConfig) AppendPodAnnotation(k, v string) {
+	conf.pod.annotations[k] = v
+}
+
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
 	return yaml.Marshal(conf.workload.obj)
@@ -199,12 +204,16 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
-// GetPatch returns the JSON patch containing the proxy and init containers specs, if any
-func (conf *ResourceConfig) GetPatch(bytes []byte) (*Patch, error) {
+// GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
+// If injectProxy is false, only the config.linkerd.io annotations are set.
+func (conf *ResourceConfig) GetPatch(bytes []byte, injectProxy bool) (*Patch, error) {
 	patch := NewPatch(conf.workload.metaType.Kind)
 	if conf.pod.spec != nil {
-		conf.injectObjectMeta(patch)
-		conf.injectPodSpec(patch)
+		conf.injectPodAnnotations(patch)
+		if injectProxy {
+			conf.injectObjectMeta(patch)
+			conf.injectPodSpec(patch)
+		}
 	}
 
 	return patch, nil
@@ -619,9 +628,6 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *v1.VolumeMount {
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	if len(conf.pod.meta.Annotations) == 0 {
-		patch.addPodAnnotationsRoot()
-	}
 	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetProxy().GetProxyVersion())
 
 	if conf.identityContext() != nil {
@@ -637,6 +643,12 @@ func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
 		for _, k := range sortedKeys(conf.pod.labels) {
 			patch.addPodLabel(k, conf.pod.labels[k])
 		}
+	}
+}
+
+func (conf *ResourceConfig) injectPodAnnotations(patch *Patch) {
+	if len(conf.pod.meta.Annotations) == 0 {
+		patch.addPodAnnotationsRoot()
 	}
 
 	for _, k := range sortedKeys(conf.pod.annotations) {

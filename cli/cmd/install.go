@@ -605,7 +605,8 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	configs.Proxy.IgnoreOutboundPorts = append(configs.Proxy.IgnoreOutboundPorts, &pb.Port{Port: 443})
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
-		configs: configs,
+		injectProxy: true,
+		configs:     configs,
 		proxyOutboundCapacity: map[string]uint{
 			values.PrometheusImage: prometheusProxyOutboundCapacity,
 		},

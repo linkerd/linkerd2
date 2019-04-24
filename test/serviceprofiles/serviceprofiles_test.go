@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 func TestServiceProfiles(t *testing.T) {
 
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
+	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 	}
@@ -140,7 +140,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 		)
 
 		t.Run(tc, func(t *testing.T) {
-			out, stderr, err := TestHelper.LinkerdRun("inject", testYAML)
+			out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
 			if err != nil {
 				t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 			}
