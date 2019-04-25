@@ -914,7 +914,12 @@ func validateArgs(args []string, flags *pflag.FlagSet, additionalFlags *pflag.Fl
 		invalidFlags := make([]string, 0)
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
-				invalidFlags = append(invalidFlags, f.Name)
+				switch f.Name {
+				case "ignore-cluster":
+					// allow `linkerd install config --ignore-cluster`
+				default:
+					invalidFlags = append(invalidFlags, f.Name)
+				}
 			}
 		})
 		if len(invalidFlags) > 0 {
