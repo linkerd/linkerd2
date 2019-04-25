@@ -34,9 +34,24 @@ func newUpgradeOptionsWithDefaults() *upgradeOptions {
 	}
 }
 
+// upgradeOnlyFlagSet includes flags that are only accessible at upgrade-time
+// and not at install-time. also these flags are not intended to be persisted
+// via linkerd-config ConfigMap, unlike recordableFlagSet
+func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("upgrade-only", pflag.ExitOnError)
+
+	flags.StringVar(
+		&options.manifests, "from-manifests", options.manifests,
+		"Read config from a Linkerd install YAML rather than from Kubernetes",
+	)
+
+	return flags
+}
+
 func newCmdUpgrade() *cobra.Command {
 	options := newUpgradeOptionsWithDefaults()
 	flags := options.recordableFlagSet()
+	upgradeOnlyFlags := options.upgradeOnlyFlagSet()
 
 	cmd := &cobra.Command{
 		Use:       fmt.Sprintf("upgrade [%s|%s] [flags]", configStage, controlPlaneStage),
@@ -63,7 +78,7 @@ install command.`,
 				panic("ignore cluster must be unset") // Programmer error.
 			}
 
-			stage, err := validateArgs(args, flags, nil)
+			stage, err := validateArgs(args, flags, upgradeOnlyFlags)
 			if err != nil {
 				return err
 			}
@@ -107,14 +122,8 @@ install command.`,
 		},
 	}
 
-	// add this flag directly rather than as part of the FlagSet because we do not
-	// want it persisted into linkerd-config/install ConfigMap
-	cmd.PersistentFlags().StringVar(
-		&options.manifests, "from-manifests", options.manifests,
-		"Read config from a Linkerd install YAML rather than from Kubernetes",
-	)
-
 	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.PersistentFlags().AddFlagSet(upgradeOnlyFlags)
 	return cmd
 }
 
