@@ -2,7 +2,7 @@
   {
     "op": "add",
     "path": "/metadata/annotations/linkerd.io~1proxy-version",
-    "value": ""
+    "value": "dev-undefined"
   },
   {
     "op": "add",
@@ -60,7 +60,7 @@
     "path": "/spec/containers/-",
     "value": {
       "name": "linkerd-proxy",
-      "image": "gcr.io/linkerd-io/proxy:",
+      "image": "gcr.io/linkerd-io/proxy:dev-undefined",
       "ports": [
         {
           "name": "linkerd-proxy",
