@@ -21,7 +21,7 @@ func rawPublicAPIClient() (pb.ApiClient, error) {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 	if err != nil {
 		return nil, err
 	}

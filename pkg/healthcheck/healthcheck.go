@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -16,11 +15,10 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/kubernetes"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -165,8 +163,6 @@ type HealthChecker struct {
 
 	// these fields are set in the process of running checks
 	kubeAPI          *k8s.KubernetesAPI
-	httpClient       *http.Client
-	clientset        kubernetes.Interface
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
 	apiClient        public.APIClient
@@ -216,19 +212,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
-						if err != nil {
-							return
-						}
-						// k8s' client-go doesn't support injecting context
-						// https://github.com/kubernetes/kubernetes/issues/46503
-						// but we can set the timeout manually
-						hc.kubeAPI.Timeout = requestTimeout
-
-						hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
-						if err != nil {
-							return err
-						}
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
 						return
 					},
 				},
@@ -237,11 +221,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.httpClient, err = hc.kubeAPI.NewClient()
-						if err != nil {
-							return
-						}
-						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(ctx, hc.httpClient)
+						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo()
 						return
 					},
 				},
@@ -272,8 +252,8 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
-					check: func(ctx context.Context) error {
-						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, false)
+					check: func(context.Context) error {
+						return hc.CheckNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -353,18 +333,16 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace exists",
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
-					check: func(ctx context.Context) error {
-						return hc.CheckNamespace(ctx, hc.ControlPlaneNamespace, true)
+					check: func(context.Context) error {
+						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
 					description: "control plane components ready",
 					hintAnchor:  "l5d-existence-psp",
 					fatal:       true,
-					check: func(ctx context.Context) error {
-						var err error
-						var controlPlaneReplicaSet []v1beta1.ReplicaSet
-						controlPlaneReplicaSet, err = hc.kubeAPI.GetReplicaSets(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+					check: func(context.Context) error {
+						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -375,9 +353,9 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "no unschedulable pods",
 					hintAnchor:  "l5d-existence-unschedulable-pods",
 					fatal:       true,
-					check: func(ctx context.Context) error {
+					check: func(context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -426,9 +404,9 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:    "l5d-api-control-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func(ctx context.Context) error {
+					check: func(context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -526,8 +504,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
-					check: func(ctx context.Context) error {
-						return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
+					check: func(context.Context) error {
+						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -735,8 +713,8 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 
 // CheckNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) CheckNamespace(ctx context.Context, namespace string, shouldExist bool) error {
-	exists, err := hc.kubeAPI.NamespaceExists(ctx, hc.httpClient, namespace)
+func (hc *HealthChecker) CheckNamespace(namespace string, shouldExist bool) error {
+	exists, err := hc.kubeAPI.NamespaceExists(namespace)
 	if err != nil {
 		return err
 	}
@@ -775,13 +753,13 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 }
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
-	if hc.clientset == nil {
+	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
 	return k8s.ResourceAuthz(
-		hc.clientset,
+		hc.kubeAPI,
 		namespace,
 		"create",
 		group,
@@ -792,12 +770,12 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 }
 
 func (hc *HealthChecker) checkNetAdmin() error {
-	if hc.clientset == nil {
+	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
-	pspList, err := hc.clientset.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
+	pspList, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -813,7 +791,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	// 2) provides NET_ADMIN
 	for _, psp := range pspList.Items {
 		err := k8s.ResourceAuthz(
-			hc.clientset,
+			hc.kubeAPI,
 			"",
 			"use",
 			"policy",
@@ -885,6 +863,7 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
+	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
 	}
@@ -976,11 +955,11 @@ func checkUnschedulablePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func checkControlPlaneReplicaSets(rst []v1beta1.ReplicaSet) error {
+func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 	var errors []string
 	for _, rs := range rst {
 		for _, r := range rs.Status.Conditions {
-			if r.Type == v1beta1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
+			if r.Type == appsv1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
 				errors = append(errors, fmt.Sprintf("%s: %s", r.Reason, r.Message))
 			}
 		}

@@ -298,11 +298,11 @@ func TestCheckCanCreate(t *testing.T) {
 		[]CategoryID{},
 		&Options{},
 	)
-	var err error
-	hc.clientset, _, err = k8s.NewFakeClientSets()
+	clientset, _, err := k8s.NewFakeClientSets()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
+	hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
 	err = hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
@@ -340,11 +340,11 @@ spec:
 				&Options{},
 			)
 
-			var err error
-			hc.clientset, _, err = k8s.NewFakeClientSets(test.k8sConfigs...)
+			clientset, _, err := k8s.NewFakeClientSets(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
+			hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
 			err = hc.checkNetAdmin()
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||

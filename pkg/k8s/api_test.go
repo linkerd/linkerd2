@@ -28,7 +28,7 @@ func TestKubernetesApiUrlFor(t *testing.T) {
 		}
 
 		for _, test := range tests {
-			api, err := NewAPI("testdata/config.test", test.kubeContext)
+			api, err := NewAPI("testdata/config.test", test.kubeContext, 0)
 			if err != nil {
 				t.Fatalf("Unexpected error creating Kubernetes API: %+v", err)
 			}

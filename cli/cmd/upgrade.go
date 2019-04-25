@@ -65,12 +65,7 @@ install command.`,
 					upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
 				}
 			} else {
-				c, err := k8s.GetConfig(kubeconfigPath, kubeContext)
-				if err != nil {
-					upgradeErrorf("Failed to get kubernetes config: %s", err)
-				}
-
-				k, err = kubernetes.NewForConfig(c)
+				k, err = k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 				if err != nil {
 					upgradeErrorf("Failed to create a kubernetes client: %s", err)
 				}
