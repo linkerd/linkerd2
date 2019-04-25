@@ -27,6 +27,32 @@ type KubernetesAPI struct {
 	kubernetes.Interface
 }
 
+// NewAPI validates a Kubernetes config and returns a client for accessing the
+// configured cluster.
+func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesAPI, error) {
+	config, err := GetConfig(configPath, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+	}
+
+	// k8s' client-go doesn't support injecting context
+	// https://github.com/kubernetes/kubernetes/issues/46503
+	// but we can set the timeout manually
+	config.Timeout = timeout
+	wt := config.WrapTransport
+	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %v", err)
+	}
+
+	return &KubernetesAPI{
+		Config:    config,
+		Interface: clientset,
+	}, nil
+}
+
 // NewClient returns an http.Client configured with a Transport to connect to
 // the Kubernetes cluster.
 func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
@@ -87,32 +113,6 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(namespace string) ([]corev1.Pod
 // URLFor generates a URL based on the Kubernetes config.
 func (kubeAPI *KubernetesAPI) URLFor(namespace, path string) (*url.URL, error) {
 	return generateKubernetesAPIURLFor(kubeAPI.Host, namespace, path)
-}
-
-// NewAPI validates a Kubernetes config and returns a client for accessing the
-// configured cluster.
-func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesAPI, error) {
-	config, err := GetConfig(configPath, kubeContext)
-	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
-	}
-
-	// k8s' client-go doesn't support injecting context
-	// https://github.com/kubernetes/kubernetes/issues/46503
-	// but we can set the timeout manually
-	config.Timeout = timeout
-	wt := config.WrapTransport
-	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %v", err)
-	}
-
-	return &KubernetesAPI{
-		Config:    config,
-		Interface: clientset,
-	}, nil
 }
 
 // GetReplicaSets returns all replicasets in a given namespace
