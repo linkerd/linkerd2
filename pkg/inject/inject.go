@@ -689,7 +689,6 @@ func (conf *ResourceConfig) proxyImagePullPolicy() v1.PullPolicy {
 func (conf *ResourceConfig) proxyVersion() string {
 	if override := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); override != "" {
 		return override
-
 	}
 	if proxyVersion := conf.configs.GetProxy().GetProxyVersion(); proxyVersion != "" {
 		return proxyVersion
