@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -52,7 +53,6 @@ type (
 		ControllerComponentLabel string
 		CreatedByAnnotation      string
 		ProxyContainerName       string
-		ProxyAutoInjectEnabled   bool
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
 		ControllerUID            int64
@@ -108,7 +108,6 @@ type (
 		controlPlaneVersion string
 		controllerReplicas  uint
 		controllerLogLevel  string
-		proxyAutoInject     bool
 		highAvailability    bool
 		controllerUID       int64
 		disableH2Upgrade    bool
@@ -158,7 +157,6 @@ func newInstallOptionsWithDefaults() *installOptions {
 		controlPlaneVersion: version.Version,
 		controllerReplicas:  defaultControllerReplicas,
 		controllerLogLevel:  "info",
-		proxyAutoInject:     false,
 		highAvailability:    false,
 		controllerUID:       2103,
 		disableH2Upgrade:    false,
@@ -309,10 +307,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Log level for the controller and web components",
 	)
 	flags.BoolVar(
-		&options.proxyAutoInject, "proxy-auto-inject", options.proxyAutoInject,
-		"Enable proxy sidecar auto-injection via a webhook (default false)",
-	)
-	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
 		"Experimental: Enable HA deployment config for the control plane (default false)",
 	)
@@ -456,15 +450,14 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
 
 		// Controller configuration:
-		Namespace:              controlPlaneNamespace,
-		UUID:                   configs.GetInstall().GetUuid(),
-		ControllerReplicas:     options.controllerReplicas,
-		ControllerLogLevel:     options.controllerLogLevel,
-		ControllerUID:          options.controllerUID,
-		EnableH2Upgrade:        !options.disableH2Upgrade,
-		NoInitContainer:        options.noInitContainer,
-		ProxyAutoInjectEnabled: options.proxyAutoInject,
-		PrometheusLogLevel:     toPromLogLevel(options.controllerLogLevel),
+		Namespace:          controlPlaneNamespace,
+		UUID:               configs.GetInstall().GetUuid(),
+		ControllerReplicas: options.controllerReplicas,
+		ControllerLogLevel: options.controllerLogLevel,
+		ControllerUID:      options.controllerUID,
+		EnableH2Upgrade:    !options.disableH2Upgrade,
+		NoInitContainer:    options.noInitContainer,
+		PrometheusLogLevel: toPromLogLevel(options.controllerLogLevel),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
@@ -635,17 +628,11 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 }
 
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
-	var autoInjectContext *pb.AutoInjectContext
-	if options.proxyAutoInject {
-		autoInjectContext = &pb.AutoInjectContext{}
-	}
-
 	return &pb.Global{
-		LinkerdNamespace:  controlPlaneNamespace,
-		AutoInjectContext: autoInjectContext,
-		CniEnabled:        options.noInitContainer,
-		Version:           options.controlPlaneVersion,
-		IdentityContext:   identity,
+		LinkerdNamespace: controlPlaneNamespace,
+		CniEnabled:       options.noInitContainer,
+		Version:          options.controlPlaneVersion,
+		IdentityContext:  identity,
 	}
 }
 
@@ -933,18 +920,14 @@ func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.F
 		combinedFlags.AddFlagSet(flags)
 		combinedFlags.AddFlagSet(installOnlyFlags)
 
-		var err error
+		invalidFlags := make([]string, 0)
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
-				switch f.Name {
-				// TODO: remove "proxy-auto-inject" when it becomes default
-				case "proxy-auto-inject":
-				default:
-					err = fmt.Errorf("flag not available for config stage: --%s", f.Name)
-				}
+				invalidFlags = append(invalidFlags, f.Name)
 			}
 		})
-		if err != nil {
+		if len(invalidFlags) > 0 {
+			err := fmt.Errorf("flags not available for config stage: --%s", strings.Join(invalidFlags, ", --"))
 			return "", err
 		}
 	}

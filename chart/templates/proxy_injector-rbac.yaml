@@ -1,5 +1,4 @@
 {{with .Values -}}
-{{if .ProxyAutoInjectEnabled -}}
 ---
 ###
 ### Proxy Injector RBAC
@@ -42,5 +41,4 @@ roleRef:
   kind: ClusterRole
   name: linkerd-{{.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
-{{end -}}
 {{end -}}

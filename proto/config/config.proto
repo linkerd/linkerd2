@@ -22,9 +22,7 @@ message Global {
   // If present, configures identity.
   IdentityContext identity_context = 4;
 
-  // If present, indicates that the Mutating Webhook Admission Controller should
-  // be configured to automatically inject proxies.
-  AutoInjectContext auto_inject_context = 6;
+  AutoInjectContext auto_inject_context = 6 [deprecated=true];
 }
 
 message Proxy {
@@ -63,8 +61,7 @@ message ResourceRequirements {
   string limit_memory = 4;
 }
 
-// Currently, this is basically a boolean.
-message AutoInjectContext {}
+message AutoInjectContext { option deprecated = true; }
 
 message IdentityContext {
   string trust_domain = 1;

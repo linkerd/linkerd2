@@ -72,6 +72,14 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultConfig.Global.Version = "test-inject-control-plane-version"
 	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
 
+	emptyVersionConfig := testInstallConfig()
+	emptyVersionConfig.Global.Version = ""
+	emptyVersionConfig.Proxy.ProxyVersion = ""
+
+	emptyProxyVersionConfig := testInstallConfig()
+	emptyProxyVersionConfig.Global.Version = "test-inject-control-plane-version"
+	emptyProxyVersionConfig.Proxy.ProxyVersion = ""
+
 	overrideConfig := testInstallConfig()
 	overrideConfig.Proxy.ProxyVersion = "override"
 
@@ -95,6 +103,20 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_empty_version_config.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
+			testInjectConfig: emptyVersionConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_empty_proxy_version_config.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
+			testInjectConfig: emptyProxyVersionConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",

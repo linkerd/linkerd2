@@ -628,7 +628,7 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *v1.VolumeMount {
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(patch *Patch) {
-	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.configs.GetProxy().GetProxyVersion())
+	patch.addPodAnnotation(k8s.ProxyVersionAnnotation, conf.proxyVersion())
 
 	if conf.identityContext() != nil {
 		patch.addPodAnnotation(k8s.IdentityModeAnnotation, k8s.IdentityModeDefault)
@@ -690,7 +690,13 @@ func (conf *ResourceConfig) proxyVersion() string {
 	if override := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetProxyVersion()
+	if proxyVersion := conf.configs.GetProxy().GetProxyVersion(); proxyVersion != "" {
+		return proxyVersion
+	}
+	if controlPlaneVersion := conf.configs.GetGlobal().GetVersion(); controlPlaneVersion != "" {
+		return controlPlaneVersion
+	}
+	return version.Version
 }
 
 func (conf *ResourceConfig) proxyInitVersion() string {

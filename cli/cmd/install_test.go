@@ -45,7 +45,6 @@ func TestRender(t *testing.T) {
 		ControllerComponentLabel: "ControllerComponentLabel",
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyContainerName:       "ProxyContainerName",
-		ProxyAutoInjectEnabled:   true,
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 		ProxyInjectDisabled:      "ProxyInjectDisabled",
 		ControllerUID:            2103,
@@ -83,15 +82,6 @@ func TestRender(t *testing.T) {
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild("", nil)
 
-	noInitContainerWithProxyAutoInjectOptions := testInstallOptions()
-	noInitContainerWithProxyAutoInjectOptions.recordedFlags = []*config.Install_Flag{
-		{Name: "linkerd-cni-enabled", Value: "true"},
-		{Name: "proxy-auto-inject", Value: "true"},
-	}
-	noInitContainerWithProxyAutoInjectOptions.noInitContainer = true
-	noInitContainerWithProxyAutoInjectOptions.proxyAutoInject = true
-	noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, _ := noInitContainerWithProxyAutoInjectOptions.validateAndBuild("", nil)
-
 	testCases := []struct {
 		values         *installValues
 		configs        *config.All
@@ -104,7 +94,6 @@ func TestRender(t *testing.T) {
 		{haValues, haConfig, "install_ha_output.golden"},
 		{haWithOverridesValues, haWithOverridesConfig, "install_ha_with_overrides_output.golden"},
 		{noInitContainerValues, noInitContainerConfig, "install_no_init_container.golden"},
-		{noInitContainerWithProxyAutoInjectValues, noInitContainerWithProxyAutoInjectConfig, "install_no_init_container_auto_inject.golden"},
 	}
 
 	for i, tc := range testCases {

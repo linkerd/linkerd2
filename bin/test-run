@@ -63,7 +63,7 @@ function run_upgrade_test() {
     install_edge $edge_namespace
 
     printf "Upgrading release [%s] to [%s]\n" "$edge_version" "$linkerd_version"
-    run_test "$test_directory/install_test.go" --upgrade-from-version=$edge_version --linkerd-namespace=$edge_namespace --proxy-auto-inject || exit_code=$?
+    run_test "$test_directory/install_test.go" --upgrade-from-version=$edge_version --linkerd-namespace=$edge_namespace || exit_code=$?
 }
 
 linkerd_path=$1
