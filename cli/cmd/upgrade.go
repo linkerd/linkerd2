@@ -18,8 +18,10 @@ import (
 )
 
 const (
-	okMessage   = "You're on your way to upgrading Linkerd!\nVisit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps\n"
-	failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+	okMessage           = "You're on your way to upgrading Linkerd!"
+	controlPlaneMessage = "Don't forget to run `linkerd upgrade control-plane`!"
+	visitMessage        = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
+	failMessage         = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
 )
 
 type upgradeOptions struct {
@@ -117,6 +119,10 @@ install command.`,
 			buf.WriteTo(os.Stdout)
 
 			fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
+			if stage == configStage {
+				fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
+			}
+			fmt.Fprintf(os.Stderr, "%s\n\n", visitMessage)
 
 			return nil
 		},
