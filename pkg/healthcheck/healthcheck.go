@@ -505,6 +505,10 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
 					check: func(context.Context) error {
+						if hc.DataPlaneNamespace == "" {
+							// when checking proxies in all namespaces, this check is a no-op
+							return nil
+						}
 						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
@@ -579,7 +583,7 @@ func (hc *HealthChecker) allCategories() []category {
 
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
-// NewHeathChecker.
+// NewHealthChecker.
 func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
 	hc.addCategory(
 		category{

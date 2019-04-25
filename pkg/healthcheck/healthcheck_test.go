@@ -445,6 +445,74 @@ func TestValidateControlPlanePods(t *testing.T) {
 	})
 }
 
+func TestValidateDataPlaneNamespace(t *testing.T) {
+	testCases := []struct {
+		ns     string
+		result string
+	}{
+		{
+			"",
+			"data-plane-ns-test-cat data plane namespace exists",
+		},
+		{
+			"bad-ns",
+			"data-plane-ns-test-cat data plane namespace exists: The \"bad-ns\" namespace does not exist",
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d/%s", i, tc.ns), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{
+					DataPlaneNamespace: tc.ns,
+				},
+			)
+			clientset, _, err := k8s.NewFakeClientSets()
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
+
+			// create a synethic category that only includes the "data plane namespace exists" check
+			dataPlaneNSCat := category{
+				id:       "data-plane-ns-test-cat",
+				checkers: []checker{},
+			}
+
+			for cat := range hc.categories {
+				if hc.categories[cat].id == LinkerdDataPlaneChecks {
+					for c := range hc.categories[cat].checkers {
+						if hc.categories[cat].checkers[c].description == "data plane namespace exists" {
+							dataPlaneNSCat.checkers = append(dataPlaneNSCat.checkers, hc.categories[cat].checkers[c])
+							break
+						}
+					}
+					break
+				}
+			}
+			hc.addCategory(dataPlaneNSCat)
+
+			observedResults := make([]string, 0)
+			observer := func(result *CheckResult) {
+				res := fmt.Sprintf("%s %s", result.Category, result.Description)
+				if result.Err != nil {
+					res += fmt.Sprintf(": %s", result.Err)
+				}
+				observedResults = append(observedResults, res)
+			}
+			expectedResults := []string{
+				tc.result,
+			}
+			hc.RunChecks(observer)
+			if !reflect.DeepEqual(observedResults, expectedResults) {
+				t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+			}
+		})
+	}
+}
+
 func TestValidateDataPlanePods(t *testing.T) {
 
 	t.Run("Returns an error if no inject pods were found", func(t *testing.T) {
