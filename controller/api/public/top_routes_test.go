@@ -126,7 +126,7 @@ status:
   phase: Running`,
 
 	// serviceprofile/books.default.svc.cluster.local
-	`apiVersion: linkerd.io/v1alpha1
+	`apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.default.svc.cluster.local

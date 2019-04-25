@@ -95,7 +95,15 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   group: linkerd.io
-  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+  - name: v1alpha2
+    served: true
+    storage: true
+  conversion:
+    strategy: None
   scope: Namespaced
   names:
     plural: serviceprofiles

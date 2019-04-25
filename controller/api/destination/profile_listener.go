@@ -2,7 +2,7 @@ package destination
 
 import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	log "github.com/sirupsen/logrus"
 )

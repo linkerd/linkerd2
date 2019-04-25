@@ -18,5 +18,5 @@ webhooks:
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1"]
+    apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]`

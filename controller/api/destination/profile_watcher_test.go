@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
@@ -18,7 +18,7 @@ func TestProfileWatcher(t *testing.T) {
 		{
 			name: "service profile",
 			k8sConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: foobar.ns.svc.cluster.local

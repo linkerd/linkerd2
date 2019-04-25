@@ -717,7 +717,7 @@ func TestGetServiceProfileFor(t *testing.T) {
 		{
 			expectedRouteNames: []string{},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -733,7 +733,7 @@ spec:
 		{
 			expectedRouteNames: []string{"server"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -749,7 +749,7 @@ spec:
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -765,7 +765,7 @@ spec:
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -776,7 +776,7 @@ spec:
       pathRegex: /server
     name: server`,
 				`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local

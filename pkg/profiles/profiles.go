@@ -11,7 +11,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1" // TODO: pkg/profiles should not depend on controller/gen
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2" // TODO: pkg/profiles should not depend on controller/gen
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"

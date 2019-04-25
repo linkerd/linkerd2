@@ -9,7 +9,7 @@ import (
 	"time"
 
 	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/testutil"
 	"sigs.k8s.io/yaml"
 )
@@ -276,7 +276,12 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	}
 
 	cmd = append(cmd, "--output", "json")
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	var out, stderr string
+	err := TestHelper.RetryFor(2*time.Minute, func() error {
+		var err error
+		out, stderr, err = TestHelper.LinkerdRun(cmd...)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}

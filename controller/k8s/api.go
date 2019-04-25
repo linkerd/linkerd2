@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
-	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha1"
+	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -158,7 +158,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 			api.rs = sharedInformers.Apps().V1beta2().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
 		case SP:
-			api.sp = spSharedInformers.Linkerd().V1alpha1().ServiceProfiles()
+			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
@@ -749,7 +749,7 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 // first look for a matching service profile in the client's namespace.  If not
 // found, we then look in the service's namespace.  If no service profile is
 // found, we return the default service profile.
-func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1alpha1.ServiceProfile {
+func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1alpha2.ServiceProfile {
 	dst := fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
 	// First attempt to lookup profile in client namespace
 	if clientNs != "" {
@@ -773,12 +773,12 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1
 	}
 	// Not found; return default.
 	log.Debugf("no Service Profile found for '%s' -- using default", dst)
-	return &spv1alpha1.ServiceProfile{
+	return &spv1alpha2.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: dst,
 		},
-		Spec: spv1alpha1.ServiceProfileSpec{
-			Routes: []*spv1alpha1.RouteSpec{},
+		Spec: spv1alpha2.ServiceProfileSpec{
+			Routes: []*spv1alpha2.RouteSpec{},
 		},
 	}
 }

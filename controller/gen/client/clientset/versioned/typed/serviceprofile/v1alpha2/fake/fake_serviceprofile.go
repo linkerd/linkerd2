@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,29 +30,29 @@ import (
 
 // FakeServiceProfiles implements ServiceProfileInterface
 type FakeServiceProfiles struct {
-	Fake *FakeLinkerdV1alpha1
+	Fake *FakeLinkerdV1alpha2
 	ns   string
 }
 
-var serviceprofilesResource = schema.GroupVersionResource{Group: "linkerd.io", Version: "v1alpha1", Resource: "serviceprofiles"}
+var serviceprofilesResource = schema.GroupVersionResource{Group: "linkerd.io", Version: "v1alpha2", Resource: "serviceprofiles"}
 
-var serviceprofilesKind = schema.GroupVersionKind{Group: "linkerd.io", Version: "v1alpha1", Kind: "ServiceProfile"}
+var serviceprofilesKind = schema.GroupVersionKind{Group: "linkerd.io", Version: "v1alpha2", Kind: "ServiceProfile"}
 
 // Get takes name of the serviceProfile, and returns the corresponding serviceProfile object, and an error if there is any.
-func (c *FakeServiceProfiles) Get(name string, options v1.GetOptions) (result *v1alpha1.ServiceProfile, err error) {
+func (c *FakeServiceProfiles) Get(name string, options v1.GetOptions) (result *v1alpha2.ServiceProfile, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(serviceprofilesResource, c.ns, name), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewGetAction(serviceprofilesResource, c.ns, name), &v1alpha2.ServiceProfile{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ServiceProfile), err
+	return obj.(*v1alpha2.ServiceProfile), err
 }
 
 // List takes label and field selectors, and returns the list of ServiceProfiles that match those selectors.
-func (c *FakeServiceProfiles) List(opts v1.ListOptions) (result *v1alpha1.ServiceProfileList, err error) {
+func (c *FakeServiceProfiles) List(opts v1.ListOptions) (result *v1alpha2.ServiceProfileList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(serviceprofilesResource, serviceprofilesKind, c.ns, opts), &v1alpha1.ServiceProfileList{})
+		Invokes(testing.NewListAction(serviceprofilesResource, serviceprofilesKind, c.ns, opts), &v1alpha2.ServiceProfileList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakeServiceProfiles) List(opts v1.ListOptions) (result *v1alpha1.Servic
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.ServiceProfileList{ListMeta: obj.(*v1alpha1.ServiceProfileList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ServiceProfileList).Items {
+	list := &v1alpha2.ServiceProfileList{ListMeta: obj.(*v1alpha2.ServiceProfileList).ListMeta}
+	for _, item := range obj.(*v1alpha2.ServiceProfileList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,31 +79,31 @@ func (c *FakeServiceProfiles) Watch(opts v1.ListOptions) (watch.Interface, error
 }
 
 // Create takes the representation of a serviceProfile and creates it.  Returns the server's representation of the serviceProfile, and an error, if there is any.
-func (c *FakeServiceProfiles) Create(serviceProfile *v1alpha1.ServiceProfile) (result *v1alpha1.ServiceProfile, err error) {
+func (c *FakeServiceProfiles) Create(serviceProfile *v1alpha2.ServiceProfile) (result *v1alpha2.ServiceProfile, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(serviceprofilesResource, c.ns, serviceProfile), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewCreateAction(serviceprofilesResource, c.ns, serviceProfile), &v1alpha2.ServiceProfile{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ServiceProfile), err
+	return obj.(*v1alpha2.ServiceProfile), err
 }
 
 // Update takes the representation of a serviceProfile and updates it. Returns the server's representation of the serviceProfile, and an error, if there is any.
-func (c *FakeServiceProfiles) Update(serviceProfile *v1alpha1.ServiceProfile) (result *v1alpha1.ServiceProfile, err error) {
+func (c *FakeServiceProfiles) Update(serviceProfile *v1alpha2.ServiceProfile) (result *v1alpha2.ServiceProfile, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(serviceprofilesResource, c.ns, serviceProfile), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewUpdateAction(serviceprofilesResource, c.ns, serviceProfile), &v1alpha2.ServiceProfile{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ServiceProfile), err
+	return obj.(*v1alpha2.ServiceProfile), err
 }
 
 // Delete takes name of the serviceProfile and deletes it. Returns an error if one occurs.
 func (c *FakeServiceProfiles) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(serviceprofilesResource, c.ns, name), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewDeleteAction(serviceprofilesResource, c.ns, name), &v1alpha2.ServiceProfile{})
 
 	return err
 }
@@ -112,17 +112,17 @@ func (c *FakeServiceProfiles) Delete(name string, options *v1.DeleteOptions) err
 func (c *FakeServiceProfiles) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(serviceprofilesResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &v1alpha1.ServiceProfileList{})
+	_, err := c.Fake.Invokes(action, &v1alpha2.ServiceProfileList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched serviceProfile.
-func (c *FakeServiceProfiles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ServiceProfile, err error) {
+func (c *FakeServiceProfiles) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha2.ServiceProfile, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(serviceprofilesResource, c.ns, name, pt, data, subresources...), &v1alpha1.ServiceProfile{})
+		Invokes(testing.NewPatchSubresourceAction(serviceprofilesResource, c.ns, name, pt, data, subresources...), &v1alpha2.ServiceProfile{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ServiceProfile), err
+	return obj.(*v1alpha2.ServiceProfile), err
 }

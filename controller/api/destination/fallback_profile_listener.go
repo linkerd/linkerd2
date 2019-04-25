@@ -3,7 +3,7 @@ package destination
 import (
 	"sync"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
 type fallbackProfileListener struct {
