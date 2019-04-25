@@ -124,4 +124,16 @@ spec:
     condition:
       method: GET
       pathRegex: /public/img/.*
+---
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: linkerd-tap.{{.Namespace}}.svc.cluster.local
+  namespace: {{.Namespace}}
+spec:
+  routes:
+  - name: POST /linkerd2.controller.tap.Tap/TapByResource
+    condition:
+      method: POST
+      pathRegex: /linkerd2\.controller\.tap\.Tap/TapByResource
 `

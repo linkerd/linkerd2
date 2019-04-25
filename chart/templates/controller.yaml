@@ -74,6 +74,7 @@ spec:
         args:
         - "public-api"
         - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
+        - "-tap-addr=linkerd-tap.{{.Namespace}}.svc.cluster.local:8088"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
@@ -119,33 +120,6 @@ spec:
             port: 9996
           failureThreshold: 7
         {{ with .DestinationResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
-        securityContext:
-          runAsUser: {{.ControllerUID}}
-      - name: tap
-        ports:
-        - name: grpc
-          containerPort: 8088
-        - name: admin-http
-          containerPort: 9998
-        image: {{.ControllerImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "tap"
-        - "-controller-namespace={{.Namespace}}"
-        - "-log-level={{.ControllerLogLevel}}"
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9998
-          initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 9998
-          failureThreshold: 7
-        {{ with .TapResources -}}
         {{- template "resources" . }}
         {{ end -}}
         securityContext:

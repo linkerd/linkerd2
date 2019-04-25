@@ -814,6 +814,7 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-prometheus", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -826,6 +827,7 @@ func expectedServiceAccountNames() []string {
 		"linkerd-proxy-injector",
 		"linkerd-sp-validator",
 		"linkerd-web",
+		"linkerd-tap",
 	}
 }
 
@@ -1094,7 +1096,7 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
+	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

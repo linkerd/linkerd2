@@ -11,9 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-//////////////////////
-///   TEST SETUP   ///
-//////////////////////
+// ////////////////////
+// /   TEST SETUP   ///
+// ////////////////////
 
 var TestHelper *testutil.TestHelper
 
@@ -78,11 +78,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-prometheus":     "1/1",
 				"linkerd-proxy-injector": "1/1",
 				"linkerd-sp-validator":   "1/1",
+				"linkerd-tap":            "1/1",
 				"linkerd-web":            "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), prometheusPod, "--from", "po/" + controllerPod},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
@@ -94,7 +95,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
+			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "linkerd-prometheus", "--from", "deploy/linkerd-controller"},
 			expectedRows: map[string]string{
 				"linkerd-prometheus": "1/1",
 			},
@@ -108,7 +109,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetLinkerdNamespace(): "7/7",
+				TestHelper.GetLinkerdNamespace(): "8/8",
 			},
 		},
 		{
