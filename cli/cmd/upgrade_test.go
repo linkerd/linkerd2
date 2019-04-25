@@ -87,7 +87,7 @@ data:
 				t.Fatalf("Error mocking k8s client: %s", err)
 			}
 
-			values, configs, err := options.validateAndBuild(clientset, flags)
+			values, configs, err := options.validateAndBuild("", clientset, flags)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
 			} else if err == nil {
@@ -134,7 +134,7 @@ data:
 		t.Fatalf("Error mocking k8s client: %s", err)
 	}
 
-	values, configs, err := options.validateAndBuild(clientset, flags)
+	values, configs, err := options.validateAndBuild("", clientset, flags)
 	if err != nil {
 		t.Fatalf("validateAndBuild failed with %s", err)
 	}

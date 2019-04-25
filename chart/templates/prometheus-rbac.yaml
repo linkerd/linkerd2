@@ -4,12 +4,6 @@
 ### Prometheus RBAC
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -29,6 +23,12 @@ roleRef:
   name: linkerd-{{.Namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: {{.Namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-prometheus
   namespace: {{.Namespace}}
 {{- end}}

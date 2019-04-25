@@ -896,7 +896,7 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 	}
 }
 
-func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.FlagSet) (string, error) {
+func validateArgs(args []string, flags *pflag.FlagSet, additionalFlags *pflag.FlagSet) (string, error) {
 	if len(args) > 1 {
 		return "", fmt.Errorf("only zero or one argument permitted, received: %s", args)
 	} else if len(args) == 0 {
@@ -909,12 +909,17 @@ func validateArgs(args []string, flags *pflag.FlagSet, installOnlyFlags *pflag.F
 	if stage == configStage {
 		combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
 		combinedFlags.AddFlagSet(flags)
-		combinedFlags.AddFlagSet(installOnlyFlags)
+		combinedFlags.AddFlagSet(additionalFlags)
 
 		invalidFlags := make([]string, 0)
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
-				invalidFlags = append(invalidFlags, f.Name)
+				switch f.Name {
+				case "ignore-cluster":
+					// allow `linkerd install config --ignore-cluster`
+				default:
+					invalidFlags = append(invalidFlags, f.Name)
+				}
 			}
 		})
 		if len(invalidFlags) > 0 {
