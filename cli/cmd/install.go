@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +26,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
@@ -705,14 +703,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 // This bypasses the public API so that public API errors cannot cause us to
 // misdiagnose a controller error to indicate that no control plane exists.
 func exitIfClusterExists() {
-	kubeConfig, err := k8s.GetConfig(kubeconfigPath, kubeContext)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
-	}
-
-	k, err := kubernetes.NewForConfig(kubeConfig)
+	k, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
@@ -751,7 +742,7 @@ func exitIfNamespaceDoesNotExist() {
 		os.Exit(1)
 	}
 
-	err := hc.CheckNamespace(context.Background(), controlPlaneNamespace, true)
+	err := hc.CheckNamespace(controlPlaneNamespace, true)
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
 			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",

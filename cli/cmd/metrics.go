@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type metricsOptions struct {
@@ -92,17 +91,12 @@ func newCmdMetrics() *cobra.Command {
   )`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config, err := k8s.GetConfig(kubeconfigPath, kubeContext)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 			if err != nil {
 				return err
 			}
 
-			clientset, err := kubernetes.NewForConfig(config)
-			if err != nil {
-				return err
-			}
-
-			pods, err := getPodsFor(clientset, options.namespace, args[0])
+			pods, err := getPodsFor(k8sAPI, options.namespace, args[0])
 			if err != nil {
 				return err
 			}
@@ -110,7 +104,7 @@ func newCmdMetrics() *cobra.Command {
 			resultChan := make(chan metricsResult)
 			for i := range pods {
 				go func(pod corev1.Pod) {
-					bytes, err := getMetrics(config, clientset, pod, verbose)
+					bytes, err := getMetrics(k8sAPI, pod, verbose)
 
 					resultChan <- metricsResult{
 						pod:     pod.GetName(),
@@ -157,12 +151,11 @@ func newCmdMetrics() *cobra.Command {
 }
 
 func getMetrics(
-	config *rest.Config,
-	clientset kubernetes.Interface,
+	k8sAPI *k8s.KubernetesAPI,
 	pod corev1.Pod,
 	emitLogs bool,
 ) ([]byte, error) {
-	portforward, err := k8s.NewProxyMetricsForward(config, clientset, pod, emitLogs)
+	portforward, err := k8s.NewProxyMetricsForward(k8sAPI, pod, emitLogs)
 	if err != nil {
 		return nil, err
 	}

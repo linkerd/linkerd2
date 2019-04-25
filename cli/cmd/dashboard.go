@@ -9,7 +9,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes"
 )
 
 // These constants are used by the `show` flag.
@@ -63,12 +62,7 @@ func newCmdDashboard() *cobra.Command {
 			// ensure we can connect to the public API before starting the proxy
 			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
 
-			config, err := k8s.GetConfig(kubeconfigPath, kubeContext)
-			if err != nil {
-				return err
-			}
-
-			clientset, err := kubernetes.NewForConfig(config)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 			if err != nil {
 				return err
 			}
@@ -79,8 +73,7 @@ func newCmdDashboard() *cobra.Command {
 			defer signal.Stop(signals)
 
 			portforward, err := k8s.NewPortForward(
-				config,
-				clientset,
+				k8sAPI,
 				controlPlaneNamespace,
 				webDeployment,
 				options.port,

@@ -20,7 +20,7 @@ import (
 
 //This code replicates most of the functionality in https://github.com/wercker/stern/blob/master/cmd/cli.go
 type logCmdConfig struct {
-	clientset *kubernetes.Clientset
+	clientset kubernetes.Interface
 	*stern.Config
 }
 
@@ -117,17 +117,12 @@ func getControlPlaneComponentsAndContainers(pods *corev1.PodList) ([]string, []s
 }
 
 func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	clientset, err := kubernetes.NewForConfig(kubeAPI.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	podList, err := clientset.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
+	podList, err := kubeAPI.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +135,7 @@ func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (
 	}
 
 	return &logCmdConfig{
-		clientset,
+		kubeAPI,
 		c,
 	}, nil
 }

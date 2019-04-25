@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
 )
 
 func TestNewProxyMetricsForward(t *testing.T) {
@@ -87,7 +86,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = NewProxyMetricsForward(&rest.Config{}, k8sClient, *pod, false)
+			_, err = NewProxyMetricsForward(&KubernetesAPI{Interface: k8sClient}, *pod, false)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -155,7 +154,7 @@ status:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = NewPortForward(&rest.Config{}, k8sClient, test.ns, test.deployName, 0, 0, false)
+			_, err = NewPortForward(&KubernetesAPI{Interface: k8sClient}, test.ns, test.deployName, 0, 0, false)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

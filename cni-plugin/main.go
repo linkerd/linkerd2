@@ -34,7 +34,6 @@ import (
 	"github.com/projectcalico/libcalico-go/lib/logutils"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 // ProxyInit is the configuration for the proxy-init binary
@@ -165,12 +164,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	})
 
 	if namespace != "" && podName != "" {
-		config, err := k8s.GetConfig(conf.Kubernetes.Kubeconfig, "linkerd-cni-context")
-		if err != nil {
-			return err
-		}
-
-		client, err := kubernetes.NewForConfig(config)
+		client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd-cni-context", 0)
 		if err != nil {
 			return err
 		}

@@ -78,7 +78,7 @@ type API struct {
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
 func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
-	k8sClient, err := NewClientSet(kubeConfig)
+	k8sClient, err := k8s.NewAPI(kubeConfig, "", 0)
 	if err != nil {
 		return nil, err
 	}
