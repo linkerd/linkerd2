@@ -43,7 +43,7 @@ subjects:
 	for i, test := range tests {
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: returns expected authorization", i), func(t *testing.T) {
-			k8sClient, _, err := NewFakeClientSets(test.k8sConfigs...)
+			k8sClient, err := NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}

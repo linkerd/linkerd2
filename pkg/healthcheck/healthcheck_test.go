@@ -298,11 +298,11 @@ func TestCheckCanCreate(t *testing.T) {
 		[]CategoryID{},
 		&Options{},
 	)
-	clientset, _, err := k8s.NewFakeClientSets()
+	var err error
+	hc.kubeAPI, err = k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
 	err = hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
@@ -340,11 +340,12 @@ spec:
 				&Options{},
 			)
 
-			clientset, _, err := k8s.NewFakeClientSets(test.k8sConfigs...)
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
-			hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
+
 			err = hc.checkNetAdmin()
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
@@ -469,11 +470,11 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 					DataPlaneNamespace: tc.ns,
 				},
 			)
-			clientset, _, err := k8s.NewFakeClientSets()
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI()
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
-			hc.kubeAPI = &k8s.KubernetesAPI{Interface: clientset}
 
 			// create a synethic category that only includes the "data plane namespace exists" check
 			dataPlaneNSCat := category{

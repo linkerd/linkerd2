@@ -82,7 +82,7 @@ data:
 			options := testUpgradeOptions()
 			flags := options.recordableFlagSet()
 
-			clientset, _, err := k8s.NewFakeClientSets(tc.k8sConfigs...)
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Error mocking k8s client: %s", err)
 			}
@@ -129,7 +129,7 @@ data:
 	options := testUpgradeOptions()
 	flags := options.recordableFlagSet()
 
-	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
+	clientset, err := k8s.NewFakeAPI(k8sConfigs...)
 	if err != nil {
 		t.Fatalf("Error mocking k8s client: %s", err)
 	}
@@ -231,7 +231,7 @@ data:
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			clientset, _, err := k8s.NewFakeClientSets(tc.k8sConfigs...)
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
