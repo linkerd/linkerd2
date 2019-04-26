@@ -75,8 +75,10 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        {{- if .Identity.Issuer}}
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
+        {{- end}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -96,8 +98,10 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+      {{- if .Identity.Issuer}}
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      {{- end}}
 {{end -}}
 {{end -}}
