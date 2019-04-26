@@ -529,8 +529,10 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/namespace.yaml"},
 			{Name: "templates/identity-rbac.yaml"},
 			{Name: "templates/controller-rbac.yaml"},
+			{Name: "templates/web-rbac.yaml"},
 			{Name: "templates/serviceprofile-crd.yaml"},
 			{Name: "templates/prometheus-rbac.yaml"},
+			{Name: "templates/grafana-rbac.yaml"},
 			{Name: "templates/proxy_injector-rbac.yaml"},
 			{Name: "templates/sp_validator-rbac.yaml"},
 		}...)

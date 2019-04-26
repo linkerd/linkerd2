@@ -84,6 +84,16 @@ metadata:
   namespace: Namespace
 ---
 ###
+### Web RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: Namespace
+---
+###
 ### Service Profile CRD
 ###
 ---
@@ -218,6 +228,16 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
+  namespace: Namespace
+---
+###
+### Grafana RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
   namespace: Namespace
 ---
 ###
@@ -725,12 +745,6 @@ status: {}
 ### Web
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-web
-  namespace: Namespace
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -1144,12 +1158,6 @@ status: {}
 ###
 ### Grafana
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-grafana
-  namespace: Namespace
 ---
 kind: ConfigMap
 apiVersion: v1

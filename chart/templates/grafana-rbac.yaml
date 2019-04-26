@@ -1,0 +1,12 @@
+{{with .Values -}}
+---
+###
+### Grafana RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: {{.Namespace}}
+{{- end}}

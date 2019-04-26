@@ -496,12 +496,6 @@ status: {}
 ### Web
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-web
-  namespace: linkerd
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -985,12 +979,6 @@ status: {}
 ###
 ### Grafana
 ###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-grafana
-  namespace: linkerd
 ---
 kind: ConfigMap
 apiVersion: v1
