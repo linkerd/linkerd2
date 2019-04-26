@@ -62,6 +62,11 @@ const (
 	envIdentityTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 
 	identityAPIPort = 8080
+
+	proxyInitResourceRequestCPU    = "10m"
+	proxyInitResourceLimitCPU      = "100m"
+	proxyInitResourceRequestMemory = "10Mi"
+	proxyInitResourceLimitMemory   = "50Mi"
 )
 
 var injectableKinds = []string{
@@ -602,6 +607,7 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *v1.Volu
 			RunAsNonRoot: &nonRoot,
 			RunAsUser:    &runAsUser,
 		},
+		Resources: conf.proxyInitResourceRequirements(),
 	}
 	if saVolumeMount != nil {
 		initContainer.VolumeMounts = []v1.VolumeMount{*saVolumeMount}
@@ -827,10 +833,23 @@ func (conf *ResourceConfig) proxyResourceRequirements() v1.ResourceRequirements 
 		log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 	}
 	if !limitMemory.IsZero() {
-		resources.Limits["memory"] = limitMemory
+		resources.Limits[corev1.ResourceMemory] = limitMemory
 	}
 
 	return resources
+}
+
+func (conf *ResourceConfig) proxyInitResourceRequirements() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    k8sResource.MustParse(proxyInitResourceRequestCPU),
+			corev1.ResourceMemory: k8sResource.MustParse(proxyInitResourceRequestMemory),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    k8sResource.MustParse(proxyInitResourceLimitCPU),
+			corev1.ResourceMemory: k8sResource.MustParse(proxyInitResourceLimitMemory),
+		},
+	}
 }
 
 func (conf *ResourceConfig) proxyDestinationAddr() string {
