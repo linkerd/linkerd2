@@ -84,6 +84,16 @@ metadata:
   namespace: linkerd
 ---
 ###
+### Web RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: linkerd
+---
+###
 ### Service Profile CRD
 ###
 ---
@@ -218,6 +228,16 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
+  namespace: linkerd
+---
+###
+### Grafana RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
   namespace: linkerd
 ---
 ###

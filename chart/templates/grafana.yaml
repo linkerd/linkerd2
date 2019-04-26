@@ -4,12 +4,6 @@
 ### Grafana
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-grafana
-  namespace: {{.Namespace}}
----
 kind: ConfigMap
 apiVersion: v1
 metadata:
