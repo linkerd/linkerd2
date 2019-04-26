@@ -2,62 +2,63 @@
 
 **Significant Update**
 
-As of this edge release the proxy auto-injector component is always installed.
-To have the auto-injector inject a pod you still have the option to manually
-add the `linkerd.io/inject: enable` annotation into the pod spec, or at the
-namespace level to have all your pods be injected by default.
-With this release the behaviour of the `linkerd inject` command changes, as
-now it won't output the injected sidecar, but instead it will just add the
-annotation to defer the injection to the auto-injector.
-For advanced CI/CD pipelines where you'd like to keep the old behaviour, you can
-use the new `--manual` flag to output the injected sidecar as before.
+As of this edge release the proxy injector component is always installed.
+To have the proxy injector inject a pod you still can manually add the
+`linkerd.io/inject: enable` annotation into the pod spec, or at the namespace
+level to have all your pods be injected by default.
+With this release the behaviour of the `linkerd inject` command changes, where
+the proxy sidecar container YAML is no longer included in its output by
+default, but instead it will just add the annotations to defer the injection to
+the proxy injector.
+For use cases that require the full injected YAML to be output, a new
+`--manual` flag has been added.
 
 Another important update is the introduction of install stages. You still have
-the old `linkerd install` command, but now it can be broken into `linkerd install config`
-which installs the resources that require cluster-level privileges, and
-`linkerd install control-plane` that continues with the resources that only
-require namespace-level privileges. This also applies to the `linkerd upgrade`
-command.
+the old `linkerd install` command, but now it can be broken into
+`linkerd install config` which installs the resources that require
+cluster-level privileges, and `linkerd install control-plane` that continues
+with the resources that only require namespace-level privileges.
+This also applies to the `linkerd upgrade` command.
 
 * CLI
   * **Breaking Change** Removed the `--proxy-auto-inject` flag, as the
-    auto-injector is now always installed
+    proxy injector is now always installed
   * **Breaking Change** Replaced the `--linkerd-version` flag with the
     `--proxy-version` flag in the `linkerd install` and `linkerd upgrade`
-    commands, which allows setting the version for the injected sidecar image,
-    without changing the image versions for the control planel
+    commands, which allows setting the version for the injected proxy sidecar
+    image, without changing the image versions for the control plane
   * Introduced install stages: `linkerd install config` and
     `linkerd install control-plane`
   * Introduced upgrade stages: `linkerd upgrade config` and
     `linkerd upgrade control-plane`
   * Introduced a new `--from-manifests` flag to `linkerd upgrade` allowing
     manually feeding a previously saved output of `linkerd install` into the
-    command, instead of requiring to connect to the cluster to fetch the config
+    command, instead of requiring a connection to the cluster to fetch the
+    config
   * Introduced a new `--manual` flag to `linkerd inject` to output the proxy
     sidecar container spec
   * Introduced a new `--enable-debug-sidecar` option to `linkerd inject`, that
     injects a debug sidecar to inspect traffic to and from the meshed pod
   * Added a new check for unschedulable pods and PSP issues (thanks, @liquidslr!)
-  * Disabled the spinner in `linkerd check` when running without a tty
-  * Ensured the ServiceAccount for the auto-injector is created before its
-    Deployment to avoid warnings when installing the auto-injector
+  * Disabled the spinner in `linkerd check` when running without a TTY
+  * Ensured the ServiceAccount for the proxy injector is created before its
+    Deployment to avoid warnings when installing the proxy injector
     (thanks, @dwj300!)
 
 * Controller
-  * Added a profiling endpoint for all the control plane components, to better
-    assist debugging efforts
-  * Fixed bug in the auto-injector, where sporadically the pod workload owner
+  * Added Go pprof HTTP endpoints to all control plane components' admin
+    servers to better assist debugging efforts
+  * Fixed bug in the proxy injector, where sporadically the pod workload owner
     wasn't properly determined, which would result in erroneous stats
   * Added support for a new `config.linkerd.io/disable-identity` annotation to
-    opt-out of identity for a specific pod
+    opt out of identity for a specific pod
 
 * Web UI
-  * Added the Font Awesome stylesheet locally; this allows seeing both Font
-    Awesome and Material-UI sidebar icons consistently with no/limited Internet
-    (thanks again, @liquidslr!)
+  * Added the Font Awesome stylesheet locally; this allows both Font Awesome
+    and Material-UI sidebar icons to display consistently with no/limited
+    internet access (thanks again, @liquidslr!)
 
 * Internal
-  * Added integration tests for service profile metrics
   * Known container errors were hidden in the integration tests; now they are
     reported in the output, still without having the tests fail
 
