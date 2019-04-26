@@ -23,7 +23,10 @@ import (
 var minAPIVersion = [3]int{1, 10, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
-// TODO: support spClient
+// TODO: support ServiceProfile ClientSet. A prerequisite is moving the
+// ServiceProfile client code from `./controller` to `./pkg` (#2751). This will
+// also allow making `NewFakeClientSets` private, as KubernetesAPI will support
+// all relevant k8s resources.
 type KubernetesAPI struct {
 	*rest.Config
 	kubernetes.Interface
