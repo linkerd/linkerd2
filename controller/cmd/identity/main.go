@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	pcadelegate "github.com/linkerd/linkerd2/pkg/pcadelegate"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -94,7 +95,8 @@ func main() {
 		}
 	}
 
-	ca := tls.NewCA(*creds, validity)
+	ca, _ := pcadelegate.EasyNewCADelegate()
+	// ca := tls.NewCA(*creds, validity)
 
 	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
 	if err != nil {
