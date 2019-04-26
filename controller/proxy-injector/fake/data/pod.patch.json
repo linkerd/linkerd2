@@ -40,7 +40,16 @@
         "--inbound-ports-to-ignore",
         "4190,4191"
       ],
-      "resources": {},
+      "resources": {
+        "limits": {
+          "cpu":"100m",
+          "memory":"50Mi"
+        },
+        "requests": {
+          "cpu":"10m",
+          "memory":"10Mi"
+        }
+      },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
