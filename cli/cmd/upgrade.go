@@ -93,7 +93,7 @@ install command.`,
 					upgradeErrorf("Failed to parse manifests from %s: %s", options.manifests, err)
 				}
 
-				k, _, err = k8s.NewFakeClientSetsFromManifests(readers)
+				k, err = k8s.NewFakeAPIFromManifests(readers)
 				if err != nil {
 					upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
 				}
