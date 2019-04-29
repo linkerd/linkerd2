@@ -9,7 +9,7 @@ COPY controller controller
 RUN CGO_ENABLED=0 GOOS=linux go install ./pkg/...
 RUN CGO_ENABLED=0 GOOS=linux go install ./controller/cmd/...
 
-# add sweet trusted certs
+# add trusted certs so the identity service can communicate with aws
 FROM alpine:latest as certs
 RUN apk --update add ca-certificates
 
