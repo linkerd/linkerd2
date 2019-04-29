@@ -431,3 +431,34 @@ func TestConfigAccessors(t *testing.T) {
 		})
 	}
 }
+
+func TestProxyInitResourceRequirments(t *testing.T) {
+	var (
+		resourceConfig = NewResourceConfig(nil, OriginCLI)
+		actual         = resourceConfig.proxyInitResourceRequirements()
+	)
+
+	expectedLimits := map[corev1.ResourceName]string{
+		corev1.ResourceCPU:    proxyInitResourceLimitCPU,
+		corev1.ResourceMemory: proxyInitResourceLimitMemory,
+	}
+
+	for kind, value := range expectedLimits {
+		expected := k8sResource.MustParse(value)
+		if v := actual.Limits[kind]; !reflect.DeepEqual(expected, v) {
+			t.Errorf("Resource mismatch. Expected %+v. Actual %+v", expected, v)
+		}
+	}
+
+	expectedRequests := map[corev1.ResourceName]string{
+		corev1.ResourceCPU:    proxyInitResourceRequestCPU,
+		corev1.ResourceMemory: proxyInitResourceRequestMemory,
+	}
+
+	for kind, value := range expectedRequests {
+		expected := k8sResource.MustParse(value)
+		if v := actual.Requests[kind]; !reflect.DeepEqual(expected, v) {
+			t.Errorf("Resource mismatch. Expected %+v. Actual %+v", expected, v)
+		}
+	}
+}
