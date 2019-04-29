@@ -389,6 +389,14 @@ func (options *installOptions) validate() error {
 		if options.proxyMemoryRequest == "" {
 			options.proxyMemoryRequest = "20Mi"
 		}
+
+		if options.proxyCPULimit == "" {
+			options.proxyCPULimit = "1000m"
+		}
+
+		if options.proxyMemoryLimit == "" {
+			options.proxyMemoryLimit = "100Mi"
+		}
 	}
 
 	options.identityOptions.replicas = options.controllerReplicas
@@ -448,12 +456,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 	if options.highAvailability {
 		defaultConstraints := &resources{
-			CPU:    constraints{Request: "100m"},
-			Memory: constraints{Request: "50Mi"},
+			CPU:    constraints{Request: "100m", Limit: "1000m"},
+			Memory: constraints{Request: "50Mi", Limit: "250Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
 		*values.DestinationResources = *defaultConstraints
-		*values.GrafanaResources = *defaultConstraints
 		*values.ProxyInjectorResources = *defaultConstraints
 		*values.PublicAPIResources = *defaultConstraints
 		*values.SPValidatorResources = *defaultConstraints
@@ -464,10 +471,13 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// 50Mi.
 		*values.IdentityResources = *defaultConstraints
 		values.IdentityResources.Memory = constraints{Request: "10Mi"}
-
+		values.GrafanaResources = &resources{
+			CPU:    constraints{Request: "100m", Limit: "1000m"},
+			Memory: constraints{Request: "50Mi", Limit: "1024Mi"},
+		}
 		values.PrometheusResources = &resources{
-			CPU:    constraints{Request: "300m"},
-			Memory: constraints{Request: "300Mi"},
+			CPU:    constraints{Request: "300m", Limit: "1000m"},
+			Memory: constraints{Request: "300Mi", Limit: "8192Mi"},
 		}
 	}
 
