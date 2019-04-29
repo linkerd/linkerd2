@@ -866,10 +866,13 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
+	names := []string{"controller", "grafana", "prometheus", "sp-validator", "web"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
+	}
+	if _, found := statuses["identity"]; found {
+		names = append(names, "identity")
 	}
 
 	for _, name := range names {

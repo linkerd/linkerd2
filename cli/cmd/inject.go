@@ -44,6 +44,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
+	disableIdentityFlag := options.disableIdentityFlagSet()
 	var manualOption, enableDebugSidecar bool
 
 	cmd := &cobra.Command{
@@ -100,10 +101,6 @@ sub-folders, or coming from stdin.`,
 		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
 	)
 	flags.BoolVar(
-		&options.disableIdentity, "disable-identity", options.disableIdentity,
-		"Disables resources from participating in TLS identity",
-	)
-	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
 	)
@@ -111,6 +108,7 @@ sub-folders, or coming from stdin.`,
 	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
 		"Inject a debug sidecar for data plane debugging")
 	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.PersistentFlags().AddFlagSet(disableIdentityFlag)
 
 	return cmd
 }

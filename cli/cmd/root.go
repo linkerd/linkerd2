@@ -291,3 +291,9 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 
 	return flags
 }
+
+func (options *proxyConfigOptions) disableIdentityFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("disable-identity", pflag.ExitOnError)
+	flags.BoolVar(&options.disableIdentity, "disable-identity", options.disableIdentity, "Disables resources from participating in TLS identity")
+	return flags
+}

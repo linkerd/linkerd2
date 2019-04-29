@@ -56,6 +56,7 @@ type (
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
+		DisableIdentity          bool
 
 		Configs configJSONs
 
@@ -207,6 +208,7 @@ func newCmdInstall() *cobra.Command {
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
 	installOnlyFlags := options.installOnlyFlagSet()
+	disableIdentityFlag := options.proxyConfigOptions.disableIdentityFlagSet()
 
 	cmd := &cobra.Command{
 		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
@@ -230,7 +232,7 @@ control-plane.`,
   linkerd install config -l linkerdtest | kubectl apply -f -
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			stage, err := validateArgs(args, flags, installOnlyFlags)
+			stage, err := validateArgs(args, flags, installOnlyFlags, disableIdentityFlag)
 			if err != nil {
 				return err
 			}
@@ -243,7 +245,7 @@ control-plane.`,
 				exitIfNamespaceDoesNotExist()
 			}
 
-			values, configs, err := options.validateAndBuild(stage, flags)
+			values, configs, err := options.validateAndBuild(stage, flags, disableIdentityFlag)
 			if err != nil {
 				return err
 			}
@@ -256,19 +258,24 @@ control-plane.`,
 
 	// Some flags are not available during upgrade, etc.
 	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
+	cmd.PersistentFlags().AddFlagSet(disableIdentityFlag)
 
 	return cmd
 }
 
-func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *installOptions) validateAndBuild(stage string, flags ...*pflag.FlagSet) (*installValues, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
-	options.recordFlags(flags)
+	options.recordFlags(flags...)
 
-	identityValues, err := options.identityOptions.validateAndBuild()
-	if err != nil {
-		return nil, nil, err
+	var identityValues *installIdentityValues
+	if !options.disableIdentity {
+		var err error
+		identityValues, err = options.identityOptions.validateAndBuild()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	configs := options.configs(identityValues.toIdentityContext())
@@ -365,12 +372,17 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	return flags
 }
 
-func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
-	if flags == nil {
+func (options *installOptions) recordFlags(flags ...*pflag.FlagSet) {
+	if len(flags) == 0 {
 		return
 	}
 
-	flags.VisitAll(func(f *pflag.Flag) {
+	combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
+	for _, f := range flags {
+		combinedFlags.AddFlagSet(f)
+	}
+
+	combinedFlags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
 			case "ignore-cluster", "control-plane-version", "proxy-version":
@@ -455,6 +467,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ControllerUID:      options.controllerUID,
 		EnableH2Upgrade:    !options.disableH2Upgrade,
 		NoInitContainer:    options.noInitContainer,
+		DisableIdentity:    options.disableIdentity,
 		PrometheusLogLevel: toPromLogLevel(options.controllerLogLevel),
 
 		Configs: configJSONs{
@@ -542,7 +555,13 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_resources.yaml"},
 			{Name: "templates/config.yaml"},
-			{Name: "templates/identity.yaml"},
+		}...)
+		if !values.DisableIdentity {
+			files = append(files, &chartutil.BufferedFile{
+				Name: "templates/identity.yaml",
+			})
+		}
+		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/controller.yaml"},
 			{Name: "templates/web.yaml"},
 			{Name: "templates/prometheus.yaml"},
@@ -898,7 +917,7 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 	}
 }
 
-func validateArgs(args []string, flags *pflag.FlagSet, additionalFlags *pflag.FlagSet) (string, error) {
+func validateArgs(args []string, flags ...*pflag.FlagSet) (string, error) {
 	if len(args) > 1 {
 		return "", fmt.Errorf("only zero or one argument permitted, received: %s", args)
 	} else if len(args) == 0 {
@@ -910,8 +929,9 @@ func validateArgs(args []string, flags *pflag.FlagSet, additionalFlags *pflag.Fl
 	// only a few flags are available for config stage
 	if stage == configStage {
 		combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
-		combinedFlags.AddFlagSet(flags)
-		combinedFlags.AddFlagSet(additionalFlags)
+		for _, f := range flags {
+			combinedFlags.AddFlagSet(f)
+		}
 
 		invalidFlags := make([]string, 0)
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
