@@ -842,8 +842,15 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	return nil
 }
 
-func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
-	statuses := make(map[string][]corev1.ContainerStatus)
+// getPodStatuses returns a map of all Linkerd container statuses:
+// component =>
+//   pod name =>
+//     container statuses
+// "controller" =>
+//   "linkerd-controller-6f78cbd47-bc557" =>
+//     [destination status, public-api status, ...]
+func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
+	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
@@ -853,9 +860,9 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 			if len(parts) >= 4 {
 				name := strings.Join(parts[1:len(parts)-2], "-")
 				if _, found := statuses[name]; !found {
-					statuses[name] = make([]corev1.ContainerStatus, 0)
+					statuses[name] = make(map[string][]corev1.ContainerStatus)
 				}
-				statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
+				statuses[name][pod.Name] = pod.Status.ContainerStatuses
 			}
 		}
 	}
@@ -873,15 +880,33 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	}
 
 	for _, name := range names {
-		containers, found := statuses[name]
+		pods, found := statuses[name]
 		if !found {
 			return fmt.Errorf("No running pods for \"linkerd-%s\"", name)
 		}
-		for _, container := range containers {
-			if !container.Ready {
-				return fmt.Errorf("The \"linkerd-%s\" pod's \"%s\" container is not ready", name,
-					container.Name)
+		var err error
+		var ready bool
+		for pod, containers := range pods {
+			containersReady := true
+			for _, container := range containers {
+				if !container.Ready {
+					// TODO: Save this as a warning, allow check to pass but let the user
+					// know there is at least one pod not ready. This might imply
+					// restructuring health checks to allow individual checks to return
+					// either fatal or warning, rather than setting this property at
+					// compile time.
+					err = fmt.Errorf("The \"%s\" pod's \"%s\" container is not ready", pod,
+						container.Name)
+					containersReady = false
+				}
 			}
+			if containersReady {
+				// at least one pod has all containers ready
+				ready = true
+			}
+		}
+		if !ready {
+			return err
 		}
 	}
 

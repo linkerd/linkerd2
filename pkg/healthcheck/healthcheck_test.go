@@ -407,7 +407,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-grafana\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "The \"linkerd-grafana-5b7d796646-hh46d\" pod's \"grafana\" container is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -417,6 +417,26 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
+		}
+
+		err := validateControlPlanePods(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
+			pod("linkerd-controller-6f78cbd47-bc559", corev1.PodFailed, false),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
+			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
