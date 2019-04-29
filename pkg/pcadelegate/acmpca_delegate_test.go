@@ -36,8 +36,8 @@ func TestSuccessfulIssueEndCert(t *testing.T) {
 		caARN:     "myARN",
 	}
 
-	realCsr := test_helpers.CreateCSR()
-	_, err := subject.IssueEndEntityCrt(&realCsr)
+	csr := test_helpers.CreateCSR()
+	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != nil {
 		t.Fail()
@@ -56,8 +56,8 @@ func TestFailedIssueCert(t *testing.T) {
 		caARN:     "myARN",
 	}
 
-	realCsr := test_helpers.CreateCSR()
-	_, err := subject.IssueEndEntityCrt(&realCsr)
+	csr := test_helpers.CreateCSR()
+	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedError {
 		t.Fail()
@@ -83,8 +83,8 @@ func TestFailedGetCert(t *testing.T) {
 		caARN:     "myARN",
 	}
 
-	realCsr := test_helpers.CreateCSR()
-	_, err := subject.IssueEndEntityCrt(&realCsr)
+	csr := test_helpers.CreateCSR()
+	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedGetCertError {
 		t.Fail()
