@@ -52,7 +52,6 @@ type (
 func EasyNewCADelegate() (*ACMPCADelegate, error) {
 	region := string("us-west-2")
 	caARN := string("arn:aws:acm-pca:us-west-2:536616252769:certificate-authority/6ee645f6-540f-47b1-a9c3-b5d05c12790c")
-	log.Errorf("!!!! caARN %v\n", caARN)
 	hoursValid := 24 * 30
 	params := CADelegateParams{
 		region:     region,
