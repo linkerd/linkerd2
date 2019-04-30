@@ -208,7 +208,7 @@ func newCmdInstall() *cobra.Command {
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
 	installOnlyFlags := options.installOnlyFlagSet()
-	disableIdentityFlag := options.proxyConfigOptions.disableIdentityFlagSet()
+	disableIdentityFlag := options.disableIdentityFlagSet()
 
 	cmd := &cobra.Command{
 		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
@@ -555,13 +555,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_resources.yaml"},
 			{Name: "templates/config.yaml"},
-		}...)
-		if !values.DisableIdentity {
-			files = append(files, &chartutil.BufferedFile{
-				Name: "templates/identity.yaml",
-			})
-		}
-		files = append(files, []*chartutil.BufferedFile{
+			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},
 			{Name: "templates/web.yaml"},
 			{Name: "templates/prometheus.yaml"},

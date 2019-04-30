@@ -1,5 +1,5 @@
 {{with .Values -}}
-{{if .Identity -}}
+{{if and (not .DisableIdentity) (.Identity) -}}
 ---
 ###
 ### Identity Controller Service RBAC
