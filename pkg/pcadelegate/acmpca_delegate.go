@@ -38,13 +38,13 @@ type (
 	// CADelegateParams holds the required parameters for creating a new CADelegate.
 	CADelegateParams struct {
 		// region describes which AWS region the ACM-PCA resides in.
-		region string
+		Region string
 
 		// caARN describes the full ARN that represents the ACM-PCA we are using.
-		caARN string
+		CaARN string
 
 		// hoursValid describes how long certificates issued by this CA are expected to be valid.
-		hoursValid int
+		HoursValid int
 	}
 )
 
@@ -54,9 +54,9 @@ func EasyNewCADelegate() (*ACMPCADelegate, error) {
 	caARN := string("arn:aws:acm-pca:us-west-2:536616252769:certificate-authority/6ee645f6-540f-47b1-a9c3-b5d05c12790c")
 	hoursValid := 24 * 30
 	params := CADelegateParams{
-		region:     region,
-		caARN:      caARN,
-		hoursValid: hoursValid,
+		Region:     region,
+		CaARN:      caARN,
+		HoursValid: hoursValid,
 	}
 
 	return NewCADelegate(params)
@@ -65,7 +65,7 @@ func EasyNewCADelegate() (*ACMPCADelegate, error) {
 // NewCADelegate is a factory method that returns a new ACMPCADelegate.
 func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 	session, sessionErr := session.NewSession(&aws.Config{
-		Region: aws.String(params.region),
+		Region: aws.String(params.Region),
 	})
 
 	//config := aws.NewConfig().WithLogLevel(aws.LogDebugWithRequestErrors)
@@ -80,7 +80,7 @@ func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 
 	return &ACMPCADelegate{
 		acmClient: acmClient,
-		caARN:     params.caARN,
+		caARN:     params.CaARN,
 	}, nil
 }
 
