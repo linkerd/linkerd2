@@ -33,12 +33,12 @@ func newCmdVersion() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the client and server version information",
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			configureAndRunVersion(options, os.Stdout, os.Stderr, rawPublicAPIClient)
 		},
 	}
 
-	cmd.Args = cobra.NoArgs
 	cmd.PersistentFlags().BoolVar(&options.shortVersion, "short", options.shortVersion, "Print the version number(s) only, with no additional output")
 	cmd.PersistentFlags().BoolVar(&options.onlyClientVersion, "client", options.onlyClientVersion, "Print the client version only")
 

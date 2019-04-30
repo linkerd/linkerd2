@@ -49,6 +49,7 @@ func newCmdDashboard() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dashboard [flags]",
 		Short: "Open the Linkerd dashboard in a web browser",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.port < 0 {
 				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.port)
@@ -133,7 +134,6 @@ func newCmdDashboard() *cobra.Command {
 		},
 	}
 
-	cmd.Args = cobra.NoArgs
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
 	cmd.PersistentFlags().IntVarP(&options.port, "port", "p", options.port, "The local port on which to serve requests (when set to 0, a random port will be used)")
 	cmd.PersistentFlags().StringVar(&options.show, "show", options.show, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
