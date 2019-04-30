@@ -208,7 +208,6 @@ func newCmdInstall() *cobra.Command {
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
 	installOnlyFlags := options.installOnlyFlagSet()
-	disableIdentityFlag := options.disableIdentityFlagSet()
 
 	cmd := &cobra.Command{
 		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
@@ -232,7 +231,7 @@ control-plane.`,
   linkerd install config -l linkerdtest | kubectl apply -f -
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			stage, err := validateArgs(args, flags, installOnlyFlags, disableIdentityFlag)
+			stage, err := validateArgs(args, flags, installOnlyFlags)
 			if err != nil {
 				return err
 			}
@@ -245,7 +244,7 @@ control-plane.`,
 				exitIfNamespaceDoesNotExist()
 			}
 
-			values, configs, err := options.validateAndBuild(stage, flags, disableIdentityFlag)
+			values, configs, err := options.validateAndBuild(stage, flags)
 			if err != nil {
 				return err
 			}
@@ -258,16 +257,15 @@ control-plane.`,
 
 	// Some flags are not available during upgrade, etc.
 	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
-	cmd.PersistentFlags().AddFlagSet(disableIdentityFlag)
 
 	return cmd
 }
 
-func (options *installOptions) validateAndBuild(stage string, flags ...*pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
-	options.recordFlags(flags...)
+	options.recordFlags(flags)
 
 	var identityValues *installIdentityValues
 	if !options.disableIdentity {
@@ -335,6 +333,8 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
+	options.addDisableIdentityFlag(flags)
+
 	return flags
 }
 
@@ -372,17 +372,12 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	return flags
 }
 
-func (options *installOptions) recordFlags(flags ...*pflag.FlagSet) {
-	if len(flags) == 0 {
+func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
+	if flags == nil {
 		return
 	}
 
-	combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
-	for _, f := range flags {
-		combinedFlags.AddFlagSet(f)
-	}
-
-	combinedFlags.VisitAll(func(f *pflag.Flag) {
+	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
 			case "ignore-cluster", "control-plane-version", "proxy-version":
@@ -931,8 +926,8 @@ func validateArgs(args []string, flags ...*pflag.FlagSet) (string, error) {
 		combinedFlags.VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
 				switch f.Name {
-				case "ignore-cluster":
-					// allow `linkerd install config --ignore-cluster`
+				case "ignore-cluster", "disable-identity":
+					// flags available in `linkerd install config` and `linkerd upgrade config`
 				default:
 					invalidFlags = append(invalidFlags, f.Name)
 				}

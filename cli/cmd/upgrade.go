@@ -79,6 +79,9 @@ install command.`,
 			if options.ignoreCluster {
 				panic("ignore cluster must be unset") // Programmer error.
 			}
+			if options.disableIdentity {
+				upgradeErrorf("--disable-identity=true can't be set to true during an upgrade")
+			}
 
 			stage, err := validateArgs(args, flags, upgradeOnlyFlags)
 			if err != nil {
@@ -170,19 +173,21 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	configs.GetInstall().Flags = options.recordedFlags
 
 	var identity *installIdentityValues
-	idctx := configs.GetGlobal().GetIdentityContext()
-	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
-		// If there wasn't an idctx, or if it doesn't specify the required fields, we
-		// must be upgrading from a version that didn't support identity, so generate it anew...
-		identity, err = options.identityOptions.genValues()
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
-		}
-		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
-	} else {
-		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
+	if !options.disableIdentity {
+		idctx := configs.GetGlobal().GetIdentityContext()
+		if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
+			// If there wasn't an idctx, or if it doesn't specify the required fields, we
+			// must be upgrading from a version that didn't support identity, so generate it anew...
+			identity, err = options.identityOptions.genValues()
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
+			}
+			configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+		} else {
+			identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
+			}
 		}
 	}
 
