@@ -31,36 +31,23 @@ type (
 		// acmClient abstracts away the AWS acmpca.Client.
 		acmClient ACMPCAClient
 
-		// caARN represents which AWS ACM-PCA arn we need to communicate with to issue certificates.
-		caARN string
+		// params represents the configuration information we need to to issue certificates.
+		CADelegateParams
 	}
 
 	// CADelegateParams holds the required parameters for creating a new CADelegate.
 	CADelegateParams struct {
-		// region describes which AWS region the ACM-PCA resides in.
+		// Region describes which AWS region the ACM-PCA resides in.
 		Region string
 
-		// caARN describes the full ARN that represents the ACM-PCA we are using.
+		// CaARN describes the full ARN that represents the ACM-PCA we are using.
 		CaARN string
 
-		// hoursValid describes how long certificates issued by this CA are expected to be valid.
-		HoursValid int
+		// ValidityPeriod describes how long certificates issued by this CA are expected to be valid.
+		// This is in nanoseconds. We will convert nanoseconds in to days since ACMPCA only supports days at the moment.
+		ValidityPeriod time.Duration
 	}
 )
-
-// EasyNewCADelegate conveniently creates an ACMPCADelegate configured for our specific environment.
-func EasyNewCADelegate() (*ACMPCADelegate, error) {
-	region := string("us-west-2")
-	caARN := string("arn:aws:acm-pca:us-west-2:536616252769:certificate-authority/6ee645f6-540f-47b1-a9c3-b5d05c12790c")
-	hoursValid := 24 * 30
-	params := CADelegateParams{
-		Region:     region,
-		CaARN:      caARN,
-		HoursValid: hoursValid,
-	}
-
-	return NewCADelegate(params)
-}
 
 // NewCADelegate is a factory method that returns a new ACMPCADelegate.
 func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
@@ -68,7 +55,6 @@ func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 		Region: aws.String(params.Region),
 	})
 
-	//config := aws.NewConfig().WithLogLevel(aws.LogDebugWithRequestErrors)
 	config := aws.NewConfig()
 
 	if sessionErr != nil {
@@ -79,28 +65,37 @@ func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 	acmClient := acmpca.New(session, config)
 
 	return &ACMPCADelegate{
-		acmClient: acmClient,
-		caARN:     params.CaARN,
+		acmClient:        acmClient,
+		CADelegateParams: params,
 	}, nil
+}
+
+// ConvertNanoSecondsToDays is used to convert a duration in nanosecnods (time.Duration) to a number of days (int)
+func ConvertNanoSecondsToDays(validityPeriod time.Duration) int64 {
+	// validityPeriod is duration in nanoseconds
+	// time.Hour is an hour in nanoseconds
+	var hoursInDay int64 = 24
+	hours := (validityPeriod / time.Hour)
+	days := int64(hours) / hoursInDay
+	return days
 }
 
 // IssueEndEntityCrt reaches out to the AWS ACM PCA, retrieves, and validates returned certificates.
 func (c ACMPCADelegate) IssueEndEntityCrt(csr *x509.CertificateRequest) (tls.Crt, error) {
+	// TODO replace issueCertificate with issueCertificateRequest so we can use aws-sdk exponential backoff
 	certificateARN, issueCertError := c.issueCertificate(c.acmClient, csr)
 	if issueCertError != nil {
 		log.Errorf("Unable to issue a certificate on the aws client: %v\n", issueCertError)
 		return tls.Crt{}, issueCertError
 	}
 
-	time.Sleep(2 * time.Second)
-
+	// The certificate is eventually consistent so you may get several 400 responses from AWS since the cert isn't ready yet
+	// TODO replace issueCertificate with getCertificateRequest so we can use aws-sdk exponential backoff
 	certificateOutput, getCertificateErr := c.getCertificate(c.acmClient, *certificateARN)
 	if getCertificateErr != nil {
 		log.Errorf("Unable to execute get certificate on the aws client: %v\n", getCertificateErr)
 		return tls.Crt{}, getCertificateErr
 	}
-	//log.Infof("Successfully got certficate combo: %v\n", *certificateOutput.Certificate)
-	//log.Infof("Chain %v\n", *certificateOutput.CertificateChain)
 
 	endCert, extractEndCertError := extractEndCertificate(*certificateOutput.Certificate)
 	if extractEndCertError != nil {
@@ -192,7 +187,7 @@ func normalizeChainedPEMCertificates(chainedPEMString string) string {
 func (c ACMPCADelegate) getCertificate(acmClient ACMPCAClient, certificateARN string) (*acmpca.GetCertificateOutput, error) {
 	getCertificateInput := acmpca.GetCertificateInput{
 		CertificateArn:          &certificateARN,
-		CertificateAuthorityArn: &c.caARN,
+		CertificateAuthorityArn: &c.CaARN,
 	}
 
 	getCertOutput, getCertError := acmClient.GetCertificate(&getCertificateInput)
@@ -205,7 +200,7 @@ func (c ACMPCADelegate) getCertificate(acmClient ACMPCAClient, certificateARN st
 func (c ACMPCADelegate) issueCertificate(acmClient ACMPCAClient, csr *x509.CertificateRequest) (*string, error) {
 	signingAlgo := acmpca.SigningAlgorithmSha256withrsa
 	validityPeriodType := acmpca.ValidityPeriodTypeDays
-	duration := int64(30)
+	duration := ConvertNanoSecondsToDays(c.ValidityPeriod)
 	validity := acmpca.Validity{
 		Type:  &validityPeriodType,
 		Value: &duration,
@@ -224,7 +219,7 @@ func (c ACMPCADelegate) issueCertificate(acmClient ACMPCAClient, csr *x509.Certi
 	}
 
 	issueCertificateInput := acmpca.IssueCertificateInput{
-		CertificateAuthorityArn: &c.caARN,
+		CertificateAuthorityArn: &c.CaARN,
 		Csr:                     encodedPem,
 		SigningAlgorithm:        &signingAlgo,
 		Validity:                &validity,
