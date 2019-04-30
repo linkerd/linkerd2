@@ -733,37 +733,6 @@ metadata:
 	}
 }
 
-func TestCRDExists(t *testing.T) {
-	k8sConfig := `
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: serviceprofiles.linkerd.io
-`
-
-	hc := NewHealthChecker(
-		[]CategoryID{},
-		&Options{},
-	)
-	var err error
-	hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfig)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-
-	hc.addCheckAsCategory("cat1", LinkerdConfigChecks, "control plane CustomResourceDefinitions exist")
-
-	expectedResults := []string{
-		"cat1 control plane CustomResourceDefinitions exist",
-	}
-
-	obs := newObserver()
-	hc.RunChecks(obs.resultFn)
-	if !reflect.DeepEqual(obs.results, expectedResults) {
-		t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
-	}
-}
-
 func TestCheckControlPlanePodExistence(t *testing.T) {
 	hc := NewHealthChecker(
 		[]CategoryID{},
