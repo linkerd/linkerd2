@@ -86,6 +86,7 @@ func TestRender(t *testing.T) {
 	awsacmpcaOptions.identityOptions.caType = 1
 	awsacmpcaOptions.identityOptions.region = "us-west-2"
 	awsacmpcaOptions.identityOptions.arn = "arn:aws:acm-pca:us-west-2:1234:certificate-authority/123-123-123"
+	awsacmpcaOptions.identityOptions.issuanceLifetime = 3
 	awsacmpcaValues, awsacmpcaConfig, _ := awsacmpcaOptions.validateAndBuild("", nil)
 
 	testCases := []struct {

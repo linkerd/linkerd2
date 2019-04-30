@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	identity "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -81,15 +82,21 @@ type (
 	installIdentityValues struct {
 		Replicas uint
 
-		TrustDomain     string
-		TrustAnchorsPEM string
+		TrustDomain      string
+		TrustAnchorsPEM  string
+		IssuanceLifetime string
 
-		Issuer *issuerValues
+		AwsAcmPcaIssuer       *awsAcmPcaIssuerValues
+		LinkerdIdentityIssuer *linkerdIdentityIssuerValues
 	}
 
-	issuerValues struct {
+	awsAcmPcaIssuerValues struct {
+		CaArn    string
+		CaRegion string
+	}
+
+	linkerdIdentityIssuerValues struct {
 		ClockSkewAllowance string
-		IssuanceLifetime   string
 
 		KeyPEM, CrtPEM string
 
@@ -122,26 +129,24 @@ type (
 	}
 
 	installIdentityOptions struct {
-		replicas    uint
-		trustDomain string
-		caType      int
+		replicas         uint
+		trustDomain      string
+		trustPEMFile     string
+		caType           int
+		issuanceLifetime time.Duration
 
-		issuanceLifetime   time.Duration
-		clockSkewAllowance time.Duration
-
-		trustPEMFile, crtPEMFile, keyPEMFile string
-
-		*awsAcmPcaOptions
+		*linkerdIdentityIssuerOptions
+		*awsAcmPcaIssuerOptions
 	}
 
-	awsAcmPcaOptions struct {
+	awsAcmPcaIssuerOptions struct {
 		region, arn string
 	}
-)
 
-const (
-	linkerdIdentity int = 0
-	awsacmpca       int = 1
+	linkerdIdentityIssuerOptions struct {
+		crtPEMFile, keyPEMFile string
+		clockSkewAllowance     time.Duration
+	}
 )
 
 const (
@@ -155,7 +160,7 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
-	defaultCaType                     = 0
+	defaultCaType                     = identity.LinkerdIdentityIssuer
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -208,16 +213,22 @@ func newInstallOptionsWithDefaults() *installOptions {
 
 func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 	return &installIdentityOptions{
-		trustDomain:        defaultIdentityTrustDomain,
-		issuanceLifetime:   defaultIdentityIssuanceLifetime,
-		clockSkewAllowance: defaultIdentityClockSkewAllowance,
-		caType:             defaultCaType,
-		awsAcmPcaOptions:   newAwsAcmPcaOptionsWithDefaults(),
+		trustDomain:                  defaultIdentityTrustDomain,
+		caType:                       defaultCaType,
+		issuanceLifetime:             defaultIdentityIssuanceLifetime,
+		linkerdIdentityIssuerOptions: newLinkerdIdentityIssuerOptionsWithDefaults(),
+		awsAcmPcaIssuerOptions:       newAwsAcmPcaOptionsWithDefaults(),
 	}
 }
 
-func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaOptions {
-	return &awsAcmPcaOptions{}
+func newLinkerdIdentityIssuerOptionsWithDefaults() *linkerdIdentityIssuerOptions {
+	return &linkerdIdentityIssuerOptions{
+		clockSkewAllowance: defaultIdentityClockSkewAllowance,
+	}
+}
+
+func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaIssuerOptions {
+	return &awsAcmPcaIssuerOptions{}
 }
 
 func newCmdInstall() *cobra.Command {
@@ -336,6 +347,14 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
 		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 	)
+	flags.StringVar(
+		&options.identityOptions.region, "identity-ca-region", options.identityOptions.region,
+		"The region where the CA is located.",
+	)
+	flags.StringVar(
+		&options.identityOptions.arn, "identity-ca-arn", options.identityOptions.arn,
+		"The arn of the CA.",
+	)
 	flags.DurationVar(
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
 		"The amount of time for which the Identity issuer should certify identity",
@@ -375,14 +394,6 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.IntVar(
 		&options.identityOptions.caType, "identity-ca-type", options.identityOptions.caType,
 		"The type of CA to use for issuing proxy certificates. (0 = linkerd-identity (default), 1 = awsacmpca)",
-	)
-	flags.StringVar(
-		&options.identityOptions.region, "identity-ca-region", options.identityOptions.region,
-		"The region where the CA is located.",
-	)
-	flags.StringVar(
-		&options.identityOptions.arn, "identity-ca-arn", options.identityOptions.arn,
-		"The arn of the CA.",
 	)
 
 	flags.BoolVar(
@@ -793,7 +804,7 @@ func (idopts *installIdentityOptions) validate() error {
 	}
 
 	switch caType := idopts.caType; caType {
-	case linkerdIdentity:
+	case identity.LinkerdIdentityIssuer:
 		if idopts.trustDomain != "" {
 			if errs := validation.IsDNS1123Subdomain(idopts.trustDomain); len(errs) > 0 {
 				return fmt.Errorf("invalid trust domain '%s': %s", idopts.trustDomain, errs[0])
@@ -821,7 +832,7 @@ func (idopts *installIdentityOptions) validate() error {
 				}
 			}
 		}
-	case awsacmpca:
+	case identity.AwsAcmPcaIssuer:
 		if len(idopts.region) == 0 {
 			return errors.New("a region must be specified if using the awsacmpca caType")
 		}
@@ -854,21 +865,28 @@ func (idopts *installIdentityOptions) validateAndBuild() (*installIdentityValues
 	}
 
 	switch idopts.caType {
-	case linkerdIdentity:
+	case identity.LinkerdIdentityIssuer:
 		if idopts.trustPEMFile != "" && idopts.crtPEMFile != "" && idopts.keyPEMFile != "" {
 			return idopts.readValues()
 		}
-	case awsacmpca:
+	case identity.AwsAcmPcaIssuer:
 		if len(idopts.trustPEMFile) > 0 {
 			_, trustAnchorsPEM, err := idopts.readTrustAnchorsPemFile()
 			if err != nil {
 				return nil, err
 			}
 
+			issuanceLifetime := 24 * idopts.issuanceLifetime * time.Hour
+
 			return &installIdentityValues{
-				Replicas:        idopts.replicas,
-				TrustDomain:     idopts.trustDomain,
-				TrustAnchorsPEM: trustAnchorsPEM,
+				Replicas:         idopts.replicas,
+				TrustDomain:      idopts.trustDomain,
+				TrustAnchorsPEM:  trustAnchorsPEM,
+				IssuanceLifetime: issuanceLifetime.String(),
+				AwsAcmPcaIssuer: &awsAcmPcaIssuerValues{
+					CaArn:    idopts.arn,
+					CaRegion: idopts.region,
+				},
 			}, nil
 		}
 	}
@@ -887,12 +905,12 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 	}
 
 	return &installIdentityValues{
-		Replicas:        idopts.replicas,
-		TrustDomain:     idopts.trustDomain,
-		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		Issuer: &issuerValues{
+		Replicas:         idopts.replicas,
+		TrustDomain:      idopts.trustDomain,
+		TrustAnchorsPEM:  root.Cred.Crt.EncodeCertificatePEM(),
+		IssuanceLifetime: idopts.issuanceLifetime.String(),
+		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 			KeyPEM: root.Cred.EncodePrivateKeyPEM(),
@@ -923,12 +941,12 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 	}
 
 	return &installIdentityValues{
-		Replicas:        idopts.replicas,
-		TrustDomain:     idopts.trustDomain,
-		TrustAnchorsPEM: trustAnchorsPEM,
-		Issuer: &issuerValues{
+		Replicas:         idopts.replicas,
+		TrustDomain:      idopts.trustDomain,
+		TrustAnchorsPEM:  trustAnchorsPEM,
+		IssuanceLifetime: idopts.issuanceLifetime.String(),
+		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 			KeyPEM: creds.EncodePrivateKeyPEM(),
@@ -963,18 +981,26 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 		TrustDomain:     idvals.TrustDomain,
 		TrustAnchorsPem: idvals.TrustAnchorsPEM,
 	}
-	if idvals.Issuer != nil {
-		il, err := time.ParseDuration(idvals.Issuer.IssuanceLifetime)
-		if err != nil {
-			il = defaultIdentityIssuanceLifetime
-		}
-		identityContext.IssuanceLifetime = ptypes.DurationProto(il)
+	il, err := time.ParseDuration(idvals.IssuanceLifetime)
+	if err != nil {
+		il = defaultIdentityIssuanceLifetime
+	}
+	identityContext.IssuanceLifetime = ptypes.DurationProto(il)
 
-		csa, err := time.ParseDuration(idvals.Issuer.ClockSkewAllowance)
+	if idvals.LinkerdIdentityIssuer != nil {
+		identityContext.CaType = 0
+		csa, err := time.ParseDuration(idvals.LinkerdIdentityIssuer.ClockSkewAllowance)
 		if err != nil {
 			csa = defaultIdentityClockSkewAllowance
 		}
 		identityContext.ClockSkewAllowance = ptypes.DurationProto(csa)
+	} else if idvals.AwsAcmPcaIssuer != nil {
+		identityContext.CaType = 1
+		awsacmpcaContext := &pb.IdentityContext_AwsAcmPca{
+			CaArn:    idvals.AwsAcmPcaIssuer.CaArn,
+			CaRegion: idvals.AwsAcmPcaIssuer.CaRegion,
+		}
+		identityContext.Awsacmpca = awsacmpcaContext
 	}
 
 	return identityContext
