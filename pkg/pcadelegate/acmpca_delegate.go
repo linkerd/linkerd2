@@ -1,3 +1,5 @@
+// Package pcadelegate is used to delegate Certificate Signing Requests to AWS Private Certificate Authority.
+// IssueCertificate requests sent to the Identity service may use this instead of the local ca.
 package pcadelegate
 
 import (
@@ -15,37 +17,62 @@ import (
 )
 
 type (
-	// ACMPCAClient is an interface that replicates the aws acmpca.Client
+	// ACMPCAClient is an interface that replicates the aws acmpca.Client.
 	ACMPCAClient interface {
+		// GetCertificate maps to the acmpca.Client's GetCertificate method.
 		GetCertificate(input *acmpca.GetCertificateInput) (*acmpca.GetCertificateOutput, error)
+
+		// IssueCertificate maps to the acmpca.Client's IssueCertificate method.
 		IssueCertificate(input *acmpca.IssueCertificateInput) (*acmpca.IssueCertificateOutput, error)
 	}
 
-	// ACMPCADelegate implements the Issuer Interface
+	// ACMPCADelegate implements the Issuer Interface.
 	ACMPCADelegate struct {
+		// acmClient abstracts away the AWS acmpca.Client.
 		acmClient ACMPCAClient
-		caARN     string
+
+		// caARN represents which AWS ACM-PCA arn we need to communicate with to issue certificates.
+		caARN string
+	}
+
+	// CADelegateParams holds the required parameters for creating a new CADelegate.
+	CADelegateParams struct {
+		// region describes which AWS region the ACM-PCA resides in.
+		region string
+
+		// caARN describes the full ARN that represents the ACM-PCA we are using.
+		caARN string
+
+		// hoursValid describes how long certificates issued by this CA are expected to be valid.
+		hoursValid int
 	}
 )
 
 // EasyNewCADelegate conveniently creates an ACMPCADelegate configured for our specific environment.
 func EasyNewCADelegate() (*ACMPCADelegate, error) {
 	region := string("us-west-2")
-	caARN := string("arn:aws:acm-pca:us-west-2:536616252769:certificate-authority/70429e36-3d24-4fc1-9308-841e469c5409")
-	return NewCADelegate(region, caARN)
+	caARN := string("arn:aws:acm-pca:us-west-2:536616252769:certificate-authority/6ee645f6-540f-47b1-a9c3-b5d05c12790c")
+	hoursValid := 24 * 30
+	params := CADelegateParams{
+		region:     region,
+		caARN:      caARN,
+		hoursValid: hoursValid,
+	}
+
+	return NewCADelegate(params)
 }
 
-// NewCADelegate is a factory method that returns a fresh ACMPCADelegate
-func NewCADelegate(region, caARN string) (*ACMPCADelegate, error) {
+// NewCADelegate is a factory method that returns a new ACMPCADelegate.
+func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 	session, sessionErr := session.NewSession(&aws.Config{
-		Region: aws.String(region),
+		Region: aws.String(params.region),
 	})
 
 	//config := aws.NewConfig().WithLogLevel(aws.LogDebugWithRequestErrors)
 	config := aws.NewConfig()
 
 	if sessionErr != nil {
-		log.Error("Unable to create aws session for AWS ACMPCA")
+		log.Error("Unable to create aws session for AWS ACMPCA\n")
 		return nil, sessionErr
 	}
 
@@ -53,30 +80,28 @@ func NewCADelegate(region, caARN string) (*ACMPCADelegate, error) {
 
 	return &ACMPCADelegate{
 		acmClient: acmClient,
-		caARN:     caARN,
+		caARN:     params.caARN,
 	}, nil
 }
 
 // IssueEndEntityCrt reaches out to the AWS ACM PCA, retrieves, and validates returned certificates.
 func (c ACMPCADelegate) IssueEndEntityCrt(csr *x509.CertificateRequest) (tls.Crt, error) {
-	// ask aws client to create a certificate on our behalf, the return value is the arn of the certificate
 	certificateARN, issueCertError := c.issueCertificate(c.acmClient, csr)
 	if issueCertError != nil {
-		log.Errorf("Unable to issue a certificate on the aws client: %v", issueCertError)
+		log.Errorf("Unable to issue a certificate on the aws client: %v\n", issueCertError)
 		return tls.Crt{}, issueCertError
 	}
 
 	time.Sleep(2 * time.Second)
 
-	// ask aws client to fetch the certificate based on the arn
 	certificateOutput, getCertificateErr := c.getCertificate(c.acmClient, *certificateARN)
 	if getCertificateErr != nil {
-		log.Errorf("Unable to execute get certificate on the aws client: %v", getCertificateErr)
+		log.Errorf("Unable to execute get certificate on the aws client: %v\n", getCertificateErr)
 		return tls.Crt{}, getCertificateErr
 	}
-	log.Infof("Successfully got certficate combo: %v", *certificateOutput.Certificate)
+	//log.Infof("Successfully got certficate combo: %v\n", *certificateOutput.Certificate)
+	//log.Infof("Chain %v\n", *certificateOutput.CertificateChain)
 
-	// parse the cert
 	endCert, extractEndCertError := extractEndCertificate(*certificateOutput.Certificate)
 	if extractEndCertError != nil {
 		return tls.Crt{}, extractEndCertError
@@ -92,42 +117,20 @@ func (c ACMPCADelegate) IssueEndEntityCrt(csr *x509.CertificateRequest) (tls.Crt
 		TrustChain:  trustChain,
 	}
 
-	verifyCertificates(endCert, trustChain[1], trustChain[0])
-
 	return crt, nil
 }
 
-func verifyCertificates(endCert *x509.Certificate, rootCert *x509.Certificate, intermediateCert *x509.Certificate) {
-	roots := x509.NewCertPool()
-	interm := x509.NewCertPool()
-
-	roots.AddCert(rootCert)
-
-	interm.AddCert(intermediateCert)
-
-	opts := x509.VerifyOptions{
-		Roots:         roots,
-		Intermediates: interm,
-	}
-
-	if _, verifyErr := endCert.Verify(opts); verifyErr != nil {
-		log.Errorf("failed to verify certificate " + verifyErr.Error())
-	} else {
-		log.Info("GREAT SUCCESSS: Certificate was validated")
-	}
-}
-
 func extractEndCertificate(endCertificate string) (*x509.Certificate, error) {
-	// convert the raw certOutput to a pem decoded block
+	// Convert the raw certOutput to a pem decoded block.
 	byteCertificate := []byte(endCertificate)
 	pemBlock, _ := pem.Decode(byteCertificate)
 	if pemBlock == nil {
 		return &x509.Certificate{}, errors.New("Unable to pemDecode the certificate returned from the aws client")
 	}
-	// parse the pem decoded block into an x509
+	// Parse the pem decoded block into an x509.
 	cert, certParseError := x509.ParseCertificate(pemBlock.Bytes)
 	if certParseError != nil {
-		log.Errorf("Unable to parse certificate: %v", certParseError)
+		log.Errorf("Unable to parse certificate: %v\n", certParseError)
 		return &x509.Certificate{}, certParseError
 	}
 
@@ -135,21 +138,21 @@ func extractEndCertificate(endCertificate string) (*x509.Certificate, error) {
 }
 
 func extractTrustChain(certificateChain string) ([]*x509.Certificate, error) {
-	// we normalize the chained PEM certificates because the AWS PrivateCA sends chained PEMS but it does not have a newline between each PEM
+	// We normalize the chained PEM certificates because the AWS PrivateCA sends chained PEMS but it does not have a newline between each PEM.
 	normalizedCertChain := normalizeChainedPEMCertificates(certificateChain)
 
-	// parse the cert chain
+	// Parse the cert chain.
 	byteTrustChain := []byte(normalizedCertChain)
 	var pemTrustBytes []byte
 	var tempTrust *pem.Block
 	var nextBytes []byte
 
-	// if we received an empty CertChain
+	// If we received an empty CertChain.
 	if len(byteTrustChain) == 0 {
 		return []*x509.Certificate{}, errors.New("Unable to decode CertificateChain from the aws client, empty CertificateChain received")
 	}
 
-	// walk through each PEM file and append the results without any newline
+	// Walk through each PEM file and append the results without any newline.
 	nextBytes = byteTrustChain
 	for ok := true; ok; ok = (tempTrust != nil) && len(nextBytes) != 0 {
 		tempTrust, nextBytes = pem.Decode(nextBytes)
@@ -159,20 +162,20 @@ func extractTrustChain(certificateChain string) ([]*x509.Certificate, error) {
 		}
 	}
 
-	// if there was a failure marshalling the pems from the cert chain
+	// If there was a failure marshalling the pems from the cert chain.
 	if len(nextBytes) != 0 {
 		return []*x509.Certificate{}, errors.New("Unable to decode CertificateChain from the aws client, could not find pem while decoding")
 	}
 
-	// if there was a failure marshalling the pems from the cert chain
+	// If there was a failure marshalling the pems from the cert chain.
 	if pemTrustBytes == nil {
 		return []*x509.Certificate{}, errors.New("Unable to decode CertificateChain from the aws client, could not find pem while decoding")
 	}
 
-	// convert the chained certificates into a x509 format
+	// Convert the chained certificates into a x509 format.
 	trustChain, certChainParseError := x509.ParseCertificates(pemTrustBytes)
 	if certChainParseError != nil {
-		log.Errorf("Unable to parse trust chain certificates received from the aws client: %v", certChainParseError)
+		log.Errorf("Unable to parse trust chain certificates received from the aws client: %v\n", certChainParseError)
 		return []*x509.Certificate{}, certChainParseError
 	}
 
@@ -216,7 +219,7 @@ func (c ACMPCADelegate) issueCertificate(acmClient ACMPCAClient, csr *x509.Certi
 
 	encodedPem := pem.EncodeToMemory(&derBlock)
 	if encodedPem == nil {
-		log.Error("Was not able to PEM encode the block based on the input certificate signing request")
+		log.Error("Unable to PEM encode the block based on the input certificate signing request\n")
 		return nil, errors.New("Unable to PEM encode the input Certificate Signing Request")
 	}
 
