@@ -565,6 +565,131 @@ metadata:
   name: linkerd-web
   namespace: test-ns
 `,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist",
+				"linkerd-config control plane ClusterRoleBindings exist",
+				"linkerd-config control plane ServiceAccounts exist",
+				"linkerd-config control plane CustomResourceDefinitions exist: missing CustomResourceDefinitions: serviceprofiles.linkerd.io",
+			},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: test-ns
+`,
 				`
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition

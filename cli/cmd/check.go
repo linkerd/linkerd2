@@ -40,6 +40,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("non-config-check", pflag.ExitOnError)
 
 	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
+	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 
@@ -51,7 +52,6 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
-	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return flags
