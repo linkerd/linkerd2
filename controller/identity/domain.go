@@ -6,6 +6,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+const (
+	// LinkerdIdentityIssuer is the type that represents the linkerd-identity service as the certificate issuer
+	LinkerdIdentityIssuer int = 0
+	// AwsAcmPcaIssuer is the type that represents Aws Acm Pca as the certificate issuer
+	AwsAcmPcaIssuer int = 1
+)
+
 // TrustDomain is a namespace for identities.
 type TrustDomain struct {
 	controlNS, domain string

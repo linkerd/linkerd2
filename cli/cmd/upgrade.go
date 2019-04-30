@@ -254,12 +254,12 @@ func fetchIdentityValues(k kubernetes.Interface, replicas uint, idctx *pb.Identi
 	}
 
 	return &installIdentityValues{
-		Replicas:        replicas,
-		TrustDomain:     idctx.GetTrustDomain(),
-		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
-		Issuer: &issuerValues{
+		Replicas:         replicas,
+		TrustDomain:      idctx.GetTrustDomain(),
+		TrustAnchorsPEM:  idctx.GetTrustAnchorsPem(),
+		IssuanceLifetime: idctx.GetIssuanceLifetime().String(),
+		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
-			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 			KeyPEM:    keyPEM,

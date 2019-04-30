@@ -142,9 +142,9 @@ data:
 	if values.Identity == nil ||
 		values.Identity.TrustAnchorsPEM == "" ||
 		values.Identity.TrustDomain == "" ||
-		values.Identity.Issuer == nil ||
-		values.Identity.Issuer.CrtPEM == "" ||
-		values.Identity.Issuer.KeyPEM == "" {
+		values.Identity.LinkerdIdentityIssuer == nil ||
+		values.Identity.LinkerdIdentityIssuer.CrtPEM == "" ||
+		values.Identity.LinkerdIdentityIssuer.KeyPEM == "" {
 		t.Errorf("issuer values not generated")
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {

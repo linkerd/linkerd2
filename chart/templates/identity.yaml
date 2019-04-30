@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{- if .Identity.Issuer}}
+{{- if .Identity.LinkerdIdentityIssuer}}
 ---
 kind: Secret
 apiVersion: v1
@@ -15,12 +15,12 @@ metadata:
     {{.ControllerComponentLabel}}: identity
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
-    {{- if .Identity.Issuer.CrtExpiryAnnotation}}
-    {{.Identity.Issuer.CrtExpiryAnnotation}}: {{.Identity.Issuer.CrtExpiry}}
+    {{- if .Identity.LinkerdIdentityIssuer.CrtExpiryAnnotation}}
+    {{.Identity.LinkerdIdentityIssuer.CrtExpiryAnnotation}}: {{.Identity.LinkerdIdentityIssuer.CrtExpiry}}
     {{- end}}
 data:
-  crt.pem: {{b64enc .Identity.Issuer.CrtPEM}}
-  key.pem: {{b64enc .Identity.Issuer.KeyPEM}}
+  crt.pem: {{b64enc .Identity.LinkerdIdentityIssuer.CrtPEM}}
+  key.pem: {{b64enc .Identity.LinkerdIdentityIssuer.KeyPEM}}
 {{- end}}
 ---
 kind: Service
@@ -75,7 +75,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-        {{- if .Identity.Issuer}}
+        {{- if .Identity.LinkerdIdentityIssuer}}
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
         {{- end}}
@@ -98,7 +98,7 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
-      {{- if .Identity.Issuer}}
+      {{- if .Identity.LinkerdIdentityIssuer}}
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
