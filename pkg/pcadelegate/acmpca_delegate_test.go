@@ -4,13 +4,40 @@ package pcadelegate
 
 import (
 	"errors"
+	"io/ioutil"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/acmpca"
-
 	"github.com/linkerd/linkerd2/pkg/pcadelegate/test_helpers"
-	log "github.com/sirupsen/logrus"
 )
+
+func TestMain(t *testing.M) {
+	log.SetOutput(ioutil.Discard)
+	t.Run()
+}
+
+// TestConvertNanoSecondsToDaysWholeDay is a unit test that validates that we correctly turn exactly three days worth of nanoseconds into 3 days
+func TestConvertNanoSecondsToDaysWholeDay(t *testing.T) {
+	threeDaysInNanoSeconds := 3 * (time.Hour * 24)
+	var expectedResult int64 = 3
+	result := ConvertNanoSecondsToDays(threeDaysInNanoSeconds)
+	if result != expectedResult {
+		t.Errorf("TestConvertNanoSecondsToDaysWholeDay failed. result = %v, expectedResult = %v", result, expectedResult)
+	}
+}
+
+// TestConvertNanoSecondsToDaysLessThanWholeDay is a unit test that validates that floor(computedDays) to a integer number of days
+func TestConvertNanoSecondsToDaysLessThanWholeDay(t *testing.T) {
+	lessThanThreeDaysInNanoSeconds := 3*(time.Hour*24) - time.Hour
+	// Any elements less than 3 days and more than 2 days will result in 2 days
+	var expectedResult int64 = 2
+	result := ConvertNanoSecondsToDays(lessThanThreeDaysInNanoSeconds)
+	if result != expectedResult {
+		t.Errorf("TestConvertNanoSecondsToDaysLessThanWholeDay failed. result = %v, expectedResult = %v", result, expectedResult)
+	}
+}
 
 // TestSucessfulIssueEndCert is a unit test that validates correct behavior when GetCertificate, IssueCertificate, and certificate parsing succeed.
 func TestSuccessfulIssueEndCert(t *testing.T) {
@@ -32,15 +59,15 @@ func TestSuccessfulIssueEndCert(t *testing.T) {
 	}
 
 	subject := ACMPCADelegate{
-		acmClient: myClient,
-		caARN:     "myARN",
+		acmClient:        myClient,
+		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
 	csr := test_helpers.CreateCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != nil {
-		t.Fail()
+		t.Error("TestSuccessfulIssueEndCert failed")
 	}
 }
 
@@ -52,15 +79,15 @@ func TestFailedIssueCert(t *testing.T) {
 	}
 
 	subject := ACMPCADelegate{
-		acmClient: myClient,
-		caARN:     "myARN",
+		acmClient:        myClient,
+		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
 	csr := test_helpers.CreateCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedError {
-		t.Fail()
+		t.Error("TestFailedIssueCert failed")
 	}
 }
 
@@ -79,15 +106,15 @@ func TestFailedGetCert(t *testing.T) {
 	}
 
 	subject := ACMPCADelegate{
-		acmClient: myClient,
-		caARN:     "myARN",
+		acmClient:        myClient,
+		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
 	csr := test_helpers.CreateCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedGetCertError {
-		t.Fail()
+		t.Error("TestFailedGetCert failed")
 	}
 }
 
@@ -97,7 +124,7 @@ func TestParsingCertificateChainSingle(t *testing.T) {
 
 	_, extractError := extractTrustChain(certChain)
 	if extractError != nil {
-		t.Fail()
+		t.Error("TestParsingCertificateChainSingle failed")
 	}
 }
 
@@ -108,12 +135,12 @@ func TestParsingCertificateChainMultiple(t *testing.T) {
 	certChainWithNoNewline := "-----BEGIN CERTIFICATE-----\nMIIDujCCAqKgAwIBAgICEAUwDQYJKoZIhvcNAQEFBQAwcDELMAkGA1UEBhMCVVMx\nCzAJBgNVBAgMAldBMRAwDgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVUTUVTSDEO\nMAwGA1UECwwFVE1FU0gxIjAgBgkqhkiG9w0BCQEWE1RNRVNIQG5vcmRzdHJvbS5j\nb20wHhcNMTkwMzI5MjE0MDAwWhcNMjAwMzI4MjE0MDAwWjCBjDELMAkGA1UEBhMC\nVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcMB1NlYXR0bGUxIjAgBgNV\nBAoMGVNPTl9PRl9URVNUX1BSSVZBVEVfVE1FU0gxDjAMBgNVBAsMBVRNRVNIMSIw\nIAYDVQQDDBlTT05fT0ZfVEVTVF9QUklWQVRFX1RNRVNIMIIBIjANBgkqhkiG9w0B\nAQEFAAOCAQ8AMIIBCgKCAQEAxm0KSQwtnboTF3824PzcwPDakkzD9SuXUS4YxXgl\nJ8A6J3FQ/TI/5sbYl9LJsKCb9UEKz4Ao4X2ixWUACe5B9UO1YrWTpKnZ/mlNfTRC\nO6g+EwusTLcRqxepmYQq3Xu0r25EyT3l1vsCXOBI/BlfgRF6lXndwV6Mtqs+t7Yk\nKfFtzadcNc2hz8hm72L1P6d8LGxOTjavI06+tYz2iCm14pld7K5UzjdJVgHD2Aia\n9gL0pzoLSmdDjqKehtYWSx1xw4v6patZaaRxjbqA3zDzuEzsy1xmUHF44wlznOVL\nGseBmYA3DqW1YOGB//asg1ZRa0hEH7FIV8bktj9qTg7SfQIDAQABo0EwPzAfBgNV\nHSMEGDAWgBSYj5Tn7VrJSXj02YbqGnUvypxCGjAPBgNVHRMBAf8EBTADAQH/MAsG\nA1UdDwQEAwIE8DANBgkqhkiG9w0BAQUFAAOCAQEAcrf3OLA+ug+6HkWejZldZPaZ\nIas6MNc6S3FKodRK6miU8MbMfF7PTYfgsP5CiBxCjjg3/0qfXlNcq5zQEOecdWkx\nqAG3y9ZRvTCfLW+T1tU0/5hXcHQzqI3ZmyfTe3dzdTmU+LG6vpcNEwrMed3gQ9Ld\nmwN7OVQPVdTh+0NezxOA5hKzgr4QQ0JErolBPsje5V81l9IfK+6VRZRToC+VQ3YP\nNUy64Z3lRl8ugJTAGfyZZdqkq6Qr7HJKI4rzd71MpDA9x/wwShiIgLnsJfF47v/S\nsZvz5MbgMNeNnKt/PVzf8EIQ9c5x0v/66R+Fu/TX3nXFYjbojqFiA6FHS1rfmQ==\n-----END CERTIFICATE----------BEGIN CERTIFICATE-----\nMIIDxjCCAq6gAwIBAgIJAO6DSG+Jvt0vMA0GCSqGSIb3DQEBDAUAMHAxCzAJBgNV\nBAYTAlVTMQswCQYDVQQIDAJXQTEQMA4GA1UEBwwHU2VhdHRsZTEOMAwGA1UECgwF\nVE1FU0gxDjAMBgNVBAsMBVRNRVNIMSIwIAYJKoZIhvcNAQkBFhNUTUVTSEBub3Jk\nc3Ryb20uY29tMB4XDTE5MDMyODIxMTM0MFoXDTE5MDQyNzIxMTM0MFowcDELMAkG\nA1UEBhMCVVMxCzAJBgNVBAgMAldBMRAwDgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQK\nDAVUTUVTSDEOMAwGA1UECwwFVE1FU0gxIjAgBgkqhkiG9w0BCQEWE1RNRVNIQG5v\ncmRzdHJvbS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCeP6ez\n6jFDvmiK54pHhdH9/vwgteQ2SaPCCzH3+LPftE+98r9cYH7q+/AoHHaDUlK3CBRz\n63QrbKFNJfwY5LbEDKma+YR2zSMJLveDlW89hnuwVoCjdfThNqZOoqVOx1QFYBBv\nZ6lvtce2Oc5tmRwOfXudJTragqkMJme0Mn6CCy98R3VGysh7jnPJjb0JD2PygMMx\nKhGuzoM7Ib2Vf6vzOt4oqHFoHkCo1sgLvi7ojCo11ynB0pvequ6HElxgqEnoBUA7\npIhsqe4/gJyC62xjBKON48G/7Ut0xgXMmN0Ir+7nfBiGC8iBVy6smSv+qQ3dAxGx\nUbAUwTKNge9p+1Y3AgMBAAGjYzBhMB0GA1UdDgQWBBSYj5Tn7VrJSXj02YbqGnUv\nypxCGjAfBgNVHSMEGDAWgBSYj5Tn7VrJSXj02YbqGnUvypxCGjAPBgNVHRMBAf8E\nBTADAQH/MA4GA1UdDwEB/wQEAwIBhjANBgkqhkiG9w0BAQwFAAOCAQEAcwQf730e\n6OhPRJ7yU5WVfARck3OgG1kWz4O3F0ZT9SC+85Q920jS3oBfaV2G4cTAsLgvk0rM\n62ghhN7BL/a06+iRkD7xO7w9ftcOReUqlaJ2SQi1L3eL6Cn6pu3mHwWyh3DqYdkW\n2y9SYGTWpmkIW/tG2k+/atnHeC7iEfxlO7Xq1aoAVBGJStR9JFQlETn52nRaG03r\ntMyEU+MrZhJDQR9gIFL/lBC/uLAkkNYqN7E4tbzc4n1rr1OuiTq3XeSdSGrxHkcp\nizHKiX1uPiG0iv5fI43XyTwHHlrfesYhxmFOv/I0HdsuFjQUHyPEq9pB0GsqKsoj\nL/EIQ1Caao5a3g==\n-----END CERTIFICATE-----"
 	_, extractNoNewlineError := extractTrustChain(certChainWithNoNewline)
 	if extractNoNewlineError != nil {
-		t.Fail()
+		t.Errorf("TestParsingCertificateChainMultiple no newline has new line has failed")
 	}
+
 	certChainAlreadyHasNewline := "-----BEGIN CERTIFICATE-----\nMIIDujCCAqKgAwIBAgICEAUwDQYJKoZIhvcNAQEFBQAwcDELMAkGA1UEBhMCVVMx\nCzAJBgNVBAgMAldBMRAwDgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVUTUVTSDEO\nMAwGA1UECwwFVE1FU0gxIjAgBgkqhkiG9w0BCQEWE1RNRVNIQG5vcmRzdHJvbS5j\nb20wHhcNMTkwMzI5MjE0MDAwWhcNMjAwMzI4MjE0MDAwWjCBjDELMAkGA1UEBhMC\nVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcMB1NlYXR0bGUxIjAgBgNV\nBAoMGVNPTl9PRl9URVNUX1BSSVZBVEVfVE1FU0gxDjAMBgNVBAsMBVRNRVNIMSIw\nIAYDVQQDDBlTT05fT0ZfVEVTVF9QUklWQVRFX1RNRVNIMIIBIjANBgkqhkiG9w0B\nAQEFAAOCAQ8AMIIBCgKCAQEAxm0KSQwtnboTF3824PzcwPDakkzD9SuXUS4YxXgl\nJ8A6J3FQ/TI/5sbYl9LJsKCb9UEKz4Ao4X2ixWUACe5B9UO1YrWTpKnZ/mlNfTRC\nO6g+EwusTLcRqxepmYQq3Xu0r25EyT3l1vsCXOBI/BlfgRF6lXndwV6Mtqs+t7Yk\nKfFtzadcNc2hz8hm72L1P6d8LGxOTjavI06+tYz2iCm14pld7K5UzjdJVgHD2Aia\n9gL0pzoLSmdDjqKehtYWSx1xw4v6patZaaRxjbqA3zDzuEzsy1xmUHF44wlznOVL\nGseBmYA3DqW1YOGB//asg1ZRa0hEH7FIV8bktj9qTg7SfQIDAQABo0EwPzAfBgNV\nHSMEGDAWgBSYj5Tn7VrJSXj02YbqGnUvypxCGjAPBgNVHRMBAf8EBTADAQH/MAsG\nA1UdDwQEAwIE8DANBgkqhkiG9w0BAQUFAAOCAQEAcrf3OLA+ug+6HkWejZldZPaZ\nIas6MNc6S3FKodRK6miU8MbMfF7PTYfgsP5CiBxCjjg3/0qfXlNcq5zQEOecdWkx\nqAG3y9ZRvTCfLW+T1tU0/5hXcHQzqI3ZmyfTe3dzdTmU+LG6vpcNEwrMed3gQ9Ld\nmwN7OVQPVdTh+0NezxOA5hKzgr4QQ0JErolBPsje5V81l9IfK+6VRZRToC+VQ3YP\nNUy64Z3lRl8ugJTAGfyZZdqkq6Qr7HJKI4rzd71MpDA9x/wwShiIgLnsJfF47v/S\nsZvz5MbgMNeNnKt/PVzf8EIQ9c5x0v/66R+Fu/TX3nXFYjbojqFiA6FHS1rfmQ==\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIDxjCCAq6gAwIBAgIJAO6DSG+Jvt0vMA0GCSqGSIb3DQEBDAUAMHAxCzAJBgNV\nBAYTAlVTMQswCQYDVQQIDAJXQTEQMA4GA1UEBwwHU2VhdHRsZTEOMAwGA1UECgwF\nVE1FU0gxDjAMBgNVBAsMBVRNRVNIMSIwIAYJKoZIhvcNAQkBFhNUTUVTSEBub3Jk\nc3Ryb20uY29tMB4XDTE5MDMyODIxMTM0MFoXDTE5MDQyNzIxMTM0MFowcDELMAkG\nA1UEBhMCVVMxCzAJBgNVBAgMAldBMRAwDgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQK\nDAVUTUVTSDEOMAwGA1UECwwFVE1FU0gxIjAgBgkqhkiG9w0BCQEWE1RNRVNIQG5v\ncmRzdHJvbS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCeP6ez\n6jFDvmiK54pHhdH9/vwgteQ2SaPCCzH3+LPftE+98r9cYH7q+/AoHHaDUlK3CBRz\n63QrbKFNJfwY5LbEDKma+YR2zSMJLveDlW89hnuwVoCjdfThNqZOoqVOx1QFYBBv\nZ6lvtce2Oc5tmRwOfXudJTragqkMJme0Mn6CCy98R3VGysh7jnPJjb0JD2PygMMx\nKhGuzoM7Ib2Vf6vzOt4oqHFoHkCo1sgLvi7ojCo11ynB0pvequ6HElxgqEnoBUA7\npIhsqe4/gJyC62xjBKON48G/7Ut0xgXMmN0Ir+7nfBiGC8iBVy6smSv+qQ3dAxGx\nUbAUwTKNge9p+1Y3AgMBAAGjYzBhMB0GA1UdDgQWBBSYj5Tn7VrJSXj02YbqGnUv\nypxCGjAfBgNVHSMEGDAWgBSYj5Tn7VrJSXj02YbqGnUvypxCGjAPBgNVHRMBAf8E\nBTADAQH/MA4GA1UdDwEB/wQEAwIBhjANBgkqhkiG9w0BAQwFAAOCAQEAcwQf730e\n6OhPRJ7yU5WVfARck3OgG1kWz4O3F0ZT9SC+85Q920jS3oBfaV2G4cTAsLgvk0rM\n62ghhN7BL/a06+iRkD7xO7w9ftcOReUqlaJ2SQi1L3eL6Cn6pu3mHwWyh3DqYdkW\n2y9SYGTWpmkIW/tG2k+/atnHeC7iEfxlO7Xq1aoAVBGJStR9JFQlETn52nRaG03r\ntMyEU+MrZhJDQR9gIFL/lBC/uLAkkNYqN7E4tbzc4n1rr1OuiTq3XeSdSGrxHkcp\nizHKiX1uPiG0iv5fI43XyTwHHlrfesYhxmFOv/I0HdsuFjQUHyPEq9pB0GsqKsoj\nL/EIQ1Caao5a3g==\n-----END CERTIFICATE-----"
-	magical, extractAlreadyHasNewlineError := extractTrustChain(certChainAlreadyHasNewline)
+	_, extractAlreadyHasNewlineError := extractTrustChain(certChainAlreadyHasNewline)
 	if extractAlreadyHasNewlineError != nil {
-		t.Fail()
+		t.Errorf("TestParsingCertificateChainMultiple has newline has failed")
 	}
-	log.Error(magical)
 }
