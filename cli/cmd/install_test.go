@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 )
@@ -86,8 +87,11 @@ func TestRender(t *testing.T) {
 	awsacmpcaOptions.identityOptions.caType = 1
 	awsacmpcaOptions.identityOptions.region = "us-west-2"
 	awsacmpcaOptions.identityOptions.arn = "arn:aws:acm-pca:us-west-2:1234:certificate-authority/123-123-123"
-	awsacmpcaOptions.identityOptions.issuanceLifetime = 3
-	awsacmpcaValues, awsacmpcaConfig, _ := awsacmpcaOptions.validateAndBuild("", nil)
+	awsacmpcaOptions.identityOptions.issuanceLifetime = 3 * 24 * time.Hour
+	awsacmpcaValues, awsacmpcaConfig, err := awsacmpcaOptions.validateAndBuild("", nil)
+	if err != nil {
+		t.Fatalf("Unexpected error validating options: %v", err)
+	}
 
 	testCases := []struct {
 		values         *installValues

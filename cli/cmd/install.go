@@ -879,13 +879,11 @@ func (idopts *installIdentityOptions) validateAndBuild() (*installIdentityValues
 				return nil, err
 			}
 
-			issuanceLifetime := 24 * idopts.issuanceLifetime * time.Hour
-
 			return &installIdentityValues{
 				Replicas:         idopts.replicas,
 				TrustDomain:      idopts.trustDomain,
 				TrustAnchorsPEM:  trustAnchorsPEM,
-				IssuanceLifetime: issuanceLifetime.String(),
+				IssuanceLifetime: idopts.issuanceLifetime.String(),
 				AwsAcmPcaIssuer: &awsAcmPcaIssuerValues{
 					CaArn:    idopts.arn,
 					CaRegion: idopts.region,
