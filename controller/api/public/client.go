@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 
@@ -34,15 +36,18 @@ const (
 // 2) controller/discovery.Discovery
 // This aligns with Public API Server's `handler` struct supporting both gRPC
 // servers.
+// It also implements io.Closer, to inform users of the need to close the underlying port forward
 type APIClient interface {
 	pb.ApiClient
 	discoveryPb.DiscoveryClient
+	io.Closer
 }
 
 type grpcOverHTTPClient struct {
 	serverURL             *url.URL
 	httpClient            *http.Client
 	controlPlaneNamespace string
+	portForward           *k8s.PortForward
 }
 
 func (c *grpcOverHTTPClient) StatSummary(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
@@ -116,6 +121,13 @@ func (c *grpcOverHTTPClient) Endpoints(ctx context.Context, req *discoveryPb.End
 	var msg discoveryPb.EndpointsResponse
 	err := c.apiRequest(ctx, "Endpoints", req, &msg)
 	return &msg, err
+}
+
+func (c *grpcOverHTTPClient) Close() error {
+	if c.portForward != nil {
+		c.portForward.Stop()
+	}
+	return nil
 }
 
 func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, req proto.Message, protoResponse proto.Message) error {
@@ -199,12 +211,22 @@ func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 	return nil
 }
 
-func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {
+func newClient(apiURL *url.URL, portForward *k8s.PortForward, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {
+	var serverURL *url.URL
+
+	if apiURL == nil {
+		urlfor, err := url.Parse(portForward.URLFor(""))
+		if err != nil {
+			return nil, err
+		}
+		serverURL = urlfor.ResolveReference(&url.URL{Path: apiPrefix})
+	} else {
+		serverURL = apiURL.ResolveReference(&url.URL{Path: apiPrefix})
+	}
+
 	if !apiURL.IsAbs() {
 		return nil, fmt.Errorf("server URL must be absolute, was [%s]", apiURL.String())
 	}
-
-	serverURL := apiURL.ResolveReference(&url.URL{Path: apiPrefix})
 
 	log.Debugf("Expecting API to be served over [%s]", serverURL)
 
@@ -212,6 +234,7 @@ func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamesp
 		serverURL:             serverURL,
 		httpClient:            httpClientToUse,
 		controlPlaneNamespace: controlPlaneNamespace,
+		portForward:           portForward,
 	}, nil
 }
 
@@ -223,17 +246,22 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 		return nil, err
 	}
 
-	return newClient(apiURL, http.DefaultClient, controlPlaneNamespace)
+	return newClient(apiURL, nil, http.DefaultClient, controlPlaneNamespace)
 }
 
 // NewExternalClient creates a new Public API client intended to run from
 // outside a Kubernetes cluster.
 func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
+	port, err := getEphemeralPort()
+	if err != nil {
+		return nil, err
+	}
+
 	portforward, err := k8s.NewPortForward(
 		kubeAPI,
 		controlPlaneNamespace,
 		apiDeployment,
-		0,
+		port,
 		apiPort,
 		false,
 	)
@@ -241,12 +269,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI)
 		return nil, err
 	}
 
-	apiURL, err := url.Parse(portforward.URLFor(""))
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("Starting port forward on [%s]", apiURL)
+	log.Debugf("Starting port forward on [%d]", port)
 
 	wait := make(chan error, 1)
 
@@ -275,5 +298,23 @@ func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI)
 		return nil, err
 	}
 
-	return newClient(apiURL, httpClientToUse, controlPlaneNamespace)
+	return newClient(nil, portforward, httpClientToUse, controlPlaneNamespace)
+}
+
+// Finds an ephemeral port that can be used for port forwarding
+func getEphemeralPort() (int, error) {
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+
+	defer ln.Close()
+
+	// get port
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		return 0, fmt.Errorf("invalid listen address: %s", ln.Addr())
+	}
+
+	return tcpAddr.Port, nil
 }

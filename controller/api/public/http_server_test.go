@@ -117,6 +117,7 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
+		defer client.Close()
 
 		listPodsReq := &pb.ListPodsRequest{}
 		testListPods := grpcCallTestCase{
@@ -182,6 +183,7 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
+		defer client.Close()
 
 		expectedTapResponses := []*pb.TapEvent{
 			{
@@ -242,6 +244,7 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
+		defer client.Close()
 
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
 

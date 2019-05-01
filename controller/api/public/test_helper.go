@@ -79,6 +79,11 @@ func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.Call
 	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
+// Close provides a mock of a public API method
+func (c *MockAPIClient) Close() error {
+	return nil
+}
+
 // MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
 type MockAPITapByResourceClient struct {
 	TapEventsToReturn []pb.TapEvent

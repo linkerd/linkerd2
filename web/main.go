@@ -37,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
+	defer client.Close()
 
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
