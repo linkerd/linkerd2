@@ -61,11 +61,15 @@ func TestRender(t *testing.T) {
 		{Name: "controller-replicas", Value: "2"},
 		{Name: "proxy-cpu-request", Value: "400m"},
 		{Name: "proxy-memory-request", Value: "300Mi"},
+		{Name: "proxy-cpu-limit", Value: "800m"},
+		{Name: "proxy-memory-limit", Value: "600Mi"},
 	}
 	haWithOverridesOptions.highAvailability = true
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
+	haWithOverridesOptions.proxyCPULimit = "800m"
+	haWithOverridesOptions.proxyMemoryLimit = "600Mi"
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild(nil)
 
 	noInitContainerOptions := testInstallOptions()

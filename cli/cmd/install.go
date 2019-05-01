@@ -470,7 +470,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// The identity controller maintains no internal state, so it need not request
 		// 50Mi.
 		*values.IdentityResources = *defaultConstraints
-		values.IdentityResources.Memory = constraints{Request: "10Mi"}
+		values.IdentityResources.Memory = constraints{Request: "10Mi", Limit: "250Mi"}
 		values.GrafanaResources = &resources{
 			CPU:    constraints{Request: "100m", Limit: "1000m"},
 			Memory: constraints{Request: "50Mi", Limit: "1024Mi"},
