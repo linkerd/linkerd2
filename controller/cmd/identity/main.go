@@ -56,6 +56,16 @@ func main() {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
+	issuanceLifetime := identity.DefaultIssuanceLifetime
+	if pbd := idctx.GetIssuanceLifetime(); pbd != nil {
+		il, err := ptypes.Duration(pbd)
+		if err != nil {
+			log.Warnf("Invalid issuance lifetime: %s, defaulting to 24h", err)
+		} else {
+			issuanceLifetime = il
+		}
+	}
+
 	var ca tls.Issuer
 	switch int(idctx.GetCaType()) {
 	case idctl.LinkerdIdentityIssuer:
@@ -79,7 +89,7 @@ func main() {
 
 		validity := tls.Validity{
 			ClockSkewAllowance: tls.DefaultClockSkewAllowance,
-			Lifetime:           identity.DefaultIssuanceLifetime,
+			Lifetime:           issuanceLifetime,
 		}
 		if pbd := idctx.GetClockSkewAllowance(); pbd != nil {
 			csa, err := ptypes.Duration(pbd)
@@ -89,24 +99,19 @@ func main() {
 				validity.ClockSkewAllowance = csa
 			}
 		}
-		if pbd := idctx.GetIssuanceLifetime(); pbd != nil {
-			il, err := ptypes.Duration(pbd)
-			if err != nil {
-				log.Warnf("Invalid issuance lifetime: %s", err)
-			} else {
-				validity.Lifetime = il
-			}
-		}
 		ca = tls.NewCA(*creds, validity)
 	case idctl.AwsAcmPcaIssuer:
 		region := idctx.GetAwsacmpca().GetCaRegion()
 		arn := idctx.GetAwsacmpca().GetCaArn()
 		params := pcadelegate.CADelegateParams{
-			Region:     region,
-			CaARN:      arn,
-			HoursValid: 24,
+			Region:         region,
+			CaARN:          arn,
+			ValidityPeriod: issuanceLifetime,
 		}
-		ca, _ = pcadelegate.NewCADelegate(params)
+		ca, err = pcadelegate.NewCADelegate(params)
+		if err != nil {
+			log.Fatalf("Failed to create the AWS ACM PCA Delegate: %v", err)
+		}
 	}
 
 	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)

@@ -842,6 +842,9 @@ func (idopts *installIdentityOptions) validate() error {
 		if len(idopts.trustPEMFile) == 0 {
 			return errors.New("a trust anchors file must be specified if uswing the awsacmpca caType")
 		}
+		if idopts.issuanceLifetime < time.Hour*24 {
+			return errors.New("an issuance lifetime of > 1 day must be provided if using the awsacmpca caType")
+		}
 
 		stat, err := os.Stat(idopts.trustPEMFile)
 		if err != nil {
