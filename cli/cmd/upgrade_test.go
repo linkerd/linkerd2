@@ -15,11 +15,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const upgradeVersion = "TEST-VERSION"
+const (
+	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
+	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
+)
 
 func testUpgradeOptions() *upgradeOptions {
 	o := newUpgradeOptionsWithDefaults()
-	o.linkerdVersion = upgradeVersion
+	o.controlPlaneVersion = upgradeControlPlaneVersion
+	o.proxyVersion = upgradeProxyVersion
 	return o
 }
 
@@ -42,7 +46,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli edge-19.4.1
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
   install: |
@@ -78,16 +82,16 @@ data:
 			options := testUpgradeOptions()
 			flags := options.recordableFlagSet()
 
-			clientset, _, err := k8s.NewFakeClientSets(tc.k8sConfigs...)
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Error mocking k8s client: %s", err)
 			}
 
-			values, configs, err := options.validateAndBuild(clientset, flags)
+			values, configs, err := options.validateAndBuild("", clientset, flags)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
 			} else if err == nil {
-				if configs.GetGlobal().GetVersion() != upgradeVersion {
+				if configs.GetGlobal().GetVersion() != upgradeControlPlaneVersion {
 					t.Errorf("version not upgraded in config")
 				}
 
@@ -114,7 +118,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli edge-19.4.1
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":null,"autoInjectContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":null}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
   install: |
@@ -123,15 +127,14 @@ data:
 	}
 
 	options := testUpgradeOptions()
-	options.proxyAutoInject = true
 	flags := options.recordableFlagSet()
 
-	clientset, _, err := k8s.NewFakeClientSets(k8sConfigs...)
+	clientset, err := k8s.NewFakeAPI(k8sConfigs...)
 	if err != nil {
 		t.Fatalf("Error mocking k8s client: %s", err)
 	}
 
-	values, configs, err := options.validateAndBuild(clientset, flags)
+	values, configs, err := options.validateAndBuild("", clientset, flags)
 	if err != nil {
 		t.Fatalf("validateAndBuild failed with %s", err)
 	}
@@ -147,9 +150,6 @@ data:
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not generated")
 	}
-	if configs.GetGlobal().GetAutoInjectContext() == nil {
-		t.Errorf("autoinject config not generated")
-	}
 
 	global := pb.Global{}
 	if err := json.Unmarshal([]byte(values.Configs.Global), &global); err != nil {
@@ -158,14 +158,11 @@ data:
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
 		t.Errorf("identity config not serialized")
 	}
-	if configs.GetGlobal().GetAutoInjectContext() == nil {
-		t.Errorf("autoinject config not serialized")
-	}
 }
 
 func TestFetchConfigs(t *testing.T) {
 	options := testInstallOptions()
-	_, exp, err := options.validateAndBuild(nil)
+	_, exp, err := options.validateAndBuild("", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
@@ -184,9 +181,9 @@ metadata:
   namespace: linkerd
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"dev-undefined","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version"}
   install: |
     {"uuid":"deaab91a-f4ab-448a-b7d1-c832a2fa0a60","cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -234,7 +231,7 @@ data:
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			clientset, _, err := k8s.NewFakeClientSets(tc.k8sConfigs...)
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}

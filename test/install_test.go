@@ -40,12 +40,13 @@ var (
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":   {1, []string{"destination", "public-api", "tap"}},
-		"linkerd-grafana":      {1, []string{}},
-		"linkerd-identity":     {1, []string{"identity"}},
-		"linkerd-prometheus":   {1, []string{}},
-		"linkerd-sp-validator": {1, []string{"sp-validator"}},
-		"linkerd-web":          {1, []string{"web"}},
+		"linkerd-controller":     {1, []string{"destination", "public-api", "tap"}},
+		"linkerd-grafana":        {1, []string{}},
+		"linkerd-identity":       {1, []string{"identity"}},
+		"linkerd-prometheus":     {1, []string{}},
+		"linkerd-sp-validator":   {1, []string{"sp-validator"}},
+		"linkerd-web":            {1, []string{"web"}},
+		"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 	}
 
 	// Linkerd commonly logs these errors during testing, remove these once
@@ -53,6 +54,7 @@ var (
 	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
+		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
@@ -117,23 +119,54 @@ func TestInstallOrUpgrade(t *testing.T) {
 		args = []string{
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
-			"--linkerd-version", TestHelper.GetVersion(),
+			"--proxy-version", TestHelper.GetVersion(),
 		}
 	)
 
 	if TestHelper.UpgradeFromVersion() != "" {
 		cmd = "upgrade"
-	}
 
-	if TestHelper.AutoInject() {
-		args = append(args, "--proxy-auto-inject")
-		linkerdDeployReplicas["linkerd-proxy-injector"] = deploySpec{1, []string{"proxy-injector"}}
+		// test 2-stage install during upgrade
+		out, _, err := TestHelper.LinkerdRun(cmd, "config")
+		if err != nil {
+			t.Fatalf("linkerd upgrade config command failed\n%s", out)
+		}
+
+		// apply stage 1
+		out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("kubectl apply command failed\n%s", out)
+		}
+
+		// prepare for stage 2
+		args = append([]string{"control-plane"}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
 	out, _, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		t.Fatalf("linkerd install command failed\n%s", out)
+	}
+
+	// test `linkerd upgrade --from-manifests`
+	if TestHelper.UpgradeFromVersion() != "" {
+		manifests, err := TestHelper.Kubectl("",
+			"--namespace", TestHelper.GetLinkerdNamespace(),
+			"get", "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName,
+			"-oyaml",
+		)
+		if err != nil {
+			t.Fatalf("kubectl get command failed with %s\n%s", err, out)
+		}
+		exec = append(exec, "--from-manifests", "-")
+		upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
+		if err != nil {
+			t.Fatalf("linkerd upgrade --from-manifests command failed with %s\n%s\n%s", err, stderr, upgradeFromManifests)
+		}
+
+		if out != upgradeFromManifests {
+			t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+		}
 	}
 
 	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
@@ -186,15 +219,39 @@ func TestInstallSP(t *testing.T) {
 	}
 }
 
+// TODO: run this after a `linkerd install config`
+func TestCheckConfigPostInstall(t *testing.T) {
+	cmd := []string{"check", "config", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
+	golden := "check.config.golden"
+
+	err := TestHelper.RetryFor(time.Minute, func() error {
+		out, stderr, err := TestHelper.LinkerdRun(cmd...)
+
+		if err != nil {
+			return fmt.Errorf("Check command failed\n%s\n%s", stderr, out)
+		}
+
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
+			return fmt.Errorf("Received unexpected output\n%s", err.Error())
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
 func TestCheckPostInstall(t *testing.T) {
 	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
 	golden := "check.golden"
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
-		out, _, err := TestHelper.LinkerdRun(cmd...)
+		out, stderr, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
-			return fmt.Errorf("Check command failed\n%s", out)
+			return fmt.Errorf("Check command failed\n%s\n%s", stderr, out)
 		}
 
 		err = TestHelper.ValidateOutput(out, golden)
@@ -247,30 +304,15 @@ func TestInject(t *testing.T) {
 
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
 
-	if TestHelper.AutoInject() {
-		out, err = testutil.ReadFile("testdata/smoke_test.yaml")
-		if err != nil {
-			t.Fatalf("failed to read smoke test file: %s", err)
-		}
-		err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
-			k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-		})
-		if err != nil {
-			t.Fatalf("failed to create %s namespace with auto inject enabled: %s", prefixedNs, err)
-		}
-	} else {
-		cmd := []string{"inject", "testdata/smoke_test.yaml"}
-
-		var injectReport string
-		out, injectReport, err = TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
-		}
-
-		err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
-		if err != nil {
-			t.Fatalf("Received unexpected output\n%s", err.Error())
-		}
+	out, err = testutil.ReadFile("testdata/smoke_test.yaml")
+	if err != nil {
+		t.Fatalf("failed to read smoke test file: %s", err)
+	}
+	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
+		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+	})
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
@@ -384,11 +426,16 @@ func TestLogs(t *testing.T) {
 				}
 
 				for _, line := range outputLines {
-					if errRegex.MatchString(line) && !knownErrorsRegex.MatchString(line) {
-						if proxy {
-							t.Skipf("Found proxy error in %s log: %s", name, line)
+					if errRegex.MatchString(line) {
+						if knownErrorsRegex.MatchString(line) {
+							// report all known logging errors in the output
+							t.Skipf("Found known error in %s log: %s", name, line)
 						} else {
-							t.Errorf("Found controller error in %s log: %s", name, line)
+							if proxy {
+								t.Skipf("Found unexpected proxy error in %s log: %s", name, line)
+							} else {
+								t.Errorf("Found unexpected controller error in %s log: %s", name, line)
+							}
 						}
 					}
 				}

@@ -13,13 +13,17 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type testCase struct {
-	inputFileName    string
-	goldenFileName   string
-	reportFileName   string
-	testInjectConfig *config.All
+	inputFileName          string
+	goldenFileName         string
+	reportFileName         string
+	injectProxy            bool
+	testInjectConfig       *config.All
+	overrideAnnotations    map[string]string
+	enableDebugSidecarFlag bool
 }
 
 func mkFilename(filename string, verbose bool) string {
@@ -40,8 +44,10 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
+		injectProxy:         tc.injectProxy,
 		configs:             tc.testInjectConfig,
-		overrideAnnotations: map[string]string{},
+		overrideAnnotations: tc.overrideAnnotations,
+		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 	}
 
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
@@ -54,7 +60,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 }
 
 func testInstallConfig() *pb.All {
-	_, c, err := testInstallOptions().validateAndBuild(nil)
+	_, c, err := testInstallOptions().validateAndBuild("", nil)
 	if err != nil {
 		log.Fatalf("test install options must be valid: %s", err)
 	}
@@ -63,13 +69,22 @@ func testInstallConfig() *pb.All {
 
 func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
-	defaultConfig.Global.Version = "testinjectversion"
+	defaultConfig.Global.Version = "test-inject-control-plane-version"
+	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
+
+	emptyVersionConfig := testInstallConfig()
+	emptyVersionConfig.Global.Version = ""
+	emptyVersionConfig.Proxy.ProxyVersion = ""
+
+	emptyProxyVersionConfig := testInstallConfig()
+	emptyProxyVersionConfig.Global.Version = "test-inject-control-plane-version"
+	emptyProxyVersionConfig.Proxy.ProxyVersion = ""
 
 	overrideConfig := testInstallConfig()
-	overrideConfig.Global.Version = "override"
+	overrideConfig.Proxy.ProxyVersion = "override"
 
 	proxyResourceConfig := testInstallConfig()
-	proxyResourceConfig.Global.Version = defaultConfig.Global.Version
+	proxyResourceConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
 	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
 		RequestCpu:    "110m",
 		RequestMemory: "100Mi",
@@ -78,7 +93,7 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	noInitContainerConfig := testInstallConfig()
-	noInitContainerConfig.Global.Version = defaultConfig.Global.Version
+	noInitContainerConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
 	noInitContainerConfig.Global.CniEnabled = true
 
 	testCases := []testCase{
@@ -86,103 +101,162 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_empty_version_config.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
+			testInjectConfig: emptyVersionConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_empty_proxy_version_config.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
+			testInjectConfig: emptyProxyVersionConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_overridden_noinject.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.ProxyAdminPortAnnotation: "1234",
+			},
+		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.ProxyAdminPortAnnotation: "1234",
+			},
 		},
 		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
 			goldenFileName:   "inject_emojivoto_statefulset.golden.yml",
 			reportFileName:   "inject_emojivoto_statefulset.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
 			goldenFileName:   "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:   "inject_emojivoto_pod_with_requests.report",
+			injectProxy:      true,
 			testInjectConfig: proxyResourceConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_udp.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_udp.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_istio.input.yml",
 			goldenFileName:   "inject_emojivoto_istio.input.yml",
 			reportFileName:   "inject_emojivoto_istio.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
 			goldenFileName:   "inject_contour.input.yml",
 			reportFileName:   "inject_contour.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
+			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_no_init_container.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: noInitContainerConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
+			injectProxy:      true,
 			testInjectConfig: overrideConfig,
+		},
+		{
+			inputFileName:          "inject_emojivoto_deployment.input.yml",
+			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
+			reportFileName:         "inject_emojivoto_deployment.report",
+			injectProxy:            true,
+			testInjectConfig:       defaultConfig,
+			enableDebugSidecarFlag: true,
 		},
 	}
 
@@ -208,7 +282,7 @@ type injectCmd struct {
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
 	testConfig := testInstallConfig()
-	testConfig.Global.Version = "testinjectversion"
+	testConfig.Proxy.ProxyVersion = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -218,7 +292,10 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	transformer := &resourceTransformerInject{configs: testConfig}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testConfig,
+	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
@@ -276,7 +353,10 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testInstallConfig(),
+	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
@@ -294,7 +374,10 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
-	transformer := &resourceTransformerInject{configs: testInstallConfig()}
+	transformer := &resourceTransformerInject{
+		injectProxy: true,
+		configs:     testInstallConfig(),
+	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}

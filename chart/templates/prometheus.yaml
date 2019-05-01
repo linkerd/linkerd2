@@ -4,113 +4,6 @@
 ### Prometheus
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-{{.Namespace}}-prometheus
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: linkerd-{{.Namespace}}-prometheus
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-{{.Namespace}}-prometheus
-subjects:
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: prometheus
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-spec:
-  type: ClusterIP
-  selector:
-    {{.ControllerComponentLabel}}: prometheus
-  ports:
-  - name: admin-http
-    port: 9090
-    targetPort: 9090
----
-kind: Deployment
-apiVersion: extensions/v1beta1
-metadata:
-  name: linkerd-prometheus
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: prometheus
-  annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        {{.ControllerComponentLabel}}: prometheus
-      annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
-    spec:
-      serviceAccountName: linkerd-prometheus
-      volumes:
-      - name: data
-        emptyDir: {}
-      - name: prometheus-config
-        configMap:
-          name: linkerd-prometheus-config
-      containers:
-      - name: prometheus
-        ports:
-        - name: admin-http
-          containerPort: 9090
-        volumeMounts:
-        - name: data
-          mountPath: /data
-        - name: prometheus-config
-          mountPath: /etc/prometheus
-          readOnly: true
-        image: {{.PrometheusImage}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
-        - "--storage.tsdb.path=/data"
-        - "--storage.tsdb.retention.time=6h"
-        - "--config.file=/etc/prometheus/prometheus.yml"
-        - "--log.level={{.PrometheusLogLevel}}"
-        readinessProbe:
-          httpGet:
-            path: /-/ready
-            port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
-        livenessProbe:
-          httpGet:
-            path: /-/healthy
-            port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
-        {{ with .PrometheusResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
-        securityContext:
-          runAsUser: 65534
----
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -198,4 +91,83 @@ data:
       # foo=bar
       - action: labelmap
         regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: prometheus
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: prometheus
+  ports:
+  - name: admin-http
+    port: 9090
+    targetPort: 9090
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-prometheus
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: prometheus
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: prometheus
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-prometheus
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: prometheus-config
+        configMap:
+          name: linkerd-prometheus-config
+      containers:
+      - name: prometheus
+        ports:
+        - name: admin-http
+          containerPort: 9090
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+          readOnly: true
+        image: {{.PrometheusImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "--storage.tsdb.path=/data"
+        - "--storage.tsdb.retention.time=6h"
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--log.level={{.PrometheusLogLevel}}"
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        {{ with .PrometheusResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
+        securityContext:
+          runAsUser: 65534
 {{- end}}

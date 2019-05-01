@@ -112,7 +112,7 @@ jobs:
         - bin/docker-push-deps
         - bin/docker-push $LINKERD_TAG
         - bin/docker-retag-all $LINKERD_TAG master && bin/docker-push master
-        - target/cli/linux/linkerd install --linkerd-version=$LINKERD_TAG |tee linkerd.yml
+        - target/cli/linux/linkerd install --control-plane-version=$LINKERD_TAG |tee linkerd.yml
         - kubectl -n linkerd apply -f linkerd.yml --prune --selector='linkerd.io/control-plane-component'
 
     # Run integration tests after container images have been published.

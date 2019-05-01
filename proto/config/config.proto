@@ -15,14 +15,14 @@ message All {
 message Global {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
+
+  // Control plane and proxy-init version
   string version = 3;
 
   // If present, configures identity.
   IdentityContext identity_context = 4;
 
-  // If present, indicates that the Mutating Webhook Admission Controller should
-  // be configured to automatically inject proxies.
-  AutoInjectContext auto_inject_context = 6;
+  AutoInjectContext auto_inject_context = 6 [deprecated=true];
 }
 
 message Proxy {
@@ -41,6 +41,8 @@ message Proxy {
   int64 proxy_uid = 10;
   LogLevel log_level = 11;
   bool disable_external_profiles = 12;
+
+  string proxy_version = 13;
 }
 
 message Image {
@@ -59,8 +61,7 @@ message ResourceRequirements {
   string limit_memory = 4;
 }
 
-// Currently, this is basically a boolean.
-message AutoInjectContext {}
+message AutoInjectContext { option deprecated = true; }
 
 message IdentityContext {
   string trust_domain = 1;

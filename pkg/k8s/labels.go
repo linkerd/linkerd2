@@ -151,6 +151,9 @@ const (
 	// ProxyVersionOverrideAnnotation can be used to override the proxy version config.
 	ProxyVersionOverrideAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-version"
 
+	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
+	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -165,6 +168,12 @@ const (
 
 	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
+
+	// DebugSidecarName is the name of the default linkerd debug container
+	DebugSidecarName = "linkerd-debug"
+
+	// DebugSidecarImage is the image name of the default linkerd debug container
+	DebugSidecarImage = "gcr.io/linkerd-io/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"

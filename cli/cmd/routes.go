@@ -224,8 +224,9 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	}
 }
 
+// JSONRouteStats represents the JSON output of the routes command
 // Using pointers there where the value is NA and the corresponding json is null
-type jsonRouteStats struct {
+type JSONRouteStats struct {
 	Route            string   `json:"route"`
 	Authority        string   `json:"authority"`
 	Success          *float64 `json:"success,omitempty"`
@@ -241,11 +242,11 @@ type jsonRouteStats struct {
 
 func printRouteJSON(tables map[string][]*routeRowStats, w *tabwriter.Writer, options *routesOptions) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
-	entries := map[string][]*jsonRouteStats{}
+	entries := map[string][]*JSONRouteStats{}
 	for resource, table := range tables {
 		for _, row := range table {
 			route := row.route
-			entry := &jsonRouteStats{
+			entry := &JSONRouteStats{
 				Route: route,
 			}
 

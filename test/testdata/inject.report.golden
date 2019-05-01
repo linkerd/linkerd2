@@ -1,6 +1,0 @@
-
-deployment "smoke-test-terminus" injected
-service "smoke-test-terminus-svc" skipped
-deployment "smoke-test-gateway" injected
-service "smoke-test-gateway-svc" skipped
-

@@ -1,7 +1,10 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,6 +34,7 @@ func StartServer(addr string) {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	debugPathPrefix := "/debug/pprof/"
 	switch req.URL.Path {
 	case "/metrics":
 		h.promHandler.ServeHTTP(w, req)
@@ -38,8 +42,20 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.servePing(w)
 	case "/ready":
 		h.serveReady(w)
+	case fmt.Sprintf("%scmdline", debugPathPrefix):
+		pprof.Cmdline(w, req)
+	case fmt.Sprintf("%sprofile", debugPathPrefix):
+		pprof.Profile(w, req)
+	case fmt.Sprintf("%strace", debugPathPrefix):
+		pprof.Trace(w, req)
+	case fmt.Sprintf("%ssymbol", debugPathPrefix):
+		pprof.Symbol(w, req)
 	default:
-		http.NotFound(w, req)
+		if strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
+			pprof.Index(w, req)
+		} else {
+			http.NotFound(w, req)
+		}
 	}
 }
 

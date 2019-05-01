@@ -11,11 +11,11 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
@@ -96,7 +96,7 @@ func main() {
 
 	ca := tls.NewCA(*creds, validity)
 
-	k8s, err := k8s.NewClientSet(*kubeConfigPath)
+	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
