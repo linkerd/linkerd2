@@ -24,9 +24,9 @@ type (
 		ShouldRetry(r *request.Request) bool
 	}
 
-	// ACMPCARetry implements the ACMPCARetryer interface based on the AWS-SDK-GO retry type
+	// ACMPCARetry implements the ACMPCARetryer interface based on the AWS-SDK-GO retry type.
 	ACMPCARetry struct {
-		// This struct is composed on top of the AWS-SDK-GO DefaultRetryer
+		// This struct is composed on top of the AWS-SDK-GO DefaultRetryer.
 		client.DefaultRetryer
 	}
 )
@@ -50,7 +50,6 @@ func NewACMPCARetry(maxRetries int) (*ACMPCARetry, error) {
 func (a ACMPCARetry) ShouldRetry(r *request.Request) bool {
 	log.Infof("There was an error with status code %v with status %v\n", r.HTTPResponse.StatusCode, r.HTTPResponse.Status)
 	// Error codes https://docs.aws.amazon.com/acm-pca/latest/APIReference/API_IssueCertificate.html
-	// TODO check the specific 400 error code and don't retry if the CA is in a bad state
+	// TODO check the specific 400 error code and don't retry if the CA is in a bad state.
 	return 400 == r.HTTPResponse.StatusCode || a.DefaultRetryer.ShouldRetry(r)
 }
-

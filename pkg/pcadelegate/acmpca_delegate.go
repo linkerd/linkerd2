@@ -53,12 +53,12 @@ type (
 
 // NewCADelegate is a factory method that returns a new ACMPCADelegate.
 func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
-  sess := session.Must(
-    session.NewSession(&aws.Config{
-      Retryer: params.Retryer,
-      Region:  aws.String(params.Region),
-    }),
-  )
+	sess := session.Must(
+		session.NewSession(&aws.Config{
+			Retryer: params.Retryer,
+			Region:  aws.String(params.Region),
+		}),
+	)
 
 	config := aws.NewConfig()
 	acmClient := acmpca.New(sess, config)
@@ -69,10 +69,10 @@ func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 	}, nil
 }
 
-// ConvertNanoSecondsToDays is used to convert a duration in nanosecnods (time.Duration) to a number of days (int)
+// ConvertNanoSecondsToDays is used to convert a duration in nanosecnods (time.Duration) to a number of days (int).
 func ConvertNanoSecondsToDays(validityPeriod time.Duration) int64 {
-	// validityPeriod is duration in nanoseconds
-	// time.Hour is an hour in nanoseconds
+	// validityPeriod is duration in nanoseconds.
+	// time.Hour is an hour in nanoseconds.
 	var hoursInDay int64 = 24
 	hours := (validityPeriod / time.Hour)
 	days := int64(hours) / hoursInDay
@@ -81,15 +81,14 @@ func ConvertNanoSecondsToDays(validityPeriod time.Duration) int64 {
 
 // IssueEndEntityCrt reaches out to the AWS ACM PCA, retrieves, and validates returned certificates.
 func (c ACMPCADelegate) IssueEndEntityCrt(csr *x509.CertificateRequest) (tls.Crt, error) {
-	// TODO replace issueCertificate with issueCertificateRequest so we can use aws-sdk exponential backoff
 	certificateARN, issueCertError := c.issueCertificate(c.acmClient, csr)
 	if issueCertError != nil {
 		log.Errorf("Unable to issue a certificate on the aws client: %v\n", issueCertError)
 		return tls.Crt{}, issueCertError
 	}
 
-	// The certificate is eventually consistent so you may get several 400 responses from AWS since the cert isn't ready yet
-	// TODO replace issueCertificate with getCertificateRequest so we can use aws-sdk exponential backoff
+	// The certificate is eventually consistent so you may get several 400 responses from AWS since the cert isn't ready yet.
+	// There is also rate limiting per account/region in aws which results in a 400 response as well.
 	certificateOutput, getCertificateErr := c.getCertificate(c.acmClient, *certificateARN)
 	if getCertificateErr != nil {
 		log.Errorf("Unable to execute get certificate on the aws client: %v\n", getCertificateErr)
