@@ -11,14 +11,14 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
-func mkMockClient(version string, err error) func() (pb.ApiClient, error) {
+func mkMockClient(version string, publicAPIErr error, mkClientErr error) func() (pb.ApiClient, error) {
 	return func() (pb.ApiClient, error) {
 		return &public.MockAPIClient{
-			ErrorToReturn: err,
+			ErrorToReturn: publicAPIErr,
 			VersionInfoToReturn: &pb.VersionInfo{
 				ReleaseVersion: version,
 			},
-		}, nil
+		}, mkClientErr
 	}
 }
 
@@ -31,31 +31,37 @@ func TestConfigureAndRunVersion(t *testing.T) {
 	}{
 		{
 			newVersionOptions(),
-			mkMockClient("server-version", nil),
+			mkMockClient("server-version", nil, nil),
 			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, "server-version"),
 			"",
 		},
 		{
 			&versionOptions{false, true},
-			mkMockClient("", nil),
+			mkMockClient("", nil, nil),
 			fmt.Sprintf("Client version: %s\n", version.Version),
 			"",
 		},
 		{
 			&versionOptions{true, true},
-			mkMockClient("", nil),
+			mkMockClient("", nil, nil),
 			fmt.Sprintf("%s\n", version.Version),
 			"",
 		},
 		{
 			&versionOptions{true, false},
-			mkMockClient("server-version", nil),
+			mkMockClient("server-version", nil, nil),
 			fmt.Sprintf("%s\n%s\n", version.Version, "server-version"),
 			"",
 		},
 		{
 			newVersionOptions(),
-			mkMockClient("", errors.New("bad client")),
+			mkMockClient("", errors.New("bad client"), nil),
+			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, defaultVersionString),
+			"",
+		},
+		{
+			newVersionOptions(),
+			mkMockClient("", nil, errors.New("Error connecting to server: no running pods found for linkerd-controller")),
 			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, defaultVersionString),
 			"",
 		},

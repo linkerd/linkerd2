@@ -59,18 +59,17 @@ func configureAndRunVersion(
 	}
 
 	if !options.onlyClientVersion {
+		serverVersion := defaultVersionString
 		client, err := mkClient()
-		if err != nil {
-			fmt.Fprintf(stderr, "Error connecting to server: %s\n", err)
-			os.Exit(1)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			serverVersion, err = healthcheck.GetServerVersion(ctx, client)
+			if err != nil {
+				serverVersion = defaultVersionString
+			}
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		serverVersion, err := healthcheck.GetServerVersion(ctx, client)
-		if err != nil {
-			serverVersion = defaultVersionString
-		}
 		if options.shortVersion {
 			fmt.Fprintln(stdout, serverVersion)
 		} else {
