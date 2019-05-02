@@ -103,10 +103,15 @@ func main() {
 	case idctl.AwsAcmPcaIssuer:
 		region := idctx.GetAwsacmpca().GetCaRegion()
 		arn := idctx.GetAwsacmpca().GetCaArn()
+		requestRetryer, retryerErr := pcadelegate.NewACMPCARetry(5)
+		if retryerErr != nil {
+			log.Fatalf("Failed to create the ACMPCA request retryer: %v\n", retryerErr)
+		}
 		params := pcadelegate.CADelegateParams{
 			Region:         region,
 			CaARN:          arn,
 			ValidityPeriod: issuanceLifetime,
+			Retryer:        requestRetryer,
 		}
 		ca, err = pcadelegate.NewCADelegate(params)
 		if err != nil {

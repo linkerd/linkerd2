@@ -4,19 +4,12 @@ package pcadelegate
 
 import (
 	"errors"
-	"io/ioutil"
-	"log"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/acmpca"
 	"github.com/linkerd/linkerd2/pkg/pcadelegate/test_helpers"
 )
-
-func TestMain(t *testing.M) {
-	log.SetOutput(ioutil.Discard)
-	t.Run()
-}
 
 // TestConvertNanoSecondsToDaysWholeDay is a unit test that validates that we correctly turn exactly three days worth of nanoseconds into 3 days
 func TestConvertNanoSecondsToDaysWholeDay(t *testing.T) {
