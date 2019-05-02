@@ -1,3 +1,23 @@
+## edge-19.5.1
+
+* CLI
+  * Added a `linkerd check config` command for verifying that
+    `linkerd install config` was successful
+  * Improved the help documentation of `linkerd install` to clarify flag usage
+  * Added support for private Kubernetes clusters by changing the CLI to connect
+    to the control plane using a port-forward (thanks, @jackprice!)
+* Controller
+  * Fixed pod creation failure when a `ResourceQuota` exists by adding a default
+    resource spec for the proxy-init init container
+* Proxy
+  * Replaced fixed reconnect backoff with exponential one (thanks,
+    @zaharidichev!)
+  * Support endpoint weights
+  * Fixed an issue where load balancers can become stuck by removing buffers
+    from endpoint stacks
+* Internal
+  * Fixed integration tests by adding known proxy-injector log warning to tests
+
 ## edge-19.4.5
 
 **Significant Update**
