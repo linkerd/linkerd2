@@ -226,14 +226,10 @@ func newLinkerdIdentityIssuerOptionsWithDefaults() *linkerdIdentityIssuerOptions
 	}
 }
 
-<<<<<<< HEAD
 func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaIssuerOptions {
 	return &awsAcmPcaIssuerOptions{}
 }
 
-func newCmdInstall() *cobra.Command {
-	options := newInstallOptionsWithDefaults()
-=======
 // newCmdInstallConfig is a subcommand for `linkerd install config`
 func newCmdInstallConfig(options *installOptions) *cobra.Command {
 	cmd := &cobra.Command{
@@ -254,7 +250,6 @@ resources for the Linkerd control plane. This command should be followed by
 			return installRunE(options, configStage, nil)
 		},
 	}
->>>>>>> master
 
 	return cmd
 }
