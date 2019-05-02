@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type checkOptions struct {
@@ -34,11 +35,66 @@ func newCheckOptions() *checkOptions {
 	}
 }
 
+// nonConfigFlagSet specifies flags not allowed with `linkerd check config`
+func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("non-config-check", pflag.ExitOnError)
+
+	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
+	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
+	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
+
+	return flags
+}
+
+// checkFlagSet specifies flags allowed with and without `config`
+func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
+
+	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+
+	return flags
+}
+
+func (options *checkOptions) validate() error {
+	if options.preInstallOnly && options.dataPlaneOnly {
+		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	return nil
+}
+
+// newCmdInstallConfig is a subcommand for `linkerd check config`
+func newCmdCheckConfig(options *checkOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Check the Linkerd cluster-wide resources for potential problems",
+		Long: `Check the Linkerd cluster-wide resources for potential problems.
+
+The check command will perform a series of checks to validate that the Linkerd
+cluster-wide resources are configured correctly. It is intended to validate that
+"linkerd install config" succeeded. If the command encounters a failure it will
+print additional information about the failure and exit with a non-zero exit
+code.`,
+		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
+  linkerd check config`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return configureAndRunChecks(stdout, configStage, options)
+		},
+	}
+
+	return cmd
+}
+
 func newCmdCheck() *cobra.Command {
 	options := newCheckOptions()
+	checkFlags := options.checkFlagSet()
+	nonConfigFlags := options.nonConfigFlagSet()
 
 	cmd := &cobra.Command{
-		Use:   "check",
+		Use:   fmt.Sprintf("check [%s] [flags]", configStage),
+		Args:  cobra.NoArgs,
 		Short: "Check the Linkerd installation for potential problems",
 		Long: `Check the Linkerd installation for potential problems.
 
@@ -52,26 +108,25 @@ non-zero exit code.`,
   # Check that the Linkerd control plane can be installed in the "test" namespace
   linkerd check --pre --linkerd-namespace test
 
+  # Check that "linkerd install config" succeeded
+  linkerd check config
+
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
-		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, options)
+			return configureAndRunChecks(stdout, "", options)
 		},
 	}
 
-	cmd.Args = cobra.NoArgs
-	cmd.PersistentFlags().StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
-	cmd.PersistentFlags().BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
-	cmd.PersistentFlags().BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
-	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
-	cmd.PersistentFlags().BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
+	cmd.PersistentFlags().AddFlagSet(checkFlags)
+	cmd.Flags().AddFlagSet(nonConfigFlags)
+
+	cmd.AddCommand(newCmdCheckConfig(options))
 
 	return cmd
 }
 
-func configureAndRunChecks(w io.Writer, options *checkOptions) error {
+func configureAndRunChecks(w io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -88,13 +143,17 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
 	} else {
-		checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
-		checks = append(checks, healthcheck.LinkerdAPIChecks)
+		checks = append(checks, healthcheck.LinkerdConfigChecks)
 
-		if options.dataPlaneOnly {
-			checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
-		} else {
-			checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+		if stage != configStage {
+			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
+			checks = append(checks, healthcheck.LinkerdAPIChecks)
+
+			if options.dataPlaneOnly {
+				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
+			} else {
+				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+			}
 		}
 	}
 
@@ -120,13 +179,6 @@ func configureAndRunChecks(w io.Writer, options *checkOptions) error {
 
 	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
 
-	return nil
-}
-
-func (o *checkOptions) validate() error {
-	if o.preInstallOnly && o.dataPlaneOnly {
-		return errors.New("--pre and --proxy flags are mutually exclusive")
-	}
 	return nil
 }
 

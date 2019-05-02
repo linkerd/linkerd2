@@ -22,9 +22,11 @@ import (
 )
 
 const (
-	apiRoot    = "/" // Must be absolute (with a leading slash).
-	apiVersion = "v1"
-	apiPrefix  = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
+	apiRoot       = "/" // Must be absolute (with a leading slash).
+	apiVersion    = "v1"
+	apiPrefix     = "api/" + apiVersion + "/" // Must be relative (without a leading slash).
+	apiPort       = 8085
+	apiDeployment = "linkerd-controller"
 )
 
 // APIClient wraps two gRPC client interfaces:
@@ -227,8 +229,44 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 // NewExternalClient creates a new Public API client intended to run from
 // outside a Kubernetes cluster.
 func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
-	apiURL, err := kubeAPI.URLFor(controlPlaneNamespace, "/services/linkerd-controller-api:http/proxy/")
+	portforward, err := k8s.NewPortForward(
+		kubeAPI,
+		controlPlaneNamespace,
+		apiDeployment,
+		0,
+		apiPort,
+		false,
+	)
 	if err != nil {
+		return nil, err
+	}
+
+	apiURL, err := url.Parse(portforward.URLFor(""))
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Starting port forward on [%s]", apiURL)
+
+	wait := make(chan error, 1)
+
+	go func() {
+		if err := portforward.Run(); err != nil {
+			wait <- err
+		}
+
+		portforward.Stop()
+	}()
+
+	select {
+	case <-portforward.Ready():
+		log.Debugf("Port forward initialised")
+
+		break
+
+	case err := <-wait:
+		log.Debugf("Port forward failed: %v", err)
+
 		return nil, err
 	}
 

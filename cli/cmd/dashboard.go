@@ -27,6 +27,9 @@ const (
 
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
+
+	// defaultPort is for port-forwarding via `linkerd dashboard`
+	defaultPort = 50750
 )
 
 type dashboardOptions struct {
@@ -37,7 +40,7 @@ type dashboardOptions struct {
 
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
-		port: 0,
+		port: defaultPort,
 		show: showLinkerd,
 		wait: 300 * time.Second,
 	}
@@ -49,6 +52,7 @@ func newCmdDashboard() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dashboard [flags]",
 		Short: "Open the Linkerd dashboard in a web browser",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.port < 0 {
 				return fmt.Errorf("port must be greater than or equal to zero, was %d", options.port)
@@ -88,7 +92,8 @@ func newCmdDashboard() *cobra.Command {
 			go func() {
 				err := portforward.Run()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+					// TODO: consider falling back to an ephemeral port if defaultPort is taken
+					fmt.Fprintf(os.Stderr, "Error running port-forward: %s\nCheck for `linkerd dashboard` running in other terminal sessions, or use the `--port` flag.\n", err)
 					os.Exit(1)
 				}
 				close(wait)
@@ -133,7 +138,6 @@ func newCmdDashboard() *cobra.Command {
 		},
 	}
 
-	cmd.Args = cobra.NoArgs
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
 	cmd.PersistentFlags().IntVarP(&options.port, "port", "p", options.port, "The local port on which to serve requests (when set to 0, a random port will be used)")
 	cmd.PersistentFlags().StringVar(&options.show, "show", options.show, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")

@@ -3,12 +3,12 @@ package k8s
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
@@ -22,9 +22,14 @@ import (
 var minAPIVersion = [3]int{1, 10, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
+// TODO: support ServiceProfile ClientSet. A prerequisite is moving the
+// ServiceProfile client code from `./controller` to `./pkg` (#2751). This will
+// also allow making `NewFakeClientSets` private, as KubernetesAPI will support
+// all relevant k8s resources.
 type KubernetesAPI struct {
 	*rest.Config
 	kubernetes.Interface
+	Apiextensions apiextensionsclient.Interface // for CRDs
 }
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
@@ -46,10 +51,15 @@ func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesA
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %v", err)
 	}
+	apiextensions, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API Extensions clientset: %v", err)
+	}
 
 	return &KubernetesAPI{
-		Config:    config,
-		Interface: clientset,
+		Config:        config,
+		Interface:     clientset,
+		Apiextensions: apiextensions,
 	}, nil
 }
 
@@ -108,11 +118,6 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(namespace string) ([]corev1.Pod
 		return nil, err
 	}
 	return podList.Items, nil
-}
-
-// URLFor generates a URL based on the Kubernetes config.
-func (kubeAPI *KubernetesAPI) URLFor(namespace, path string) (*url.URL, error) {
-	return generateKubernetesAPIURLFor(kubeAPI.Host, namespace, path)
 }
 
 // GetReplicaSets returns all replicasets in a given namespace

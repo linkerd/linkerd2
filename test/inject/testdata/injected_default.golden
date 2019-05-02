@@ -98,7 +98,13 @@ spec:
         image: init-image:fake # this is replaced during testing
         imagePullPolicy: IfNotPresent
         name: linkerd-init
-        resources: {}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
         securityContext:
           capabilities:
             add:

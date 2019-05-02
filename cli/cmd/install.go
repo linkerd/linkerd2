@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -227,8 +226,77 @@ func newLinkerdIdentityIssuerOptionsWithDefaults() *linkerdIdentityIssuerOptions
 	}
 }
 
+<<<<<<< HEAD
 func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaIssuerOptions {
 	return &awsAcmPcaIssuerOptions{}
+}
+
+func newCmdInstall() *cobra.Command {
+	options := newInstallOptionsWithDefaults()
+=======
+// newCmdInstallConfig is a subcommand for `linkerd install config`
+func newCmdInstallConfig(options *installOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Output Kubernetes cluster-wide resources to install Linkerd",
+		Long: `Output Kubernetes cluster-wide resources to install Linkerd.
+
+This command provides Kubernetes configs necessary to install cluster-wide
+resources for the Linkerd control plane. This command should be followed by
+"linkerd install control-plane".`,
+		Example: `  # Default install.
+  linkerd install config | kubectl apply -f -
+
+  # Install Linkerd into a non-default namespace.
+  linkerd install config -l linkerdtest | kubectl apply -f -`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return installRunE(options, configStage, nil)
+		},
+	}
+>>>>>>> master
+
+	return cmd
+}
+
+// newCmdInstallControlPlane is a subcommand for `linkerd install control-plane`
+func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
+	// The base flags are recorded separately so that they can be serialized into
+	// the configuration in validateAndBuild.
+	flags := options.recordableFlagSet()
+	installOnlyFlags := options.installOnlyFlagSet()
+
+	cmd := &cobra.Command{
+		Use:   "control-plane [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Output Kubernetes control plane resources to install Linkerd",
+		Long: `Output Kubernetes control plane resources to install Linkerd.
+
+This command provides Kubernetes configs necessary to install the Linkerd
+control plane. It should be run after "linkerd install config".`,
+		Example: `  # Default install.
+  linkerd install control-plane | kubectl apply -f -
+
+  # Install Linkerd into a non-default namespace.
+  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !options.skipChecks {
+				exitIfNamespaceDoesNotExist()
+			}
+
+			return installRunE(options, controlPlaneStage, flags)
+		},
+	}
+
+	cmd.PersistentFlags().BoolVar(
+		&options.skipChecks, "skip-checks", options.skipChecks,
+		`Skip checks for namespace existence`,
+	)
+	cmd.PersistentFlags().AddFlagSet(flags)
+	// Some flags are not available during upgrade, etc.
+	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
+
+	return cmd
 }
 
 func newCmdInstall() *cobra.Command {
@@ -238,57 +306,54 @@ func newCmdInstall() *cobra.Command {
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
 	installOnlyFlags := options.installOnlyFlagSet()
+	installPersistentFlags := options.installPersistentFlagSet()
 
 	cmd := &cobra.Command{
-		Use:       fmt.Sprintf("install [%s|%s] [flags]", configStage, controlPlaneStage),
-		Args:      cobra.OnlyValidArgs,
-		ValidArgs: []string{configStage, controlPlaneStage},
-		Short:     "Output Kubernetes configs to install Linkerd",
+		Use:   "install [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Output Kubernetes configs to install Linkerd",
 		Long: `Output Kubernetes configs to install Linkerd.
 
-This command provides Kubernetes configs necessary to install the Linkerd
-control-plane.`,
+This command provides all Kubernetes configs necessary to install the Linkerd
+control plane.`,
 		Example: `  # Default install.
   linkerd install | kubectl apply -f -
 
-  # Installation may also be broken up into two stages, by user privilege.
-  # First stage requires cluster-level privileges.
-  linkerd install config | kubectl apply -f -
-  # Second stage requires namespace-level privileges.
-  linkerd install control-plane | kubectl apply -f -
-
   # Install Linkerd into a non-default namespace.
-  linkerd install config -l linkerdtest | kubectl apply -f -
-  linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
+  linkerd install -l linkerdtest | kubectl apply -f -
+
+  # Installation may also be broken up into two stages by user privilege, via
+  # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			stage, err := validateArgs(args, flags, installOnlyFlags)
-			if err != nil {
-				return err
-			}
-			if !options.ignoreCluster {
-				// TODO: consider cobra.SilenceUsage, so we can return errors from
-				// `RunE`, rather than calling `os.Exit(1)`
-				exitIfClusterExists()
-			}
-			if !options.skipChecks && stage == controlPlaneStage {
-				exitIfNamespaceDoesNotExist()
-			}
-
-			values, configs, err := options.validateAndBuild(stage, flags)
-			if err != nil {
-				return err
-			}
-
-			return values.render(os.Stdout, configs)
+			return installRunE(options, "", flags)
 		},
 	}
 
-	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.Flags().AddFlagSet(flags)
 
 	// Some flags are not available during upgrade, etc.
-	cmd.PersistentFlags().AddFlagSet(installOnlyFlags)
+	cmd.Flags().AddFlagSet(installOnlyFlags)
+	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
+
+	cmd.AddCommand(newCmdInstallConfig(options))
+	cmd.AddCommand(newCmdInstallControlPlane(options))
 
 	return cmd
+}
+
+func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
+	if !options.ignoreCluster {
+		// TODO: consider cobra.SilenceUsage, so we can return errors from
+		// `RunE`, rather than calling `os.Exit(1)`
+		exitIfClusterExists()
+	}
+
+	values, configs, err := options.validateAndBuild(stage, flags)
+	if err != nil {
+		return err
+	}
+
+	return values.render(os.Stdout, configs)
 }
 
 func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
@@ -396,13 +461,17 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 		"The type of CA to use for issuing proxy certificates. (0 = linkerd-identity (default), 1 = awsacmpca)",
 	)
 
+	return flags
+}
+
+// installPersistentFlagSet includes flags that are only accessible at
+// install-time, not at upgrade-time, and are also used by install subcommands.
+func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("install-persist", pflag.ExitOnError)
+
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
-	)
-	flags.BoolVar(
-		&options.skipChecks, "skip-checks", options.skipChecks,
-		`Skip checks for namespace existence, applicable for "linkerd install control-plane"`,
 	)
 
 	return flags
@@ -1005,39 +1074,4 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 	}
 
 	return identityContext
-}
-
-func validateArgs(args []string, flags *pflag.FlagSet, additionalFlags *pflag.FlagSet) (string, error) {
-	if len(args) > 1 {
-		return "", fmt.Errorf("only zero or one argument permitted, received: %s", args)
-	} else if len(args) == 0 {
-		return "", nil
-	}
-
-	stage := args[0]
-
-	// only a few flags are available for config stage
-	if stage == configStage {
-		combinedFlags := pflag.NewFlagSet("combined-flags", pflag.ExitOnError)
-		combinedFlags.AddFlagSet(flags)
-		combinedFlags.AddFlagSet(additionalFlags)
-
-		invalidFlags := make([]string, 0)
-		combinedFlags.VisitAll(func(f *pflag.Flag) {
-			if f.Changed {
-				switch f.Name {
-				case "ignore-cluster":
-					// allow `linkerd install config --ignore-cluster`
-				default:
-					invalidFlags = append(invalidFlags, f.Name)
-				}
-			}
-		})
-		if len(invalidFlags) > 0 {
-			err := fmt.Errorf("flags not available for config stage: --%s", strings.Join(invalidFlags, ", --"))
-			return "", err
-		}
-	}
-
-	return stage, nil
 }

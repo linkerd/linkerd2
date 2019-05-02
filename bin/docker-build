@@ -9,6 +9,7 @@ fi
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+$bindir/docker-build-proxy
 $bindir/docker-build-controller
 $bindir/docker-build-web
 $bindir/docker-build-proxy-init
@@ -20,4 +21,3 @@ else
     $bindir/build-cli-bin
 fi
 $bindir/docker-build-grafana
-$bindir/docker-build-proxy

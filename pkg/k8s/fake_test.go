@@ -7,9 +7,132 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+func TestNewFakeAPI(t *testing.T) {
+
+	k8sConfigs := []string{
+		`
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: dep-name
+  namespace: dep-ns
+`, `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: fakecrd.linkerd.io
+spec:
+  group: my-group.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: fakecrds
+    singular: fakecrd
+    kind: FakeCRD
+    shortNames:
+    - fc
+`,
+	}
+
+	api, err := NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	deploy, err := api.AppsV1beta2().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1beta2",
+		Kind:    "Deployment",
+	}
+	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {
+		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
+	}
+
+	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get("fakecrd.linkerd.io", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	gvk = schema.GroupVersionKind{
+		Group:   "apiextensions.k8s.io",
+		Version: "v1beta1",
+		Kind:    "CustomResourceDefinition",
+	}
+	if !reflect.DeepEqual(crd.GroupVersionKind(), gvk) {
+		t.Fatalf("Expected: %s Got: %s", gvk, crd.GroupVersionKind())
+	}
+}
+
+func TestNewFakeAPIFromManifests(t *testing.T) {
+	k8sConfigs := []string{
+		`
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: dep-name
+  namespace: dep-ns
+`, `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: fakecrd.linkerd.io
+spec:
+  group: my-group.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: fakecrds
+    singular: fakecrd
+    kind: FakeCRD
+    shortNames:
+    - fc
+`,
+	}
+
+	readers := []io.Reader{}
+	for _, m := range k8sConfigs {
+		readers = append(readers, strings.NewReader(m))
+	}
+
+	api, err := NewFakeAPIFromManifests(readers)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	deploy, err := api.AppsV1beta2().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	gvk := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1beta2",
+		Kind:    "Deployment",
+	}
+	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {
+		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
+	}
+
+	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get("fakecrd.linkerd.io", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	gvk = schema.GroupVersionKind{
+		Group:   "apiextensions.k8s.io",
+		Version: "v1beta1",
+		Kind:    "CustomResourceDefinition",
+	}
+	if !reflect.DeepEqual(crd.GroupVersionKind(), gvk) {
+		t.Fatalf("Expected: %s Got: %s", gvk, crd.GroupVersionKind())
+	}
+}
 
 func TestNewFakeClientSets(t *testing.T) {
 	testCases := []struct {
@@ -52,7 +175,7 @@ spec:
 		tc := tc // pin
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			_, _, err := NewFakeClientSets(tc.k8sConfigs...)
+			_, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
@@ -130,7 +253,7 @@ items:
 				readers = append(readers, strings.NewReader(m))
 			}
 
-			_, _, err := NewFakeClientSetsFromManifests(readers)
+			_, _, _, err := newFakeClientSetsFromManifests(readers)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
@@ -185,7 +308,8 @@ spec:
 			runtime.NewMissingKindErr("---"),
 		},
 		{
-			`apiVersion: apiextensions.k8s.io/v1beta1
+			`
+apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: fakecrd.linkerd.io
@@ -199,11 +323,7 @@ spec:
     kind: FakeCRD
     shortNames:
     - fc`,
-			runtime.NewNotRegisteredGVKErrForTarget(
-				"k8s.io/client-go/kubernetes/scheme/register.go:61",
-				schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1beta1", Kind: "CustomResourceDefinition"},
-				nil,
-			),
+			nil,
 		},
 	}
 
