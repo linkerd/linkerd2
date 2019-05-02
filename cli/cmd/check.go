@@ -64,16 +64,38 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
+// newCmdInstallConfig is a subcommand for `linkerd check config`
+func newCmdCheckConfig(options *checkOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Check the Linkerd cluster-wide resources for potential problems",
+		Long: `Check the Linkerd cluster-wide resources for potential problems.
+
+The check command will perform a series of checks to validate that the Linkerd
+cluster-wide resources are configured correctly. It is intended to validate that
+"linkerd install config" succeeded. If the command encounters a failure it will
+print additional information about the failure and exit with a non-zero exit
+code.`,
+		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
+  linkerd check config`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return configureAndRunChecks(stdout, configStage, options)
+		},
+	}
+
+	return cmd
+}
+
 func newCmdCheck() *cobra.Command {
 	options := newCheckOptions()
 	checkFlags := options.checkFlagSet()
 	nonConfigFlags := options.nonConfigFlagSet()
 
 	cmd := &cobra.Command{
-		Use:       fmt.Sprintf("check [%s] [flags]", configStage),
-		Args:      cobra.OnlyValidArgs,
-		ValidArgs: []string{configStage},
-		Short:     "Check the Linkerd installation for potential problems",
+		Use:   fmt.Sprintf("check [%s] [flags]", configStage),
+		Args:  cobra.NoArgs,
+		Short: "Check the Linkerd installation for potential problems",
 		Long: `Check the Linkerd installation for potential problems.
 
 The check command will perform a series of checks to validate that the linkerd
@@ -92,17 +114,14 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			stage, err := validateArgs(args, nonConfigFlags, nil)
-			if err != nil {
-				return err
-			}
-
-			return configureAndRunChecks(stdout, stage, options)
+			return configureAndRunChecks(stdout, "", options)
 		},
 	}
 
 	cmd.PersistentFlags().AddFlagSet(checkFlags)
-	cmd.PersistentFlags().AddFlagSet(nonConfigFlags)
+	cmd.Flags().AddFlagSet(nonConfigFlags)
+
+	cmd.AddCommand(newCmdCheckConfig(options))
 
 	return cmd
 }
