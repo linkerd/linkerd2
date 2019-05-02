@@ -10,11 +10,9 @@
   * Fixed pod creation failure when a `ResourceQuota` exists by adding a default
     resource spec for the proxy-init init container
 * Proxy
-  * Replaced fixed reconnect backoff with exponential one (thanks,
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
     @zaharidichev!)
-  * Support endpoint weights
-  * Fixed an issue where load balancers can become stuck by removing buffers
-    from endpoint stacks
+  * Fixed an issue where load balancers can become stuck
 * Internal
   * Fixed integration tests by adding known proxy-injector log warning to tests
 
