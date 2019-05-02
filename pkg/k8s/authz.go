@@ -53,17 +53,15 @@ func ResourceAuthz(
 // ServiceProfilesAccess checks whether the ServiceProfile CRD is installed
 // on the cluster and the client is authorized to access ServiceProfiles.
 func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
-	res, err := k8sClient.Discovery().ServerResources()
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(ServiceProfileAPIVersion)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range res {
-		if r.GroupVersion == ServiceProfileAPIVersion {
-			for _, apiRes := range r.APIResources {
-				if apiRes.Kind == ServiceProfileKind {
-					return ResourceAuthz(k8sClient, "", "list", "linkerd.io", "", "serviceprofiles", "")
-				}
+	if res.GroupVersion == ServiceProfileAPIVersion {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == ServiceProfileKind {
+				return ResourceAuthz(k8sClient, "", "list", "linkerd.io", "", "serviceprofiles", "")
 			}
 		}
 	}
