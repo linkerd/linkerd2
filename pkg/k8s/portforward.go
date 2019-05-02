@@ -19,8 +19,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-const defaultPort = 50750
-
 // PortForward provides a port-forward connection into a Kubernetes cluster.
 type PortForward struct {
 	method     string
@@ -74,6 +72,9 @@ func NewProxyMetricsForward(
 // to establish a port-forward connection to a pod in the deployment that's
 // specified by namespace and deployName. If localPort is 0, it will use a
 // random ephemeral port.
+// Note that the connection remains open for the life of the process, as this
+// function is typically called by the CLI. Care should be taken if called from
+// control plane code.
 func NewPortForward(
 	k8sAPI *KubernetesAPI,
 	namespace, deployName string,
@@ -118,7 +119,7 @@ func newPortForward(
 
 	var err error
 	if localPort == 0 {
-		localPort, err = getLocalPort()
+		localPort, err = getEphemeralPort()
 		if err != nil {
 			return nil, err
 		}
@@ -178,17 +179,9 @@ func (pf *PortForward) URLFor(path string) string {
 	return fmt.Sprintf("http://127.0.0.1:%d%s", pf.localPort, path)
 }
 
-// getLocalPort is used by dashboard.go to select a port for the dashboard.
-// It first checks the availability of the default port, defined in addr.
-// If that port is taken, it binds to a free ephemeral port and returns the
-// port number.
-func getLocalPort() (int, error) {
-	defaultAddr := fmt.Sprintf("127.0.0.1:%d", defaultPort)
-	if ln, err := net.Listen("tcp", defaultAddr); err == nil {
-		ln.Close()
-		return defaultPort, nil
-	}
-
+// getEphemeralPort selects a port for the port-forwarding. It binds to a free
+// ephemeral port and returns the port number.
+func getEphemeralPort() (int, error) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return 0, err
