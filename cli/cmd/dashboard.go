@@ -27,6 +27,9 @@ const (
 
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
+
+	// defaultPort is for port-forwarding via `linkerd dashboard`
+	defaultPort = 50750
 )
 
 type dashboardOptions struct {
@@ -37,7 +40,7 @@ type dashboardOptions struct {
 
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
-		port: 0,
+		port: defaultPort,
 		show: showLinkerd,
 		wait: 300 * time.Second,
 	}
@@ -89,7 +92,8 @@ func newCmdDashboard() *cobra.Command {
 			go func() {
 				err := portforward.Run()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+					// TODO: consider falling back to an ephemeral port if defaultPort is taken
+					fmt.Fprintf(os.Stderr, "Error running port-forward: %s\nCheck for `linkerd dashboard` running in other terminal sessions, or use the `--port` flag.\n", err)
 					os.Exit(1)
 				}
 				close(wait)

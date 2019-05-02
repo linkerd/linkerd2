@@ -2,8 +2,6 @@ package k8s
 
 import (
 	"fmt"
-	"net/url"
-	"strings"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,23 +55,6 @@ var StatAllResourceTypes = []string{
 	Pod,
 	Service,
 	Authority,
-}
-
-func generateKubernetesAPIURLFor(serverURL, namespace, path string) (*url.URL, error) {
-	if !strings.HasPrefix(path, "/") {
-		return nil, fmt.Errorf("path must start with a /, got [%s]", path)
-	}
-
-	fullPath := "/api/v1/namespaces/" + namespace + path
-	return generateKubernetesURL(serverURL, fullPath)
-}
-
-func generateKubernetesURL(serverURL, path string) (*url.URL, error) {
-	if !strings.HasPrefix(path, "/") {
-		return nil, fmt.Errorf("path must start with a /, got [%s]", path)
-	}
-
-	return url.Parse(strings.TrimSuffix(serverURL, "/") + path)
 }
 
 // GetConfig returns kubernetes config based on the current environment.
