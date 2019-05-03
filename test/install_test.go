@@ -30,6 +30,9 @@ func TestMain(m *testing.M) {
 }
 
 var (
+	nsSmokeAuto   = "smoke-test"
+	nsSmokeManual = "smoke-test-manual"
+
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
 		"linkerd-destination",
@@ -49,12 +52,15 @@ var (
 		"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 	}
 
+	injectorErr = `.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-%s/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`
+
 	// Linkerd commonly logs these errors during testing, remove these once
 	// they're addressed: https://github.com/linkerd/linkerd2/issues/2453
 	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
+		fmt.Sprintf(injectorErr, nsSmokeAuto),
+		fmt.Sprintf(injectorErr, nsSmokeManual),
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
@@ -299,48 +305,88 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestInject(t *testing.T) {
-	var out string
-	var err error
-
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-
-	out, err = testutil.ReadFile("testdata/smoke_test.yaml")
+	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
 	if err != nil {
 		t.Fatalf("failed to read smoke test file: %s", err)
 	}
-	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
-		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-	})
-	if err != nil {
-		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
+
+	testCases := []struct {
+		ns          string
+		autoinject  bool
+		annotations map[string]string
+	}{
+		{
+			ns:         nsSmokeAuto,
+			autoinject: true,
+			annotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+		},
+		{
+			ns:         nsSmokeManual,
+			autoinject: false,
+		},
 	}
 
-	out, err = TestHelper.KubectlApply(out, prefixedNs)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
-	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+			var out string
 
-	for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-	}
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-	url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
-	if err != nil {
-		t.Fatalf("Failed to get URL: %s", err)
-	}
+			err := TestHelper.CreateNamespaceIfNotExists(prefixedNs, tc.annotations)
+			if err != nil {
+				t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
+			}
 
-	output, err := TestHelper.HTTPGetURL(url)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v %s", err, output)
-	}
+			out, err = TestHelper.KubectlApply(resources, prefixedNs)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed\n%s", out)
+			}
 
-	expectedStringInPayload := "\"payload\":\"BANANA\""
-	if !strings.Contains(output, expectedStringInPayload) {
-		t.Fatalf("Expected application response to contain string [%s], but it was [%s]",
-			expectedStringInPayload, output)
+			if !tc.autoinject {
+				cmd := []string{"inject", "--manual", "testdata/smoke_test.yaml"}
+
+				var injectReport string
+				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
+				if err != nil {
+					t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+				}
+
+				err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
+				if err != nil {
+					t.Fatalf("Received unexpected output\n%s", err.Error())
+				}
+
+				out, err = TestHelper.KubectlApply(out, prefixedNs)
+				if err != nil {
+					t.Fatalf("kubectl apply command failed\n%s", out)
+				}
+			}
+
+			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
+				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			}
+
+			url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
+			if err != nil {
+				t.Fatalf("Failed to get URL: %s", err)
+			}
+
+			output, err := TestHelper.HTTPGetURL(url)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v %s", err, output)
+			}
+
+			expectedStringInPayload := "\"payload\":\"BANANA\""
+			if !strings.Contains(output, expectedStringInPayload) {
+				t.Fatalf("Expected application response to contain string [%s], but it was [%s]",
+					expectedStringInPayload, output)
+			}
+		})
 	}
 }
 
@@ -350,40 +396,48 @@ func TestServiceProfileDeploy(t *testing.T) {
 		t.Fatalf("Unexpected error: %v %s", err, bbProto)
 	}
 
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
+	for _, ns := range []string{nsSmokeAuto, nsSmokeManual} {
+		t.Run(fmt.Sprintf("%s", ns), func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(ns)
 
-	cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
-	bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v %s", err, stderr)
-	}
+			cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
+			bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v %s", err, stderr)
+			}
 
-	out, err := TestHelper.KubectlApply(bbSP, prefixedNs)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed: %s\n%s", err, out)
+			out, err := TestHelper.KubectlApply(bbSP, prefixedNs)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed: %s\n%s", err, out)
+			}
+		})
 	}
 }
 
 func TestCheckProxy(t *testing.T) {
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
-	golden := "check.proxy.golden"
+	for _, ns := range []string{nsSmokeAuto, nsSmokeManual} {
+		t.Run(fmt.Sprintf("%s", ns), func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(ns)
+			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
+			golden := "check.proxy.golden"
 
-	err := TestHelper.RetryFor(time.Minute, func() error {
-		out, _, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			return fmt.Errorf("Check command failed\n%s", out)
-		}
+			err := TestHelper.RetryFor(time.Minute, func() error {
+				out, _, err := TestHelper.LinkerdRun(cmd...)
+				if err != nil {
+					return fmt.Errorf("Check command failed\n%s", out)
+				}
 
-		err = TestHelper.ValidateOutput(out, golden)
-		if err != nil {
-			return fmt.Errorf("Received unexpected output\n%s", err.Error())
-		}
+				err = TestHelper.ValidateOutput(out, golden)
+				if err != nil {
+					return fmt.Errorf("Received unexpected output\n%s", err.Error())
+				}
 
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+		})
 	}
 }
 
