@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -54,6 +55,7 @@ func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
 func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionsclient.Interface, spclient.Interface, error) {
 	objs := []runtime.Object{}
 	apiextObjs := []runtime.Object{}
+	discoveryObjs := []runtime.Object{}
 	spObjs := []runtime.Object{}
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
@@ -63,6 +65,8 @@ func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionscl
 		switch strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind) {
 		case "customresourcedefinition":
 			apiextObjs = append(apiextObjs, obj)
+		case "apiresourcelist":
+			discoveryObjs = append(discoveryObjs, obj)
 		case ServiceProfile:
 			spObjs = append(spObjs, obj)
 		default:
@@ -70,7 +74,14 @@ func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionscl
 		}
 	}
 
-	return fake.NewSimpleClientset(objs...),
+	cs := fake.NewSimpleClientset(objs...)
+	fakeDiscoveryClient := cs.Discovery().(*discoveryfake.FakeDiscovery)
+	for _, obj := range discoveryObjs {
+		apiResList := obj.(*metav1.APIResourceList)
+		fakeDiscoveryClient.Resources = append(fakeDiscoveryClient.Resources, apiResList)
+	}
+
+	return cs,
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		spfake.NewSimpleClientset(spObjs...),
 		nil
