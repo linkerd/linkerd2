@@ -903,6 +903,7 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 			if containersReady {
 				// at least one pod has all containers ready
 				ready = true
+				break
 			}
 		}
 		if !ready {
