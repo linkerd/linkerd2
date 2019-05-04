@@ -61,12 +61,12 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	return flags
 }
 
-func (o *checkOptions) validate() error {
-	if o.preInstallOnly && o.dataPlaneOnly {
+func (options *checkOptions) validate() error {
+	if options.preInstallOnly && options.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
-	if o.output != tableOutput && o.output != jsonOutput {
-		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", o.output, jsonOutput, tableOutput)
+	if options.output != tableOutput && options.output != jsonOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, jsonOutput, tableOutput)
 	}
 	return nil
 }
@@ -132,7 +132,6 @@ non-zero exit code.`,
 
 	return cmd
 }
-
 
 func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
