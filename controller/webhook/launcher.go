@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -33,9 +34,19 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	rootCA, err := tls.GenerateRootCAWithDefaults(serviceName)
+	rootPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/root.pem")
 	if err != nil {
-		log.Fatalf("failed to create root CA: %s", err)
+		log.Fatalf("failed to read root PEM file: %s", err)
+	}
+
+	keyPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/key.pem")
+	if err != nil {
+		log.Fatalf("failed to read CA key PEM file: %s", err)
+	}
+
+	rootCA, err := tls.ParseRootCA(rootPEM, keyPEM)
+	if err != nil {
+		log.Fatalf("failed to parse the provided root CA: %s", err)
 	}
 
 	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()

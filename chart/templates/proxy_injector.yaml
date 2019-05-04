@@ -58,7 +58,7 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
-        - name: caTrust
+        - name: ca
           mountPath: /var/run/linkerd/ca
           readOnly: true
         livenessProbe:
@@ -80,7 +80,7 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
-      - name: caTrust
+      - name: ca
         secret:
           secretName: linkerd-ca
 ---

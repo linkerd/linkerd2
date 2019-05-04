@@ -74,7 +74,7 @@ spec:
         - name: sp-validator
           containerPort: 8443
         volumeMounts:
-        - name: caTrust
+        - name: ca
           mountPath: /var/run/linkerd/ca
           readOnly: true
         livenessProbe:
@@ -93,7 +93,7 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
-      - name: caTrust
+      - name: ca
         secret:
           secretName: linkerd-ca
 {{end -}}
