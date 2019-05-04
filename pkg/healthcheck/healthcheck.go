@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -16,10 +16,12 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/kubernetes"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -51,6 +53,17 @@ const (
 	// capability is required by the `linkerd-init` container to modify IP tables.
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
+
+	// LinkerdConfigChecks enabled by `linkerd check config`
+
+	// LinkerdConfigChecks adds a series of checks to validate that the Linkerd
+	// namespace, RBAC, ServiceAccounts, and CRDs were successfully created.
+	// These checks specifically validate that the `linkerd install config`
+	// command succeeded in a multi-stage install, but also applies to a default
+	// `linkerd install`.
+	// These checks are dependent on the output of KubernetesAPIChecks, so those
+	// checks must be added first.
+	LinkerdConfigChecks CategoryID = "linkerd-config"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
 	// the control plane namespace and controller pod exist.
@@ -164,8 +177,6 @@ type HealthChecker struct {
 
 	// these fields are set in the process of running checks
 	kubeAPI          *k8s.KubernetesAPI
-	httpClient       *http.Client
-	clientset        kubernetes.Interface
 	kubeVersion      *k8sVersion.Info
 	controlPlanePods []corev1.Pod
 	apiClient        public.APIClient
@@ -198,6 +209,10 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 // category. This method is attached to the HealthChecker struct because the
 // checkers directly reference other members of the struct, such as kubeAPI,
 // controlPlanePods, etc.
+//
+// Ordering is important because checks rely on specific `HealthChecker` members
+// getting populated by earlier checks, such as kubeAPI, controlPlanePods, etc.
+//
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
 // https://linkerd.io/checks/#
@@ -211,19 +226,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext)
-						if err != nil {
-							return
-						}
-						// k8s' client-go doesn't support injecting context
-						// https://github.com/kubernetes/kubernetes/issues/46503
-						// but we can set the timeout manually
-						hc.kubeAPI.Timeout = requestTimeout
-
-						hc.clientset, err = kubernetes.NewForConfig(hc.kubeAPI.Config)
-						if err != nil {
-							return err
-						}
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
 						return
 					},
 				},
@@ -232,11 +235,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.httpClient, err = hc.kubeAPI.NewClient()
-						if err != nil {
-							return
-						}
-						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo(ctx, hc.httpClient)
+						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo()
 						return
 					},
 				},
@@ -267,8 +266,8 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
-					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
+					check: func(context.Context) error {
+						return hc.CheckNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -342,14 +341,77 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
+			id: LinkerdConfigChecks,
+			checkers: []checker{
+				{
+					description: "control plane Namespace exists",
+					hintAnchor:  "l5d-existence-ns",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description: "control plane ClusterRoles exist",
+					hintAnchor:  "l5d-existence-cr",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkClusterRoles()
+					},
+				},
+				{
+					description: "control plane ClusterRoleBindings exist",
+					hintAnchor:  "l5d-existence-crb",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkClusterRoleBindings()
+					},
+				},
+				{
+					description: "control plane ServiceAccounts exist",
+					hintAnchor:  "l5d-existence-sa",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkServiceAccounts()
+					},
+				},
+				{
+					description: "control plane CustomResourceDefinitions exist",
+					hintAnchor:  "l5d-existence-crd",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkCustomResourceDefinitions()
+					},
+				},
+			},
+		},
+		{
 			id: LinkerdControlPlaneExistenceChecks,
 			checkers: []checker{
 				{
-					description: "control plane namespace exists",
-					hintAnchor:  "l5d-existence-ns",
+					description: "control plane components ready",
+					hintAnchor:  "l5d-existence-psp",
 					fatal:       true,
-					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
+					check: func(context.Context) error {
+						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkControlPlaneReplicaSets(controlPlaneReplicaSet)
+					},
+				},
+				{
+					description: "no unschedulable pods",
+					hintAnchor:  "l5d-existence-unschedulable-pods",
+					fatal:       true,
+					check: func(context.Context) error {
+						// do not save this into hc.controlPlanePods, as this check may
+						// succeed prior to all expected control plane pods being up
+						controlPlanePods, err := hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						if err != nil {
+							return err
+						}
+						return checkUnschedulablePods(controlPlanePods)
 					},
 				},
 				{
@@ -358,11 +420,14 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(ctx context.Context) error {
+						// save this into hc.controlPlanePods, since this check only
+						// succeeds when all pods are up
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
+
 						return checkControllerRunning(hc.controlPlanePods)
 					},
 				},
@@ -399,9 +464,9 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:    "l5d-api-control-ready",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func(ctx context.Context) error {
+					check: func(context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.httpClient, hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -499,8 +564,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
-					check: func(ctx context.Context) error {
-						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
+					check: func(context.Context) error {
+						if hc.DataPlaneNamespace == "" {
+							// when checking proxies in all namespaces, this check is a no-op
+							return nil
+						}
+						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -574,7 +643,7 @@ func (hc *HealthChecker) allCategories() []category {
 
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
-// NewHeathChecker.
+// NewHealthChecker.
 func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
 	hc.addCategory(
 		category{
@@ -706,8 +775,10 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, shouldExist bool) error {
-	exists, err := hc.kubeAPI.NamespaceExists(ctx, hc.httpClient, namespace)
+// CheckNamespace checks whether the given namespace exists, and returns an
+// error if it does not match `shouldExist`.
+func (hc *HealthChecker) CheckNamespace(namespace string, shouldExist bool) error {
+	exists, err := hc.kubeAPI.NamespaceExists(namespace)
 	if err != nil {
 		return err
 	}
@@ -717,6 +788,119 @@ func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, s
 	if !shouldExist && exists {
 		return fmt.Errorf("The \"%s\" namespace already exists", namespace)
 	}
+	return nil
+}
+
+func (hc *HealthChecker) expectedRBACNames() []string {
+	return []string{
+		fmt.Sprintf("linkerd-%s-controller", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-prometheus", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
+	}
+}
+
+func expectedServiceAccountNames() []string {
+	return []string{
+		"linkerd-controller",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-proxy-injector",
+		"linkerd-sp-validator",
+		"linkerd-web",
+	}
+}
+
+func (hc *HealthChecker) checkClusterRoles() error {
+	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range crList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("ClusterRoles", objects, hc.expectedRBACNames())
+}
+
+func (hc *HealthChecker) checkClusterRoleBindings() error {
+	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range crbList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames())
+}
+
+func (hc *HealthChecker) checkServiceAccounts() error {
+	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range saList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames())
+}
+
+func (hc *HealthChecker) checkCustomResourceDefinitions() error {
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range crdList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"})
+}
+
+func checkResources(resourceName string, objects []runtime.Object, expectedNames []string) error {
+	expected := map[string]bool{}
+	for _, name := range expectedNames {
+		expected[name] = false
+	}
+
+	for _, obj := range objects {
+		metaObj, err := meta.Accessor(obj)
+		if err != nil {
+			return err
+		}
+
+		if _, ok := expected[metaObj.GetName()]; ok {
+			expected[metaObj.GetName()] = true
+		}
+	}
+
+	missing := []string{}
+	for name, found := range expected {
+		if !found {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return fmt.Errorf("missing %s: %s", resourceName, strings.Join(missing, ", "))
+	}
+
 	return nil
 }
 
@@ -746,13 +930,13 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 }
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
-	if hc.clientset == nil {
+	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
 	return k8s.ResourceAuthz(
-		hc.clientset,
+		hc.kubeAPI,
 		namespace,
 		"create",
 		group,
@@ -763,12 +947,12 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 }
 
 func (hc *HealthChecker) checkNetAdmin() error {
-	if hc.clientset == nil {
+	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
-	pspList, err := hc.clientset.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
+	pspList, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -784,7 +968,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	// 2) provides NET_ADMIN
 	for _, psp := range pspList.Items {
 		err := k8s.ResourceAuthz(
-			hc.clientset,
+			hc.kubeAPI,
 			"",
 			"use",
 			"policy",
@@ -831,8 +1015,15 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 	return nil
 }
 
-func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
-	statuses := make(map[string][]corev1.ContainerStatus)
+// getPodStatuses returns a map of all Linkerd container statuses:
+// component =>
+//   pod name =>
+//     container statuses
+// "controller" =>
+//   "linkerd-controller-6f78cbd47-bc557" =>
+//     [destination status, public-api status, ...]
+func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
+	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
@@ -842,9 +1033,9 @@ func getPodStatuses(pods []corev1.Pod) map[string][]corev1.ContainerStatus {
 			if len(parts) >= 4 {
 				name := strings.Join(parts[1:len(parts)-2], "-")
 				if _, found := statuses[name]; !found {
-					statuses[name] = make([]corev1.ContainerStatus, 0)
+					statuses[name] = make(map[string][]corev1.ContainerStatus)
 				}
-				statuses[name] = append(statuses[name], pod.Status.ContainerStatuses...)
+				statuses[name][pod.Name] = pod.Status.ContainerStatuses
 			}
 		}
 	}
@@ -856,20 +1047,40 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
 	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
+	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
 	}
 
 	for _, name := range names {
-		containers, found := statuses[name]
+		pods, found := statuses[name]
 		if !found {
 			return fmt.Errorf("No running pods for \"linkerd-%s\"", name)
 		}
-		for _, container := range containers {
-			if !container.Ready {
-				return fmt.Errorf("The \"linkerd-%s\" pod's \"%s\" container is not ready", name,
-					container.Name)
+		var err error
+		var ready bool
+		for pod, containers := range pods {
+			containersReady := true
+			for _, container := range containers {
+				if !container.Ready {
+					// TODO: Save this as a warning, allow check to pass but let the user
+					// know there is at least one pod not ready. This might imply
+					// restructuring health checks to allow individual checks to return
+					// either fatal or warning, rather than setting this property at
+					// compile time.
+					err = fmt.Errorf("The \"%s\" pod's \"%s\" container is not ready", pod,
+						container.Name)
+					containersReady = false
+				}
 			}
+			if containersReady {
+				// at least one pod has all containers ready
+				ready = true
+				break
+			}
+		}
+		if !ready {
+			return err
 		}
 	}
 
@@ -925,6 +1136,40 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 
 	if errMsg != "" {
 		return fmt.Errorf(errMsg)
+	}
+
+	return nil
+}
+
+func checkUnschedulablePods(pods []corev1.Pod) error {
+	var errors []string
+	for _, pod := range pods {
+		for _, condition := range pod.Status.Conditions {
+			if condition.Reason == corev1.PodReasonUnschedulable {
+				errors = append(errors, fmt.Sprintf("%s: %s", pod.Name, condition.Message))
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "\n    "))
+	}
+
+	return nil
+}
+
+func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
+	var errors []string
+	for _, rs := range rst {
+		for _, r := range rs.Status.Conditions {
+			if r.Type == appsv1.ReplicaSetReplicaFailure && r.Status == corev1.ConditionTrue {
+				errors = append(errors, fmt.Sprintf("%s: %s", r.Reason, r.Message))
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "\n   "))
 	}
 
 	return nil

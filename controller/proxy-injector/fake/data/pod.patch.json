@@ -2,7 +2,7 @@
   {
     "op": "add",
     "path": "/metadata/annotations/linkerd.io~1proxy-version",
-    "value": ""
+    "value": "dev-undefined"
   },
   {
     "op": "add",
@@ -29,7 +29,7 @@
     "path": "/spec/initContainers/-",
     "value": {
       "name": "linkerd-init",
-      "image": "gcr.io/linkerd-io/proxy-init:",
+      "image": "gcr.io/linkerd-io/proxy-init:dev-undefined",
       "args": [
         "--incoming-proxy-port",
         "4143",
@@ -40,7 +40,16 @@
         "--inbound-ports-to-ignore",
         "4190,4191"
       ],
-      "resources": {},
+      "resources": {
+        "limits": {
+          "cpu":"100m",
+          "memory":"50Mi"
+        },
+        "requests": {
+          "cpu":"10m",
+          "memory":"10Mi"
+        }
+      },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
@@ -60,7 +69,7 @@
     "path": "/spec/containers/-",
     "value": {
       "name": "linkerd-proxy",
-      "image": "gcr.io/linkerd-io/proxy:",
+      "image": "gcr.io/linkerd-io/proxy:dev-undefined",
       "ports": [
         {
           "name": "linkerd-proxy",
@@ -122,7 +131,7 @@
         },
         {
           "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
-          "value": "Identity is not yet available"
+          "value": "disabled"
         }
       ],
       "resources": {},

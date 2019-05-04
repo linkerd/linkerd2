@@ -18,85 +18,188 @@ import (
 )
 
 const (
-	okMessage   = "You're on your way to upgrading Linkerd!\nVisit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps\n"
-	failMessage = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+	okMessage           = "You're on your way to upgrading Linkerd!"
+	controlPlaneMessage = "Don't forget to run `linkerd upgrade control-plane`!"
+	visitMessage        = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
+	failMessage         = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
 )
 
-type (
-	upgradeOptions struct{ *installOptions }
-)
+type upgradeOptions struct {
+	manifests string
+	*installOptions
+}
 
 func newUpgradeOptionsWithDefaults() *upgradeOptions {
-	return &upgradeOptions{newInstallOptionsWithDefaults()}
+	return &upgradeOptions{
+		manifests:      "",
+		installOptions: newInstallOptionsWithDefaults(),
+	}
+}
+
+// upgradeOnlyFlagSet includes flags that are only accessible at upgrade-time
+// and not at install-time. also these flags are not intended to be persisted
+// via linkerd-config ConfigMap, unlike recordableFlagSet
+func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("upgrade-only", pflag.ExitOnError)
+
+	flags.StringVar(
+		&options.manifests, "from-manifests", options.manifests,
+		"Read config from a Linkerd install YAML rather than from Kubernetes",
+	)
+
+	return flags
+}
+
+// newCmdUpgradeConfig is a subcommand for `linkerd upgrade config`
+func newCmdUpgradeConfig(options *upgradeOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Output Kubernetes cluster-wide resources to upgrade an existing Linkerd",
+		Long: `Output Kubernetes cluster-wide resources to upgrade an existing Linkerd.
+
+Note that this command should be followed by "linkerd upgrade control-plane".`,
+		Example: `  # Default upgrade.
+  linkerd upgrade config | kubectl apply -f -`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return upgradeRunE(options, configStage, nil)
+		},
+	}
+
+	return cmd
+}
+
+// newCmdUpgradeControlPlane is a subcommand for `linkerd upgrade control-plane`
+func newCmdUpgradeControlPlane(options *upgradeOptions) *cobra.Command {
+	flags := options.recordableFlagSet()
+
+	cmd := &cobra.Command{
+		Use:   "control-plane [flags]",
+		Args:  cobra.NoArgs,
+		Short: "Output Kubernetes control plane resources to upgrade an existing Linkerd",
+		Long: `Output Kubernetes control plane resources to upgrade an existing Linkerd.
+
+Note that the default flag values for this command come from the Linkerd control
+plane. The default values displayed in the Flags section below only apply to the
+install command. It should be run after "linkerd upgrade config".`,
+		Example: `  # Default upgrade.
+  linkerd upgrade control-plane | kubectl apply -f -`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return upgradeRunE(options, controlPlaneStage, flags)
+		},
+	}
+
+	cmd.PersistentFlags().AddFlagSet(flags)
+
+	return cmd
 }
 
 func newCmdUpgrade() *cobra.Command {
 	options := newUpgradeOptionsWithDefaults()
-	flags := options.recordableFlagSet(pflag.ExitOnError)
+	flags := options.recordableFlagSet()
+	upgradeOnlyFlags := options.upgradeOnlyFlagSet()
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [flags]",
+		Args:  cobra.NoArgs,
 		Short: "Output Kubernetes configs to upgrade an existing Linkerd control plane",
 		Long: `Output Kubernetes configs to upgrade an existing Linkerd control plane.
 
 Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
 install command.`,
+
+		Example: `  # Default upgrade.
+  linkerd upgrade | kubectl apply -f -
+
+  # Similar to install, upgrade may also be broken up into two stages, by user
+  # privilege.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// We need a Kubernetes client to fetch configs and issuer secrets.
-			k, err := options.newK8s()
-			if err != nil {
-				upgradeErrorf("Failed to create a kubernetes client: %s", err)
-			}
-
-			values, configs, err := options.validateAndBuild(k, flags)
-			if err != nil {
-				return err
-			}
-
-			// rendering to a buffer and printing full contents of buffer after
-			// render is complete, to ensure that okStatus prints separately
-			var buf bytes.Buffer
-			if err = values.render(&buf, configs); err != nil {
-				upgradeErrorf("Could not render install configuration: %s", err)
-			}
-
-			buf.WriteTo(os.Stdout)
-
-			fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
-
-			return nil
+			return upgradeRunE(options, "", flags)
 		},
 	}
 
-	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.Flags().AddFlagSet(flags)
+	cmd.PersistentFlags().AddFlagSet(upgradeOnlyFlags)
+
+	cmd.AddCommand(newCmdUpgradeConfig(options))
+	cmd.AddCommand(newCmdUpgradeControlPlane(options))
+
 	return cmd
 }
 
-func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) error {
+	if options.ignoreCluster {
+		panic("ignore cluster must be unset") // Programmer error.
+	}
+
+	// We need a Kubernetes client to fetch configs and issuer secrets.
+	var k kubernetes.Interface
+	var err error
+	if options.manifests != "" {
+		readers, err := read(options.manifests)
+		if err != nil {
+			upgradeErrorf("Failed to parse manifests from %s: %s", options.manifests, err)
+		}
+
+		k, err = k8s.NewFakeAPIFromManifests(readers)
+		if err != nil {
+			upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
+		}
+	} else {
+		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+		if err != nil {
+			upgradeErrorf("Failed to create a kubernetes client: %s", err)
+		}
+	}
+
+	values, configs, err := options.validateAndBuild(stage, k, flags)
+	if err != nil {
+		upgradeErrorf("Failed to build upgrade configuration: %s", err)
+	}
+
+	// rendering to a buffer and printing full contents of buffer after
+	// render is complete, to ensure that okStatus prints separately
+	var buf bytes.Buffer
+	if err = values.render(&buf, configs); err != nil {
+		upgradeErrorf("Could not render upgrade configuration: %s", err)
+	}
+
+	buf.WriteTo(os.Stdout)
+
+	fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
+	if stage == configStage {
+		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
+	}
+	fmt.Fprintf(os.Stderr, "%s\n\n", visitMessage)
+
+	return nil
+}
+
+func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+	if err := options.validate(); err != nil {
+		return nil, nil, err
+	}
+
 	// We fetch the configs directly from kubernetes because we need to be able
 	// to upgrade/reinstall the control plane when the API is not available; and
 	// this also serves as a passive check that we have privileges to access this
 	// control plane.
 	configs, err := fetchConfigs(k)
 	if err != nil {
-		upgradeErrorf("Could not fetch configs from kubernetes: %s", err)
+		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
 
 	// If the install config needs to be repaired--either because it did not
 	// exist or because it is missing expected fields, repair it.
-	options.repairInstall(configs.Install)
+	repairInstall(options.generateUUID, configs.Install)
 
 	// We recorded flags during a prior install. If we haven't overridden the
 	// flag on this upgrade, reset that prior value as if it were specified now.
 	//
 	// This implies that the default flag values for the upgrade command come
 	// from the control-plane, and not from the defaults specified in the FlagSet.
-	setOptionsFromInstall(flags, configs.GetInstall())
-
-	if err = options.validate(); err != nil {
-		return nil, nil, err
-	}
+	setFlagsFromInstall(flags, configs.GetInstall().GetFlags())
 
 	// Save off the updated set of flags into the installOptions so it gets
 	// persisted with the upgraded config.
@@ -104,24 +207,42 @@ func (options *upgradeOptions) validateAndBuild(k kubernetes.Interface, flags *p
 
 	// Update the configs from the synthesized options.
 	options.overrideConfigs(configs, map[string]string{})
+	if options.controlPlaneVersion != "" {
+		configs.GetGlobal().Version = options.controlPlaneVersion
+	}
 	configs.GetInstall().Flags = options.recordedFlags
 
-	values, err := options.buildValuesWithoutIdentity(configs)
-	if err != nil {
-		upgradeErrorf("Could not build install configuration: %s", err)
+	var identity *installIdentityValues
+	idctx := configs.GetGlobal().GetIdentityContext()
+	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
+		// If there wasn't an idctx, or if it doesn't specify the required fields, we
+		// must be upgrading from a version that didn't support identity, so generate it anew...
+		identity, err = options.identityOptions.genValues()
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
+		}
+		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+	} else {
+		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
+		}
 	}
 
-	identityValues, err := fetchIdentityValues(k, options.controllerReplicas, configs.GetGlobal().GetIdentityContext())
+	// Values have to be generated after any missing identity is generated,
+	// otherwise it will be missing from the generated configmap.
+	values, err := options.buildValuesWithoutIdentity(configs)
 	if err != nil {
-		upgradeErrorf("Unable to fetch the existing issuer credentials from Kubernetes.\nError: %s", err)
+		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
-	values.Identity = identityValues
+	values.Identity = identity
+	values.stage = stage
 
 	return values, configs, nil
 }
 
-func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
-	for _, i := range install.GetFlags() {
+func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
+	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
 			f.Value.Set(i.GetValue())
 			f.Changed = true
@@ -129,26 +250,13 @@ func setOptionsFromInstall(flags *pflag.FlagSet, install *pb.Install) {
 	}
 }
 
-func (options *upgradeOptions) newK8s() (kubernetes.Interface, error) {
-	if options.ignoreCluster {
-		panic("ignore cluster must be unset") // Programmer error.
-	}
-
-	c, err := k8s.GetConfig(kubeconfigPath, kubeContext)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubernetes.NewForConfig(c)
-}
-
-func (options *upgradeOptions) repairInstall(install *pb.Install) {
+func repairInstall(generateUUID func() string, install *pb.Install) {
 	if install == nil {
 		install = &pb.Install{}
 	}
 
 	if install.GetUuid() == "" {
-		install.Uuid = options.generateUUID()
+		install.Uuid = generateUUID()
 	}
 
 	// ALWAYS update the CLI version to the most recent.

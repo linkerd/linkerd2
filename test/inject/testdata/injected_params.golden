@@ -13,6 +13,7 @@ spec:
       annotations:
         config.linkerd.io/admin-port: "789"
         config.linkerd.io/control-port: "123"
+        config.linkerd.io/disable-identity: "true"
         config.linkerd.io/enable-external-profiles: "true"
         config.linkerd.io/image-pull-policy: Never
         config.linkerd.io/inbound-port: "678"
@@ -25,7 +26,7 @@ spec:
         config.linkerd.io/proxy-memory-limit: 20Mi
         config.linkerd.io/proxy-memory-request: 10Mi
         config.linkerd.io/proxy-uid: "1337"
-        config.linkerd.io/proxy-version: linkerd-version
+        config.linkerd.io/proxy-version: proxy-version
         config.linkerd.io/skip-inbound-ports: 234,345
         config.linkerd.io/skip-outbound-ports: 456,567
         linkerd.io/created-by: fake # this gets removed during testing
@@ -75,8 +76,8 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
-        image: proxy-image:linkerd-version
+          value: disabled
+        image: proxy-image:proxy-version
         imagePullPolicy: Never
         livenessProbe:
           httpGet:
@@ -116,10 +117,16 @@ spec:
         - 234,345,123,789
         - --outbound-ports-to-ignore
         - 456,567
-        image: init-image:linkerd-version
+        image: init-image:fake # this is replaced during testing
         imagePullPolicy: Never
         name: linkerd-init
-        resources: {}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
         securityContext:
           capabilities:
             add:

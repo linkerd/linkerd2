@@ -78,7 +78,7 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
-	out, _, err := TestHelper.LinkerdRun("inject", "testdata/tap_application.yaml")
+	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s", out)
 	}

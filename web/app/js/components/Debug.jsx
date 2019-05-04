@@ -104,7 +104,7 @@ class Debug extends React.Component {
         <Typography>
           This table allows you to see Linkerd&#39;s service discovery state. It
           provides debug information about the internal state of the
-          control-plane&#39;s proxy-api container. Note that this cache of service
+          control-plane&#39;s destination container. Note that this cache of service
           discovery information is populated on-demand via linkerd-proxy requests.
           No endpoints will be found  until a linkerd-proxy begins routing
           requests.

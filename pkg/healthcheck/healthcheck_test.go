@@ -16,6 +16,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type observer struct {
+	results []string
+}
+
+func newObserver() *observer {
+	return &observer{
+		results: []string{},
+	}
+}
+func (o *observer) resultFn(result *CheckResult) {
+	res := fmt.Sprintf("%s %s", result.Category, result.Description)
+	if result.Err != nil {
+		res += fmt.Sprintf(": %s", result.Err)
+	}
+	o.results = append(o.results, res)
+}
+
+func (hc *HealthChecker) addCheckAsCategory(
+	testCategoryID CategoryID,
+	categoryID CategoryID,
+	desc string,
+) {
+	testCategory := category{
+		id:       testCategoryID,
+		checkers: []checker{},
+	}
+
+	for _, cat := range hc.categories {
+		if cat.id == categoryID {
+			for _, ch := range cat.checkers {
+				if ch.description == desc {
+					testCategory.checkers = append(testCategory.checkers, ch)
+					break
+				}
+			}
+			break
+		}
+	}
+	hc.addCategory(testCategory)
+}
+
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
@@ -136,15 +177,6 @@ func TestHealthChecker(t *testing.T) {
 		hc.addCategory(passingRPCCheck)
 		hc.addCategory(failingRPCCheck)
 
-		observedResults := make([]string, 0)
-		observer := func(result *CheckResult) {
-			res := fmt.Sprintf("%s %s", result.Category, result.Description)
-			if result.Err != nil {
-				res += fmt.Sprintf(": %s", result.Err)
-			}
-			observedResults = append(observedResults, res)
-		}
-
 		expectedResults := []string{
 			"cat1 desc1",
 			"cat2 desc2",
@@ -155,10 +187,11 @@ func TestHealthChecker(t *testing.T) {
 			"cat5 [rpc2] rpc desc2: rpc error",
 		}
 
-		hc.RunChecks(observer)
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(observedResults, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 
@@ -219,24 +252,16 @@ func TestHealthChecker(t *testing.T) {
 		hc.addCategory(fatalCheck)
 		hc.addCategory(passingCheck2)
 
-		observedResults := make([]string, 0)
-		observer := func(result *CheckResult) {
-			res := fmt.Sprintf("%s %s", result.Category, result.Description)
-			if result.Err != nil {
-				res += fmt.Sprintf(": %s", result.Err)
-			}
-			observedResults = append(observedResults, res)
-		}
-
 		expectedResults := []string{
 			"cat1 desc1",
 			"cat6 desc6: fatal",
 		}
 
-		hc.RunChecks(observer)
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
 
-		if !reflect.DeepEqual(observedResults, expectedResults) {
-			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 
@@ -299,7 +324,7 @@ func TestCheckCanCreate(t *testing.T) {
 		&Options{},
 	)
 	var err error
-	hc.clientset, _, err = k8s.NewFakeClientSets()
+	hc.kubeAPI, err = k8s.NewFakeAPI()
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -341,10 +366,11 @@ spec:
 			)
 
 			var err error
-			hc.clientset, _, err = k8s.NewFakeClientSets(test.k8sConfigs...)
+			hc.kubeAPI, err = k8s.NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
+
 			err = hc.checkNetAdmin()
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
@@ -354,6 +380,394 @@ spec:
 				}
 			}
 		})
+	}
+}
+
+func TestConfigExists(t *testing.T) {
+	testCases := []struct {
+		k8sConfigs []string
+		results    []string
+	}{
+		{
+			[]string{},
+			[]string{"linkerd-config control plane Namespace exists: The \"test-ns\" namespace does not exist"},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator",
+			},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist",
+				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator",
+			},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: test-ns
+`,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist",
+				"linkerd-config control plane ClusterRoleBindings exist",
+				"linkerd-config control plane ServiceAccounts exist",
+				"linkerd-config control plane CustomResourceDefinitions exist: missing CustomResourceDefinitions: serviceprofiles.linkerd.io",
+			},
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-controller
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-identity
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-prometheus
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-proxy-injector
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-sp-validator
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-controller
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: test-ns
+`,
+				`
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: serviceprofiles.linkerd.io
+`,
+			},
+			[]string{
+				"linkerd-config control plane Namespace exists",
+				"linkerd-config control plane ClusterRoles exist",
+				"linkerd-config control plane ClusterRoleBindings exist",
+				"linkerd-config control plane ServiceAccounts exist",
+				"linkerd-config control plane CustomResourceDefinitions exist",
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d: returns expected config result", i), func(t *testing.T) {
+
+			hc := NewHealthChecker(
+				[]CategoryID{LinkerdConfigChecks},
+				&Options{
+					ControlPlaneNamespace: "test-ns",
+				},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, tc.results) {
+				t.Fatalf("Expected results %v, but got %v", tc.results, obs.results)
+			}
+		})
+	}
+}
+
+func TestCheckControlPlanePodExistence(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{},
+		&Options{
+			ControlPlaneNamespace: "test-ns",
+		},
+	)
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: linkerd-controller-6f78cbd47-bc557
+  namespace: test-ns
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+	}
+	var err error
+	hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfigs...)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	// validate that this check relies on the k8s api, not on hc.controlPlanePods
+	hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks, "controller pod is running")
+
+	expectedResults := []string{
+		"cat1 controller pod is running",
+	}
+
+	obs := newObserver()
+	hc.RunChecks(obs.resultFn)
+	if !reflect.DeepEqual(obs.results, expectedResults) {
+		t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 	}
 }
 
@@ -406,7 +820,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-grafana\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "The \"linkerd-grafana-5b7d796646-hh46d\" pod's \"grafana\" container is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -416,6 +830,26 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
+		}
+
+		err := validateControlPlanePods(pods)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
+		pods := []corev1.Pod{
+			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
+			pod("linkerd-controller-6f78cbd47-bc559", corev1.PodFailed, false),
+			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
+			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
+			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
@@ -443,6 +877,51 @@ func TestValidateControlPlanePods(t *testing.T) {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
+}
+
+func TestValidateDataPlaneNamespace(t *testing.T) {
+	testCases := []struct {
+		ns     string
+		result string
+	}{
+		{
+			"",
+			"data-plane-ns-test-cat data plane namespace exists",
+		},
+		{
+			"bad-ns",
+			"data-plane-ns-test-cat data plane namespace exists: The \"bad-ns\" namespace does not exist",
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d/%s", i, tc.ns), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{
+					DataPlaneNamespace: tc.ns,
+				},
+			)
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI()
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			// create a synethic category that only includes the "data plane namespace exists" check
+			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
+
+			expectedResults := []string{
+				tc.result,
+			}
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, expectedResults) {
+				t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+			}
+		})
+	}
 }
 
 func TestValidateDataPlanePods(t *testing.T) {

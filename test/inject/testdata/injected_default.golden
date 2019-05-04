@@ -11,9 +11,10 @@ spec:
   template:
     metadata:
       annotations:
+        config.linkerd.io/disable-identity: "true"
         config.linkerd.io/init-image: init-image
         config.linkerd.io/proxy-image: proxy-image
-        config.linkerd.io/proxy-version: linkerd-version
+        config.linkerd.io/proxy-version: proxy-version
         linkerd.io/created-by: fake # this gets removed during testing
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: fake # this gets removed during testing
@@ -61,8 +62,8 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
-          value: Identity is not yet available
-        image: proxy-image:linkerd-version
+          value: disabled
+        image: proxy-image:proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -94,10 +95,16 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: init-image:linkerd-version
+        image: init-image:fake # this is replaced during testing
         imagePullPolicy: IfNotPresent
         name: linkerd-init
-        resources: {}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
         securityContext:
           capabilities:
             add:

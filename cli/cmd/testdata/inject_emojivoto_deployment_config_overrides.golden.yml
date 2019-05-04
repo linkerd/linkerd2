@@ -14,11 +14,11 @@ spec:
     metadata:
       annotations:
         config.linkerd.io/admin-port: "9998"
-        config.linkerd.io/linkerd-version: override
         config.linkerd.io/proxy-cpu-limit: "1"
         config.linkerd.io/proxy-cpu-request: "0.5"
         config.linkerd.io/proxy-memory-limit: 256Mi
         config.linkerd.io/proxy-memory-request: 64Mi
+        config.linkerd.io/proxy-version: override
         config.linkerd.io/skip-inbound-ports: 7777,8888
         config.linkerd.io/skip-outbound-ports: "9999"
         linkerd.io/created-by: linkerd/cli dev-undefined
@@ -146,10 +146,16 @@ spec:
         - 7777,8888,4190,9998
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:override
+        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
-        resources: {}
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
         securityContext:
           capabilities:
             add:

@@ -174,7 +174,7 @@ func getSuccessRate(success, failure uint64) float64 {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	linkerdVersion         string
+	proxyVersion           string
 	proxyImage             string
 	initImage              string
 	dockerRegistry         string
@@ -193,12 +193,13 @@ type proxyConfigOptions struct {
 	proxyMemoryLimit       string
 	enableExternalProfiles bool
 	// ignoreCluster is not validated by validate().
-	ignoreCluster bool
+	ignoreCluster   bool
+	disableIdentity bool
 }
 
 func (options *proxyConfigOptions) validate() error {
-	if options.linkerdVersion != "" && !alphaNumDashDot.MatchString(options.linkerdVersion) {
-		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
+	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
+		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}
 
 	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
@@ -263,7 +264,7 @@ func registryOverride(image, registry string) string {
 
 func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("proxy", e)
-	flags.StringVarP(&options.linkerdVersion, "linkerd-version", "v", options.linkerdVersion, "Tag to be used for Linkerd images")
+	flags.StringVarP(&options.proxyVersion, "proxy-version", "v", options.proxyVersion, "Tag to be used for the Linkerd proxy images")
 	flags.StringVar(&options.proxyImage, "proxy-image", options.proxyImage, "Linkerd proxy container image name")
 	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
 	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")

@@ -3,6 +3,7 @@ package k8s
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -43,7 +44,7 @@ subjects:
 	for i, test := range tests {
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: returns expected authorization", i), func(t *testing.T) {
-			k8sClient, _, err := NewFakeClientSets(test.k8sConfigs...)
+			k8sClient, err := NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
@@ -56,5 +57,39 @@ subjects:
 				}
 			}
 		})
+	}
+}
+
+func TestServiceProfilesAccess(t *testing.T) {
+	fakeResources := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: linkerd.io/v1alpha1
+resources:
+- name: serviceprofiles
+  singularName: serviceprofile
+  namespaced: true
+  kind: ServiceProfile
+  verbs:
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
+  shortNames:
+  - sp`}
+
+	api, err := NewFakeAPI(fakeResources...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI error: %s", err)
+	}
+
+	err = ServiceProfilesAccess(api)
+	// RBAC SSAR request failed, but the Discovery lookup succeeded
+	if !reflect.DeepEqual(err, errors.New("not authorized to access serviceprofiles.linkerd.io")) {
+		t.Fatalf("unexpected error: %s", err)
 	}
 }

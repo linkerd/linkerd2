@@ -4,60 +4,6 @@ import (
 	"testing"
 )
 
-func TestGenerateKubernetesApiBaseUrlFor(t *testing.T) {
-	t.Run("Generates correct URL when all elements are present", func(t *testing.T) {
-		serverURL := "ftp://some-server.example.com:666"
-		namespace := "some-namespace"
-		extraPath := "/starts/with/slash"
-		url, err := generateKubernetesAPIURLFor(serverURL, namespace, extraPath)
-
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		expectedURLString := "ftp://some-server.example.com:666/api/v1/namespaces/some-namespace/starts/with/slash"
-		if url.String() != expectedURLString {
-			t.Fatalf("Expected generated URl to be [%s], but got [%s]", expectedURLString, url.String())
-		}
-	})
-
-	t.Run("Return error if extra path doesn't start with slash", func(t *testing.T) {
-		serverURL := "ftp://some-server.example.com:666"
-		namespace := "some-namespace"
-		extraPath := "does-not-start/with/slash"
-		_, err := generateKubernetesAPIURLFor(serverURL, namespace, extraPath)
-
-		if err == nil {
-			t.Fatalf("Expected error when tryiong to generate URL with extra path without leading slash, got nothing")
-		}
-	})
-}
-
-func TestGenerateBaseKubernetesUrl(t *testing.T) {
-	t.Run("Generates correct URL when all elements are present", func(t *testing.T) {
-		serverURL := "gopher://some-server.example.com:661"
-
-		url, err := generateKubernetesURL(serverURL, "/api/v1/")
-		if err != nil {
-			t.Fatalf("Unexpected error starting proxy: %v", err)
-		}
-
-		expectedURLString := "gopher://some-server.example.com:661/api/v1/"
-		if url.String() != expectedURLString {
-			t.Fatalf("Expected generated URl to be [%s], but got [%s]", expectedURLString, url.String())
-		}
-	})
-
-	t.Run("Return error if invalid host and port", func(t *testing.T) {
-		serverURL := "ftp://some-server.exampl     e.com:666"
-		_, err := generateKubernetesURL(serverURL, "/api/v1/")
-
-		if err == nil {
-			t.Fatalf("Expected error when trying to generate URL with extra path without leading slash, got nothing")
-		}
-	})
-}
-
 func TestGetConfig(t *testing.T) {
 	t.Run("Gets host correctly form existing file", func(t *testing.T) {
 		config, err := GetConfig("testdata/config.test", "")

@@ -151,6 +151,9 @@ const (
 	// ProxyVersionOverrideAnnotation can be used to override the proxy version config.
 	ProxyVersionOverrideAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-version"
 
+	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
+	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -165,6 +168,12 @@ const (
 
 	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
+
+	// DebugSidecarName is the name of the default linkerd debug container
+	DebugSidecarName = "linkerd-debug"
+
+	// DebugSidecarImage is the image name of the default linkerd debug container
+	DebugSidecarImage = "gcr.io/linkerd-io/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
@@ -219,6 +228,9 @@ const (
 
 	// MountPathProxyConfig is the path at which the global config file is mounted.
 	MountPathProxyConfig = MountPathBase + "/config/proxy"
+
+	// MountPathInstallConfig is the path at which the install config file is mounted.
+	MountPathInstallConfig = MountPathBase + "/config/install"
 
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.

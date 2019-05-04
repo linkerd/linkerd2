@@ -4,12 +4,6 @@
 ### Web
 ###
 ---
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-web
-  namespace: {{.Namespace}}
----
 kind: Service
 apiVersion: v1
 metadata:
@@ -56,12 +50,14 @@ spec:
           containerPort: 8084
         - name: admin-http
           containerPort: 9994
+        volumeMounts:
+        - name: config
+          mountPath: /var/run/linkerd/config
         image: {{.WebImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.cluster.local:8085"
         - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.cluster.local:3000"
-        - "-uuid={{.UUID}}"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
@@ -80,4 +76,8 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
       serviceAccountName: linkerd-web
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
 {{end -}}

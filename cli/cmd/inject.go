@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/linkerd/linkerd2/controller/gen/config"
+	cfg "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -30,30 +30,21 @@ const (
 	udpDesc            = "pod specs do not include UDP ports"
 )
 
-type injectOptions struct {
-	disableIdentity bool
-	*proxyConfigOptions
-}
-
 type resourceTransformerInject struct {
-	configs               *config.All
+	injectProxy           bool
+	configs               *cfg.All
 	overrideAnnotations   map[string]string
 	proxyOutboundCapacity map[string]uint
+	enableDebugSidecar    bool
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
 	return transformInput(inputs, errWriter, outWriter, transformer)
 }
 
-func newInjectOptions() *injectOptions {
-	return &injectOptions{
-		// No proxy config overrides.
-		proxyConfigOptions: &proxyConfigOptions{},
-	}
-}
-
 func newCmdInject() *cobra.Command {
-	options := newInjectOptions()
+	options := &proxyConfigOptions{}
+	var manualOption, enableDebugSidecar bool
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -71,7 +62,6 @@ sub-folders, or coming from stdin.`,
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			if len(args) < 1 {
 				return fmt.Errorf("please specify a kubernetes resource file")
 			}
@@ -93,8 +83,10 @@ sub-folders, or coming from stdin.`,
 			options.overrideConfigs(configs, overrideAnnotations)
 
 			transformer := &resourceTransformerInject{
+				injectProxy:         manualOption,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
+				enableDebugSidecar:  enableDebugSidecar,
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -102,7 +94,11 @@ sub-folders, or coming from stdin.`,
 		},
 	}
 
-	flags := options.proxyConfigOptions.flagSet(pflag.ExitOnError)
+	flags := options.flagSet(pflag.ExitOnError)
+	flags.BoolVar(
+		&manualOption, "manual", manualOption,
+		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
+	)
 	flags.BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
@@ -111,6 +107,9 @@ sub-folders, or coming from stdin.`,
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
 	)
+
+	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
+		"Inject a debug sidecar for data plane debugging")
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
@@ -130,6 +129,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
 	}
 
+	if rt.enableDebugSidecar {
+		conf = conf.WithDebugSidecar()
+	}
+
 	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {
 		return nil, nil, err
@@ -140,14 +143,18 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
-	conf.AppendPodAnnotations(map[string]string{
-		k8s.CreatedByAnnotation: k8s.CreatedByAnnotationValue(),
-	})
+	if rt.injectProxy {
+		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
+	} else {
+		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
+		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+	}
+
 	if len(rt.overrideAnnotations) > 0 {
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	p, err := conf.GetPatch(bytes)
+	p, err := conf.GetPatch(bytes, rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -283,7 +290,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
@@ -294,15 +301,21 @@ func (options *injectOptions) fetchConfigsOrDefault() (*config.All, error) {
 	}
 
 	api := checkPublicAPIClientOrExit()
-	return api.Config(context.Background(), &public.Empty{})
+	config, err := api.Config(context.Background(), &public.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
 // overrideConfigs uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
-func (options *proxyConfigOptions) overrideConfigs(configs *config.All, overrideAnnotations map[string]string) {
-	if options.linkerdVersion != "" {
-		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.linkerdVersion
+func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnnotations map[string]string) {
+	if options.proxyVersion != "" {
+		configs.Proxy.ProxyVersion = options.proxyVersion
+		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
@@ -359,8 +372,13 @@ func (options *proxyConfigOptions) overrideConfigs(configs *config.All, override
 	}
 
 	if options.proxyLogLevel != "" {
-		configs.Proxy.LogLevel = &config.LogLevel{Level: options.proxyLogLevel}
+		configs.Proxy.LogLevel = &cfg.LogLevel{Level: options.proxyLogLevel}
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
+	}
+
+	if options.disableIdentity {
+		configs.Global.IdentityContext = nil
+		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = "true"
 	}
 
 	// keep track of this option because its true/false value results in different
@@ -389,23 +407,23 @@ func (options *proxyConfigOptions) overrideConfigs(configs *config.All, override
 	}
 }
 
-func toPort(p uint) *config.Port {
-	return &config.Port{Port: uint32(p)}
+func toPort(p uint) *cfg.Port {
+	return &cfg.Port{Port: uint32(p)}
 }
 
-func parsePort(port *config.Port) string {
+func parsePort(port *cfg.Port) string {
 	return strconv.FormatUint(uint64(port.GetPort()), 10)
 }
 
-func toPorts(ints []uint) []*config.Port {
-	ports := make([]*config.Port, len(ints))
+func toPorts(ints []uint) []*cfg.Port {
+	ports := make([]*cfg.Port, len(ints))
 	for i, p := range ints {
 		ports[i] = toPort(p)
 	}
 	return ports
 }
 
-func parsePorts(ports []*config.Port) string {
+func parsePorts(ports []*cfg.Port) string {
 	var str string
 	for _, port := range ports {
 		str += parsePort(port) + ","

@@ -1,3 +1,291 @@
+## edge-19.5.1
+
+* CLI
+  * Added a `linkerd check config` command for verifying that
+    `linkerd install config` was successful
+  * Improved the help documentation of `linkerd install` to clarify flag usage
+  * Added support for private Kubernetes clusters by changing the CLI to connect
+    to the control plane using a port-forward (thanks, @jackprice!)
+* Controller
+  * Fixed pod creation failure when a `ResourceQuota` exists by adding a default
+    resource spec for the proxy-init init container
+* Proxy
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+    @zaharidichev!)
+  * Fixed an issue where load balancers can become stuck
+* Internal
+  * Fixed integration tests by adding known proxy-injector log warning to tests
+
+## edge-19.4.5
+
+**Significant Update**
+
+As of this edge release the proxy injector component is always installed.
+To have the proxy injector inject a pod you still can manually add the
+`linkerd.io/inject: enable` annotation into the pod spec, or at the namespace
+level to have all your pods be injected by default.
+With this release the behaviour of the `linkerd inject` command changes, where
+the proxy sidecar container YAML is no longer included in its output by
+default, but instead it will just add the annotations to defer the injection to
+the proxy injector.
+For use cases that require the full injected YAML to be output, a new
+`--manual` flag has been added.
+
+Another important update is the introduction of install stages. You still have
+the old `linkerd install` command, but now it can be broken into
+`linkerd install config` which installs the resources that require
+cluster-level privileges, and `linkerd install control-plane` that continues
+with the resources that only require namespace-level privileges.
+This also applies to the `linkerd upgrade` command.
+
+* CLI
+  * **Breaking Change** Removed the `--proxy-auto-inject` flag, as the
+    proxy injector is now always installed
+  * **Breaking Change** Replaced the `--linkerd-version` flag with the
+    `--proxy-version` flag in the `linkerd install` and `linkerd upgrade`
+    commands, which allows setting the version for the injected proxy sidecar
+    image, without changing the image versions for the control plane
+  * Introduced install stages: `linkerd install config` and
+    `linkerd install control-plane`
+  * Introduced upgrade stages: `linkerd upgrade config` and
+    `linkerd upgrade control-plane`
+  * Introduced a new `--from-manifests` flag to `linkerd upgrade` allowing
+    manually feeding a previously saved output of `linkerd install` into the
+    command, instead of requiring a connection to the cluster to fetch the
+    config
+  * Introduced a new `--manual` flag to `linkerd inject` to output the proxy
+    sidecar container spec
+  * Introduced a new `--enable-debug-sidecar` option to `linkerd inject`, that
+    injects a debug sidecar to inspect traffic to and from the meshed pod
+  * Added a new check for unschedulable pods and PSP issues (thanks, @liquidslr!)
+  * Disabled the spinner in `linkerd check` when running without a TTY
+  * Ensured the ServiceAccount for the proxy injector is created before its
+    Deployment to avoid warnings when installing the proxy injector
+    (thanks, @dwj300!)
+
+* Controller
+  * Added Go pprof HTTP endpoints to all control plane components' admin
+    servers to better assist debugging efforts
+  * Fixed bug in the proxy injector, where sporadically the pod workload owner
+    wasn't properly determined, which would result in erroneous stats
+  * Added support for a new `config.linkerd.io/disable-identity` annotation to
+    opt out of identity for a specific pod
+
+* Web UI
+  * Added the Font Awesome stylesheet locally; this allows both Font Awesome
+    and Material-UI sidebar icons to display consistently with no/limited
+    internet access (thanks again, @liquidslr!)
+
+* Internal
+  * Known container errors were hidden in the integration tests; now they are
+    reported in the output, still without having the tests fail
+
+## stable-2.3.0
+
+This stable release introduces a new TLS-based service identity system into the
+default Linkerd installation, replacing `--tls=optional` and the `linkerd-ca`
+controller. Now, proxies generate ephemeral private keys into a tmpfs directory
+and dynamically refresh certificates, authenticated by Kubernetes ServiceAccount
+tokens, and tied to ServiceAccounts as the identity primitive
+
+In this release, all meshed HTTP communication is private and authenticated by
+default.
+
+Among the many improvements to the web dashboard, we've added a Community page
+to surface news and updates from linkerd.io.
+
+For more details, see the announcement blog post:
+https://linkerd.io/2019/04/16/announcing-linkerd-2.3/
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: The `linkerd-ca` controller has been removed in favor of the
+`linkerd-identity` controller. If you had previously installed Linkerd with
+`--tls=optional`, manually delete the `linkerd-ca` deployment after upgrading.
+Also, `--single-namespace` mode is no longer supported. For full details on
+upgrading to this release, please see the
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-3-0).
+
+**Special thanks to**: @codeman9, @harsh-98, @huynq0911, @KatherineMelnyk,
+@liquidslr, @paranoidaditya, @Pothulapati, @TwinProduction, and @yb172!
+
+**Full release notes**:
+
+* CLI
+  * Introduced an `upgrade` command! This allows an existing Linkerd control
+    plane to be reinstalled or reconfigured; it is particularly useful for
+    automatically reusing flags set in the previous `install` or `upgrade`
+  * Introduced the `linkerd metrics` command for fetching proxy metrics
+  * **Breaking Change:** The `--linkerd-cni-enabled` flag has been removed from
+    the `inject` command; CNI is configured at the cluster level with the
+    `install` command and no longer applies to the `inject` command
+  * **Breaking Change** Removed the `--disable-external-profiles` flag from the
+    `install` command; external profiles are now disabled by default and can be
+    enabled with the new `--enable-external-profiles` flag
+  * **Breaking change** Removed the `--api-port` flag from the `inject` and
+    `install` commands, since there's no benefit to running the control plane's
+    destination API on a non-default port (thanks, @paranoidaditya)
+  * **Breaking change** Removed the `--tls=optional` flag from the
+    `linkerd install` command, since TLS is now enabled by default
+  * Changed `install` to accept or generate an issuer Secret for the Identity
+    controller
+  * Changed `install` to fail in the case of a conflict with an existing
+    installation; this can be disabled with the `--ignore-cluster` flag
+  * Added the ability to adjust the Prometheus log level via
+    `--controller-log-level`
+  * Implemented `--proxy-cpu-limit` and `--proxy-memory-limit` for setting the
+    proxy resources limits (`--proxy-cpu` and `--proxy-memory` were deprecated in
+    favor of `proxy-cpu-request` and `proxy-memory-request`) (thanks @TwinProduction!)
+  * Added a validator for the `--proxy-log-level` flag
+  * Updated the `inject` and `uninject` subcommands to issue warnings when
+    resources lack a `Kind` property (thanks @Pothulapati!)
+  * The `inject` command proxy options are now converted into config
+    annotations; the annotations ensure that these configs are persisted in
+    subsequent resource updates
+  * Changed `inject` to require fetching a configuration from the control plane;
+    this can be disabled with the `--ignore-cluster` and `--disable-identity`
+    flags, though this will prevent the injected pods from participating in mesh
+    identity
+  * Included kubectl version check as part of `linkerd check` (thanks @yb172!)
+  * Updated `linkerd check` to ensure hint URLs are displayed for RPC checks
+  * Fixed sporadic (and harmless) race condition error in `linkerd check`
+  * Introduced a check for NET_ADMIN in `linkerd check`
+  * Fixed permissions check for CRDs
+  * Updated the `linkerd dashboard` command to serve the dashboard on a fixed
+    port, allowing it to leverage browser local storage for user settings
+  * Updated the `linkerd routes` command to display rows for routes that are not
+    receiving any traffic
+  * Added TCP stats to the stat command, under the `-o wide` and `-o json` flags
+  * The `stat` command now always shows the number of open TCP connections
+  * Removed TLS metrics from the `stat` command; this is in preparation for
+    surfacing identity metrics in a clearer way
+  * Exposed the `install-cni` command and its flags, and tweaked their descriptions
+  * Eliminated false-positive vulnerability warnings related to go.uuid
+* Controller
+  * Added a new public API endpoint for fetching control plane configuration
+  * **Breaking change** Removed support for running the control plane in
+    single-namespace mode, which was severely limited in the number of features
+    it supported due to not having access to cluster-wide resources; the end
+    goal being Linkerd degrading gracefully depending on its privileges
+  * Updated automatic proxy injection and CLI injection to support overriding
+    inject defaults via pod spec annotations
+  * Added support for the `config.linkerd.io/proxy-version` annotation on pod
+    specs; this will override the injected proxy version
+  * The auto-inject admission controller webhook is updated to watch pods
+    creation and update events; with this change, proxy auto-injection now works
+    for all kinds of workloads, including StatefulSets, DaemonSets, Jobs, etc
+  * Service profile validation is now performed via a webhook endpoint; this
+    prevents Kubernetes from accepting invalid service profiles
+  * Changed the default CPU request from `10m` to `100m` for HA deployments;
+    this will help some intermittent liveness/readiness probes from failing due
+    to tight resource constraints
+  * Updated destination service to return TLS identities only when the
+    destination pod is TLS-aware and is in the same controller namespace
+  * Lessen klog level to improve security
+  * Updated control plane components to query Kubernetes at startup to determine
+    authorized namespaces and if ServiceProfile support is available
+  * Modified the stats payload to include the following TCP stats:
+    `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
+  * Instrumented clients in the control plane connecting to Kubernetes, thus
+    providing better visibility for diagnosing potential problems with those
+    connections
+  * Renamed the "linkerd-proxy-api" service to "linkerd-destination"
+  * Bumped Prometheus to version 2.7.1 and Grafana to version 5.4.3
+* Proxy
+  * Introduced per-proxy private key generation and dynamic certificate renewal
+  * **Fixed** a connection starvation issue where TLS discovery detection on
+    slow or idle connections could block all other connections from being
+    accepted on the inbound listener of the proxy
+  * **Fixed** a stream leak between the proxy and the control plane that could
+    cause the `linkerd-controller` pod to use an excessive amount of memory
+  * Added a readiness check endpoint on `:4191/ready` so that Kubernetes doesn't
+    consider pods ready until they have acquired a certificate from the Identity
+    controller
+  * Some `l5d-*` informational headers have been temporarily removed from
+    requests and responses because they could leak information to external
+    clients
+  * The proxy's connect timeouts have been updated, especially to improve
+    reconnect behavior between the proxy and the control plane
+  * Increased the inbound/router cap on MAX_CONCURRENT_STREAMS
+  * The `l5d-remote-ip` header is now set on inbound requests and outbound
+    responses
+  * Fixed issue with proxy falling back to filesystem polling due to improperly
+    sized inotify buffer
+* Web UI
+  * **New** Added a Community page to surface news and updates from linkerd.io
+  * Added a Debug page to the web dashboard, allowing you to introspect service
+    discovery state
+  * The Overview page in the Linkerd dashboard now renders appropriately when
+    viewed on mobile devices
+  * Added filter functionality to the metrics tables
+  * Added stable sorting for table rows
+  * Added TCP stats to the Linkerd Pod Grafana dashboard
+  * Added TCP stat tables on the namespace landing page and resource detail page
+  * The topology graph now shows TCP stats if no HTTP stats are available
+  * Improved table display on the resource detail page for resources with
+    TCP-only traffic
+  * Updated the resource detail page to start displaying a table with TCP stats
+  * Modified the Grafana variable queries to use a TCP-based metric, so that
+    if there is only TCP traffic then the dropdowns don't end up empty
+  * Fixed sidebar not updating when resources were added/deleted (thanks
+    @liquidslr!)
+  * Added validation to the "new service profile" form (thanks @liquidslr!)
+  * Added a Grafana dashboard and web tables for displaying Job stats
+    (thanks, @Pothulapati!)
+  * Removed TLS columns from the dashboard tables; this is in preparation for
+    surfacing identity metrics in a clearer way
+  * Fixed the behavior of the Top query 'Start' button if a user's query returns
+    no data
+  * Fixed an issue with the order of tables returned from a Top Routes query
+  * Added text wrap for paths in the modal for expanded Tap query data
+  * Fixed a quoting issue with service profile downloads (thanks, @liquidslr!)
+  * Updated sorting of route table to move default routes to the bottom
+  * Removed 'Help' hierarchy and surfaced links on navigation sidebar
+  * Ensured that all the tooltips in Grafana displaying the series are shared
+    across all the graphs
+* Internals
+  * Improved the `bin/go-run` script for the build process so that on failure,
+    all associated background processes are terminated
+  * Added more log errors to the integration tests
+  * Removed the GOPATH dependence from the CLI dev environment
+  * Consolidated injection code from CLI and admission controller code paths
+  * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
+    `goconst`, `scopelint`, `unused`, `gosimple`
+  * Bumped base Docker images
+  * Added the flags `-update` and `-pretty-diff` to tests to allow overwriting
+    fixtures and to print the full text of the fixtures upon mismatches
+  * Introduced golangci-lint tooling, using `.golangci.yml` to centralize
+    the config
+  * Added a `-cover` parameter to track code coverage in go tests
+    (more info in TEST.md)
+  * Renamed a function in a test that was shadowing a go built-in function
+    (thanks @huynq0911!)
+
+## edge-19.4.4
+
+* Proxy
+  * **Fixed** a connection starvation issue where TLS discovery detection on
+    slow or idle connections could block all other connections from being
+    accepted on the inbound listener of the proxy
+* CLI
+  * **Fixed** `inject` to allow the `--disable-identity` flag to be used
+    without having to specify the `--ignore-cluster` flag
+* Web UI
+  * The Overview page in the Linkerd dashboard now renders appropriately when
+    viewed on mobile devices
+
+## edge-19.4.3
+
+* CLI
+  * **Fixed** `linkerd upgrade` command not upgrading proxy containers (thanks
+    @jon-walton for the issue report!)
+  * **Fixed** `linkerd upgrade` command not installing the identity service when
+    it was not already installed
+  * Eliminate false-positive vulnerability warnings related to go.uuid
+
+Special thanks to @KatherineMelnyk for updating the web component to read the
+UUID from the `linkerd-config` ConfigMap!
+
 ## edge-19.4.2
 
 * CLI
@@ -25,17 +313,28 @@
 ## edge-19.4.1
 
 * CLI
-  * Introduced an `upgrade` command! This allows an existing Linkerd control plane to be reinstalled or reconfigured; it is particularly useful for automatically reusing flags set in the previous `install` or `upgrade`
-  * The `inject` command proxy options are now converted into config annotations; the annotations ensure that these configs are persisted in subsequent resource updates
+  * Introduced an `upgrade` command! This allows an existing Linkerd control
+    plane to be reinstalled or reconfigured; it is particularly useful for
+    automatically reusing flags set in the previous `install` or `upgrade`
+  * The `inject` command proxy options are now converted into config
+    annotations; the annotations ensure that these configs are persisted in
+    subsequent resource updates
   * The `stat` command now always shows the number of open TCP connections
-  * **Breaking Change** Removed the `--disable-external-profiles` flag from the `install` command; external profiles are now disabled by default and can be enabled with the new `--enable-external-profiles` flag
+  * **Breaking Change** Removed the `--disable-external-profiles` flag from the
+    `install` command; external profiles are now disabled by default and can be
+    enabled with the new `--enable-external-profiles` flag
 * Controller
-  * The auto-inject admission controller webhook is updated to watch pods creation and update events; with this change, proxy auto-injection now works for all kinds of workloads, including StatefulSets, DaemonSets, Jobs, etc
+  * The auto-inject admission controller webhook is updated to watch pods
+    creation and update events; with this change, proxy auto-injection now works
+    for all kinds of workloads, including StatefulSets, DaemonSets, Jobs, etc
 * Proxy
-  * Some `l5d-*` informational headers have been temporarily removed from requests and responses because they could leak information to external clients
+  * Some `l5d-*` informational headers have been temporarily removed from
+    requests and responses because they could leak information to external
+    clients
 * Web UI
   * The topology graph now shows TCP stats if no HTTP stats are available
-  * The resource detail page no longer shows blank tables if the resource only has TCP traffic
+  * Improved table display on the resource detail page for resources with
+    TCP-only traffic
   * Added validation to the "new service profile" form (thanks @liquidslr!)
 
 ## edge-19.3.3
@@ -43,7 +342,7 @@
 **Significant Update**
 
 This edge release introduces a new TLS Identity system into the default Linkerd
-installation, replacing `tls=optional` and the `linkerd-ca` controller. Now,
+installation, replacing `--tls=optional` and the `linkerd-ca` controller. Now,
 proxies generate ephemeral private keys into a tmpfs directory and dynamically
 refresh certificates, authenticated by Kubernetes ServiceAccount tokens, via the
 newly-introduced Identity controller.
@@ -59,8 +358,8 @@ Now, all meshed HTTP communication is private and authenticated by default.
     this can be disabled with the `--ignore-cluster` and `--disable-identity`
     flags, though this will prevent the injected pods from participating in mesh
     identity
-  * Removed the `--tls=optional` flag from the `linkerd install` command, since
-    TLS is now enabled by default
+  * **Breaking change** Removed the `--tls=optional` flag from the
+    `linkerd install` command, since TLS is now enabled by default
   * Added the ability to adjust the Prometheus log level
 * Proxy
   * **Fixed** a stream leak between the proxy and the control plane that could
@@ -146,7 +445,7 @@ system!
   * Updated destination service to return TLS identities only when the
     destination pod is TLS-aware and is in the same controller namespace
   * Lessen klog level to improve security
-  * Updated control-plane components to query Kubernetes at startup to determine
+  * Updated control plane components to query Kubernetes at startup to determine
     authorized namespaces and if ServiceProfile support is available
   * Modified the stats payload to include the following TCP stats:
     `tcp_open_connections`, `tcp_read_bytes_total`, `tcp_write_bytes_total`
@@ -155,7 +454,8 @@ system!
     sized inotify buffer
 * Web UI
   * Removed 'Help' hierarchy and surfaced links on navigation sidebar
-  * Added a Debug page to the web dashboard, allowing you to introspect service discovery state
+  * Added a Debug page to the web dashboard, allowing you to introspect service
+    discovery state
   * Updated the resource detail page to start displaying a table with TCP stats
 * Internal
   * Enabled the following linters: `unparam`, `unconvert`, `goimports`,
@@ -184,11 +484,13 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 
 * CLI
   * Implemented `--proxy-cpu-limit` and `--proxy-memory-limit` for setting the
-    proxy resources limits (`--proxy-cpu` and `--proxy-memory` were deprecated in
-    favor of `proxy-cpu-request` and `proxy-memory-request`) (thanks @TwinProduction!)
+    proxy resources limits (`--proxy-cpu` and `--proxy-memory` were deprecated
+    in favor of `proxy-cpu-request` and `proxy-memory-request`) (thanks
+    @TwinProduction!)
   * Updated the `inject` and `uninject` subcommands to issue warnings when
     resources lack a `Kind` property (thanks @Pothulapati!)
-  * Unhid the `install-cni` command and its flags, and tweaked their descriptions
+  * Exposed the `install-cni` command and its flags, and tweaked their
+    descriptions
   * Fixed handling of kubeconfig server urls that include paths
   * Updated the description of the `--proxy-auto-inject` flag to indicate that
     it is no longer experimental
@@ -215,7 +517,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     the config
   * Added a `-cover` parameter to track code coverage in go tests
     (more info in TEST.md)
-  * Added integration tests for `single-namespace`
+  * Added integration tests for `--single-namespace`
   * Renamed a function in a test that was shadowing a go built-in function
     (thanks @huynq0911!)
 
@@ -236,7 +538,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 
 **Upgrade notes**: The default behavior for proxy auto injection and service
 profile ownership has changed as part of this release. Please see the
-[upgrade instructions](https://linkerd.io/2/upgrade/#upgrade-notice-stable-2-2-0)
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-2-0)
 for more details.
 
 **Special thanks to**: @alenkacz, @codeman9, @jonrichards, @radu-matei, @yeya24,
@@ -335,7 +637,8 @@ and @zknill
   * Improved resource detail pages to show all resource types
   * Fixed stats not appearing for routes that have service profiles installed
   * Added "meshed" and "no traffic" badges on the resource detail pages
-  * Fixed `linkerd dashboard` to maintain proxy connection when browser open fails
+  * Fixed `linkerd dashboard` to maintain proxy connection when browser open
+    fails
   * Fixed JavaScript bundling to avoid serving old versions after upgrade
   * Reduced the size of the webpack JavaScript bundle by nearly 50%
   * Fixed an indexing error on the top results page
@@ -435,9 +738,11 @@ and @zknill
 ## edge-19.1.4
 
 * Controller
-  * Added support for timeouts! Configurable in the service profiles for each route
-  * Added an experimental CNI plugin to avoid requiring the NET_ADMIN capability when
-    injecting proxies (more details at https://linkerd.io/2/cni) (thanks @codeman9!)
+  * Added support for timeouts! Configurable in the service profiles for each
+    route
+  * Added an experimental CNI plugin to avoid requiring the NET_ADMIN capability
+    when injecting proxies (more details at https://linkerd.io/2/cni) (thanks
+    @codeman9!)
   * Added more improvements to the API for `ListPods` (thanks @alenkacz!)
 * Web UI
   * Grayed-out the tap icon for requests from sources that are not meshed
@@ -462,8 +767,9 @@ and @zknill
 * CLI
   * Added optional `linkerd install-sp` command to generate service profiles for
     the control plane, providing per-route metrics for control plane components
-  * Removed `--proxy-bind-timeout` flag from `linkerd install` and `linkerd inject`
-    commands, as the proxy no longer accepts this environment variable
+  * Removed `--proxy-bind-timeout` flag from `linkerd install` and
+    `linkerd inject` commands, as the proxy no longer accepts this environment
+    variable
   * Improved CLI appearance on Windows systems
   * Improved `linkerd check` output, fixed check bug when using
     `--single-namespace` (thanks to @djeeg for the bug report!)
@@ -567,7 +873,8 @@ older installation, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
   * Add button to create new service profiles on Top Routes page
   * Fix CLI commands displayed when linkerd is running in non-default namespace
 * Proxy
-  * Proxies with TLS enabled now honor ports configured to skip protocol detection
+  * Proxies with TLS enabled now honor ports configured to skip protocol
+    detection
 
 ## stable-2.1.0
 
@@ -697,7 +1004,8 @@ reduce possible naming collisions. To upgrade an existing installation:
 For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 
 * CLI
-  * **Improved** `linkerd routes` command displays per-route stats for *any resource*!
+  * **Improved** `linkerd routes` command displays per-route stats for
+    *any resource*!
   * **New** Service profiles are now supported for external authorities!
   * **New** `linkerd routes --open-api` flag generates a service profile
     based on an OpenAPI specification (swagger) file
@@ -930,14 +1238,17 @@ Special thanks to @sourishkrout for contributing a web readibility fix!
 ## v18.8.1
 
 * Web UI
-  * **New** Tap UI makes it possible to query & inspect requests from the browser!
+  * **New** Tap UI makes it possible to query & inspect requests from the
+    browser!
 * Proxy
   * **New** Automatic, transparent HTTP/2 multiplexing of HTTP/1 traffic
     reduces the cost of short-lived HTTP/1 connections
 * Control Plane
-  * **Improved** `linkerd inject` now supports injecting all resources in a folder
+  * **Improved** `linkerd inject` now supports injecting all resources in a
+    folder
   * **Fixed** `linkerd tap` no longer crashes when there are many pods
-  * **New** Prometheus now only scrapes proxies belonging to its own linkerd install
+  * **New** Prometheus now only scrapes proxies belonging to its own linkerd
+    install
   * **Fixed** Prometheus metrics collection for clusters with >100 pods
 
 Special thanks to @ihcsim for contributing the `inject` improvement!
@@ -1012,8 +1323,10 @@ applications that use WebSockets can now benefit from Conduit.
     traffic.
   * `conduit tap` now has more detailed information, including the direction of
     each message (outbound or inbound).
-  * `conduit stat` now more-accurately records histograms for low-latency services.
-  * `conduit dashboard` now includes error messages when a Conduit-enabled pod fails.
+  * `conduit stat` now more-accurately records histograms for low-latency
+    services.
+  * `conduit dashboard` now includes error messages when a Conduit-enabled pod
+    fails.
 * Internals
   * Prometheus has been upgraded to v2.3.1.
   * A potential live-lock has been fixed in HTTP/2 servers.
@@ -1023,17 +1336,19 @@ applications that use WebSockets can now benefit from Conduit.
 
 ## v0.4.4
 
-Conduit v0.4.4 continues to improve production suitability and sets up internals for the
-upcoming v0.5.0 release.
+Conduit v0.4.4 continues to improve production suitability and sets up internals
+for the upcoming v0.5.0 release.
 
 * Production Readiness
-  * The destination service has been mostly-rewritten to improve safety and correctness,
-    especially during controller initialization.
-  * Readiness and Liveness checks have been added for some controller components.
-  * RBAC settings have been expanded so that Prometheus can access node-level metrics.
+  * The destination service has been mostly-rewritten to improve safety and
+    correctness, especially during controller initialization.
+  * Readiness and Liveness checks have been added for some controller
+    components.
+  * RBAC settings have been expanded so that Prometheus can access node-level
+    metrics.
 * User Interface
-  * Ad blockers like uBlock prevented the Conduit dashboard from fetching API data. This
-    has been fixed.
+  * Ad blockers like uBlock prevented the Conduit dashboard from fetching API
+    data. This has been fixed.
   * The UI now highlights pods that have failed to start a proxy.
 * Internals
   * Various dependency upgrades, including Rust 1.26.2.
@@ -1044,30 +1359,32 @@ Special thanks to @alenkacz for improving docker build times!
 
 ## v0.4.3
 
-Conduit v0.4.3 continues progress towards production readiness. It features a new
-latency-aware load balancer.
+Conduit v0.4.3 continues progress towards production readiness. It features a
+new latency-aware load balancer.
 
 * Production Readiness
   * The proxy now uses a latency-aware load balancer for outbound requests. This
-    implementation is based on Finagle's Peak-EWMA balancer, which has been proven to
-    significantly reduce tail latencies. This is the same load balancing strategy used by
-    Linkerd.
+    implementation is based on Finagle's Peak-EWMA balancer, which has been
+    proven to significantly reduce tail latencies. This is the same load
+    balancing strategy used by Linkerd.
 * User Interface
-  * `conduit stat` is now slightly more predictable in the way it outputs things,
-    especially for commands like `watch conduit stat all --all-namespaces`.
+  * `conduit stat` is now slightly more predictable in the way it outputs
+    things, especially for commands like
+    `watch conduit stat all --all-namespaces`.
   * Failed and completed pods are no longer shown in stat summary results.
 * Internals
-  * The proxy now supports some TLS configuration, though these features remain disabled
-    and undocumented pending further testing and instrumentation.
+  * The proxy now supports some TLS configuration, though these features remain
+    disabled and undocumented pending further testing and instrumentation.
 
-Special thanks to @ihcsim for contributing his first PR to the project and to @roanta for
-discussing the Peak-EWMA load balancing algorithm with us.
+Special thanks to @ihcsim for contributing his first PR to the project and to
+@roanta for discussing the Peak-EWMA load balancing algorithm with us.
 
 ## v0.4.2
 
-Conduit v0.4.2 is a major step towards production readiness. It features a wide array of
-fixes and improvements for long-running proxies, and several new telemetry features. It
-also lays the groundwork for upcoming releases that introduce mutual TLS everywhere.
+Conduit v0.4.2 is a major step towards production readiness. It features a wide
+array of fixes and improvements for long-running proxies, and several new
+telemetry features. It also lays the groundwork for upcoming releases that
+introduce mutual TLS everywhere.
 
 * Production Readiness
   * The proxy now drops metrics that do not update for 10 minutes, preventing unbounded

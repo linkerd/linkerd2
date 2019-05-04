@@ -29,10 +29,11 @@ func TestMain(m *testing.M) {
 
 func TestInject(t *testing.T) {
 	cmd := []string{"inject",
+		"--manual",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
 		"--ignore-cluster",
-		"--linkerd-version=linkerd-version",
+		"--proxy-version=proxy-version",
 		"--proxy-image=proxy-image",
 		"--init-image=init-image",
 		"testdata/inject_test.yaml",
@@ -49,12 +50,13 @@ func TestInject(t *testing.T) {
 }
 
 func TestInjectParams(t *testing.T) {
-	// TODO: test config.linkerd.io/linkerd-version
+	// TODO: test config.linkerd.io/proxy-version
 	cmd := []string{"inject",
+		"--manual",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
 		"--ignore-cluster",
-		"--linkerd-version=linkerd-version",
+		"--proxy-version=proxy-version",
 		"--proxy-image=proxy-image",
 		"--init-image=init-image",
 		"--image-pull-policy=Never",
@@ -85,8 +87,6 @@ func TestInjectParams(t *testing.T) {
 	}
 }
 
-// TestAnnotationPermutations assumes a control-plane installed with
-// `--proxy-auto-inject` was installed via `install_test.go`.
 func TestAnnotationPermutations(t *testing.T) {
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
@@ -249,19 +249,22 @@ func patchDeploy(in string, name string, annotations map[string]string) (string,
 	return applyPatch(in, patchJSON)
 }
 
-func removeBuildAnnotations(in string) (string, error) {
-	patchJSON := []byte(`[
-		{"op": "remove", "path": "/spec/template/metadata/annotations/linkerd.io~1created-by"},
-		{"op": "remove", "path": "/spec/template/metadata/annotations/linkerd.io~1proxy-version"}
-	]`)
+func useTestImageTag(in string) (string, error) {
+	patchOps := []string{
+		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1created-by", "value": "linkerd/cli %s"}`, TestHelper.GetVersion()),
+		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1proxy-version", "value": "%s"}`, TestHelper.GetVersion()),
+		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "init-image:%s"}`, TestHelper.GetVersion()),
+	}
 
-	return applyPatch(in, patchJSON)
+	patchJSON := fmt.Sprintf("[%s]", strings.Join(patchOps, ","))
+	return applyPatch(in, []byte(patchJSON))
 }
 
-// validateInject is similar to `TestHelper.ValidateOutput`, but it removes the
-// `linkerd.io/created-by` annotation, as that varies from build to build.
+// validateInject is similar to `TestHelper.ValidateOutput`, but it pins the
+// image tag used in some annotations and that of the proxy-init container,
+// which vary from build to build.
 func validateInject(actual, fixtureFile string) error {
-	actualPatched, err := removeBuildAnnotations(actual)
+	actualPatched, err := useTestImageTag(actual)
 	if err != nil {
 		return err
 	}
@@ -270,7 +273,7 @@ func validateInject(actual, fixtureFile string) error {
 	if err != nil {
 		return err
 	}
-	fixturePatched, err := removeBuildAnnotations(fixture)
+	fixturePatched, err := useTestImageTag(fixture)
 	if err != nil {
 		return err
 	}

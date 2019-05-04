@@ -1,15 +1,18 @@
 package k8s
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/url"
+	"time"
 
+	"github.com/linkerd/linkerd2/pkg/prometheus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	// Load all the auth plugins for the cloud providers.
@@ -19,8 +22,45 @@ import (
 var minAPIVersion = [3]int{1, 10, 0}
 
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
+// TODO: support ServiceProfile ClientSet. A prerequisite is moving the
+// ServiceProfile client code from `./controller` to `./pkg` (#2751). This will
+// also allow making `NewFakeClientSets` private, as KubernetesAPI will support
+// all relevant k8s resources.
 type KubernetesAPI struct {
 	*rest.Config
+	kubernetes.Interface
+	Apiextensions apiextensionsclient.Interface // for CRDs
+}
+
+// NewAPI validates a Kubernetes config and returns a client for accessing the
+// configured cluster.
+func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesAPI, error) {
+	config, err := GetConfig(configPath, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+	}
+
+	// k8s' client-go doesn't support injecting context
+	// https://github.com/kubernetes/kubernetes/issues/46503
+	// but we can set the timeout manually
+	config.Timeout = timeout
+	wt := config.WrapTransport
+	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API clientset: %v", err)
+	}
+	apiextensions, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API Extensions clientset: %v", err)
+	}
+
+	return &KubernetesAPI{
+		Config:        config,
+		Interface:     clientset,
+		Apiextensions: apiextensions,
+	}, nil
 }
 
 // NewClient returns an http.Client configured with a Transport to connect to
@@ -37,25 +77,8 @@ func (kubeAPI *KubernetesAPI) NewClient() (*http.Client, error) {
 }
 
 // GetVersionInfo returns version.Info for the Kubernetes cluster.
-func (kubeAPI *KubernetesAPI) GetVersionInfo(ctx context.Context, client *http.Client) (*version.Info, error) {
-	rsp, err := kubeAPI.getRequest(ctx, client, "/version")
-	if err != nil {
-		return nil, err
-	}
-	defer rsp.Body.Close()
-
-	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
-	}
-
-	bytes, err := ioutil.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var versionInfo version.Info
-	err = json.Unmarshal(bytes, &versionInfo)
-	return &versionInfo, err
+func (kubeAPI *KubernetesAPI) GetVersionInfo() (*version.Info, error) {
+	return kubeAPI.Discovery().ServerVersion()
 }
 
 // CheckVersion validates whether the configured Kubernetes cluster's version is
@@ -76,76 +99,33 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 }
 
 // NamespaceExists validates whether a given namespace exists.
-func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, client *http.Client, namespace string) (bool, error) {
-	rsp, err := kubeAPI.getRequest(ctx, client, "/api/v1/namespaces/"+namespace)
+func (kubeAPI *KubernetesAPI) NamespaceExists(namespace string) (bool, error) {
+	ns, err := kubeAPI.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+	if kerrors.IsNotFound(err) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	defer rsp.Body.Close()
 
-	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusNotFound {
-		return false, fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
-	}
-
-	return rsp.StatusCode == http.StatusOK, nil
+	return ns != nil, nil
 }
 
 // GetPodsByNamespace returns all pods in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, client *http.Client, namespace string) ([]corev1.Pod, error) {
-	return kubeAPI.getPods(ctx, client, "/api/v1/namespaces/"+namespace+"/pods")
-}
-
-func (kubeAPI *KubernetesAPI) getPods(ctx context.Context, client *http.Client, path string) ([]corev1.Pod, error) {
-	rsp, err := kubeAPI.getRequest(ctx, client, path)
+func (kubeAPI *KubernetesAPI) GetPodsByNamespace(namespace string) ([]corev1.Pod, error) {
+	podList, err := kubeAPI.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer rsp.Body.Close()
-
-	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected Kubernetes API response: %s", rsp.Status)
-	}
-
-	bytes, err := ioutil.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var podList corev1.PodList
-	err = json.Unmarshal(bytes, &podList)
-	if err != nil {
-		return nil, err
-	}
-
 	return podList.Items, nil
 }
 
-// URLFor generates a URL based on the Kubernetes config.
-func (kubeAPI *KubernetesAPI) URLFor(namespace, path string) (*url.URL, error) {
-	return generateKubernetesAPIURLFor(kubeAPI.Host, namespace, path)
-}
-
-func (kubeAPI *KubernetesAPI) getRequest(ctx context.Context, client *http.Client, path string) (*http.Response, error) {
-	endpoint, err := generateKubernetesURL(kubeAPI.Host, path)
+// GetReplicaSets returns all replicasets in a given namespace
+func (kubeAPI *KubernetesAPI) GetReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
+	replicaSetList, err := kubeAPI.AppsV1().ReplicaSets(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", endpoint.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return client.Do(req.WithContext(ctx))
-}
-
-// NewAPI validates a Kubernetes config and returns a client for accessing the
-// configured cluster
-func NewAPI(configPath, kubeContext string) (*KubernetesAPI, error) {
-	config, err := GetConfig(configPath, kubeContext)
-	if err != nil {
-		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
-	}
-
-	return &KubernetesAPI{Config: config}, nil
+	return replicaSetList.Items, nil
 }

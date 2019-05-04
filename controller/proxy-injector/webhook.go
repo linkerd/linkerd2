@@ -61,7 +61,7 @@ func Inject(api *k8s.API,
 	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	p, err := resourceConfig.GetPatch(request.Object.Raw)
+	p, err := resourceConfig.GetPatch(request.Object.Raw, true)
 	if err != nil {
 		return nil, err
 	}
