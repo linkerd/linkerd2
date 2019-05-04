@@ -247,14 +247,22 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 	return success
 }
 
+type checkOutput struct {
+	Success    bool             `json:"success"`
+	Categories []*checkCategory `json:"categories"`
+}
+
 type checkCategory struct {
 	Name   string   `json:"categoryName"`
 	Checks []*check `json:"checks"`
 }
 
+// check is a user-facing version of `healthcheck.CheckResult`, for output via
+// `linkerd check -o json`.
 type check struct {
 	Description string      `json:"description"`
-	Hint        string      `json:"hint"`
+	Hint        string      `json:"hint,omitempty"`
+	Error       string      `json:"error,omitempty"`
 	Result      checkResult `json:"result"`
 }
 
@@ -267,19 +275,19 @@ const (
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
-	var outputJSON []*checkCategory
+	var categories []*checkCategory
 
 	collectJSONOutput := func(result *healthcheck.CheckResult) {
 		categoryName := string(result.Category)
-		if outputJSON == nil || outputJSON[len(outputJSON)-1].Name != categoryName {
-			outputJSON = append(outputJSON, &checkCategory{
+		if categories == nil || categories[len(categories)-1].Name != categoryName {
+			categories = append(categories, &checkCategory{
 				Name:   categoryName,
 				Checks: []*check{},
 			})
 		}
 
 		if !result.Retry {
-			currentCategory := outputJSON[len(outputJSON)-1]
+			currentCategory := categories[len(categories)-1]
 			// ignore checks that are going to be retried, we want only final results
 			status := checkSuccess
 			if result.Err != nil {
@@ -289,21 +297,29 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 				}
 			}
 
-			var hint string
-			if result.Err != nil && result.HintAnchor != "" {
-				hint = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
-			}
-
 			currentCheck := &check{
 				Description: result.Description,
 				Result:      status,
-				Hint:        hint,
+			}
+
+			if result.Err != nil {
+				currentCheck.Error = result.Err.Error()
+
+				if result.HintAnchor != "" {
+					currentCheck.Hint = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+				}
 			}
 			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
 		}
 	}
 
 	result := hc.RunChecks(collectJSONOutput)
+
+	outputJSON := checkOutput{
+		Success:    result,
+		Categories: categories,
+	}
+
 	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
 	if err == nil {
 		fmt.Fprint(wout, string(resultJSON))

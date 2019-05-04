@@ -141,6 +141,8 @@ type checker struct {
 }
 
 // CheckResult encapsulates a check's identifying information and output
+// Note there exists an analogous user-facing type, `cmd.check`, for output via
+// `linkerd check -o json`.
 type CheckResult struct {
 	Category    CategoryID
 	Description string

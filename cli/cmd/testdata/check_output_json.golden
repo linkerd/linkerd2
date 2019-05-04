@@ -1,17 +1,20 @@
-[
-  {
-    "categoryName": "category",
-    "checks": [
-      {
-        "description": "check1",
-        "hint": "",
-        "result": "success"
-      },
-      {
-        "description": "check2",
-        "hint": "https://linkerd.io/checks/#hint-anchor",
-        "result": "error"
-      }
-    ]
-  }
-]
+{
+  "success": false,
+  "categories": [
+    {
+      "categoryName": "category",
+      "checks": [
+        {
+          "description": "check1",
+          "result": "success"
+        },
+        {
+          "description": "check2",
+          "hint": "https://linkerd.io/checks/#hint-anchor",
+          "error": "This should contain instructions for fail",
+          "result": "error"
+        }
+      ]
+    }
+  ]
+}
