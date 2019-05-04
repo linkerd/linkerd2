@@ -4,6 +4,24 @@
 ### Proxy Injector
 ###
 ---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-proxy-injector-webhook-config
+webhooks:
+- name: linkerd-proxy-injector.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: {{ .Namespace }}
+      path: "/"
+    caBundle: {{ b64enc .CATrust.RootPEM }}
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -40,6 +58,9 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
+        - name: caTrust
+          mountPath: /var/run/linkerd/ca
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /ping
@@ -59,6 +80,9 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+      - name: caTrust
+        secret:
+          secretName: linkerd-ca
 ---
 kind: Service
 apiVersion: v1

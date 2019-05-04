@@ -69,6 +69,8 @@ type (
 		WebResources *resources
 
 		Identity *installIdentityValues
+
+		CATrust *caTrustValues
 	}
 
 	configJSONs struct{ Global, Proxy, Install string }
@@ -94,6 +96,10 @@ type (
 		CrtExpiry time.Time
 
 		CrtExpiryAnnotation string
+	}
+
+	caTrustValues struct {
+		KeyPEM, RootPEM string
 	}
 
 	// installOptions holds values for command line flags that apply to the install
@@ -141,6 +147,8 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
+
+	caTrustName = "ca.linkerd.cluster.local"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -339,6 +347,12 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	}
 	values.Identity = identityValues
 	values.stage = stage
+
+	caTrust, err := genCATrust()
+	if err != nil {
+		return nil, nil, err
+	}
+	values.CATrust = caTrust
 
 	return values, configs, nil
 }
@@ -605,6 +619,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	if values.stage == "" || values.stage == controlPlaneStage {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_resources.yaml"},
+			{Name: "templates/ca.yaml"},
 			{Name: "templates/config.yaml"},
 			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},
@@ -895,6 +910,18 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 
 			CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
 		},
+	}, nil
+}
+
+func genCATrust() (*caTrustValues, error) {
+	root, err := tls.GenerateRootCAWithDefaults(caTrustName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
+	}
+
+	return &caTrustValues{
+		RootPEM: root.Cred.Crt.EncodeCertificatePEM(),
+		KeyPEM:  root.Cred.EncodePrivateKeyPEM(),
 	}, nil
 }
 

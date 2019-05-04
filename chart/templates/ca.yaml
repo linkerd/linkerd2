@@ -1,0 +1,20 @@
+{{with .Values -}}
+---
+###
+### Control Plane CA
+###
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: {{ .Namespace }}
+  labels:
+    {{ .ControllerComponentLabel }}: controller
+  annotations:
+    {{ .CreatedByAnnotation }}: {{ .CliVersion }}
+type: Opaque
+data:
+  root.pem: {{ b64enc .CATrust.RootPEM }}
+  key.pem: {{ b64enc .CATrust.KeyPEM }}
+{{end -}}

@@ -4,6 +4,24 @@
 ### Service Profile Validator
 ###
 ---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-sp-validator-webhook-config
+webhooks:
+- name: linkerd-sp-validator.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-sp-validator
+      namespace: {{ .Namespace }}
+      path: "/"
+    caBundle: {{ b64enc .CATrust.RootPEM }}
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serviceprofiles"]
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -55,6 +73,10 @@ spec:
         ports:
         - name: sp-validator
           containerPort: 8443
+        volumeMounts:
+        - name: caTrust
+          mountPath: /var/run/linkerd/ca
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /ping
@@ -71,7 +93,7 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
-      - name: config
-        configMap:
-          name: linkerd-config
+      - name: caTrust
+        secret:
+          secretName: linkerd-ca
 {{end -}}
