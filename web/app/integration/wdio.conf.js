@@ -4,29 +4,26 @@ exports.config = {
   services: ['chromedriver'],
   runner: 'local',
   specs: [
-      './integration/specs/**/*.js'
+    './integration/specs/**/*.js'
   ],
-    suites: {
-    sidebar: [
-        './integration/specs/sidebar/*.js'
-    ],
+  suites: {
     daemonset: [
-        './integration/specs/daemonset/*.js'
+      './integration/specs/daemonset/*.js'
     ]
-},
+  },
   exclude: [
-      // 'path/to/excluded/files'
+    // 'path/to/excluded/files'
   ],
   maxInstances: 10,
   capabilities: [{browserName: 'chrome'}],
   bail: 0,
   baseUrl: 'http://localhost',
-  waitforTimeout: 1000000,
-  connectionRetryTimeout: 90000000,
+  waitforTimeout: 180000,
+  connectionRetryTimeout: 300000,
   connectionRetryCount: 3,
   framework: 'mocha',
   mochaOpts: {
-      ui: 'bdd',
-      timeout: 6000000
+    ui: 'bdd',
+    timeout: 900000
   }
-}
+};

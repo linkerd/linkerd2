@@ -284,6 +284,16 @@
     loglevel-plugin-prefix "^0.5.3"
     strip-ansi "^4.0.0"
 
+"@wdio/logger@^5.8.0":
+  version "5.8.0"
+  resolved "https://registry.yarnpkg.com/@wdio/logger/-/logger-5.8.0.tgz#9d69dec2eaaee011c03de0f9239f8c520dfe8260"
+  integrity sha512-YQ6fybKvWEZPBVf/rrhedohj6g4U1cb9w/6IkHOOhDYbiwwvmAVk7h7QTCsdVc1pxO7Y4/5gI46bmoASgPsrnw==
+  dependencies:
+    chalk "^2.3.0"
+    loglevel "^1.6.0"
+    loglevel-plugin-prefix "^0.5.3"
+    strip-ansi "^4.0.0"
+
 "@wdio/mocha-framework@^5.7.8":
   version "5.7.8"
   resolved "https://registry.yarnpkg.com/@wdio/mocha-framework/-/mocha-framework-5.7.8.tgz#59b1cbf651a2bd950b27f807f280e70f9268c367"
@@ -313,12 +323,12 @@
     gaze "^1.1.2"
     webdriverio "^5.7.9"
 
-"@wdio/sauce-service@^5.7.15":
-  version "5.7.15"
-  resolved "https://registry.yarnpkg.com/@wdio/sauce-service/-/sauce-service-5.7.15.tgz#f8ec11c8b8e32c7125dfa117bd999338570ccd76"
-  integrity sha512-ZOwFA6SLatMGgCMs8hnhho24kHBzo1FlvvecGNTbqOpT6yM2gZ9UxpUWNRkYVB3Y/QXj7YrdY6Zpxmmoiry84Q==
+"@wdio/sauce-service@^5.8.1":
+  version "5.8.1"
+  resolved "https://registry.yarnpkg.com/@wdio/sauce-service/-/sauce-service-5.8.1.tgz#fb3d6978c1fb9c8a1b4c4acdf2d16ee0c368c189"
+  integrity sha512-1paqGaf0hd1u2+8+7sYfB39A+30ruv2Z02XMx2ccYJBC1wz4MNeZSDdrJ3vy3Wad8AXOcO5pIangd0gGZKXcjA==
   dependencies:
-    "@wdio/logger" "^5.7.8"
+    "@wdio/logger" "^5.8.0"
     sauce-connect-launcher "^1.2.3"
     saucelabs "^2.1.4"
 
