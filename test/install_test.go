@@ -124,6 +124,25 @@ func TestInstallOrUpgrade(t *testing.T) {
 	)
 
 	if TestHelper.UpgradeFromVersion() != "" {
+		// create a fake CA secret so that upgrade can re-use it.
+		// see the fetchCATrust() function.
+		fakeCA := `kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: Opaque
+data:
+  cert.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJlRENDQVIyZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQWpNU0V3SHdZRFZRUURFeGhqWVM1c2FXNXIKWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1Ua3dOVEEyTWpBd09ETTJXaGNOTWpBd05UQTFNakF3T0RVMgpXakFqTVNFd0h3WURWUVFERXhoallTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3V1RBVEJnY3Foa2pPClBRSUJCZ2dxaGtqT1BRTUJCd05DQUFRUUhnRFI3dVFtWjEyNXNKaHlFVU5OdExZK1pTYkJnY1Nzc0RhWjhkUTQKcFVwMEVxVituV3pDSUE4bkFyV3M1N3ZXbitUeUJBaDZQMjMxL1Z0bjBiZFdvMEl3UURBT0JnTlZIUThCQWY4RQpCQU1DQVFZd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGCk1BTUJBZjh3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQU94R3lkU3RLNDFGTmdoSkZIZ0hjVmtBMldWcjRHalQKTlNnOXpyTUZweXNyQWlFQTQxNUtINzJJcFQ5UVZGd1VyVk40eXNGUmp6Mk9NNWc2SzZ4QXR5TXI5TEU9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUp6SGEwMDYzSFF5Uzcrd0YwbGNrL09RbjJreU5Vd1haVmprc0trUVZIZEFvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFRUI0QTBlN2tKbWRkdWJDWWNoRkRUYlMyUG1VbXdZSEVyTEEybWZIVU9LVktkQktsZnAxcwp3aUFQSndLMXJPZTcxcC9rOGdRSWVqOXQ5ZjFiWjlHM1ZnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`
+		_, err := TestHelper.KubectlApply(fakeCA, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("failed to create the fake CA: %s", err)
+		}
+
 		cmd = "upgrade"
 
 		// test 2-stage install during upgrade
@@ -151,8 +170,10 @@ func TestInstallOrUpgrade(t *testing.T) {
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
 		manifests, err := TestHelper.Kubectl("",
-			"--namespace", TestHelper.GetLinkerdNamespace(),
-			"get", "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName,
+			"--namespace", TestHelper.GetLinkerdNamespace(), "get",
+			"configmaps/"+k8s.ConfigConfigMapName,
+			"secrets/"+k8s.IdentityIssuerSecretName,
+			"secrets/"+k8s.CATrustSecretName, // get the fake CA
 			"-oyaml",
 		)
 		if err != nil {

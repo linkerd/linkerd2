@@ -169,8 +169,8 @@ const (
 	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
 
-	// CASecretName is the name of the secret containing the linkerd control plane CA cert and private key.
-	CASecretName = "linkerd-ca"
+	// CATrustSecretName is the name of the secret containing the linkerd control plane CA cert and private key.
+	CATrustSecretName = "linkerd-ca"
 
 	// DebugSidecarName is the name of the default linkerd debug container
 	DebugSidecarName = "linkerd-debug"
