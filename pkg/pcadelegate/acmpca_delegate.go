@@ -47,6 +47,8 @@ type (
 		// This is in nanoseconds. We will convert nanoseconds in to days since ACMPCA only supports days at the moment.
 		ValidityPeriod time.Duration
 
+		// Retryer is the implementation of the AWS-GO-SDK retry interface.
+		// This allows us to inject different retry strategies.
 		Retryer ACMPCARetryer
 	}
 )
