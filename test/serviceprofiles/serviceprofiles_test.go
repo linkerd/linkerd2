@@ -123,96 +123,82 @@ func TestServiceProfiles(t *testing.T) {
 }
 
 func TestServiceProfileMetrics(t *testing.T) {
+	var (
+		testNamespace        = TestHelper.GetTestNamespace("serviceprofile-test")
+		testSP               = "world-svc"
+		testDownstreamDeploy = "deployment/world"
+		testUpstreamDeploy   = "deployment/hello"
+		testYAML             = "testdata/hello_world.yaml"
+	)
 
-	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	testCases := []string{
-		"retries",
-		"latency",
+	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
+	if err != nil {
+		t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 	}
 
-	for _, tc := range testCases {
-		var (
-			tc                   = tc
-			testSP               = fmt.Sprintf("world-%s-svc", tc)
-			testDownstreamDeploy = fmt.Sprintf("deployment/world-%s", tc)
-			testUpstreamDeploy   = fmt.Sprintf("deployment/hello-%s", tc)
-			testYAML             = fmt.Sprintf("testdata/hello_world_%s.yaml", tc)
-		)
-
-		t.Run(tc, func(t *testing.T) {
-			out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
-			if err != nil {
-				t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
-			}
-
-			out, err = TestHelper.KubectlApply(out, testNamespace)
-			if err != nil {
-				t.Errorf("kubectl apply command failed\n%s", out)
-			}
-
-			cmd := []string{
-				"profile",
-				"--namespace",
-				testNamespace,
-				"--open-api",
-				"testdata/world.swagger",
-				testSP,
-			}
-
-			out, stderr, err = TestHelper.LinkerdRun(cmd...)
-			if err != nil {
-				t.Errorf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
-			}
-
-			_, err = TestHelper.KubectlApply(out, testNamespace)
-			if err != nil {
-				t.Errorf("kubectl apply command failed:\n%s", err)
-			}
-
-			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-				if *stat.EffectiveSuccess != *stat.ActualSuccess {
-					return fmt.Errorf(
-						"expected Effective Success to be equal to Actual Success but got: Effective [%f] <> Actual [%f]",
-						*stat.EffectiveSuccess, *stat.ActualSuccess)
-				}
-				return nil
-			})
-
-			profile := &sp.ServiceProfile{}
-
-			// Grab the output and convert it to a service profile object for modification
-			err = yaml.Unmarshal([]byte(out), profile)
-			if err != nil {
-				t.Errorf("unable to unmarshall YAML: %s", err.Error())
-			}
-
-			for _, route := range profile.Spec.Routes {
-				if route.Name == "GET /testpath" {
-					route.IsRetryable = true
-					break
-				}
-			}
-
-			bytes, err := yaml.Marshal(profile)
-			if err != nil {
-				t.Errorf("error marshalling service profile: %s", bytes)
-			}
-
-			out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
-			if err != nil {
-				t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
-			}
-
-			assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-				if *stat.EffectiveSuccess <= *stat.ActualSuccess {
-					return fmt.Errorf(
-						"expected Effective Success to be greater than Actual Success but got: Effective [%f] <> Actual [%f]",
-						*stat.EffectiveSuccess, *stat.ActualSuccess)
-				}
-				return nil
-			})
-		})
+	out, err = TestHelper.KubectlApply(out, testNamespace)
+	if err != nil {
+		t.Errorf("kubectl apply command failed\n%s", out)
 	}
+
+	cmd := []string{
+		"profile",
+		"--namespace",
+		testNamespace,
+		"--open-api",
+		"testdata/world.swagger",
+		testSP,
+	}
+
+	out, stderr, err = TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Errorf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
+	}
+
+	_, err = TestHelper.KubectlApply(out, testNamespace)
+	if err != nil {
+		t.Errorf("kubectl apply command failed:\n%s", err)
+	}
+
+	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+		if *stat.ActualSuccess == 100.00 {
+			return fmt.Errorf("expected Actual Success to be less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
+		}
+		return nil
+	})
+
+	profile := &sp.ServiceProfile{}
+
+	// Grab the output and convert it to a service profile object for modification
+	err = yaml.Unmarshal([]byte(out), profile)
+	if err != nil {
+		t.Errorf("unable to unmarshall YAML: %s", err.Error())
+	}
+
+	// introduce retry in the service profile
+	for _, route := range profile.Spec.Routes {
+		if route.Name == "GET /testpath" {
+			route.IsRetryable = true
+			break
+		}
+	}
+
+	bytes, err := yaml.Marshal(profile)
+	if err != nil {
+		t.Errorf("error marshalling service profile: %s", bytes)
+	}
+
+	out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
+	if err != nil {
+		t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
+	}
+
+	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
+		if *stat.EffectiveSuccess < 0.95 {
+			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.ActualSuccess)
+		}
+		return nil
+	})
 }
 
 func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
@@ -280,6 +266,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	if err != nil {
 		return nil, err
 	}
+
 	var list map[string][]*cmd2.JSONRouteStats
 	err = yaml.Unmarshal([]byte(out), &list)
 	if err != nil {

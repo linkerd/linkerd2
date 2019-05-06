@@ -1,24 +1,24 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: hello-latency
+  name: hello
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hello-latency
+      app: hello
   template:
     metadata:
       labels:
-        app: hello-latency
+        app: hello
     spec:
       containers:
-      - name: hello-latency
+      - name: hello
         image: buoyantio/helloworld:0.1.6
         args:
         - "-addr=:8888"
         - "-text=Hello"
-        - "-target=world-latency-svc:8889/testpath"
+        - "-target=world-svc:8889/testpath"
         ports:
         - name: service
           containerPort: 8888
@@ -26,10 +26,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello-latency-svc
+  name: hello-svc
 spec:
   selector:
-    app: hello-latency
+    app: hello
   ports:
   - name: http
     port: 8888
@@ -38,25 +38,24 @@ spec:
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: world-latency
+  name: world
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: world-latency
+      app: world
   template:
     metadata:
       labels:
-        app: world-latency
+        app: world
     spec:
       containers:
-      - name: world-latency
+      - name: world
         image: buoyantio/helloworld:0.1.6
         args:
         - "-addr=:8889"
         - "-text=World"
-        - "-failure-rate=0.2"
-        - "-latency=3s"
+        - "-failure-rate=0.5"
         ports:
         - name: service
           containerPort: 8889
@@ -64,10 +63,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: world-latency-svc
+  name: world-svc
 spec:
   selector:
-    app: world-latency
+    app: world
   ports:
   - name: http
     port: 8889
@@ -76,15 +75,15 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hello-latency-slow-cooker
+  name: hello-slow-cooker
 spec:
   template:
     metadata:
       labels:
-        app: hello-latency-slow-cooker
+        app: hello-slow-cooker
     spec:
       containers:
-      - name: hello-latency-slow-cooker
+      - name: hello-slow-cooker
         image: buoyantio/slow_cooker:1.1.1
         command:
         - "/bin/sh"
@@ -92,5 +91,5 @@ spec:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-latency-svc:8888/testpath
+          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-svc:8888/testpath
       restartPolicy: OnFailure
