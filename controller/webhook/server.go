@@ -140,6 +140,7 @@ func tlsConfig(rootCA *pkgTls.CA, name, controllerNamespace string) (*tls.Config
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("x509 certificate: %s\n", certPEM)
 
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},

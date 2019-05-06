@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -238,6 +239,14 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	values.Identity = identity
 	values.stage = stage
 
+	// re-use the existing CA trust and private key in the linkerd-ca secret,
+	// mutating webhook configuration and validating webhook configuration.
+	caTrust, err := fetchCATrust(k)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch existing CA Trust: %s", err)
+	}
+	values.CATrust = caTrust
+
 	return values, configs, nil
 }
 
@@ -279,6 +288,23 @@ func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
 	}
 
 	return config.FromConfigMap(configMap.Data)
+}
+
+func fetchCATrust(k kubernetes.Interface) (*caTrustValues, error) {
+	secret, err := k.CoreV1().
+		Secrets(controlPlaneNamespace).
+		Get(k8s.CASecretName, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return genCATrust()
+		}
+		return nil, err
+	}
+
+	return &caTrustValues{
+		KeyPEM:  string(secret.Data["key.pem"]),
+		RootPEM: string(secret.Data["root.pem"]),
+	}, nil
 }
 
 // fetchIdentityValue checks the kubernetes API to fetch an existing
