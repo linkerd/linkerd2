@@ -146,6 +146,19 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:bdcb26bcc82894a3c37ba4dc87a3423a580950bd88b522154505d5032a67eaaa"
+  name = "github.com/deislabs/smi-sdk-go"
+  packages = [
+    "gen/apis/trafficsplit",
+    "gen/apis/trafficsplit/v1beta1",
+    "gen/client/clientset/versioned",
+    "gen/client/clientset/versioned/scheme",
+    "gen/client/clientset/versioned/typed/trafficsplit/v1beta1",
+  ]
+  pruneopts = ""
+  revision = "f343a9934b56f50451a53c61dd3b704b589c2412"
+
+[[projects]]
   digest = "1:3e93e899f8457138a891b3ccedcacf8fe9074865c848f7028e1892bdae280676"
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
@@ -1258,6 +1271,7 @@
     "github.com/containernetworking/cni/pkg/types",
     "github.com/containernetworking/cni/pkg/types/current",
     "github.com/containernetworking/cni/pkg/version",
+    "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned",
     "github.com/emicklei/proto",
     "github.com/evanphx/json-patch",
     "github.com/fatih/color",

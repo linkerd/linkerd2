@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	tsclient "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned"
+	ts "github.com/deislabs/smi-sdk-go/gen/client/informers/externalversions"
+	tsinformers "github.com/deislabs/smi-sdk-go/gen/client/informers/externalversions/trafficsplit/v1beta1"
 	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
@@ -51,6 +54,7 @@ const (
 	SP
 	SS
 	Svc
+	TS
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -70,10 +74,12 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
+	ts       tsinformers.TrafficSplitInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
 	spSharedInformers sp.SharedInformerFactory
+	tsSharedInformers ts.SharedInformerFactory
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
@@ -106,11 +112,29 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 			break
 		}
 	}
-	return NewAPI(k8sClient, spClient, resources...), nil
+
+	// TrafficSplits
+	var tsClient *tsclient.Clientset
+	for _, res := range resources {
+		if res == SP {
+			tsClient, err = NewTsClientSet(kubeConfig)
+			if err != nil {
+				return nil, err
+			}
+
+			break
+		}
+	}
+	return NewAPI(k8sClient, spClient, tsClient, resources...), nil
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API.
-func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resources ...APIResource) *API {
+func NewAPI(
+	k8sClient kubernetes.Interface,
+	spClient spclient.Interface,
+	tsClient tsclient.Interface,
+	resources ...APIResource,
+) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
 	var spSharedInformers sp.SharedInformerFactory
@@ -118,11 +142,17 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
 	}
 
+	var tsSharedInformers ts.SharedInformerFactory
+	if tsClient != nil {
+		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
+	}
+
 	api := &API{
 		Client:            k8sClient,
 		syncChecks:        make([]cache.InformerSynced, 0),
 		sharedInformers:   sharedInformers,
 		spSharedInformers: spSharedInformers,
+		tsSharedInformers: tsSharedInformers,
 	}
 
 	for _, resource := range resources {
@@ -166,6 +196,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+		case TS:
+			api.ts = tsSharedInformers.Smispec().V1beta1().TrafficSplits()
+			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
 		}
 	}
 
@@ -176,6 +209,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 func (api *API) Sync() {
 	api.sharedInformers.Start(nil)
 	api.spSharedInformers.Start(nil)
+	api.tsSharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -296,6 +330,14 @@ func (api *API) Job() batchv1informers.JobInformer {
 // ServiceProfiles
 func (api *API) SPAvailable() bool {
 	return api.sp != nil
+}
+
+// TS provides access to a shared informer and lister for TrafficSplits.
+func (api *API) TS() spinformers.ServiceProfileInformer {
+	if api.sp == nil {
+		panic("SP informer not configured")
+	}
+	return api.sp
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.

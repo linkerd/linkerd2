@@ -40,6 +40,10 @@ required = [
   version = "kubernetes-1.13.1"
 
 [[constraint]]
+  name = "github.com/deislabs/smi-sdk-go"
+  revision = "f343a9934b56f50451a53c61dd3b704b589c2412"
+
+[[constraint]]
   name = "k8s.io/helm"
   version = "v2.12.2"
 
