@@ -116,11 +116,6 @@ spec:
           name: linkerd-proxy
         - containerPort: 9998
           name: linkerd-admin
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 9998
-          initialDelaySeconds: 2
         resources:
           limits:
             cpu: "1"

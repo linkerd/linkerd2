@@ -32,7 +32,6 @@ type expectedProxyConfigs struct {
 	outboundListenAddr         string
 	proxyUID                   int64
 	livenessProbe              *corev1.Probe
-	readinessProbe             *corev1.Probe
 	destinationProfileSuffixes string
 	initImage                  string
 	initImagePullPolicy        corev1.PullPolicy
@@ -149,15 +148,6 @@ func TestConfigAccessors(t *testing.T) {
 					},
 					InitialDelaySeconds: 10,
 				},
-				readinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/ready",
-							Port: intstr.IntOrString{IntVal: int32(5001)},
-						},
-					},
-					InitialDelaySeconds: 2,
-				},
 				destinationProfileSuffixes: "svc.cluster.local.",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("Always"),
@@ -214,15 +204,6 @@ func TestConfigAccessors(t *testing.T) {
 						},
 					},
 					InitialDelaySeconds: 10,
-				},
-				readinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/ready",
-							Port: intstr.IntOrString{IntVal: int32(6001)},
-						},
-					},
-					InitialDelaySeconds: 2,
 				},
 				destinationProfileSuffixes: ".",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
@@ -376,13 +357,6 @@ func TestConfigAccessors(t *testing.T) {
 			t.Run("proxyLivenessProbe", func(t *testing.T) {
 				expected := testCase.expected.livenessProbe
 				if actual := resourceConfig.proxyLivenessProbe(); !reflect.DeepEqual(expected, actual) {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyReadinessProbe", func(t *testing.T) {
-				expected := testCase.expected.readinessProbe
-				if actual := resourceConfig.proxyReadinessProbe(); !reflect.DeepEqual(expected, actual) {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
 				}
 			})

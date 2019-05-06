@@ -91,11 +91,6 @@ spec:
       name: linkerd-proxy
     - containerPort: 4191
       name: linkerd-admin
-    readinessProbe:
-      httpGet:
-        path: /ready
-        port: 4191
-      initialDelaySeconds: 2
     resources:
       limits:
         cpu: 160m

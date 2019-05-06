@@ -491,8 +491,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 				Value: "ns:$(_pod_ns)",
 			},
 		},
-		ReadinessProbe: conf.proxyReadinessProbe(),
-		LivenessProbe:  conf.proxyLivenessProbe(),
+		LivenessProbe: conf.proxyLivenessProbe(),
 	}
 
 	// Special case if the caller specifies that
@@ -894,18 +893,6 @@ func (conf *ResourceConfig) proxyUID() int64 {
 	}
 
 	return conf.configs.GetProxy().GetProxyUid()
-}
-
-func (conf *ResourceConfig) proxyReadinessProbe() *corev1.Probe {
-	return &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path: "/ready",
-				Port: intstr.IntOrString{IntVal: conf.proxyAdminPort()},
-			},
-		},
-		InitialDelaySeconds: 2,
-	}
 }
 
 func (conf *ResourceConfig) proxyLivenessProbe() *corev1.Probe {

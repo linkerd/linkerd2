@@ -142,13 +142,6 @@
         },
         "initialDelaySeconds": 10
       },
-      "readinessProbe": {
-        "httpGet": {
-          "path": "/ready",
-          "port": 4191
-        },
-        "initialDelaySeconds": 2
-      },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {

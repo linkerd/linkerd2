@@ -109,11 +109,6 @@ spec:
           name: linkerd-proxy
         - containerPort: 1234
           name: linkerd-admin
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 1234
-          initialDelaySeconds: 2
         resources: {}
         securityContext:
           runAsUser: 2102
