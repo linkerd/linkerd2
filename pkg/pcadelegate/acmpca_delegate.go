@@ -73,7 +73,7 @@ func NewCADelegate(params CADelegateParams) (*ACMPCADelegate, error) {
 func ConvertNanoSecondsToDays(validityPeriod time.Duration) int64 {
 	// validityPeriod is duration in nanoseconds.
 	// time.Hour is an hour in nanoseconds.
-	var hoursInDay int64 = 24
+	const hoursInDay int64 = 24
 	hours := (validityPeriod / time.Hour)
 	days := int64(hours) / hoursInDay
 	return days
