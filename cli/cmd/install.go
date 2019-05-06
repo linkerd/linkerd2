@@ -99,7 +99,7 @@ type (
 	}
 
 	caTrustValues struct {
-		KeyPEM, RootPEM string
+		KeyPEM, CertPEM string
 	}
 
 	// installOptions holds values for command line flags that apply to the install
@@ -122,7 +122,8 @@ type (
 		recordedFlags []*pb.Install_Flag
 
 		// A function pointer that can be overridden for tests
-		generateUUID func() string
+		generateUUID    func() string
+		generateCATrust func() (*caTrustValues, error)
 	}
 
 	installIdentityOptions struct {
@@ -148,7 +149,7 @@ const (
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 
-	caTrustName = "ca.linkerd.cluster.local"
+	caCommonName = "ca.linkerd.cluster.local"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -195,6 +196,18 @@ func newInstallOptionsWithDefaults() *installOptions {
 				log.Fatalf("Could not generate UUID: %s", err)
 			}
 			return id.String()
+		},
+
+		generateCATrust: func() (*caTrustValues, error) {
+			root, err := tls.GenerateRootCAWithDefaults(caCommonName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
+			}
+
+			return &caTrustValues{
+				CertPEM: root.Cred.Crt.EncodeCertificatePEM(),
+				KeyPEM:  root.Cred.EncodePrivateKeyPEM(),
+			}, nil
 		},
 	}
 }
@@ -348,7 +361,7 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	values.Identity = identityValues
 	values.stage = stage
 
-	caTrust, err := genCATrust()
+	caTrust, err := options.generateCATrust()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -910,18 +923,6 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 
 			CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
 		},
-	}, nil
-}
-
-func genCATrust() (*caTrustValues, error) {
-	root, err := tls.GenerateRootCAWithDefaults(caTrustName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
-	}
-
-	return &caTrustValues{
-		RootPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		KeyPEM:  root.Cred.EncodePrivateKeyPEM(),
 	}, nil
 }
 

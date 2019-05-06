@@ -318,6 +318,24 @@ metadata:
   name: linkerd-sp-validator
   namespace: Namespace
 ---
+###
+### Control Plane CA Trust
+###
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: controller
+  annotations:
+    CreatedByAnnotation: CliVersion
+type: Opaque
+data:
+  cert.pem: dGVzdCBDQSBjZXJ0IFBFTQ==
+  key.pem: dGVzdCBDQSBwcml2YXRlIGtleSBQRU0=
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1410,6 +1428,24 @@ status: {}
 ### Proxy Injector
 ###
 ---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-proxy-injector-webhook-config
+webhooks:
+- name: linkerd-proxy-injector.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: Namespace
+      path: "/"
+    caBundle: dGVzdCBDQSBjZXJ0IFBFTQ==
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1466,6 +1502,9 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/ca
+          name: ca
+          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1550,6 +1589,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - name: ca
+        secret:
+          secretName: linkerd-ca
 status: {}
 ---
 kind: Service
@@ -1573,6 +1615,24 @@ spec:
 ###
 ### Service Profile Validator
 ###
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-sp-validator-webhook-config
+webhooks:
+- name: linkerd-sp-validator.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-sp-validator
+      namespace: Namespace
+      path: "/"
+    caBundle: dGVzdCBDQSBjZXJ0IFBFTQ==
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serviceprofiles"]
 ---
 kind: Service
 apiVersion: v1
@@ -1645,6 +1705,10 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/ca
+          name: ca
+          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1726,8 +1790,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-sp-validator
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
+      - name: ca
+        secret:
+          secretName: linkerd-ca
 status: {}
 ---

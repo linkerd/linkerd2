@@ -15,7 +15,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: {{ .Namespace }}
       path: "/"
-    caBundle: {{ b64enc .CATrust.RootPEM }}
+    caBundle: {{ b64enc .CATrust.CertPEM }}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: [""]

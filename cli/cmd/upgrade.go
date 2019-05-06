@@ -239,9 +239,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	values.Identity = identity
 	values.stage = stage
 
-	// re-use the existing CA trust and private key in the linkerd-ca secret,
+	// re-use the existing CA root cert and private key in the linkerd-ca secret,
 	// mutating webhook configuration and validating webhook configuration.
-	caTrust, err := fetchCATrust(k)
+	caTrust, err := fetchCATrust(k, options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing CA Trust: %s", err)
 	}
@@ -290,20 +290,20 @@ func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
 	return config.FromConfigMap(configMap.Data)
 }
 
-func fetchCATrust(k kubernetes.Interface) (*caTrustValues, error) {
+func fetchCATrust(k kubernetes.Interface, options *upgradeOptions) (*caTrustValues, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(k8s.CASecretName, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return genCATrust()
+			return options.generateCATrust()
 		}
 		return nil, err
 	}
 
 	return &caTrustValues{
 		KeyPEM:  string(secret.Data["key.pem"]),
-		RootPEM: string(secret.Data["root.pem"]),
+		CertPEM: string(secret.Data["cert.pem"]),
 	}, nil
 }
 

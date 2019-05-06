@@ -267,7 +267,7 @@ func (v *Validity) Window(t time.Time) (time.Time, time.Time) {
 // ParseRootCA parses the provided CA cert and private key. If the cert and key
 // matches, it returns a CA object. If they don't match, ParseRootCA panic. See
 // validCredOrPanic() in pkg/tls/cred.go
-
+//
 // The Validity field of the returned CA is left empty as the case in
 // GenerateRootCAWithDefaults().
 //

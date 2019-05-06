@@ -34,17 +34,17 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	rootPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/root.pem")
+	certPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/cert.pem")
 	if err != nil {
-		log.Fatalf("failed to read root PEM file: %s", err)
+		log.Fatalf("failed to read CA cert file: %s", err)
 	}
 
 	keyPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/key.pem")
 	if err != nil {
-		log.Fatalf("failed to read CA key PEM file: %s", err)
+		log.Fatalf("failed to read CA key file: %s", err)
 	}
 
-	rootCA, err := tls.ParseRootCA(rootPEM, keyPEM)
+	rootCA, err := tls.ParseRootCA(certPEM, keyPEM)
 	if err != nil {
 		log.Fatalf("failed to parse the provided root CA: %s", err)
 	}

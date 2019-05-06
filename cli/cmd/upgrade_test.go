@@ -24,6 +24,12 @@ func testUpgradeOptions() *upgradeOptions {
 	o := newUpgradeOptionsWithDefaults()
 	o.controlPlaneVersion = upgradeControlPlaneVersion
 	o.proxyVersion = upgradeProxyVersion
+	o.generateCATrust = func() (*caTrustValues, error) {
+		return &caTrustValues{
+			KeyPEM:  "test private key PEM",
+			CertPEM: "test root PEM",
+		}, nil
+	}
 	return o
 }
 

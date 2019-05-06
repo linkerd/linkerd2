@@ -15,7 +15,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: {{ .Namespace }}
       path: "/"
-    caBundle: {{ b64enc .CATrust.RootPEM }}
+    caBundle: {{ b64enc .CATrust.CertPEM }}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
