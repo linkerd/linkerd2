@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/acmpca"
-	"github.com/linkerd/linkerd2/pkg/pcadelegate/test_helpers"
 )
 
 // TestConvertNanoSecondsToDaysWholeDay is a unit test that validates that we correctly turn exactly three days worth of nanoseconds into 3 days
@@ -46,7 +45,7 @@ func TestSuccessfulIssueEndCert(t *testing.T) {
 		CertificateChain: &certChain,
 	}
 
-	myClient := test_helpers.MockACMClient{
+	myClient := mockACMClient{
 		IssueCertOutput: &issueCertResponse,
 		GetCertOutput:   &getCertResponse,
 	}
@@ -56,7 +55,7 @@ func TestSuccessfulIssueEndCert(t *testing.T) {
 		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
-	csr := test_helpers.CreateCSR()
+	csr := createCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != nil {
@@ -67,7 +66,7 @@ func TestSuccessfulIssueEndCert(t *testing.T) {
 // TestFailedIssueCert is a unit test that validates correct error propagation when IssueCert fails.
 func TestFailedIssueCert(t *testing.T) {
 	expectedError := errors.New("issueCertError")
-	myClient := test_helpers.MockACMClient{
+	myClient := mockACMClient{
 		IssueCertError: expectedError,
 	}
 
@@ -76,7 +75,7 @@ func TestFailedIssueCert(t *testing.T) {
 		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
-	csr := test_helpers.CreateCSR()
+	csr := createCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedError {
@@ -93,7 +92,7 @@ func TestFailedGetCert(t *testing.T) {
 
 	expectedGetCertError := errors.New("getCertError")
 
-	myClient := test_helpers.MockACMClient{
+	myClient := mockACMClient{
 		IssueCertOutput: &issueCertResponse,
 		GetCertError:    expectedGetCertError,
 	}
@@ -103,7 +102,7 @@ func TestFailedGetCert(t *testing.T) {
 		CADelegateParams: CADelegateParams{CaARN: "myARN"},
 	}
 
-	csr := test_helpers.CreateCSR()
+	csr := createCSR()
 	_, err := subject.IssueEndEntityCrt(&csr)
 
 	if err != expectedGetCertError {
