@@ -7,7 +7,6 @@ import (
 	"encoding/asn1"
 
 	"github.com/aws/aws-sdk-go/service/acmpca"
-	"github.com/prometheus/common/log"
 )
 
 // createCSR creates a generic certificate signing request.
@@ -51,25 +50,4 @@ func (m mockACMClient) GetCertificate(input *acmpca.GetCertificateInput) (*acmpc
 // IssueCertificate stubs out the AWS ACM client and returns a precomputed output and error.
 func (m mockACMClient) IssueCertificate(input *acmpca.IssueCertificateInput) (*acmpca.IssueCertificateOutput, error) {
 	return m.IssueCertOutput, m.IssueCertError
-}
-
-// verifyCertificates is used to validate end certificates/chains against a trusted root.
-func verifyCertificates(endCert *x509.Certificate, rootCert *x509.Certificate, intermediateCert *x509.Certificate) {
-	roots := x509.NewCertPool()
-	interm := x509.NewCertPool()
-
-	roots.AddCert(rootCert)
-
-	interm.AddCert(intermediateCert)
-
-	opts := x509.VerifyOptions{
-		Roots:         roots,
-		Intermediates: interm,
-	}
-
-	if _, verifyErr := endCert.Verify(opts); verifyErr != nil {
-		log.Errorf("failed to verify certificate " + verifyErr.Error())
-	} else {
-		log.Info("End Entity certificate was validated")
-	}
 }
