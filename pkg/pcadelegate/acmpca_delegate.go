@@ -198,6 +198,7 @@ func (c ACMPCADelegate) getCertificate(acmClient ACMPCAClient, certificateARN st
 }
 
 func (c ACMPCADelegate) issueCertificate(acmClient ACMPCAClient, csr *x509.CertificateRequest) (*string, error) {
+	// TODO dc Parameterize signingAlgo to an enumeration based on the acmpca const strings
 	signingAlgo := acmpca.SigningAlgorithmSha256withrsa
 	validityPeriodType := acmpca.ValidityPeriodTypeDays
 	duration := ConvertNanoSecondsToDays(c.ValidityPeriod)

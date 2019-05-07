@@ -12,7 +12,8 @@ import (
 
 // TestConvertNanoSecondsToDaysWholeDay is a unit test that validates that we correctly turn exactly three days worth of nanoseconds into 3 days
 func TestConvertNanoSecondsToDaysWholeDay(t *testing.T) {
-	threeDaysInNanoSeconds := 3 * (time.Hour * 24)
+	const hoursInDay time.Duration = 24
+	threeDaysInNanoSeconds := 3 * (time.Hour * hoursInDay)
 	const expectedResult int64 = 3
 	result := ConvertNanoSecondsToDays(threeDaysInNanoSeconds)
 	if result != expectedResult {
@@ -22,7 +23,8 @@ func TestConvertNanoSecondsToDaysWholeDay(t *testing.T) {
 
 // TestConvertNanoSecondsToDaysLessThanWholeDay is a unit test that validates that floor(computedDays) to a integer number of days
 func TestConvertNanoSecondsToDaysLessThanWholeDay(t *testing.T) {
-	lessThanThreeDaysInNanoSeconds := 3*(time.Hour*24) - time.Hour
+	const hoursInDay time.Duration = 24
+	lessThanThreeDaysInNanoSeconds := 3*(time.Hour*hoursInDay) - time.Hour
 	// Any elements less than 3 days and more than 2 days will result in 2 days
 	const expectedResult int64 = 2
 	result := ConvertNanoSecondsToDays(lessThanThreeDaysInNanoSeconds)
