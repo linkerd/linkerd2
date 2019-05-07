@@ -94,15 +94,6 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 	resourceReplacementInbound := resourceType
 	resourceReplacementOutbound := "dst_" + resourceType
 
-	formatMsg := map[string]string{
-		"disabled":                          "Disabled",
-		"loopback":                          "Loopback",
-		"no_authority_in_http_request":      "No Authority In HTTP Request",
-		"not_http":                          "Not HTTP",
-		"not_provided_by_remote":            "Not Provided By Remote",
-		"not_provided_by_service_discovery": "Not Provided By Service Discovery",
-	}
-
 	for _, sample := range inbound {
 		// skip any inbound results that do not have a client_id, because this means
 		// the communication was one-sided (i.e. a probe or another instance where the src/dst are not both known)
