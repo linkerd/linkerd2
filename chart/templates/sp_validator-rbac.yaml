@@ -35,4 +35,22 @@ apiVersion: v1
 metadata:
   name: linkerd-sp-validator
   namespace: {{.Namespace}}
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-sp-validator-webhook-config
+webhooks:
+- name: linkerd-sp-validator.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-sp-validator
+      namespace: {{ .Namespace }}
+      path: "/"
+    caBundle: {{ b64enc .CATrust.CrtPEM }}
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serviceprofiles"]
 {{end -}}

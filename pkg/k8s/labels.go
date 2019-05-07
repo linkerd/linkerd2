@@ -239,6 +239,12 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathCAKeyPEM is the path to the CA key.pem file.
+	MountPathCAKeyPEM = MountPathBase + "/ca/key.pem"
+
+	// MountPathCACrtPEM is the path to the CA crt.pem file.
+	MountPathCACrtPEM = MountPathBase + "/ca/crt.pem"
+
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
 	//

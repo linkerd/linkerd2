@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
 	"math/big"
 	"time"
@@ -262,41 +261,4 @@ func (v *Validity) Window(t time.Time) (time.Time, time.Time) {
 	start := t.Add(-skew)
 	end := t.Add(life).Add(skew)
 	return start, end
-}
-
-// ParseRootCA parses the provided CA cert and private key. If the cert and key
-// matches, it returns a CA object. If they don't match, ParseRootCA panic. See
-// validCredOrPanic() in pkg/tls/cred.go
-//
-// The Validity field of the returned CA is left empty as the case in
-// GenerateRootCAWithDefaults().
-//
-// Both the CA cert and private key must be PEM-encoded. Otherwise, an error is
-// returned.
-func ParseRootCA(rootCAPEM, keyPEM []byte) (*CA, error) {
-	rootCADecoded, _ := pem.Decode(rootCAPEM)
-	if rootCADecoded == nil {
-		return nil, fmt.Errorf("root CA must be PEM-encoded")
-	}
-
-	rootCA, err := x509.ParseCertificate(rootCADecoded.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	keyDecoded, _ := pem.Decode(keyPEM)
-	if keyDecoded == nil {
-		return nil, fmt.Errorf("CA private key must be PEM-encoded")
-	}
-
-	key, err := x509.ParseECPrivateKey(keyDecoded.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	crt := Crt{Certificate: rootCA}
-	return &CA{
-		Cred:             validCredOrPanic(key, crt),
-		nextSerialNumber: crt.Certificate.SerialNumber.Uint64() + 1,
-	}, nil
 }

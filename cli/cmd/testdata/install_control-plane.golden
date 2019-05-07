@@ -1284,24 +1284,6 @@ status: {}
 ### Proxy Injector
 ###
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: linkerd-proxy-injector-webhook-config
-webhooks:
-- name: linkerd-proxy-injector.linkerd.io
-  clientConfig:
-    service:
-      name: linkerd-proxy-injector
-      namespace: linkerd
-      path: "/"
-    caBundle: dGVzdCByb290IFBFTQ==
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1506,24 +1488,6 @@ spec:
 ###
 ### Service Profile Validator
 ###
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: linkerd-sp-validator-webhook-config
-webhooks:
-- name: linkerd-sp-validator.linkerd.io
-  clientConfig:
-    service:
-      name: linkerd-sp-validator
-      namespace: linkerd
-      path: "/"
-    caBundle: dGVzdCByb290IFBFTQ==
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1"]
-    resources: ["serviceprofiles"]
 ---
 kind: Service
 apiVersion: v1

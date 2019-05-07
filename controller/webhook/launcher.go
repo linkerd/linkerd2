@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,20 +34,12 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	crtPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/crt.pem")
+	cred, err := tls.ReadPEMCreds(pkgK8s.MountPathCAKeyPEM, pkgK8s.MountPathCACrtPEM)
 	if err != nil {
-		log.Fatalf("failed to read CA cert file: %s", err)
+		log.Fatalf("failed to retrieve the CA key and cert: %s", err)
 	}
 
-	keyPEM, err := ioutil.ReadFile("/var/run/linkerd/ca/key.pem")
-	if err != nil {
-		log.Fatalf("failed to read CA key file: %s", err)
-	}
-
-	rootCA, err := tls.ParseRootCA(crtPEM, keyPEM)
-	if err != nil {
-		log.Fatalf("failed to parse the provided root CA: %s", err)
-	}
+	rootCA := &tls.CA{Cred: *cred}
 
 	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()
 	config.controllerNamespace = *controllerNamespace

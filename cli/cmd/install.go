@@ -148,8 +148,6 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
-
-	caCommonName = "ca.linkerd.cluster.local"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -199,6 +197,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 		},
 
 		generateCATrust: func() (*caTrustValues, error) {
+			caCommonName := fmt.Sprintf("ca.%s.cluster.local", controlPlaneNamespace)
 			root, err := tls.GenerateRootCAWithDefaults(caCommonName)
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
@@ -359,13 +358,13 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 	values.Identity = identityValues
-	values.stage = stage
 
 	caTrust, err := options.generateCATrust()
 	if err != nil {
 		return nil, nil, err
 	}
 	values.CATrust = caTrust
+	values.stage = stage
 
 	return values, configs, nil
 }
