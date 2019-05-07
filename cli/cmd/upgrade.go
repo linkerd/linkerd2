@@ -303,7 +303,7 @@ func fetchCATrust(k kubernetes.Interface, options *upgradeOptions) (*caTrustValu
 
 	return &caTrustValues{
 		KeyPEM: string(secret.Data["key.pem"]),
-		CrtPEM: string(secret.Data["cert.pem"]),
+		CrtPEM: string(secret.Data["crt.pem"]),
 	}, nil
 }
 
