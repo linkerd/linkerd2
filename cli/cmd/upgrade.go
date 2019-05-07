@@ -302,8 +302,8 @@ func fetchCATrust(k kubernetes.Interface, options *upgradeOptions) (*caTrustValu
 	}
 
 	return &caTrustValues{
-		KeyPEM:  string(secret.Data["key.pem"]),
-		CertPEM: string(secret.Data["cert.pem"]),
+		KeyPEM: string(secret.Data["key.pem"]),
+		CrtPEM: string(secret.Data["cert.pem"]),
 	}, nil
 }
 

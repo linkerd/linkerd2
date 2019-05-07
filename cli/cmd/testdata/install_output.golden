@@ -333,7 +333,7 @@ metadata:
     CreatedByAnnotation: CliVersion
 type: Opaque
 data:
-  cert.pem: dGVzdCBDQSBjZXJ0IFBFTQ==
+  crt.pem: dGVzdCBDQSBjZXJ0IFBFTQ==
   key.pem: dGVzdCBDQSBwcml2YXRlIGtleSBQRU0=
 ---
 kind: ConfigMap

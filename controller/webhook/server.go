@@ -134,13 +134,13 @@ func tlsConfig(rootCA *pkgTls.CA, name, controllerNamespace string) (*tls.Config
 		return nil, err
 	}
 
-	certPEM := cred.EncodePEM()
+	crtPEM := cred.EncodePEM()
 	keyPEM := cred.EncodePrivateKeyPEM()
-	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+	cert, err := tls.X509KeyPair([]byte(crtPEM), []byte(keyPEM))
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("x509 certificate: %s\n", certPEM)
+	log.Debugf("x509 certificate: %s\n", crtPEM)
 
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},

@@ -99,7 +99,7 @@ type (
 	}
 
 	caTrustValues struct {
-		KeyPEM, CertPEM string
+		KeyPEM, CrtPEM string
 	}
 
 	// installOptions holds values for command line flags that apply to the install
@@ -205,8 +205,8 @@ func newInstallOptionsWithDefaults() *installOptions {
 			}
 
 			return &caTrustValues{
-				CertPEM: root.Cred.Crt.EncodeCertificatePEM(),
-				KeyPEM:  root.Cred.EncodePrivateKeyPEM(),
+				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 			}, nil
 		},
 	}

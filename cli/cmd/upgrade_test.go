@@ -26,8 +26,8 @@ func testUpgradeOptions() *upgradeOptions {
 	o.proxyVersion = upgradeProxyVersion
 	o.generateCATrust = func() (*caTrustValues, error) {
 		return &caTrustValues{
-			KeyPEM:  "test private key PEM",
-			CertPEM: "test root PEM",
+			KeyPEM: "test private key PEM",
+			CrtPEM: "test root PEM",
 		}, nil
 	}
 	return o

@@ -58,8 +58,8 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		Identity:           defaultValues.Identity,
 		CATrust: &caTrustValues{
-			KeyPEM:  "test CA private key PEM",
-			CertPEM: "test CA cert PEM",
+			KeyPEM: "test CA private key PEM",
+			CrtPEM: "test CA cert PEM",
 		},
 	}
 
@@ -127,8 +127,8 @@ func testInstallOptions() *installOptions {
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
 	o.generateCATrust = func() (*caTrustValues, error) {
 		return &caTrustValues{
-			KeyPEM:  "test private key PEM",
-			CertPEM: "test root PEM",
+			KeyPEM: "test private key PEM",
+			CrtPEM: "test root PEM",
 		}, nil
 	}
 	return o

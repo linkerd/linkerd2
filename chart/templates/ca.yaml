@@ -15,6 +15,6 @@ metadata:
     {{ .CreatedByAnnotation }}: {{ .CliVersion }}
 type: Opaque
 data:
-  cert.pem: {{ b64enc .CATrust.CertPEM }}
+  crt.pem: {{ b64enc .CATrust.CrtPEM }}
   key.pem: {{ b64enc .CATrust.KeyPEM }}
 {{end -}}
