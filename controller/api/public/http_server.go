@@ -94,7 +94,7 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleEdges(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.StatSummaryRequest
+	var protoRequest pb.EdgesRequest
 
 	err := httpRequestToProto(req, &protoRequest)
 	if err != nil {

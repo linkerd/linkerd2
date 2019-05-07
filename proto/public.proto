@@ -378,6 +378,10 @@ message StatTable {
   }
 }
 
+message EdgesRequest {
+  ResourceSelection selector = 1;
+}
+
 message EdgesResponse {
   oneof response {
     Ok ok = 1;
@@ -434,7 +438,7 @@ message RouteTable {
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
-  rpc Edges(StatSummaryRequest) returns (EdgesResponse) {}
+  rpc Edges(EdgesRequest) returns (EdgesResponse) {}
 
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 

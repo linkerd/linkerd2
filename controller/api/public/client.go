@@ -51,7 +51,7 @@ func (c *grpcOverHTTPClient) StatSummary(ctx context.Context, req *pb.StatSummar
 	return &msg, err
 }
 
-func (c *grpcOverHTTPClient) Edges(ctx context.Context, req *pb.StatSummaryRequest, _ ...grpc.CallOption) (*pb.EdgesResponse, error) {
+func (c *grpcOverHTTPClient) Edges(ctx context.Context, req *pb.EdgesRequest, _ ...grpc.CallOption) (*pb.EdgesResponse, error) {
 	var msg pb.EdgesResponse
 	err := c.apiRequest(ctx, "Edges", req, &msg)
 	return &msg, err
