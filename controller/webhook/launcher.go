@@ -18,7 +18,7 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, serviceName string, handler handlerFunc) {
+func Launch(APIResources []k8s.APIResource, metricsPort uint32, serviceName string, handler handlerFunc) {
 	metricsAddr := flag.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
@@ -40,17 +40,6 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 	}
 
 	rootCA := &tls.CA{Cred: *cred}
-
-	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()
-	config.controllerNamespace = *controllerNamespace
-	config.rootCA = rootCA
-
-	selfLink, err := config.Create()
-	if err != nil {
-		log.Fatalf("failed to create the webhook configurations resource: %s", err)
-	}
-	log.Infof("created webhook configuration: %s", selfLink)
-
 	s, err := NewServer(k8sAPI, *addr, serviceName, *controllerNamespace, rootCA, handler)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
