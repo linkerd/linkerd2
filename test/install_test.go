@@ -30,9 +30,6 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	nsSmokeAuto   = "smoke-test"
-	nsSmokeManual = "smoke-test-manual"
-
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
 		"linkerd-destination",
@@ -59,8 +56,7 @@ var (
 	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		fmt.Sprintf(injectorErr, nsSmokeAuto),
-		fmt.Sprintf(injectorErr, nsSmokeManual),
+		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
@@ -80,6 +76,28 @@ var (
 		// prometheus scrape failures of control-plane
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: .*`,
 	}, "|"))
+
+	injectionCases = []struct {
+		ns          string
+		annotations map[string]string
+		injectArgs  []string
+	}{
+		{
+			ns: "smoke-test",
+			annotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			injectArgs: nil,
+		},
+		{
+			ns:         "smoke-test-manual",
+			injectArgs: []string{"--manual"},
+		},
+		{
+			ns:         "smoke-test-ann",
+			injectArgs: []string{},
+		},
+	}
 )
 
 //////////////////////
@@ -310,25 +328,7 @@ func TestInject(t *testing.T) {
 		t.Fatalf("failed to read smoke test file: %s", err)
 	}
 
-	testCases := []struct {
-		ns          string
-		autoinject  bool
-		annotations map[string]string
-	}{
-		{
-			ns:         nsSmokeAuto,
-			autoinject: true,
-			annotations: map[string]string{
-				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-			},
-		},
-		{
-			ns:         nsSmokeManual,
-			autoinject: false,
-		},
-	}
-
-	for _, tc := range testCases {
+	for _, tc := range injectionCases {
 		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
 			var out string
 
@@ -339,13 +339,10 @@ func TestInject(t *testing.T) {
 				t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 			}
 
-			out, err = TestHelper.KubectlApply(resources, prefixedNs)
-			if err != nil {
-				t.Fatalf("kubectl apply command failed\n%s", out)
-			}
-
-			if !tc.autoinject {
-				cmd := []string{"inject", "--manual", "testdata/smoke_test.yaml"}
+			if tc.injectArgs != nil {
+				cmd := []string{"inject"}
+				cmd = append(cmd, tc.injectArgs...)
+				cmd = append(cmd, "testdata/smoke_test.yaml")
 
 				var injectReport string
 				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
@@ -357,11 +354,13 @@ func TestInject(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Received unexpected output\n%s", err.Error())
 				}
+			} else {
+				out = resources
+			}
 
-				out, err = TestHelper.KubectlApply(out, prefixedNs)
-				if err != nil {
-					t.Fatalf("kubectl apply command failed\n%s", out)
-				}
+			out, err = TestHelper.KubectlApply(out, prefixedNs)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed\n%s", out)
 			}
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
@@ -396,9 +395,9 @@ func TestServiceProfileDeploy(t *testing.T) {
 		t.Fatalf("Unexpected error: %v %s", err, bbProto)
 	}
 
-	for _, ns := range []string{nsSmokeAuto, nsSmokeManual} {
-		t.Run(fmt.Sprintf("%s", ns), func(t *testing.T) {
-			prefixedNs := TestHelper.GetTestNamespace(ns)
+	for _, tc := range injectionCases {
+		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
 			cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
 			bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
@@ -415,9 +414,9 @@ func TestServiceProfileDeploy(t *testing.T) {
 }
 
 func TestCheckProxy(t *testing.T) {
-	for _, ns := range []string{nsSmokeAuto, nsSmokeManual} {
-		t.Run(fmt.Sprintf("%s", ns), func(t *testing.T) {
-			prefixedNs := TestHelper.GetTestNamespace(ns)
+	for _, tc := range injectionCases {
+		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 			golden := "check.proxy.golden"
 
