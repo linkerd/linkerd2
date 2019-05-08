@@ -49,14 +49,12 @@ var (
 		"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 	}
 
-	injectorErr = `.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-%s/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`
-
 	// Linkerd commonly logs these errors during testing, remove these once
 	// they're addressed: https://github.com/linkerd/linkerd2/issues/2453
 	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
+		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test.*/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
@@ -329,7 +327,8 @@ func TestInject(t *testing.T) {
 	}
 
 	for _, tc := range injectionCases {
-		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
 			var out string
 
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
@@ -396,7 +395,8 @@ func TestServiceProfileDeploy(t *testing.T) {
 	}
 
 	for _, tc := range injectionCases {
-		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
 			cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
@@ -415,7 +415,8 @@ func TestServiceProfileDeploy(t *testing.T) {
 
 func TestCheckProxy(t *testing.T) {
 	for _, tc := range injectionCases {
-		t.Run(fmt.Sprintf("%s", tc.ns), func(t *testing.T) {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 			golden := "check.proxy.golden"
