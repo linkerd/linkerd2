@@ -1022,7 +1022,7 @@ func (hc *HealthChecker) checkClockSkew() error {
 			// we want to check only KubeletReady condition and only execute if the node is ready
 			if condition.Type == "Ready" && condition.Status == "True" {
 				ts := condition.LastHeartbeatTime.Time
-				if (time.Now().Sub(ts) > AllowedClockSkew) || (time.Now().Sub(ts) < -AllowedClockSkew) {
+				if (time.Since(ts) > AllowedClockSkew) || (time.Since(ts) < -AllowedClockSkew) {
 					clockSkewNodes = append(clockSkewNodes, node.Name)
 				}
 			}
