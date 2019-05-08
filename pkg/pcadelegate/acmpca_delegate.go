@@ -47,10 +47,35 @@ type (
 		// This is in nanoseconds. We will convert nanoseconds in to days since ACMPCA only supports days at the moment.
 		ValidityPeriod time.Duration
 
+		SigAlgorithm SigAlgorithmType
+
 		// Retryer is the implementation of the AWS-GO-SDK retry interface.
 		// This allows us to inject different retry strategies.
 		Retryer ACMPCARetryer
 	}
+
+	// SigAlgorithmType represents the different signature acm signature algorithms
+	SigAlgorithmType string
+)
+
+const (
+	// Sha256withecdsa is a SigAlgorithmType enum value
+	Sha256withecdsa SigAlgorithmType = acmpca.SigningAlgorithmSha256withecdsa
+
+	// Sha384withecdsa is a SigAlgorithmType enum value
+	Sha384withecdsa SigAlgorithmType = acmpca.SigningAlgorithmSha384withecdsa
+
+	// Sha512withecdsa is a SigAlgorithmType enum value
+	Sha512withecdsa SigAlgorithmType = acmpca.SigningAlgorithmSha512withecdsa
+
+	// Sha256withrsa is a SigAlgorithmType enum value
+	Sha256withrsa SigAlgorithmType = acmpca.SigningAlgorithmSha256withrsa
+
+	// Sha384withrsa is a SigAlgorithmType enum value
+	Sha384withrsa SigAlgorithmType = acmpca.SigningAlgorithmSha384withrsa
+
+	// Sha512withrsa is a SigAlgorithmType enum value
+	Sha512withrsa SigAlgorithmType = acmpca.SigningAlgorithmSha512withrsa
 )
 
 // NewCADelegate is a factory method that returns a new ACMPCADelegate.
@@ -198,8 +223,7 @@ func (c ACMPCADelegate) getCertificate(acmClient ACMPCAClient, certificateARN st
 }
 
 func (c ACMPCADelegate) issueCertificate(acmClient ACMPCAClient, csr *x509.CertificateRequest) (*string, error) {
-	// TODO dc Parameterize signingAlgo to an enumeration based on the acmpca const strings
-	signingAlgo := acmpca.SigningAlgorithmSha256withrsa
+	signingAlgo := string(c.SigAlgorithm)
 	validityPeriodType := acmpca.ValidityPeriodTypeDays
 	duration := ConvertNanoSecondsToDays(c.ValidityPeriod)
 	validity := acmpca.Validity{

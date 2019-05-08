@@ -111,6 +111,7 @@ func main() {
 			Region:         region,
 			CaARN:          arn,
 			ValidityPeriod: issuanceLifetime,
+			SigAlgorithm:   pcadelegate.Sha256withrsa,
 			Retryer:        requestRetryer,
 		}
 		ca, err = pcadelegate.NewCADelegate(params)
