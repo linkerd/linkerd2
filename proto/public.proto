@@ -398,7 +398,7 @@ message Edge {
   Resource dst = 2;
   string client_id = 3;
   string server_id = 4;
-  string msg = 5;
+  string no_identity_msg = 5;
 }
 
 message TopRoutesRequest {

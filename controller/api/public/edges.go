@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/prometheus/common/model"
@@ -26,28 +25,14 @@ var formatMsg = map[string]string{
 }
 
 func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.EdgesResponse, error) {
+	log.Debugf("Edges request: %+v", req)
 	if req.GetSelector().GetResource() == nil {
-		log.Debugf("Edges request: %+v", req)
-		return &pb.EdgesResponse{
-			Response: &pb.EdgesResponse_Error{
-				Error: &pb.ResourceError{
-					Resource: req.GetSelector().GetResource(),
-					Error:    "Edges request missing Selector Resource",
-				},
-			},
-		}, nil
+		return edgesError(req, "Edges request missing Selector Resource"), nil
 	}
 
 	edges, err := s.getEdges(ctx, req)
 	if err != nil {
-		return &pb.EdgesResponse{
-			Response: &pb.EdgesResponse_Error{
-				Error: &pb.ResourceError{
-					Resource: req.GetSelector().GetResource(),
-					Error:    err.Error(),
-				},
-			},
-		}, nil
+		return edgesError(req, err.Error()), nil
 	}
 
 	return &pb.EdgesResponse{
@@ -57,6 +42,17 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 			},
 		},
 	}, nil
+}
+
+func edgesError(req *pb.EdgesRequest, message string) *pb.EdgesResponse {
+	return &pb.EdgesResponse{
+		Response: &pb.EdgesResponse_Error{
+			Error: &pb.ResourceError{
+				Resource: req.GetSelector().GetResource(),
+				Error:    message,
+			},
+		},
+	}
 }
 
 func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.Edge, error) {
@@ -90,30 +86,29 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 	edges := []*pb.Edge{}
 	dstIndex := map[model.LabelValue]model.Metric{}
 	srcIndex := map[model.LabelValue][]model.Metric{}
-	keys := map[model.LabelValue]struct{}{}
 	resourceReplacementInbound := resourceType
 	resourceReplacementOutbound := "dst_" + resourceType
 
 	for _, sample := range inbound {
 		// skip any inbound results that do not have a client_id, because this means
-		// the communication was one-sided (i.e. a probe or another instance where the src/dst are not both known)
-		// in future the edges command will support one-sided edges
+		// the communication was one-sided (i.e. a probe or another instance where
+		// the src/dst are not both known) in future the edges command will support
+		// one-sided edges
 		if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
 			key := sample.Metric[model.LabelName(resourceReplacementInbound)]
 			dstIndex[key] = sample.Metric
-			keys[key] = struct{}{}
 		}
 	}
 
 	for _, sample := range outbound {
-		// skip any outbound results that do not have a server_id for same reason as above section
+		// skip any outbound results that do not have a server_id for same reason as
+		// above section
 		if _, ok := sample.Metric[model.LabelName("server_id")]; ok {
 			key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
 			if _, ok := srcIndex[key]; !ok {
 				srcIndex[key] = []model.Metric{}
 			}
 			srcIndex[key] = append(srcIndex[key], sample.Metric)
-			keys[key] = struct{}{}
 		}
 	}
 
@@ -137,9 +132,9 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 					Name: string(dst[model.LabelName(resourceType)]),
 					Type: resourceType,
 				},
-				ClientId: strings.Split(string(dst[model.LabelName("client_id")]), ".")[0],
-				ServerId: strings.Split(string(src[model.LabelName("server_id")]), ".")[0],
-				Msg:      msg,
+				ClientId:      string(dst[model.LabelName("client_id")]),
+				ServerId:      string(src[model.LabelName("server_id")]),
+				NoIdentityMsg: msg,
 			}
 			edges = append(edges, edge)
 		}
