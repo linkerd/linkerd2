@@ -241,6 +241,24 @@ metadata:
   namespace: linkerd
 ---
 ###
+### Control Plane CA Trust
+###
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-ca
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: Opaque
+data:
+  crt.pem: dGVzdCByb290IFBFTQ==
+  key.pem: dGVzdCBwcml2YXRlIGtleSBQRU0=
+---
+###
 ### Proxy Injector RBAC
 ###
 ---
