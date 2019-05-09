@@ -55,6 +55,9 @@ spec:
         ports:
         - name: sp-validator
           containerPort: 8443
+        mountsPaths:
+        - name: tls
+          path: /var/run/linkerd/tls
         livenessProbe:
           httpGet:
             path: /ping
@@ -71,7 +74,7 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
-      - name: config
-        configMap:
-          name: linkerd-config
+      - name: tls
+        secret:
+          secretName: linkerd-sp-validator-tls
 {{end -}}

@@ -40,6 +40,8 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
+        - name: tls
+          mountPath: /var/run/linkerd/tls
         livenessProbe:
           httpGet:
             path: /ping
@@ -59,6 +61,9 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
 ---
 kind: Service
 apiVersion: v1
