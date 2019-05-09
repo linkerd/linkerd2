@@ -516,7 +516,7 @@ func TestEvents(t *testing.T) {
 	}
 	var list corev1.List
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
-		t.Errorf("Error unmarshaling list from 'kubectl get events': %s", err)
+		t.Errorf("Error unmarshaling list from `kubectl get events`: %s", err)
 	}
 
 	if len(list.Items) == 0 {
@@ -527,7 +527,7 @@ func TestEvents(t *testing.T) {
 	for _, i := range list.Items {
 		var e corev1.Event
 		if err := json.Unmarshal(i.Raw, &e); err != nil {
-			t.Errorf("Error unmarshaling list event from 'kubectl get events': %s", err)
+			t.Errorf("Error unmarshaling list event from `kubectl get events`: %s", err)
 		}
 
 		if e.Type == corev1.EventTypeNormal {
