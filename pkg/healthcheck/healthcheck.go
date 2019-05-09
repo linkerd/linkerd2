@@ -110,7 +110,7 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 // clock skew allowance.
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
-const AllowedClockSkew = (60 * time.Second) + tls.DefaultClockSkewAllowance
+const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
 
 var (
 	retryWindow    = 5 * time.Second
@@ -1020,22 +1020,17 @@ func (hc *HealthChecker) checkClockSkew() error {
 	for _, node := range nodeList.Items {
 		for _, condition := range node.Status.Conditions {
 			// we want to check only KubeletReady condition and only execute if the node is ready
-			if condition.Type == "Ready" && condition.Status == "True" {
-				ts := condition.LastHeartbeatTime.Time
-				if (time.Since(ts) > AllowedClockSkew) || (time.Since(ts) < -AllowedClockSkew) {
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				since := time.Since(condition.LastHeartbeatTime.Time)
+				if (since > AllowedClockSkew) || (since < -AllowedClockSkew) {
 					clockSkewNodes = append(clockSkewNodes, node.Name)
 				}
 			}
 		}
 	}
 
-	errMsg := ""
 	if len(clockSkewNodes) > 0 {
-		errMsg = fmt.Sprintf("Clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
-	}
-
-	if errMsg != "" {
-		return fmt.Errorf(errMsg)
+		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
 	}
 
 	return nil
