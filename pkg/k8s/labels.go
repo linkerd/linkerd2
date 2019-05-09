@@ -210,17 +210,11 @@ const (
 	// ProxyInjectorWebhookConfigName is the name of the mutating webhook configuration
 	ProxyInjectorWebhookConfigName = ProxyInjectorWebhookServiceName + "-webhook-config"
 
-	// ProxyInjectorTLSSecretName is the name of the webhook's TLS secret name
-	ProxyInjectorTLSSecretName = ProxyInjectorWebhookServiceName + "-tls"
-
 	// SPValidatorWebhookServiceName is the name of the validating webhook service
 	SPValidatorWebhookServiceName = "linkerd-sp-validator"
 
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
-
-	// SPValidatorTLSSecretName is the name of te webhook's TLS secret name
-	SPValidatorTLSSecretName = SPValidatorWebhookServiceName + "-tls"
 
 	/*
 	 * Mount paths

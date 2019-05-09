@@ -303,15 +303,11 @@ func fetchWebhooksTLS(k kubernetes.Interface, options *upgradeOptions) (map[stri
 	values := map[string]*tlsValues{}
 
 	for _, webhook := range []string{k8s.ProxyInjectorWebhookServiceName, k8s.SPValidatorWebhookServiceName} {
-		secretName, err := webhookSecretName(webhook)
-		if err != nil {
-			return nil, err
-		}
-
 		var value *tlsValues
+
 		secret, err := k.CoreV1().
 			Secrets(controlPlaneNamespace).
-			Get(secretName, metav1.GetOptions{})
+			Get(webhookSecretName(webhook), metav1.GetOptions{})
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
 				return nil, err

@@ -1008,14 +1008,8 @@ func webhookCommonName(webhook string) string {
 	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
 }
 
-func webhookSecretName(webhook string) (string, error) {
-	switch webhook {
-	case k8s.ProxyInjectorWebhookServiceName:
-		return k8s.ProxyInjectorTLSSecretName, nil
-	case k8s.SPValidatorWebhookServiceName:
-		return k8s.SPValidatorTLSSecretName, nil
-	}
-	return "", fmt.Errorf("unknown webhook %s", webhook)
+func webhookSecretName(webhook string) string {
+	return fmt.Sprintf("%s-tls", webhook)
 }
 
 func verifyWebhookTLS(value *tlsValues, webhook string) error {
