@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type deploySpec struct {
@@ -73,6 +75,12 @@ var (
 
 		// prometheus scrape failures of control-plane
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: .*`,
+	}, "|"))
+
+	knownEventWarningsRegex = regexp.MustCompile(strings.Join([]string{
+		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`,
+		`Readiness probe failed: HTTP probe failed with statuscode: 503`,
+		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 	}, "|"))
 
 	injectionCases = []struct {
@@ -473,7 +481,7 @@ func TestLogs(t *testing.T) {
 				}
 				defer outputStream.Stop()
 				// Ignore the error returned, since ReadUntil will return an error if it
-				// does not return 10,000 after 1 second. We don't need 10,000 log lines.
+				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
 				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
 				if len(outputLines) == 0 {
 					t.Errorf("No logs found for %s", name)
@@ -483,10 +491,10 @@ func TestLogs(t *testing.T) {
 					if errRegex.MatchString(line) {
 						if knownErrorsRegex.MatchString(line) {
 							// report all known logging errors in the output
-							t.Skipf("Found known error in %s log: %s", name, line)
+							t.Logf("Found known error in %s log: %s", name, line)
 						} else {
 							if proxy {
-								t.Skipf("Found unexpected proxy error in %s log: %s", name, line)
+								t.Logf("Found unexpected proxy error in %s log: %s", name, line)
 							} else {
 								t.Errorf("Found unexpected controller error in %s log: %s", name, line)
 							}
@@ -495,6 +503,47 @@ func TestLogs(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestEvents(t *testing.T) {
+	out, err := TestHelper.Kubectl("",
+		"--namespace", TestHelper.GetLinkerdNamespace(),
+		"get", "events", "-ojson",
+	)
+	if err != nil {
+		t.Errorf("kubectl get events command failed with %s\n%s", err, out)
+	}
+	var list corev1.List
+	if err := json.Unmarshal([]byte(out), &list); err != nil {
+		t.Errorf("Error unmarshaling list from 'kubectl get events': %s", err)
+	}
+
+	if len(list.Items) == 0 {
+		t.Error("No events found")
+	}
+
+	var unknownEvents []string
+	for _, i := range list.Items {
+		var e corev1.Event
+		if err := json.Unmarshal(i.Raw, &e); err != nil {
+			t.Errorf("Error unmarshaling list event from 'kubectl get events': %s", err)
+		}
+
+		if e.Type == "Normal" {
+			continue
+		}
+
+		evtStr := fmt.Sprintf("%s %s %s", e.Reason, e.InvolvedObject.Name, e.Message)
+		if knownEventWarningsRegex.MatchString(e.Message) {
+			t.Logf("Found known warning event: %s", evtStr)
+		} else {
+			unknownEvents = append(unknownEvents, evtStr)
+		}
+	}
+
+	if len(unknownEvents) > 0 {
+		t.Errorf("Found unexpected warning events:\n%s", strings.Join(unknownEvents, "\n"))
 	}
 }
 
