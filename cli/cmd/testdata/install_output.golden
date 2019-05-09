@@ -282,6 +282,38 @@ metadata:
   name: linkerd-proxy-injector
   namespace: Namespace
 ---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-proxy-injector-tls
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: proxy-injector
+  annotations:
+    CreatedByAnnotation: CliVersion
+type: Opaque
+data:
+  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
+  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-Namespace-proxy-injector-webhook-config
+webhooks:
+- name: linkerd-proxy-injector.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: Namespace
+      path: "/"
+    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+---
 ###
 ### Service Profile Validator RBAC
 ###
@@ -318,6 +350,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: Namespace
 ---
+<<<<<<< HEAD
 ###
 ### Tap RBAC
 ###
@@ -355,6 +388,39 @@ apiVersion: v1
 metadata:
   name: linkerd-tap
   namespace: Namespace
+=======
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator-tls
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: sp-validator
+  annotations:
+    CreatedByAnnotation: CliVersion
+type: Opaque
+data:
+  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-Namespace-sp-validator-webhook-config
+webhooks:
+- name: linkerd-sp-validator.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-sp-validator
+      namespace: Namespace
+      path: "/"
+    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serviceprofiles"]
+>>>>>>> Fix install unit tests
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1456,7 +1522,6 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -1480,6 +1545,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/tls
+          name: tls
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1564,6 +1631,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
 status: {}
 ---
 kind: Service
@@ -1638,7 +1708,6 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
@@ -1659,6 +1728,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1740,9 +1812,9 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-sp-validator
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
+      - name: tls
+        secret:
+          secretName: linkerd-sp-validator-tls
 status: {}
 ---
 ###

@@ -1273,7 +1273,6 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -1297,6 +1296,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/tls
+          name: tls
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1414,6 +1415,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1490,7 +1494,6 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -1511,6 +1514,9 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1625,9 +1631,9 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-sp-validator
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
+      - name: tls
+        secret:
+          secretName: linkerd-sp-validator-tls
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
