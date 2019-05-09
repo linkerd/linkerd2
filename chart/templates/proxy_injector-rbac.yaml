@@ -59,7 +59,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector-webhook-config
+  name: linkerd-proxy-injector-webhook-config
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   clientConfig:
