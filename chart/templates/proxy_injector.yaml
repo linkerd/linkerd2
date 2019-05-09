@@ -32,7 +32,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-injector"
-        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         ports:
         - name: proxy-injector

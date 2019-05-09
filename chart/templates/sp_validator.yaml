@@ -50,7 +50,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "sp-validator"
-        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         ports:
         - name: sp-validator

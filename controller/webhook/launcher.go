@@ -18,11 +18,10 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc) {
+func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc) {
 	metricsAddr := flag.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
-	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -38,16 +37,6 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 	if err != nil {
 		log.Fatalf("failed to read TLS secrets: %s", err)
 	}
-
-	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()
-	config.controllerNamespace = *controllerNamespace
-	//config.rootCA = rootCA
-
-	selfLink, err := config.Create()
-	if err != nil {
-		log.Fatalf("failed to create the webhook configurations resource: %s", err)
-	}
-	log.Infof("created webhook configuration: %s", selfLink)
 
 	s, err := NewServer(k8sAPI, *addr, cred, handler)
 	if err != nil {
