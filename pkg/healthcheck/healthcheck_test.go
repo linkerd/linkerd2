@@ -355,7 +355,7 @@ status:
     status: "True"
     type: Ready`,
 			},
-			fmt.Errorf("Clock skew detected for node(s): test-node"),
+			fmt.Errorf("clock skew detected for node(s): test-node"),
 		},
 	}
 
