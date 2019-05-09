@@ -55,9 +55,9 @@ spec:
         ports:
         - name: sp-validator
           containerPort: 8443
-        mountsPaths:
+        volumeMounts:
         - name: tls
-          path: /var/run/linkerd/tls
+          mountPath: /var/run/linkerd/tls
         livenessProbe:
           httpGet:
             path: /ping

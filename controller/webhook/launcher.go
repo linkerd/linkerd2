@@ -12,12 +12,13 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, serviceName string, handler handlerFunc) {
+func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc) {
 	metricsAddr := flag.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := flag.String("addr", ":8443", "address to serve on")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
@@ -33,14 +34,14 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	rootCA, err := tls.GenerateRootCAWithDefaults(serviceName)
+	cred, err := tls.ReadPEMCreds(pkgk8s.MountPathTLSKeyPEM, pkgk8s.MountPathTLSCrtPEM)
 	if err != nil {
-		log.Fatalf("failed to create root CA: %s", err)
+		log.Fatalf("failed to read TLS secrets: %s", err)
 	}
 
 	config.client = k8sAPI.Client.AdmissionregistrationV1beta1()
 	config.controllerNamespace = *controllerNamespace
-	config.rootCA = rootCA
+	//config.rootCA = rootCA
 
 	selfLink, err := config.Create()
 	if err != nil {
@@ -48,7 +49,7 @@ func Launch(config *Config, APIResources []k8s.APIResource, metricsPort uint32, 
 	}
 	log.Infof("created webhook configuration: %s", selfLink)
 
-	s, err := NewServer(k8sAPI, *addr, serviceName, *controllerNamespace, rootCA, handler)
+	s, err := NewServer(k8sAPI, *addr, cred, handler)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

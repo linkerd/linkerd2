@@ -5,7 +5,6 @@ import (
 	injector "github.com/linkerd/linkerd2/controller/proxy-injector"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/tmpl"
 	"github.com/linkerd/linkerd2/controller/webhook"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func main() {
@@ -17,7 +16,6 @@ func main() {
 		config,
 		[]k8s.APIResource{k8s.NS, k8s.RS},
 		9995,
-		pkgK8s.ProxyInjectorWebhookServiceName,
 		injector.Inject,
 	)
 }
