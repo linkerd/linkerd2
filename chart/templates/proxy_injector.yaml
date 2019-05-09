@@ -41,6 +41,7 @@ spec:
           mountPath: /var/run/linkerd/config
         - name: tls
           mountPath: /var/run/linkerd/tls
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /ping
