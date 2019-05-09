@@ -112,6 +112,23 @@ func TestCliTap(t *testing.T) {
 		}
 	})
 
+	t.Run("tap a disabled deployment", func(t *testing.T) {
+		out, stderr, err := TestHelper.LinkerdRun("tap", "deploy/t4", "--namespace", prefixedNs)
+		if out != "" {
+			t.Fatalf("Unexpected output: %s", out)
+		}
+		if err == nil {
+			t.Fatal("Expected an error, got none")
+		}
+		if stderr == "" {
+			t.Fatal("Expected an error, got none")
+		}
+		expectedErr := "Error: no pods found for deployment/t4"
+		if errs := strings.Split(stderr, "\n"); errs[0] != expectedErr {
+			t.Fatalf("Expected [%s], got: %s", expectedErr, errs[0])
+		}
+	})
+
 	t.Run("tap a service call", func(t *testing.T) {
 		events, err := tap("deploy/gateway", "--to", "svc/t2-svc", "--namespace", prefixedNs)
 		if err != nil {

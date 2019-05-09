@@ -147,6 +147,39 @@ status:
 				},
 			},
 			{
+				msg: "rpc error: code = NotFound desc = no pods found for pod/emojivoto-meshed-tap-disabled",
+				k8sRes: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-tap-disabled
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: controller-ns
+  annotations:
+    config.linkerd.io/disable-tap: "true"
+    linkerd.io/proxy-version: testinjectversion
+status:
+  phase: Running
+`,
+				},
+				req: public.TapByResourceRequest{
+					Target: &public.ResourceSelection{
+						Resource: &public.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+							Name:      "emojivoto-meshed-tap-disabled",
+						},
+					},
+					Match: &public.TapByResourceRequest_Match{
+						Match: &public.TapByResourceRequest_Match_All{
+							All: &public.TapByResourceRequest_Match_Seq{},
+						},
+					},
+				},
+			},
+			{
 				// indicates we will accept EOF, in addition to the deadline exceeded message
 				eofOk: true,
 				// success, underlying tap events tested in http_server_test.go

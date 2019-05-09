@@ -104,6 +104,10 @@ sub-folders, or coming from stdin.`,
 		"Disables resources from participating in TLS identity",
 	)
 	flags.BoolVar(
+		&options.disableTap, "disable-tap", options.disableTap,
+		"Disables resources from from being tapped",
+	)
+	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
 	)
@@ -379,6 +383,10 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.disableIdentity {
 		configs.Global.IdentityContext = nil
 		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = "true"
+	}
+
+	if options.disableTap {
+		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = "true"
 	}
 
 	// keep track of this option because its true/false value results in different

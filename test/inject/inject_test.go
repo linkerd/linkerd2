@@ -55,6 +55,7 @@ func TestInjectParams(t *testing.T) {
 		"--manual",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
+		"--disable-tap",
 		"--ignore-cluster",
 		"--proxy-version=proxy-version",
 		"--proxy-image=proxy-image",

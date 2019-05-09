@@ -68,7 +68,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		}
 
 		for _, pod := range podsFor {
-			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
+			if pkgK8s.IsMeshed(pod, s.controllerNamespace) && !pkgK8s.IsTapDisabled(pod) {
 				pods = append(pods, pod)
 			}
 		}
