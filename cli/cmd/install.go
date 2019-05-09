@@ -130,8 +130,8 @@ type (
 		recordedFlags []*pb.Install_Flag
 
 		// function pointers that can be overridden for tests
-		generateUUID func() string
-		generateTLS  func(commonName string) (*tlsValues, error)
+		generateUUID       func() string
+		generateWebhookTLS func(webhook string) (*tlsValues, error)
 	}
 
 	installIdentityOptions struct {
@@ -204,8 +204,8 @@ func newInstallOptionsWithDefaults() *installOptions {
 			return id.String()
 		},
 
-		generateTLS: func(commonName string) (*tlsValues, error) {
-			root, err := tls.GenerateRootCAWithDefaults(commonName)
+		generateWebhookTLS: func(webhook string) (*tlsValues, error) {
+			root, err := tls.GenerateRootCAWithDefaults(webhookCommonName(webhook))
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
 			}
@@ -366,13 +366,13 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	}
 	values.Identity = identityValues
 
-	proxyInjectorTLS, err := options.generateTLS(webhookCommonName(k8s.ProxyInjectorWebhookServiceName))
+	proxyInjectorTLS, err := options.generateWebhookTLS(k8s.ProxyInjectorWebhookServiceName)
 	if err != nil {
 		return nil, nil, err
 	}
 	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
 
-	profileValidatorTLS, err := options.generateTLS(webhookCommonName(k8s.SPValidatorWebhookServiceName))
+	profileValidatorTLS, err := options.generateWebhookTLS(k8s.SPValidatorWebhookServiceName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1006,4 +1006,27 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 
 func webhookCommonName(webhook string) string {
 	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
+}
+
+func webhookSecretName(webhook string) (string, error) {
+	switch webhook {
+	case k8s.ProxyInjectorWebhookServiceName:
+		return k8s.ProxyInjectorTLSSecretName, nil
+	case k8s.SPValidatorWebhookServiceName:
+		return k8s.SPValidatorTLSSecretName, nil
+	}
+	return "", fmt.Errorf("unknown webhook %s", webhook)
+}
+
+func verifyWebhookTLS(value *tlsValues, webhook string) error {
+	crt, err := tls.DecodePEMCrt(value.CrtPEM)
+	if err != nil {
+		return err
+	}
+	roots := crt.CertPool()
+	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
+		return err
+	}
+
+	return nil
 }

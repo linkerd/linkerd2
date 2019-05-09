@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -27,12 +28,15 @@ const (
 type upgradeOptions struct {
 	manifests string
 	*installOptions
+
+	verifyTLS func(tls *tlsValues, service string) error
 }
 
 func newUpgradeOptionsWithDefaults() *upgradeOptions {
 	return &upgradeOptions{
 		manifests:      "",
 		installOptions: newInstallOptionsWithDefaults(),
+		verifyTLS:      verifyWebhookTLS,
 	}
 }
 
@@ -236,6 +240,20 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+
+	// if exist, re-use the proxy injector and profile validator TLS secrets,
+	// otherwise, generate new ones.
+	webhooksTLS, err := fetchWebhooksTLS(k, options)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch existing CA Trust: %s", err)
+	}
+	values.ProxyInjector = &proxyInjectorValues{
+		webhooksTLS[k8s.ProxyInjectorWebhookServiceName],
+	}
+	values.ProfileValidator = &profileValidatorValues{
+		webhooksTLS[k8s.SPValidatorWebhookServiceName],
+	}
+
 	values.stage = stage
 
 	return values, configs, nil
@@ -279,6 +297,45 @@ func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
 	}
 
 	return config.FromConfigMap(configMap.Data)
+}
+
+func fetchWebhooksTLS(k kubernetes.Interface, options *upgradeOptions) (map[string]*tlsValues, error) {
+	values := map[string]*tlsValues{}
+
+	for _, webhook := range []string{k8s.ProxyInjectorWebhookServiceName, k8s.SPValidatorWebhookServiceName} {
+		secretName, err := webhookSecretName(webhook)
+		if err != nil {
+			return nil, err
+		}
+
+		var value *tlsValues
+		secret, err := k.CoreV1().
+			Secrets(controlPlaneNamespace).
+			Get(secretName, metav1.GetOptions{})
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				return nil, err
+			}
+
+			value, err = options.generateWebhookTLS(webhook)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			value = &tlsValues{
+				KeyPEM: string(secret.Data["key.pem"]),
+				CrtPEM: string(secret.Data["crt.pem"]),
+			}
+		}
+
+		if err := options.verifyTLS(value, webhook); err != nil {
+			return nil, err
+		}
+
+		values[webhook] = value
+	}
+
+	return values, nil
 }
 
 // fetchIdentityValue checks the kubernetes API to fetch an existing
