@@ -79,7 +79,7 @@ var (
 
 	knownEventWarningsRegex = regexp.MustCompile(strings.Join([]string{
 		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`,
-		`Readiness probe failed: HTTP probe failed with statuscode: 503`,
+		`Readiness probe failed: HTTP probe failed with statuscode: 50(2|3)`,
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 	}, "|"))
 
