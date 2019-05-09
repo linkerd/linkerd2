@@ -530,7 +530,7 @@ func TestEvents(t *testing.T) {
 			t.Errorf("Error unmarshaling list event from 'kubectl get events': %s", err)
 		}
 
-		if e.Type == "Normal" {
+		if e.Type == corev1.EventTypeNormal {
 			continue
 		}
 
