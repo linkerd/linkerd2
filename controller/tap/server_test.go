@@ -147,7 +147,7 @@ status:
 				},
 			},
 			{
-				msg: "rpc error: code = NotFound desc = no pods found for pod/emojivoto-meshed-tap-disabled",
+				msg: "rpc error: code = NotFound desc = all pods found for pod/emojivoto-meshed-tap-disabled have tapping disabled",
 				k8sRes: []string{`
 apiVersion: v1
 kind: Pod

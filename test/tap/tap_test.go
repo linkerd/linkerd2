@@ -123,7 +123,7 @@ func TestCliTap(t *testing.T) {
 		if stderr == "" {
 			t.Fatal("Expected an error, got none")
 		}
-		expectedErr := "Error: no pods found for deployment/t4"
+		expectedErr := "Error: all pods found for deployment/t4 have tapping disabled"
 		if errs := strings.Split(stderr, "\n"); errs[0] != expectedErr {
 			t.Fatalf("Expected [%s], got: %s", expectedErr, errs[0])
 		}

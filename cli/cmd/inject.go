@@ -103,10 +103,14 @@ sub-folders, or coming from stdin.`,
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
 	)
+
 	flags.BoolVar(
 		&options.disableTap, "disable-tap", options.disableTap,
 		"Disables resources from from being tapped",
 	)
+	// hidden till support on the proxy-side (#2811) lands
+	flags.MarkHidden("disable-tap")
+
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",

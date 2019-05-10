@@ -61,6 +61,7 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	pods := []*corev1.Pod{}
+	foundDisabledPods := false
 	for _, object := range objects {
 		podsFor, err := s.k8sAPI.GetPodsFor(object, false)
 		if err != nil {
@@ -68,15 +69,24 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		}
 
 		for _, pod := range podsFor {
-			if pkgK8s.IsMeshed(pod, s.controllerNamespace) && !pkgK8s.IsTapDisabled(pod) {
-				pods = append(pods, pod)
+			if pkgK8s.IsMeshed(pod, s.controllerNamespace) {
+				if pkgK8s.IsTapDisabled(pod) {
+					foundDisabledPods = true
+				} else {
+					pods = append(pods, pod)
+				}
 			}
 		}
 	}
 
 	if len(pods) == 0 {
-		return status.Errorf(codes.NotFound, "no pods found for %s/%s",
-			req.GetTarget().GetResource().GetType(), req.GetTarget().GetResource().GetName())
+		resType := req.GetTarget().GetResource().GetType()
+		resName := req.GetTarget().GetResource().GetName()
+		if foundDisabledPods {
+			return status.Errorf(codes.NotFound,
+				"all pods found for %s/%s have tapping disabled", resType, resName)
+		}
+		return status.Errorf(codes.NotFound, "no pods found for %s/%s", resType, resName)
 	}
 
 	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
