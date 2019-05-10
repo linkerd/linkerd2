@@ -46,7 +46,6 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
-	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 
 	return flags
 }
@@ -56,6 +55,7 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return flags
@@ -321,7 +321,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 
 	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
 	if err == nil {
-		fmt.Fprint(wout, string(resultJSON))
+		fmt.Fprintf(wout, "%s\n", string(resultJSON))
 	} else {
 		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
 	}
