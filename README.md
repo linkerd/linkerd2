@@ -12,7 +12,7 @@ reliability, and security without requiring configuration or code changes.
 
 Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
-## Repo layout
+## Repo layout - lowkey change
 
 This is the primary repo for the Linkerd 2.x line of development.
 
