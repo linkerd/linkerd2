@@ -10,7 +10,7 @@
   * Added a dispatch timeout that bounds the amount of time a request can be
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
-    to the Destination service
+    queries to the Destination service
 * Internal
   * Fixed potentially flaky assertions in the service profile integration tests
   * Fixed the `docker-build-proxy` script not building the `go-deps` image
