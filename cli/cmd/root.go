@@ -195,6 +195,7 @@ type proxyConfigOptions struct {
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool
+	disableTap      bool
 }
 
 func (options *proxyConfigOptions) validate() error {

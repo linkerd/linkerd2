@@ -63,6 +63,8 @@ const (
 
 	identityAPIPort = 8080
 
+	envTapDisabled = "LINKERD2_PROXY_TAP_DISABLED"
+
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
@@ -514,6 +516,15 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
+	if conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapDisabled,
+				Value: "true",
+			},
+		)
+	}
+
 	if saVolumeMount != nil {
 		sidecar.VolumeMounts = []corev1.VolumeMount{*saVolumeMount}
 	}
@@ -772,6 +783,16 @@ func (conf *ResourceConfig) identityContext() *config.IdentityContext {
 	}
 
 	return conf.configs.GetGlobal().GetIdentityContext()
+}
+
+func (conf *ResourceConfig) tapDisabled() bool {
+	if override := conf.getOverride(k8s.ProxyDisableTapAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		if err == nil && value {
+			return true
+		}
+	}
+	return false
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() corev1.ResourceRequirements {
