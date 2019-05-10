@@ -11,13 +11,9 @@
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
     queries to the Destination service
-* Internal
-  * Fixed potential for spurious failures in the service profile integration
-    tests
-  * Fixed the `docker-build-proxy` script not building the `go-deps` image
-  * Added a proxy integration test asserting that TLS connections are refused
-    when the proxy's identity has not yet been certified by the control plane
-    (thanks @zaharidichev!)
+
+Special thanks to @zaharidichev for adding end to end tests for proxies with
+TLS!
 
 ## edge-19.5.1
 
