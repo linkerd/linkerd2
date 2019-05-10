@@ -7,12 +7,13 @@
   * Fixed control plane components failing on startup when the Kubernetes API
     returns an `ErrGroupDiscoveryFailed`
 * Proxy
-  * Added a dispatch timeout that bounds the amount of time a request can be
+  * Added a dispatch timeout that limits the amount of time a request can be
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
     queries to the Destination service
 * Internal
-  * Fixed potentially flaky assertions in the service profile integration tests
+  * Fixed potential for spurious failures in the service profile integration
+    tests
   * Fixed the `docker-build-proxy` script not building the `go-deps` image
   * Added a proxy integration test asserting that TLS connections are refused
     when the proxy's identity has not yet been certified by the control plane
