@@ -47,6 +47,7 @@ type (
 		// This is in nanoseconds. We will convert nanoseconds in to days since ACMPCA only supports days at the moment.
 		ValidityPeriod time.Duration
 
+		// SigAlgorithm describes which Signature Algorithm to use when requesting a certficate
 		SigAlgorithm SigAlgorithmType
 
 		// Retryer is the implementation of the AWS-GO-SDK retry interface.
