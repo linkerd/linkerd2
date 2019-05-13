@@ -16,6 +16,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type edgesOptions struct {
+	namespace    string
+	outputFormat string
+}
+
+func newEdgesOptions() *edgesOptions {
+	return &edgesOptions{
+		namespace:    "",
+		outputFormat: tableOutput,
+	}
+}
+
 type indexedEdgeResults struct {
 	ix   int
 	rows []*pb.Edge
@@ -23,12 +35,12 @@ type indexedEdgeResults struct {
 }
 
 func newCmdEdges() *cobra.Command {
-	options := newStatOptions()
+	options := newEdgesOptions()
 
 	cmd := &cobra.Command{
 		Use:   "edges [flags] (RESOURCETYPE)",
-		Short: "Display connections between resources, and the identity of their associated Linkerd proxies (if known)",
-		Long: `Display connections between resources, and the identity of their associated Linkerd proxies (if known).
+		Short: "Display connections between resources, and Linkerd proxy identities",
+		Long: `Display connections between resources, and Linkerd proxy identities.
 
   The RESOURCETYPE argument specifies the type of resource to display edges within. A namespace must be specified.
 
@@ -36,9 +48,9 @@ func newCmdEdges() *cobra.Command {
   * deploy
   * ds
   * job
-	* po
-	* rc
-	* sts
+  * po
+  * rc
+  * sts
 
   Valid resource types include:
   * daemonsets
@@ -46,17 +58,15 @@ func newCmdEdges() *cobra.Command {
   * jobs
   * pods
   * replicationcontrollers
-  * statefulsets
-
-If no resource name is specified, displays edges within all resources of the specified RESOURCETYPE`,
+  * statefulsets`,
 		Example: `  # Get all edges between pods in the test namespace.
-  linkerd edges deploy -n test`,
-		Args:      cobra.MinimumNArgs(1),
+  linkerd edges po -n test`,
+		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqs, err := buildEdgesRequests(args, options)
 			if err != nil {
-				return fmt.Errorf("error creating metrics request while making edges request: %v", err)
+				return fmt.Errorf("error creating edges request: %s", err)
 			}
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
@@ -66,12 +76,7 @@ If no resource name is specified, displays edges within all resources of the spe
 			for num, req := range reqs {
 				go func(num int, req *pb.EdgesRequest) {
 					resp, err := requestEdgesFromAPI(client, req)
-					if err != nil {
-						fmt.Println(err)
-					}
-
 					rows := edgesRespToRows(resp)
-
 					c <- indexedEdgeResults{num, rows, err}
 				}(num, req)
 			}
@@ -100,17 +105,30 @@ If no resource name is specified, displays edges within all resources of the spe
 	return cmd
 }
 
-func buildEdgesRequests(resources []string, options *statOptions) ([]*pb.EdgesRequest, error) {
+func validateEdgesOutputFormat(options *edgesOptions) error {
+	switch options.outputFormat {
+	case tableOutput, jsonOutput:
+		return nil
+	default:
+		return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
+	}
+}
+
+func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesRequest, error) {
 	targets, err := util.BuildResources(options.namespace, resources)
+
+	if err != nil {
+		return nil, err
+	}
+	err = validateEdgesOutputFormat(options)
 	if err != nil {
 		return nil, err
 	}
 
 	requests := make([]*pb.EdgesRequest, 0)
 	for _, target := range targets {
-		err = options.validate(target.Type)
-		if err != nil {
-			return nil, err
+		if target.Name != "" {
+			target.Name = "" // validating that no resource name is specified in the request
 		}
 
 		requestParams := util.EdgesRequestParams{
@@ -148,13 +166,13 @@ func requestEdgesFromAPI(client pb.ApiClient, req *pb.EdgesRequest) (*pb.EdgesRe
 	return resp, nil
 }
 
-func renderEdgeStats(rows []*pb.Edge, options *statOptions) string {
+func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 	var buffer bytes.Buffer
 	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 	writeEdgesToBuffer(rows, w, options)
 	w.Flush()
 
-	return renderEdges(buffer, &options.statOptionsBase)
+	return renderEdges(buffer, options)
 }
 
 type edgeRowStats struct {
@@ -165,15 +183,25 @@ type edgeRowStats struct {
 	msg    string
 }
 
-func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *statOptions) {
+func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOptions) {
 	edgeTables := make(map[string]*edgeRowStats)
 	if len(rows) != 0 {
 		for _, r := range rows {
 			key := string(r.Dst.Name + r.Src.Name)
+			clientID := r.ClientId
+			serverID := r.ServerId
+			if len(clientID) > 0 {
+				parts := strings.Split(clientID, ".")
+				clientID = parts[0] + "." + parts[1]
+			}
+			if len(serverID) > 0 {
+				parts := strings.Split(serverID, ".")
+				serverID = parts[0] + "." + parts[1]
+			}
 
 			edgeTables[key] = &edgeRowStats{
-				client: r.ClientId,
-				server: r.ServerId,
+				client: clientID,
+				server: serverID,
 				msg:    r.NoIdentityMsg,
 				src:    r.Src.Name,
 				dst:    r.Dst.Name,
@@ -243,7 +271,7 @@ func printSingleEdgeTable(edges map[string]*edgeRowStats, w *tabwriter.Writer) {
 	}
 }
 
-func renderEdges(buffer bytes.Buffer, options *statOptionsBase) string {
+func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 	var out string
 	switch options.outputFormat {
 	case jsonOutput:
