@@ -14,6 +14,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -102,6 +103,14 @@ const (
 // point to. Each check adds its own `hintAnchor` to specify a location on the
 // page.
 const HintBaseURL = "https://linkerd.io/checks/#"
+
+// AllowedClockSkew sets the allowed skew in clock synchronization
+// between the system running inject command and the node(s), being
+// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// clock skew allowance.
+//
+// TODO: Make this default value overridiable, e.g. by CLI flag
+const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
 
 var (
 	retryWindow    = 5 * time.Second
@@ -324,6 +333,13 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")
+					},
+				},
+				{
+					description: "no clock skew detected",
+					hintAnchor:  "pre-k8s-clock-skew",
+					check: func(context.Context) error {
+						return hc.checkClockSkew()
 					},
 				},
 			},
@@ -986,6 +1002,38 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	}
 
 	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN", len(pspList.Items))
+}
+
+func (hc *HealthChecker) checkClockSkew() error {
+	if hc.kubeAPI == nil {
+		// we should never get here
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+	}
+
+	var clockSkewNodes []string
+
+	nodeList, err := hc.kubeAPI.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, node := range nodeList.Items {
+		for _, condition := range node.Status.Conditions {
+			// we want to check only KubeletReady condition and only execute if the node is ready
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				since := time.Since(condition.LastHeartbeatTime.Time)
+				if (since > AllowedClockSkew) || (since < -AllowedClockSkew) {
+					clockSkewNodes = append(clockSkewNodes, node.Name)
+				}
+			}
+		}
+	}
+
+	if len(clockSkewNodes) > 0 {
+		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
+	}
+
+	return nil
 }
 
 func (hc *HealthChecker) validateServiceProfiles() error {

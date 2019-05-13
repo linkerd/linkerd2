@@ -335,6 +335,57 @@ func TestCheckCanCreate(t *testing.T) {
 	}
 }
 
+func TestCheckClockSkew(t *testing.T) {
+	tests := []struct {
+		k8sConfigs []string
+		err        error
+	}{
+		{
+			[]string{},
+			nil,
+		},
+		{
+			[]string{`apiVersion: v1
+kind: Node
+metadata:
+  name: test-node
+status:
+  conditions:
+  - lastHeartbeatTime: "2000-01-01T01:00:00Z"
+    status: "True"
+    type: Ready`,
+			},
+			fmt.Errorf("clock skew detected for node(s): test-node"),
+		},
+	}
+
+	for i, test := range tests {
+		test := test // pin
+		t.Run(fmt.Sprintf("%d: returns expected clock skew check result", i), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(test.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			err = hc.checkClockSkew()
+			if err != nil || test.err != nil {
+				if (err == nil && test.err != nil) ||
+					(err != nil && test.err == nil) ||
+					(err.Error() != test.err.Error()) {
+					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
+				}
+			}
+		})
+	}
+
+}
+
 func TestCheckNetAdmin(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
