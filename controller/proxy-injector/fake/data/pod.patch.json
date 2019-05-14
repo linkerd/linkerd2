@@ -153,7 +153,8 @@
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
         "runAsUser": 2102,
-        "allowPrivilegeEscalation": true
+        "allowPrivilegeEscalation": true,
+        "readOnlyRootFilesystem": false
       }
     }
   }

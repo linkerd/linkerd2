@@ -616,6 +616,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -877,6 +878,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1086,6 +1088,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1385,6 +1388,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1647,6 +1651,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1846,6 +1851,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -2073,6 +2079,7 @@ spec:
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
