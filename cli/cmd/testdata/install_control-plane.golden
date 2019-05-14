@@ -184,6 +184,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -435,6 +436,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -637,6 +639,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -929,6 +932,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1184,6 +1188,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1376,6 +1381,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1596,6 +1602,7 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

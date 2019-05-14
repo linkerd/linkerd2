@@ -615,6 +615,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -875,6 +876,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1083,6 +1085,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1381,6 +1384,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1642,6 +1646,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1840,6 +1845,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -2066,6 +2072,7 @@ spec:
             cpu: 400m
             memory: 300Mi
         securityContext:
+          allowPrivilegeEscalation: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
