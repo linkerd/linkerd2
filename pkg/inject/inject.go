@@ -423,8 +423,14 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	saVolumeMount := conf.serviceAccountVolumeMount()
 	cniEnabled := conf.configs.GetGlobal().GetCniEnabled()
 	allowPrivilegeEscalation := !cniEnabled
+	readOnlyRootFilesystem := cniEnabled
+	var capabilities *corev1.Capabilities = nil
 	if !cniEnabled {
 		conf.injectProxyInit(patch, saVolumeMount)
+	} else {
+		capabilities = &corev1.Capabilities{
+			Drop: []corev1.Capability{corev1.Capability("ALL")},
+		}
 	}
 
 	if conf.debugSidecar != nil {
@@ -440,6 +446,8 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser:                &proxyUID,
 			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
+			Capabilities:             capabilities,
 		},
 		Ports: []corev1.ContainerPort{
 			{
