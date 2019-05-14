@@ -421,7 +421,9 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	saVolumeMount := conf.serviceAccountVolumeMount()
-	if !conf.configs.GetGlobal().GetCniEnabled() {
+	cniEnabled := conf.configs.GetGlobal().GetCniEnabled()
+	allowPrivilegeEscalation := !cniEnabled
+	if !cniEnabled {
 		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
@@ -435,7 +437,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		Image:                    conf.taggedProxyImage(),
 		ImagePullPolicy:          conf.proxyImagePullPolicy(),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		SecurityContext:          &corev1.SecurityContext{RunAsUser: &proxyUID},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser:                &proxyUID,
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+		},
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          k8s.ProxyPortName,

@@ -104,6 +104,7 @@ spec:
         cpu: 110m
         memory: 100Mi
     securityContext:
+      allowPrivilegeEscalation: true
       runAsUser: 2102
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:

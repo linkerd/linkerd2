@@ -152,7 +152,8 @@
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
-        "runAsUser": 2102
+        "runAsUser": 2102,
+        "allowPrivilegeEscalation": true
       }
     }
   }
