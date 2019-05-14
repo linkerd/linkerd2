@@ -424,7 +424,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	cniEnabled := conf.configs.GetGlobal().GetCniEnabled()
 	allowPrivilegeEscalation := !cniEnabled
 	readOnlyRootFilesystem := cniEnabled
-	var capabilities *corev1.Capabilities = nil
+	var capabilities *corev1.Capabilities
 	if !cniEnabled {
 		conf.injectProxyInit(patch, saVolumeMount)
 	} else {
