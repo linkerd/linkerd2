@@ -132,7 +132,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:stable-2.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -290,7 +290,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:stable-2.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

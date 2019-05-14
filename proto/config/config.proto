@@ -43,6 +43,8 @@ message Proxy {
   bool disable_external_profiles = 12;
 
   string proxy_version = 13;
+
+  string proxy_init_image_version = 14;
 }
 
 message Image {

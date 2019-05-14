@@ -11,6 +11,7 @@ import (
 //
 // DO NOT EDIT
 var Version = undefinedVersion
+var ProxyInitVersion = "stable-2.3.0"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to

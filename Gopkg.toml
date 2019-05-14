@@ -12,6 +12,10 @@ required = [
   version = "v0.1.7"
 
 [[constraint]]
+  name = "github.com/linkerd/linkerd2-proxy-init"
+  version = "stable-2.3.0"
+
+[[constraint]]
   name = "google.golang.org/grpc"
   version = "1.7.0"
 
