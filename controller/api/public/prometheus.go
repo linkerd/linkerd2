@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
+	"strings"
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -114,6 +116,20 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	}
 
 	return set
+}
+
+// insert a not-nil check into a LabelSet to verify that data for a specified
+// label name exists. due to the `!=` this must be inserted as a string. the
+// structure of this code is taken from the Prometheus labelset.go library.
+func customToString(l model.LabelSet, labelName string) string {
+	lstrs := make([]string, 0, len(l))
+	for l, v := range l {
+		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
+	}
+	lstrs = append(lstrs, fmt.Sprintf(`%s!=""`, labelName))
+
+	sort.Strings(lstrs)
+	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
 }
 
 // determine if we should add "namespace=<namespace>" to a named query
