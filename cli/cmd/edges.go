@@ -118,8 +118,6 @@ func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) er
 			return fmt.Errorf("Resource type is not supported: %s", target.Type)
 		case "all":
 			return fmt.Errorf("Resource type is not supported: %s", target.Type)
-		default:
-			return nil
 		}
 	}
 
