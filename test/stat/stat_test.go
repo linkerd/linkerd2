@@ -78,23 +78,24 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				"linkerd-prometheus":     "1/1",
 				"linkerd-proxy-injector": "1/1",
 				"linkerd-sp-validator":   "1/1",
+				"linkerd-tap":            "1/1",
 				"linkerd-web":            "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
+			args: []string{"stat", fmt.Sprintf("po/%s", prometheusPod), "-n", TestHelper.GetLinkerdNamespace(), "--from", fmt.Sprintf("po/%s", controllerPod)},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
 			expectedRows: map[string]string{
 				"linkerd-controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
+			args: []string{"stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
 			expectedRows: map[string]string{
 				"linkerd-prometheus": "1/1",
 			},
@@ -108,17 +109,17 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		{
 			args: []string{"stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
-				TestHelper.GetLinkerdNamespace(): "7/7",
+				TestHelper.GetLinkerdNamespace(): "8/8",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", "au/" + prometheusAuthority},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority)},
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},
@@ -127,10 +128,11 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		tt := tt // pin
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 			err := TestHelper.RetryFor(20*time.Second, func() error {
-				out, _, err := TestHelper.LinkerdRun(tt.args...)
+				out, stderr, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					t.Fatalf("Unexpected stat error: %s\n%s", err, out)
 				}
+				fmt.Println(stderr)
 
 				rowStats, err := parseRows(out, len(tt.expectedRows))
 				if err != nil {
