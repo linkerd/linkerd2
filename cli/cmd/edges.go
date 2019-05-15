@@ -12,7 +12,6 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -353,7 +352,7 @@ func printEdgesJSON(edgeTables map[string]*edgeRow, w *tabwriter.Writer) {
 
 	b, err := json.MarshalIndent(entries, "", "  ")
 	if err != nil {
-		log.Error(err.Error())
+		fmt.Fprintf(os.Stderr, "Error marshalling JSON: %s\n", err)
 		return
 	}
 	fmt.Fprintf(w, "%s\n", b)
