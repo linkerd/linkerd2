@@ -62,8 +62,13 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	}
 	resourceType := string(labelNames[1]) // skipping first name which is always namespace
 	labels := promQueryLabels(req.Selector.Resource)
-	labelsOutbound := labels.Merge(promDirectionLabels("outbound"))
-	labelsInbound := labels.Merge(promDirectionLabels("inbound"))
+	labelsOutbound := fmt.Sprint(labels.Merge(promDirectionLabels("outbound")))
+	labelsInbound := fmt.Sprint(labels.Merge(promDirectionLabels("inbound")))
+
+	// checking that data for the selected resource type exists
+	resourceExistsCheck := fmt.Sprintf(`%s!="",`, resourceType)
+	labelsOutbound = labelsOutbound[:1] + resourceExistsCheck + labelsOutbound[1:]
+	labelsInbound = labelsInbound[:1] + resourceExistsCheck + labelsInbound[1:]
 
 	inboundQuery := fmt.Sprintf(inboundIdentityQuery, labelsInbound, resourceType)
 	outboundQuery := fmt.Sprintf(outboundIdentityQuery, labelsOutbound, resourceType, resourceType)
