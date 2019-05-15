@@ -108,6 +108,9 @@ func newCmdEdges() *cobra.Command {
 // by the edges command, since the edges command does not support all k8s resource types.
 func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) error {
 	for _, target := range targets {
+		if target.Name != "" {
+			return fmt.Errorf("Edges cannot be returned for a specific resource name; remove %s from query", target.Name)
+		}
 		switch target.Type {
 		case "authority":
 			return fmt.Errorf("Resource type is not supported: %s", target.Type)
@@ -141,10 +144,6 @@ func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesR
 
 	requests := make([]*pb.EdgesRequest, 0)
 	for _, target := range targets {
-		if target.Name != "" {
-			return nil, fmt.Errorf("Edges cannot be returned for a specific resource name; remove %s from query", target.Name)
-		}
-
 		requestParams := util.EdgesRequestParams{
 			ResourceType: target.Type,
 			Namespace:    options.namespace,
