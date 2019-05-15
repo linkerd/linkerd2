@@ -163,9 +163,7 @@ func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesR
 func edgesRespToRows(resp *pb.EdgesResponse) []*pb.Edge {
 	rows := make([]*pb.Edge, 0)
 	if resp != nil {
-		for _, edgeTable := range resp.GetOk().Edges {
-			rows = append(rows, edgeTable)
-		}
+		rows = append(rows, resp.GetOk().Edges...)
 	}
 	return rows
 }
@@ -216,7 +214,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 	edgeTables := make(map[string]*edgeRow)
 	if len(rows) != 0 {
 		for _, r := range rows {
-			key := string(r.Dst.Name + r.Src.Name)
+			key := r.Dst.Name + r.Src.Name
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
