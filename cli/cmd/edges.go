@@ -66,7 +66,7 @@ func newCmdEdges() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqs, err := buildEdgesRequests(args, options)
 			if err != nil {
-				return fmt.Errorf("error creating edges request: %s", err)
+				return fmt.Errorf("Error creating edges request: %s", err)
 			}
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
@@ -105,7 +105,22 @@ func newCmdEdges() *cobra.Command {
 	return cmd
 }
 
-func validateEdgesOutputFormat(options *edgesOptions) error {
+// validateEdgesRequestInputs ensures that the resource type and output format are both supported
+// by the edges command, since the edges command does not support all k8s resource types.
+func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) error {
+	for _, target := range targets {
+		switch target.Type {
+		case "authority":
+			return fmt.Errorf("Resource type is not supported: %s", target.Type)
+		case "service":
+			return fmt.Errorf("Resource type is not supported: %s", target.Type)
+		case "all":
+			return fmt.Errorf("Resource type is not supported: %s", target.Type)
+		default:
+			return nil
+		}
+	}
+
 	switch options.outputFormat {
 	case tableOutput, jsonOutput:
 		return nil
@@ -120,7 +135,7 @@ func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesR
 	if err != nil {
 		return nil, err
 	}
-	err = validateEdgesOutputFormat(options)
+	err = validateEdgesRequestInputs(targets, options)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +143,7 @@ func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesR
 	requests := make([]*pb.EdgesRequest, 0)
 	for _, target := range targets {
 		if target.Name != "" {
-			target.Name = "" // validating that no resource name is specified in the request
+			return nil, fmt.Errorf("Edges cannot be returned for a specific resource name; remove %s from query", target.Name)
 		}
 
 		requestParams := util.EdgesRequestParams{
@@ -175,7 +190,7 @@ func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 	return renderEdges(buffer, options)
 }
 
-type edgeRowStats struct {
+type edgeRow struct {
 	src    string
 	dst    string
 	client string
@@ -183,13 +198,32 @@ type edgeRowStats struct {
 	msg    string
 }
 
+const (
+	srcHeader    = "SRC"
+	dstHeader    = "DST"
+	clientHeader = "CLIENT"
+	serverHeader = "SERVER"
+	msgHeader    = "MSG"
+)
+
 func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOptions) {
-	edgeTables := make(map[string]*edgeRowStats)
+	maxSrcLength := len(srcHeader)
+	maxDstLength := len(dstHeader)
+	maxClientLength := len(clientHeader)
+	maxServerLength := len(serverHeader)
+	maxMsgLength := len(msgHeader)
+
+	edgeTables := make(map[string]*edgeRow)
 	if len(rows) != 0 {
 		for _, r := range rows {
 			key := string(r.Dst.Name + r.Src.Name)
 			clientID := r.ClientId
 			serverID := r.ServerId
+			msg := r.NoIdentityMsg
+
+			if len(msg) == 0 {
+				msg = "-"
+			}
 			if len(clientID) > 0 {
 				parts := strings.Split(clientID, ".")
 				clientID = parts[0] + "." + parts[1]
@@ -199,13 +233,30 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 				serverID = parts[0] + "." + parts[1]
 			}
 
-			edgeTables[key] = &edgeRowStats{
+			edgeTables[key] = &edgeRow{
 				client: clientID,
 				server: serverID,
-				msg:    r.NoIdentityMsg,
+				msg:    msg,
 				src:    r.Src.Name,
 				dst:    r.Dst.Name,
 			}
+
+			if len(r.Src.Name) > maxSrcLength {
+				maxSrcLength = len(r.Src.Name)
+			}
+			if len(r.Dst.Name) > maxDstLength {
+				maxDstLength = len(r.Dst.Name)
+			}
+			if len(clientID) > maxClientLength {
+				maxClientLength = len(clientID)
+			}
+			if len(serverID) > maxServerLength {
+				maxServerLength = len(serverID)
+			}
+			if len(msg) > maxMsgLength {
+				maxMsgLength = len(msg)
+			}
+
 		}
 	}
 	switch options.outputFormat {
@@ -214,36 +265,26 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			fmt.Fprintln(os.Stderr, "No edges found.")
 			os.Exit(0)
 		}
-		printSingleEdgeTable(edgeTables, w)
+		printEdgeTable(edgeTables, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
 	case jsonOutput:
 		printEdgesJSON(edgeTables, w)
 	}
 }
 
-// returns the length of the longest src name
-func srcWidth(stats map[string]*edgeRowStats) int {
-	maxLength := 0
-	for _, row := range stats {
-		if len(row.src) > maxLength {
-			maxLength = len(row.src)
-		}
-	}
-	return maxLength
-}
-
-func printSingleEdgeTable(edges map[string]*edgeRowStats, w *tabwriter.Writer) {
-	// template for left-aligning the src column
-	srcTemplate := fmt.Sprintf("%%-%ds", srcWidth(edges))
+func printEdgeTable(edges map[string]*edgeRow, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
+	srcTemplate := fmt.Sprintf("%%-%ds", maxSrcLength)
+	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
+	clientTemplate := fmt.Sprintf("%%-%ds", maxClientLength)
+	serverTemplate := fmt.Sprintf("%%-%ds", maxServerLength)
+	msgTemplate := fmt.Sprintf("%%-%ds", maxMsgLength)
 
 	headers := []string{
-		fmt.Sprintf(srcTemplate, "SRC"),
+		fmt.Sprintf(srcTemplate, srcHeader),
+		fmt.Sprintf(dstTemplate, dstHeader),
+		fmt.Sprintf(clientTemplate, clientHeader),
+		fmt.Sprintf(serverTemplate, serverHeader),
+		fmt.Sprintf(msgTemplate, msgHeader),
 	}
-	headers = append(headers, []string{
-		"DST",
-		"CLIENT",
-		"SERVER",
-		"MSG",
-	}...)
 
 	headers[len(headers)-1] = headers[len(headers)-1] + "\t" // trailing \t is required to format last column
 
@@ -252,11 +293,7 @@ func printSingleEdgeTable(edges map[string]*edgeRowStats, w *tabwriter.Writer) {
 	sortedKeys := sortEdgesKeys(edges)
 	for _, key := range sortedKeys {
 		values := make([]interface{}, 0)
-		templateString := srcTemplate + "\t%s\t%s\t%s\t%s\t\n"
-
-		if edges[key].msg == "" {
-			edges[key].msg = "-"
-		}
+		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, clientTemplate, serverTemplate, msgTemplate)
 
 		values = append(values, []interface{}{
 			edges[key].src,
@@ -285,7 +322,7 @@ func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 	return out
 }
 
-func sortEdgesKeys(stats map[string]*edgeRowStats) []string {
+func sortEdgesKeys(stats map[string]*edgeRow) []string {
 	var sortedKeys []string
 	for key := range stats {
 		sortedKeys = append(sortedKeys, key)
@@ -302,7 +339,7 @@ type edgesJSONStats struct {
 	Msg    string `json:"no_tls_reason"`
 }
 
-func printEdgesJSON(edgeTables map[string]*edgeRowStats, w *tabwriter.Writer) {
+func printEdgesJSON(edgeTables map[string]*edgeRow, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*edgesJSONStats{}
 
