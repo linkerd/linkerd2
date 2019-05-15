@@ -11,9 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-// ////////////////////
-// /   TEST SETUP   ///
-// ////////////////////
+//////////////////////
+///   TEST SETUP   ///
+//////////////////////
 
 var TestHelper *testutil.TestHelper
 
@@ -83,19 +83,19 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), prometheusPod, "--from", "po/" + controllerPod},
+			args: []string{"stat", "po", fmt.Sprintf("po/%s", prometheusPod), "-n", TestHelper.GetLinkerdNamespace(), "--from", fmt.Sprintf("po/%s", controllerPod)},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
 			expectedRows: map[string]string{
 				"linkerd-controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "svc", "-n", TestHelper.GetLinkerdNamespace(), "linkerd-prometheus", "--from", "deploy/linkerd-controller"},
+			args: []string{"stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetLinkerdNamespace(), "--from", "deploy/linkerd-controller"},
 			expectedRows: map[string]string{
 				"linkerd-prometheus": "1/1",
 			},
@@ -113,13 +113,13 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", "au/" + prometheusAuthority},
+			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority)},
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", "po/" + prometheusPod},
+			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},

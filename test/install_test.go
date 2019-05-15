@@ -108,9 +108,9 @@ var (
 	}
 )
 
-// ////////////////////
-// / TEST EXECUTION ///
-// ////////////////////
+//////////////////////
+/// TEST EXECUTION ///
+//////////////////////
 
 // Tests are executed in serial in the order defined
 // Later tests depend on the success of earlier tests
