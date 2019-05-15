@@ -7,6 +7,8 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ .WebhookConfigName }}
+  labels:
+    linkerd.io/control-plane-component: sp-validator
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
