@@ -97,6 +97,7 @@ func init() {
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDoc())
+	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
