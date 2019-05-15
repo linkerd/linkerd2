@@ -121,7 +121,7 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 // insert a not-nil check into a LabelSet to verify that data for a specified
 // label name exists. due to the `!=` this must be inserted as a string. the
 // structure of this code is taken from the Prometheus labelset.go library.
-func customToString(l model.LabelSet, labelName string) string {
+func generateLabelStringWithExclusion(l model.LabelSet, labelName string) string {
 	lstrs := make([]string, 0, len(l))
 	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
