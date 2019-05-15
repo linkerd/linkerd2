@@ -11,6 +11,9 @@ import (
 //
 // DO NOT EDIT
 var Version = undefinedVersion
+
+// ProxyInitVersion is the pinned version of the proxy-init, from
+// https://github.com/linkerd/linkerd2-proxy-init
 var ProxyInitVersion = "stable-2.3.0"
 
 const (
