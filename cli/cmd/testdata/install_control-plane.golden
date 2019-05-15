@@ -1820,9 +1820,6 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

@@ -948,6 +948,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
+			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),

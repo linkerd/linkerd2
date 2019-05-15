@@ -328,7 +328,7 @@ metadata:
   name: linkerd-linkerd-tap
 rules:
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
+  resources: ["pods", "services", "replicationcontrollers", "namespaces"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -2185,9 +2185,6 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
