@@ -14,7 +14,8 @@
   * Moved the tap service into its own pod
 * Proxy
   * Fix an epoll notification issue that could cause excessive CPU usage
-  * Allow disabling tap by setting an env var (thanks, @zaharidichev!)
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
 
 ## edge-19.5.2
 
