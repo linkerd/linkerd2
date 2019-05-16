@@ -1,8 +1,9 @@
 ## edge-19.5.3
 
 * CLI
-  * **New** Added a `linkerd edges` command that shows TLS status
-    between src and dst resources
+  * **New** Added a `linkerd edges` command that shows connections between src
+    and dst resources and the identities of their Linkerd proxies. This will
+    help users verify that Linkerd proxies have a known identity
   * Tap can now be disabled for specific pods during injection by using the
     `--disable-tap` flag, or by using the `config.linkerd.io/disable-tap`
     annotation
