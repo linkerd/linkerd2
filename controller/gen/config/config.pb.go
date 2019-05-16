@@ -32,7 +32,7 @@ func (m *All) Reset()         { *m = All{} }
 func (m *All) String() string { return proto.CompactTextString(m) }
 func (*All) ProtoMessage()    {}
 func (*All) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{0}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{0}
 }
 func (m *All) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_All.Unmarshal(m, b)
@@ -76,7 +76,7 @@ func (m *All) GetInstall() *Install {
 type Global struct {
 	LinkerdNamespace string `protobuf:"bytes,1,opt,name=linkerd_namespace,json=linkerdNamespace,proto3" json:"linkerd_namespace,omitempty"`
 	CniEnabled       bool   `protobuf:"varint,2,opt,name=cni_enabled,json=cniEnabled,proto3" json:"cni_enabled,omitempty"`
-	// Control plane and proxy-init version
+	// Control plane version
 	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
 	// If present, configures identity.
 	IdentityContext      *IdentityContext   `protobuf:"bytes,4,opt,name=identity_context,json=identityContext,proto3" json:"identity_context,omitempty"`
@@ -90,7 +90,7 @@ func (m *Global) Reset()         { *m = Global{} }
 func (m *Global) String() string { return proto.CompactTextString(m) }
 func (*Global) ProtoMessage()    {}
 func (*Global) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{1}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{1}
 }
 func (m *Global) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Global.Unmarshal(m, b)
@@ -170,7 +170,7 @@ func (m *Proxy) Reset()         { *m = Proxy{} }
 func (m *Proxy) String() string { return proto.CompactTextString(m) }
 func (*Proxy) ProtoMessage()    {}
 func (*Proxy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{2}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{2}
 }
 func (m *Proxy) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Proxy.Unmarshal(m, b)
@@ -300,7 +300,7 @@ func (m *Image) Reset()         { *m = Image{} }
 func (m *Image) String() string { return proto.CompactTextString(m) }
 func (*Image) ProtoMessage()    {}
 func (*Image) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{3}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{3}
 }
 func (m *Image) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Image.Unmarshal(m, b)
@@ -345,7 +345,7 @@ func (m *Port) Reset()         { *m = Port{} }
 func (m *Port) String() string { return proto.CompactTextString(m) }
 func (*Port) ProtoMessage()    {}
 func (*Port) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{4}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{4}
 }
 func (m *Port) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Port.Unmarshal(m, b)
@@ -386,7 +386,7 @@ func (m *ResourceRequirements) Reset()         { *m = ResourceRequirements{} }
 func (m *ResourceRequirements) String() string { return proto.CompactTextString(m) }
 func (*ResourceRequirements) ProtoMessage()    {}
 func (*ResourceRequirements) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{5}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{5}
 }
 func (m *ResourceRequirements) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResourceRequirements.Unmarshal(m, b)
@@ -445,7 +445,7 @@ func (m *AutoInjectContext) Reset()         { *m = AutoInjectContext{} }
 func (m *AutoInjectContext) String() string { return proto.CompactTextString(m) }
 func (*AutoInjectContext) ProtoMessage()    {}
 func (*AutoInjectContext) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{6}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{6}
 }
 func (m *AutoInjectContext) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AutoInjectContext.Unmarshal(m, b)
@@ -479,7 +479,7 @@ func (m *IdentityContext) Reset()         { *m = IdentityContext{} }
 func (m *IdentityContext) String() string { return proto.CompactTextString(m) }
 func (*IdentityContext) ProtoMessage()    {}
 func (*IdentityContext) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{7}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{7}
 }
 func (m *IdentityContext) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IdentityContext.Unmarshal(m, b)
@@ -538,7 +538,7 @@ func (m *LogLevel) Reset()         { *m = LogLevel{} }
 func (m *LogLevel) String() string { return proto.CompactTextString(m) }
 func (*LogLevel) ProtoMessage()    {}
 func (*LogLevel) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{8}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{8}
 }
 func (m *LogLevel) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLevel.Unmarshal(m, b)
@@ -585,7 +585,7 @@ func (m *Install) Reset()         { *m = Install{} }
 func (m *Install) String() string { return proto.CompactTextString(m) }
 func (*Install) ProtoMessage()    {}
 func (*Install) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{9}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{9}
 }
 func (m *Install) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Install.Unmarshal(m, b)
@@ -638,7 +638,7 @@ func (m *Install_Flag) Reset()         { *m = Install_Flag{} }
 func (m *Install_Flag) String() string { return proto.CompactTextString(m) }
 func (*Install_Flag) ProtoMessage()    {}
 func (*Install_Flag) Descriptor() ([]byte, []int) {
-	return fileDescriptor_config_4da5fd85db2b6586, []int{9, 0}
+	return fileDescriptor_config_aebc9ed7060f39b6, []int{9, 0}
 }
 func (m *Install_Flag) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Install_Flag.Unmarshal(m, b)
@@ -686,9 +686,9 @@ func init() {
 	proto.RegisterType((*Install_Flag)(nil), "linkerd2.config.Install.Flag")
 }
 
-func init() { proto.RegisterFile("config/config.proto", fileDescriptor_config_4da5fd85db2b6586) }
+func init() { proto.RegisterFile("config/config.proto", fileDescriptor_config_aebc9ed7060f39b6) }
 
-var fileDescriptor_config_4da5fd85db2b6586 = []byte{
+var fileDescriptor_config_aebc9ed7060f39b6 = []byte{
 	// 954 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x56, 0xcf, 0x6f, 0x23, 0x35,
 	0x14, 0x56, 0x7e, 0x36, 0x79, 0x49, 0xda, 0xc6, 0x6d, 0xe9, 0xb4, 0x68, 0x21, 0x0c, 0x5a, 0x69,

@@ -16,7 +16,7 @@ message Global {
   string linkerd_namespace = 1;
   bool cni_enabled = 2;
 
-  // Control plane and proxy-init version
+  // Control plane version
   string version = 3;
 
   // If present, configures identity.
