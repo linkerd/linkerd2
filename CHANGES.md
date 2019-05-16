@@ -9,11 +9,8 @@
   * Added Controller Component Labels to webhooks (thanks, @Pothulapati!)
   * Moved the tap service into its own pod
 * Proxy
-  * Upgraded mio to 0.6.17
+  * Fix an epoll notification issue that could cause excessive CPU usage
   * Allow disabling tap by setting an env var (thanks, @zaharidichev!)
-  * Added tests to ensure that outbound TLS works even when there is no verified
-    certificate for the proxy yet (thanks, @zaharidichev!)
-  * Fall back to ORIG_DST when no endpoints exist
 
 ## edge-19.5.2
 
