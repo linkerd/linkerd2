@@ -29,7 +29,7 @@
     "path": "/spec/initContainers/-",
     "value": {
       "name": "linkerd-init",
-      "image": "gcr.io/linkerd-io/proxy-init:stable-2.3.0",
+      "image": "gcr.io/linkerd-io/proxy-init:v1.0.0",
       "args": [
         "--incoming-proxy-port",
         "4143",
