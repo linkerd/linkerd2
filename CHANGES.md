@@ -1,3 +1,20 @@
+## edge-19.5.3
+
+* CLI
+  * **New** Added a `linkerd edges` command that shows TLS status
+    between src and dst resources
+  * Tap can now be disabled by using the `--disable-tap` flag
+  * Introduced pre-install healthcheck for clock skew (thanks, @matej-g!)
+* Controller
+  * Added Controller Component Labels to webhooks (thanks, @Pothulapati!)
+  * Moved the tap service into its own pod
+* Proxy
+  * Upgraded mio to 0.6.17
+  * Allow disabling tap by setting an env var (thanks, @zaharidichev!)
+  * Added tests to ensure that outbound TLS works even when there is no verified
+    certificate for the proxy yet (thanks, @zaharidichev!)
+  * Fall back to ORIG_DST when no endpoints exist
+
 ## edge-19.5.2
 
 * CLI
