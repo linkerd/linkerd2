@@ -350,7 +350,38 @@ metadata:
   name: linkerd-sp-validator
   namespace: linkerd
 ---
-<<<<<<< HEAD
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-sp-validator-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: sp-validator
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: Opaque
+data:
+  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: linkerd-sp-validator-webhook-config
+webhooks:
+- name: linkerd-sp-validator.linkerd.io
+  clientConfig:
+    service:
+      name: linkerd-sp-validator
+      namespace: linkerd
+      path: "/"
+    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  rules:
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1"]
+    resources: ["serviceprofiles"]
+---
 ###
 ### Tap RBAC
 ###
@@ -388,37 +419,4 @@ apiVersion: v1
 metadata:
   name: linkerd-tap
   namespace: linkerd
-=======
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
-data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: linkerd-sp-validator-webhook-config
-webhooks:
-- name: linkerd-sp-validator.linkerd.io
-  clientConfig:
-    service:
-      name: linkerd-sp-validator
-      namespace: linkerd
-      path: "/"
-    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1"]
-    resources: ["serviceprofiles"]
->>>>>>> Fix install unit tests
 ---
