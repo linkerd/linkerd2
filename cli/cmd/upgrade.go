@@ -243,16 +243,17 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	// if exist, re-use the proxy injector and profile validator TLS secrets,
 	// otherwise, generate new ones.
-	webhooksTLS, err := fetchWebhooksTLS(k, options)
+	proxyInjectorTLS, err := fetchWebhookTLS(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing CA Trust: %s", err)
+		return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
 	}
-	values.ProxyInjector = &proxyInjectorValues{
-		webhooksTLS[k8s.ProxyInjectorWebhookServiceName],
+	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
+
+	profileValidatorTLS, err := fetchWebhookTLS(k, k8s.SPValidatorWebhookServiceName, options)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
 	}
-	values.ProfileValidator = &profileValidatorValues{
-		webhooksTLS[k8s.SPValidatorWebhookServiceName],
-	}
+	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
 	values.stage = stage
 
@@ -299,39 +300,34 @@ func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
 	return config.FromConfigMap(configMap.Data)
 }
 
-func fetchWebhooksTLS(k kubernetes.Interface, options *upgradeOptions) (map[string]*tlsValues, error) {
-	values := map[string]*tlsValues{}
+func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*tlsValues, error) {
 
-	for _, webhook := range []string{k8s.ProxyInjectorWebhookServiceName, k8s.SPValidatorWebhookServiceName} {
-		var value *tlsValues
+	var value *tlsValues
 
-		secret, err := k.CoreV1().
-			Secrets(controlPlaneNamespace).
-			Get(webhookSecretName(webhook), metav1.GetOptions{})
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				return nil, err
-			}
-
-			value, err = options.generateWebhookTLS(webhook)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			value = &tlsValues{
-				KeyPEM: string(secret.Data["key.pem"]),
-				CrtPEM: string(secret.Data["crt.pem"]),
-			}
-		}
-
-		if err := options.verifyTLS(value, webhook); err != nil {
+	secret, err := k.CoreV1().
+		Secrets(controlPlaneNamespace).
+		Get(webhookSecretName(webhook), metav1.GetOptions{})
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
 			return nil, err
 		}
 
-		values[webhook] = value
+		value, err = options.generateWebhookTLS(webhook)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		value = &tlsValues{
+			KeyPEM: string(secret.Data["key.pem"]),
+			CrtPEM: string(secret.Data["crt.pem"]),
+		}
 	}
 
-	return values, nil
+	if err := options.verifyTLS(value, webhook); err != nil {
+		return nil, err
+	}
+
+	return value, nil
 }
 
 // fetchIdentityValue checks the kubernetes API to fetch an existing
