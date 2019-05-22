@@ -153,6 +153,7 @@ func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
 		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
+	conf.pod.annotations[k8s.ProxyEnableDebugAnnotation] = "true"
 	return conf
 }
 
@@ -425,8 +426,17 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
-	if conf.debugSidecar != nil {
-		patch.addContainer(conf.debugSidecar)
+	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
+		debugEnabled, err := strconv.ParseBool(v)
+		if err != nil {
+			log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyEnableDebugAnnotation, v)
+			debugEnabled = false
+		}
+
+		if debugEnabled {
+			log.Infof("inject debug container")
+			patch.addContainer(conf.debugSidecar)
+		}
 	}
 
 	proxyUID := conf.proxyUID()

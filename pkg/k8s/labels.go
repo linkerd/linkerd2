@@ -158,6 +158,10 @@ const (
 	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
 	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
 
+	// ProxyEnableDebugAnnotation is set to true if the debug container is
+	// injected.
+	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/debug"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
