@@ -17,31 +17,32 @@ type edgesParamsExp struct {
 	file         string
 }
 
-var (
-	resSrc = []string{
-		"web-57b7f9db85-297dw",
-		"web-57b7f9db85-297dw",
-		"vote-bot-7466ffc7f7-5rc4l",
-	}
-	resDst = []string{
-		"emoji-646ddcc5f9-zjgs9",
-		"voting-689f845d98-rj6nz",
-		"web-57b7f9db85-297dw",
-	}
-	resClient = []string{
-		"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-		"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-		"default.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-	}
-	resServer = []string{
-		"emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-		"voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-		"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-	}
-	resMsg = []string{"", "", ""}
-)
-
 func TestEdges(t *testing.T) {
+	// response content for SRC, DST, CLIENT, SERVER and MSG
+	var (
+		resSrc = []string{
+			"web-57b7f9db85-297dw",
+			"web-57b7f9db85-297dw",
+			"vote-bot-7466ffc7f7-5rc4l",
+		}
+		resDst = []string{
+			"emoji-646ddcc5f9-zjgs9",
+			"voting-689f845d98-rj6nz",
+			"web-57b7f9db85-297dw",
+		}
+		resClient = []string{
+			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+			"default.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		}
+		resServer = []string{
+			"emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+			"voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		}
+		resMsg = []string{"", "", ""}
+	)
+
 	options := newEdgesOptions()
 	options.namespace = "emojivoto"
 	options.outputFormat = tableOutput
