@@ -435,6 +435,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 
 		if debugEnabled {
 			log.Infof("inject debug container")
+			conf.WithDebugSidecar()
 			patch.addContainer(conf.debugSidecar)
 		}
 	}
