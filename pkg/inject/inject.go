@@ -112,7 +112,6 @@ type ResourceConfig struct {
 	proxyOutboundCapacity  map[string]uint
 	ownerRetriever         OwnerRetrieverFunc
 	origin                 Origin
-	debugSidecar           *corev1.Container
 
 	workload struct {
 		obj      runtime.Object
