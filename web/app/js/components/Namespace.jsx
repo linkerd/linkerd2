@@ -130,6 +130,8 @@ class Namespaces extends React.Component {
     let noMetrics = _isEmpty(metrics.pod);
     let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
+    // hiding this table for now to make way for traffic splitting view
+    // {this.renderResourceSection("authority", metrics.authority)}
     return (
       <div className="page-content">
         {!this.state.error ? null : <ErrorBanner message={this.state.error} />}
@@ -146,7 +148,6 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
             {this.renderResourceSection("statefulset", metrics.statefulset)}
             {this.renderResourceSection("job", metrics.job)}
-            {this.renderResourceSection("authority", metrics.authority)}
 
             {
               noMetrics ? null :

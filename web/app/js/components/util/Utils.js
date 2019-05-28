@@ -131,10 +131,10 @@ export const friendlyTitle = singularOrPluralResource => {
 
   let titles = { singular: titleCase };
   if (resource === "authority") {
-    titles.singular = "Service";
+    titles.plural = "Authorities";
+  } else {
+    titles.plural = titles.singular + "s";
   }
-  titles.plural = titles.singular + "s";
-
   return titles;
 };
 

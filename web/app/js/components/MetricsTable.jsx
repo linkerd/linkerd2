@@ -128,9 +128,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       let nameContents;
       if (resource === "namespace") {
         nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
-      } else if (isAuthorityTable) {
-        nameContents = getResourceDisplayName(d).split('.')[0];
-      } else if (!d.added) {
+      } else if (!d.added || isAuthorityTable) {
         nameContents = getResourceDisplayName(d);
       } else {
         nameContents = (
