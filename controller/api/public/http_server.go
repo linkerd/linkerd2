@@ -26,6 +26,7 @@ var (
 	tapByResourcePath = fullURLPathFor("TapByResource")
 	selfCheckPath     = fullURLPathFor("SelfCheck")
 	endpointsPath     = fullURLPathFor("Endpoints")
+	edgesPath         = fullURLPathFor("Edges")
 	configPath        = fullURLPathFor("Config")
 )
 
@@ -61,6 +62,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleSelfCheck(w, req)
 	case endpointsPath:
 		h.handleEndpoints(w, req)
+	case edgesPath:
+		h.handleEdges(w, req)
 	case configPath:
 		h.handleConfig(w, req)
 	default:
@@ -79,6 +82,27 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rsp, err := h.grpcServer.StatSummary(req.Context(), &protoRequest)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+	err = writeProtoToHTTPResponse(w, rsp)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+}
+
+func (h *handler) handleEdges(w http.ResponseWriter, req *http.Request) {
+	var protoRequest pb.EdgesRequest
+
+	err := httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+
+	rsp, err := h.grpcServer.Edges(req.Context(), &protoRequest)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err)
 		return

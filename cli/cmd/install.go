@@ -68,7 +68,9 @@ type (
 		TapResources,
 		WebResources *resources
 
-		Identity *installIdentityValues
+		Identity         *installIdentityValues
+		ProxyInjector    *proxyInjectorValues
+		ProfileValidator *profileValidatorValues
 	}
 
 	configJSONs struct{ Global, Proxy, Install string }
@@ -96,6 +98,18 @@ type (
 		CrtExpiryAnnotation string
 	}
 
+	proxyInjectorValues struct {
+		*tlsValues
+	}
+
+	profileValidatorValues struct {
+		*tlsValues
+	}
+
+	tlsValues struct {
+		KeyPEM, CrtPEM string
+	}
+
 	// installOptions holds values for command line flags that apply to the install
 	// command. All fields in this struct should have corresponding flags added in
 	// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
@@ -115,8 +129,9 @@ type (
 
 		recordedFlags []*pb.Install_Flag
 
-		// A function pointer that can be overridden for tests
-		generateUUID func() string
+		// function pointers that can be overridden for tests
+		generateUUID       func() string
+		generateWebhookTLS func(webhook string) (*tlsValues, error)
 	}
 
 	installIdentityOptions struct {
@@ -187,6 +202,18 @@ func newInstallOptionsWithDefaults() *installOptions {
 				log.Fatalf("Could not generate UUID: %s", err)
 			}
 			return id.String()
+		},
+
+		generateWebhookTLS: func(webhook string) (*tlsValues, error) {
+			root, err := tls.GenerateRootCAWithDefaults(webhookCommonName(webhook))
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
+			}
+
+			return &tlsValues{
+				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+			}, nil
 		},
 	}
 }
@@ -338,6 +365,19 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 	values.Identity = identityValues
+
+	proxyInjectorTLS, err := options.generateWebhookTLS(k8s.ProxyInjectorWebhookServiceName)
+	if err != nil {
+		return nil, nil, err
+	}
+	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
+
+	profileValidatorTLS, err := options.generateWebhookTLS(k8s.SPValidatorWebhookServiceName)
+	if err != nil {
+		return nil, nil, err
+	}
+	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+
 	values.stage = stage
 
 	return values, configs, nil
@@ -599,6 +639,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/grafana-rbac.yaml"},
 			{Name: "templates/proxy_injector-rbac.yaml"},
 			{Name: "templates/sp_validator-rbac.yaml"},
+			{Name: "templates/tap-rbac.yaml"},
 		}...)
 	}
 
@@ -613,6 +654,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/grafana.yaml"},
 			{Name: "templates/proxy_injector.yaml"},
 			{Name: "templates/sp_validator.yaml"},
+			{Name: "templates/tap.yaml"},
 		}...)
 	}
 
@@ -960,4 +1002,25 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}
+}
+
+func webhookCommonName(webhook string) string {
+	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
+}
+
+func webhookSecretName(webhook string) string {
+	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func verifyWebhookTLS(value *tlsValues, webhook string) error {
+	crt, err := tls.DecodePEMCrt(value.CrtPEM)
+	if err != nil {
+		return err
+	}
+	roots := crt.CertPool()
+	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
+		return err
+	}
+
+	return nil
 }

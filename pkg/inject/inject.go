@@ -63,6 +63,8 @@ const (
 
 	identityAPIPort = 8080
 
+	envTapDisabled = "LINKERD2_PROXY_TAP_DISABLED"
+
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
@@ -151,6 +153,7 @@ func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
 		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
+	conf.pod.annotations[k8s.ProxyEnableDebugAnnotation] = "true"
 	return conf
 }
 
@@ -423,8 +426,18 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
-	if conf.debugSidecar != nil {
-		patch.addContainer(conf.debugSidecar)
+	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
+		debugEnabled, err := strconv.ParseBool(v)
+		if err != nil {
+			log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyEnableDebugAnnotation, v)
+			debugEnabled = false
+		}
+
+		if debugEnabled {
+			log.Infof("inject debug container")
+			conf.WithDebugSidecar()
+			patch.addContainer(conf.debugSidecar)
+		}
 	}
 
 	proxyUID := conf.proxyUID()
@@ -512,6 +525,15 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 			)
 			break
 		}
+	}
+
+	if conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapDisabled,
+				Value: "true",
+			},
+		)
 	}
 
 	if saVolumeMount != nil {
@@ -772,6 +794,16 @@ func (conf *ResourceConfig) identityContext() *config.IdentityContext {
 	}
 
 	return conf.configs.GetGlobal().GetIdentityContext()
+}
+
+func (conf *ResourceConfig) tapDisabled() bool {
+	if override := conf.getOverride(k8s.ProxyDisableTapAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		if err == nil && value {
+			return true
+		}
+	}
+	return false
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() corev1.ResourceRequirements {

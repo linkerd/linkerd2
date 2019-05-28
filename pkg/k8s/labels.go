@@ -7,6 +7,7 @@ package k8s
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
@@ -154,6 +155,13 @@ const (
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
 
+	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
+	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
+
+	// ProxyEnableDebugAnnotation is set to true if the debug container is
+	// injected.
+	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/debug"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -236,6 +244,12 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
+	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+
+	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
+	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
 	//
@@ -287,4 +301,16 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 // IsMeshed returns whether a given Pod is in a given controller's service mesh.
 func IsMeshed(pod *corev1.Pod, controllerNS string) bool {
 	return pod.Labels[ControllerNSLabel] == controllerNS
+}
+
+// IsTapDisabled returns true if the pod has an annotation for explicitly
+// disabling tap
+func IsTapDisabled(pod *corev1.Pod) bool {
+	if valStr := pod.Annotations[ProxyDisableTapAnnotation]; valStr != "" {
+		valBool, err := strconv.ParseBool(valStr)
+		if err == nil && valBool {
+			return true
+		}
+	}
+	return false
 }

@@ -1,6 +1,7 @@
 # slow_cooker --http-> gateway --grpc-> t1
 #                              --grpc-> t2 always-error
 #                              --http-> t3
+#                              --http-> t4 tap-disabled
 #
 
 ### t1 terminates gRPC requests
@@ -118,7 +119,47 @@ spec:
     port: 8080
     targetPort: 8080
 
-### gateway broadcasts requests to t1, t2, and t3
+# t4 terminates HTTP/1.1 requests, but tap is disabled
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: t4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: t4
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/disable-tap: "true"
+      labels:
+        app: t4
+    spec:
+      containers:
+      - name: t4
+        image: buoyantio/bb:v0.0.5
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=t4"
+        ports:
+        - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: t4-svc
+spec:
+  selector:
+    app: t4
+  ports:
+  - name: http
+    port: 8080
+
+### gateway broadcasts requests to t1, t2, t3 and t4
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -143,6 +184,7 @@ spec:
         - "--grpc-downstream-server=t1-svc:9090"
         - "--grpc-downstream-server=t2-svc:9090"
         - "--h1-downstream-server=http://t3-svc:8080"
+        - "--h1-downstream-server=http://t4-svc:8080"
         ports:
         - containerPort: 8080
 ---

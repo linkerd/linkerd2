@@ -36,6 +36,11 @@ func (m *mockGrpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest
 	return m.ResponseToReturn.(*pb.TopRoutesResponse), m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.EdgesResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.EdgesResponse), m.ErrorToReturn
+}
+
 func (m *mockGrpcServer) Version(ctx context.Context, req *pb.Empty) (*pb.VersionInfo, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.VersionInfo), m.ErrorToReturn

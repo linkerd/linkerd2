@@ -75,6 +75,13 @@ type StatsSummaryRequestParams struct {
 	TCPStats      bool
 }
 
+// EdgesRequestParams contains parameters that are used to build
+// Edges requests.
+type EdgesRequestParams struct {
+	Namespace    string
+	ResourceType string
+}
+
 // TopRoutesRequestParams contains parameters that are used to build TopRoutes
 // requests.
 type TopRoutesRequestParams struct {
@@ -218,6 +225,32 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 	}
 
 	return statRequest, nil
+}
+
+// BuildEdgesRequest builds a Public API EdgesRequest from a
+// EdgesRequestParams.
+func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
+
+	namespace := p.Namespace
+	if p.Namespace == "" {
+		namespace = corev1.NamespaceDefault
+	}
+
+	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	edgesRequest := &pb.EdgesRequest{
+		Selector: &pb.ResourceSelection{
+			Resource: &pb.Resource{
+				Namespace: namespace,
+				Type:      resourceType,
+			},
+		},
+	}
+
+	return edgesRequest, nil
 }
 
 // BuildTopRoutesRequest builds a Public API TopRoutesRequest from a

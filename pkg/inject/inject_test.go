@@ -462,3 +462,40 @@ func TestProxyInitResourceRequirments(t *testing.T) {
 		}
 	}
 }
+
+func TestInjectPodSpec(t *testing.T) {
+	var (
+		configs = &config.All{}
+		conf    = NewResourceConfig(configs, OriginUnknown)
+	)
+	conf.pod.meta = &metav1.ObjectMeta{}
+	conf.pod.meta.Annotations = map[string]string{}
+	conf.pod.spec = &corev1.PodSpec{}
+
+	t.Run("debug container", func(t *testing.T) {
+		conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation] = "true"
+		conf.WithDebugSidecar()
+
+		patch := NewPatch("Deployment")
+		conf.injectPodSpec(patch)
+
+		passed := false
+		for _, actual := range patch.patchOps {
+			if actual.Op == "add" && actual.Path == "/spec/template/spec/containers/-" {
+				container, ok := actual.Value.(*corev1.Container)
+				if !ok {
+					t.Fatal("Unexpected type assertion error")
+				}
+
+				if container.Name == k8s.DebugSidecarName {
+					passed = true
+					break
+				}
+			}
+		}
+
+		if !passed {
+			t.Errorf("Expected debug container to be added to patch. Actual patch: %v", patch.patchOps)
+		}
+	})
+}

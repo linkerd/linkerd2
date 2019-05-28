@@ -44,10 +44,12 @@ func TestRoutes(t *testing.T) {
 		{"linkerd-identity", 2},
 		{"linkerd-prometheus", 5},
 		{"linkerd-web", 2},
+		{"linkerd-tap", 3},
 
 		{"POST /api/v1/ListPods", 1},
 		{"POST /api/v1/", 8},
 		{"POST /io.linkerd.proxy.destination.Destination/Get", 2},
+		{"POST /linkerd2.controller.tap.Tap/TapByResource", 1},
 		{"GET /api/annotations", 1},
 		{"GET /api/", 9},
 		{"GET /public/", 3},

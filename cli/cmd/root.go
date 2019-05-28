@@ -97,6 +97,7 @@ func init() {
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDoc())
+	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
@@ -195,6 +196,7 @@ type proxyConfigOptions struct {
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool
+	disableTap      bool
 }
 
 func (options *proxyConfigOptions) validate() error {

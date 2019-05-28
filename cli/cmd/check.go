@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ type checkOptions struct {
 	wait            time.Duration
 	namespace       string
 	cniEnabled      bool
+	output          string
 }
 
 func newCheckOptions() *checkOptions {
@@ -32,6 +34,7 @@ func newCheckOptions() *checkOptions {
 		wait:            300 * time.Second,
 		namespace:       "",
 		cniEnabled:      false,
+		output:          tableOutput,
 	}
 }
 
@@ -52,6 +55,7 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return flags
@@ -60,6 +64,9 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 func (options *checkOptions) validate() error {
 	if options.preInstallOnly && options.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	if options.output != tableOutput && options.output != jsonOutput {
+		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, jsonOutput, tableOutput)
 	}
 	return nil
 }
@@ -80,7 +87,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, configStage, options)
+			return configureAndRunChecks(stdout, stderr, configStage, options)
 		},
 	}
 
@@ -114,7 +121,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, "", options)
+			return configureAndRunChecks(stdout, stderr, "", options)
 		},
 	}
 
@@ -126,7 +133,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(w io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -167,34 +174,35 @@ func configureAndRunChecks(w io.Writer, stage string, options *checkOptions) err
 		RetryDeadline:         time.Now().Add(options.wait),
 	})
 
-	success := runChecks(w, hc)
-
-	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(w, "")
+	success := runChecks(wout, werr, hc, options.output)
 
 	if !success {
-		fmt.Fprintf(w, "Status check results are %s\n", failStatus)
 		os.Exit(2)
 	}
-
-	fmt.Fprintf(w, "Status check results are %s\n", okStatus)
 
 	return nil
 }
 
-func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
+func runChecks(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker, output string) bool {
+	if output == jsonOutput {
+		return runChecksJSON(wout, werr, hc)
+	}
+	return runChecksTable(wout, hc)
+}
+
+func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = w
+	spin.Writer = wout
 
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
 		if lastCategory != result.Category {
 			if lastCategory != "" {
-				fmt.Fprintln(w)
+				fmt.Fprintln(wout)
 			}
 
-			fmt.Fprintln(w, result.Category)
-			fmt.Fprintln(w, strings.Repeat("-", len(result.Category)))
+			fmt.Fprintln(wout, result.Category)
+			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
 
 			lastCategory = result.Category
 		}
@@ -216,14 +224,106 @@ func runChecks(w io.Writer, hc *healthcheck.HealthChecker) bool {
 			}
 		}
 
-		fmt.Fprintf(w, "%s %s\n", status, result.Description)
+		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 		if result.Err != nil {
-			fmt.Fprintf(w, "    %s\n", result.Err)
+			fmt.Fprintf(wout, "    %s\n", result.Err)
 			if result.HintAnchor != "" {
-				fmt.Fprintf(w, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
+				fmt.Fprintf(wout, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
 			}
 		}
 	}
 
-	return hc.RunChecks(prettyPrintResults)
+	success := hc.RunChecks(prettyPrintResults)
+	// this empty line separates final results from the checks list in the output
+	fmt.Fprintln(wout, "")
+
+	if !success {
+		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+	} else {
+		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+	}
+
+	return success
+}
+
+type checkOutput struct {
+	Success    bool             `json:"success"`
+	Categories []*checkCategory `json:"categories"`
+}
+
+type checkCategory struct {
+	Name   string   `json:"categoryName"`
+	Checks []*check `json:"checks"`
+}
+
+// check is a user-facing version of `healthcheck.CheckResult`, for output via
+// `linkerd check -o json`.
+type check struct {
+	Description string      `json:"description"`
+	Hint        string      `json:"hint,omitempty"`
+	Error       string      `json:"error,omitempty"`
+	Result      checkResult `json:"result"`
+}
+
+type checkResult string
+
+const (
+	checkSuccess checkResult = "success"
+	checkWarn    checkResult = "warning"
+	checkErr     checkResult = "error"
+)
+
+func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
+	var categories []*checkCategory
+
+	collectJSONOutput := func(result *healthcheck.CheckResult) {
+		categoryName := string(result.Category)
+		if categories == nil || categories[len(categories)-1].Name != categoryName {
+			categories = append(categories, &checkCategory{
+				Name:   categoryName,
+				Checks: []*check{},
+			})
+		}
+
+		if !result.Retry {
+			currentCategory := categories[len(categories)-1]
+			// ignore checks that are going to be retried, we want only final results
+			status := checkSuccess
+			if result.Err != nil {
+				status = checkErr
+				if result.Warning {
+					status = checkWarn
+				}
+			}
+
+			currentCheck := &check{
+				Description: result.Description,
+				Result:      status,
+			}
+
+			if result.Err != nil {
+				currentCheck.Error = result.Err.Error()
+
+				if result.HintAnchor != "" {
+					currentCheck.Hint = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+				}
+			}
+			currentCategory.Checks = append(currentCategory.Checks, currentCheck)
+		}
+	}
+
+	result := hc.RunChecks(collectJSONOutput)
+
+	outputJSON := checkOutput{
+		Success:    result,
+		Categories: categories,
+	}
+
+	resultJSON, err := json.MarshalIndent(outputJSON, "", "  ")
+	if err == nil {
+		fmt.Fprintf(wout, "%s\n", string(resultJSON))
+	} else {
+		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
+	}
+	return result
 }

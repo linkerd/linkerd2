@@ -53,7 +53,7 @@ const componentsToDeployNames = {
   "Prometheus": "linkerd-prometheus",
   "Public API": "linkerd-controller",
   "Service Profile Validator": "linkerd-sp-validator",
-  "Tap": "linkerd-controller",
+  "Tap": "linkerd-tap",
   "Web UI": "linkerd-web"
 };
 

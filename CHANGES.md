@@ -1,3 +1,39 @@
+## edge-19.5.3
+
+* CLI
+  * **New** Added a `linkerd edges` command that shows the source and
+    destination name and identity for proxied connections, to assist in
+    debugging
+  * Tap can now be disabled for specific pods during injection by using the
+    `--disable-tap` flag, or by using the `config.linkerd.io/disable-tap`
+    annotation
+  * Introduced pre-install healthcheck for clock skew (thanks, @matej-g!)
+* Controller
+  * Added Controller Component Labels to the webhook config resources (thanks,
+    @Pothulapati!)
+  * Moved the tap service into its own pod
+* Proxy
+  * Fix an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
+## edge-19.5.2
+
+* CLI
+  * Fixed `linkerd check` and `linkerd dashboard` failing when any control plane
+    pod is not ready, even when multiple replicas exist (as in HA mode)
+* Controller
+  * Fixed control plane components failing on startup when the Kubernetes API
+    returns an `ErrGroupDiscoveryFailed`
+* Proxy
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the Destination service
+
+Special thanks to @zaharidichev for adding end to end tests for proxies with
+TLS!
+
 ## edge-19.5.1
 
 * CLI
