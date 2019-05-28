@@ -726,6 +726,9 @@ func (conf *ResourceConfig) proxyInitVersion() string {
 	if override := conf.getOverride(k8s.ProxyInitImageVersionAnnotation); override != "" {
 		return override
 	}
+	if v := conf.configs.GetProxy().GetProxyInitImageVersion(); v != "" {
+		return v
+	}
 	return version.ProxyInitVersion
 }
 

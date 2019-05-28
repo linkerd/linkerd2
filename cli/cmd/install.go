@@ -801,6 +801,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		},
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
+		ProxyInitImageVersion:   options.initImageVersion,
 	}
 }
 
