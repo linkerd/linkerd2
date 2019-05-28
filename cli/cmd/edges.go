@@ -112,14 +112,8 @@ func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) er
 			return fmt.Errorf("Edges cannot be returned for a specific resource name; remove %s from query", target.Name)
 		}
 		switch target.Type {
-		case "authority":
+		case "authority", "service", "all":
 			return fmt.Errorf("Resource type is not supported: %s", target.Type)
-		case "service":
-			return fmt.Errorf("Resource type is not supported: %s", target.Type)
-		case "all":
-			return fmt.Errorf("Resource type is not supported: %s", target.Type)
-		default:
-			return nil
 		}
 	}
 
