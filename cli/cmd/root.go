@@ -205,6 +205,10 @@ func (options *proxyConfigOptions) validate() error {
 		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}
 
+	if options.initImageVersion != "" && !alphaNumDashDot.MatchString(options.initImageVersion) {
+		return fmt.Errorf("%s is not a valid version", options.initImageVersion)
+	}
+
 	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
 	}
