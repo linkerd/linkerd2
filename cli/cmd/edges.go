@@ -329,17 +329,18 @@ type edgesJSONStats struct {
 	Msg    string `json:"no_tls_reason"`
 }
 
-func printEdgesJSON(edgeTables map[string]*edgeRow, w *tabwriter.Writer) {
+func printEdgesJSON(rows map[string]*edgeRow, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*edgesJSONStats{}
 
-	for _, row := range edgeTables {
+	sortedKeys := sortEdgesKeys(rows)
+	for _, key := range sortedKeys {
 		entry := &edgesJSONStats{
-			Src:    row.src,
-			Dst:    row.dst,
-			Client: row.client,
-			Server: row.server,
-			Msg:    row.msg}
+			Src:    rows[key].src,
+			Dst:    rows[key].dst,
+			Client: rows[key].client,
+			Server: rows[key].server,
+			Msg:    rows[key].msg}
 		entries = append(entries, entry)
 	}
 
