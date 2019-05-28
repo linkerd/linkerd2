@@ -65,7 +65,8 @@ class NavigationResourcesBase extends React.Component {
       }
     }
 
-    // the "authorities" type is displayed as "services", so below list is alphabetical
+    // the "authorities" type is displayed as "services", so below list is
+    // alphabetical
     return (
       <MenuList dense component="div" disablePadding>
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />
