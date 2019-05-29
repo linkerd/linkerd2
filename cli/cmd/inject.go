@@ -136,7 +136,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if rt.enableDebugSidecar {
-		conf = conf.WithDebugSidecar()
+		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
 	}
 
 	report, err := conf.ParseMetaAndYAML(bytes)
