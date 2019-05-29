@@ -181,7 +181,6 @@ func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 }
 
 type edgeRow struct {
-	key    string
 	src    string
 	dst    string
 	client string
@@ -207,7 +206,6 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 	edgeRows := []edgeRow{}
 	if len(rows) != 0 {
 		for _, r := range rows {
-			key := r.Src.Name + r.Dst.Name
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
@@ -225,7 +223,6 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			}
 
 			row := edgeRow{
-				key:    key,
 				client: clientID,
 				server: serverID,
 				msg:    msg,
@@ -255,7 +252,9 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 
 	// sorting edgeRows by key for alphabetical listing
 	sort.Slice(edgeRows, func(i, j int) bool {
-		return edgeRows[i].key < edgeRows[j].key
+		keyI := edgeRows[i].src + edgeRows[i].dst
+		keyJ := edgeRows[j].src + edgeRows[j].dst
+		return keyI < keyJ
 	})
 
 	switch options.outputFormat {
