@@ -8,7 +8,6 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	"github.com/linkerd/linkerd2/pkg/profiles"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -181,12 +180,12 @@ var (
 			pbRoute1,
 			pbRoute2,
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	defaultPbProfile = &pb.DestinationProfile{
 		Routes:      []*pb.Route{},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	multipleRequestMatches = &sp.ServiceProfile{
@@ -239,7 +238,7 @@ var (
 				},
 			},
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	notEnoughRequestMatches = &sp.ServiceProfile{
@@ -331,7 +330,7 @@ var (
 				},
 			},
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	oneSidedStatusRange = &sp.ServiceProfile{
@@ -424,7 +423,7 @@ var (
 		Routes: []*pb.Route{
 			pbRouteWithTimeout,
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 )
 

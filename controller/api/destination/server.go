@@ -111,8 +111,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 }
 
 func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
+	log := s.log
 	client, _ := peer.FromContext(stream.Context())
-	log := s.log.WithField("remote", client.Addr)
+	if client != nil {
+		log = log.WithField("remote", client.Addr)
+	}
 	log.Debugf("GetProfile(%+v)", dest)
 
 	translator := newProfileTranslator(stream, log)

@@ -115,9 +115,9 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 /// EndpointsWatcher ///
 ////////////////////////
 
-// Subscribe to a service and service port.
+// Subscribe to an authority.
 // The provided listener will be updated each time the address set for the
-// given service port is changed.
+// given authority is changed.
 func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateListener) error {
 	id, port, err := GetServiceAndPort(authority)
 	if err != nil {
@@ -339,17 +339,20 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 /// portPublisher ///
 /////////////////////
 
+// Note that portPublishers methods are generally NOT thread-safe.  You should
+// hold the parent servicePublisher's mutex before calling methods on a
+// portPublisher.
+
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newPods := pp.endpointsToAddresses(endpoints)
+	pp.exists = true
+	pp.pods = newPods
 	if len(newPods) == 0 {
-		pp.exists = true
 		for _, listener := range pp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
 		add, remove := diffPods(pp.pods, newPods)
-		pp.exists = true
-		pp.pods = newPods
 		for _, listener := range pp.listeners {
 			if len(remove) > 0 {
 				listener.Remove(remove)
