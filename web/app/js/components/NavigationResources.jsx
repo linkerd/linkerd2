@@ -65,8 +65,6 @@ class NavigationResourcesBase extends React.Component {
       }
     }
 
-    // hiding this link for now, to make way for traffic splitting view
-    // <NavigationResource type="authorities" />
     return (
       <MenuList dense component="div" disablePadding>
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />

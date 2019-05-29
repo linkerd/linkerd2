@@ -161,8 +161,6 @@ class NamespaceLanding extends React.Component {
     let metrics = this.state.metricsByNs[namespace] || {};
     let noMetrics = _isEmpty(metrics.pod);
 
-    // hiding this table for now, to make way for traffic splitting view
-    // {this.renderResourceSection("authority", metrics.authority)}
     return (
       <Grid container direction="column" spacing={16}>
         <Hidden smDown>
