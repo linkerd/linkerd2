@@ -17,7 +17,7 @@ import (
 
 var (
 	normalPod = watcher.Address{
-		Ip:   "1.1.1.1",
+		IP:   "1.1.1.1",
 		Port: 1,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -40,7 +40,7 @@ var (
 	}
 
 	tlsOptionalPod = watcher.Address{
-		Ip:   "1.1.1.2",
+		IP:   "1.1.1.2",
 		Port: 2,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -58,7 +58,7 @@ var (
 	}
 
 	otherMeshPod = watcher.Address{
-		Ip:   "1.1.1.3",
+		IP:   "1.1.1.3",
 		Port: 3,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -76,7 +76,7 @@ var (
 	}
 
 	tlsDisabledPod = watcher.Address{
-		Ip:   "1.1.1.4",
+		IP:   "1.1.1.4",
 		Port: 4,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -258,13 +258,13 @@ func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watch
 }
 
 func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address) {
-	expectedAddr, err := addr.ParseProxyIPV4(expected.Ip)
+	expectedAddr, err := addr.ParseProxyIPV4(expected.IP)
 	expectedTCP := net.TcpAddress{
 		Ip:   expectedAddr,
 		Port: expected.Port,
 	}
 	if err != nil {
-		t.Fatalf("Failed to parse expected IP [%s]: %s", expected.Ip, err)
+		t.Fatalf("Failed to parse expected IP [%s]: %s", expected.IP, err)
 	}
 	if !reflect.DeepEqual(*actual, expectedTCP) {
 		t.Fatalf("Expected address [%+v] but got [%+v]", expectedTCP, *actual)

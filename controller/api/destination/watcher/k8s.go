@@ -9,19 +9,24 @@ import (
 )
 
 type (
-	iD struct {
+	// ID is a namespace-qualified name.
+	ID struct {
 		Namespace string
 		Name      string
 	}
-	ServiceID = iD
-	PodID     = iD
-	ProfileID = iD
+	// ServiceID is the namespace-qualified name of a service.
+	ServiceID = ID
+	// PodID is the namespace-qualified name of a pod.
+	PodID = ID
+	// ProfileID is the namespace-qualified name of a service profile.
+	ProfileID = ID
 
+	// Port is a numeric port.
 	Port      = uint32
 	namedPort = intstr.IntOrString
 )
 
-func (i iD) String() string {
+func (i ID) String() string {
 	return fmt.Sprintf("%s/%s", i.Namespace, i.Name)
 }
 
@@ -42,6 +47,10 @@ func getHostAndPort(authority string) (string, Port, error) {
 	return host, Port(port), nil
 }
 
+// GetServiceAndPort is a utility function that destructures an authority into
+// a service and port.  If the authority does not represent a Kubernetes
+// service, an error is returned.  If no port is specified in the authority,
+// the HTTP default (80) is returned as the port number.
 func GetServiceAndPort(authority string) (ServiceID, Port, error) {
 	host, port, err := getHostAndPort(authority)
 	if err != nil {

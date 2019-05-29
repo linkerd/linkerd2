@@ -33,11 +33,14 @@ type (
 		log *logging.Entry
 	}
 
+	// ProfileUpdateListener is the interface that subscribers must implement.
 	ProfileUpdateListener interface {
 		Update(profile *sp.ServiceProfile)
 	}
 )
 
+// NewProfileWatcher creates a ProfileWatcher and begins watching the k8sAPI for
+// service profile changes.
 func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
 	watcher := &ProfileWatcher{
 		profileLister: k8sAPI.SP().Lister(),
@@ -60,6 +63,9 @@ func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
 /// ProfileWatcher ///
 //////////////////////
 
+// Subscribe to an authority.
+// The provided listener will be updated each time the service profile for the
+// given authority is changed.
 func (pw *ProfileWatcher) Subscribe(authority string, contextToken string, listener ProfileUpdateListener) error {
 	name, err := profileID(authority, contextToken)
 	if err != nil {
@@ -85,6 +91,7 @@ func (pw *ProfileWatcher) Subscribe(authority string, contextToken string, liste
 	return nil
 }
 
+// Unsubscribe removes a listener from the subscribers list for this authority.
 func (pw *ProfileWatcher) Unsubscribe(authority string, contextToken string, listener ProfileUpdateListener) error {
 	name, err := profileID(authority, contextToken)
 	if err != nil {

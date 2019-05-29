@@ -26,7 +26,7 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 }
 
 func addressString(address Address) string {
-	return fmt.Sprintf("%s:%d", address.Ip, address.Port)
+	return fmt.Sprintf("%s:%d", address.IP, address.Port)
 }
 
 func (bel *bufferingEndpointListener) Add(set PodSet) {

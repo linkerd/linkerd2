@@ -114,7 +114,7 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 }
 
 func (et *endpointTranslator) toAddr(address watcher.Address) (*net.TcpAddress, error) {
-	ip, err := addr.ParseProxyIPV4(address.Ip)
+	ip, err := addr.ParseProxyIPV4(address.IP)
 	if err != nil {
 		return nil, err
 	}

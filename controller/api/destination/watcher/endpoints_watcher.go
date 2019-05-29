@@ -20,17 +20,19 @@ const (
 // https://github.com/linkerd/linkerd2/issues/2204
 
 type (
+	// Address represents an individual port on an specific pod.
 	Address struct {
-		Ip        string
+		IP        string
 		Port      Port
 		Pod       *corev1.Pod
 		OwnerName string
 		OwnerKind string
 	}
 
+	// PodSet is a set of pods, indexed by IP.
 	PodSet = map[PodID]Address
 
-	// endpointsWatcher watches all endpoints and services in the Kubernetes
+	// EndpointsWatcher watches all endpoints and services in the Kubernetes
 	// cluster.  Listeners can subscribe to a particular service and port and
 	// endpointsWatcher will publish the address set and all future changes for
 	// that service:port.
@@ -68,6 +70,7 @@ type (
 		listeners []EndpointUpdateListener
 	}
 
+	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
 		Add(set PodSet)
 		Remove(set PodSet)
@@ -75,6 +78,8 @@ type (
 	}
 )
 
+// NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
+// k8sAPI for pod, service, and endpoint changes.
 func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher {
 	ew := &EndpointsWatcher{
 		publishers: make(map[ServiceID]*servicePublisher),
@@ -134,6 +139,7 @@ func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateL
 	return nil
 }
 
+// Unsubscribe removes a listener from the subscribers list for this authority.
 func (ew *EndpointsWatcher) Unsubscribe(authority string, listener EndpointUpdateListener) {
 	id, port, err := GetServiceAndPort(authority)
 	if err != nil {
@@ -372,7 +378,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 				}
 				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod)
 				pods[id] = Address{
-					Ip:        endpoint.IP,
+					IP:        endpoint.IP,
 					Port:      resolvedPort,
 					Pod:       pod,
 					OwnerName: ownerName,
