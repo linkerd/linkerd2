@@ -4,3 +4,5 @@ category
 × check2
     This should contain instructions for fail
     see https://linkerd.io/checks/#hint-anchor for hints
+
+Status check results are ×

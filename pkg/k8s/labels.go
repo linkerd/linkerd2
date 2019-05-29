@@ -158,6 +158,10 @@ const (
 	// ProxyDisableTapAnnotation can be used to disable tap on the injected proxy.
 	ProxyDisableTapAnnotation = ProxyConfigAnnotationsPrefix + "/disable-tap"
 
+	// ProxyEnableDebugAnnotation is set to true if the debug container is
+	// injected.
+	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/debug"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -239,6 +243,12 @@ const (
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
+
+	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
+	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+
+	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
+	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
 
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.

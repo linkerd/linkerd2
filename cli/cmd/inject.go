@@ -108,8 +108,6 @@ sub-folders, or coming from stdin.`,
 		&options.disableTap, "disable-tap", options.disableTap,
 		"Disables resources from from being tapped",
 	)
-	// hidden till support on the proxy-side (#2811) lands
-	flags.MarkHidden("disable-tap")
 
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,

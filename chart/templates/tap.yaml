@@ -1,80 +1,72 @@
 {{with .Values -}}
 ---
 ###
-### Service Profile Validator
+### Tap
 ###
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator
+  name: linkerd-tap
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerComponentLabel}}: tap
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerComponentLabel}}: tap
   ports:
-  - name: sp-validator
-    port: 443
-    targetPort: sp-validator
+  - name: grpc
+    port: 8088
+    targetPort: 8088
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
-  name: linkerd-sp-validator
+  name: linkerd-tap
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerComponentLabel}}: tap
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      {{.ControllerComponentLabel}}: sp-validator
+  replicas: {{.ControllerReplicas}}
   template:
     metadata:
       labels:
-        {{.ControllerComponentLabel}}: sp-validator
+        {{.ControllerComponentLabel}}: tap
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
-      serviceAccountName: linkerd-sp-validator
+      serviceAccountName: linkerd-tap
       containers:
-      - name: sp-validator
+      - name: tap
+        ports:
+        - name: grpc
+          containerPort: 8088
+        - name: admin-http
+          containerPort: 9998
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
-        - "sp-validator"
+        - "tap"
+        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
-        ports:
-        - name: sp-validator
-          containerPort: 8443
-        volumeMounts:
-        - name: tls
-          mountPath: /var/run/linkerd/tls
-          readOnly: true
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9997
+            port: 9998
           initialDelaySeconds: 10
         readinessProbe:
           httpGet:
             path: /ready
-            port: 9997
+            port: 9998
           failureThreshold: 7
-        {{ with .SPValidatorResources -}}
+        {{ with .TapResources -}}
         {{- template "resources" . }}
         {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
-      volumes:
-      - name: tls
-        secret:
-          secretName: linkerd-sp-validator-tls
 {{end -}}

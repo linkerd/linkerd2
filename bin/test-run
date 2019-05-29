@@ -38,32 +38,32 @@ function run_test(){
     go test -v "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
 }
 
-# Install the latest edge release.
-# $1 - namespace to use for the edge release
-function install_edge() {
+# Install the latest stable release.
+# $1 - namespace to use for the stable release
+function install_stable() {
     tmp=$(mktemp -d -t l5dbin.XXX)
     trap "rm -rf $tmp" EXIT
 
-    curl -s https://run.linkerd.io/install-edge | HOME=$tmp sh > /dev/null 2>&1
+    curl -s https://run.linkerd.io/install | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local edge_namespace="$1"
-    $linkerd_path install --linkerd-namespace="$edge_namespace" | kubectl apply -f - > /dev/null 2>&1
-    $linkerd_path check --linkerd-namespace="$edge_namespace" > /dev/null 2>&1
+    local stable_namespace="$1"
+    $linkerd_path install --linkerd-namespace="$stable_namespace" | kubectl apply -f - > /dev/null 2>&1
+    $linkerd_path check --linkerd-namespace="$stable_namespace" > /dev/null 2>&1
 }
 
-# Run the upgrade test by upgrading the most-recent edge release to the HEAD of
+# Run the upgrade test by upgrading the most-recent stable release to the HEAD of
 # this branch.
-# $1 - namespace to use for the edge release
+# $1 - namespace to use for the stable release
 function run_upgrade_test() {
-    local edge_namespace="$1"
-    local edge_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "edge-[0-9]*.[0-9]*.[0-9]*")
+    local stable_namespace="$1"
+    local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
 
-    printf "Installing release [%s] namespace [%s]\n" "$edge_version" "$edge_namespace"
-    install_edge $edge_namespace
+    printf "Installing release [%s] namespace [%s]\n" "$stable_version" "$stable_namespace"
+    install_stable $stable_namespace
 
-    printf "Upgrading release [%s] to [%s]\n" "$edge_version" "$linkerd_version"
-    run_test "$test_directory/install_test.go" --upgrade-from-version=$edge_version --linkerd-namespace=$edge_namespace || exit_code=$?
+    printf "Upgrading release [%s] to [%s]\n" "$stable_version" "$linkerd_version"
+    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace || exit_code=$?
 }
 
 linkerd_path=$1

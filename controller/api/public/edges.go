@@ -65,8 +65,12 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	labelsOutbound := labels.Merge(promDirectionLabels("outbound"))
 	labelsInbound := labels.Merge(promDirectionLabels("inbound"))
 
-	inboundQuery := fmt.Sprintf(inboundIdentityQuery, labelsInbound, resourceType)
-	outboundQuery := fmt.Sprintf(outboundIdentityQuery, labelsOutbound, resourceType, resourceType)
+	// checking that data for the specified resource type exists
+	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, resourceType)
+	labelsInboundStr := generateLabelStringWithExclusion(labelsInbound, resourceType)
+
+	outboundQuery := fmt.Sprintf(outboundIdentityQuery, labelsOutboundStr, resourceType, resourceType)
+	inboundQuery := fmt.Sprintf(inboundIdentityQuery, labelsInboundStr, resourceType)
 
 	inboundResult, err := s.queryProm(ctx, inboundQuery)
 	if err != nil {
