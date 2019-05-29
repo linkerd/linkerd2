@@ -65,7 +65,7 @@
     "wdio-chromedriver-service": "^5.0.1",
     "webdriverio": "^5.7.9",
     "webpack": "4.20.2",
-    "webpack-bundle-analyzer": "^3.0.3",
+    "webpack-bundle-analyzer": "^3.3.2",
     "webpack-cli": "3.0.7",
     "webpack-dev-server": "3.3.1"
   },

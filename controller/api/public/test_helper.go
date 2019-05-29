@@ -228,6 +228,37 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 	return resp
 }
 
+// GenEdgesResponse generates a mock Public API StatSummaryResponse
+// object.
+func GenEdgesResponse(resourceType string, resSrc, resDst, resClient, resServer, msg []string) pb.EdgesResponse {
+	edges := []*pb.Edge{}
+	for i := range resSrc {
+		edge := &pb.Edge{
+			Src: &pb.Resource{
+				Name: resSrc[i],
+				Type: resourceType,
+			},
+			Dst: &pb.Resource{
+				Name: resDst[i],
+				Type: resourceType,
+			},
+			ClientId:      resClient[i],
+			ServerId:      resServer[i],
+			NoIdentityMsg: msg[i],
+		}
+		edges = append(edges, edge)
+	}
+
+	resp := pb.EdgesResponse{
+		Response: &pb.EdgesResponse_Ok_{
+			Ok: &pb.EdgesResponse_Ok{
+				Edges: edges,
+			},
+		},
+	}
+	return resp
+}
+
 // GenTopRoutesResponse generates a mock Public API TopRoutesResponse object.
 func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, authority string) pb.TopRoutesResponse {
 	rows := []*pb.RouteTable_Row{}
