@@ -206,7 +206,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 	edgeTables := make(map[string]*edgeRow)
 	if len(rows) != 0 {
 		for _, r := range rows {
-			key := r.Dst.Name + r.Src.Name
+			key := r.Src.Name + r.Dst.Name
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
@@ -246,22 +246,23 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			if len(msg) > maxMsgLength {
 				maxMsgLength = len(msg)
 			}
-
 		}
 	}
+	sortedKeys := sortEdgesKeys(edgeTables)
+
 	switch options.outputFormat {
 	case tableOutput:
 		if len(edgeTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No edges found.")
 			os.Exit(0)
 		}
-		printEdgeTable(edgeTables, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
+		printEdgeTable(edgeTables, sortedKeys, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
 	case jsonOutput:
-		printEdgesJSON(edgeTables, w)
+		printEdgesJSON(edgeTables, sortedKeys, w)
 	}
 }
 
-func printEdgeTable(edges map[string]*edgeRow, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
+func printEdgeTable(edges map[string]*edgeRow, sortedKeys []string, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
 	srcTemplate := fmt.Sprintf("%%-%ds", maxSrcLength)
 	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
 	clientTemplate := fmt.Sprintf("%%-%ds", maxClientLength)
@@ -280,7 +281,6 @@ func printEdgeTable(edges map[string]*edgeRow, w *tabwriter.Writer, maxSrcLength
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	sortedKeys := sortEdgesKeys(edges)
 	for _, key := range sortedKeys {
 		values := make([]interface{}, 0)
 		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, clientTemplate, serverTemplate, msgTemplate)
@@ -329,11 +329,10 @@ type edgesJSONStats struct {
 	Msg    string `json:"no_tls_reason"`
 }
 
-func printEdgesJSON(rows map[string]*edgeRow, w *tabwriter.Writer) {
+func printEdgesJSON(rows map[string]*edgeRow, sortedKeys []string, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*edgesJSONStats{}
 
-	sortedKeys := sortEdgesKeys(rows)
 	for _, key := range sortedKeys {
 		entry := &edgesJSONStats{
 			Src:    rows[key].src,
