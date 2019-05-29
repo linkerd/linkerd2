@@ -1,3 +1,23 @@
+## stable-2.3.1
+This stable release adds a number of proxy stability improvements.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Special thanks to**: @zaharidichev and @11Takanori!
+
+**Full release notes**:
+* Proxy
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+      @zaharidichev!)
+  * Fixed an issue where load balancers can become stuck
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the Destination service
+  * Fix an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+      @zaharidichev!)
+
 ## edge-19.5.3
 
 * CLI
