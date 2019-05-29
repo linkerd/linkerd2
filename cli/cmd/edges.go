@@ -181,6 +181,7 @@ func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 }
 
 type edgeRow struct {
+	key    string
 	src    string
 	dst    string
 	client string
@@ -203,7 +204,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 	maxServerLength := len(serverHeader)
 	maxMsgLength := len(msgHeader)
 
-	edgeTables := make(map[string]*edgeRow)
+	edgeRows := []edgeRow{}
 	if len(rows) != 0 {
 		for _, r := range rows {
 			key := r.Src.Name + r.Dst.Name
@@ -223,13 +224,16 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 				serverID = parts[0] + "." + parts[1]
 			}
 
-			edgeTables[key] = &edgeRow{
+			row := edgeRow{
+				key:    key,
 				client: clientID,
 				server: serverID,
 				msg:    msg,
 				src:    r.Src.Name,
 				dst:    r.Dst.Name,
 			}
+
+			edgeRows = append(edgeRows, row)
 
 			if len(r.Src.Name) > maxSrcLength {
 				maxSrcLength = len(r.Src.Name)
@@ -248,21 +252,25 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			}
 		}
 	}
-	sortedKeys := sortEdgesKeys(edgeTables)
+
+	// sorting edgeRows by key for alphabetical listing
+	sort.Slice(edgeRows, func(i, j int) bool {
+		return edgeRows[i].key < edgeRows[j].key
+	})
 
 	switch options.outputFormat {
 	case tableOutput:
-		if len(edgeTables) == 0 {
+		if len(edgeRows) == 0 {
 			fmt.Fprintln(os.Stderr, "No edges found.")
 			os.Exit(0)
 		}
-		printEdgeTable(edgeTables, sortedKeys, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
+		printEdgeTable(edgeRows, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
 	case jsonOutput:
-		printEdgesJSON(edgeTables, sortedKeys, w)
+		printEdgesJSON(edgeRows, w)
 	}
 }
 
-func printEdgeTable(edges map[string]*edgeRow, sortedKeys []string, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
+func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
 	srcTemplate := fmt.Sprintf("%%-%ds", maxSrcLength)
 	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
 	clientTemplate := fmt.Sprintf("%%-%ds", maxClientLength)
@@ -281,16 +289,16 @@ func printEdgeTable(edges map[string]*edgeRow, sortedKeys []string, w *tabwriter
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
-	for _, key := range sortedKeys {
+	for _, row := range edgeRows {
 		values := make([]interface{}, 0)
 		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, clientTemplate, serverTemplate, msgTemplate)
 
 		values = append(values, []interface{}{
-			edges[key].src,
-			edges[key].dst,
-			edges[key].client,
-			edges[key].server,
-			edges[key].msg,
+			row.src,
+			row.dst,
+			row.client,
+			row.server,
+			row.msg,
 		}...)
 
 		fmt.Fprintf(w, templateString, values...)
@@ -312,15 +320,6 @@ func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 	return out
 }
 
-func sortEdgesKeys(stats map[string]*edgeRow) []string {
-	var sortedKeys []string
-	for key := range stats {
-		sortedKeys = append(sortedKeys, key)
-	}
-	sort.Strings(sortedKeys)
-	return sortedKeys
-}
-
 type edgesJSONStats struct {
 	Src    string `json:"src"`
 	Dst    string `json:"dst"`
@@ -329,17 +328,17 @@ type edgesJSONStats struct {
 	Msg    string `json:"no_tls_reason"`
 }
 
-func printEdgesJSON(rows map[string]*edgeRow, sortedKeys []string, w *tabwriter.Writer) {
+func printEdgesJSON(edgeRows []edgeRow, w *tabwriter.Writer) {
 	// avoid nil initialization so that if there are not stats it gets marshalled as an empty array vs null
 	entries := []*edgesJSONStats{}
 
-	for _, key := range sortedKeys {
+	for _, row := range edgeRows {
 		entry := &edgesJSONStats{
-			Src:    rows[key].src,
-			Dst:    rows[key].dst,
-			Client: rows[key].client,
-			Server: rows[key].server,
-			Msg:    rows[key].msg}
+			Src:    row.src,
+			Dst:    row.dst,
+			Client: row.client,
+			Server: row.server,
+			Msg:    row.msg}
 		entries = append(entries, entry)
 	}
 
