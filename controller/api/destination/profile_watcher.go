@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
@@ -156,7 +157,7 @@ func (e *profileEntry) subscribe(listener profileUpdateListener) {
 	listener.Update(e.profile)
 }
 
-// unsubscribe returns true iff the listener was found and removed.
+// unsubscribe returns true if the listener was found and removed.
 // it also returns the number of listeners remaining after unsubscribing.
 func (e *profileEntry) unsubscribe(listener profileUpdateListener) (bool, int) {
 	e.mutex.Lock()
@@ -189,7 +190,11 @@ func (e *profileEntry) unsubscribeAll() {
 	defer e.mutex.Unlock()
 
 	for _, listener := range e.listeners {
-		listener.Stop()
+		// Since primaryProfileListener and backupProfileListener share the same parent, only stop it for the primary.
+		if reflect.TypeOf(listener) == reflect.TypeOf(&primaryProfileListener{}) {
+			listener.Stop()
+		}
 	}
+
 	e.listeners = make([]profileUpdateListener, 0)
 }

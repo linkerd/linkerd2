@@ -39,12 +39,12 @@ func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateLi
 	}
 
 	primary := primaryProfileListener{
-		fallbackChildListener{
+		fallbackChildListener: fallbackChildListener{
 			parent: &fallback,
 		},
 	}
 	backup := backupProfileListener{
-		fallbackChildListener{
+		fallbackChildListener: fallbackChildListener{
 			parent: &fallback,
 		},
 	}

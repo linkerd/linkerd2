@@ -71,6 +71,7 @@ func NewServer(
 
 	go func() {
 		<-done
+		log.Info("stopping k8s name resolver")
 		resolver.stop()
 	}()
 
@@ -216,7 +217,7 @@ func buildResolver(
 
 	k8sResolver := newK8sResolver(k8sDNSZoneLabels, newEndpointsWatcher(k8sAPI), newProfileWatcher(k8sAPI))
 
-	log.Infof("Built k8s name resolver")
+	log.Infof("built k8s name resolver")
 
 	return k8sResolver, nil
 }
