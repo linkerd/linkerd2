@@ -15,8 +15,8 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
   * Fixed a bug in the proxy's HPACK codec that could cause requests with
     very large header values to hang indefinitely
   * Replaced the fixed reconnect backoff with an exponential one (thanks,
-      @zaharidichev!)
-  * Fixed an issue where load balancers can become stuck
+    @zaharidichev!)
+  * Fixed an issue where requests could be held indefinitely by the load balancer
   * Added a dispatch timeout that limits the amount of time a request can be
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
