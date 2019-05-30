@@ -21,7 +21,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
     queries to the destination service
-  * Fix an epoll notification issue that could cause excessive CPU usage
+  * Fixed an epoll notification issue that could cause excessive CPU usage
   * Added the ability to disable tap by setting an env var (thanks,
     @zaharidichev!)
 
