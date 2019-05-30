@@ -118,14 +118,13 @@ func toRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 			timeout = defaultRouteTimeout
 		}
 	}
-	ret := pb.Route{
+	return &pb.Route{
 		Condition:       cond,
 		ResponseClasses: rcs,
 		MetricsLabels:   map[string]string{"route": route.Name},
 		IsRetryable:     route.IsRetryable,
 		Timeout:         toDuration(timeout),
-	}
-	return &ret, nil
+	}, nil
 }
 
 // toResponseClass returns a Proxy API ResponseClass, given a ServiceProfile

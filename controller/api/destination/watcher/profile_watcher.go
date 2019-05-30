@@ -9,6 +9,7 @@ import (
 	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -19,18 +20,18 @@ type (
 	ProfileWatcher struct {
 		profileLister splisters.ServiceProfileLister
 		profiles      map[ProfileID]*profilePublisher
-		profilesMu    sync.RWMutex // This mutex protects modifcation of the map itself.
 
-		log *logging.Entry
+		log          *logging.Entry
+		sync.RWMutex // This mutex protects modifcation of the map itself.
 	}
 
 	profilePublisher struct {
 		profile   *sp.ServiceProfile
 		listeners []ProfileUpdateListener
-		// All access to the profilePublisher is explicitly synchronized by this mutex.
-		mutex sync.Mutex
 
 		log *logging.Entry
+		// All access to the profilePublisher is explicitly synchronized by this mutex.
+		sync.Mutex
 	}
 
 	// ProfileUpdateListener is the interface that subscribers must implement.
@@ -67,25 +68,14 @@ func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
 // The provided listener will be updated each time the service profile for the
 // given authority is changed.
 func (pw *ProfileWatcher) Subscribe(authority string, contextToken string, listener ProfileUpdateListener) error {
-	name, err := profileID(authority, contextToken)
+	id, err := profileID(authority, contextToken)
 	if err != nil {
 		return err
 	}
 
-	pw.log.Infof("Establishing watch on profile %s", name)
+	pw.log.Infof("Establishing watch on profile %s", id)
 
-	pw.profilesMu.Lock()
-	publisher, ok := pw.profiles[name]
-	if !ok {
-		profile, err := pw.profileLister.ServiceProfiles(name.Namespace).Get(name.Name)
-		if err != nil {
-			profile = nil
-		}
-
-		publisher = pw.newProfilePublisher(name, profile)
-		pw.profiles[name] = publisher
-	}
-	pw.profilesMu.Unlock()
+	publisher := pw.getOrNewProfilePublisher(id, nil)
 
 	publisher.subscribe(listener)
 	return nil
@@ -93,17 +83,15 @@ func (pw *ProfileWatcher) Subscribe(authority string, contextToken string, liste
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
 func (pw *ProfileWatcher) Unsubscribe(authority string, contextToken string, listener ProfileUpdateListener) error {
-	name, err := profileID(authority, contextToken)
+	id, err := profileID(authority, contextToken)
 	if err != nil {
 		return err
 	}
-	pw.log.Infof("Stopping watch on profile %s", name)
+	pw.log.Infof("Stopping watch on profile %s", id)
 
-	pw.profilesMu.RLock()
-	publisher, ok := pw.profiles[name]
-	pw.profilesMu.RUnlock()
+	publisher, ok := pw.getProfilePublisher(id)
 	if !ok {
-		return fmt.Errorf("cannot unsubscribe from unknown service [%s] ", name)
+		return fmt.Errorf("cannot unsubscribe from unknown service [%s] ", id)
 	}
 	publisher.unsubscribe(listener)
 	return nil
@@ -116,14 +104,7 @@ func (pw *ProfileWatcher) addProfile(obj interface{}) {
 		Name:      profile.Name,
 	}
 
-	pw.profilesMu.Lock()
-	publisher, ok := pw.profiles[id]
-	if !ok {
-		publisher = pw.newProfilePublisher(id, profile)
-		pw.profiles[id] = publisher
-
-	}
-	pw.profilesMu.Unlock()
+	publisher := pw.getOrNewProfilePublisher(id, profile)
 
 	publisher.update(profile)
 }
@@ -139,24 +120,49 @@ func (pw *ProfileWatcher) deleteProfile(obj interface{}) {
 		Name:      profile.Name,
 	}
 
-	pw.profilesMu.RLock()
-	publisher, ok := pw.profiles[id]
-	pw.profilesMu.RUnlock()
+	publisher, ok := pw.getProfilePublisher(id)
 	if ok {
 		publisher.update(nil)
 	}
 }
 
-func (pw *ProfileWatcher) newProfilePublisher(id ProfileID, profile *sp.ServiceProfile) *profilePublisher {
-	return &profilePublisher{
-		profile:   profile,
-		listeners: make([]ProfileUpdateListener, 0),
-		log: pw.log.WithFields(logging.Fields{
-			"component": "profile-publisher",
-			"ns":        id.Namespace,
-			"profile":   id.Name,
-		}),
+func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.ServiceProfile) *profilePublisher {
+	pw.Lock()
+	defer pw.Unlock()
+
+	publisher, ok := pw.profiles[id]
+	if !ok {
+		if profile == nil {
+			var err error
+			profile, err = pw.profileLister.ServiceProfiles(id.Namespace).Get(id.Name)
+			if err != nil && !apierrors.IsNotFound(err) {
+				pw.log.Errorf("error getting service profile: %s", err)
+			}
+			if err != nil {
+				profile = nil
+			}
+		}
+
+		publisher = &profilePublisher{
+			profile:   profile,
+			listeners: make([]ProfileUpdateListener, 0),
+			log: pw.log.WithFields(logging.Fields{
+				"component": "profile-publisher",
+				"ns":        id.Namespace,
+				"profile":   id.Name,
+			}),
+		}
+		pw.profiles[id] = publisher
 	}
+
+	return publisher
+}
+
+func (pw *ProfileWatcher) getProfilePublisher(id ProfileID) (publisher *profilePublisher, ok bool) {
+	pw.RLock()
+	defer pw.RUnlock()
+	publisher, ok = pw.profiles[id]
+	return
 }
 
 ////////////////////////
@@ -164,18 +170,18 @@ func (pw *ProfileWatcher) newProfilePublisher(id ProfileID, profile *sp.ServiceP
 ////////////////////////
 
 func (pp *profilePublisher) subscribe(listener ProfileUpdateListener) {
-	pp.mutex.Lock()
-	defer pp.mutex.Unlock()
+	pp.Lock()
+	defer pp.Unlock()
 
 	pp.listeners = append(pp.listeners, listener)
 	listener.Update(pp.profile)
 }
 
-// unsubscribe returns true iff the listener was found and removed.
+// unsubscribe returns true if and only if the listener was found and removed.
 // it also returns the number of listeners remaining after unsubscribing.
 func (pp *profilePublisher) unsubscribe(listener ProfileUpdateListener) {
-	pp.mutex.Lock()
-	defer pp.mutex.Unlock()
+	pp.Lock()
+	defer pp.Unlock()
 
 	for i, item := range pp.listeners {
 		if item == listener {
@@ -190,8 +196,8 @@ func (pp *profilePublisher) unsubscribe(listener ProfileUpdateListener) {
 }
 
 func (pp *profilePublisher) update(profile *sp.ServiceProfile) {
-	pp.mutex.Lock()
-	defer pp.mutex.Unlock()
+	pp.Lock()
+	defer pp.Unlock()
 	pp.log.Debug("Updating profile")
 
 	pp.profile = profile
@@ -223,12 +229,12 @@ func profileID(authority string, contextToken string) (ProfileID, error) {
 	if err != nil {
 		return ProfileID{}, err
 	}
-	name := ProfileID{
+	id := ProfileID{
 		Name:      host,
 		Namespace: service.Name,
 	}
 	if contextNs := nsFromToken(contextToken); contextNs != "" {
-		name.Namespace = contextNs
+		id.Namespace = contextNs
 	}
-	return name, nil
+	return id, nil
 }

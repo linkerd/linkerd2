@@ -13,7 +13,7 @@ import (
 
 const defaultWeight uint32 = 10000
 
-// endpointTranslator statisfies EndpointUpdateListener and translates updates
+// endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
 type endpointTranslator struct {
 	controllerNS        string

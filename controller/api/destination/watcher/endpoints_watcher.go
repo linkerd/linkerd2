@@ -7,6 +7,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
 )
@@ -34,14 +35,14 @@ type (
 
 	// EndpointsWatcher watches all endpoints and services in the Kubernetes
 	// cluster.  Listeners can subscribe to a particular service and port and
-	// endpointsWatcher will publish the address set and all future changes for
+	// EndpointsWatcher will publish the address set and all future changes for
 	// that service:port.
 	EndpointsWatcher struct {
-		publishers   map[ServiceID]*servicePublisher
-		publishersMu sync.RWMutex // This mutex protects modifcation of the map itself.
-		k8sAPI       *k8s.API
+		publishers map[ServiceID]*servicePublisher
+		k8sAPI     *k8s.API
 
-		log *logging.Entry
+		log          *logging.Entry
+		sync.RWMutex // This mutex protects modification of the map itself.
 	}
 
 	// servicePublisher represents a service along with a port number.  Multiple
@@ -56,7 +57,7 @@ type (
 		ports map[Port]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
-		mutex sync.Mutex
+		sync.Mutex
 	}
 
 	portPublisher struct {
@@ -125,15 +126,7 @@ func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateL
 	}
 	ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
 
-	ew.publishersMu.Lock()
-	// If the service doesn't yet exist, create a stub for it so the listener can
-	// be registered.
-	sp, ok := ew.publishers[id]
-	if !ok {
-		sp = ew.newServicePublisher(id)
-		ew.publishers[id] = sp
-	}
-	ew.publishersMu.Unlock()
+	sp := ew.getOrNewServicePublisher(id)
 
 	sp.subscribe(port, listener)
 	return nil
@@ -148,43 +141,40 @@ func (ew *EndpointsWatcher) Unsubscribe(authority string, listener EndpointUpdat
 	}
 	ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
 
-	ew.publishersMu.RLock()
-	sp, ok := ew.publishers[id]
-	ew.publishersMu.RUnlock()
+	sp, ok := ew.getServicePublisher(id)
 	if !ok {
 		ew.log.Errorf("Cannot unsubscribe from unknown service [%s:%d]", id, port)
+		return
 	}
 	sp.unsubscribe(port, listener)
 }
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
+	if service.Namespace == kubeSystem {
+		return
+	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}
 
-	ew.publishersMu.Lock()
-	sp, ok := ew.publishers[id]
-	if !ok {
-		sp = ew.newServicePublisher(id)
-		ew.publishers[id] = sp
-	}
-	ew.publishersMu.Unlock()
+	sp := ew.getOrNewServicePublisher(id)
 
 	sp.updateService(service)
 }
 
 func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 	service := obj.(*corev1.Service)
+	if service.Namespace == kubeSystem {
+		return
+	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}
 
-	ew.publishersMu.RLock()
-	sp, ok := ew.publishers[id]
-	ew.publishersMu.RUnlock()
+	sp, ok := ew.getServicePublisher(id)
 	if ok {
 		sp.deleteEndpoints()
 	}
@@ -200,14 +190,7 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 		Name:      endpoints.Name,
 	}
 
-	ew.publishersMu.Lock()
-	sp, ok := ew.publishers[id]
-	if !ok {
-		sp = ew.newServicePublisher(id)
-		ew.publishers[id] = sp
-
-	}
-	ew.publishersMu.Unlock()
+	sp := ew.getOrNewServicePublisher(id)
 
 	sp.updateEndpoints(endpoints)
 }
@@ -222,25 +205,42 @@ func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
 		Name:      endpoints.Name,
 	}
 
-	ew.publishersMu.RLock()
-	sp, ok := ew.publishers[id]
-	ew.publishersMu.RUnlock()
+	sp, ok := ew.getServicePublisher(id)
 	if ok {
 		sp.deleteEndpoints()
 	}
 }
 
-func (ew *EndpointsWatcher) newServicePublisher(service ServiceID) *servicePublisher {
-	return &servicePublisher{
-		id: service,
-		log: ew.log.WithFields(logging.Fields{
-			"component": "service-publisher",
-			"ns":        service.Namespace,
-			"svc":       service.Name,
-		}),
-		k8sAPI: ew.k8sAPI,
-		ports:  make(map[Port]*portPublisher),
+// Returns the servicePublisher for the given id if it exists.  Otherwise,
+// create a new one and return it.
+func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePublisher {
+	ew.Lock()
+	defer ew.Unlock()
+
+	// If the service doesn't yet exist, create a stub for it so the listener can
+	// be registered.
+	sp, ok := ew.publishers[id]
+	if !ok {
+		sp = &servicePublisher{
+			id: id,
+			log: ew.log.WithFields(logging.Fields{
+				"component": "service-publisher",
+				"ns":        id.Namespace,
+				"svc":       id.Name,
+			}),
+			k8sAPI: ew.k8sAPI,
+			ports:  make(map[Port]*portPublisher),
+		}
+		ew.publishers[id] = sp
 	}
+	return sp
+}
+
+func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublisher, ok bool) {
+	ew.RLock()
+	defer ew.RUnlock()
+	sp, ok = ew.publishers[id]
+	return
 }
 
 ////////////////////////
@@ -248,8 +248,8 @@ func (ew *EndpointsWatcher) newServicePublisher(service ServiceID) *servicePubli
 ////////////////////////
 
 func (sp *servicePublisher) updateEndpoints(newEndpoints *corev1.Endpoints) {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
+	sp.Lock()
+	defer sp.Unlock()
 	sp.log.Debugf("Updating endpoints for %s", sp.id)
 
 	for _, port := range sp.ports {
@@ -258,8 +258,8 @@ func (sp *servicePublisher) updateEndpoints(newEndpoints *corev1.Endpoints) {
 }
 
 func (sp *servicePublisher) deleteEndpoints() {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
+	sp.Lock()
+	defer sp.Unlock()
 	sp.log.Debugf("Deleting endpoints for %s", sp.id)
 
 	for _, port := range sp.ports {
@@ -268,8 +268,8 @@ func (sp *servicePublisher) deleteEndpoints() {
 }
 
 func (sp *servicePublisher) updateService(newService *corev1.Service) {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
+	sp.Lock()
+	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
 	for srcPort, port := range sp.ports {
@@ -281,8 +281,8 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 }
 
 func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListener) {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
+	sp.Lock()
+	defer sp.Unlock()
 
 	port, ok := sp.ports[srcPort]
 	if !ok {
@@ -295,8 +295,8 @@ func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListe
 // unsubscribe returns true iff the listener was found and removed.
 // it also returns the number of listeners remaining after unsubscribing.
 func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener) {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
+	sp.Lock()
+	defer sp.Unlock()
 
 	port, ok := sp.ports[srcPort]
 	if ok {
@@ -307,6 +307,9 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateLis
 func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	targetPort := intstr.FromInt(int(srcPort))
 	svc, err := sp.k8sAPI.Svc().Lister().Services(sp.id.Namespace).Get(sp.id.Name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		sp.log.Errorf("error getting service: %s", err)
+	}
 	exists := false
 	if err == nil && svc.Spec.Type != corev1.ServiceTypeExternalName {
 		// XXX: The proxy will use DNS to discover the service if it is told
@@ -328,6 +331,9 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	}
 
 	endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		sp.log.Errorf("error getting endpoints: %s", err)
+	}
 	if err == nil {
 		port.updateEndpoints(endpoints)
 	}
@@ -477,19 +483,19 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	return targetPort
 }
 
-func diffPods(old, new PodSet) (add, remove PodSet) {
+func diffPods(oldPods, newPods PodSet) (add, remove PodSet) {
 	// TODO: this detects pods which have been added or removed, but does not
 	// detect pods which have been modified.  A modified pod should trigger
 	// an add of the new version.
 	add = make(PodSet)
 	remove = make(PodSet)
-	for id, pod := range new {
-		if _, ok := old[id]; !ok {
+	for id, pod := range newPods {
+		if _, ok := oldPods[id]; !ok {
 			add[id] = pod
 		}
 	}
-	for id, pod := range old {
-		if _, ok := new[id]; !ok {
+	for id, pod := range oldPods {
+		if _, ok := newPods[id]; !ok {
 			remove[id] = pod
 		}
 	}

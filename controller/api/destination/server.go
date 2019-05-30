@@ -122,6 +122,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	primary, secondary := newFallbackProfileListener(translator)
 
+	// If we have a context token, we create two subscriptions: one with the
+	// context token which sends updates to the primary listener and one without
+	// the context token which sends updates to the secondary listener.  It is
+	// up to the fallbackProfileListener to merge updates from the primary and
+	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
 		s.profiles.Subscribe(dest.GetPath(), dest.GetContextToken(), primary)
 		defer s.profiles.Unsubscribe(dest.GetPath(), dest.GetContextToken(), primary)
@@ -141,41 +146,5 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
 	s.log.Debugf("serving endpoints request")
-
-	// servicePorts := e.getState()
-
-	// rsp := discoveryPb.EndpointsResponse{
-	// 	ServicePorts: make(map[string]*discoveryPb.ServicePort),
-	// }
-
-	// for serviceID, portMap := range servicePorts {
-	// 	discoverySP := discoveryPb.ServicePort{
-	// 		PortEndpoints: make(map[uint32]*discoveryPb.PodAddresses),
-	// 	}
-	// 	for port, sp := range portMap {
-	// 		podAddrs := discoveryPb.PodAddresses{
-	// 			PodAddresses: []*discoveryPb.PodAddress{},
-	// 		}
-
-	// 		for _, ua := range sp.addresses {
-	// 			ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(ua.pod)
-	// 			pod := util.K8sPodToPublicPod(*ua.pod, ownerKind, ownerName)
-
-	// 			podAddrs.PodAddresses = append(
-	// 				podAddrs.PodAddresses,
-	// 				&discoveryPb.PodAddress{
-	// 					Addr: addr.NetToPublic(ua.address),
-	// 					Pod:  &pod,
-	// 				},
-	// 			)
-	// 		}
-
-	// 		discoverySP.PortEndpoints[port] = &podAddrs
-	// 	}
-
-	// 	s.log.Debugf("ServicePorts[%s]: %+v", serviceID, discoverySP)
-	// 	rsp.ServicePorts[serviceID.String()] = &discoverySP
-	// }
-
-	return nil, fmt.Errorf("Not implemented;")
+	return nil, fmt.Errorf("Not implemented")
 }

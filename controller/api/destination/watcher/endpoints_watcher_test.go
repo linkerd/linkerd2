@@ -30,7 +30,6 @@ func addressString(address Address) string {
 }
 
 func (bel *bufferingEndpointListener) Add(set PodSet) {
-	fmt.Printf("bel got add of %d", len(set))
 	for _, address := range set {
 		bel.added = append(bel.added, addressString(address))
 	}
