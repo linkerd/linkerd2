@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	tsclient "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned"
-	tsfake "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned/fake"
+	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	tsfake "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
 

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	tsclient "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned"
-	ts "github.com/deislabs/smi-sdk-go/gen/client/informers/externalversions"
-	tsinformers "github.com/deislabs/smi-sdk-go/gen/client/informers/externalversions/trafficsplit/v1beta1"
+	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	ts "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
+	tsinformers "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"

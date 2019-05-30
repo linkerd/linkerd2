@@ -1,4 +1,4 @@
 // +k8s:deepcopy-gen=package
-// +groupName=smi-spec.io
+// +groupName=linkerd.io
 
 package v1alpha1

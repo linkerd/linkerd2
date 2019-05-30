@@ -1,7 +1,7 @@
 package k8s
 
 import (
-	tsclient "github.com/deislabs/smi-sdk-go/gen/client/clientset/versioned"
+	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
