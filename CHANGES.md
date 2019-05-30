@@ -7,6 +7,11 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 
 **Full release notes**:
 * Proxy
+  * Changed the proxy's routing behavior so that, when the control plane
+    does not resolve a destination, the proxy forwards request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with
+    very large header values to hang indefinitely.
   * Replaced the fixed reconnect backoff with an exponential one (thanks,
       @zaharidichev!)
   * Fixed an issue where load balancers can become stuck
