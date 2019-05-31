@@ -55,7 +55,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    linkerd.io/control-plane-component: sp-validator
+    {{ .ControllerComponentLabel }}: sp-validator
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
