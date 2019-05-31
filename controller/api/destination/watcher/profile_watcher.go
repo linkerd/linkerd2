@@ -231,7 +231,7 @@ func profileID(authority string, contextToken string) (ProfileID, error) {
 	}
 	id := ProfileID{
 		Name:      host,
-		Namespace: service.Name,
+		Namespace: service.Namespace,
 	}
 	if contextNs := nsFromToken(contextToken); contextNs != "" {
 		id.Namespace = contextNs

@@ -128,11 +128,19 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		s.profiles.Subscribe(dest.GetPath(), dest.GetContextToken(), primary)
+		err := s.profiles.Subscribe(dest.GetPath(), dest.GetContextToken(), primary)
+		if err != nil {
+			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+			return err
+		}
 		defer s.profiles.Unsubscribe(dest.GetPath(), dest.GetContextToken(), primary)
 	}
 
-	s.profiles.Subscribe(dest.GetPath(), "", secondary)
+	err := s.profiles.Subscribe(dest.GetPath(), "", secondary)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+		return err
+	}
 	defer s.profiles.Unsubscribe(dest.GetPath(), "", secondary)
 
 	select {
