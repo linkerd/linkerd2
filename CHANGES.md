@@ -1,3 +1,148 @@
+## stable-2.3.1
+
+This stable release adds a number of proxy stability improvements.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Special thanks to**: @zaharidichev and @11Takanori!
+
+**Full release notes**:
+
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane
+    does not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with
+    very large header values to hang indefinitely
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+    @zaharidichev!)
+  * Fixed an issue where requests could be held indefinitely by the load balancer
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the destination service
+  * Fixed an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
+## edge-19.5.3
+
+* CLI
+  * **New** Added a `linkerd edges` command that shows the source and
+    destination name and identity for proxied connections, to assist in
+    debugging
+  * Tap can now be disabled for specific pods during injection by using the
+    `--disable-tap` flag, or by using the `config.linkerd.io/disable-tap`
+    annotation
+  * Introduced pre-install healthcheck for clock skew (thanks, @matej-g!)
+* Controller
+  * Added Controller Component Labels to the webhook config resources (thanks,
+    @Pothulapati!)
+  * Moved the tap service into its own pod
+* Proxy
+  * Fix an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
+## edge-19.5.2
+
+* CLI
+  * Fixed `linkerd check` and `linkerd dashboard` failing when any control plane
+    pod is not ready, even when multiple replicas exist (as in HA mode)
+* Controller
+  * Fixed control plane components failing on startup when the Kubernetes API
+    returns an `ErrGroupDiscoveryFailed`
+* Proxy
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the destination service
+
+Special thanks to @zaharidichev for adding end to end tests for proxies with
+TLS!
+
+## edge-19.5.1
+
+* CLI
+  * Added a `linkerd check config` command for verifying that
+    `linkerd install config` was successful
+  * Improved the help documentation of `linkerd install` to clarify flag usage
+  * Added support for private Kubernetes clusters by changing the CLI to connect
+    to the control plane using a port-forward (thanks, @jackprice!)
+* Controller
+  * Fixed pod creation failure when a `ResourceQuota` exists by adding a default
+    resource spec for the proxy-init init container
+* Proxy
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+    @zaharidichev!)
+  * Fixed an issue where load balancers can become stuck
+* Internal
+  * Fixed integration tests by adding known proxy-injector log warning to tests
+
+## edge-19.4.5
+
+**Significant Update**
+
+As of this edge release the proxy injector component is always installed.
+To have the proxy injector inject a pod you still can manually add the
+`linkerd.io/inject: enable` annotation into the pod spec, or at the namespace
+level to have all your pods be injected by default.
+With this release the behaviour of the `linkerd inject` command changes, where
+the proxy sidecar container YAML is no longer included in its output by
+default, but instead it will just add the annotations to defer the injection to
+the proxy injector.
+For use cases that require the full injected YAML to be output, a new
+`--manual` flag has been added.
+
+Another important update is the introduction of install stages. You still have
+the old `linkerd install` command, but now it can be broken into
+`linkerd install config` which installs the resources that require
+cluster-level privileges, and `linkerd install control-plane` that continues
+with the resources that only require namespace-level privileges.
+This also applies to the `linkerd upgrade` command.
+
+* CLI
+  * **Breaking Change** Removed the `--proxy-auto-inject` flag, as the
+    proxy injector is now always installed
+  * **Breaking Change** Replaced the `--linkerd-version` flag with the
+    `--proxy-version` flag in the `linkerd install` and `linkerd upgrade`
+    commands, which allows setting the version for the injected proxy sidecar
+    image, without changing the image versions for the control plane
+  * Introduced install stages: `linkerd install config` and
+    `linkerd install control-plane`
+  * Introduced upgrade stages: `linkerd upgrade config` and
+    `linkerd upgrade control-plane`
+  * Introduced a new `--from-manifests` flag to `linkerd upgrade` allowing
+    manually feeding a previously saved output of `linkerd install` into the
+    command, instead of requiring a connection to the cluster to fetch the
+    config
+  * Introduced a new `--manual` flag to `linkerd inject` to output the proxy
+    sidecar container spec
+  * Introduced a new `--enable-debug-sidecar` option to `linkerd inject`, that
+    injects a debug sidecar to inspect traffic to and from the meshed pod
+  * Added a new check for unschedulable pods and PSP issues (thanks, @liquidslr!)
+  * Disabled the spinner in `linkerd check` when running without a TTY
+  * Ensured the ServiceAccount for the proxy injector is created before its
+    Deployment to avoid warnings when installing the proxy injector
+    (thanks, @dwj300!)
+
+* Controller
+  * Added Go pprof HTTP endpoints to all control plane components' admin
+    servers to better assist debugging efforts
+  * Fixed bug in the proxy injector, where sporadically the pod workload owner
+    wasn't properly determined, which would result in erroneous stats
+  * Added support for a new `config.linkerd.io/disable-identity` annotation to
+    opt out of identity for a specific pod
+
+* Web UI
+  * Added the Font Awesome stylesheet locally; this allows both Font Awesome
+    and Material-UI sidebar icons to display consistently with no/limited
+    internet access (thanks again, @liquidslr!)
+
+* Internal
+  * Known container errors were hidden in the integration tests; now they are
+    reported in the output, still without having the tests fail
+
 ## stable-2.3.0
 
 This stable release introduces a new TLS-based service identity system into the
@@ -1214,7 +1359,7 @@ formerly hosted at github.com/runconduit/conduit.
   * Update branding to reference Linkerd throughout
   * The CLI is now called `linkerd`
 * Production Readiness
-  * Fix issue with Destination service sending back incomplete pod metadata
+  * Fix issue with destination service sending back incomplete pod metadata
   * Fix high CPU usage during proxy shutdown
   * ClusterRoles are now unique per Linkerd install, allowing multiple instances
     to be installed in the same Kubernetes cluster
@@ -1366,7 +1511,7 @@ Kubernetes-aware observability and debugging.
 * Service Discovery
   * The proxy now uses the [trust-dns] DNS resolver. This fixes a number of DNS
     correctness issues.
-  * The Destination service could sometimes return incorrect, stale, labels for an
+  * The destination service could sometimes return incorrect, stale, labels for an
     endpoint. This has been fixed!
 
 [trust-dns]: https://github.com/bluejekyll/trust-dns
