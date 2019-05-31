@@ -4,7 +4,7 @@
   * Added a JSON option to the `linkerd edges` command so that output is
     scripting friendly and can be parsed easily (thanks @alenkacz!)
 * Controller
-  * **New** Control plane installation now generates a self-signed certificate
+  * **New** Control plane installations now generate a self-signed certificate
     and private key pair for each webhook, to prepare for future work to make
     the proxy injector and service profile validator HA
   * Added a debug container annotation, allowing the `--enable-debug-sidecar`
