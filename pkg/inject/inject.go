@@ -112,7 +112,6 @@ type ResourceConfig struct {
 	proxyOutboundCapacity  map[string]uint
 	ownerRetriever         OwnerRetrieverFunc
 	origin                 Origin
-	debugSidecar           *corev1.Container
 
 	workload struct {
 		obj      runtime.Object
@@ -143,18 +142,6 @@ func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
 	config.pod.annotations = map[string]string{}
 	return config
-}
-
-// WithDebugSidecar enriches ResourceConfig with a debug sidecar for a resource
-func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
-	conf.debugSidecar = &corev1.Container{
-		Name:                     k8s.DebugSidecarName,
-		ImagePullPolicy:          conf.proxyImagePullPolicy(),
-		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-	}
-	conf.pod.annotations[k8s.ProxyEnableDebugAnnotation] = "true"
-	return conf
 }
 
 // WithKind enriches ResourceConfig with the workload kind
@@ -427,16 +414,15 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
-		debugEnabled, err := strconv.ParseBool(v)
+		debug, err := strconv.ParseBool(v)
 		if err != nil {
 			log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyEnableDebugAnnotation, v)
-			debugEnabled = false
+			debug = false
 		}
 
-		if debugEnabled {
+		if debug {
 			log.Infof("inject debug container")
-			conf.WithDebugSidecar()
-			patch.addContainer(conf.debugSidecar)
+			patch.addContainer(conf.injectDebugSidecar())
 		}
 	}
 
@@ -638,6 +624,15 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.
 		patch.addInitContainerRoot()
 	}
 	patch.addInitContainer(initContainer)
+}
+
+func (conf *ResourceConfig) injectDebugSidecar() *corev1.Container {
+	return &corev1.Container{
+		Name:                     k8s.DebugSidecarName,
+		ImagePullPolicy:          conf.proxyImagePullPolicy(),
+		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
 }
 
 func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {

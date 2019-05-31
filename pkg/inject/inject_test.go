@@ -473,10 +473,9 @@ func TestInjectPodSpec(t *testing.T) {
 	conf.pod.spec = &corev1.PodSpec{}
 
 	t.Run("debug container", func(t *testing.T) {
-		conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation] = "true"
-		conf.WithDebugSidecar()
-
 		patch := NewPatch("Deployment")
+		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
+		conf.injectPodAnnotations(patch)
 		conf.injectPodSpec(patch)
 
 		passed := false
