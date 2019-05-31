@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"github.com/linkerd/linkerd2/pkg/addr"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -171,6 +172,11 @@ func TestGet(t *testing.T) {
 		if len(stream.updates) != 1 {
 			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
 		}
+
+		if updateAddAddress(t, stream.updates[0])[0] != "172.17.0.12:8989" {
+			t.Fatalf("Expected 172.17.0.12:8989 but got %s", updateAddAddress(t, stream.updates[0])[0])
+		}
+
 	})
 }
 
@@ -257,4 +263,16 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected route to be retryable, but it was not")
 		}
 	})
+}
+
+func updateAddAddress(t *testing.T, update *pb.Update) []string {
+	add, ok := update.GetUpdate().(*pb.Update_Add)
+	if !ok {
+		t.Fatalf("Update expected to be an add, but was %+v", update)
+	}
+	ips := []string{}
+	for _, ip := range add.Add.Addrs {
+		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
+	}
+	return ips
 }

@@ -351,8 +351,6 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newPods := pp.endpointsToAddresses(endpoints)
-	pp.exists = true
-	pp.pods = newPods
 	if len(newPods) == 0 {
 		for _, listener := range pp.listeners {
 			listener.NoEndpoints(true)
@@ -368,6 +366,8 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 			}
 		}
 	}
+	pp.exists = true
+	pp.pods = newPods
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSet {
