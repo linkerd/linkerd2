@@ -1711,7 +1711,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
@@ -1939,7 +1939,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
