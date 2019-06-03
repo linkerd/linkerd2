@@ -430,6 +430,17 @@
   version = "v0.1.7"
 
 [[projects]]
+  digest = "1:ee5461d303279aa5cab1f39aa1fd977bcd6072418e343563aa338ec83d5b1491"
+  name = "github.com/linkerd/linkerd2-proxy-init"
+  packages = [
+    "cmd",
+    "iptables",
+  ]
+  pruneopts = ""
+  revision = "458ed04ebd1d23db106200b49afb65fc7f6db47b"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:212bebc561f4f654a653225868b2a97353cd5e160dc0b0bbc7232b06608474ec"
   name = "github.com/mailru/easyjson"
@@ -1277,6 +1288,8 @@
     "github.com/linkerd/linkerd2-proxy-api/go/identity",
     "github.com/linkerd/linkerd2-proxy-api/go/net",
     "github.com/linkerd/linkerd2-proxy-api/go/tap",
+    "github.com/linkerd/linkerd2-proxy-init/cmd",
+    "github.com/linkerd/linkerd2-proxy-init/iptables",
     "github.com/mattn/go-isatty",
     "github.com/mattn/go-runewidth",
     "github.com/nsf/termbox-go",

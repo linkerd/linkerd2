@@ -6,6 +6,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -161,7 +162,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: "svc.cluster.local.",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("Always"),
-				initVersion:                controlPlaneVersion,
+				initVersion:                version.ProxyInitVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "5000",
 					"--outgoing-proxy-port", "5002",
@@ -227,7 +228,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: ".",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("IfNotPresent"),
-				initVersion:                controlPlaneVersion,
+				initVersion:                version.ProxyInitVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "6000",
 					"--outgoing-proxy-port", "6002",

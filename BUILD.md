@@ -39,8 +39,6 @@ written in Go. The dashboard UI is a React application.
     clients such as `cli` and `web`, provides access to and control of the
     Linkerd2 service mesh.
   - [`tap`](controller/tap): Provides a live pipeline of requests.
-- [`proxy-init`](proxy-init): Adds a Kubernetes pod to join the Linkerd2
-  Service Mesh.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
   This component is written in Go and React.
 
@@ -345,11 +343,7 @@ build_architecture
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy-init/Dockerfile" [color=lightblue, style=filled, shape=rect];
-    "proxy-init/integration_test/iptables/Dockerfile-tester" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
-
-    "proxy-init/integration_test/run_tests.sh" -> "proxy-init/integration_test/iptables/Dockerfile-tester";
 
     "_docker.sh" -> "_log.sh";
     "_gcp.sh";
@@ -367,7 +361,6 @@ build_architecture
     "docker-build" -> "docker-build-controller";
     "docker-build" -> "docker-build-grafana";
     "docker-build" -> "docker-build-proxy";
-    "docker-build" -> "docker-build-proxy-init";
     "docker-build" -> "docker-build-web";
 
     "docker-build-base" -> "_docker.sh";
@@ -396,12 +389,6 @@ build_architecture
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
     "docker-build-proxy" -> "Dockerfile-proxy";
-
-    "docker-build-proxy-init" -> "_docker.sh";
-    "docker-build-proxy-init" -> "_tag.sh";
-    "docker-build-proxy-init" -> "docker-build-base";
-    "docker-build-proxy-init" -> "docker-build-go-deps";
-    "docker-build-proxy-init" -> "proxy-init/Dockerfile";
 
     "docker-build-web" -> "_docker.sh";
     "docker-build-web" -> "_tag.sh";
@@ -461,7 +448,6 @@ build_architecture
     "update-go-deps-shas" -> "cli/Dockerfile-bin";
     "update-go-deps-shas" -> "controller/Dockerfile";
     "update-go-deps-shas" -> "grafana/Dockerfile";
-    "update-go-deps-shas" -> "proxy-init/Dockerfile";
     "update-go-deps-shas" -> "web/Dockerfile";
 
     "web" -> "go-run";

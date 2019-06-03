@@ -17,7 +17,6 @@ of this repo, unless otherwise indicated by a `cd` command.
   - [Prerequisites](#prerequisites)
   - [Running tests](#running-tests)
   - [Writing tests](#writing-tests)
-- [Integration tests: proxy-init](#integration-tests-proxy-init)
 
 # Unit tests
 
@@ -295,27 +294,6 @@ your own tests, view the `testutil` package's godoc, with:
 
 ```bash
 $ godoc github.com/linkerd/linkerd2/testutil | less
-```
-
-# Integration tests: proxy-init
-
-The `proxy-init/` directory contains a separate set of integration tests, which
-can be run in your Kubernetes cluster. The instructions below assume that you
-are using [minikube](https://github.com/kubernetes/minikube).
-
-Start by building and tagging the `proxy-init` image required for the test:
-
-```bash
-DOCKER_TRACE=1 bin/mkube bin/docker-build-proxy-init
-bin/mkube docker tag gcr.io/linkerd-io/proxy-init:`bin/root-tag` gcr.io/linkerd-io/proxy-init:latest
-```
-
-The run the tests with:
-
-```bash
-cd proxy-init/integration_test
-eval $(minikube docker-env)
-./run_tests.sh
 ```
 
 # Scale tests
