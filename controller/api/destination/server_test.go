@@ -1,12 +1,12 @@
 package destination
 
 import (
-	"github.com/linkerd/linkerd2/pkg/addr"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -252,10 +252,16 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
+		// The number of updates we get depends on if the watcher gets an update
+		// about the profile before or after the subscription.  If the subscription
+		// happens first, then we get a profile update during the subscription and
+		// then a second update when the watcher receives the update about that
+		// profile.  If the watcher event happens first, then we only get the
+		// update during subscription.
+		if len(stream.updates) != 1 && len(stream.updates) != 2 {
+			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
-		routes := stream.updates[0].GetRoutes()
+		routes := stream.updates[len(stream.updates)-1].GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
