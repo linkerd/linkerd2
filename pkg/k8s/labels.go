@@ -106,7 +106,7 @@ const (
 	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
 
 	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
-	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-init-version"
+	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
 	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
