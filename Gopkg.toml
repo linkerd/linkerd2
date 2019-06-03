@@ -12,6 +12,11 @@ required = [
   version = "v0.1.7"
 
 [[constraint]]
+  name = "github.com/linkerd/linkerd2-proxy-init"
+  # This has to be kept in sync with ProxyInitVersion in pkg/version/version.go
+  version = "v1.0.0"
+
+[[constraint]]
   name = "google.golang.org/grpc"
   version = "1.7.0"
 

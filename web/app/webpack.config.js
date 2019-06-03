@@ -70,7 +70,8 @@ module.exports = {
     new LodashModuleReplacementPlugin({
       // 'chain': true,
       'collections': true,
-      'paths': true
+      'paths': true,
+      'shorthands': true
     }),
     // compile the bundle with hashed filename into index_bundle.js.out
     new HtmlWebpackPlugin({

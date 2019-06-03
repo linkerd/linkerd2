@@ -175,7 +175,6 @@ class NamespaceLanding extends React.Component {
         {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
         {this.renderResourceSection("statefulset", metrics.statefulset)}
         {this.renderResourceSection("job", metrics.job)}
-        {this.renderResourceSection("authority", metrics.authority)}
 
         {
           noMetrics ? null :

@@ -61,7 +61,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    linkerd.io/control-plane-component: proxy-injector
+    {{ .ControllerComponentLabel }}: proxy-injector
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   clientConfig:

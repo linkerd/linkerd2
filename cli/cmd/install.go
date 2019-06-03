@@ -178,6 +178,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 			ignoreCluster:          false,
 			proxyImage:             defaultDockerRegistry + "/proxy",
 			initImage:              defaultDockerRegistry + "/proxy-init",
+			initImageVersion:       version.ProxyInitVersion,
 			dockerRegistry:         defaultDockerRegistry,
 			imagePullPolicy:        "IfNotPresent",
 			ignoreInboundPorts:     nil,
@@ -801,6 +802,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		},
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
+		ProxyInitImageVersion:   options.initImageVersion,
 	}
 }
 
