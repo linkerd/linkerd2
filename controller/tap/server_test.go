@@ -240,7 +240,7 @@ status:
 
 			// TODO: mock out the underlying grpc tap events, rather than waiting an
 			// arbitrary time for request to timeout.
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 			defer cancel()
 
 			tapByResourceClient, err := client.TapByResource(ctx, &exp.req)

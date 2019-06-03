@@ -174,6 +174,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 
 // Sync waits for all informers to be synced.
 func (api *API) Sync() {
+	// It doesn't matter if informers were already started
 	api.sharedInformers.Start(nil)
 	api.spSharedInformers.Start(nil)
 
@@ -340,18 +341,7 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
 
 	parent := ownerRefs[0]
 	if parent.Kind == "ReplicaSet" {
-		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
-		if err != nil {
-			log.Warnf("failed to retrieve replicaset from indexer, retrying with get request %s/%s: %s", pod.Namespace, parent.Name, err)
-
-			// try again with a get request
-			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Errorf("failed to get replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
-			} else {
-				log.Debugf("successfully recovered replicaset via k8s get request: %s/%s", pod.Namespace, parent.Name)
-			}
-		}
+		rs, err := api.getRSs(pod.Namespace, parent.Name)
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
 			return strings.ToLower(parent.Kind), parent.Name
 		}
@@ -411,6 +401,10 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		// GetPodsFor a pod should just return the pod itself
 		namespace = typed.Namespace
 		pod, err := api.Pod().Lister().Pods(typed.Namespace).Get(typed.Name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			pod, err = api.Pod().Lister().Pods(typed.Namespace).Get(typed.Name)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -530,6 +524,10 @@ func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error)
 	} else {
 		var deploy *appsv1beta2.Deployment
 		deploy, err = api.Deploy().Lister().Deployments(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			deploy, err = api.Deploy().Lister().Deployments(namespace).Get(name)
+		}
 		deploys = []*appsv1beta2.Deployment{deploy}
 	}
 
@@ -556,6 +554,10 @@ func (api *API) getPods(namespace, name string) ([]runtime.Object, error) {
 	} else {
 		var pod *corev1.Pod
 		pod, err = api.Pod().Lister().Pods(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			pod, err = api.Pod().Lister().Pods(namespace).Get(name)
+		}
 		pods = []*corev1.Pod{pod}
 	}
 
@@ -585,6 +587,10 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	} else {
 		var rc *corev1.ReplicationController
 		rc, err = api.RC().Lister().ReplicationControllers(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			rc, err = api.RC().Lister().ReplicationControllers(namespace).Get(name)
+		}
 		rcs = []*corev1.ReplicationController{rc}
 	}
 
@@ -600,6 +606,18 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
+func (api *API) getRSs(namespace, name string) (*appsv1beta2.ReplicaSet, error) {
+	rs, err := api.RS().Lister().ReplicaSets(namespace).Get(name)
+	if err != nil && apierrors.IsNotFound(err) {
+		api.Sync()
+		rs, err = api.RS().Lister().ReplicaSets(namespace).Get(name)
+		if err != nil {
+			log.Warnf("failed to retrieve replicaset from indexer: %s", err)
+		}
+	}
+	return rs, err
+}
+
 func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) {
 	var err error
 	var daemonsets []*appsv1.DaemonSet
@@ -611,6 +629,10 @@ func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) 
 	} else {
 		var ds *appsv1.DaemonSet
 		ds, err = api.DS().Lister().DaemonSets(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			ds, err = api.DS().Lister().DaemonSets(namespace).Get(name)
+		}
 		daemonsets = []*appsv1.DaemonSet{ds}
 	}
 
@@ -637,6 +659,10 @@ func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error
 	} else {
 		var ss *appsv1.StatefulSet
 		ss, err = api.SS().Lister().StatefulSets(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			ss, err = api.SS().Lister().StatefulSets(namespace).Get(name)
+		}
 		statefulsets = []*appsv1.StatefulSet{ss}
 	}
 
@@ -663,6 +689,10 @@ func (api *API) getJobs(namespace, name string) ([]runtime.Object, error) {
 	} else {
 		var job *batchv1.Job
 		job, err = api.Job().Lister().Jobs(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			job, err = api.Job().Lister().Jobs(namespace).Get(name)
+		}
 		jobs = []*batchv1.Job{job}
 	}
 
@@ -706,6 +736,10 @@ func (api *API) GetServices(namespace, name string) ([]*corev1.Service, error) {
 	} else {
 		var svc *corev1.Service
 		svc, err = api.Svc().Lister().Services(namespace).Get(name)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			svc, err = api.Svc().Lister().Services(namespace).Get(name)
+		}
 		services = []*corev1.Service{svc}
 	}
 
@@ -754,6 +788,10 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1
 	// First attempt to lookup profile in client namespace
 	if clientNs != "" {
 		p, err := api.SP().Lister().ServiceProfiles(clientNs).Get(dst)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			p, err = api.SP().Lister().ServiceProfiles(clientNs).Get(dst)
+		}
 		if err == nil {
 			return p
 		}
@@ -764,6 +802,11 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1
 	// Second, attempt to lookup profile in server namespace
 	if svc.Namespace != clientNs {
 		p, err := api.SP().Lister().ServiceProfiles(svc.Namespace).Get(dst)
+		if err != nil && apierrors.IsNotFound(err) {
+			api.Sync()
+			p, err = api.SP().Lister().ServiceProfiles(svc.Namespace).Get(dst)
+		}
+
 		if err == nil {
 			return p
 		}
