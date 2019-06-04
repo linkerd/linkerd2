@@ -146,7 +146,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:6a25db9b26c1babb0a79dd47e4fdd403e6b85717cef5ee94916c6bb9c805df73"
+  digest = "1:19f2129307f59475844bef707441b6a58c0abc475c397030b750bb95a429e47a"
   name = "github.com/deislabs/smi-sdk-go"
   packages = [
     "pkg/apis/split",
@@ -163,7 +163,7 @@
     "pkg/gen/client/split/listers/split/v1alpha1",
   ]
   pruneopts = ""
-  revision = "86042c47396f92f00ad451a030b498bb033277b3"
+  revision = "3f3f1afc374b8e31bd146e8b94abd5e4e5f6c7ad"
 
 [[projects]]
   digest = "1:3e93e899f8457138a891b3ccedcacf8fe9074865c848f7028e1892bdae280676"
