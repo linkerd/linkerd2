@@ -20,7 +20,6 @@ func main() {
 	addr := flag.String("addr", ":8086", "address to serve on")
 	metricsAddr := flag.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	k8sDNSZone := flag.String("kubernetes-dns-zone", "", "The DNS suffix for the local Kubernetes zone.")
 	enableH2Upgrade := flag.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := flag.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -56,18 +55,14 @@ func main() {
 		trustDomain = global.GetIdentityContext().GetTrustDomain()
 	}
 
-	server, err := destination.NewServer(
+	server := destination.NewServer(
 		*addr,
-		*k8sDNSZone,
 		*controllerNamespace,
 		trustDomain,
 		*enableH2Upgrade,
 		k8sAPI,
 		done,
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	k8sAPI.Sync() // blocks until caches are synced
 
