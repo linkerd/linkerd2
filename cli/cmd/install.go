@@ -99,10 +99,12 @@ type (
 	}
 
 	proxyInjectorValues struct {
+		FailurePolicy string
 		*tlsValues
 	}
 
 	profileValidatorValues struct {
+		FailurePolicy string
 		*tlsValues
 	}
 
@@ -372,17 +374,38 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err != nil {
 		return nil, nil, err
 	}
-	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
 
 	profileValidatorTLS, err := options.generateWebhookTLS(k8s.SPValidatorWebhookServiceName)
 	if err != nil {
 		return nil, nil, err
 	}
-	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+
+	options.setWebhookConfigValues(values, proxyInjectorTLS, profileValidatorTLS, failurePolicyIgnore)
 
 	values.stage = stage
 
 	return values, configs, nil
+}
+
+func (options *installOptions) setWebhookConfigValues(
+	values *installValues,
+	proxyInjectorTLS, profileValidatorTLS *tlsValues,
+	failurePolicy string,
+) {
+	values.ProxyInjector = &proxyInjectorValues{
+		failurePolicy,
+		proxyInjectorTLS,
+	}
+
+	// the validator policy always depends on whether --ha was used
+	validatorFailurePolicy := failurePolicyIgnore
+	if options.highAvailability {
+		validatorFailurePolicy = failurePolicyFail
+	}
+	values.ProfileValidator = &profileValidatorValues{
+		validatorFailurePolicy,
+		profileValidatorTLS,
+	}
 }
 
 // recordableFlagSet returns flags usable during install or upgrade.

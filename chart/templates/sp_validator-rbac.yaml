@@ -64,6 +64,7 @@ webhooks:
       namespace: {{ .Namespace }}
       path: "/"
     caBundle: {{ b64enc .ProfileValidator.CrtPEM }}
+  failurePolicy: {{.ProfileValidator.FailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]

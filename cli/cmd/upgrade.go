@@ -2,12 +2,16 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -26,7 +30,8 @@ const (
 )
 
 type upgradeOptions struct {
-	manifests string
+	manifests                  string
+	proxyInjectorFailurePolicy string
 	*installOptions
 
 	verifyTLS func(tls *tlsValues, service string) error
@@ -41,7 +46,7 @@ func newUpgradeOptionsWithDefaults() *upgradeOptions {
 }
 
 // upgradeOnlyFlagSet includes flags that are only accessible at upgrade-time
-// and not at install-time. also these flags are not intended to be persisted
+// and not at install-time; also these flags are not intended to be persisted
 // via linkerd-config ConfigMap, unlike recordableFlagSet
 func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("upgrade-only", pflag.ExitOnError)
@@ -54,8 +59,23 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	return flags
 }
 
+// upgradeOnlyPersistFlagSet includes flags that are only accessible at upgrade-time
+// and not at install-time. also these flags are persisted via linkerd-config ConfigMap
+func (options *upgradeOptions) upgradeOnlyPersistFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("upgrade-only-persist", pflag.ExitOnError)
+
+	flags.StringVar(
+		&options.proxyInjectorFailurePolicy, "failure-policy", options.proxyInjectorFailurePolicy,
+		"Failure policy for the proxy injector webhook (default Ignore)",
+	)
+
+	return flags
+}
+
 // newCmdUpgradeConfig is a subcommand for `linkerd upgrade config`
 func newCmdUpgradeConfig(options *upgradeOptions) *cobra.Command {
+	flags := options.upgradeOnlyPersistFlagSet()
+
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
 		Args:  cobra.NoArgs,
@@ -66,9 +86,11 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, configStage, nil)
+			return upgradeRunE(options, configStage, flags)
 		},
 	}
+
+	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
 }
@@ -101,6 +123,7 @@ install command. It should be run after "linkerd upgrade config".`,
 func newCmdUpgrade() *cobra.Command {
 	options := newUpgradeOptionsWithDefaults()
 	flags := options.recordableFlagSet()
+	flags.AddFlagSet(options.upgradeOnlyPersistFlagSet())
 	upgradeOnlyFlags := options.upgradeOnlyFlagSet()
 
 	cmd := &cobra.Command{
@@ -203,7 +226,14 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	//
 	// This implies that the default flag values for the upgrade command come
 	// from the control-plane, and not from the defaults specified in the FlagSet.
-	setFlagsFromInstall(flags, configs.GetInstall().GetFlags())
+	if err := options.setFlagsFromInstall(flags, configs.GetInstall().GetFlags()); err != nil {
+		return nil, nil, err
+	}
+
+	failurePolicy, err := options.validateFailurePolicy(configs)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// After retrieving options set during Install, so we can properly determine if HA is set
 	options.handleHA()
@@ -250,26 +280,86 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
 	}
-	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
 
 	profileValidatorTLS, err := fetchWebhookTLS(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
 	}
-	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+
+	options.setWebhookConfigValues(values, proxyInjectorTLS, profileValidatorTLS, failurePolicy)
 
 	values.stage = stage
 
 	return values, configs, nil
 }
 
-func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
+func (options *upgradeOptions) validateFailurePolicy(configs *pb.All) (string, error) {
+	switch strings.Title(options.proxyInjectorFailurePolicy) {
+	case "", failurePolicyIgnore:
+		// if the policy is being set to Ignore, there are no special checks to perform
+		return failurePolicyIgnore, nil
+	case failurePolicyFail:
+	default:
+		return "", errors.New("valid values for --failure-policy are Fail and Ignore")
+	}
+
+	installedWithHA := false
+	for _, installFlag := range configs.GetInstall().GetFlags() {
+		if installFlag.GetName() == "ha" && installFlag.GetValue() == "true" {
+			installedWithHA = true
+		} else if installFlag.GetName() == "failurePolicy" && installFlag.GetValue() == failurePolicyFail {
+			// The policy was already Fail; nothing to do
+			return failurePolicyFail, nil
+		}
+	}
+
+	if !installedWithHA {
+		return "", errors.New("--failure-policy=Fail can only be used if Linkerd was previously configured with HA")
+	}
+
+	cpVersion := configs.GetGlobal().GetVersion()
+	cliVersion := version.Version
+
+	if cpVersion != cliVersion {
+		return "", errors.New("in order to change the failure policy to 'Fail', you need to first upgrade your Linkerd installation without using the --failure-policy flag")
+	}
+
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+	}
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+		RetryDeadline:         time.Now().Add(30 * time.Second),
+	})
+	if !hc.RunChecks(func(*healthcheck.CheckResult) {}) {
+		return "", fmt.Errorf("your Linkerd installation doesn't appear to be healthy; run `linkerd check` for more info")
+	}
+
+	return failurePolicyFail, nil
+}
+
+func (options *upgradeOptions) setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) error {
 	for _, i := range installFlags {
-		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
+		name := i.GetName()
+		f := flags.Lookup(name)
+		if name == "ha" && f == nil {
+			// `linkerd upgrade config` doesn't offer the --ha flag, but we still need
+			// to set options.highAvailability
+			var err error
+			options.highAvailability, err = strconv.ParseBool(i.GetValue())
+			if err != nil {
+				return fmt.Errorf("error parsing value store for ha: %s", err)
+			}
+		} else if f != nil && !f.Changed {
 			f.Value.Set(i.GetValue())
 			f.Changed = true
 		}
 	}
+	return nil
 }
 
 func repairInstall(generateUUID func() string, install *pb.Install) {

@@ -23,6 +23,9 @@ const (
 	jsonOutput  = "json"
 	tableOutput = "table"
 	wideOutput  = "wide"
+
+	failurePolicyIgnore = "Ignore"
+	failurePolicyFail   = "Fail"
 )
 
 var (

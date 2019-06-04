@@ -59,12 +59,14 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		Identity:           defaultValues.Identity,
 		ProxyInjector: &proxyInjectorValues{
+			failurePolicyIgnore,
 			&tlsValues{
 				KeyPEM: "proxy injector key",
 				CrtPEM: "proxy injector crt",
 			},
 		},
 		ProfileValidator: &profileValidatorValues{
+			failurePolicyIgnore,
 			&tlsValues{
 				KeyPEM: "profile validator key",
 				CrtPEM: "profile validator crt",
