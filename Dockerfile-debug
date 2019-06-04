@@ -5,4 +5,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lsof \
     tshark && \
     rm -rf /var/lib/apt/lists/*
-ENTRYPOINT [ "tshark", "-i", "any" ]
+ENTRYPOINT ["tail", "-f", "/dev/null"]

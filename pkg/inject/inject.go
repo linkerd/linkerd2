@@ -632,6 +632,7 @@ func (conf *ResourceConfig) injectDebugSidecar() *corev1.Container {
 		ImagePullPolicy:          conf.proxyImagePullPolicy(),
 		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Resources:                conf.proxyResourceRequirements(),
 	}
 }
 
