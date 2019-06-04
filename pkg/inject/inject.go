@@ -723,10 +723,13 @@ func (conf *ResourceConfig) proxyVersion() string {
 }
 
 func (conf *ResourceConfig) proxyInitVersion() string {
-	if version := conf.configs.GetGlobal().GetVersion(); version != "" {
-		return version
+	if override := conf.getOverride(k8s.ProxyInitImageVersionAnnotation); override != "" {
+		return override
 	}
-	return version.Version
+	if v := conf.configs.GetProxy().GetProxyInitImageVersion(); v != "" {
+		return v
+	}
+	return version.ProxyInitVersion
 }
 
 func (conf *ResourceConfig) proxyControlPort() int32 {

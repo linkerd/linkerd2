@@ -366,6 +366,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
 	}
 
+	if options.initImageVersion != "" {
+		configs.Proxy.ProxyInitImageVersion = options.initImageVersion
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = configs.Proxy.ProxyInitImageVersion
+	}
+
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy

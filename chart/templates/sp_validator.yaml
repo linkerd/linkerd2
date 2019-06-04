@@ -32,7 +32,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: 1
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: sp-validator

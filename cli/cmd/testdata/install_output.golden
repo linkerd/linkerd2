@@ -301,7 +301,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    linkerd.io/control-plane-component: proxy-injector
+    ControllerComponentLabel: proxy-injector
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   clientConfig:
@@ -371,7 +371,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    linkerd.io/control-plane-component: sp-validator
+    ControllerComponentLabel: sp-validator
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -594,7 +594,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -810,7 +810,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -977,7 +977,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1234,7 +1234,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1454,7 +1454,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1611,7 +1611,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1796,7 +1796,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1956,7 +1956,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

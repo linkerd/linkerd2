@@ -1,3 +1,55 @@
+## edge-19.5.4
+
+* CLI
+  * Added a JSON option to the `linkerd edges` command so that output is
+    scripting friendly and can be parsed easily (thanks @alenkacz!)
+* Controller
+  * **New** Control plane installations now generate a self-signed certificate
+    and private key pair for each webhook, to prepare for future work to make
+    the proxy injector and service profile validator HA
+  * Added a debug container annotation, allowing the `--enable-debug-sidecar`
+    flag to work when auto-injecting Linkerd proxies
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane does
+    not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with very
+    large header values to hang indefinitely
+* Web UI
+  * Removed the Authorities table and sidebar link from the dashboard to prepare
+    for a new, improved dashboard view communicating authority data
+* Internal
+  * Modified the integration test for `linkerd upgrade` to test upgrading from
+    the latest stable release instead of the latest edge, to reflect the typical
+    use case
+
+## stable-2.3.1
+
+This stable release adds a number of proxy stability improvements.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Special thanks to**: @zaharidichev and @11Takanori!
+
+**Full release notes**:
+
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane
+    does not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with
+    very large header values to hang indefinitely
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+    @zaharidichev!)
+  * Fixed an issue where requests could be held indefinitely by the load balancer
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the destination service
+  * Fixed an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
 ## edge-19.5.3
 
 * CLI
@@ -29,7 +81,7 @@
   * Added a dispatch timeout that limits the amount of time a request can be
     buffered in the proxy
   * Removed the limit on the number of concurrently active service discovery
-    queries to the Destination service
+    queries to the destination service
 
 Special thanks to @zaharidichev for adding end to end tests for proxies with
 TLS!
@@ -1332,7 +1384,7 @@ formerly hosted at github.com/runconduit/conduit.
   * Update branding to reference Linkerd throughout
   * The CLI is now called `linkerd`
 * Production Readiness
-  * Fix issue with Destination service sending back incomplete pod metadata
+  * Fix issue with destination service sending back incomplete pod metadata
   * Fix high CPU usage during proxy shutdown
   * ClusterRoles are now unique per Linkerd install, allowing multiple instances
     to be installed in the same Kubernetes cluster
@@ -1484,7 +1536,7 @@ Kubernetes-aware observability and debugging.
 * Service Discovery
   * The proxy now uses the [trust-dns] DNS resolver. This fixes a number of DNS
     correctness issues.
-  * The Destination service could sometimes return incorrect, stale, labels for an
+  * The destination service could sometimes return incorrect, stale, labels for an
     endpoint. This has been fixed!
 
 [trust-dns]: https://github.com/bluejekyll/trust-dns
