@@ -54,6 +54,8 @@ type (
 		ProxyInjectDisabled      string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
+		HighAvailability         bool
+		RequiredHostAntiAffinity bool
 		NoInitContainer          bool
 
 		Configs configJSONs
@@ -116,15 +118,16 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion string
-		controllerReplicas  uint
-		controllerLogLevel  string
-		highAvailability    bool
-		controllerUID       int64
-		disableH2Upgrade    bool
-		noInitContainer     bool
-		skipChecks          bool
-		identityOptions     *installIdentityOptions
+		controlPlaneVersion      string
+		controllerReplicas       uint
+		controllerLogLevel       string
+		highAvailability         bool
+		requiredHostAntiAffinity bool
+		controllerUID            int64
+		disableH2Upgrade         bool
+		noInitContainer          bool
+		skipChecks               bool
+		identityOptions          *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -166,13 +169,14 @@ const (
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion: version.Version,
-		controllerReplicas:  defaultControllerReplicas,
-		controllerLogLevel:  "info",
-		highAvailability:    false,
-		controllerUID:       2103,
-		disableH2Upgrade:    false,
-		noInitContainer:     false,
+		controlPlaneVersion:      version.Version,
+		controllerReplicas:       defaultControllerReplicas,
+		controllerLogLevel:       "info",
+		highAvailability:         false,
+		requiredHostAntiAffinity: false,
+		controllerUID:            2103,
+		disableH2Upgrade:         false,
+		noInitContainer:          false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -409,6 +413,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.highAvailability, "ha", options.highAvailability,
 		"Experimental: Enable HA deployment config for the control plane (default false)",
 	)
+	flags.BoolVar(
+		&options.requiredHostAntiAffinity, "required-host-anti-affinity", options.requiredHostAntiAffinity,
+		"Experimental: ",
+	)
 	flags.Int64Var(
 		&options.controllerUID, "controller-uid", options.controllerUID,
 		"Run the control plane components under this user ID",
@@ -511,6 +519,10 @@ func (options *installOptions) validate() error {
 		return errors.New("--proxy-log-level must not be empty")
 	}
 
+	if !options.highAvailability && options.requiredHostAntiAffinity {
+		return fmt.Errorf("--required-host-anti-affinity needs ha flag to be switched on")
+	}
+
 	if options.highAvailability {
 		if options.controllerReplicas == defaultControllerReplicas {
 			options.controllerReplicas = defaultHAControllerReplicas
@@ -553,14 +565,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
 
 		// Controller configuration:
-		Namespace:          controlPlaneNamespace,
-		UUID:               configs.GetInstall().GetUuid(),
-		ControllerReplicas: options.controllerReplicas,
-		ControllerLogLevel: options.controllerLogLevel,
-		ControllerUID:      options.controllerUID,
-		EnableH2Upgrade:    !options.disableH2Upgrade,
-		NoInitContainer:    options.noInitContainer,
-		PrometheusLogLevel: toPromLogLevel(options.controllerLogLevel),
+		Namespace:                controlPlaneNamespace,
+		UUID:                     configs.GetInstall().GetUuid(),
+		ControllerReplicas:       options.controllerReplicas,
+		ControllerLogLevel:       options.controllerLogLevel,
+		ControllerUID:            options.controllerUID,
+		HighAvailability:         options.highAvailability,
+		RequiredHostAntiAffinity: options.requiredHostAntiAffinity,
+		EnableH2Upgrade:          !options.disableH2Upgrade,
+		NoInitContainer:          options.noInitContainer,
+		PrometheusLogLevel:       toPromLogLevel(options.controllerLogLevel),
 
 		Configs: configJSONs{
 			Global:  globalJSON,

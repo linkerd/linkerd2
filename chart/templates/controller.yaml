@@ -128,4 +128,38 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+{{- if .HighAvailability}}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: {{.ControllerComponentLabel}}
+                      operator: In
+                      values:
+                        - controller
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+{{- if .RequiredHostAntiAffinity}}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: {{.ControllerComponentLabel}}
+                    operator: In
+                    values:
+                      - controller
+              topologyKey: kubernetes.io/hostname
+{{- else}}
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: {{.ControllerComponentLabel}}
+                      operator: In
+                      values:
+                        - controller
+                topologyKey: kubernetes.io/hostname
+{{ end }}
+{{ end }}
 {{end -}}
