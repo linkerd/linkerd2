@@ -352,6 +352,7 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
+	options.handleHA()
 	options.recordFlags(flags)
 
 	identityValues, err := options.identityOptions.validateAndBuild()
@@ -511,6 +512,10 @@ func (options *installOptions) validate() error {
 		return errors.New("--proxy-log-level must not be empty")
 	}
 
+	return nil
+}
+
+func (options *installOptions) handleHA() {
 	if options.highAvailability {
 		if options.controllerReplicas == defaultControllerReplicas {
 			options.controllerReplicas = defaultHAControllerReplicas
@@ -526,8 +531,6 @@ func (options *installOptions) validate() error {
 	}
 
 	options.identityOptions.replicas = options.controllerReplicas
-
-	return nil
 }
 
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
