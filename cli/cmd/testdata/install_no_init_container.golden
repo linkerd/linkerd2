@@ -299,7 +299,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: linkerd-proxy-injector-webhook-config
+  name: linkerd-linkerd-proxy-injector-webhook-config
   labels:
     linkerd.io/control-plane-component: proxy-injector
 webhooks:
@@ -369,7 +369,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: linkerd-sp-validator-webhook-config
+  name: linkerd-linkerd-sp-validator-webhook-config
   labels:
     linkerd.io/control-plane-component: sp-validator
 webhooks:
