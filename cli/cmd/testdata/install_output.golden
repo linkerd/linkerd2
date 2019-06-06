@@ -9,6 +9,8 @@ metadata:
   name: Namespace
   annotations:
     ProxyInjectAnnotation: ProxyInjectDisabled
+  labels:
+    LinkerdNamespaceLabel: "true"
 ---
 ###
 ### Identity Controller Service RBAC
@@ -304,12 +306,17 @@ metadata:
     ControllerComponentLabel: proxy-injector
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: LinkerdNamespaceLabel
+      operator: DoesNotExist
   clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: Namespace
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+  failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: [""]
@@ -380,6 +387,7 @@ webhooks:
       namespace: Namespace
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]

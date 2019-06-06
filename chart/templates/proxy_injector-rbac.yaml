@@ -64,12 +64,17 @@ metadata:
     {{ .ControllerComponentLabel }}: proxy-injector
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: {{ .LinkerdNamespaceLabel }}
+      operator: DoesNotExist
   clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: {{ .Namespace }}
       path: "/"
     caBundle: {{ b64enc .ProxyInjector.CrtPEM }}
+  failurePolicy: {{.WebhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: [""]

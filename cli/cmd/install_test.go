@@ -49,6 +49,8 @@ func TestRender(t *testing.T) {
 		ProxyContainerName:       "ProxyContainerName",
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 		ProxyInjectDisabled:      "ProxyInjectDisabled",
+		LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
+		WebhookFailurePolicy:     "WebhookFailurePolicy",
 		ControllerUID:            2103,
 		EnableH2Upgrade:          true,
 		NoInitContainer:          false,

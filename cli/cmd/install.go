@@ -53,6 +53,8 @@ type (
 		ProxyContainerName       string
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
+		LinkerdNamespaceLabel    string
+		WebhookFailurePolicy     string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
@@ -381,9 +383,18 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
+	options.setWebhookFailurePolicy(values)
+
 	values.stage = stage
 
 	return values, configs, nil
+}
+
+func (options *installOptions) setWebhookFailurePolicy(values *installValues) {
+	values.WebhookFailurePolicy = "Ignore"
+	if options.highAvailability {
+		values.WebhookFailurePolicy = "Fail"
+	}
 }
 
 // recordableFlagSet returns flags usable during install or upgrade.
@@ -548,13 +559,14 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		PrometheusImage: prometheusImage,
 		ImagePullPolicy: options.imagePullPolicy,
 
-		// Kubernetes labels/annotations/resourcse:
+		// Kubernetes labels/annotations/resources:
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		ProxyContainerName:       k8s.ProxyContainerName,
 		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
+		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
 		Namespace:          controlPlaneNamespace,
