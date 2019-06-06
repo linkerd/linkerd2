@@ -1,15 +1,3 @@
-## stable-2.3.2
-
-This stable release fixes a memory leak in the proxy.
-
-To install this release, run: `curl https://run.linkerd.io/install | sh`
-
-**Full release notes**:
-
-* Proxy
-  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
-    ends before the entire payload is sent to the destination
-
 ## stable-2.3.1
 
 This stable release adds a number of proxy stability improvements.
