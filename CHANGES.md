@@ -1,3 +1,40 @@
+## stable-2.3.2
+
+This stable release fixes a memory leak in the proxy.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Full release notes**:
+
+* Proxy
+  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
+    ends before the entire payload is sent to the destination
+
+## edge-19.5.4
+
+* CLI
+  * Added a JSON option to the `linkerd edges` command so that output is
+    scripting friendly and can be parsed easily (thanks @alenkacz!)
+* Controller
+  * **New** Control plane installations now generate a self-signed certificate
+    and private key pair for each webhook, to prepare for future work to make
+    the proxy injector and service profile validator HA
+  * Added a debug container annotation, allowing the `--enable-debug-sidecar`
+    flag to work when auto-injecting Linkerd proxies
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane does
+    not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with very
+    large header values to hang indefinitely
+* Web UI
+  * Removed the Authorities table and sidebar link from the dashboard to prepare
+    for a new, improved dashboard view communicating authority data
+* Internal
+  * Modified the integration test for `linkerd upgrade` to test upgrading from
+    the latest stable release instead of the latest edge, to reflect the typical
+    use case
+
 ## stable-2.3.1
 
 This stable release adds a number of proxy stability improvements.
