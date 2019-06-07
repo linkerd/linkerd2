@@ -60,7 +60,9 @@
         },
         "privileged": false,
         "runAsUser": 0,
-        "runAsNonRoot": false
+        "runAsNonRoot": false,
+        "readOnlyRootFilesystem": true,
+        "allowPrivilegeEscalation": false
       }
     }
   },
@@ -153,8 +155,8 @@
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
         "runAsUser": 2102,
-        "allowPrivilegeEscalation": true,
-        "readOnlyRootFilesystem": false
+        "readOnlyRootFilesystem": true,
+        "allowPrivilegeEscalation": false
       }
     }
   }
