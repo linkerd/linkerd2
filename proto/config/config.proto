@@ -71,6 +71,13 @@ message IdentityContext {
 
   google.protobuf.Duration issuance_lifetime = 3;
   google.protobuf.Duration clock_skew_allowance = 4;
+
+  int32 ca_type = 5;
+  AwsAcmPca awsacmpca = 6;
+  message AwsAcmPca {
+    string ca_arn = 7;
+    string ca_region = 8;
+  }
 }
 
 message LogLevel {

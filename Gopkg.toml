@@ -83,3 +83,7 @@ required = [
 [[constraint]]
   name = "github.com/wercker/stern"
   revision = "b04b5491222d9743529cb859a20d34ce2bb763af" # pin to 1.6.0 until https://github.com/wercker/stern/issues/96 is resolved
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "v1.19.1"

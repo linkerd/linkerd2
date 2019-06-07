@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	pcadelegate "github.com/linkerd/linkerd2/pkg/pcadelegate"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -55,46 +56,69 @@ func main() {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
-	if err != nil {
-		log.Fatalf("Failed to read trust anchors: %s", err)
-	}
-
-	creds, err := tls.ReadPEMCreds(
-		filepath.Join(*issuerPath, consts.IdentityIssuerKeyName),
-		filepath.Join(*issuerPath, consts.IdentityIssuerCrtName),
-	)
-	if err != nil {
-		log.Fatalf("Failed to read CA from %s: %s", *issuerPath, err)
-	}
-
-	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
-	if err := creds.Crt.Verify(trustAnchors, expectedName); err != nil {
-		log.Fatalf("Failed to verify issuer credentials for '%s' with trust anchors: %s", expectedName, err)
-	}
-
-	validity := tls.Validity{
-		ClockSkewAllowance: tls.DefaultClockSkewAllowance,
-		Lifetime:           identity.DefaultIssuanceLifetime,
-	}
-	if pbd := idctx.GetClockSkewAllowance(); pbd != nil {
-		csa, err := ptypes.Duration(pbd)
-		if err != nil {
-			log.Warnf("Invalid clock skew allowance: %s", err)
-		} else {
-			validity.ClockSkewAllowance = csa
-		}
-	}
+	issuanceLifetime := identity.DefaultIssuanceLifetime
 	if pbd := idctx.GetIssuanceLifetime(); pbd != nil {
 		il, err := ptypes.Duration(pbd)
 		if err != nil {
-			log.Warnf("Invalid issuance lifetime: %s", err)
+			log.Warnf("Invalid issuance lifetime: %s, defaulting to 24h", err)
 		} else {
-			validity.Lifetime = il
+			issuanceLifetime = il
 		}
 	}
 
-	ca := tls.NewCA(*creds, validity)
+	var ca tls.Issuer
+	switch int(idctx.GetCaType()) {
+	case idctl.LinkerdIdentityIssuer:
+		trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
+		if err != nil {
+			log.Fatalf("Failed to read trust anchors: %s", err)
+		}
+
+		creds, err := tls.ReadPEMCreds(
+			filepath.Join(*issuerPath, consts.IdentityIssuerKeyName),
+			filepath.Join(*issuerPath, consts.IdentityIssuerCrtName),
+		)
+		if err != nil {
+			log.Fatalf("Failed to read CA from %s: %s", *issuerPath, err)
+		}
+
+		expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
+		if err := creds.Crt.Verify(trustAnchors, expectedName); err != nil {
+			log.Fatalf("Failed to verify issuer credentials for '%s' with trust anchors: %s", expectedName, err)
+		}
+
+		validity := tls.Validity{
+			ClockSkewAllowance: tls.DefaultClockSkewAllowance,
+			Lifetime:           issuanceLifetime,
+		}
+		if pbd := idctx.GetClockSkewAllowance(); pbd != nil {
+			csa, err := ptypes.Duration(pbd)
+			if err != nil {
+				log.Warnf("Invalid clock skew allowance: %s", err)
+			} else {
+				validity.ClockSkewAllowance = csa
+			}
+		}
+		ca = tls.NewCA(*creds, validity)
+	case idctl.AwsAcmPcaIssuer:
+		region := idctx.GetAwsacmpca().GetCaRegion()
+		arn := idctx.GetAwsacmpca().GetCaArn()
+		requestRetryer, retryerErr := pcadelegate.NewACMPCARetry(5)
+		if retryerErr != nil {
+			log.Fatalf("Failed to create the ACMPCA request retryer: %v\n", retryerErr)
+		}
+		params := pcadelegate.CADelegateParams{
+			Region:         region,
+			CaARN:          arn,
+			ValidityPeriod: issuanceLifetime,
+			SigAlgorithm:   pcadelegate.Sha256withrsa,
+			Retryer:        requestRetryer,
+		}
+		ca, err = pcadelegate.NewCADelegate(params)
+		if err != nil {
+			log.Fatalf("Failed to create the AWS ACM PCA Delegate: %v", err)
+		}
+	}
 
 	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
 	if err != nil {
