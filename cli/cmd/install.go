@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -563,7 +564,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ControllerUID:      options.controllerUID,
 		EnableH2Upgrade:    !options.disableH2Upgrade,
 		NoInitContainer:    options.noInitContainer,
-		PrometheusLogLevel: toPromLogLevel(options.controllerLogLevel),
+		PrometheusLogLevel: toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
