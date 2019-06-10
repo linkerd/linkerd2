@@ -116,7 +116,7 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	// TrafficSplits
 	var tsClient *tsclient.Clientset
 	for _, res := range resources {
-		if res == SP {
+		if res == TS {
 			tsClient, err = NewTsClientSet(kubeConfig)
 			if err != nil {
 				return nil, err
@@ -197,7 +197,7 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case TS:
-			api.ts = tsSharedInformers.Smispec().V1alpha1().TrafficSplits()
+			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
 			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
 		}
 	}
@@ -333,11 +333,11 @@ func (api *API) SPAvailable() bool {
 }
 
 // TS provides access to a shared informer and lister for TrafficSplits.
-func (api *API) TS() spinformers.ServiceProfileInformer {
-	if api.sp == nil {
-		panic("SP informer not configured")
+func (api *API) TS() tsinformers.TrafficSplitInformer {
+	if api.ts == nil {
+		panic("TS informer not configured")
 	}
-	return api.sp
+	return api.ts
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.

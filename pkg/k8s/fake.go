@@ -9,7 +9,6 @@ import (
 	tsfake "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
-
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
