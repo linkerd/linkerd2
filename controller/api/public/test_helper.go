@@ -27,6 +27,7 @@ type MockAPIClient struct {
 	ListServicesResponseToReturn   *pb.ListServicesResponse
 	StatSummaryResponseToReturn    *pb.StatSummaryResponse
 	TopRoutesResponseToReturn      *pb.TopRoutesResponse
+	EdgesResponseToReturn          *pb.EdgesResponse
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
 	ConfigResponseToReturn         *configPb.All
 	APITapClientToReturn           pb.Api_TapClient
@@ -42,6 +43,11 @@ func (c *MockAPIClient) StatSummary(ctx context.Context, in *pb.StatSummaryReque
 // TopRoutes provides a mock of a Public API method.
 func (c *MockAPIClient) TopRoutes(ctx context.Context, in *pb.TopRoutesRequest, opts ...grpc.CallOption) (*pb.TopRoutesResponse, error) {
 	return c.TopRoutesResponseToReturn, c.ErrorToReturn
+}
+
+// Edges provides a mock of a Public API method.
+func (c *MockAPIClient) Edges(ctx context.Context, in *pb.EdgesRequest, opts ...grpc.CallOption) (*pb.EdgesResponse, error) {
+	return c.EdgesResponseToReturn, c.ErrorToReturn
 }
 
 // Version provides a mock of a Public API method.
@@ -219,6 +225,37 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 		},
 	}
 
+	return resp
+}
+
+// GenEdgesResponse generates a mock Public API StatSummaryResponse
+// object.
+func GenEdgesResponse(resourceType string, resSrc, resDst, resClient, resServer, msg []string) pb.EdgesResponse {
+	edges := []*pb.Edge{}
+	for i := range resSrc {
+		edge := &pb.Edge{
+			Src: &pb.Resource{
+				Name: resSrc[i],
+				Type: resourceType,
+			},
+			Dst: &pb.Resource{
+				Name: resDst[i],
+				Type: resourceType,
+			},
+			ClientId:      resClient[i],
+			ServerId:      resServer[i],
+			NoIdentityMsg: msg[i],
+		}
+		edges = append(edges, edge)
+	}
+
+	resp := pb.EdgesResponse{
+		Response: &pb.EdgesResponse_Ok_{
+			Ok: &pb.EdgesResponse_Ok{
+				Edges: edges,
+			},
+		},
+	}
 	return resp
 }
 

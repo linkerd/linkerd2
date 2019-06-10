@@ -1,199 +1,284 @@
 package destination
 
 import (
-	"context"
-	"errors"
-	"net"
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/test/bufconn"
+	"github.com/linkerd/linkerd2/pkg/addr"
+	logging "github.com/sirupsen/logrus"
 )
 
-type mockDestinationServer struct {
-	errorToReturn   error
-	contextToReturn context.Context
-}
-
 type mockDestinationGetServer struct {
-	mockDestinationServer
+	mockServerStream
 	updatesReceived []*pb.Update
-}
-
-type mockDestinationGetProfileServer struct {
-	mockDestinationServer
-	profilesReceived []*pb.DestinationProfile
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 	m.updatesReceived = append(m.updatesReceived, update)
-	return m.errorToReturn
+	return nil
+}
+
+type mockDestinationGetProfileServer struct {
+	mockServerStream
+	profilesReceived []*pb.DestinationProfile
 }
 
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
 	m.profilesReceived = append(m.profilesReceived, profile)
-	return m.errorToReturn
-}
-
-func (m *mockDestinationServer) SetHeader(metadata.MD) error  { return m.errorToReturn }
-func (m *mockDestinationServer) SendHeader(metadata.MD) error { return m.errorToReturn }
-func (m *mockDestinationServer) SetTrailer(metadata.MD)       {}
-func (m *mockDestinationServer) Context() context.Context     { return m.contextToReturn }
-func (m *mockDestinationServer) SendMsg(x interface{}) error  { return m.errorToReturn }
-func (m *mockDestinationServer) RecvMsg(x interface{}) error  { return m.errorToReturn }
-
-func TestBuildResolver(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI()
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-
-	t.Run("Doesn't build a resolver if Kubernetes DNS zone isnt valid", func(t *testing.T) {
-		invalidK8sDNSZones := []string{"1", "-a", "a-", "-"}
-		for _, dsnZone := range invalidK8sDNSZones {
-			resolver, err := buildResolver(dsnZone, k8sAPI)
-			if err == nil {
-				t.Fatalf("Expecting error when k8s zone is [%s], got nothing. Resolver: %v", dsnZone, resolver)
-			}
-		}
-	})
-}
-
-// implements the streamingDestinationResolver interface
-type mockStreamingDestinationResolver struct {
-	hostReceived             string
-	portReceived             int
-	listenerReceived         endpointUpdateListener
-	canResolveToReturn       bool
-	errToReturnForCanResolve error
-	errToReturnForResolution error
-}
-
-func (m *mockStreamingDestinationResolver) canResolve(host string, port int) (bool, error) {
-	return m.canResolveToReturn, m.errToReturnForCanResolve
-}
-
-func (m *mockStreamingDestinationResolver) streamResolution(host string, port int, listener endpointUpdateListener) error {
-	m.hostReceived = host
-	m.portReceived = port
-	m.listenerReceived = listener
-	return m.errToReturnForResolution
-}
-
-func (m *mockStreamingDestinationResolver) streamProfiles(host string, clientNs string, listener profileUpdateListener) error {
 	return nil
 }
 
-func (m *mockStreamingDestinationResolver) getState() servicePorts {
-	return servicePorts{}
-}
-
-func (m *mockStreamingDestinationResolver) stop() {}
-
-func TestStreamResolutionUsingCorrectResolverFor(t *testing.T) {
-	stream := &mockDestinationGetServer{}
-	host := "something"
-	port := 666
-	k8sAPI, err := k8s.NewFakeAPI()
+func makeServer(t *testing.T) *server {
+	k8sAPI, err := k8s.NewFakeAPI(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+  status:
+    phase: Running
+    podIP: 172.17.0.12`,
+		`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name1.ns.svc.cluster.local
+  namespace: ns
+spec:
+  routes:
+  - name: route1
+    isRetryable: false
+    condition:
+      pathRegex: "/a/b/c"`,
+		`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: name1.ns.svc.cluster.local
+  namespace: client-ns
+spec:
+  routes:
+  - name: route2
+    isRetryable: true
+    condition:
+      pathRegex: "/x/y/z"`,
+	)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
+	log := logging.WithField("test", t.Name)
 
-	t.Run("Returns error if no resolver can resolve", func(t *testing.T) {
-		no := &mockStreamingDestinationResolver{canResolveToReturn: false}
-
-		server := server{
-			k8sAPI:   k8sAPI,
-			resolver: no,
-		}
-
-		err := server.streamResolution(host, port, stream)
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
-		}
-	})
-
-	t.Run("Returns error if the resolver returned an error on canResolve", func(t *testing.T) {
-		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForCanResolve: errors.New("expected for can resolve")}
-
-		server := server{
-			k8sAPI:   k8sAPI,
-			resolver: resolver,
-		}
-
-		err := server.streamResolution(host, port, stream)
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
-		}
-	})
-
-	t.Run("Returns error if the resolver returned an error on streamResolution", func(t *testing.T) {
-		resolver := &mockStreamingDestinationResolver{canResolveToReturn: true, errToReturnForResolution: errors.New("expected for resolving")}
-
-		server := server{
-			k8sAPI:   k8sAPI,
-			resolver: resolver,
-		}
-
-		err := server.streamResolution(host, port, stream)
-		if err == nil {
-			t.Fatalf("Expecting error, got nothing")
-		}
-	})
-}
-
-func TestEndpoints(t *testing.T) {
-	k8sAPI, err := k8s.NewFakeAPI()
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
 	k8sAPI.Sync()
 
-	lis := bufconn.Listen(1024 * 1024)
-	gRPCServer, err := NewServer(
-		"fake-addr", "", "controller-ns", "",
-		false, k8sAPI, nil,
-	)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
+	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
+	profiles := watcher.NewProfileWatcher(k8sAPI, log)
+
+	return &server{
+		endpoints,
+		profiles,
+		false,
+		"linkerd",
+		"trust.domain",
+		log,
+		make(<-chan struct{}),
 	}
-	defer gRPCServer.GracefulStop()
-	go func() { gRPCServer.Serve(lis) }()
+}
 
-	destinationAPIConn, err := grpc.Dial(
-		"fake-buf-addr",
-		grpc.WithDialer(
-			func(string, time.Duration) (net.Conn, error) {
-				return lis.Dial()
-			},
-		),
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	defer destinationAPIConn.Close()
+type bufferingGetStream struct {
+	updates []*pb.Update
+	mockServerStream
+}
 
-	discoveryClient := discoveryPb.NewDiscoveryClient(destinationAPIConn)
+func (bgs *bufferingGetStream) Send(update *pb.Update) error {
+	bgs.updates = append(bgs.updates, update)
+	return nil
+}
 
-	t.Run("Implements the Discovery interface", func(t *testing.T) {
-		resp, err := discoveryClient.Endpoints(context.Background(), &discoveryPb.EndpointsParams{})
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
+type bufferingGetProfileStream struct {
+	updates []*pb.DestinationProfile
+	mockServerStream
+}
+
+func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) error {
+	bgps.updates = append(bgps.updates, profile)
+	return nil
+}
+
+func TestGet(t *testing.T) {
+	t.Run("Returns error if not valid service name", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetStream{
+			updates:          []*pb.Update{},
+			mockServerStream: newMockServerStream(),
 		}
 
-		expectedResp := &discoveryPb.EndpointsResponse{
-			ServicePorts: make(map[string]*discoveryPb.ServicePort),
-		}
-
-		if !proto.Equal(resp, expectedResp) {
-			t.Fatalf("Unexpected response: %+v", resp)
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
 		}
 	})
+
+	t.Run("Returns endpoints", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetStream{
+			updates:          []*pb.Update{},
+			mockServerStream: newMockServerStream(),
+		}
+
+		// We cancel the stream before even sending the request so that we don't
+		// need to call server.Get in a separate goroutine.  By pre-emptively
+		// cancelling, the behavior of Get becomes effectively synchronous and
+		// we will get only the initial update, which is what we want for this
+		// test.
+		stream.cancel()
+
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.cluster.local:8989"}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		if len(stream.updates) != 1 {
+			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		if updateAddAddress(t, stream.updates[0])[0] != "172.17.0.12:8989" {
+			t.Fatalf("Expected 172.17.0.12:8989 but got %s", updateAddAddress(t, stream.updates[0])[0])
+		}
+
+	})
+}
+
+func TestGetProfiles(t *testing.T) {
+	t.Run("Returns error if not valid service name", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			mockServerStream: newMockServerStream(),
+		}
+
+		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns server profile", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			mockServerStream: newMockServerStream(),
+		}
+
+		stream.cancel() // See note above on pre-emptive cancellation.
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         "name1.ns.svc.cluster.local:8989",
+			ContextToken: "ns:other",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// The number of updates we get depends on the order that the watcher
+		// gets updates about the server profile and the client profile.  The
+		// client profile takes priority so if we get that update first, it
+		// will only trigger one update to the stream.  However, if the watcher
+		// gets the server profile first, it will send an update with that
+		// profile to the stream and then a second update when it gets the
+		// client profile.
+		if len(stream.updates) != 1 && len(stream.updates) != 2 {
+			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+		lastUpdate := stream.updates[len(stream.updates)-1]
+		routes := lastUpdate.GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+		if routes[0].GetIsRetryable() {
+			t.Fatalf("Expected route to not be retryable, but it was")
+		}
+	})
+
+	t.Run("Returns client profile", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			mockServerStream: newMockServerStream(),
+		}
+
+		// See note above on pre-emptive cancellation.
+		stream.cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         "name1.ns.svc.cluster.local:8989",
+			ContextToken: "ns:client-ns",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// The number of updates we get depends on if the watcher gets an update
+		// about the profile before or after the subscription.  If the subscription
+		// happens first, then we get a profile update during the subscription and
+		// then a second update when the watcher receives the update about that
+		// profile.  If the watcher event happens first, then we only get the
+		// update during subscription.
+		if len(stream.updates) != 1 && len(stream.updates) != 2 {
+			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+		routes := stream.updates[len(stream.updates)-1].GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+		if !routes[0].GetIsRetryable() {
+			t.Fatalf("Expected route to be retryable, but it was not")
+		}
+	})
+}
+
+func updateAddAddress(t *testing.T, update *pb.Update) []string {
+	add, ok := update.GetUpdate().(*pb.Update_Add)
+	if !ok {
+		t.Fatalf("Update expected to be an add, but was %+v", update)
+	}
+	ips := []string{}
+	for _, ip := range add.Add.Addrs {
+		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
+	}
+	return ips
 }

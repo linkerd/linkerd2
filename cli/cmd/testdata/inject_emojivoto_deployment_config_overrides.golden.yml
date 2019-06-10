@@ -14,6 +14,7 @@ spec:
     metadata:
       annotations:
         config.linkerd.io/admin-port: "9998"
+        config.linkerd.io/disable-tap: "true"
         config.linkerd.io/proxy-cpu-limit: "1"
         config.linkerd.io/proxy-cpu-request: "0.5"
         config.linkerd.io/proxy-memory-limit: 256Mi
@@ -71,6 +72,8 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_TAP_DISABLED
+          value: "true"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -146,7 +149,7 @@ spec:
         - 7777,8888,4190,9998
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:install-control-plane-version
+        image: gcr.io/linkerd-io/proxy-init:v1.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

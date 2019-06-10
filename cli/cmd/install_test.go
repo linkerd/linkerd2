@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestRender(t *testing.T) {
@@ -58,6 +59,18 @@ func TestRender(t *testing.T) {
 		},
 		ControllerReplicas: 1,
 		Identity:           defaultValues.Identity,
+		ProxyInjector: &proxyInjectorValues{
+			&tlsValues{
+				KeyPEM: "proxy injector key",
+				CrtPEM: "proxy injector crt",
+			},
+		},
+		ProfileValidator: &profileValidatorValues{
+			&tlsValues{
+				KeyPEM: "profile validator key",
+				CrtPEM: "profile validator crt",
+			},
+		},
 	}
 
 	haOptions := testInstallOptions()
@@ -130,6 +143,7 @@ func testInstallOptions() *installOptions {
 	o.generateUUID = func() string {
 		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	}
+	o.generateWebhookTLS = fakeGenerateWebhookTLS
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
@@ -193,4 +207,20 @@ func TestValidate(t *testing.T) {
 			}
 		}
 	})
+}
+
+func fakeGenerateWebhookTLS(webhook string) (*tlsValues, error) {
+	switch webhook {
+	case k8s.ProxyInjectorWebhookServiceName:
+		return &tlsValues{
+			KeyPEM: "proxy injector key",
+			CrtPEM: "proxy injector crt",
+		}, nil
+	case k8s.SPValidatorWebhookServiceName:
+		return &tlsValues{
+			KeyPEM: "profile validator key",
+			CrtPEM: "profile validator crt",
+		}, nil
+	}
+	return nil, nil
 }

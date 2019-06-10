@@ -67,7 +67,6 @@ class NavigationResourcesBase extends React.Component {
 
     return (
       <MenuList dense component="div" disablePadding>
-        <NavigationResource type="authorities" />
         <NavigationResource type="deployments" metrics={allMetrics.deployment} />
         <NavigationResource type="daemonsets" metrics={allMetrics.daemonset} />
         <NavigationResource type="jobs" metrics={allMetrics.job} />

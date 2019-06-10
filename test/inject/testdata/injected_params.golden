@@ -14,6 +14,7 @@ spec:
         config.linkerd.io/admin-port: "789"
         config.linkerd.io/control-port: "123"
         config.linkerd.io/disable-identity: "true"
+        config.linkerd.io/disable-tap: "true"
         config.linkerd.io/enable-external-profiles: "true"
         config.linkerd.io/image-pull-policy: Never
         config.linkerd.io/inbound-port: "678"
@@ -75,6 +76,8 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_TAP_DISABLED
+          value: "true"
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
         image: proxy-image:proxy-version

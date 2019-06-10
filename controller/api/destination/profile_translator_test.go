@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -9,7 +8,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	"github.com/linkerd/linkerd2/pkg/profiles"
+	logging "github.com/sirupsen/logrus"
 )
 
 var (
@@ -181,12 +180,12 @@ var (
 			pbRoute1,
 			pbRoute2,
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	defaultPbProfile = &pb.DestinationProfile{
 		Routes:      []*pb.Route{},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	multipleRequestMatches = &sp.ServiceProfile{
@@ -239,7 +238,7 @@ var (
 				},
 			},
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	notEnoughRequestMatches = &sp.ServiceProfile{
@@ -331,7 +330,7 @@ var (
 				},
 			},
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 
 	oneSidedStatusRange = &sp.ServiceProfile{
@@ -424,19 +423,20 @@ var (
 		Routes: []*pb.Route{
 			pbRouteWithTimeout,
 		},
-		RetryBudget: &profiles.DefaultRetryBudget,
+		RetryBudget: &defaultRetryBudget,
 	}
 )
 
-func TestProfileListener(t *testing.T) {
+func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(profile)
+		translator.Update(profile)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {
@@ -451,11 +451,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Request match with more than one field becomes ALL", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(multipleRequestMatches)
+		translator.Update(multipleRequestMatches)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {
@@ -470,11 +471,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Ignores request match without any fields", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(notEnoughRequestMatches)
+		translator.Update(notEnoughRequestMatches)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 0 {
@@ -485,11 +487,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Response match with more than one field becomes ALL", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(multipleResponseMatches)
+		translator.Update(multipleResponseMatches)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {
@@ -504,11 +507,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Ignores response match without any fields", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(notEnoughResponseMatches)
+		translator.Update(notEnoughResponseMatches)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 0 {
@@ -519,11 +523,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(invalidStatusRange)
+		translator.Update(invalidStatusRange)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 0 {
@@ -534,11 +539,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Sends update for one sided status range", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(oneSidedStatusRange)
+		translator.Update(oneSidedStatusRange)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {
@@ -546,41 +552,15 @@ func TestProfileListener(t *testing.T) {
 		}
 	})
 
-	t.Run("It returns when the underlying context is done", func(t *testing.T) {
-		context, cancelFn := context.WithCancel(context.Background())
-		mockGetProfileServer := &mockDestinationGetProfileServer{
-			profilesReceived: []*pb.DestinationProfile{},
-			mockDestinationServer: mockDestinationServer{
-				contextToReturn: context,
-			},
-		}
-		listener := &profileListener{
-			stream: mockGetProfileServer,
-		}
-
-		completed := make(chan bool)
-		go func() {
-			<-listener.ClientClose()
-			completed <- true
-		}()
-
-		cancelFn()
-
-		c := <-completed
-
-		if !c {
-			t.Fatalf("Expected function to be completed after the cancel()")
-		}
-	})
-
 	t.Run("Sends empty update", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(nil)
+		translator.Update(nil)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {
@@ -595,11 +575,12 @@ func TestProfileListener(t *testing.T) {
 	t.Run("Sends update with custom timeout", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
 
-		listener := &profileListener{
+		translator := &profileTranslator{
 			stream: mockGetProfileServer,
+			log:    logging.WithField("test", t.Name),
 		}
 
-		listener.Update(profileWithTimeout)
+		translator.Update(profileWithTimeout)
 
 		numProfiles := len(mockGetProfileServer.profilesReceived)
 		if numProfiles != 1 {

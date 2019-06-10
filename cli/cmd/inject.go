@@ -103,6 +103,12 @@ sub-folders, or coming from stdin.`,
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
 		"Disables resources from participating in TLS identity",
 	)
+
+	flags.BoolVar(
+		&options.disableTap, "disable-tap", options.disableTap,
+		"Disables resources from from being tapped",
+	)
+
 	flags.BoolVar(
 		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
@@ -130,7 +136,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if rt.enableDebugSidecar {
-		conf = conf.WithDebugSidecar()
+		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
 	}
 
 	report, err := conf.ParseMetaAndYAML(bytes)
@@ -360,6 +366,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
 	}
 
+	if options.initImageVersion != "" {
+		configs.Proxy.ProxyInitImageVersion = options.initImageVersion
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = configs.Proxy.ProxyInitImageVersion
+	}
+
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
@@ -378,7 +389,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 
 	if options.disableIdentity {
 		configs.Global.IdentityContext = nil
-		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = "true"
+		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)
+	}
+
+	if options.disableTap {
+		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(true)
 	}
 
 	// keep track of this option because its true/false value results in different
@@ -386,7 +401,7 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	// env var. Its annotation is added only if its value is true.
 	configs.Proxy.DisableExternalProfiles = !options.enableExternalProfiles
 	if options.enableExternalProfiles {
-		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = "true"
+		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(true)
 	}
 
 	if options.proxyCPURequest != "" {

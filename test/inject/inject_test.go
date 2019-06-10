@@ -8,6 +8,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 	"sigs.k8s.io/yaml"
 )
@@ -55,6 +56,7 @@ func TestInjectParams(t *testing.T) {
 		"--manual",
 		"--linkerd-namespace=fake-ns",
 		"--disable-identity",
+		"--disable-tap",
 		"--ignore-cluster",
 		"--proxy-version=proxy-version",
 		"--proxy-image=proxy-image",
@@ -253,7 +255,7 @@ func useTestImageTag(in string) (string, error) {
 	patchOps := []string{
 		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1created-by", "value": "linkerd/cli %s"}`, TestHelper.GetVersion()),
 		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1proxy-version", "value": "%s"}`, TestHelper.GetVersion()),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "init-image:%s"}`, TestHelper.GetVersion()),
+		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "init-image:%s"}`, version.ProxyInitVersion),
 	}
 
 	patchJSON := fmt.Sprintf("[%s]", strings.Join(patchOps, ","))

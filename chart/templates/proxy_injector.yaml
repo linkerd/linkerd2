@@ -14,7 +14,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
-  replicas: 1
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: proxy-injector
@@ -32,7 +32,6 @@ spec:
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
         - "proxy-injector"
-        - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
         ports:
         - name: proxy-injector
@@ -40,6 +39,9 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
+        - name: tls
+          mountPath: /var/run/linkerd/tls
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /ping
@@ -59,6 +61,9 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
 ---
 kind: Service
 apiVersion: v1

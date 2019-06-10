@@ -3,11 +3,12 @@ package destination
 import (
 	"sync"
 
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 )
 
 type fallbackProfileListener struct {
-	underlying profileUpdateListener
+	underlying watcher.ProfileUpdateListener
 	primary    *primaryProfileListener
 	backup     *backupProfileListener
 	mutex      sync.Mutex
@@ -31,7 +32,7 @@ type backupProfileListener struct {
 // the primary and backup will propagate to the underlying with updates to
 // the primary always taking priority.  If the value in the primary is cleared,
 // the value from the backup is used.
-func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateListener, profileUpdateListener) {
+func newFallbackProfileListener(listener watcher.ProfileUpdateListener) (watcher.ProfileUpdateListener, watcher.ProfileUpdateListener) {
 	// Primary and backup share a lock to ensure updates are atomic.
 	fallback := fallbackProfileListener{
 		mutex:      sync.Mutex{},
@@ -51,18 +52,6 @@ func newFallbackProfileListener(listener profileUpdateListener) (profileUpdateLi
 	fallback.primary = &primary
 	fallback.backup = &backup
 	return &primary, &backup
-}
-
-func (f *fallbackChildListener) ClientClose() <-chan struct{} {
-	return f.parent.underlying.ClientClose()
-}
-
-func (f *fallbackChildListener) ServerClose() <-chan struct{} {
-	return f.parent.underlying.ServerClose()
-}
-
-func (f *fallbackChildListener) Stop() {
-	f.parent.underlying.Stop()
 }
 
 // Primary

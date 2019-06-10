@@ -1,3 +1,121 @@
+## edge-19.5.4
+
+* CLI
+  * Fixed an issue where, when Linkerd is installed with `--ha`, running
+    `linkerd upgrade` without `--ha` will disable the high availability
+    control plane
+  * Added a `--init-image-version` flag to `linkerd inject` to override the
+    injected proxy-init container version
+* Controller
+  * Added multiple replicas for the `proxy-injector` and `sp-validator`
+    controllers when run in high availability mode (thanks to @Pothulapati!)
+* Proxy
+  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
+    ends before the entire payload is sent to the destination
+* Internal
+  * Moved the proxy-init container to a separate `linkerd/proxy-init` Git
+    repository
+
+## stable-2.3.2
+
+This stable release fixes a memory leak in the proxy.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Full release notes**:
+
+* Proxy
+  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
+    ends before the entire payload is sent to the destination
+
+## edge-19.5.4
+
+* CLI
+  * Added a JSON option to the `linkerd edges` command so that output is
+    scripting friendly and can be parsed easily (thanks @alenkacz!)
+* Controller
+  * **New** Control plane installations now generate a self-signed certificate
+    and private key pair for each webhook, to prepare for future work to make
+    the proxy injector and service profile validator HA
+  * Added a debug container annotation, allowing the `--enable-debug-sidecar`
+    flag to work when auto-injecting Linkerd proxies
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane does
+    not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with very
+    large header values to hang indefinitely
+* Web UI
+  * Removed the Authorities table and sidebar link from the dashboard to prepare
+    for a new, improved dashboard view communicating authority data
+* Internal
+  * Modified the integration test for `linkerd upgrade` to test upgrading from
+    the latest stable release instead of the latest edge, to reflect the typical
+    use case
+
+## stable-2.3.1
+
+This stable release adds a number of proxy stability improvements.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Special thanks to**: @zaharidichev and @11Takanori!
+
+**Full release notes**:
+
+* Proxy
+  * Changed the proxy's routing behavior so that, when the control plane
+    does not resolve a destination, the proxy forwards the request with minimal
+    additional routing logic
+  * Fixed a bug in the proxy's HPACK codec that could cause requests with
+    very large header values to hang indefinitely
+  * Replaced the fixed reconnect backoff with an exponential one (thanks,
+    @zaharidichev!)
+  * Fixed an issue where requests could be held indefinitely by the load balancer
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the destination service
+  * Fixed an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
+## edge-19.5.3
+
+* CLI
+  * **New** Added a `linkerd edges` command that shows the source and
+    destination name and identity for proxied connections, to assist in
+    debugging
+  * Tap can now be disabled for specific pods during injection by using the
+    `--disable-tap` flag, or by using the `config.linkerd.io/disable-tap`
+    annotation
+  * Introduced pre-install healthcheck for clock skew (thanks, @matej-g!)
+* Controller
+  * Added Controller Component Labels to the webhook config resources (thanks,
+    @Pothulapati!)
+  * Moved the tap service into its own pod
+* Proxy
+  * Fix an epoll notification issue that could cause excessive CPU usage
+  * Added the ability to disable tap by setting an env var (thanks,
+    @zaharidichev!)
+
+## edge-19.5.2
+
+* CLI
+  * Fixed `linkerd check` and `linkerd dashboard` failing when any control plane
+    pod is not ready, even when multiple replicas exist (as in HA mode)
+* Controller
+  * Fixed control plane components failing on startup when the Kubernetes API
+    returns an `ErrGroupDiscoveryFailed`
+* Proxy
+  * Added a dispatch timeout that limits the amount of time a request can be
+    buffered in the proxy
+  * Removed the limit on the number of concurrently active service discovery
+    queries to the destination service
+
+Special thanks to @zaharidichev for adding end to end tests for proxies with
+TLS!
+
 ## edge-19.5.1
 
 * CLI
@@ -1296,7 +1414,7 @@ formerly hosted at github.com/runconduit/conduit.
   * Update branding to reference Linkerd throughout
   * The CLI is now called `linkerd`
 * Production Readiness
-  * Fix issue with Destination service sending back incomplete pod metadata
+  * Fix issue with destination service sending back incomplete pod metadata
   * Fix high CPU usage during proxy shutdown
   * ClusterRoles are now unique per Linkerd install, allowing multiple instances
     to be installed in the same Kubernetes cluster
@@ -1448,7 +1566,7 @@ Kubernetes-aware observability and debugging.
 * Service Discovery
   * The proxy now uses the [trust-dns] DNS resolver. This fixes a number of DNS
     correctness issues.
-  * The Destination service could sometimes return incorrect, stale, labels for an
+  * The destination service could sometimes return incorrect, stale, labels for an
     endpoint. This has been fixed!
 
 [trust-dns]: https://github.com/bluejekyll/trust-dns

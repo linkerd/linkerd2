@@ -1,0 +1,23 @@
+[
+  {
+    "src": "vote-bot-7466ffc7f7-5rc4l",
+    "dst": "web-57b7f9db85-297dw",
+    "client_id": "default.emojivoto",
+    "server_id": "web.emojivoto",
+    "no_tls_reason": "-"
+  },
+  {
+    "src": "web-57b7f9db85-297dw",
+    "dst": "emoji-646ddcc5f9-zjgs9",
+    "client_id": "web.emojivoto",
+    "server_id": "emoji.emojivoto",
+    "no_tls_reason": "-"
+  },
+  {
+    "src": "web-57b7f9db85-297dw",
+    "dst": "voting-689f845d98-rj6nz",
+    "client_id": "web.emojivoto",
+    "server_id": "voting.emojivoto",
+    "no_tls_reason": "-"
+  }
+]

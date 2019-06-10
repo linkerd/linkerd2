@@ -97,6 +97,7 @@ func init() {
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDoc())
+	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
@@ -177,6 +178,7 @@ type proxyConfigOptions struct {
 	proxyVersion           string
 	proxyImage             string
 	initImage              string
+	initImageVersion       string
 	dockerRegistry         string
 	imagePullPolicy        string
 	ignoreInboundPorts     []uint
@@ -195,11 +197,16 @@ type proxyConfigOptions struct {
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool
+	disableTap      bool
 }
 
 func (options *proxyConfigOptions) validate() error {
 	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
 		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
+	}
+
+	if options.initImageVersion != "" && !alphaNumDashDot.MatchString(options.initImageVersion) {
+		return fmt.Errorf("%s is not a valid version", options.initImageVersion)
 	}
 
 	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
@@ -267,6 +274,7 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVarP(&options.proxyVersion, "proxy-version", "v", options.proxyVersion, "Tag to be used for the Linkerd proxy images")
 	flags.StringVar(&options.proxyImage, "proxy-image", options.proxyImage, "Linkerd proxy container image name")
 	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
+	flags.StringVar(&options.initImageVersion, "init-image-version", options.initImageVersion, "Linkerd init container image version")
 	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")

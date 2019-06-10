@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type deploySpec struct {
@@ -37,10 +39,12 @@ var (
 		"linkerd-identity",
 		"linkerd-prometheus",
 		"linkerd-web",
+		"linkerd-tap",
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":     {1, []string{"destination", "public-api", "tap"}},
+		"linkerd-controller":     {1, []string{"destination", "public-api"}},
+		"linkerd-tap":            {1, []string{"tap"}},
 		"linkerd-grafana":        {1, []string{}},
 		"linkerd-identity":       {1, []string{"identity"}},
 		"linkerd-prometheus":     {1, []string{}},
@@ -54,26 +58,57 @@ var (
 	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
+		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test.*/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
 		// k8s hitting readiness endpoints before components are ready
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::app::errors unexpected error: an IO error occurred: Connection reset by peer \(os error 104\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: operation timed out after 1s`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::app::errors unexpected error: an IO error occurred: Connection reset by peer \(os error 104\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*\)`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: operation timed out after 1s`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
 
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] admin={server=admin listen=127\.0\.0\.1:4191 remote=.*} linkerd2_proxy::control::serve_http error serving admin: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] admin={server=admin listen=127\.0\.0\.1:4191 remote=.*} linkerd2_proxy::control::serve_http error serving admin: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
 
 		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web)-.*-.* linkerd-proxy WARN \[.*\] linkerd2_proxy::proxy::canonicalize failed to refine linkerd-.*\..*\.svc\.cluster\.local: deadline has elapsed; using original name`,
+		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web|tap)-.*-.* linkerd-proxy WARN \[.*\] linkerd2_proxy::proxy::canonicalize failed to refine linkerd-.*\..*\.svc\.cluster\.local: deadline has elapsed; using original name`,
 
 		// prometheus scrape failures of control-plane
 		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: .*`,
 	}, "|"))
+
+	knownEventWarningsRegex = regexp.MustCompile(strings.Join([]string{
+		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`,
+		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
+		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
+		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
+		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled \(Client\.Timeout exceeded while awaiting headers\)`,
+		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
+	}, "|"))
+
+	injectionCases = []struct {
+		ns          string
+		annotations map[string]string
+		injectArgs  []string
+	}{
+		{
+			ns: "smoke-test",
+			annotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			injectArgs: nil,
+		},
+		{
+			ns:         "smoke-test-manual",
+			injectArgs: []string{"--manual"},
+		},
+		{
+			ns:         "smoke-test-ann",
+			injectArgs: []string{},
+		},
+	}
 )
 
 //////////////////////
@@ -299,48 +334,70 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestInject(t *testing.T) {
-	var out string
-	var err error
-
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-
-	out, err = testutil.ReadFile("testdata/smoke_test.yaml")
+	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
 	if err != nil {
 		t.Fatalf("failed to read smoke test file: %s", err)
 	}
-	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, map[string]string{
-		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
-	})
-	if err != nil {
-		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
-	}
 
-	out, err = TestHelper.KubectlApply(out, prefixedNs)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
-	}
+	for _, tc := range injectionCases {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
+			var out string
 
-	for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-	}
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-	url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
-	if err != nil {
-		t.Fatalf("Failed to get URL: %s", err)
-	}
+			err := TestHelper.CreateNamespaceIfNotExists(prefixedNs, tc.annotations)
+			if err != nil {
+				t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
+			}
 
-	output, err := TestHelper.HTTPGetURL(url)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v %s", err, output)
-	}
+			if tc.injectArgs != nil {
+				cmd := []string{"inject"}
+				cmd = append(cmd, tc.injectArgs...)
+				cmd = append(cmd, "testdata/smoke_test.yaml")
 
-	expectedStringInPayload := "\"payload\":\"BANANA\""
-	if !strings.Contains(output, expectedStringInPayload) {
-		t.Fatalf("Expected application response to contain string [%s], but it was [%s]",
-			expectedStringInPayload, output)
+				var injectReport string
+				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
+				if err != nil {
+					t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
+				}
+
+				err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
+				if err != nil {
+					t.Fatalf("Received unexpected output\n%s", err.Error())
+				}
+			} else {
+				out = resources
+			}
+
+			out, err = TestHelper.KubectlApply(out, prefixedNs)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed\n%s", out)
+			}
+
+			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
+				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			}
+
+			url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
+			if err != nil {
+				t.Fatalf("Failed to get URL: %s", err)
+			}
+
+			output, err := TestHelper.HTTPGetURL(url)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v %s", err, output)
+			}
+
+			expectedStringInPayload := "\"payload\":\"BANANA\""
+			if !strings.Contains(output, expectedStringInPayload) {
+				t.Fatalf("Expected application response to contain string [%s], but it was [%s]",
+					expectedStringInPayload, output)
+			}
+		})
 	}
 }
 
@@ -350,40 +407,50 @@ func TestServiceProfileDeploy(t *testing.T) {
 		t.Fatalf("Unexpected error: %v %s", err, bbProto)
 	}
 
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
+	for _, tc := range injectionCases {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-	cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
-	bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v %s", err, stderr)
-	}
+			cmd := []string{"profile", "-n", prefixedNs, "--proto", "-", "smoke-test-terminus-svc"}
+			bbSP, stderr, err := TestHelper.PipeToLinkerdRun(bbProto, cmd...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v %s", err, stderr)
+			}
 
-	out, err := TestHelper.KubectlApply(bbSP, prefixedNs)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed: %s\n%s", err, out)
+			out, err := TestHelper.KubectlApply(bbSP, prefixedNs)
+			if err != nil {
+				t.Fatalf("kubectl apply command failed: %s\n%s", err, out)
+			}
+		})
 	}
 }
 
 func TestCheckProxy(t *testing.T) {
-	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
-	golden := "check.proxy.golden"
+	for _, tc := range injectionCases {
+		tc := tc // pin
+		t.Run(tc.ns, func(t *testing.T) {
+			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
+			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
+			golden := "check.proxy.golden"
 
-	err := TestHelper.RetryFor(time.Minute, func() error {
-		out, _, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			return fmt.Errorf("Check command failed\n%s", out)
-		}
+			err := TestHelper.RetryFor(time.Minute, func() error {
+				out, _, err := TestHelper.LinkerdRun(cmd...)
+				if err != nil {
+					return fmt.Errorf("Check command failed\n%s", out)
+				}
 
-		err = TestHelper.ValidateOutput(out, golden)
-		if err != nil {
-			return fmt.Errorf("Received unexpected output\n%s", err.Error())
-		}
+				err = TestHelper.ValidateOutput(out, golden)
+				if err != nil {
+					return fmt.Errorf("Received unexpected output\n%s", err.Error())
+				}
 
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+		})
 	}
 }
 
@@ -419,7 +486,7 @@ func TestLogs(t *testing.T) {
 				}
 				defer outputStream.Stop()
 				// Ignore the error returned, since ReadUntil will return an error if it
-				// does not return 10,000 after 1 second. We don't need 10,000 log lines.
+				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
 				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
 				if len(outputLines) == 0 {
 					t.Errorf("No logs found for %s", name)
@@ -429,10 +496,10 @@ func TestLogs(t *testing.T) {
 					if errRegex.MatchString(line) {
 						if knownErrorsRegex.MatchString(line) {
 							// report all known logging errors in the output
-							t.Skipf("Found known error in %s log: %s", name, line)
+							t.Logf("Found known error in %s log: %s", name, line)
 						} else {
 							if proxy {
-								t.Skipf("Found unexpected proxy error in %s log: %s", name, line)
+								t.Logf("Found unexpected proxy error in %s log: %s", name, line)
 							} else {
 								t.Errorf("Found unexpected controller error in %s log: %s", name, line)
 							}
@@ -441,6 +508,47 @@ func TestLogs(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestEvents(t *testing.T) {
+	out, err := TestHelper.Kubectl("",
+		"--namespace", TestHelper.GetLinkerdNamespace(),
+		"get", "events", "-ojson",
+	)
+	if err != nil {
+		t.Errorf("kubectl get events command failed with %s\n%s", err, out)
+	}
+	var list corev1.List
+	if err := json.Unmarshal([]byte(out), &list); err != nil {
+		t.Errorf("Error unmarshaling list from `kubectl get events`: %s", err)
+	}
+
+	if len(list.Items) == 0 {
+		t.Error("No events found")
+	}
+
+	var unknownEvents []string
+	for _, i := range list.Items {
+		var e corev1.Event
+		if err := json.Unmarshal(i.Raw, &e); err != nil {
+			t.Errorf("Error unmarshaling list event from `kubectl get events`: %s", err)
+		}
+
+		if e.Type == corev1.EventTypeNormal {
+			continue
+		}
+
+		evtStr := fmt.Sprintf("%s %s %s", e.Reason, e.InvolvedObject.Name, e.Message)
+		if knownEventWarningsRegex.MatchString(e.Message) {
+			t.Logf("Found known warning event: %s", evtStr)
+		} else {
+			unknownEvents = append(unknownEvents, evtStr)
+		}
+	}
+
+	if len(unknownEvents) > 0 {
+		t.Errorf("Found unexpected warning events:\n%s", strings.Join(unknownEvents, "\n"))
 	}
 }
 

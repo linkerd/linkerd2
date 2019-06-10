@@ -63,6 +63,8 @@ const (
 
 	identityAPIPort = 8080
 
+	envTapDisabled = "LINKERD2_PROXY_TAP_DISABLED"
+
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
@@ -110,7 +112,6 @@ type ResourceConfig struct {
 	proxyOutboundCapacity  map[string]uint
 	ownerRetriever         OwnerRetrieverFunc
 	origin                 Origin
-	debugSidecar           *corev1.Container
 
 	workload struct {
 		obj      runtime.Object
@@ -141,17 +142,6 @@ func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
 	config.pod.annotations = map[string]string{}
 	return config
-}
-
-// WithDebugSidecar enriches ResourceConfig with a debug sidecar for a resource
-func (conf *ResourceConfig) WithDebugSidecar() *ResourceConfig {
-	conf.debugSidecar = &corev1.Container{
-		Name:                     k8s.DebugSidecarName,
-		ImagePullPolicy:          conf.proxyImagePullPolicy(),
-		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-	}
-	return conf
 }
 
 // WithKind enriches ResourceConfig with the workload kind
@@ -423,8 +413,17 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		conf.injectProxyInit(patch, saVolumeMount)
 	}
 
-	if conf.debugSidecar != nil {
-		patch.addContainer(conf.debugSidecar)
+	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
+		debug, err := strconv.ParseBool(v)
+		if err != nil {
+			log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyEnableDebugAnnotation, v)
+			debug = false
+		}
+
+		if debug {
+			log.Infof("inject debug container")
+			patch.addContainer(conf.injectDebugSidecar())
+		}
 	}
 
 	proxyUID := conf.proxyUID()
@@ -512,6 +511,15 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 			)
 			break
 		}
+	}
+
+	if conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapDisabled,
+				Value: "true",
+			},
+		)
 	}
 
 	if saVolumeMount != nil {
@@ -618,6 +626,15 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.
 	patch.addInitContainer(initContainer)
 }
 
+func (conf *ResourceConfig) injectDebugSidecar() *corev1.Container {
+	return &corev1.Container{
+		Name:                     k8s.DebugSidecarName,
+		ImagePullPolicy:          conf.proxyImagePullPolicy(),
+		Image:                    fmt.Sprintf("%s:%s", k8s.DebugSidecarImage, conf.configs.GetGlobal().GetVersion()),
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+}
+
 func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 	// Probably always true, but wanna be super-safe
 	if containers := conf.pod.spec.Containers; len(containers) > 0 {
@@ -706,10 +723,13 @@ func (conf *ResourceConfig) proxyVersion() string {
 }
 
 func (conf *ResourceConfig) proxyInitVersion() string {
-	if version := conf.configs.GetGlobal().GetVersion(); version != "" {
-		return version
+	if override := conf.getOverride(k8s.ProxyInitImageVersionAnnotation); override != "" {
+		return override
 	}
-	return version.Version
+	if v := conf.configs.GetProxy().GetProxyInitImageVersion(); v != "" {
+		return v
+	}
+	return version.ProxyInitVersion
 }
 
 func (conf *ResourceConfig) proxyControlPort() int32 {
@@ -772,6 +792,16 @@ func (conf *ResourceConfig) identityContext() *config.IdentityContext {
 	}
 
 	return conf.configs.GetGlobal().GetIdentityContext()
+}
+
+func (conf *ResourceConfig) tapDisabled() bool {
+	if override := conf.getOverride(k8s.ProxyDisableTapAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		if err == nil && value {
+			return true
+		}
+	}
+	return false
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() corev1.ResourceRequirements {

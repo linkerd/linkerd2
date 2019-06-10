@@ -14,6 +14,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -103,6 +104,14 @@ const (
 // page.
 const HintBaseURL = "https://linkerd.io/checks/#"
 
+// AllowedClockSkew sets the allowed skew in clock synchronization
+// between the system running inject command and the node(s), being
+// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// clock skew allowance.
+//
+// TODO: Make this default value overridiable, e.g. by CLI flag
+const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
@@ -141,6 +150,8 @@ type checker struct {
 }
 
 // CheckResult encapsulates a check's identifying information and output
+// Note there exists an analogous user-facing type, `cmd.check`, for output via
+// `linkerd check -o json`.
 type CheckResult struct {
 	Category    CategoryID
 	Description string
@@ -324,6 +335,13 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")
+					},
+				},
+				{
+					description: "no clock skew detected",
+					hintAnchor:  "pre-k8s-clock-skew",
+					check: func(context.Context) error {
+						return hc.checkClockSkew()
 					},
 				},
 			},
@@ -798,6 +816,7 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-prometheus", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -810,6 +829,7 @@ func expectedServiceAccountNames() []string {
 		"linkerd-proxy-injector",
 		"linkerd-sp-validator",
 		"linkerd-web",
+		"linkerd-tap",
 	}
 }
 
@@ -988,6 +1008,38 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN", len(pspList.Items))
 }
 
+func (hc *HealthChecker) checkClockSkew() error {
+	if hc.kubeAPI == nil {
+		// we should never get here
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+	}
+
+	var clockSkewNodes []string
+
+	nodeList, err := hc.kubeAPI.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, node := range nodeList.Items {
+		for _, condition := range node.Status.Conditions {
+			// we want to check only KubeletReady condition and only execute if the node is ready
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				since := time.Since(condition.LastHeartbeatTime.Time)
+				if (since > AllowedClockSkew) || (since < -AllowedClockSkew) {
+					clockSkewNodes = append(clockSkewNodes, node.Name)
+				}
+			}
+		}
+	}
+
+	if len(clockSkewNodes) > 0 {
+		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
+	}
+
+	return nil
+}
+
 func (hc *HealthChecker) validateServiceProfiles() error {
 	spClientset, err := spclient.NewForConfig(hc.kubeAPI.Config)
 	if err != nil {
@@ -1046,7 +1098,7 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web"}
+	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

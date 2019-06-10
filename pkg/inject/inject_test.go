@@ -6,6 +6,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
@@ -161,7 +162,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: "svc.cluster.local.",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("Always"),
-				initVersion:                controlPlaneVersion,
+				initVersion:                version.ProxyInitVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "5000",
 					"--outgoing-proxy-port", "5002",
@@ -227,7 +228,7 @@ func TestConfigAccessors(t *testing.T) {
 				destinationProfileSuffixes: ".",
 				initImage:                  "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy:        corev1.PullPolicy("IfNotPresent"),
-				initVersion:                controlPlaneVersion,
+				initVersion:                version.ProxyInitVersion,
 				initArgs: []string{
 					"--incoming-proxy-port", "6000",
 					"--outgoing-proxy-port", "6002",
@@ -461,4 +462,40 @@ func TestProxyInitResourceRequirments(t *testing.T) {
 			t.Errorf("Resource mismatch. Expected %+v. Actual %+v", expected, v)
 		}
 	}
+}
+
+func TestInjectPodSpec(t *testing.T) {
+	var (
+		configs = &config.All{}
+		conf    = NewResourceConfig(configs, OriginUnknown)
+	)
+	conf.pod.meta = &metav1.ObjectMeta{}
+	conf.pod.meta.Annotations = map[string]string{}
+	conf.pod.spec = &corev1.PodSpec{}
+
+	t.Run("debug container", func(t *testing.T) {
+		patch := NewPatch("Deployment")
+		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
+		conf.injectPodAnnotations(patch)
+		conf.injectPodSpec(patch)
+
+		passed := false
+		for _, actual := range patch.patchOps {
+			if actual.Op == "add" && actual.Path == "/spec/template/spec/containers/-" {
+				container, ok := actual.Value.(*corev1.Container)
+				if !ok {
+					t.Fatal("Unexpected type assertion error")
+				}
+
+				if container.Name == k8s.DebugSidecarName {
+					passed = true
+					break
+				}
+			}
+		}
+
+		if !passed {
+			t.Errorf("Expected debug container to be added to patch. Actual patch: %v", patch.patchOps)
+		}
+	})
 }
