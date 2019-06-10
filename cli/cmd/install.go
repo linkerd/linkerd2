@@ -54,7 +54,6 @@ type (
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
 		LinkerdNamespaceLabel    string
-		WebhookFailurePolicy     string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
@@ -383,18 +382,9 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
-	options.setWebhookFailurePolicy(values)
-
 	values.stage = stage
 
 	return values, configs, nil
-}
-
-func (options *installOptions) setWebhookFailurePolicy(values *installValues) {
-	values.WebhookFailurePolicy = "Ignore"
-	if options.highAvailability {
-		values.WebhookFailurePolicy = "Fail"
-	}
 }
 
 // recordableFlagSet returns flags usable during install or upgrade.

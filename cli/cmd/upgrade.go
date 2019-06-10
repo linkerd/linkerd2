@@ -258,8 +258,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
-	options.setWebhookFailurePolicy(values)
-
 	values.stage = stage
 
 	return values, configs, nil
