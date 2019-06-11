@@ -11,6 +11,7 @@ import (
 func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
+	clusterDomain := "mycluster.local"
 
 	swagger := spec.Swagger{
 		SwaggerProps: spec.SwaggerProps{
@@ -39,7 +40,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 	expectedServiceProfile := sp.ServiceProfile{
 		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "." + namespace + ".svc.cluster.local",
+			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
@@ -66,7 +67,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile := swaggerToServiceProfile(swagger, namespace, name)
+	actualServiceProfile := swaggerToServiceProfile(swagger, namespace, name, clusterDomain)
 
 	err := ServiceProfileYamlEquals(actualServiceProfile, expectedServiceProfile)
 	if err != nil {
