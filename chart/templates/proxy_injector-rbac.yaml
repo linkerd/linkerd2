@@ -71,7 +71,7 @@ webhooks:
       path: "/"
     caBundle: {{ b64enc .ProxyInjector.CrtPEM }}
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
