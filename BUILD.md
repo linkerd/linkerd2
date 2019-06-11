@@ -251,7 +251,13 @@ These commands assume working [Go](https://golang.org) and
     bin/web setup
     ```
 
-1. Install Linkerd on a Kubernetes cluster.
+2. Fetch the necessary Go dependencies:
+
+    ```bash
+    bin/dep ensure
+    ```
+
+3. Install Linkerd on a Kubernetes cluster.
 
 #### Run web standalone
 
