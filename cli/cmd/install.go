@@ -53,6 +53,7 @@ type (
 		ProxyContainerName       string
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
+		LinkerdNamespaceLabel    string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
@@ -548,13 +549,14 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		PrometheusImage: prometheusImage,
 		ImagePullPolicy: options.imagePullPolicy,
 
-		// Kubernetes labels/annotations/resourcse:
+		// Kubernetes labels/annotations/resources:
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		ProxyContainerName:       k8s.ProxyContainerName,
 		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
+		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
 		Namespace:          controlPlaneNamespace,
