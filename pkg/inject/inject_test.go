@@ -81,6 +81,7 @@ func TestConfigAccessors(t *testing.T) {
 		LinkerdNamespace: "linkerd",
 		Version:          controlPlaneVersion,
 		IdentityContext:  &config.IdentityContext{},
+		ClusterDomain:    "cluster.local",
 	}
 
 	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}

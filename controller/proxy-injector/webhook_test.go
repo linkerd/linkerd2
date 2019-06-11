@@ -26,6 +26,7 @@ var (
 			LinkerdNamespace: "linkerd",
 			CniEnabled:       false,
 			IdentityContext:  nil,
+			ClusterDomain:    "cluster.local",
 		},
 		Proxy: &config.Proxy{
 			ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
