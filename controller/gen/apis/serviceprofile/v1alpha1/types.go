@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,8 +28,9 @@ type ServiceProfile struct {
 
 // ServiceProfileSpec specifies a ServiceProfile resource.
 type ServiceProfileSpec struct {
-	Routes      []*RouteSpec `json:"routes"`
-	RetryBudget *RetryBudget `json:"retryBudget,omitempty"`
+	Routes       []*RouteSpec   `json:"routes"`
+	RetryBudget  *RetryBudget   `json:"retryBudget,omitempty"`
+	DstOverrides []*WeightedDst `json:"dstOverrides,omitempty"`
 }
 
 // RouteSpec specifies a Route resource.
@@ -76,6 +78,11 @@ type RetryBudget struct {
 	RetryRatio          float32 `json:"retryRatio"`
 	MinRetriesPerSecond uint32  `json:"minRetriesPerSecond"`
 	TTL                 string  `json:"ttl"`
+}
+
+type WeightedDst struct {
+	Authority string            `json:"authority"`
+	Weight    resource.Quantity `json:"weight"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
