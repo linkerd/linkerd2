@@ -645,6 +645,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/proxy_injector-rbac.yaml"},
 			{Name: "templates/sp_validator-rbac.yaml"},
 			{Name: "templates/tap-rbac.yaml"},
+			{Name: "templates/psp.yaml"},
 		}...)
 	}
 
