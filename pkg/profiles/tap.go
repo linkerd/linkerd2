@@ -22,7 +22,7 @@ import (
 // RenderTapOutputProfile performs a tap on the desired resource and generates
 // a service profile with routes pre-populated from the tap data
 // Only inbound tap traffic is considered.
-func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
+func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
 	requestParams := util.TapRequestParams{
 		Resource:  tapResource,
 		Namespace: namespace,
@@ -34,7 +34,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name st
 		return err
 	}
 
-	profile, err := tapToServiceProfile(client, req, namespace, name, tapDuration, routeLimit)
+	profile, err := tapToServiceProfile(client, req, namespace, name, clusterDomain, tapDuration, routeLimit)
 	if err != nil {
 		return err
 	}
@@ -47,10 +47,10 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name st
 	return nil
 }
 
-func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, namespace, name string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
+func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
 	profile := sp.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
+			Name:      fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterDomain),
 			Namespace: namespace,
 		},
 		TypeMeta: serviceProfileMeta,
