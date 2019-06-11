@@ -1,7 +1,7 @@
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-controller-api.NAMESPACE.svc.cluster.local
+  name: linkerd-controller-api.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:
@@ -41,7 +41,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-destination.NAMESPACE.svc.cluster.local
+  name: linkerd-destination.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:
@@ -57,7 +57,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-prometheus.NAMESPACE.svc.cluster.local
+  name: linkerd-prometheus.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:
@@ -77,7 +77,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-grafana.NAMESPACE.svc.cluster.local
+  name: linkerd-grafana.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:
@@ -125,7 +125,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: linkerd-tap.NAMESPACE.svc.cluster.local
+  name: linkerd-tap.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:
