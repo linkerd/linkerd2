@@ -20,20 +20,20 @@ This command installs Service Profiles into the Linkerd control plane. A
 cluster-wide Linkerd control-plane is a prerequisite. To confirm Service Profile
 support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha1".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderSP(os.Stdout, controlPlaneNamespace)
+			return renderSP(os.Stdout, controlPlaneNamespace, clusterDomain)
 		},
 	}
 
 	return cmd
 }
 
-func renderSP(w io.Writer, namespace string) error {
+func renderSP(w io.Writer, namespace, clusterDomain string) error {
 	template, err := template.New("linkerd").Parse(installsp.Template)
 	if err != nil {
 		return err
 	}
 	buf := &bytes.Buffer{}
-	err = template.Execute(buf, map[string]string{"Namespace": namespace})
+	err = template.Execute(buf, map[string]string{"Namespace": namespace, "ClusterDomain": clusterDomain})
 	if err != nil {
 		return err
 	}
