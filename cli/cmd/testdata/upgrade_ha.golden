@@ -911,6 +911,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -tap-addr=linkerd-tap.linkerd.svc.cluster.local:8088
         - -controller-namespace=linkerd
+        - -cluster-domain=cluster.local
         - -log-level=info
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent

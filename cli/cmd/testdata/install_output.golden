@@ -870,6 +870,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
         - -tap-addr=linkerd-tap.Namespace.svc.cluster.local:8088
         - -controller-namespace=Namespace
+        - -cluster-domain=cluster.local
         - -log-level=ControllerLogLevel
         image: ControllerImage
         imagePullPolicy: ImagePullPolicy
