@@ -18,6 +18,7 @@ import (
 
 const (
 	defaultNamespace      = "linkerd"
+	defaultClusterDomain  = "cluster.local"
 	defaultDockerRegistry = "gcr.io/linkerd-io"
 
 	jsonOutput  = "json"
@@ -37,6 +38,7 @@ var (
 
 	controlPlaneNamespace string
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
+	clusterDomain         string
 	kubeconfigPath        string
 	kubeContext           string
 	verbose               bool
@@ -91,6 +93,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
+	RootCmd.PersistentFlags().StringVar(&clusterDomain, "cluster-domain", defaultClusterDomain, "Set custom cluster domain")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 
 	RootCmd.AddCommand(newCmdCheck())
