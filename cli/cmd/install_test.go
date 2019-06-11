@@ -35,6 +35,7 @@ func TestRender(t *testing.T) {
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &installValues{
 		Namespace:                "Namespace",
+		ClusterDomain:            "cluster.local",
 		ControllerImage:          "ControllerImage",
 		WebImage:                 "WebImage",
 		PrometheusImage:          "PrometheusImage",

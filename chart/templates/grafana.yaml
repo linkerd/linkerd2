@@ -41,7 +41,7 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
-      url: http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090
+      url: http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
       isDefault: true
       jsonData:
         timeInterval: "5s"

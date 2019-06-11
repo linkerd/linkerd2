@@ -38,6 +38,7 @@ type (
 		stage string
 
 		Namespace                string
+		ClusterDomain            string
 		ControllerImage          string
 		WebImage                 string
 		PrometheusImage          string
@@ -576,6 +577,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 		// Controller configuration:
 		Namespace:              controlPlaneNamespace,
+		ClusterDomain:          clusterDomain,
 		UUID:                   configs.GetInstall().GetUuid(),
 		ControllerReplicas:     options.controllerReplicas,
 		ControllerLogLevel:     options.controllerLogLevel,
