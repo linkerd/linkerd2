@@ -922,7 +922,9 @@ func (conf *ResourceConfig) proxyInitResourceRequirements() corev1.ResourceRequi
 
 func (conf *ResourceConfig) proxyDestinationAddr() string {
 	ns := conf.configs.GetGlobal().GetLinkerdNamespace()
-	dns := fmt.Sprintf("linkerd-destination.%s.svc.cluster.local", ns)
+	domain := conf.configs.GetGlobal().GetClusterDomain()
+
+	dns := fmt.Sprintf("linkerd-destination.%s.svc.%s", ns, domain)
 	if conf.destinationDNSOverride != "" {
 		dns = conf.destinationDNSOverride
 	}
@@ -930,7 +932,10 @@ func (conf *ResourceConfig) proxyDestinationAddr() string {
 }
 
 func (conf *ResourceConfig) proxyIdentityAddr() string {
-	dns := fmt.Sprintf("linkerd-identity.%s.svc.cluster.local", conf.configs.GetGlobal().GetLinkerdNamespace())
+	ns := conf.configs.GetGlobal().GetLinkerdNamespace()
+	domain := conf.configs.GetGlobal().GetClusterDomain()
+
+	dns := fmt.Sprintf("linkerd-identity.%s.svc.%s", ns, domain)
 	if conf.identityDNSOverride != "" {
 		dns = conf.identityDNSOverride
 	}
