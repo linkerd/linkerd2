@@ -148,7 +148,7 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 			}
 
 			for _, svc := range services {
-				p := s.k8sAPI.GetServiceProfileFor(svc, clientNs)
+				p := s.k8sAPI.GetServiceProfileFor(svc, clientNs, s.clusterDomain)
 				profiles[svc.GetName()] = p
 			}
 		}

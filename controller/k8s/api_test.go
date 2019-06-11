@@ -801,7 +801,7 @@ spec:
 			},
 		}
 
-		sp := api.GetServiceProfileFor(&svc, "client")
+		sp := api.GetServiceProfileFor(&svc, "client", "cluster.local")
 
 		if len(sp.Spec.Routes) != len(tt.expectedRouteNames) {
 			t.Fatalf("Expected %d routes, got %d", len(tt.expectedRouteNames), len(sp.Spec.Routes))

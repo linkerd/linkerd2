@@ -795,8 +795,8 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 // first look for a matching service profile in the client's namespace.  If not
 // found, we then look in the service's namespace.  If no service profile is
 // found, we return the default service profile.
-func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1alpha1.ServiceProfile {
-	dst := fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
+func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs, clusterDomain string) *spv1alpha1.ServiceProfile {
+	dst := fmt.Sprintf("%s.%s.svc.%s", svc.Name, svc.Namespace, clusterDomain)
 	// First attempt to lookup profile in client namespace
 	if clientNs != "" {
 		p, err := api.SP().Lister().ServiceProfiles(clientNs).Get(dst)

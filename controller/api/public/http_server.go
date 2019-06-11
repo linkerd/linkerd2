@@ -312,6 +312,7 @@ func NewServer(
 	discoveryClient discoveryPb.DiscoveryClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
+	clusterDomain string,
 	ignoredNamespaces []string,
 ) *http.Server {
 	baseHandler := &handler{
@@ -321,6 +322,7 @@ func NewServer(
 			discoveryClient,
 			k8sAPI,
 			controllerNamespace,
+			clusterDomain,
 			ignoredNamespaces,
 		),
 	}

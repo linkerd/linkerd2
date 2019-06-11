@@ -333,6 +333,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
 		nil,
 		k8sAPI,
 		"linkerd",
+		"cluster.local",
 		[]string{},
 	)
 
