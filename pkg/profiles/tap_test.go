@@ -14,7 +14,7 @@ import (
 func TestTapToServiceProfile(t *testing.T) {
 	name := "service-name"
 	namespace := "service-namespace"
-	clusterDomain := "mycluster.local"
+	clusterDomain := "service-cluster.local"
 	tapDuration := 5 * time.Second
 	routeLimit := 20
 
