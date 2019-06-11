@@ -33,8 +33,7 @@ const (
 	// defaultKeepaliveMs is used in the proxy configuration for remote connections
 	defaultKeepaliveMs = 10000
 
-	defaultProfileSuffix  = "."
-	internalProfileSuffix = "svc.cluster.local."
+	defaultProfileSuffix = "."
 
 	envLog                = "LINKERD2_PROXY_LOG"
 	envControlListenAddr  = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
@@ -1003,7 +1002,7 @@ func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
 	}
 
 	if disableExternalProfiles {
-		return internalProfileSuffix
+		return "svc." + conf.configs.GetGlobal().GetClusterDomain() + "."
 	}
 
 	return defaultProfileSuffix
