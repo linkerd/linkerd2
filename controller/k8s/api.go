@@ -116,7 +116,7 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	// TrafficSplits
 	var tsClient *tsclient.Clientset
 	for _, res := range resources {
-		if res == SP {
+		if res == TS {
 			tsClient, err = NewTsClientSet(kubeConfig)
 			if err != nil {
 				return nil, err

@@ -46,7 +46,7 @@ required = [
 
 [[constraint]]
   name = "github.com/deislabs/smi-sdk-go"
-  revision = "3f3f1afc374b8e31bd146e8b94abd5e4e5f6c7ad"
+  revision = "f281e2121a16192b99c40dcdb9eefcfce19e9d6d"
 
 [[constraint]]
   name = "k8s.io/helm"

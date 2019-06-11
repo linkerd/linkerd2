@@ -1,6 +1,36 @@
 ## edge-19.5.4
 
 * CLI
+  * Fixed an issue where, when Linkerd is installed with `--ha`, running
+    `linkerd upgrade` without `--ha` will disable the high availability
+    control plane
+  * Added a `--init-image-version` flag to `linkerd inject` to override the
+    injected proxy-init container version
+* Controller
+  * Added multiple replicas for the `proxy-injector` and `sp-validator`
+    controllers when run in high availability mode (thanks to @Pothulapati!)
+* Proxy
+  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
+    ends before the entire payload is sent to the destination
+* Internal
+  * Moved the proxy-init container to a separate `linkerd/proxy-init` Git
+    repository
+
+## stable-2.3.2
+
+This stable release fixes a memory leak in the proxy.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Full release notes**:
+
+* Proxy
+  * Fixed a memory leak that can occur if an HTTP/2 request with a payload
+    ends before the entire payload is sent to the destination
+
+## edge-19.5.4
+
+* CLI
   * Added a JSON option to the `linkerd edges` command so that output is
     scripting friendly and can be parsed easily (thanks @alenkacz!)
 * Controller
