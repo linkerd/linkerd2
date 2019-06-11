@@ -99,7 +99,7 @@ func newCmdProfile() *cobra.Command {
 			}
 
 			if options.template {
-				return profiles.RenderProfileTemplate(options.namespace, options.name, os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, os.Stdout)
 			} else if options.tap != "" {

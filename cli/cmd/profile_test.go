@@ -14,7 +14,7 @@ import (
 func TestParseProfile(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := profiles.RenderProfileTemplate("myns", "mysvc", &buf)
+	err := profiles.RenderProfileTemplate("myns", "mysvc", "cluster.local", &buf)
 	if err != nil {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}

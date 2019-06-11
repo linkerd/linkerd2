@@ -1075,6 +1075,7 @@ spec:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -controller-namespace=Namespace
+        - -cluster-domain=cluster.local
         - -log-level=ControllerLogLevel
         image: WebImage
         imagePullPolicy: ImagePullPolicy

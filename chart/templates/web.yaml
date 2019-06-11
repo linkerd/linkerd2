@@ -61,6 +61,7 @@ spec:
         - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.{{.ClusterDomain}}:8085"
         - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000"
         - "-controller-namespace={{.Namespace}}"
+        - "-cluster-domain={{.ClusterDomain}}"
         - "-log-level={{.ControllerLogLevel}}"
         livenessProbe:
           httpGet:
