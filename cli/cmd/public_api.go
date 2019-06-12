@@ -26,7 +26,7 @@ func rawPublicAPIClient() (pb.ApiClient, error) {
 		return nil, err
 	}
 
-	return public.NewExternalClient(controlPlaneNamespace, kubeAPI)
+	return public.NewExternalPublicAPIClient(controlPlaneNamespace, kubeAPI)
 }
 
 // checkPublicAPIClientOrExit builds a new public API client and executes default status

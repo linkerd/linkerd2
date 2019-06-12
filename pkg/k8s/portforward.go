@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -160,6 +161,46 @@ func (pf *PortForward) Run() error {
 	}
 
 	return fw.ForwardPorts()
+}
+
+// Init creates and runs a port-forward connection, waits for it to be ready, and returns
+// its URL and http client.
+func (pf *PortForward) Init(controlPlaneNamespace string, kubeAPI *KubernetesAPI) (*url.URL, *http.Client, error) {
+	apiURL, err := url.Parse(pf.URLFor(""))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	log.Debugf("Starting port forward on [%s]", apiURL)
+
+	wait := make(chan error, 1)
+
+	go func() {
+		if err := pf.Run(); err != nil {
+			wait <- err
+		}
+
+		pf.Stop()
+	}()
+
+	select {
+	case <-pf.Ready():
+		log.Debugf("Port forward initialised")
+
+		break
+
+	case err := <-wait:
+		log.Debugf("Port forward failed: %v", err)
+
+		return nil, nil, err
+	}
+
+	httpClientToUse, err := kubeAPI.NewClient()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return apiURL, httpClientToUse, nil
 }
 
 // Ready returns a channel that will receive a message when the port-forward

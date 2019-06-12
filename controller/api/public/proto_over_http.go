@@ -1,26 +1,22 @@
 package public
 
 import (
-	"bufio"
 	"encoding/binary"
-	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/linkerd/linkerd2/controller/api"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
 )
 
 const (
-	errorHeader                = "linkerd-error"
-	defaultHTTPErrorStatusCode = http.StatusInternalServerError
 	contentTypeHeader          = "Content-Type"
+	defaultHTTPErrorStatusCode = http.StatusInternalServerError
 	protobufContentType        = "application/octet-stream"
-	numBytesForMessageLength   = 4
 )
 
 type httpError struct {
@@ -66,7 +62,7 @@ func writeErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 		errorToReturn = httpErr.WrappedError
 	}
 
-	w.Header().Set(errorHeader, http.StatusText(statusCode))
+	w.Header().Set(api.ErrorHeader, http.StatusText(statusCode))
 
 	errorMessageToReturn := errorToReturn.Error()
 	if grpcError, ok := status.FromError(errorObtained); ok {
@@ -78,7 +74,7 @@ func writeErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 	err := writeProtoToHTTPResponse(w, errorAsProto)
 	if err != nil {
 		log.Errorf("Error writing error to http response: %v", err)
-		w.Header().Set(errorHeader, err.Error())
+		w.Header().Set(api.ErrorHeader, err.Error())
 	}
 }
 
@@ -108,47 +104,8 @@ func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) 
 func serializeAsPayload(messageContentsInBytes []byte) []byte {
 	lengthOfThePayload := uint32(len(messageContentsInBytes))
 
-	messageLengthInBytes := make([]byte, numBytesForMessageLength)
+	messageLengthInBytes := make([]byte, api.NumBytesForMessageLength)
 	binary.LittleEndian.PutUint32(messageLengthInBytes, lengthOfThePayload)
 
 	return append(messageLengthInBytes, messageContentsInBytes...)
-}
-
-func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
-	messageLengthAsBytes := make([]byte, numBytesForMessageLength)
-	_, err := io.ReadFull(reader, messageLengthAsBytes)
-	if err != nil {
-		return nil, fmt.Errorf("error while reading message length: %v", err)
-	}
-	messageLength := int(binary.LittleEndian.Uint32(messageLengthAsBytes))
-
-	messageContentsAsBytes := make([]byte, messageLength)
-	_, err = io.ReadFull(reader, messageContentsAsBytes)
-	if err != nil {
-		return nil, fmt.Errorf("error while reading bytes from message: %v", err)
-	}
-
-	return messageContentsAsBytes, nil
-}
-
-func checkIfResponseHasError(rsp *http.Response) error {
-	errorMsg := rsp.Header.Get(errorHeader)
-
-	if errorMsg != "" {
-		reader := bufio.NewReader(rsp.Body)
-		var apiError pb.ApiError
-
-		err := fromByteStreamToProtocolBuffers(reader, &apiError)
-		if err != nil {
-			return fmt.Errorf("Response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
-		}
-
-		return errors.New(apiError.Error)
-	}
-
-	if rsp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected API response: %s", rsp.Status)
-	}
-
-	return nil
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -77,6 +79,10 @@ const (
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdAPIChecks CategoryID = "linkerd-api"
+
+	// LinkerdDestinationAPICheck adds one check in order to build the Destination
+	// API client.
+	LinkerdDestinationAPICheck CategoryID = "linkerd-api-destination"
 
 	// LinkerdVersionChecks adds a series of checks to query for the latest
 	// version, and validate the the CLI is up to date.
@@ -187,12 +193,13 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI          *k8s.KubernetesAPI
-	kubeVersion      *k8sVersion.Info
-	controlPlanePods []corev1.Pod
-	apiClient        public.APIClient
-	latestVersions   version.Channels
-	serverVersion    string
+	kubeAPI           *k8s.KubernetesAPI
+	kubeVersion       *k8sVersion.Info
+	controlPlanePods  []corev1.Pod
+	apiClient         public.APIClient
+	destinationClient destinationPb.DestinationClient
+	latestVersions    version.Channels
+	serverVersion     string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -457,7 +464,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.APIAddr != "" {
 							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
-							hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+							hc.apiClient, err = public.NewExternalPublicAPIClient(hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
 						return
 					},
@@ -506,6 +513,20 @@ func (hc *HealthChecker) allCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.validateServiceProfiles()
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdDestinationAPICheck,
+			checkers: []checker{
+				{
+					description: "can initialize the destination client",
+					hintAnchor:  "l5d-existence-destination-client",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						hc.destinationClient, err = destination.NewExternalDestinationAPIClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
 					},
 				},
 			},
@@ -791,6 +812,13 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 // configured and run first.
 func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
+}
+
+// PublicAPIClient returns a fully configured Destination API client. This client is
+// only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
+// configured and run first.
+func (hc *HealthChecker) DestinationClient() destinationPb.DestinationClient {
+	return hc.destinationClient
 }
 
 // CheckNamespace checks whether the given namespace exists, and returns an

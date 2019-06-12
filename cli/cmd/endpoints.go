@@ -5,14 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	pb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -74,15 +77,18 @@ requests.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(checkPublicAPIClientOrExit())
-			if err != nil {
-				return fmt.Errorf("Endpoints API error: %s", err)
-			}
+			requestEndpointsFromAPI(checkPublicAndDestinationAPIClientOrExit())
+			/*
+				endpoints, err := requestEndpointsFromAPI(checkPublicAPIClientOrExit())
+				if err != nil {
+					return fmt.Errorf("Endpoints API error: %s", err)
+				}
 
-			output := renderEndpoints(endpoints, options)
-			_, err = fmt.Print(output)
+				output := renderEndpoints(endpoints, options)
+				_, err = fmt.Print(output)
 
-			return err
+				return err*/
+			return nil
 		},
 	}
 
@@ -92,8 +98,41 @@ requests.`,
 	return cmd
 }
 
-func requestEndpointsFromAPI(client public.APIClient) (*pb.EndpointsResponse, error) {
-	return client.Endpoints(context.Background(), &pb.EndpointsParams{})
+func checkPublicAndDestinationAPIClientOrExit() destinationPb.DestinationClient {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		healthcheck.LinkerdDestinationAPICheck,
+	}
+	hc := newHealthChecker(checks, time.Time{})
+
+	hc.RunChecks(exitOnError)
+	return hc.DestinationClient()
+}
+
+func requestEndpointsFromAPI(client destinationPb.DestinationClient) {
+	//return client.Endpoints(context.Background(), &pb.EndpointsParams{})
+	dest := &destinationPb.GetDestination{
+		Scheme: "http:",
+		Path:   "emoji-svc.emojivoto.svc.cluster.local:8080",
+	}
+	rsp, err := client.Get(context.Background(), dest)
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+	}
+
+	for {
+		fmt.Println("Waiting for data...")
+		event, err := rsp.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			break
+		}
+		fmt.Printf("event: %v\n", event)
+	}
 }
 
 func renderEndpoints(endpoints *pb.EndpointsResponse, options *endpointsOptions) string {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
@@ -27,6 +29,7 @@ var (
 	selfCheckPath     = fullURLPathFor("SelfCheck")
 	endpointsPath     = fullURLPathFor("Endpoints")
 	edgesPath         = fullURLPathFor("Edges")
+	destGetPath       = fullURLPathFor("Get")
 	configPath        = fullURLPathFor("Config")
 )
 
@@ -62,6 +65,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleSelfCheck(w, req)
 	case endpointsPath:
 		h.handleEndpoints(w, req)
+	case destGetPath:
+		h.handleDestGet(w, req)
 	case edgesPath:
 		h.handleEdges(w, req)
 	case configPath:
@@ -242,6 +247,28 @@ func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) 
 	}
 }
 
+func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
+	flushableWriter, err := newStreamingWriter(w)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+
+	var protoRequest destinationPb.GetDestination
+	err = httpRequestToProto(req, &protoRequest)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+
+	server := destinationServer{tapServer{w: flushableWriter, req: req}}
+	err = h.grpcServer.Get(&protoRequest, server)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err)
+		return
+	}
+}
+
 func (h *handler) handleConfig(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.Empty
 	err := httpRequestToProto(req, &protoRequest)
@@ -279,6 +306,21 @@ func (s tapServer) Send(msg *pb.TapEvent) error {
 	return nil
 }
 
+type destinationServer struct {
+	tapServer
+}
+
+func (s destinationServer) Send(msg *destinationPb.Update) error {
+	err := writeProtoToHTTPResponse(s.w, msg)
+	if err != nil {
+		writeErrorToHTTPResponse(s.w, err)
+		return err
+	}
+
+	s.w.Flush()
+	return nil
+}
+
 // satisfy the pb.Api_TapServer interface
 func (s tapServer) SetHeader(metadata.MD) error  { return nil }
 func (s tapServer) SendHeader(metadata.MD) error { return nil }
@@ -288,7 +330,7 @@ func (s tapServer) SendMsg(interface{}) error    { return nil }
 func (s tapServer) RecvMsg(interface{}) error    { return nil }
 
 func fullURLPathFor(method string) string {
-	return apiRoot + apiPrefix + method
+	return apiRoot + api.ApiPrefix + method
 }
 
 func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
@@ -310,6 +352,7 @@ func NewServer(
 	prometheusClient promApi.Client,
 	tapClient tapPb.TapClient,
 	discoveryClient discoveryPb.DiscoveryClient,
+	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
@@ -319,6 +362,7 @@ func NewServer(
 			promv1.NewAPI(prometheusClient),
 			tapClient,
 			discoveryClient,
+			destinationClient,
 			k8sAPI,
 			controllerNamespace,
 			ignoredNamespaces,
