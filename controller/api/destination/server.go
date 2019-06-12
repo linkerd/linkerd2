@@ -122,6 +122,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	log.Debugf("GetProfile(%+v)", dest)
 
+	// We build up the pipeline of profile updaters backwards, starting from
+	// the translator which takes profile updates, translates them to protobuf
+	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
 	service, port, err := watcher.GetServiceAndPort(dest.GetPath())
@@ -129,14 +132,19 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 
+	// The adaptor merges profile updates with traffic split updates and
+	// publishes the result to the translator.
 	tsAdaptor := newTrafficSplitAdaptor(translator, service, port)
 
+	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "Invalid authority [%s]: %s", dest.GetPath(), err)
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
 
+	// The fallback accepts updates from a primary and secondary source and
+	// passes the appropriate profile updates to the adaptor.
 	primary, secondary := newFallbackProfileListener(tsAdaptor)
 
 	// If we have a context token, we create two subscriptions: one with the

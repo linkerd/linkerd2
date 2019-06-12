@@ -8,6 +8,14 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 )
 
+// trafficSplitAdaptor merges traffic splits into service profiles, encoding
+// them as dst overrides.  trafficSplitAdaptor holds an underlying
+// ProfileUpdateListener and updates that listener with a merged service
+// service profile which includes the traffic split logic as a dst override
+// when a traffic split exists.  trafficSplitAdaptor itself implements both
+// ProfileUpdateListener and TrafficSplitUpdateListener and must be passed to
+// a source of profile updates (such as a ProfileWatcher) and a source of
+// traffic split updates (such as a TrafficSplitWatcher).
 type trafficSplitAdaptor struct {
 	listener watcher.ProfileUpdateListener
 	id       watcher.ServiceID
