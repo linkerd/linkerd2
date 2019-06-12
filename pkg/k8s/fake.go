@@ -10,6 +10,7 @@ import (
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
 
+	tsscheme "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -146,6 +147,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, 
 func ToRuntimeObject(config string) (runtime.Object, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err

@@ -1,9 +1,9 @@
 package destination
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
@@ -443,7 +443,7 @@ func TestProfileTranslator(t *testing.T) {
 			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
-		if !reflect.DeepEqual(actualPbProfile, pbProfile) {
+		if !proto.Equal(actualPbProfile, pbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfile, actualPbProfile)
 		}
 	})
@@ -463,7 +463,7 @@ func TestProfileTranslator(t *testing.T) {
 			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
-		if !reflect.DeepEqual(actualPbProfile, pbRequestMatchAll) {
+		if !proto.Equal(actualPbProfile, pbRequestMatchAll) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbRequestMatchAll, actualPbProfile)
 		}
 	})
@@ -499,7 +499,7 @@ func TestProfileTranslator(t *testing.T) {
 			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
-		if !reflect.DeepEqual(actualPbProfile, pbResponseMatchAll) {
+		if !proto.Equal(actualPbProfile, pbResponseMatchAll) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbResponseMatchAll, actualPbProfile)
 		}
 	})
@@ -567,7 +567,7 @@ func TestProfileTranslator(t *testing.T) {
 			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
-		if !reflect.DeepEqual(actualPbProfile, defaultPbProfile) {
+		if !proto.Equal(actualPbProfile, defaultPbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", defaultPbProfile, actualPbProfile)
 		}
 	})
@@ -587,7 +587,7 @@ func TestProfileTranslator(t *testing.T) {
 			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 		actualPbProfile := mockGetProfileServer.profilesReceived[0]
-		if !reflect.DeepEqual(actualPbProfile, pbProfileWithTimeout) {
+		if !proto.Equal(actualPbProfile, pbProfileWithTimeout) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfileWithTimeout, actualPbProfile)
 		}
 	})

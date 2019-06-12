@@ -640,6 +640,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/controller-rbac.yaml"},
 			{Name: "templates/web-rbac.yaml"},
 			{Name: "templates/serviceprofile-crd.yaml"},
+			{Name: "templates/trafficsplit-crd.yaml"},
 			{Name: "templates/prometheus-rbac.yaml"},
 			{Name: "templates/grafana-rbac.yaml"},
 			{Name: "templates/proxy_injector-rbac.yaml"},

@@ -2,7 +2,6 @@ package destination
 
 import (
 	"context"
-	"google.golang.org/grpc/codes"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -11,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )

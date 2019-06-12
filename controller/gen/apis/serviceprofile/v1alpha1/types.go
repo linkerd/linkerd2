@@ -80,6 +80,7 @@ type RetryBudget struct {
 	TTL                 string  `json:"ttl"`
 }
 
+// WeightedDst is a weighted alternate destination.
 type WeightedDst struct {
 	Authority string            `json:"authority"`
 	Weight    resource.Quantity `json:"weight"`
