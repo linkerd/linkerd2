@@ -1,9 +1,6 @@
 package watcher
 
 import (
-	"fmt"
-	"reflect"
-	"strings"
 	"testing"
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
@@ -106,17 +103,7 @@ spec:
 				}
 			}
 
-			if !reflect.DeepEqual(actual, tt.expectedSplits) {
-				t.Fatalf("Expected traffic splits %s, got %s", printSplits(tt.expectedSplits), printSplits(actual))
-			}
+			testCompare(t, tt.expectedSplits, actual)
 		})
 	}
-}
-
-func printSplits(splits []*ts.TrafficSplitSpec) string {
-	ss := []string{}
-	for _, split := range splits {
-		ss = append(ss, fmt.Sprintf("%v", *split))
-	}
-	return "[" + strings.Join(ss, ",") + "]"
 }

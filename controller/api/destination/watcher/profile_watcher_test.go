@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"reflect"
 	"testing"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
@@ -93,9 +92,7 @@ spec:
 				}
 			}
 
-			if !reflect.DeepEqual(actualProfiles, tt.expectedProfiles) {
-				t.Fatalf("Expected profiles %v, got %v", tt.expectedProfiles, listener.Profiles)
-			}
+			testCompare(t, tt.expectedProfiles, actualProfiles)
 		})
 	}
 }
