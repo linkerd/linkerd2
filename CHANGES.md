@@ -17,7 +17,7 @@
   * Removed `UPDATE` operation from proxy-injector webhook because pod
     mutations are disallowed during update operations
 * Proxy
-  * The `l5d-override-dst` header is now honored for inbound service profile
+  * The `l5d-override-dst` header is now used for inbound service profile
     discovery
   * Include errors in `response_total` metrics
   * Changed the load balancer to require that Kubernetes services are resolved
