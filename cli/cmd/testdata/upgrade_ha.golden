@@ -315,7 +315,7 @@ webhooks:
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
   failurePolicy: Fail
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]

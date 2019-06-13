@@ -73,7 +73,7 @@ webhooks:
     caBundle: {{ b64enc .ProxyInjector.CrtPEM }}
   failurePolicy: Fail
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
