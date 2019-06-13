@@ -9,9 +9,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Namespace}}-proxy-injector
 rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
