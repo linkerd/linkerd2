@@ -814,6 +814,27 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - controller
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - controller
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
       - args:
         - public-api
@@ -1834,6 +1855,27 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - proxy-injector
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - proxy-injector
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
       - args:
         - proxy-injector
@@ -2067,6 +2109,27 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - sp-validator
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - sp-validator
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
       - args:
         - sp-validator
@@ -2274,6 +2337,27 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - tap
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - tap
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
       - args:
         - tap
