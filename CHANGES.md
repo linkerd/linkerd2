@@ -4,6 +4,8 @@
   * Added the `--linkerd-cni-enabled` flag to the `install` subcommands so that
     `NET_ADMIN` capability is omitted from the CNI-enabled control plane's PSP
 * Controller
+  * Default to least-privilege security context values for the proxy container
+    so that auto-inject does not fail on restricted PSPs (thanks @codeman9!)
   * Defined least privilege default security context values for the proxy
     container so that auto-injection does not fail on (thanks @codeman9!)
   * Default the webhook failure policy to `Fail` in order to account for
