@@ -146,6 +146,26 @@
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:62b3e4da47c75995059a2a83840750dbc972fbc35ad3cd77bf14c10510f642e5"
+  name = "github.com/deislabs/smi-sdk-go"
+  packages = [
+    "pkg/apis/split",
+    "pkg/apis/split/v1alpha1",
+    "pkg/gen/client/split/clientset/versioned",
+    "pkg/gen/client/split/clientset/versioned/fake",
+    "pkg/gen/client/split/clientset/versioned/scheme",
+    "pkg/gen/client/split/clientset/versioned/typed/split/v1alpha1",
+    "pkg/gen/client/split/clientset/versioned/typed/split/v1alpha1/fake",
+    "pkg/gen/client/split/informers/externalversions",
+    "pkg/gen/client/split/informers/externalversions/internalinterfaces",
+    "pkg/gen/client/split/informers/externalversions/split",
+    "pkg/gen/client/split/informers/externalversions/split/v1alpha1",
+    "pkg/gen/client/split/listers/split/v1alpha1",
+  ]
+  pruneopts = ""
+  revision = "f281e2121a16192b99c40dcdb9eefcfce19e9d6d"
+
+[[projects]]
   digest = "1:3e93e899f8457138a891b3ccedcacf8fe9074865c848f7028e1892bdae280676"
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
@@ -852,7 +872,6 @@
     "stats",
     "status",
     "tap",
-    "test/bufconn",
     "transport",
   ]
   pruneopts = ""
@@ -1269,6 +1288,10 @@
     "github.com/containernetworking/cni/pkg/types",
     "github.com/containernetworking/cni/pkg/types/current",
     "github.com/containernetworking/cni/pkg/version",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1",
     "github.com/emicklei/proto",
     "github.com/evanphx/json-patch",
     "github.com/fatih/color",
@@ -1311,8 +1334,8 @@
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/metadata",
+    "google.golang.org/grpc/peer",
     "google.golang.org/grpc/status",
-    "google.golang.org/grpc/test/bufconn",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
@@ -1354,7 +1377,6 @@
     "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1",
     "k8s.io/client-go/kubernetes/typed/authentication/v1",
     "k8s.io/client-go/kubernetes/typed/authorization/v1",
-    "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",

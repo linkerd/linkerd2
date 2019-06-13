@@ -9,6 +9,8 @@ metadata:
   name: Namespace
   annotations:
     ProxyInjectAnnotation: ProxyInjectDisabled
+  labels:
+    LinkerdNamespaceLabel: "true"
 ---
 ###
 ### Identity Controller Service RBAC
@@ -304,12 +306,17 @@ metadata:
     ControllerComponentLabel: proxy-injector
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: LinkerdNamespaceLabel
+      operator: DoesNotExist
   clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: Namespace
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+  failurePolicy: Fail
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: [""]
@@ -380,6 +387,7 @@ webhooks:
       namespace: Namespace
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  failurePolicy: Fail
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
@@ -422,6 +430,79 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-tap
+  namespace: Namespace
+---
+###
+### Control Plane PSP
+###
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-Namespace-control-plane
+spec:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  allowedCapabilities:
+  - NET_ADMIN
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  volumes:
+  - configMap
+  - emptyDir
+  - secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-psp
+  namespace: Namespace
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-Namespace-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-psp
+  namespace: Namespace
+roleRef:
+  kind: Role
+  name: linkerd-psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-controller
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-grafana
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-identity
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-proxy-injector
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-sp-validator
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-web
   namespace: Namespace
 ---
 kind: ConfigMap
@@ -580,6 +661,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -605,10 +688,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -796,6 +881,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -821,10 +908,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -963,6 +1052,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -988,10 +1079,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1220,6 +1313,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1245,10 +1340,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1440,6 +1537,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1465,10 +1564,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1597,6 +1698,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1622,10 +1725,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1782,6 +1887,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1807,10 +1914,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1942,6 +2051,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1967,10 +2078,12 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError

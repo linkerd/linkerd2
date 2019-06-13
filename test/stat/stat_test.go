@@ -157,6 +157,12 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 // check that expectedRowCount rows have been returned
 func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 	rows := strings.Split(out, "\n")
+	if len(rows) < 2 {
+		return nil, fmt.Errorf(
+			"Error stripping header and trailing newline; full output:\n%s",
+			strings.Join(rows, "\n"),
+		)
+	}
 	rows = rows[1 : len(rows)-1] // strip header and trailing newline
 
 	if len(rows) != expectedRowCount {

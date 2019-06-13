@@ -244,14 +244,20 @@ These commands assume working [Go](https://golang.org) and
 
 #### First time setup
 
-1. Install [Yarn](https://yarnpkg.com) and use it to install dependencies:
+1. Install [Yarn](https://yarnpkg.com) and use it to install JS dependencies:
 
     ```bash
     brew install yarn
     bin/web setup
     ```
 
-1. Install Linkerd on a Kubernetes cluster.
+2. Fetch the necessary Go dependencies:
+
+    ```bash
+    bin/dep ensure
+    ```
+
+3. Install Linkerd on a Kubernetes cluster.
 
 #### Run web standalone
 

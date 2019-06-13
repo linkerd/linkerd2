@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
@@ -48,6 +49,7 @@ func TestRender(t *testing.T) {
 		ProxyContainerName:       "ProxyContainerName",
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 		ProxyInjectDisabled:      "ProxyInjectDisabled",
+		LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 		ControllerUID:            2103,
 		EnableH2Upgrade:          true,
 		NoInitContainer:          false,
@@ -156,6 +158,27 @@ func TestValidate(t *testing.T) {
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
+		}
+	})
+
+	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
+		underTest := testInstallOptions()
+		underTest.controllerLogLevel = "DEBUG"
+		expected := "debug"
+
+		testValues := new(pb.All)
+		testValues.Global = new(pb.Global)
+		testValues.Proxy = new(pb.Proxy)
+		testValues.Install = new(pb.Install)
+
+		actual, err := underTest.buildValuesWithoutIdentity(testValues)
+
+		if err != nil {
+			t.Fatalf("Unexpected error ocured %s", err)
+		}
+
+		if actual.PrometheusLogLevel != expected {
+			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.PrometheusLogLevel)
 		}
 	})
 

@@ -4,9 +4,54 @@ apiVersion: v1
 metadata:
   name: linkerd
 ---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-linkerd-cni
+spec:
+  allowPrivilegeEscalation: false
+  fsGroup:
+    rule: RunAsAny
+  hostNetwork: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - hostPath
+  - secret
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: linkerd-cni
+  namespace: linkerd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+rules:
+- apiGroups: ['extensions', 'policy']
+  resources: ['podsecuritypolicies']
+  resourceNames:
+  - linkerd-linkerd-cni
+  verbs: ['use']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-cni
+subjects:
+- kind: ServiceAccount
   name: linkerd-cni
   namespace: linkerd
 ---
