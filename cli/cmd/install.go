@@ -528,15 +528,14 @@ func (options *installOptions) validate() error {
 		return errors.New("--proxy-log-level must not be empty")
 	}
 
+	if !options.highAvailability && options.requiredHostAntiAffinity {
+		return fmt.Errorf("--required-host-anti-affinity needs ha flag to be switched on")
+	}
+
 	return nil
 }
 
 func (options *installOptions) handleHA() {
-  
-  if !options.highAvailability && options.requiredHostAntiAffinity {
-		return fmt.Errorf("--required-host-anti-affinity needs ha flag to be switched on")
-	}
-  
 	if options.highAvailability {
 		if options.controllerReplicas == defaultControllerReplicas {
 			options.controllerReplicas = defaultHAControllerReplicas
