@@ -230,7 +230,7 @@ func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 }
 
 // newCmdInstallConfig is a subcommand for `linkerd install config`
-func newCmdInstallConfig(options *installOptions) *cobra.Command {
+func newCmdInstallConfig(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
 		Args:  cobra.NoArgs,
@@ -246,15 +246,18 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return installRunE(options, configStage, nil)
+			return installRunE(options, configStage, parentFlags)
 		},
 	}
+
+	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
+	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	return cmd
 }
 
 // newCmdInstallControlPlane is a subcommand for `linkerd install control-plane`
-func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
+func newCmdInstallControlPlane(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
@@ -281,6 +284,9 @@ control plane. It should be run after "linkerd install config".`,
 			return installRunE(options, controlPlaneStage, flags)
 		},
 	}
+
+	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
+	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	cmd.PersistentFlags().BoolVar(
 		&options.skipChecks, "skip-checks", options.skipChecks,
@@ -329,8 +335,8 @@ control plane.`,
 	cmd.Flags().AddFlagSet(installOnlyFlags)
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
 
-	cmd.AddCommand(newCmdInstallConfig(options))
-	cmd.AddCommand(newCmdInstallControlPlane(options))
+	cmd.AddCommand(newCmdInstallConfig(options, flags))
+	cmd.AddCommand(newCmdInstallControlPlane(options, flags))
 
 	return cmd
 }
@@ -401,7 +407,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 
 	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
-		"Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
 	flags.StringVar(
@@ -647,6 +653,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/proxy_injector-rbac.yaml"},
 			{Name: "templates/sp_validator-rbac.yaml"},
 			{Name: "templates/tap-rbac.yaml"},
+			{Name: "templates/psp.yaml"},
 		}...)
 	}
 
