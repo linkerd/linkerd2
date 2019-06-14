@@ -71,7 +71,7 @@ webhooks:
       namespace: {{ .Namespace }}
       path: "/"
     caBundle: {{ b64enc .ProxyInjector.CrtPEM }}
-  failurePolicy: Fail
+  failurePolicy: {{ .WebhookFailurePolicy }}
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
