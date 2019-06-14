@@ -14,8 +14,6 @@
   * Introduced control plane's PSP and RBAC resources into Helm templates;
     these policies are only in effect if the PSP admission controller is
     enabled
-  * Fixed MWC namespace value so that when installing multiple control planes,
-    there is a unique configuration for each one
   * Removed `UPDATE` operation from proxy-injector webhook because pod
     mutations are disallowed during update operations
 * Proxy
