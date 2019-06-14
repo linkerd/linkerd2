@@ -1,3 +1,32 @@
+## edge-19.6.2
+
+* CLI
+  * Added the `--linkerd-cni-enabled` flag to the `install` subcommands so that
+    `NET_ADMIN` capability is omitted from the CNI-enabled control plane's PSP
+* Controller
+  * Default to least-privilege security context values for the proxy container
+    so that auto-inject does not fail on restricted PSPs (thanks @codeman9!)
+  * Defined least privilege default security context values for the proxy
+    container so that auto-injection does not fail on (thanks @codeman9!)
+  * Default the webhook failure policy to `Fail` in order to account for
+    unexpected errors during auto-inject; this ensures uninjected applications
+    are not deployed
+  * Introduced control plane's PSP and RBAC resources into Helm templates;
+    these policies are only in effect if the PSP admission controller is
+    enabled
+  * Fixed MWC namespace value so that when installing multiple control planes,
+    there is a unique configuration for each one
+  * Removed `UPDATE` operation from proxy-injector webhook because pod
+    mutations are disallowed during update operations
+* Proxy
+  * The `l5d-override-dst` header is now used for inbound service profile
+    discovery
+  * Include errors in `response_total` metrics
+  * Changed the load balancer to require that Kubernetes services are resolved
+    via the control plane
+* Web UI
+  * Fixed dashboard behavior that caused incorrect table sorting
+
 ## edge-19.5.4
 
 * CLI
