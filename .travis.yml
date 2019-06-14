@@ -161,7 +161,11 @@ jobs:
 
       script:
         - |
-          # Run integration tests.
+          version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
+          # Cleanup previous integration test artifacts if present
+          ./bin/test-cleanup linkerd
+          kubectl delete mutatingwebhookconfigurations linkerd-proxy-injector-webhook-config
+          kubectl delete validatingwebhookconfigurations linkerd-sp-validator-webhook-config
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
