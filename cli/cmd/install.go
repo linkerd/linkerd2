@@ -57,6 +57,7 @@ type (
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
+		WebhookFailurePolicy     string
 
 		Configs configJSONs
 
@@ -565,14 +566,15 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:          controlPlaneNamespace,
-		UUID:               configs.GetInstall().GetUuid(),
-		ControllerReplicas: options.controllerReplicas,
-		ControllerLogLevel: options.controllerLogLevel,
-		ControllerUID:      options.controllerUID,
-		EnableH2Upgrade:    !options.disableH2Upgrade,
-		NoInitContainer:    options.noInitContainer,
-		PrometheusLogLevel: toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		Namespace:            controlPlaneNamespace,
+		UUID:                 configs.GetInstall().GetUuid(),
+		ControllerReplicas:   options.controllerReplicas,
+		ControllerLogLevel:   options.controllerLogLevel,
+		ControllerUID:        options.controllerUID,
+		EnableH2Upgrade:      !options.disableH2Upgrade,
+		NoInitContainer:      options.noInitContainer,
+		WebhookFailurePolicy: "Ignore",
+		PrometheusLogLevel:   toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
@@ -592,6 +594,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 	}
 
 	if options.highAvailability {
+		values.WebhookFailurePolicy = "Fail"
+
 		defaultConstraints := &resources{
 			CPU:    constraints{Request: "100m"},
 			Memory: constraints{Request: "50Mi"},

@@ -313,7 +313,7 @@ webhooks:
       namespace: Namespace
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
-  failurePolicy: Fail
+  failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -381,7 +381,7 @@ webhooks:
       namespace: Namespace
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  failurePolicy: Fail
+  failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
