@@ -1,0 +1,19 @@
+#!/bin/bash
+
+GO111MODULE="on" go get sigs.k8s.io/kind@v0.3.0
+kind create cluster
+export KUBECONFIG="$(kind get kubeconfig-path)"
+
+DOCKER_TRACE=1 bin/docker-build
+
+LINKERD_BIN=`pwd`/bin/linkerd
+export version="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
+namespace=l5d-integration-kind-$version
+
+# kubectl proxy --port=8080 & # https://github.com/kubernetes/kubernetes/issues/49343
+
+# run integration tests
+bin/dep ensure -vendor-only -v
+bin/dep status -v
+
+bin/test-run $LINKERD_BIN $namespace
