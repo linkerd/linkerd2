@@ -32,6 +32,4 @@ if ! validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookcon
   echo "no validatingwebhookconfigurations found for [$linkerd_namespace]" >&2
 fi
 
-if [[ $namespaces || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs ]]; then
-  kubectl --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs
-fi
+kubectl --ignore-not-found=true --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs

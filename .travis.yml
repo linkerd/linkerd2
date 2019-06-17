@@ -161,9 +161,9 @@ jobs:
 
       script:
         - |
-          # Cleanup previous integration test artifacts if present
-          ./bin/test-cleanup linkerd
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
+          # Cleanup previous integration test artifacts if present
+          ./bin/test-cleanup linkerd-$version
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
