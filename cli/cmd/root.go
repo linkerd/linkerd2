@@ -18,6 +18,7 @@ import (
 
 const (
 	defaultNamespace      = "linkerd"
+	defaultClusterDomain  = "cluster.local"
 	defaultDockerRegistry = "gcr.io/linkerd-io"
 
 	jsonOutput  = "json"
