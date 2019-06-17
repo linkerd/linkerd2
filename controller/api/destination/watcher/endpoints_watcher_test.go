@@ -128,7 +128,7 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			authority: "name1.ns.svc.cluster.local:8989",
+			authority: "name1.ns.svc.mydomain.local:8989", // test custom cluster domain
 			expectedAddresses: []string{
 				"172.17.0.12:8989",
 				"172.17.0.19:8989",

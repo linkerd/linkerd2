@@ -100,7 +100,7 @@ func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointT
 		"linkerd",
 		"trust.domain",
 		false,
-		"service-name.service-ns.svc.cluster.local",
+		"service-name.service-ns.svc.mycluster.local",
 		mockGetServer,
 		logging.WithField("test", t.Name),
 	)
