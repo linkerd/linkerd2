@@ -2,7 +2,7 @@ version: 2.1
 workflows:
   Build:
     jobs:
-    - build_linkerd_docker:
+    - build/linkerd_docker:
         machine:
           docker_layer_caching: true
         steps:
