@@ -290,7 +290,6 @@ class NavigationBase extends React.Component {
             { this.menuItem("/routes", "Top Routes", <Icon className={classNames("fas fa-random", classes.shrinkIcon)} />) }
             { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
-            { this.menuItem("/debug", "Debug", <BuildIcon className={classes.shrinkIcon} />) }
           </MenuList>
 
           <Divider />
