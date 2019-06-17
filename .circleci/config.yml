@@ -7,6 +7,4 @@ jobs:
     # - setup_remote_docker
     #   docker_layer_caching: true
     - checkout
-    - run:
-      name: kind build
-      command: DOCKER_TRACE=1 bin/kind-build
+    - run: DOCKER_TRACE=1 bin/kind-build
