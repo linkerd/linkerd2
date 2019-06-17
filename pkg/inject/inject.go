@@ -45,6 +45,7 @@ const (
 	envOutboundConnectKeepAlive = "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE"
 
 	envDestinationContext         = "LINKERD2_PROXY_DESTINATION_CONTEXT"
+	envDestinationGetSuffixes     = "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES"
 	envDestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
 	envDestinationSvcAddr         = "LINKERD2_PROXY_DESTINATION_SVC_ADDR"
 	envDestinationSvcName         = "LINKERD2_PROXY_DESTINATION_SVC_NAME"
@@ -479,6 +480,10 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 			{
 				Name:  envInboundListenAddr,
 				Value: conf.proxyInboundListenAddr(),
+			},
+			{
+				Name:  envDestinationGetSuffixes,
+				Value: conf.proxyDestinationGetSuffixes(),
 			},
 			{
 				Name:  envDestinationProfileSuffixes,
@@ -992,7 +997,7 @@ func (conf *ResourceConfig) proxyLivenessProbe() *corev1.Probe {
 	}
 }
 
-func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
+func (conf *ResourceConfig) proxyDestinationSuffixes() string {
 	disableExternalProfiles := conf.configs.GetProxy().GetDisableExternalProfiles()
 	if override := conf.getOverride(k8s.ProxyEnableExternalProfilesAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)
@@ -1006,6 +1011,14 @@ func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
 	}
 
 	return defaultProfileSuffix
+}
+
+func (conf *ResourceConfig) proxyDestinationGetSuffixes() string {
+	return conf.proxyDestinationSuffixes()
+}
+
+func (conf *ResourceConfig) proxyDestinationProfileSuffixes() string {
+	return conf.proxyDestinationSuffixes()
 }
 
 func (conf *ResourceConfig) proxyInitImage() string {
