@@ -109,6 +109,10 @@
           "value": "0.0.0.0:4143"
         },
         {
+          "name": "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES",
+          "value": "."
+        },
+        {
           "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
           "value": "."
         },
