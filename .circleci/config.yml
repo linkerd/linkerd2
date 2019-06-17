@@ -1,6 +1,6 @@
 version: 2.1
 jobs:
-  build_linkerd_docker:
+  build:
     machine:
       docker_layer_caching: true
     steps:
