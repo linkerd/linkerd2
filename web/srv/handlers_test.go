@@ -78,6 +78,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		render:              server.RenderTemplate,
 		apiClient:           mockAPIClient,
 		controllerNamespace: "linkerd",
+		clusterDomain:       "cluster.local",
 	}
 
 	recorder := httptest.NewRecorder()
