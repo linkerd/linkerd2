@@ -1,9 +1,12 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
+
 
 const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled}) => {
   if (disabled || namespace === "") {
-    return <i className="fas fa-microscope tapGrayed" />;
+    return <FontAwesomeIcon icon={faMicroscope} className="tapGrayed" />;
   }
   let params = {
     autostart: "true",
@@ -17,7 +20,7 @@ const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, pa
 
   return (
     <PrefixedLink to={`/tap?${queryStr}`}>
-      <i className="fas fa-microscope" />
+      <FontAwesomeIcon icon={faMicroscope} />
     </PrefixedLink>
   );
 };
