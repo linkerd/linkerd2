@@ -1,14 +1,12 @@
 version: 2.1
-workflows:
-  Build:
-    jobs:
-    - build/linkerd_docker:
-        machine:
-          docker_layer_caching: true
-        steps:
-        # - setup_remote_docker
-        #   docker_layer_caching: true
-        - checkout
-        - run:
-          name: kind build
-          command: DOCKER_TRACE=1 bin/kind-build
+jobs:
+  build_linkerd_docker:
+    machine:
+      docker_layer_caching: true
+    steps:
+    # - setup_remote_docker
+    #   docker_layer_caching: true
+    - checkout
+    - run:
+      name: kind build
+      command: DOCKER_TRACE=1 bin/kind-build
