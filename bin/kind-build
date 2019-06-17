@@ -2,7 +2,15 @@
 
 set -eu
 
+which go
 go version
+
+wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.12.6.linux-amd64.tar.gz
+
+which go
+go version
+
 GO111MODULE="on" go get sigs.k8s.io/kind@v0.3.0
 kind create cluster
 export KUBECONFIG="$(kind get kubeconfig-path)"
