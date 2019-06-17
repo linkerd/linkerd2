@@ -4,14 +4,19 @@ set -eu
 
 which go
 go version
-pwd
-exit 1
 
-wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
-tar -C /usr/local --overwrite -xzf go1.12.6.linux-amd64.tar.gz
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH
+wget -O $HOME/go1.12.6.linux-amd64.tar.gz https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
+tar -C $HOME -xzf $HOME/go1.12.6.linux-amd64.tar.gz
 
 which go
 go version
+
+mkdir $HOME/bin
+curl -L --output $HOME/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+chmod +x $HOME/bin/kubectl
+export PATH=$HOME/bin:$PATH
 
 GO111MODULE="on" go get sigs.k8s.io/kind@v0.3.0
 kind create cluster
@@ -21,9 +26,21 @@ DOCKER_TRACE=1 bin/docker-build
 
 LINKERD_BIN=`pwd`/bin/linkerd
 export version="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
-namespace=l5d-integration-kind-$version
+export namespace=l5d-integration-kind-$version
+
+kind load docker-image gcr.io/linkerd-io/proxy:$version
+kind load docker-image gcr.io/linkerd-io/controller:$version
+kind load docker-image gcr.io/linkerd-io/web:$version
+#kind load docker-image gcr.io/linkerd-io/cni-plugin:$version
+#kind load docker-image gcr.io/linkerd-io/debug:$version
+#kind load docker-image gcr.io/linkerd-io/cli-bin:$version
+kind load docker-image gcr.io/linkerd-io/grafana:$version
 
 # kubectl proxy --port=8080 & # https://github.com/kubernetes/kubernetes/issues/49343
+
+mkdir -p $GOPATH/src/linkerd
+ln $HOME/project $GOPATH/src/linkerd/linkerd2
+cd $GOPATH/src/linkerd/linkerd2
 
 # run integration tests
 bin/dep ensure -vendor-only -v
