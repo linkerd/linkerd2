@@ -4,6 +4,8 @@ set -eu
 
 which go
 go version
+pwd
+exit 1
 
 wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
 tar -C /usr/local --overwrite -xzf go1.12.6.linux-amd64.tar.gz
