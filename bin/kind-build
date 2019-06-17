@@ -6,7 +6,7 @@ which go
 go version
 
 wget https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
-tar -C /usr/local -xzf --overwrite go1.12.6.linux-amd64.tar.gz
+tar -C /usr/local --overwrite -xzf go1.12.6.linux-amd64.tar.gz
 
 which go
 go version
