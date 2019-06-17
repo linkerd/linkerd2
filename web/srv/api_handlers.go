@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -251,13 +250,4 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 			return
 		}
 	}
-}
-
-func (h *handler) handleAPIEndpoints(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	result, err := h.apiClient.Endpoints(req.Context(), &discovery.EndpointsParams{})
-	if err != nil {
-		renderJSONError(w, err, http.StatusInternalServerError)
-		return
-	}
-	renderJSONPb(w, result)
 }
