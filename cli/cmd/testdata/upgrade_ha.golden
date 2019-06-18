@@ -439,6 +439,7 @@ spec:
   readOnlyRootFilesystem: true
   allowedCapabilities:
   - NET_ADMIN
+  - NET_RAW
   seLinux:
     rule: RunAsAny
   supplementalGroups:
@@ -725,6 +726,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -990,6 +992,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1203,6 +1206,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1506,6 +1510,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1772,6 +1777,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1975,6 +1981,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -2206,6 +2213,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -2412,6 +2420,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false

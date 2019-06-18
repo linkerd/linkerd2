@@ -55,7 +55,8 @@
       "securityContext": {
         "capabilities": {
           "add": [
-            "NET_ADMIN"
+            "NET_ADMIN",
+            "NET_RAW"
           ]
         },
         "privileged": false,

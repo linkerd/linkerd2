@@ -439,6 +439,7 @@ spec:
   readOnlyRootFilesystem: true
   allowedCapabilities:
   - NET_ADMIN
+  - NET_RAW
   seLinux:
     rule: RunAsAny
   supplementalGroups:
