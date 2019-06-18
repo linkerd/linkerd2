@@ -58,10 +58,10 @@ jobs:
           export VERSION="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
           export NAMESPACE=l5d-integration-kind-$VERSION
 
-          kind load docker-image gcr.io/linkerd-io/proxy:$VERSION
-          kind load docker-image gcr.io/linkerd-io/controller:$VERSION
-          kind load docker-image gcr.io/linkerd-io/web:$VERSION
-          kind load docker-image gcr.io/linkerd-io/grafana:$VERSION
+          kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/proxy:$VERSION
+          kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/controller:$VERSION
+          kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/web:$VERSION
+          kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/grafana:$VERSION
 
           bin/dep ensure -vendor-only -v
           bin/dep status -v
