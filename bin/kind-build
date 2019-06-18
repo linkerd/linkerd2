@@ -29,6 +29,12 @@ export PATH=$HOME/bin:$PATH
 kind create cluster
 export KUBECONFIG="$(kind get kubeconfig-path)"
 
+
+kubectl get ns
+kubectl --context="" --request-timeout=5s get ns
+
+
+
 DOCKER_TRACE=1 bin/docker-build
 
 LINKERD_BIN=`pwd`/bin/linkerd
