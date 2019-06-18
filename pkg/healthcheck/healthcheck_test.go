@@ -404,7 +404,7 @@ spec:
   requiredDropCapabilities:
     - ALL`,
 			},
-			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN"),
+			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running"),
 		},
 	}
 
