@@ -1,13 +1,52 @@
 version: 2.1
 jobs:
   build:
-    # machine:
-    #   docker_layer_caching: true
-    docker: # run the steps with Docker
-    - image: circleci/golang:1.12.6
+    machine:
+      docker_layer_caching: true
+    # environment:
+    # - GOCACHE: "/tmp/go/cache"
+    # docker: # run the steps with Docker
+    # - image: circleci/golang:1.12.6
     working_directory: /go/src/github.com/linkerd/linkerd2
     steps:
-    - setup_remote_docker:
-        docker_layer_caching: true
+    # - setup_remote_docker:
+    #     docker_layer_caching: true
     - checkout
-    - run: bin/kind-build
+    - run:
+        name: Install kubectl
+        command: |
+          curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.12.0/bin/linux/amd64/kubectl
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+    - run:
+        name: Install KinD
+        command: |
+          curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/0.0.1/kind-linux-amd64
+          chmod +x kind
+          sudo mv kind /usr/local/bin/
+    - run:
+        name: Create Kubernetes Cluster
+        command: |
+          kind create cluster
+          export KUBECONFIG="$(kind get kubeconfig-path)"
+          kubectl cluster-info
+          kubectl get ns
+    - run:
+        name: Build Docker images
+        command: |
+          DOCKER_TRACE=1 bin/docker-build
+    - run:
+        name: Run Integration Tests
+        command: |
+          LINKERD_BIN=`pwd`/bin/linkerd
+          export version="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
+          export namespace=l5d-integration-kind-$version
+
+          kind load docker-image gcr.io/linkerd-io/proxy:$version
+          kind load docker-image gcr.io/linkerd-io/controller:$version
+          kind load docker-image gcr.io/linkerd-io/web:$version
+          kind load docker-image gcr.io/linkerd-io/grafana:$version
+
+          bin/dep ensure -vendor-only -v
+          bin/dep status -v
+          bin/test-run $LINKERD_BIN $namespace
