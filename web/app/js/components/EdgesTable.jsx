@@ -7,7 +7,7 @@ import { withContext } from './util/AppContext.jsx';
 const edgesColumns = [
   {
     title: "Source",
-    dataIndex: "name",
+    dataIndex: "source",
     isNumeric: false,
     filter: d => d.src.name,
     render: d => d.src.name,
@@ -19,7 +19,7 @@ const edgesColumns = [
     isNumeric: false,
     filter: d => d.dst.name,
     render: d => d.dst.name,
-    sorter: d => d.dst.name
+    sorter: d => d.dst.name + d.src.name
   },
   {
     title: "Client",
@@ -31,7 +31,7 @@ const edgesColumns = [
   },
   {
     title: "Server",
-    dataIndex: "source",
+    dataIndex: "server",
     isNumeric: false,
     filter: d => d.serverId,
     render: d => d.serverId.split('.')[0] + '.' + d.serverId.split('.')[1],
@@ -51,11 +51,11 @@ const tooltipText = "Edges show the source, destination name and identity " +
   "for proxied connections. If no identity is known, a message is displayed.";
 
 class EdgesTable extends React.Component {
-
   static propTypes = {
     edges: PropTypes.arrayOf(processedEdgesPropType),
     title: PropTypes.string
   };
+
   static defaultProps = {
     edges: [],
     title: ""
@@ -65,7 +65,7 @@ class EdgesTable extends React.Component {
     const { edges, title} = this.props;
     return (
       <BaseTable
-        defaultOrderBy="name"
+        defaultOrderBy="source"
         enableFilter={true}
         showTitleTooltip={true}
         tableRows={edges}
