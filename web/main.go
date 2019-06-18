@@ -29,10 +29,6 @@ func main() {
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	flags.ConfigureAndParse()
 
-	// set log timestamps
-	formatter := &log.TextFormatter{FullTimestamp: true}
-	log.SetFormatter(formatter)
-
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
 	if err != nil {
 		log.Fatalf("failed to parse API server address: %s", *apiAddr)
