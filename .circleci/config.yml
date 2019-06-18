@@ -33,8 +33,16 @@ jobs:
     - run:
         name: Create Kubernetes Cluster
         command: |
-          kind create cluster
-          export KUBECONFIG="$(kind get kubeconfig-path)"
+          export ROOT_TAG=$(bin/root-tag)
+          echo "kind: Cluster
+          apiVersion: kind.sigs.k8s.io/v1alpha3
+          networking:
+            disableDefaultCNI: true
+          nodes:
+          - role: control-plane
+          - role: worker
+          - role: worker" | kind create cluster --name $ROOT_TAG --config -
+          export KUBECONFIG="$(kind get kubeconfig-path --name $ROOT_TAG)"
           kubectl cluster-info
           kubectl get ns
     - run:
@@ -44,7 +52,8 @@ jobs:
     - run:
         name: Run Integration Tests
         command: |
-          export KUBECONFIG="$(kind get kubeconfig-path)"
+          export ROOT_TAG=$(bin/root-tag)
+          export KUBECONFIG="$(kind get kubeconfig-path --name $ROOT_TAG)"
           export LINKERD_BIN=`pwd`/bin/linkerd
           export VERSION="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
           export NAMESPACE=l5d-integration-kind-$VERSION
@@ -58,3 +67,8 @@ jobs:
           bin/dep status -v
 
           bin/test-run $LINKERD_BIN $NAMESPACE
+    - run:
+        name: Cleanup
+        command: |
+          export ROOT_TAG=$(bin/root-tag)
+          kind delete cluster --name $ROOT_TAG
