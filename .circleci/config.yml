@@ -19,7 +19,7 @@ jobs:
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
     - run:
-        name: Install KinD
+        name: Install kind
         command: |
           curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.3.0/kind-linux-amd64
           chmod +x kind
@@ -34,6 +34,9 @@ jobs:
     - run:
         name: Build Docker images
         command: |
+          kubectl get ns
+          export KUBECONFIG="$(kind get kubeconfig-path)"
+          kubectl get ns
           DOCKER_TRACE=1 bin/docker-build
     - run:
         name: Run Integration Tests
