@@ -4,10 +4,10 @@ jobs:
     # machine:
     #   docker_layer_caching: true
     docker: # run the steps with Docker
-      - image: circleci/golang:1.12.6
+    - image: circleci/golang:1.12.6
     working_directory: /go/src/github.com/linkerd/linkerd2
     steps:
-    - setup_remote_docker
-      docker_layer_caching: true
+    - setup_remote_docker:
+        docker_layer_caching: true
     - checkout
     - run: bin/kind-build
