@@ -16,6 +16,7 @@ jobs:
         name: Install Go
         command: |
           wget -O $HOME/go1.12.6.linux-amd64.tar.gz https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
+          sudo rm -rf /usr/local/go
           sudo tar -C /usr/local -xzf $HOME/go1.12.6.linux-amd64.tar.gz
     - run:
         name: Install kubectl
