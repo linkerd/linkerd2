@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -eux
 
 # which go
 # go version
@@ -27,7 +27,7 @@ export PATH=$HOME/bin:$PATH
   GO111MODULE="on" go get sigs.k8s.io/kind@v0.3.0
 )
 kind create cluster
-export KUBECONFIG="$(kind get kubeconfig-path)"
+export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
 
 
 kubectl get ns
