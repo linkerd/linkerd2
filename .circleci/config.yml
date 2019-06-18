@@ -7,7 +7,7 @@ jobs:
     # - GOCACHE: "/tmp/go/cache"
     # docker: # run the steps with Docker
     # - image: circleci/golang:1.12.6
-    working_directory: /go/src/github.com/linkerd/linkerd2
+    working_directory: /home/circleci/.go_workspace/src/github.com/linkerd/linkerd2
     steps:
     # - setup_remote_docker:
     #     docker_layer_caching: true
