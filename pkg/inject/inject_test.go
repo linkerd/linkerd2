@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -506,8 +507,8 @@ func TestInjectPodSpec(t *testing.T) {
 			Name: "test-svc",
 			SecurityContext: &corev1.SecurityContext{
 				Capabilities: &corev1.Capabilities{
-					Add:  []corev1.Capability{"NET_ADMIN", "SYS_TIME"},
-					Drop: []corev1.Capability{"NET_RAW"},
+					Add:  []corev1.Capability{"SYS_TIME"},
+					Drop: []corev1.Capability{"SYS_ADMIN"},
 				},
 			},
 		}
@@ -518,7 +519,8 @@ func TestInjectPodSpec(t *testing.T) {
 		conf.injectPodSpec(patch)
 
 		for _, actual := range patch.patchOps {
-			if actual.Op == "add" && actual.Path == "/spec/template/spec/containers/-" {
+			if actual.Op == "add" && (actual.Path == "/spec/template/spec/containers/-" ||
+				actual.Path == "/spec/template/spec/initContainers/-") {
 				container, ok := actual.Value.(*corev1.Container)
 				if !ok {
 					t.Fatal("Unexpected type assertion error")
@@ -526,33 +528,34 @@ func TestInjectPodSpec(t *testing.T) {
 
 				for _, sidecar := range []string{k8s.ProxyContainerName, k8s.InitContainerName} {
 					if container.Name == sidecar {
-						if sc := container.SecurityContext; sc != nil {
-							if *sc.AllowPrivilegeEscalation {
-								t.Errorf("Expected %s's 'allowPrivilegeEscalation' to be false", sidecar)
-							}
+						t.Run(fmt.Sprintf("%s", sidecar), func(t *testing.T) {
+							if sc := container.SecurityContext; sc != nil {
+								if *sc.AllowPrivilegeEscalation {
+									t.Errorf("Expected %s's 'allowPrivilegeEscalation' to be false", sidecar)
+								}
 
-							if !*sc.ReadOnlyRootFilesystem {
-								t.Errorf("Expected %s's 'readOnlyRootFilesystem' to be true", sidecar)
-							}
+								if !*sc.ReadOnlyRootFilesystem {
+									t.Errorf("Expected %s's 'readOnlyRootFilesystem' to be true", sidecar)
+								}
 
-							if *sc.RunAsUser != conf.proxyUID() {
-								t.Errorf("Expected %s's 'RunAsUser' to be %d", sidecar, conf.proxyUID())
-							}
+								if *sc.RunAsUser != conf.proxyUID() {
+									t.Errorf("Expected %s's 'RunAsUser' to be %d", sidecar, conf.proxyUID())
+								}
 
-							if !reflect.DeepEqual(sc.Capabilities.Add, testContainer.SecurityContext.Capabilities.Add) {
-								t.Errorf("Mismatch 'Add Capabilities' rules. Expected: %v, Actual: %v",
-									sc.Capabilities.Add,
-									testContainer.SecurityContext.Capabilities.Add)
-							}
+								expectedCapabilities := testContainer.SecurityContext.Capabilities
+								if sidecar == k8s.InitContainerName {
+									expectedCapabilities.Add = append(expectedCapabilities.Add, proxyInitDefaultCapabilities...)
+								}
 
-							if !reflect.DeepEqual(sc.Capabilities.Drop, testContainer.SecurityContext.Capabilities.Drop) {
-								t.Errorf("Mismatch 'Drop Capabilities' rules. Expected: %v, Actual: %v ",
-									sc.Capabilities.Drop,
-									testContainer.SecurityContext.Capabilities.Drop)
+								if !reflect.DeepEqual(sc.Capabilities, expectedCapabilities) {
+									t.Errorf("Mismatch 'Add Capabilities' rules. Expected: %v, Actual: %v",
+										expectedCapabilities,
+										sc.Capabilities.Add)
+								}
+							} else {
+								t.Errorf("Expected %s security context to be non-empty", sidecar)
 							}
-						} else {
-							t.Errorf("Expected %s security context to be non-empty", sidecar)
-						}
+						})
 					}
 				}
 			}
