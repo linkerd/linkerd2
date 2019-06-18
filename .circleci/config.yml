@@ -51,4 +51,6 @@ jobs:
 
           bin/dep ensure -vendor-only -v
           bin/dep status -v
+
+          export KUBECONFIG="$(kind get kubeconfig-path)"
           bin/test-run $LINKERD_BIN $namespace
