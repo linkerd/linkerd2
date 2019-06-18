@@ -24,12 +24,12 @@ if ! clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname | gre
   echo "no clusterroles found for [$linkerd_namespace]" >&2
 fi
 
-if ! webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname | grep -E  "/linkerd-$linkerd_namespace(-|$)"); then
-  echo "no mutatingwebhookconfigurations found for [$linkerd_namespace]" >&2
+if ! webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname | grep -E  "/linkerd(-|$)"); then
+  echo "no mutatingwebhookconfigurations found" >&2
 fi
 
-if ! validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname | grep -E  "/linkerd-$linkerd_namespace(-|$)"); then
-  echo "no validatingwebhookconfigurations found for [$linkerd_namespace]" >&2
+if ! validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname | grep -E  "/linkerd(-|$)"); then
+  echo "no validatingwebhookconfigurations found" >&2
 fi
 
 if [[ $namespaces || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs ]]; then
