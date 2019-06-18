@@ -29,6 +29,10 @@ func main() {
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
+	// set log timestamps
+	formatter := &log.TextFormatter{FullTimestamp: true}
+	log.SetFormatter(formatter)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
