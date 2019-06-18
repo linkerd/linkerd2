@@ -13,6 +13,11 @@ jobs:
     #     docker_layer_caching: true
     - checkout
     - run:
+        name: Install Go
+        command: |
+          wget -O $HOME/go1.12.6.linux-amd64.tar.gz https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz
+          sudo tar -C /usr/local -xzf $HOME/go1.12.6.linux-amd64.tar.gz
+    - run:
         name: Install kubectl
         command: |
           curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.3/bin/linux/amd64/kubectl
@@ -34,23 +39,21 @@ jobs:
     - run:
         name: Build Docker images
         command: |
-          export KUBECONFIG="$(kind get kubeconfig-path)"
-          kubectl get ns
           DOCKER_TRACE=1 bin/docker-build
     - run:
         name: Run Integration Tests
         command: |
-          LINKERD_BIN=`pwd`/bin/linkerd
-          export version="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
-          export namespace=l5d-integration-kind-$version
+          export KUBECONFIG="$(kind get kubeconfig-path)"
+          export LINKERD_BIN=`pwd`/bin/linkerd
+          export VERSION="$($LINKERD_BIN version --client --short | tr -cd '[:alnum:]-')"
+          export NAMESPACE=l5d-integration-kind-$VERSION
 
-          kind load docker-image gcr.io/linkerd-io/proxy:$version
-          kind load docker-image gcr.io/linkerd-io/controller:$version
-          kind load docker-image gcr.io/linkerd-io/web:$version
-          kind load docker-image gcr.io/linkerd-io/grafana:$version
+          kind load docker-image gcr.io/linkerd-io/proxy:$VERSION
+          kind load docker-image gcr.io/linkerd-io/controller:$VERSION
+          kind load docker-image gcr.io/linkerd-io/web:$VERSION
+          kind load docker-image gcr.io/linkerd-io/grafana:$VERSION
 
           bin/dep ensure -vendor-only -v
           bin/dep status -v
 
-          export KUBECONFIG="$(kind get kubeconfig-path)"
-          bin/test-run $LINKERD_BIN $namespace
+          bin/test-run $LINKERD_BIN $NAMESPACE
