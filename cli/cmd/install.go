@@ -58,6 +58,7 @@ type (
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
 		WebhookFailurePolicy     string
+		OmitWebhookSideEffects   bool
 
 		Configs configJSONs
 
@@ -119,15 +120,16 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion string
-		controllerReplicas  uint
-		controllerLogLevel  string
-		highAvailability    bool
-		controllerUID       int64
-		disableH2Upgrade    bool
-		noInitContainer     bool
-		skipChecks          bool
-		identityOptions     *installIdentityOptions
+		controlPlaneVersion    string
+		controllerReplicas     uint
+		controllerLogLevel     string
+		highAvailability       bool
+		controllerUID          int64
+		disableH2Upgrade       bool
+		noInitContainer        bool
+		skipChecks             bool
+		OmitWebhookSideEffects bool
+		identityOptions        *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -169,13 +171,14 @@ const (
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion: version.Version,
-		controllerReplicas:  defaultControllerReplicas,
-		controllerLogLevel:  "info",
-		highAvailability:    false,
-		controllerUID:       2103,
-		disableH2Upgrade:    false,
-		noInitContainer:     false,
+		controlPlaneVersion:    version.Version,
+		controllerReplicas:     defaultControllerReplicas,
+		controllerLogLevel:     "info",
+		highAvailability:       false,
+		controllerUID:          2103,
+		disableH2Upgrade:       false,
+		noInitContainer:        false,
+		OmitWebhookSideEffects: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -435,6 +438,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.identityOptions.clockSkewAllowance, "identity-clock-skew-allowance", options.identityOptions.clockSkewAllowance,
 		"The amount of time to allow for clock skew within a Linkerd cluster",
 	)
+	flags.BoolVar(
+		&options.OmitWebhookSideEffects, "omit-webhook-side-effects", options.OmitWebhookSideEffects,
+		"Omit the sideEffects flag in the webhook manifests, to run on Kubernetes versions less than 1.12",
+	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
@@ -566,15 +573,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:            controlPlaneNamespace,
-		UUID:                 configs.GetInstall().GetUuid(),
-		ControllerReplicas:   options.controllerReplicas,
-		ControllerLogLevel:   options.controllerLogLevel,
-		ControllerUID:        options.controllerUID,
-		EnableH2Upgrade:      !options.disableH2Upgrade,
-		NoInitContainer:      options.noInitContainer,
-		WebhookFailurePolicy: "Ignore",
-		PrometheusLogLevel:   toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		Namespace:              controlPlaneNamespace,
+		UUID:                   configs.GetInstall().GetUuid(),
+		ControllerReplicas:     options.controllerReplicas,
+		ControllerLogLevel:     options.controllerLogLevel,
+		ControllerUID:          options.controllerUID,
+		EnableH2Upgrade:        !options.disableH2Upgrade,
+		NoInitContainer:        options.noInitContainer,
+		WebhookFailurePolicy:   "Ignore",
+		OmitWebhookSideEffects: options.OmitWebhookSideEffects,
+		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
 			Global:  globalJSON,

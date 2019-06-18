@@ -67,4 +67,7 @@ webhooks:
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1"]
     resources: ["serviceprofiles"]
+{{- if not .OmitWebhookSideEffects }}
+  sideEffects: None
+{{- end }}
 {{end -}}
