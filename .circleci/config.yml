@@ -34,7 +34,6 @@ jobs:
     - run:
         name: Build Docker images
         command: |
-          kubectl get ns
           export KUBECONFIG="$(kind get kubeconfig-path)"
           kubectl get ns
           DOCKER_TRACE=1 bin/docker-build
