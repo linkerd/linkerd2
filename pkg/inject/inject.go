@@ -624,7 +624,9 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.
 	if capabilities.Add == nil {
 		capabilities.Add = []corev1.Capability{}
 	}
-	capabilities.Add = append(capabilities.Add, corev1.Capability("NET_ADMIN"))
+	capabilities.Add = append(capabilities.Add,
+		corev1.Capability("NET_ADMIN"),
+		corev1.Capability("NET_RAW"))
 
 	var (
 		nonRoot                  = false
