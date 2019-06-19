@@ -60,6 +60,12 @@ jobs:
           docker pull prom/prometheus:v2.7.1
           kind load docker-image --name $ROOT_TAG prom/prometheus:v2.7.1
 
+          docker pull buoyantio/helloworld:0.1.6
+          kind load docker-image --name $ROOT_TAG buoyantio/helloworld:0.1.6
+
+          docker pull buoyantio/slow_cooker:1.1.1
+          kind load docker-image --name $ROOT_TAG buoyantio/slow_cooker:1.1.1
+
           kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/controller:$VERSION
           kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/grafana:$VERSION
           kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/proxy:$VERSION
