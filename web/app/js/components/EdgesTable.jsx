@@ -31,7 +31,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
       filter: d => d.dst.name,
       render: d => {
         // check that the destination is a k8s resource with a name we can link to
-        if (namespace && type && d.dst && d.src.name) {
+        if (namespace && type && d.dst && d.dst.name) {
           return (
             <PrefixedLink to={"/namespaces/" + namespace + "/" + type + "s/" + d.dst.name}>
               {d.dst.name}
