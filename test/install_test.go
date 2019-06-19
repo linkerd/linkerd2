@@ -333,8 +333,16 @@ func TestDashboard(t *testing.T) {
 	}
 }
 
+func logTestCase(
+	t *testing.T,
+	ns string,
+	format string, args ...interface{},
+) {
+	t.Logf("[%s] %s: %s", ns, time.Now(), fmt.Sprintf(format, args...))
+}
+
 func TestInject(t *testing.T) {
-	t.Log("TestInject")
+	logTestCase(t, "", "TestInject")
 	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
 	if err != nil {
 		t.Fatalf("failed to read smoke test file: %s", err)
@@ -342,22 +350,22 @@ func TestInject(t *testing.T) {
 
 	for _, tc := range injectionCases {
 		tc := tc // pin
-		t.Logf("tc1: %+v", tc)
+		logTestCase(t, tc.ns, "tc: %+v", tc)
 
 		t.Run(tc.ns, func(t *testing.T) {
-			t.Logf("tc2: %+v", tc)
+			logTestCase(t, tc.ns, "tc2: %+v", tc)
 
 			var out string
 
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-			t.Logf("prefixedNs: %s", prefixedNs)
+			logTestCase(t, tc.ns, "prefixedNs: %s", prefixedNs)
 
 			err := TestHelper.CreateNamespaceIfNotExists(prefixedNs, tc.annotations)
 			if err != nil {
 				t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 			}
-			t.Log("TestInject CreateNamespaceIfNotExists")
+			logTestCase(t, tc.ns, "TestInject CreateNamespaceIfNotExists")
 
 			if tc.injectArgs != nil {
 				cmd := []string{"inject"}
@@ -366,58 +374,59 @@ func TestInject(t *testing.T) {
 
 				var injectReport string
 
-				t.Logf("TestHelper.LinkerdRun: %+v", cmd)
+				logTestCase(t, tc.ns, "TestHelper.LinkerdRun: %+v", cmd)
 
 				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
 				if err != nil {
 					t.Fatalf("linkerd inject command failed: %s\n%s", err, out)
 				}
 
-				t.Logf("TestHelper.LinkerdRun out: %s", out)
-				t.Logf("TestHelper.LinkerdRun injectReport: %+v", injectReport)
+				logTestCase(t, tc.ns, "TestHelper.LinkerdRun out: %s", out)
+				logTestCase(t, tc.ns, "TestHelper.LinkerdRun injectReport: %+v", injectReport)
 
 				err = TestHelper.ValidateOutput(injectReport, "inject.report.golden")
 				if err != nil {
 					t.Fatalf("Received unexpected output\n%s", err.Error())
 				}
 			} else {
-				t.Log("TestHelper no inject args")
+				logTestCase(t, tc.ns, "TestHelper no inject args")
 				out = resources
 			}
 
-			t.Log("TestHelper.KubectlApply")
+			logTestCase(t, tc.ns, "TestHelper.KubectlApply")
 
 			out, err = TestHelper.KubectlApply(out, prefixedNs)
 			if err != nil {
 				t.Fatalf("kubectl apply command failed\n%s", out)
 			}
 
-			t.Logf("TestHelper.KubectlApply out: %s", out)
+			logTestCase(t, tc.ns, "TestHelper.KubectlApply out: %s", out)
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-				t.Logf("TestHelper.CheckPods1 out: %s", deploy)
+				logTestCase(t, tc.ns, "TestHelper.CheckPods1 out: %s", deploy)
+
 				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
 				if err != nil {
 					t.Fatalf("Unexpected error: %v", err)
 				}
-				t.Logf("TestHelper.CheckPods2 out: %s", deploy)
+				logTestCase(t, tc.ns, "TestHelper.CheckPods2 out: %s", deploy)
 			}
 
-			t.Logf("TestHelper.URLFor(%s)", prefixedNs)
+			logTestCase(t, tc.ns, "TestHelper.URLFor(%s)", prefixedNs)
 
 			url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
 			if err != nil {
 				t.Fatalf("Failed to get URL: %s", err)
 			}
 
-			t.Logf("TestHelper.URLFor(%s) url: %s", prefixedNs, url)
+			logTestCase(t, tc.ns, "TestHelper.URLFor(%s) url: %s", prefixedNs, url)
 
 			output, err := TestHelper.HTTPGetURL(url)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v %s", err, output)
 			}
 
-			t.Logf("TestHelper.HTTPGetURL(%s) output: %s", url, output)
+			logTestCase(t, tc.ns, "TestHelper.HTTPGetURL(%s) output: %s", url, output)
 
 			expectedStringInPayload := "\"payload\":\"BANANA\""
 			if !strings.Contains(output, expectedStringInPayload) {
