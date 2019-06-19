@@ -410,14 +410,14 @@ func TestInject(t *testing.T) {
 				t.Fatalf("Failed to get URL: %s", err)
 			}
 
-			t.Logf("TestHelper.URLFor(%s) url: %s", url)
+			t.Logf("TestHelper.URLFor(%s) url: %s", prefixedNs, url)
 
 			output, err := TestHelper.HTTPGetURL(url)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v %s", err, output)
 			}
 
-			t.Logf("TestHelper.HTTPGetURL(%s) output: %s", output)
+			t.Logf("TestHelper.HTTPGetURL(%s) output: %s", url, output)
 
 			expectedStringInPayload := "\"payload\":\"BANANA\""
 			if !strings.Contains(output, expectedStringInPayload) {
