@@ -528,22 +528,22 @@ func TestInjectPodSpec(t *testing.T) {
 
 				for _, sidecar := range []string{k8s.ProxyContainerName, k8s.InitContainerName} {
 					if container.Name == sidecar {
-						t.Run(fmt.Sprintf("%s", sidecar), func(t *testing.T) {
+						t.Run(fmt.Sprintf(container.Name), func(t *testing.T) {
 							if sc := container.SecurityContext; sc != nil {
 								if *sc.AllowPrivilegeEscalation {
-									t.Errorf("Expected %s's 'allowPrivilegeEscalation' to be false", sidecar)
+									t.Errorf("Expected %s's 'allowPrivilegeEscalation' to be false", container.Name)
 								}
 
 								if !*sc.ReadOnlyRootFilesystem {
-									t.Errorf("Expected %s's 'readOnlyRootFilesystem' to be true", sidecar)
+									t.Errorf("Expected %s's 'readOnlyRootFilesystem' to be true", container.Name)
 								}
 
 								if *sc.RunAsUser != conf.proxyUID() {
-									t.Errorf("Expected %s's 'RunAsUser' to be %d", sidecar, conf.proxyUID())
+									t.Errorf("Expected %s's 'RunAsUser' to be %d", container.Name, conf.proxyUID())
 								}
 
 								expectedCapabilities := testContainer.SecurityContext.Capabilities
-								if sidecar == k8s.InitContainerName {
+								if container.Name == k8s.InitContainerName {
 									expectedCapabilities.Add = append(expectedCapabilities.Add, proxyInitDefaultCapabilities...)
 								}
 
@@ -553,7 +553,7 @@ func TestInjectPodSpec(t *testing.T) {
 										sc.Capabilities.Add)
 								}
 							} else {
-								t.Errorf("Expected %s security context to be non-empty", sidecar)
+								t.Errorf("Expected %s security context to be non-empty", container.Name)
 							}
 						})
 					}
