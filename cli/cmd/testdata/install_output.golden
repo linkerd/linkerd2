@@ -20,6 +20,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-identity
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -29,6 +32,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-identity
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -43,6 +49,9 @@ apiVersion: v1
 metadata:
   name: linkerd-identity
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Controller RBAC
@@ -52,6 +61,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-controller
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -70,6 +82,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-controller
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -84,6 +99,9 @@ apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Web RBAC
@@ -94,6 +112,9 @@ apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Service Profile CRD
@@ -105,6 +126,8 @@ metadata:
   name: serviceprofiles.linkerd.io
   annotations:
     CreatedByAnnotation: CliVersion
+  labels:
+    ControllerNamespaceLabel: Namespace
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -208,6 +231,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -217,6 +243,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -231,6 +260,9 @@ apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Grafana RBAC
@@ -241,6 +273,9 @@ apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Proxy Injector RBAC
@@ -250,6 +285,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-proxy-injector
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -265,6 +303,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-proxy-injector
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -280,6 +321,9 @@ apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 ---
 kind: Secret
 apiVersion: v1
@@ -288,6 +332,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -301,6 +346,7 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -328,6 +374,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-sp-validator
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -337,6 +386,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-sp-validator
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -352,6 +404,9 @@ apiVersion: v1
 metadata:
   name: linkerd-sp-validator
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 ---
 kind: Secret
 apiVersion: v1
@@ -360,6 +415,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -373,6 +429,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -396,6 +453,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-tap
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces"]
@@ -411,6 +471,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-tap
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -425,6 +488,9 @@ apiVersion: v1
 metadata:
   name: linkerd-tap
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Control Plane PSP
@@ -434,6 +500,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-Namespace-control-plane
+  labels:
+    ControllerNamespaceLabel: Namespace
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -457,6 +525,8 @@ kind: Role
 metadata:
   name: linkerd-psp
   namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -469,6 +539,8 @@ kind: RoleBinding
 metadata:
   name: linkerd-psp
   namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -506,6 +578,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -527,6 +600,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
     linkerd.io/identity-issuer-expiry: 2029-02-28T02:03:52Z
@@ -541,6 +615,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -560,6 +635,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   name: linkerd-identity
   namespace: Namespace
 spec:
@@ -712,6 +788,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -730,6 +807,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -749,6 +827,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   name: linkerd-controller
   namespace: Namespace
 spec:
@@ -929,6 +1008,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -951,6 +1031,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
   name: linkerd-web
   namespace: Namespace
 spec:
@@ -1100,6 +1181,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1188,6 +1270,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1207,6 +1290,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   name: linkerd-prometheus
   namespace: Namespace
 spec:
@@ -1363,6 +1447,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1419,6 +1504,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1438,6 +1524,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   name: linkerd-grafana
   namespace: Namespace
 spec:
@@ -1595,6 +1682,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   name: linkerd-proxy-injector
   namespace: Namespace
 spec:
@@ -1745,6 +1833,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1767,6 +1856,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1786,6 +1876,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   name: linkerd-sp-validator
   namespace: Namespace
 spec:
@@ -1935,6 +2026,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1954,6 +2046,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
   name: linkerd-tap
   namespace: Namespace
 spec:
