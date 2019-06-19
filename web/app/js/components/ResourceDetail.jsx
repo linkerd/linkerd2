@@ -27,7 +27,7 @@ import { withContext } from './util/AppContext.jsx';
 // if there has been no traffic for some time, show a warning
 const showNoTrafficMsgDelayMs = 6000;
 // resource types supported when querying API for edge data
-const possibleResourceType = ["daemonset", "deployment", "job", "pod", "replicationcontroller", "statefulset"];
+const edgeDataAvailable = ["daemonset", "deployment", "job", "pod", "replicationcontroller", "statefulset"];
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {
@@ -151,7 +151,7 @@ export class ResourceDetailBase extends React.Component {
         )
       ];
 
-    if (_indexOf(possibleResourceType, resource.type) > 0) {
+    if (_indexOf(edgeDataAvailable, resource.type) > 0) {
       apiRequests = apiRequests.concat([
         this.api.fetchEdges(resource.namespace, resource.type)
       ]);
@@ -293,7 +293,6 @@ export class ResourceDetailBase extends React.Component {
 
     let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
     let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
-    let noEdges = _isEmpty(this.state.edges);
 
     let upstreams = upstreamMetrics.concat(unmeshed);
 
@@ -367,10 +366,13 @@ export class ResourceDetailBase extends React.Component {
           metrics={this.state.podMetrics} />
 
         {
-          noEdges ? null :
+          _isEmpty(this.state.edges) ? null :
           <Grid container direction="column" justify="center">
             <Grid item>
               <EdgesTable
+                api={this.api}
+                namespace={this.state.resource.namespace}
+                type={this.state.resource.type}
                 title="Edges"
                 edges={edges} />
             </Grid>
