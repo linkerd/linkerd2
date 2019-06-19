@@ -6,7 +6,8 @@ import { withContext } from './util/AppContext.jsx';
 
 const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
   return [
-    { title: "Source",
+    {
+      title: "Source",
       dataIndex: "source",
       isNumeric: false,
       filter: d => d.src.name,
@@ -14,7 +15,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
         // check that the source is a k8s resource with a name we can link to
         if (namespace && type && d.src && d.src.name) {
           return (
-            <PrefixedLink to={"/namespaces/" + namespace + "/" + type + "s/" + d.src.name}>
+            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.src.name}`}>
               {d.src.name}
             </PrefixedLink>
           );
@@ -33,7 +34,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
         // check that the destination is a k8s resource with a name we can link to
         if (namespace && type && d.dst && d.dst.name) {
           return (
-            <PrefixedLink to={"/namespaces/" + namespace + "/" + type + "s/" + d.dst.name}>
+            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.dst.name}`}>
               {d.dst.name}
             </PrefixedLink>
           );
