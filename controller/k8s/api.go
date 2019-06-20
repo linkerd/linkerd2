@@ -388,8 +388,14 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, st
 		var err error
 		if skipCache {
 			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+			if err != nil {
+				log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			}
 		} else {
 			rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+			if err != nil {
+				log.Warnf("failed to retrieve replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
+			}
 		}
 
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
