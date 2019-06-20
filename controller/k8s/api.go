@@ -369,8 +369,10 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner
 // references from the Kubernetes API. The kind is represented as the Kubernetes
-// singular resource type (e.g. deployment, daemonset, job, etc.)
-func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
+// singular resource type (e.g. deployment, daemonset, job, etc.).
+// If skipCache is false we use the shared informer cache; otherwise we hit the
+// Kubernetes API directly.
+func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
@@ -382,18 +384,14 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
 
 	parent := ownerRefs[0]
 	if parent.Kind == "ReplicaSet" {
-		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
-		if err != nil {
-			log.Warnf("failed to retrieve replicaset from indexer, retrying with get request %s/%s: %s", pod.Namespace, parent.Name, err)
-
-			// try again with a get request
+		var rs *appsv1beta2.ReplicaSet
+		var err error
+		if skipCache {
 			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Errorf("failed to get replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
-			} else {
-				log.Debugf("successfully recovered replicaset via k8s get request: %s/%s", pod.Namespace, parent.Name)
-			}
+		} else {
+			rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
 		}
+
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
 			return strings.ToLower(parent.Kind), parent.Name
 		}

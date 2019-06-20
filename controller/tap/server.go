@@ -503,7 +503,7 @@ func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string)
 		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
 		return nil
 	default:
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
 		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
 		for key, value := range podLabels {
 			labels[key] = value
