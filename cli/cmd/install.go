@@ -128,7 +128,7 @@ type (
 		disableH2Upgrade       bool
 		noInitContainer        bool
 		skipChecks             bool
-		OmitWebhookSideEffects bool
+		omitWebhookSideEffects bool
 		identityOptions        *installIdentityOptions
 		*proxyConfigOptions
 
@@ -178,7 +178,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 		controllerUID:          2103,
 		disableH2Upgrade:       false,
 		noInitContainer:        false,
-		OmitWebhookSideEffects: false,
+		omitWebhookSideEffects: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -439,8 +439,8 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"The amount of time to allow for clock skew within a Linkerd cluster",
 	)
 	flags.BoolVar(
-		&options.OmitWebhookSideEffects, "omit-webhook-side-effects", options.OmitWebhookSideEffects,
-		"Omit the sideEffects flag in the webhook manifests, to run on Kubernetes versions less than 1.12",
+		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
+		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
@@ -581,7 +581,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		EnableH2Upgrade:        !options.disableH2Upgrade,
 		NoInitContainer:        options.noInitContainer,
 		WebhookFailurePolicy:   "Ignore",
-		OmitWebhookSideEffects: options.OmitWebhookSideEffects,
+		OmitWebhookSideEffects: options.omitWebhookSideEffects,
 		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
