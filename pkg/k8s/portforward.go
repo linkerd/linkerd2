@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -160,6 +161,33 @@ func (pf *PortForward) Run() error {
 	}
 
 	return fw.ForwardPorts()
+}
+
+// Init creates and runs a port-forward connection
+func (pf *PortForward) Init(wait ...chan struct{}) error {
+	log.Debug("Starting port forward")
+
+	failure := make(chan error, 1)
+
+	go func() {
+		if err := pf.Run(); err != nil {
+			failure <- err
+		}
+		if len(wait) > 0 {
+			close(wait[0])
+		}
+	}()
+
+	select {
+	case <-pf.Ready():
+		log.Debug("Port forward initialised")
+		break
+	case err := <-failure:
+		log.Debugf("Port forward failed: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // Ready returns a channel that will receive a message when the port-forward

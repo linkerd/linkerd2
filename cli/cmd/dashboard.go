@@ -89,22 +89,16 @@ func newCmdDashboard() *cobra.Command {
 				os.Exit(1)
 			}
 
-			go func() {
-				err := portforward.Run()
-				if err != nil {
-					// TODO: consider falling back to an ephemeral port if defaultPort is taken
-					fmt.Fprintf(os.Stderr, "Error running port-forward: %s\nCheck for `linkerd dashboard` running in other terminal sessions, or use the `--port` flag.\n", err)
-					os.Exit(1)
-				}
-				close(wait)
-			}()
+			if err = portforward.Init(wait); err != nil {
+				// TODO: consider falling back to an ephemeral port if defaultPort is taken
+				fmt.Fprintf(os.Stderr, "Error running port-forward: %s\nCheck for `linkerd dashboard` running in other terminal sessions, or use the `--port` flag.\n", err)
+				os.Exit(1)
+			}
 
 			go func() {
 				<-signals
 				portforward.Stop()
 			}()
-
-			<-portforward.Ready()
 
 			webURL := portforward.URLFor("")
 			grafanaURL := portforward.URLFor("/grafana")
