@@ -310,6 +310,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "can create PodSecurityPolicies",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "policy", "v1beta1", "podsecuritypolicies")
+					},
+				},
+				{
 					description: "can create ServiceAccounts",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
@@ -352,6 +359,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
+					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkNetAdmin()
 					},
@@ -408,7 +416,7 @@ func (hc *HealthChecker) allCategories() []category {
 			checkers: []checker{
 				{
 					description: "control plane components ready",
-					hintAnchor:  "l5d-existence-psp",
+					hintAnchor:  "l5d-existence-psp", // needs https://github.com/linkerd/website/issues/272
 					fatal:       true,
 					check: func(context.Context) error {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
@@ -420,7 +428,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "no unschedulable pods",
-					hintAnchor:  "l5d-existence-unschedulable-pods",
+					hintAnchor:  "l5d-existence-unschedulable-pods", // needs https://github.com/linkerd/website/issues/272
 					fatal:       true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
@@ -1005,7 +1013,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 		}
 	}
 
-	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN", len(pspList.Items))
+	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running", len(pspList.Items))
 }
 
 func (hc *HealthChecker) checkClockSkew() error {
