@@ -251,3 +251,23 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		}
 	}
 }
+
+func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	requestParams := util.EdgesRequestParams{
+		Namespace:    req.FormValue("namespace"),
+		ResourceType: req.FormValue("resource_type"),
+	}
+
+	edgesRequest, err := util.BuildEdgesRequest(requestParams)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	result, err := h.apiClient.Edges(req.Context(), edgesRequest)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJSONPb(w, result)
+}
