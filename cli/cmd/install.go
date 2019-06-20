@@ -761,10 +761,11 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
 	return &pb.Global{
-		LinkerdNamespace: controlPlaneNamespace,
-		CniEnabled:       options.noInitContainer,
-		Version:          options.controlPlaneVersion,
-		IdentityContext:  identity,
+		LinkerdNamespace:       controlPlaneNamespace,
+		CniEnabled:             options.noInitContainer,
+		Version:                options.controlPlaneVersion,
+		IdentityContext:        identity,
+		OmitWebhookSideEffects: options.omitWebhookSideEffects,
 	}
 }
 
