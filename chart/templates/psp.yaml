@@ -8,6 +8,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Namespace}}-control-plane
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -48,6 +50,8 @@ kind: Role
 metadata:
   name: linkerd-psp
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -60,6 +64,8 @@ kind: RoleBinding
 metadata:
   name: linkerd-psp
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp

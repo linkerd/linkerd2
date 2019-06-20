@@ -11,6 +11,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -29,6 +30,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -47,6 +49,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: controller
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
