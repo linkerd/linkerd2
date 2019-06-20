@@ -71,8 +71,8 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
   ];
 };
 
-const tooltipText = "Edges show the source, destination name and identity " +
-  "for proxied connections. If no identity is known, a message is displayed.";
+const tooltipText = `Edges show the source, destination name and identity
+  for proxied connections. If no identity is known, a message is displayed.`;
 
 class EdgesTable extends React.Component {
   static propTypes = {
