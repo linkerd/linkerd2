@@ -71,15 +71,19 @@ const (
 	proxyInitResourceLimitMemory   = "50Mi"
 )
 
-var injectableKinds = []string{
-	k8s.DaemonSet,
-	k8s.Deployment,
-	k8s.Job,
-	k8s.Pod,
-	k8s.ReplicaSet,
-	k8s.ReplicationController,
-	k8s.StatefulSet,
-}
+var (
+	injectableKinds = []string{
+		k8s.DaemonSet,
+		k8s.Deployment,
+		k8s.Job,
+		k8s.Pod,
+		k8s.ReplicaSet,
+		k8s.ReplicationController,
+		k8s.StatefulSet,
+	}
+
+	proxyInitDefaultCapabilities = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
+)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -618,13 +622,14 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.
 	capabilities := &corev1.Capabilities{}
 	if conf.pod.spec.Containers != nil && len(conf.pod.spec.Containers) > 0 {
 		if sc := conf.pod.spec.Containers[0].SecurityContext; sc != nil && sc.Capabilities != nil {
-			capabilities = sc.Capabilities
+			capabilities.Add = sc.Capabilities.Add
+			capabilities.Drop = sc.Capabilities.Drop
 		}
 	}
 	if capabilities.Add == nil {
 		capabilities.Add = []corev1.Capability{}
 	}
-	capabilities.Add = append(capabilities.Add, corev1.Capability("NET_ADMIN"))
+	capabilities.Add = append(capabilities.Add, proxyInitDefaultCapabilities...)
 
 	var (
 		nonRoot                  = false

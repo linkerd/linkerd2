@@ -439,18 +439,33 @@ spec:
   readOnlyRootFilesystem: true
   allowedCapabilities:
   - NET_ADMIN
+  - NET_RAW
+  requiredDropCapabilities:
+  - ALL
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
   seLinux:
-    rule: RunAsAny
-  supplementalGroups:
     rule: RunAsAny
   runAsUser:
     rule: RunAsAny
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
   fsGroup:
-    rule: RunAsAny
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
   volumes:
   - configMap
   - emptyDir
   - secret
+  - projected
+  - downwardAPI
+  - persistentVolumeClaim
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -725,6 +740,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -990,6 +1006,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1203,6 +1220,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1506,6 +1524,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1772,6 +1791,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1975,6 +1995,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -2206,6 +2227,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -2412,6 +2434,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
