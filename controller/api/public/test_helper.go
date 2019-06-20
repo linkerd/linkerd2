@@ -122,9 +122,11 @@ type mockProm struct {
 // PodCounts is a test helper struct that is used for representing data in a
 // StatTable.PodGroup.Row.
 type PodCounts struct {
+	Status      string
 	MeshedPods  uint64
 	RunningPods uint64
 	FailedPods  uint64
+	Errors      map[string]*pb.PodErrors
 }
 
 func (m *mockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
@@ -204,6 +206,8 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 			statTableRow.MeshedPodCount = counts.MeshedPods
 			statTableRow.RunningPodCount = counts.RunningPods
 			statTableRow.FailedPodCount = counts.FailedPods
+			statTableRow.Status = counts.Status
+			statTableRow.ErrorsByPod = counts.Errors
 		}
 
 		rows = append(rows, statTableRow)
