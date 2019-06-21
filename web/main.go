@@ -40,7 +40,7 @@ func main() {
 
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
-		log.Warnf("failed to load uuid from install config: %s", err)
+		log.Warnf("(disregard warning if running in development mode) failed to load uuid from install config: %s", err)
 	}
 	uuid := installConfig.GetUuid()
 
