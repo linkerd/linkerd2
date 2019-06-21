@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Metrics useful for benchmarking and loadtesting Prometheus itself. Designed primarily for Prometheus 2.7.x.",
+  "description": "Metrics useful for benchmarking and loadtesting Prometheus itself. Designed primarily for Prometheus 2.10.x.",
   "editable": true,
   "gnetId": 9761,
   "graphTooltip": 1,
@@ -3716,7 +3716,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Prometheus Benchmark - 2.7.x",
+  "title": "Prometheus Benchmark - 2.10.x",
   "uid": "prometheus-benchmark",
   "version": 10
 }
