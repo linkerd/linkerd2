@@ -88,4 +88,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+{{- if not .OmitWebhookSideEffects }}
+  sideEffects: None
+{{- end }}
 {{end -}}

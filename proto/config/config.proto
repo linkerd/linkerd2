@@ -23,6 +23,8 @@ message Global {
   IdentityContext identity_context = 4;
 
   AutoInjectContext auto_inject_context = 6 [deprecated=true];
+
+  bool omitWebhookSideEffects = 7;
 }
 
 message Proxy {

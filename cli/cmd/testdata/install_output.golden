@@ -365,6 +365,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+  sideEffects: None
 ---
 ###
 ### Service Profile Validator RBAC
@@ -444,6 +445,7 @@ webhooks:
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1"]
     resources: ["serviceprofiles"]
+  sideEffects: None
 ---
 ###
 ### Tap RBAC
