@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -44,6 +45,12 @@ func main() {
 	}
 	defer discoveryConn.Close()
 
+	destinationClient, destinationConn, err := destination.NewClient(*destinationAPIAddr)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer destinationConn.Close()
+
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
 		k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP,
@@ -62,6 +69,7 @@ func main() {
 		prometheusClient,
 		tapClient,
 		discoveryClient,
+		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
 		strings.Split(*ignoredNamespaces, ","),

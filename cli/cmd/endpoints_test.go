@@ -15,11 +15,10 @@ type endpointsExp struct {
 
 func TestEndpoints(t *testing.T) {
 	options := newEndpointsOptions()
-	options.namespace = "emojivoto"
 	t.Run("Returns endpoints", func(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:    options,
-			identities: []string{"emoji-svc.emojivoto", "voting-svc.emojivoto", "authors.books"},
+			identities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto.svc.cluster.local:8080", "authors.books"},
 			file:       "endpoints_one_output.golden",
 		}, t)
 	})
