@@ -1,3 +1,24 @@
+## edge-19.6.3
+
+* CLI
+  * Updated `linkerd check` to validate the caller can create
+    `PodSecurityPolicy` resources
+* Controller
+  * Default the mutating and validating webhook configurations `sideEffects` 
+    property to `None` to indicate that the webhooks have no side effects on
+    other resources (thanks @Pothulapati!)
+* Proxy
+  * Added the `NET_RAW` capability to the proxy-init container to be compatible
+    with `PodSecurityPolicy`s that use `drop: all`
+  * Fixed the proxy rejecting HTTP2 requests that don't have an `:authority`
+  * Improved idle service eviction to reduce resource consumption for clients
+    that send requests to many services
+* Web UI
+  * Removed the "Debug" page from the Linkerd dashboard while the functionality
+    of that page is being redesigned
+  * Added an Edges table to the resource detail view that shows the source,
+    destination name, and identity for proxied connections
+
 ## edge-19.6.2
 
 * CLI
