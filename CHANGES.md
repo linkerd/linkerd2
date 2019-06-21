@@ -1,25 +1,21 @@
 ## edge-19.6.3
 
 * CLI
-  * Added a check for Pod Security Policy (PSP) permissions to `linkerd check`
-  * Changed `linkerd check` to only warn (not error) if PSPs are found, but
-    the caller does not have the `NET_ADMIN` capability
+  * Updated `linkerd check` to validate the caller can create
+    `PodSecurityPolicy` resources
 * Controller
-  * Improved timestamp formatting in logs
   * Default the mutating and validating webhook configurations `sideEffects` 
     property to `None` to indicate that the webhooks have no side effects on
-    external resources
+    other resources (thanks @Pothulapati!)
 * Proxy
-  * Added the `NET_RAW` capability to the proxy-init container to prevent it
-    from failing when the primary container has certain security contexts
-  * Fixed the handling of HTTP2 requests that don't have an `:authority`
-  * Introduced eager eviction to the router cache so that idle services are
-    removed even when the cache is not full 
+  * Added the `NET_RAW` capability to the proxy-init container to be compatible
+    with `PodSecurityPolicy`s that use `drop: all`
+  * Fixed the proxy rejecting HTTP2 requests that don't have an `:authority`
+  * Improved idle service eviction to reduce resource consumption for clients
+    that send requests to many services
 * Web UI
-  * Removed the "debug" page from the Linkerd dashboard while the functionality
+  * Removed the "Debug" page from the Linkerd dashboard while the functionality
     of that page is being redesigned
-  * Reduced the dashboard package size and number of files loaded by importing
-    fewer icons
   * Added an Edges table to the resource detail view that shows the source,
     destination name, and identity for proxied connections
 
