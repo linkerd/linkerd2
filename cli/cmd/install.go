@@ -155,7 +155,7 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	prometheusImage                   = "prom/prometheus:v2.7.1"
+	prometheusImage                   = "prom/prometheus:v2.10.0"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
 	defaultHAControllerReplicas       = 3
