@@ -55,6 +55,11 @@ const (
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
 
+	// LinkerdPreInstallConfigChecks checks for the existence of the Linkerd
+	// global resources during the pre-install phase. This check is used to
+	// determine if a control plane is already installed.
+	LinkerdPreInstallConfigChecks CategoryID = "pre-linkerd-config"
+
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
 	// LinkerdConfigChecks adds a series of checks to validate that the Linkerd
@@ -367,6 +372,161 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
+			id: LinkerdPreInstallConfigChecks,
+			checkers: []checker{
+				{
+					description: "no ClusterRoles exist",
+					hintAnchor:  "pre-l5d-existence-cr",
+					check: func(context.Context) error {
+						var err error
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
+						if err != nil {
+							return err
+						}
+
+						objects, err := hc.checkClusterRoles(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    clusterrole/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "no ClusterRoleBindings exist",
+					hintAnchor:  "pre-l5d-existence-crb",
+					check: func(context.Context) error {
+						objects, err := hc.checkClusterRoleBindings(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    clusterrolebinding/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "no CustomResourceDefinitions exist",
+					hintAnchor:  "pre-l5d-existence-crd",
+					check: func(context.Context) error {
+						objects, err := hc.checkCustomResourceDefinitions(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    customresourcedefinitions/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "no MutatingWebhookConfigurations exist",
+					hintAnchor:  "pre-l5d-existence-mwc",
+					check: func(context.Context) error {
+						objects, err := hc.checkMutatingWebhookConfigurations(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    mutatingwebhookconfigurations/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "no ValidatingWebhookConfigurations exist",
+					hintAnchor:  "pre-l5d-existence-vwc",
+					check: func(context.Context) error {
+						objects, err := hc.checkValidatingWebhookConfigurations(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    validatingwebhookconfigurations/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "no PodSecurityPolicies exist",
+					hintAnchor:  "pre-l5d-existence-psp",
+					check: func(context.Context) error {
+						objects, err := hc.checkPodSecurityPolicies(false)
+						if err != nil {
+							return err
+						}
+
+						if len(objects) > 0 {
+							errMsg := ""
+							for _, obj := range objects {
+								m, err := meta.Accessor(obj)
+								if err != nil {
+									return err
+								}
+								errMsg += fmt.Sprintf("    podsecuritypolicies/%s\n", m.GetName())
+							}
+							return fmt.Errorf(strings.TrimSpace(errMsg))
+						}
+
+						return nil
+					},
+				},
+			},
+		},
+		{
 			id: LinkerdConfigChecks,
 			checkers: []checker{
 				{
@@ -382,7 +542,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-cr",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkClusterRoles()
+						_, err := hc.checkClusterRoles(true)
+						return err
 					},
 				},
 				{
@@ -390,7 +551,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-crb",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings()
+						_, err := hc.checkClusterRoleBindings(true)
+						return err
 					},
 				},
 				{
@@ -398,7 +560,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts()
+						_, err := hc.checkServiceAccounts(true)
+						return err
 					},
 				},
 				{
@@ -406,7 +569,35 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions()
+						_, err := hc.checkCustomResourceDefinitions(true)
+						return err
+					},
+				},
+				{
+					description: "control plane MutatingWebhookConfigurations exist",
+					hintAnchor:  "l5d-existence-mwc",
+					fatal:       true,
+					check: func(context.Context) error {
+						_, err := hc.checkMutatingWebhookConfigurations(true)
+						return err
+					},
+				},
+				{
+					description: "control plane ValidatingWebhookConfigurations exist",
+					hintAnchor:  "l5d-existence-vwc",
+					fatal:       true,
+					check: func(context.Context) error {
+						_, err := hc.checkValidatingWebhookConfigurations(true)
+						return err
+					},
+				},
+				{
+					description: "control plane PodSecurityPolicies exist",
+					hintAnchor:  "l5d-existence-psp",
+					fatal:       true,
+					check: func(context.Context) error {
+						_, err := hc.checkPodSecurityPolicies(true)
+						return err
 					},
 				},
 			},
@@ -841,10 +1032,13 @@ func expectedServiceAccountNames() []string {
 	}
 }
 
-func (hc *HealthChecker) checkClusterRoles() error {
-	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkClusterRoles(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	objects := []runtime.Object{}
@@ -853,13 +1047,20 @@ func (hc *HealthChecker) checkClusterRoles() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ClusterRoles", objects, hc.expectedRBACNames())
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("ClusterRoles", objects, hc.expectedRBACNames())
 }
 
-func (hc *HealthChecker) checkClusterRoleBindings() error {
-	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkClusterRoleBindings(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	objects := []runtime.Object{}
@@ -868,13 +1069,20 @@ func (hc *HealthChecker) checkClusterRoleBindings() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames())
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames())
 }
 
-func (hc *HealthChecker) checkServiceAccounts() error {
-	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(metav1.ListOptions{})
+func (hc *HealthChecker) checkServiceAccounts(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	objects := []runtime.Object{}
@@ -883,13 +1091,20 @@ func (hc *HealthChecker) checkServiceAccounts() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames())
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("ServiceAccounts", objects, expectedServiceAccountNames())
 }
 
-func (hc *HealthChecker) checkCustomResourceDefinitions() error {
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkCustomResourceDefinitions(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	objects := []runtime.Object{}
@@ -898,7 +1113,77 @@ func (hc *HealthChecker) checkCustomResourceDefinitions() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"})
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"})
+}
+
+func (hc *HealthChecker) checkMutatingWebhookConfigurations(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(options)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range mwc.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName})
+}
+
+func (hc *HealthChecker) checkValidatingWebhookConfigurations(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(options)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range vwc.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName})
+}
+
+func (hc *HealthChecker) checkPodSecurityPolicies(checkName bool) ([]runtime.Object, error) {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(options)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range psp.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	if !checkName {
+		return objects, nil
+	}
+
+	return objects, checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)})
 }
 
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string) error {
