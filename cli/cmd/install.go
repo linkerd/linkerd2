@@ -23,8 +23,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -251,7 +249,7 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return installRunE(options, configStage, parentFlags)
+			return installRunE(options, configStage, parentFlags, globalResourcesExist)
 		},
 	}
 
@@ -282,11 +280,18 @@ control plane. It should be run after "linkerd install config".`,
   # Install Linkerd into a non-default namespace.
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !options.skipChecks {
-				exitIfNamespaceDoesNotExist()
+			// check if global resources exist to determine if the `install config`
+			// stage succeeded
+			exists := globalResourcesExist()
+			if !exists && !options.skipChecks {
+				fmt.Fprintf(os.Stderr,
+					"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
+					controlPlaneNamespace, controlPlaneNamespace,
+				)
+				os.Exit(1)
 			}
 
-			return installRunE(options, controlPlaneStage, flags)
+			return installRunE(options, controlPlaneStage, flags, linkerdConfigConfigMapExists)
 		},
 	}
 
@@ -330,7 +335,7 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return installRunE(options, "", flags)
+			return installRunE(options, "", flags, globalResourcesExist)
 		},
 	}
 
@@ -346,11 +351,11 @@ control plane.`,
 	return cmd
 }
 
-func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
-	if !options.ignoreCluster {
-		// TODO: consider cobra.SilenceUsage, so we can return errors from
-		// `RunE`, rather than calling `os.Exit(1)`
-		exitIfClusterExists()
+func installRunE(options *installOptions, stage string, flags *pflag.FlagSet, preInstallCheck func() bool) error {
+	controlPlaneExists := preInstallCheck()
+	if controlPlaneExists && !options.ignoreCluster {
+		fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
+		os.Exit(1)
 	}
 
 	values, configs, err := options.validateAndBuild(stage, flags)
@@ -834,61 +839,32 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-// exitIfClusterExists checks the kubernetes API to determine
-// whether a config exists and exits if it does exist or if an error is
-// encountered.
-//
-// This bypasses the public API so that public API errors cannot cause us to
-// misdiagnose a controller error to indicate that no control plane exists.
-func exitIfClusterExists() {
-	k, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+func globalResourcesExist() bool {
+	checks := []healthcheck.CategoryID{
+		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
 	}
 
-	c := k.CoreV1().ConfigMaps(controlPlaneNamespace)
-	if _, err = c.Get(k8s.ConfigConfigMapName, metav1.GetOptions{}); err != nil {
-		if kerrors.IsNotFound(err) {
-			return
-		}
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+	})
 
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
-	os.Exit(1)
+	notExist := hc.RunChecks(func(result *healthcheck.CheckResult) {})
+	return !notExist
 }
 
-// exitIfNamespaceDoesNotExist checks the kubernetes API to determine if the
-// control-plane namespace exists, and returns an error if it does not.
-//
-// This is useful when running `linkerd install control-plane`, where the
-// namespace must exist, but `linkerd-config` should not.
-func exitIfNamespaceDoesNotExist() {
-	hc := newHealthChecker(
-		[]healthcheck.CategoryID{healthcheck.KubernetesAPIChecks},
-		time.Time{},
-	)
-
-	success := hc.RunChecks(exitOnError)
-	if !success {
-		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --skip-checks flag.")
-		os.Exit(1)
+func linkerdConfigConfigMapExists() bool {
+	checks := []healthcheck.CategoryID{
+		healthcheck.LinkerdConfigNotExistsChecks,
 	}
 
-	err := hc.CheckNamespace(controlPlaneNamespace, true)
-	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
-			controlPlaneNamespace, controlPlaneNamespace,
-		)
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
-	}
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+	})
+
+	notExists := hc.RunChecks(func(result *healthcheck.CheckResult) {})
+	return !notExists
 }
 
 func (idopts *installIdentityOptions) validate() error {

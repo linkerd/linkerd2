@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -55,10 +57,17 @@ const (
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
 
-	// LinkerdPreInstallConfigChecks checks for the existence of the Linkerd
-	// global resources during the pre-install phase. This check is used to
-	// determine if a control plane is already installed.
-	LinkerdPreInstallConfigChecks CategoryID = "pre-linkerd-config"
+	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine the
+	// the existence of the global resources like cluster roles, cluster role
+	// bindings, mutating webhook configuration validating webhook configuration
+	// and pod security policies during the pre-install phase. This check is used
+	// to determine if a control plane is already installed.
+	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
+
+	// LinkerdConfigNotExistsChecks adds a series of checks to determine
+	// if the `linkerd-config` config map already exist. In order for the control
+	// plane installation to succeed, this config map must not exist.
+	LinkerdConfigNotExistsChecks CategoryID = "linkerd-config-config-map-not-exists"
 
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
@@ -372,155 +381,97 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdPreInstallConfigChecks,
+			id: LinkerdPreInstallGlobalResourcesChecks,
 			checkers: []checker{
 				{
 					description: "no ClusterRoles exist",
-					hintAnchor:  "pre-l5d-existence-cr",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
-						var err error
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
-						if err != nil {
-							return err
+						if hc.kubeAPI == nil {
+							var err error
+							hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
+							if err != nil {
+								return err
+							}
 						}
 
 						objects, err := hc.checkClusterRoles(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    clusterrole/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd ClusterRoles", len(objects))
 						}
-
 						return nil
 					},
 				},
 				{
 					description: "no ClusterRoleBindings exist",
-					hintAnchor:  "pre-l5d-existence-crb",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
 						objects, err := hc.checkClusterRoleBindings(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    clusterrolebinding/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd ClusterRoleBindings", len(objects))
 						}
-
 						return nil
 					},
 				},
 				{
 					description: "no CustomResourceDefinitions exist",
-					hintAnchor:  "pre-l5d-existence-crd",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
 						objects, err := hc.checkCustomResourceDefinitions(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    customresourcedefinitions/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd CustomResourceDefinitions", len(objects))
 						}
-
 						return nil
 					},
 				},
 				{
 					description: "no MutatingWebhookConfigurations exist",
-					hintAnchor:  "pre-l5d-existence-mwc",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
 						objects, err := hc.checkMutatingWebhookConfigurations(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    mutatingwebhookconfigurations/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd MutatingWebhookConfigurations", len(objects))
 						}
-
 						return nil
 					},
 				},
 				{
 					description: "no ValidatingWebhookConfigurations exist",
-					hintAnchor:  "pre-l5d-existence-vwc",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
 						objects, err := hc.checkValidatingWebhookConfigurations(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    validatingwebhookconfigurations/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd ValidatingWebhookConfigurations", len(objects))
 						}
-
 						return nil
 					},
 				},
 				{
 					description: "no PodSecurityPolicies exist",
-					hintAnchor:  "pre-l5d-existence-psp",
+					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
 						objects, err := hc.checkPodSecurityPolicies(false)
 						if err != nil {
 							return err
 						}
-
 						if len(objects) > 0 {
-							errMsg := ""
-							for _, obj := range objects {
-								m, err := meta.Accessor(obj)
-								if err != nil {
-									return err
-								}
-								errMsg += fmt.Sprintf("    podsecuritypolicies/%s\n", m.GetName())
-							}
-							return fmt.Errorf(strings.TrimSpace(errMsg))
+							return fmt.Errorf("found %d Linkerd PodSecurityPolicies", len(objects))
 						}
-
 						return nil
 					},
 				},
@@ -598,6 +549,41 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(context.Context) error {
 						_, err := hc.checkPodSecurityPolicies(true)
 						return err
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdConfigNotExistsChecks,
+			checkers: []checker{
+				{
+					description: "control plane namespace exists",
+					hintAnchor:  "l5d-control-plane-ns-exists",
+					fatal:       true,
+					check: func(context.Context) error {
+						if hc.kubeAPI == nil {
+							var err error
+							hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
+							if err != nil {
+								return err
+							}
+						}
+
+						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
+					},
+				},
+				{
+					description: "'linkerd-config' config map does not exist",
+					hintAnchor:  "l5d-linkerd-config-not-exists",
+					fatal:       true,
+					check: func(context.Context) error {
+						// to successfully install the control plane, the `linkerd-config`
+						// config map must not exist.
+						if err := hc.checkLinkerdConfigConfigMap(); !kerrors.IsNotFound(err) {
+							return fmt.Errorf("found existing 'linkerd-config' config map")
+						}
+
+						return nil
 					},
 				},
 			},
@@ -990,6 +976,15 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 // configured and run first.
 func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
+}
+
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() error {
+	cm, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	return checkResources("ConfigMaps", []runtime.Object{cm}, []string{k8s.ConfigConfigMapName})
 }
 
 // CheckNamespace checks whether the given namespace exists, and returns an
