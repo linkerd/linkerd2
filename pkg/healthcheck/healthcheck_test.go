@@ -1562,7 +1562,15 @@ func TestCheckControlPlanePodExistence(t *testing.T) {
 			ControlPlaneNamespace: "test-ns",
 		},
 	)
-	k8sConfigs := []string{`
+
+	var testCases = []struct {
+		checkDescription string
+		resources        []string
+		expected         []string
+	}{
+		{
+			checkDescription: "controller pod is running",
+			resources: []string{`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1572,24 +1580,44 @@ status:
   phase: Running
   podIP: 1.2.3.4
 `,
-	}
-	var err error
-	hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfigs...)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
+			},
+			expected: []string{
+				"cat1 controller pod is running",
+			},
+		},
+		{
+			checkDescription: "'linkerd-config' config map exists",
+			resources: []string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-config
+  namespace: test-ns
+`,
+			},
+			expected: []string{
+				"cat1 'linkerd-config' config map exists",
+			},
+		},
 	}
 
-	// validate that this check relies on the k8s api, not on hc.controlPlanePods
-	hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks, "controller pod is running")
+	for _, testCase := range testCases {
+		testCase := testCase
+		var err error
+		hc.kubeAPI, err = k8s.NewFakeAPI(testCase.resources...)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
 
-	expectedResults := []string{
-		"cat1 controller pod is running",
-	}
+		// validate that this check relies on the k8s api, not on hc.controlPlanePods
+		hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks,
+			testCase.checkDescription)
 
-	obs := newObserver()
-	hc.RunChecks(obs.resultFn)
-	if !reflect.DeepEqual(obs.results, expectedResults) {
-		t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
+		if !reflect.DeepEqual(obs.results, testCase.expected) {
+			t.Fatalf("Expected results %v, but got %v", testCase.expected, obs.results)
+		}
 	}
 }
 

@@ -592,6 +592,18 @@ func (hc *HealthChecker) allCategories() []category {
 			id: LinkerdControlPlaneExistenceChecks,
 			checkers: []checker{
 				{
+					description: "'linkerd-config' config map exists",
+					hintAnchor:  "l5d-existence-linkerd-config",
+					fatal:       true,
+					check: func(context.Context) error {
+						if err := hc.checkLinkerdConfigConfigMap(); err != nil {
+							return fmt.Errorf("%s", err)
+						}
+
+						return nil
+					},
+				},
+				{
 					description: "control plane components ready",
 					hintAnchor:  "l5d-existence-psp", // needs https://github.com/linkerd/website/issues/272
 					fatal:       true,
