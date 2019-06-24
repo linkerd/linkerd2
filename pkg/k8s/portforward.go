@@ -139,6 +139,7 @@ func newPortForward(
 }
 
 // Run creates and runs the port-forward connection.
+// It blocks upon a successful connection; otherwise it returns an error.
 func (pf *PortForward) Run() error {
 	transport, upgrader, err := spdy.RoundTripperFor(pf.config)
 	if err != nil {
@@ -163,9 +164,10 @@ func (pf *PortForward) Run() error {
 	return fw.ForwardPorts()
 }
 
-// Init creates and runs a port-forward connection
-func (pf *PortForward) Init(wait ...chan struct{}) error {
-	log.Debug("Starting port forward")
+// Init creates and runs a port-forward connection.
+// This function blocks until the connection is established, in which case it returns nil.
+func (pf *PortForward) Init() error {
+	log.Debugf("Starting port forward to %s %d:%d", pf.url, pf.localPort, pf.remotePort)
 
 	failure := make(chan error, 1)
 
@@ -173,15 +175,18 @@ func (pf *PortForward) Init(wait ...chan struct{}) error {
 		if err := pf.Run(); err != nil {
 			failure <- err
 		}
-		if len(wait) > 0 {
-			close(wait[0])
+
+		if _, ok := <-pf.stopCh; ok {
+			close(pf.stopCh)
 		}
 	}()
 
+	// The `select` statement below depends on one of two outcomes from `pf.Run()`:
+	// 1) Succeed and block, causing a receive on `<-pf.Ready()`
+	// 2) Return an err, causing a receive `<-failure`
 	select {
 	case <-pf.Ready():
 		log.Debug("Port forward initialised")
-		break
 	case err := <-failure:
 		log.Debugf("Port forward failed: %v", err)
 		return err
@@ -200,6 +205,12 @@ func (pf *PortForward) Ready() <-chan struct{} {
 // Stop terminates the port-forward connection.
 func (pf *PortForward) Stop() {
 	close(pf.stopCh)
+}
+
+// GetStop returns the stopCh.
+// Receiving on stopCh will block until the port forwarding stops.
+func (pf *PortForward) GetStop() <-chan struct{} {
+	return pf.stopCh
 }
 
 // URLFor returns the URL for the port-forward connection.
