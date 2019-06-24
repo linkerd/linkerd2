@@ -3,8 +3,11 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -139,6 +142,23 @@ func read(path string) ([]io.Reader, error) {
 	)
 	if path == "-" {
 		in = append(in, os.Stdin)
+	} else if isValidURL(path) {
+		var resp *http.Response
+		resp, err = http.Get(path)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode == 404 {
+			return nil, errors.New("Couldn't get the file from the specified URL")
+		}
+
+		// Save to a buffer, so that response can be closed here
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		resp.Body.Close()
+
+		in = append(in, buf)
 	} else {
 		in, err = walk(path)
 		if err != nil {
@@ -147,6 +167,12 @@ func read(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
+}
+
+// checks if the given string is a valid URL
+func isValidURL(path string) bool {
+	_, err := url.ParseRequestURI(path)
+	return err == nil
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.
