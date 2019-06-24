@@ -57,7 +57,7 @@ const (
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
 
-	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine the
+	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
 	// the existence of the global resources like cluster roles, cluster role
 	// bindings, mutating webhook configuration validating webhook configuration
 	// and pod security policies during the pre-install phase. This check is used
@@ -65,8 +65,9 @@ const (
 	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
 
 	// LinkerdConfigNotExistsChecks adds a series of checks to determine
-	// if the `linkerd-config` config map already exist. In order for the control
-	// plane installation to succeed, this config map must not exist.
+	// if the `linkerd-config` config map already exist. In order to install a
+	// control plane in a namespace, this config map must not exist in that
+	// namespace.
 	LinkerdConfigNotExistsChecks CategoryID = "linkerd-config-config-map-not-exists"
 
 	// LinkerdConfigChecks enabled by `linkerd check config`

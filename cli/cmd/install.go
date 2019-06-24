@@ -282,8 +282,7 @@ control plane. It should be run after "linkerd install config".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// check if global resources exist to determine if the `install config`
 			// stage succeeded
-			exists := globalResourcesExist()
-			if !exists && !options.skipChecks {
+			if !globalResourcesExist() && !options.skipChecks {
 				fmt.Fprintf(os.Stderr,
 					"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
 					controlPlaneNamespace, controlPlaneNamespace,
