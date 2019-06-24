@@ -1532,7 +1532,6 @@ metadata:
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: returns expected config result", i), func(t *testing.T) {
-
 			hc := NewHealthChecker(
 				[]CategoryID{LinkerdConfigChecks},
 				&Options{
@@ -1556,13 +1555,6 @@ metadata:
 }
 
 func TestCheckControlPlanePodExistence(t *testing.T) {
-	hc := NewHealthChecker(
-		[]CategoryID{},
-		&Options{
-			ControlPlaneNamespace: "test-ns",
-		},
-	)
-
 	var testCases = []struct {
 		checkDescription string
 		resources        []string
@@ -1601,23 +1593,32 @@ metadata:
 		},
 	}
 
-	for _, testCase := range testCases {
+	for id, testCase := range testCases {
 		testCase := testCase
-		var err error
-		hc.kubeAPI, err = k8s.NewFakeAPI(testCase.resources...)
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
+		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{},
+				&Options{
+					ControlPlaneNamespace: "test-ns",
+				},
+			)
 
-		// validate that this check relies on the k8s api, not on hc.controlPlanePods
-		hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks,
-			testCase.checkDescription)
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(testCase.resources...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
 
-		obs := newObserver()
-		hc.RunChecks(obs.resultFn)
-		if !reflect.DeepEqual(obs.results, testCase.expected) {
-			t.Fatalf("Expected results %v, but got %v", testCase.expected, obs.results)
-		}
+			// validate that this check relies on the k8s api, not on hc.controlPlanePods
+			hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks,
+				testCase.checkDescription)
+
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, testCase.expected) {
+				t.Fatalf("Expected results %v, but got %v", testCase.expected, obs.results)
+			}
+		})
 	}
 }
 
@@ -1881,7 +1882,7 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 		[]CategoryID{LinkerdPreInstallGlobalResourcesChecks},
 		&Options{})
 
-	t.Run("global resources dont' exist", func(t *testing.T) {
+	t.Run("global resources don't exist", func(t *testing.T) {
 		var err error
 		hc.kubeAPI, err = k8s.NewFakeAPI()
 		if err != nil {
