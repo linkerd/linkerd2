@@ -1,0 +1,36 @@
+#
+# TODO: make build jobs separate from dind containers
+#
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: build-job
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build-job
+  namespace: build-job
+spec:
+  manualSelector: true
+  selector:
+    matchLabels:
+      app: build-job
+  template:
+    metadata:
+      labels:
+        app: build-job
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - image: library/docker:18.09.6
+        name: build-job
+        args:
+        - sleep
+        - "86400"
+        env:
+        - name: DOCKER_HOST
+          value: tcp://dind.dind:2375
+        # securityContext:
+        #   privileged: true
