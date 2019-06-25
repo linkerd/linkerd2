@@ -218,6 +218,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
 	configs.GetInstall().Flags = options.recordedFlags
+	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 
 	var identity *installIdentityValues
 	idctx := configs.GetGlobal().GetIdentityContext()

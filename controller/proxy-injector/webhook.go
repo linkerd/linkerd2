@@ -87,6 +87,6 @@ func Inject(api *k8s.API,
 func ownerRetriever(api *k8s.API, ns string) inject.OwnerRetrieverFunc {
 	return func(p *v1.Pod) (string, string) {
 		p.SetNamespace(ns)
-		return api.GetOwnerKindAndName(p)
+		return api.GetOwnerKindAndName(p, true)
 	}
 }

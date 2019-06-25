@@ -22,6 +22,10 @@ const (
 	// Prefix is the prefix common to all labels and annotations injected by Linkerd
 	Prefix = "linkerd.io"
 
+	// LinkerdNamespaceLabel is a label that helps identifying the namespaces
+	// that contain a Linkerd control plane
+	LinkerdNamespaceLabel = Prefix + "/is-control-plane"
+
 	// ControllerComponentLabel identifies this object as a component of Linkerd's
 	// control plane (e.g. web, controller).
 	ControllerComponentLabel = Prefix + "/control-plane-component"

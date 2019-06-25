@@ -1,6 +1,6 @@
 import { podOwnerLookup, toShortResourceName } from './Utils.js';
-
 import BaseTable from '../BaseTable.jsx';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Grid from '@material-ui/core/Grid';
 import { Link } from 'react-router-dom';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
@@ -18,6 +18,7 @@ import _map from 'lodash/map';
 import _merge from 'lodash/merge';
 import _size from 'lodash/size';
 import _take from 'lodash/take';
+import { faLongArrowAltRight } from '@fortawesome/free-solid-svg-icons/faLongArrowAltRight';
 
 export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
 
@@ -206,7 +207,7 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
   { title: "Source", dataIndex: "source" },
-  { title: "", key: "arrow", render: () => <i className="fas fa-long-arrow-alt-right" /> },
+  { title: "", key: "arrow", render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
   { title: "Destination", dataIndex: "destination" }
 ];
 
