@@ -160,6 +160,7 @@ func getMetrics(
 		return nil, err
 	}
 
+	defer portforward.Stop()
 	if err = portforward.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
 	}

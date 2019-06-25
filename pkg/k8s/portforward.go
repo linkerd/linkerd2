@@ -138,9 +138,9 @@ func newPortForward(
 	}, nil
 }
 
-// Run creates and runs the port-forward connection.
-// It blocks upon a successful connection; otherwise it returns an error.
-func (pf *PortForward) Run() error {
+// run creates and runs the port-forward connection.
+// When the connection is established it blocks until Stop() is called.
+func (pf *PortForward) run() error {
 	transport, upgrader, err := spdy.RoundTripperFor(pf.config)
 	if err != nil {
 		return err
@@ -166,18 +166,23 @@ func (pf *PortForward) Run() error {
 
 // Init creates and runs a port-forward connection.
 // This function blocks until the connection is established, in which case it returns nil.
+// It's the caller's responsibility to call Stop() to finish the connection.
 func (pf *PortForward) Init() error {
 	log.Debugf("Starting port forward to %s %d:%d", pf.url, pf.localPort, pf.remotePort)
 
-	failure := make(chan error, 1)
+	failure := make(chan error)
 
 	go func() {
-		if err := pf.Run(); err != nil {
+		if err := pf.run(); err != nil {
 			failure <- err
 		}
 
-		if _, ok := <-pf.stopCh; ok {
-			close(pf.stopCh)
+		select {
+		case <-pf.GetStop():
+			// stopCh was closed, do nothing
+		default:
+			// pf.run() returned for some other reason, close stopCh
+			pf.Stop()
 		}
 	}()
 
