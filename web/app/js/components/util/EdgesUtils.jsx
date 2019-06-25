@@ -13,7 +13,18 @@ export const processEdges = (rawEdges, resourceName) => {
       return;
     }
     // check if any of the returned edges match the current resourceName
-    if (_startsWith(edge.src.name, resourceName) || _startsWith(edge.dst.name, resourceName)) {
+    if (_startsWith(edge.src.name, resourceName)) {
+      // current resource is SRC
+      edge.direction = "OUTBOUND";
+      edge.identity = edge.serverId;
+      edge.name = edge.dst.name;
+      edge.key = edge.dst.name + edge.src.name;
+      edges.push(edge);
+    } else if (_startsWith(edge.dst.name, resourceName)) {
+      // current resource is DST
+      edge.direction = "INBOUND";
+      edge.identity = edge.clientId;
+      edge.name = edge.src.name;
       edge.key = edge.src.name + edge.dst.name;
       edges.push(edge);
     }
@@ -22,15 +33,21 @@ export const processEdges = (rawEdges, resourceName) => {
 };
 
 export const processedEdgesPropType = PropTypes.shape({
+  dst: PropTypes.shape({
+    name: PropTypes.string,
+    namespace: PropTypes.string,
+    type: PropTypes.string
+  }),
   clientId: PropTypes.string,
-  dst: PropTypes.shape(edgeResourcePropType).isRequired,
+  direction: PropTypes.string,
+  identity: PropTypes.string,
   key: PropTypes.string.isRequired,
+  name: PropTypes.string,
   noIdentityMsg: PropTypes.string,
   serverId: PropTypes.string,
-  src: PropTypes.shape(edgeResourcePropType).isRequired,
-});
-
-const edgeResourcePropType = PropTypes.shape({
-  name: PropTypes.string,
-  type: PropTypes.string
+  src: PropTypes.shape({
+    name: PropTypes.string,
+    namespace: PropTypes.string,
+    type: PropTypes.string
+  })
 });

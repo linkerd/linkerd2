@@ -1,6 +1,5 @@
 import CloseIcon from '@material-ui/icons/Close';
 import FilterListIcon from '@material-ui/icons/FilterList';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Hidden from '@material-ui/core/Hidden';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
@@ -20,7 +19,6 @@ import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
 import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
-import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons/faQuestionCircle';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -151,11 +149,7 @@ class BaseTable extends React.Component {
         <Typography
           className={classes.title}
           variant="h5">
-          {title} {this.props.showTitleTooltip &&
-            <Tooltip title={this.props.titleTooltipText}>
-              <FontAwesomeIcon icon={faQuestionCircle} />
-            </Tooltip>
-          }
+          {title}
         </Typography>
         {this.state.showFilter &&
           <TextField
@@ -229,7 +223,6 @@ BaseTable.propTypes = {
   enableFilter: PropTypes.bool,
   padding: PropTypes.string,
   rowKey: PropTypes.func,
-  showTitleTooltip: PropTypes.bool,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     dataIndex: PropTypes.string,
@@ -240,8 +233,7 @@ BaseTable.propTypes = {
     title: PropTypes.string
   })).isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  title: PropTypes.string,
-  titleTooltipText: PropTypes.string
+  title: PropTypes.string
 };
 
 BaseTable.defaultProps = {
@@ -252,9 +244,7 @@ BaseTable.defaultProps = {
   rowKey: null,
   tableClassName: "",
   tableRows: [],
-  title: "",
-  showTitleTooltip: false,
-  titleTooltipText: ""
+  title: ""
 };
 
 export default withStyles(styles)(BaseTable);
