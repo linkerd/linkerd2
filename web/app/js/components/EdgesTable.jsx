@@ -48,7 +48,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       dataIndex: "identity",
       isNumeric: false,
       filter: d => d.identity,
-      render: d => d.identity.split('.')[0] + '.' + d.identity.split('.')[1],
+      render: d => d.identity ? d.identity.split('.')[0] + '.' + d.identity.split('.')[1] : null,
       sorter: d => d.identity
     },
     {
