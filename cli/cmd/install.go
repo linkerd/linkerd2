@@ -848,8 +848,9 @@ func globalResourcesExist() bool {
 		KubeConfig:            kubeconfigPath,
 	})
 
-	notExist := hc.RunChecks(func(result *healthcheck.CheckResult) {})
-	return !notExist
+	checksPass := hc.RunChecks(func(result *healthcheck.CheckResult) {})
+	exist := !checksPass
+	return exist
 }
 
 func linkerdConfigConfigMapExists() bool {
@@ -862,8 +863,9 @@ func linkerdConfigConfigMapExists() bool {
 		KubeConfig:            kubeconfigPath,
 	})
 
-	notExists := hc.RunChecks(func(result *healthcheck.CheckResult) {})
-	return !notExists
+	checksPass := hc.RunChecks(func(result *healthcheck.CheckResult) {})
+	exist := !checksPass
+	return exist
 }
 
 func (idopts *installIdentityOptions) validate() error {
