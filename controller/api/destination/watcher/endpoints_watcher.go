@@ -385,7 +385,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 					pp.log.Errorf("Unable to fetch pod %v: %s", id, err)
 					continue
 				}
-				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod)
+				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
 				pods[id] = Address{
 					IP:        endpoint.IP,
 					Port:      resolvedPort,

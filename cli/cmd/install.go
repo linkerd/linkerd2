@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -50,13 +51,17 @@ type (
 		ControllerLogLevel       string
 		PrometheusLogLevel       string
 		ControllerComponentLabel string
+		ControllerNamespaceLabel string
 		CreatedByAnnotation      string
 		ProxyContainerName       string
 		ProxyInjectAnnotation    string
 		ProxyInjectDisabled      string
+		LinkerdNamespaceLabel    string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		NoInitContainer          bool
+		WebhookFailurePolicy     string
+		OmitWebhookSideEffects   bool
 
 		Configs configJSONs
 
@@ -124,15 +129,16 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion string
-		controllerReplicas  uint
-		controllerLogLevel  string
-		highAvailability    bool
-		controllerUID       int64
-		disableH2Upgrade    bool
-		noInitContainer     bool
-		skipChecks          bool
-		identityOptions     *installIdentityOptions
+		controlPlaneVersion    string
+		controllerReplicas     uint
+		controllerLogLevel     string
+		highAvailability       bool
+		controllerUID          int64
+		disableH2Upgrade       bool
+		noInitContainer        bool
+		skipChecks             bool
+		omitWebhookSideEffects bool
+		identityOptions        *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -167,7 +173,7 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	prometheusImage                   = "prom/prometheus:v2.7.1"
+	prometheusImage                   = "prom/prometheus:v2.10.0"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
 	defaultHAControllerReplicas       = 3
@@ -185,13 +191,14 @@ const (
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion: version.Version,
-		controllerReplicas:  defaultControllerReplicas,
-		controllerLogLevel:  "info",
-		highAvailability:    false,
-		controllerUID:       2103,
-		disableH2Upgrade:    false,
-		noInitContainer:     false,
+		controlPlaneVersion:    version.Version,
+		controllerReplicas:     defaultControllerReplicas,
+		controllerLogLevel:     "info",
+		highAvailability:       false,
+		controllerUID:          2103,
+		disableH2Upgrade:       false,
+		noInitContainer:        false,
+		omitWebhookSideEffects: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -259,7 +266,7 @@ func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaIssuerOptions {
 }
 
 // newCmdInstallConfig is a subcommand for `linkerd install config`
-func newCmdInstallConfig(options *installOptions) *cobra.Command {
+func newCmdInstallConfig(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
 		Args:  cobra.NoArgs,
@@ -275,15 +282,18 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return installRunE(options, configStage, nil)
+			return installRunE(options, configStage, parentFlags)
 		},
 	}
+
+	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
+	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	return cmd
 }
 
 // newCmdInstallControlPlane is a subcommand for `linkerd install control-plane`
-func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
+func newCmdInstallControlPlane(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
@@ -310,6 +320,9 @@ control plane. It should be run after "linkerd install config".`,
 			return installRunE(options, controlPlaneStage, flags)
 		},
 	}
+
+	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
+	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	cmd.PersistentFlags().BoolVar(
 		&options.skipChecks, "skip-checks", options.skipChecks,
@@ -358,8 +371,8 @@ control plane.`,
 	cmd.Flags().AddFlagSet(installOnlyFlags)
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
 
-	cmd.AddCommand(newCmdInstallConfig(options))
-	cmd.AddCommand(newCmdInstallControlPlane(options))
+	cmd.AddCommand(newCmdInstallConfig(options, flags))
+	cmd.AddCommand(newCmdInstallControlPlane(options, flags))
 
 	return cmd
 }
@@ -430,7 +443,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 
 	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
-		"Experimental: Omit the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
 	flags.StringVar(
@@ -464,6 +477,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.DurationVar(
 		&options.identityOptions.clockSkewAllowance, "identity-clock-skew-allowance", options.identityOptions.clockSkewAllowance,
 		"The amount of time to allow for clock skew within a Linkerd cluster",
+	)
+	flags.BoolVar(
+		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
+		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
@@ -590,23 +607,27 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		PrometheusImage: prometheusImage,
 		ImagePullPolicy: options.imagePullPolicy,
 
-		// Kubernetes labels/annotations/resourcse:
+		// Kubernetes labels/annotations/resources:
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
+		ControllerNamespaceLabel: k8s.ControllerNSLabel,
 		ProxyContainerName:       k8s.ProxyContainerName,
 		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
+		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:          controlPlaneNamespace,
-		UUID:               configs.GetInstall().GetUuid(),
-		ControllerReplicas: options.controllerReplicas,
-		ControllerLogLevel: options.controllerLogLevel,
-		ControllerUID:      options.controllerUID,
-		EnableH2Upgrade:    !options.disableH2Upgrade,
-		NoInitContainer:    options.noInitContainer,
-		PrometheusLogLevel: toPromLogLevel(options.controllerLogLevel),
+		Namespace:              controlPlaneNamespace,
+		UUID:                   configs.GetInstall().GetUuid(),
+		ControllerReplicas:     options.controllerReplicas,
+		ControllerLogLevel:     options.controllerLogLevel,
+		ControllerUID:          options.controllerUID,
+		EnableH2Upgrade:        !options.disableH2Upgrade,
+		NoInitContainer:        options.noInitContainer,
+		WebhookFailurePolicy:   "Ignore",
+		OmitWebhookSideEffects: options.omitWebhookSideEffects,
+		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
@@ -626,6 +647,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 	}
 
 	if options.highAvailability {
+		values.WebhookFailurePolicy = "Fail"
+
 		defaultConstraints := &resources{
 			CPU:    constraints{Request: "100m"},
 			Memory: constraints{Request: "50Mi"},
@@ -687,6 +710,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/proxy_injector-rbac.yaml"},
 			{Name: "templates/sp_validator-rbac.yaml"},
 			{Name: "templates/tap-rbac.yaml"},
+			{Name: "templates/psp.yaml"},
 		}...)
 	}
 
@@ -782,10 +806,11 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
 	return &pb.Global{
-		LinkerdNamespace: controlPlaneNamespace,
-		CniEnabled:       options.noInitContainer,
-		Version:          options.controlPlaneVersion,
-		IdentityContext:  identity,
+		LinkerdNamespace:       controlPlaneNamespace,
+		CniEnabled:             options.noInitContainer,
+		Version:                options.controlPlaneVersion,
+		IdentityContext:        identity,
+		OmitWebhookSideEffects: options.omitWebhookSideEffects,
 	}
 }
 

@@ -25,6 +25,10 @@ func ConfigureAndParse() {
 
 	flag.Parse()
 
+	// set log timestamps
+	formatter := &log.TextFormatter{FullTimestamp: true}
+	log.SetFormatter(formatter)
+
 	setLogLevel(*logLevel)
 	maybePrintVersionAndExit(*printVersion)
 }

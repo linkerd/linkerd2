@@ -55,12 +55,15 @@
       "securityContext": {
         "capabilities": {
           "add": [
-            "NET_ADMIN"
+            "NET_ADMIN",
+            "NET_RAW"
           ]
         },
         "privileged": false,
         "runAsUser": 0,
-        "runAsNonRoot": false
+        "runAsNonRoot": false,
+        "readOnlyRootFilesystem": true,
+        "allowPrivilegeEscalation": false
       }
     }
   },
@@ -152,7 +155,9 @@
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "imagePullPolicy": "IfNotPresent",
       "securityContext": {
-        "runAsUser": 2102
+        "runAsUser": 2102,
+        "readOnlyRootFilesystem": true,
+        "allowPrivilegeEscalation": false
       }
     }
   }

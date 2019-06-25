@@ -9,6 +9,8 @@ metadata:
   name: Namespace
   annotations:
     ProxyInjectAnnotation: ProxyInjectDisabled
+  labels:
+    LinkerdNamespaceLabel: "true"
 ---
 ###
 ### Identity Controller Service RBAC
@@ -18,6 +20,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-identity
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -27,6 +32,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-identity
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -41,6 +49,9 @@ apiVersion: v1
 metadata:
   name: linkerd-identity
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Controller RBAC
@@ -50,6 +61,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-controller
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -68,6 +82,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-controller
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -82,6 +99,9 @@ apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Web RBAC
@@ -92,6 +112,9 @@ apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Service Profile CRD
@@ -103,6 +126,8 @@ metadata:
   name: serviceprofiles.linkerd.io
   annotations:
     CreatedByAnnotation: CliVersion
+  labels:
+    ControllerNamespaceLabel: Namespace
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -206,6 +231,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -215,6 +243,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -229,6 +260,9 @@ apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Grafana RBAC
@@ -239,6 +273,9 @@ apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Proxy Injector RBAC
@@ -248,10 +285,10 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-proxy-injector
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
@@ -266,6 +303,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-proxy-injector
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -281,6 +321,9 @@ apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 ---
 kind: Secret
 apiVersion: v1
@@ -289,6 +332,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -302,19 +346,26 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: LinkerdNamespaceLabel
+      operator: DoesNotExist
   clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: Namespace
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+  failurePolicy: WebhookFailurePolicy
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+  sideEffects: None
 ---
 ###
 ### Service Profile Validator RBAC
@@ -324,18 +375,21 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-sp-validator
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["list"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["validatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-Namespace-sp-validator
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -351,6 +405,9 @@ apiVersion: v1
 metadata:
   name: linkerd-sp-validator
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 ---
 kind: Secret
 apiVersion: v1
@@ -359,6 +416,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -372,6 +430,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -380,11 +439,13 @@ webhooks:
       namespace: Namespace
       path: "/"
     caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1"]
     resources: ["serviceprofiles"]
+  sideEffects: None
 ---
 ###
 ### Tap RBAC
@@ -394,6 +455,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-tap
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces"]
@@ -409,6 +473,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-Namespace-tap
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -423,6 +490,103 @@ apiVersion: v1
 metadata:
   name: linkerd-tap
   namespace: Namespace
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
+---
+###
+### Control Plane PSP
+###
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-Namespace-control-plane
+  labels:
+    ControllerNamespaceLabel: Namespace
+spec:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  allowedCapabilities:
+  - NET_ADMIN
+  - NET_RAW
+  requiredDropCapabilities:
+  - ALL
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  seLinux:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
+  fsGroup:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
+  volumes:
+  - configMap
+  - emptyDir
+  - secret
+  - projected
+  - downwardAPI
+  - persistentVolumeClaim
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-psp
+  namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
+rules:
+- apiGroups: ['policy', 'extensions']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - linkerd-Namespace-control-plane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-psp
+  namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
+roleRef:
+  kind: Role
+  name: linkerd-psp
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-controller
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-grafana
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-identity
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-proxy-injector
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-sp-validator
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: Namespace
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -431,6 +595,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -452,6 +617,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
     linkerd.io/identity-issuer-expiry: 2029-02-28T02:03:52Z
@@ -466,6 +632,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -485,6 +652,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
   name: linkerd-identity
   namespace: Namespace
 spec:
@@ -580,6 +748,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -605,10 +775,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -633,6 +806,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -651,6 +825,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -670,6 +845,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: controller
+    ControllerNamespaceLabel: Namespace
   name: linkerd-controller
   namespace: Namespace
 spec:
@@ -796,6 +972,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -821,10 +999,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -846,6 +1027,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -868,6 +1050,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: web
+    ControllerNamespaceLabel: Namespace
   name: linkerd-web
   namespace: Namespace
 spec:
@@ -963,6 +1146,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -988,10 +1173,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1013,6 +1201,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1101,6 +1290,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1120,6 +1310,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
   name: linkerd-prometheus
   namespace: Namespace
 spec:
@@ -1220,6 +1411,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1245,10 +1438,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1272,6 +1468,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1328,6 +1525,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1347,6 +1545,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
   name: linkerd-grafana
   namespace: Namespace
 spec:
@@ -1440,6 +1639,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1465,10 +1666,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1500,6 +1704,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   name: linkerd-proxy-injector
   namespace: Namespace
 spec:
@@ -1597,6 +1802,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1622,10 +1829,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1646,6 +1856,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: proxy-injector
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1668,6 +1879,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1687,6 +1899,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: sp-validator
+    ControllerNamespaceLabel: Namespace
   name: linkerd-sp-validator
   namespace: Namespace
 spec:
@@ -1782,6 +1995,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1807,10 +2022,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1832,6 +2050,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1851,6 +2070,7 @@ metadata:
   creationTimestamp: null
   labels:
     ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
   name: linkerd-tap
   namespace: Namespace
 spec:
@@ -1942,6 +2162,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
@@ -1967,10 +2189,13 @@ spec:
             cpu: 10m
             memory: 10Mi
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
+          readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError

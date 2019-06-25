@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -496,6 +497,68 @@ func TestInjectPodSpec(t *testing.T) {
 
 		if !passed {
 			t.Errorf("Expected debug container to be added to patch. Actual patch: %v", patch.patchOps)
+		}
+	})
+
+	t.Run("proxy and proxy-init security context", func(t *testing.T) {
+		// expect the proxy and proxy-init containers to share the same 'Add' and
+		// 'Drop' rules
+		testContainer := corev1.Container{
+			Name: "test-svc",
+			SecurityContext: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Add:  []corev1.Capability{"SYS_TIME"},
+					Drop: []corev1.Capability{"SYS_ADMIN"},
+				},
+			},
+		}
+		conf.pod.spec = &corev1.PodSpec{
+			Containers: []corev1.Container{testContainer},
+		}
+		patch := NewPatch("Deployment")
+		conf.injectPodSpec(patch)
+
+		for _, actual := range patch.patchOps {
+			if actual.Op == "add" && (actual.Path == "/spec/template/spec/containers/-" ||
+				actual.Path == "/spec/template/spec/initContainers/-") {
+				container, ok := actual.Value.(*corev1.Container)
+				if !ok {
+					t.Fatal("Unexpected type assertion error")
+				}
+
+				for _, sidecar := range []string{k8s.ProxyContainerName, k8s.InitContainerName} {
+					if container.Name == sidecar {
+						t.Run(fmt.Sprintf(container.Name), func(t *testing.T) {
+							if sc := container.SecurityContext; sc != nil {
+								if *sc.AllowPrivilegeEscalation {
+									t.Errorf("Expected %s's 'allowPrivilegeEscalation' to be false", container.Name)
+								}
+
+								if !*sc.ReadOnlyRootFilesystem {
+									t.Errorf("Expected %s's 'readOnlyRootFilesystem' to be true", container.Name)
+								}
+
+								if *sc.RunAsUser != conf.proxyUID() {
+									t.Errorf("Expected %s's 'RunAsUser' to be %d", container.Name, conf.proxyUID())
+								}
+
+								expectedCapabilities := testContainer.SecurityContext.Capabilities
+								if container.Name == k8s.InitContainerName {
+									expectedCapabilities.Add = append(expectedCapabilities.Add, proxyInitDefaultCapabilities...)
+								}
+
+								if !reflect.DeepEqual(sc.Capabilities, expectedCapabilities) {
+									t.Errorf("Mismatch 'Add Capabilities' rules. Expected: %v, Actual: %v",
+										expectedCapabilities,
+										sc.Capabilities.Add)
+								}
+							} else {
+								t.Errorf("Expected %s security context to be non-empty", container.Name)
+							}
+						})
+					}
+				}
+			}
 		}
 	})
 }

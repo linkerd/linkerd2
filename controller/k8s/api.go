@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	ts "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
+	tsinformers "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	spv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
@@ -51,6 +54,7 @@ const (
 	SP
 	SS
 	Svc
+	TS
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -70,10 +74,12 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
+	ts       tsinformers.TrafficSplitInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
 	spSharedInformers sp.SharedInformerFactory
+	tsSharedInformers ts.SharedInformerFactory
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
@@ -106,11 +112,29 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 			break
 		}
 	}
-	return NewAPI(k8sClient, spClient, resources...), nil
+
+	// TrafficSplits
+	var tsClient *tsclient.Clientset
+	for _, res := range resources {
+		if res == TS {
+			tsClient, err = NewTsClientSet(kubeConfig)
+			if err != nil {
+				return nil, err
+			}
+
+			break
+		}
+	}
+	return NewAPI(k8sClient, spClient, tsClient, resources...), nil
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API.
-func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resources ...APIResource) *API {
+func NewAPI(
+	k8sClient kubernetes.Interface,
+	spClient spclient.Interface,
+	tsClient tsclient.Interface,
+	resources ...APIResource,
+) *API {
 	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
 	var spSharedInformers sp.SharedInformerFactory
@@ -118,11 +142,17 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
 	}
 
+	var tsSharedInformers ts.SharedInformerFactory
+	if tsClient != nil {
+		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
+	}
+
 	api := &API{
 		Client:            k8sClient,
 		syncChecks:        make([]cache.InformerSynced, 0),
 		sharedInformers:   sharedInformers,
 		spSharedInformers: spSharedInformers,
+		tsSharedInformers: tsSharedInformers,
 	}
 
 	for _, resource := range resources {
@@ -166,6 +196,9 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
+		case TS:
+			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
+			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
 		}
 	}
 
@@ -176,6 +209,7 @@ func NewAPI(k8sClient kubernetes.Interface, spClient spclient.Interface, resourc
 func (api *API) Sync() {
 	api.sharedInformers.Start(nil)
 	api.spSharedInformers.Start(nil)
+	api.tsSharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -298,6 +332,14 @@ func (api *API) SPAvailable() bool {
 	return api.sp != nil
 }
 
+// TS provides access to a shared informer and lister for TrafficSplits.
+func (api *API) TS() tsinformers.TrafficSplitInformer {
+	if api.ts == nil {
+		panic("TS informer not configured")
+	}
+	return api.ts
+}
+
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
@@ -327,8 +369,10 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner
 // references from the Kubernetes API. The kind is represented as the Kubernetes
-// singular resource type (e.g. deployment, daemonset, job, etc.)
-func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
+// singular resource type (e.g. deployment, daemonset, job, etc.).
+// If skipCache is false we use the shared informer cache; otherwise we hit the
+// Kubernetes API directly.
+func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
@@ -340,18 +384,20 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod) (string, string) {
 
 	parent := ownerRefs[0]
 	if parent.Kind == "ReplicaSet" {
-		rs, err := api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
-		if err != nil {
-			log.Warnf("failed to retrieve replicaset from indexer, retrying with get request %s/%s: %s", pod.Namespace, parent.Name, err)
-
-			// try again with a get request
+		var rs *appsv1beta2.ReplicaSet
+		var err error
+		if skipCache {
 			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
 			if err != nil {
-				log.Errorf("failed to get replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
-			} else {
-				log.Debugf("successfully recovered replicaset via k8s get request: %s/%s", pod.Namespace, parent.Name)
+				log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			}
+		} else {
+			rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+			if err != nil {
+				log.Warnf("failed to retrieve replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
 			}
 		}
+
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
 			return strings.ToLower(parent.Kind), parent.Name
 		}

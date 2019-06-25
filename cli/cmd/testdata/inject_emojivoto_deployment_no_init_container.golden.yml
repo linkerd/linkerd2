@@ -115,6 +115,8 @@ spec:
           initialDelaySeconds: 2
         resources: {}
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

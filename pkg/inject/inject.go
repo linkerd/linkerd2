@@ -71,15 +71,19 @@ const (
 	proxyInitResourceLimitMemory   = "50Mi"
 )
 
-var injectableKinds = []string{
-	k8s.DaemonSet,
-	k8s.Deployment,
-	k8s.Job,
-	k8s.Pod,
-	k8s.ReplicaSet,
-	k8s.ReplicationController,
-	k8s.StatefulSet,
-}
+var (
+	injectableKinds = []string{
+		k8s.DaemonSet,
+		k8s.Deployment,
+		k8s.Job,
+		k8s.Pod,
+		k8s.ReplicaSet,
+		k8s.ReplicationController,
+		k8s.StatefulSet,
+	}
+
+	proxyInitDefaultCapabilities = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
+)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -426,13 +430,21 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
-	proxyUID := conf.proxyUID()
+	var (
+		proxyUID                 = conf.proxyUID()
+		allowPrivilegeEscalation = false
+		readOnlyRootFilesystem   = true
+	)
 	sidecar := corev1.Container{
 		Name:                     k8s.ProxyContainerName,
 		Image:                    conf.taggedProxyImage(),
 		ImagePullPolicy:          conf.proxyImagePullPolicy(),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		SecurityContext:          &corev1.SecurityContext{RunAsUser: &proxyUID},
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
+			RunAsUser:                &proxyUID,
+		},
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          k8s.ProxyPortName,
@@ -492,6 +504,14 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		},
 		ReadinessProbe: conf.proxyReadinessProbe(),
 		LivenessProbe:  conf.proxyLivenessProbe(),
+	}
+
+	// use the primary container's capabilities to ensure psp compliance, if
+	// enabled
+	if conf.pod.spec.Containers != nil && len(conf.pod.spec.Containers) > 0 {
+		if securityContext := conf.pod.spec.Containers[0].SecurityContext; securityContext != nil {
+			sidecar.SecurityContext.Capabilities = securityContext.Capabilities
+		}
 	}
 
 	// Special case if the caller specifies that
@@ -599,8 +619,25 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 }
 
 func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.VolumeMount) {
-	nonRoot := false
-	runAsUser := int64(0)
+	capabilities := &corev1.Capabilities{}
+	if conf.pod.spec.Containers != nil && len(conf.pod.spec.Containers) > 0 {
+		if sc := conf.pod.spec.Containers[0].SecurityContext; sc != nil && sc.Capabilities != nil {
+			capabilities.Add = sc.Capabilities.Add
+			capabilities.Drop = sc.Capabilities.Drop
+		}
+	}
+	if capabilities.Add == nil {
+		capabilities.Add = []corev1.Capability{}
+	}
+	capabilities.Add = append(capabilities.Add, proxyInitDefaultCapabilities...)
+
+	var (
+		nonRoot                  = false
+		runAsUser                = int64(0)
+		allowPrivilegeEscalation = false
+		readOnlyRootFilesystem   = true
+	)
+
 	initContainer := &corev1.Container{
 		Name:                     k8s.InitContainerName,
 		Image:                    conf.taggedProxyInitImage(),
@@ -608,15 +645,16 @@ func (conf *ResourceConfig) injectProxyInit(patch *Patch, saVolumeMount *corev1.
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Args:                     conf.proxyInitArgs(),
 		SecurityContext: &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Add: []corev1.Capability{corev1.Capability("NET_ADMIN")},
-			},
-			Privileged:   &nonRoot,
-			RunAsNonRoot: &nonRoot,
-			RunAsUser:    &runAsUser,
+			Capabilities:             capabilities,
+			Privileged:               &nonRoot,
+			RunAsNonRoot:             &nonRoot,
+			RunAsUser:                &runAsUser,
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
 		},
 		Resources: conf.proxyInitResourceRequirements(),
 	}
+
 	if saVolumeMount != nil {
 		initContainer.VolumeMounts = []corev1.VolumeMount{*saVolumeMount}
 	}

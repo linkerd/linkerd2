@@ -23,7 +23,7 @@ validate_go_deps_tag $dockerfile
 ) >/dev/null
 
 # Default to a pinned commit SHA of the proxy.
-PROXY_VERSION="${PROXY_VERSION:-790a86a}"
+PROXY_VERSION="${PROXY_VERSION:-52eefa4}"
 
 tag="$(head_root_tag)"
 docker_build proxy $tag $dockerfile --build-arg LINKERD_VERSION=$tag --build-arg PROXY_VERSION=$PROXY_VERSION

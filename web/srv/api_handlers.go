@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -253,8 +252,19 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 }
 
-func (h *handler) handleAPIEndpoints(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	result, err := h.apiClient.Endpoints(req.Context(), &discovery.EndpointsParams{})
+func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	requestParams := util.EdgesRequestParams{
+		Namespace:    req.FormValue("namespace"),
+		ResourceType: req.FormValue("resource_type"),
+	}
+
+	edgesRequest, err := util.BuildEdgesRequest(requestParams)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	result, err := h.apiClient.Edges(req.Context(), edgesRequest)
 	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return

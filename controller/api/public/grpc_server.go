@@ -154,7 +154,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			continue
 		}
 
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
 		// filter out pods without matching owner
 		if targetOwner.GetNamespace() != "" && targetOwner.GetNamespace() != pod.GetNamespace() {
 			continue
