@@ -54,7 +54,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
     {
       title: "Secured",
       dataIndex: "message",
-      isNumeric: false,
+      isNumeric: true,
       render: d => {
         if (d.noIdentityMsg === "") {
           return <CheckCircleOutline className={classes.secure} />;
