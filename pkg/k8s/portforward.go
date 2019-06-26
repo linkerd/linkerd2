@@ -186,11 +186,11 @@ func (pf *PortForward) Init() error {
 		}
 	}()
 
-	// The `select` statement below depends on one of two outcomes from `pf.Run()`:
-	// 1) Succeed and block, causing a receive on `<-pf.Ready()`
+	// The `select` statement below depends on one of two outcomes from `pf.run()`:
+	// 1) Succeed and block, causing a receive on `<-pf.readyCh`
 	// 2) Return an err, causing a receive `<-failure`
 	select {
-	case <-pf.Ready():
+	case <-pf.readyCh:
 		log.Debug("Port forward initialised")
 	case err := <-failure:
 		log.Debugf("Port forward failed: %v", err)
@@ -198,13 +198,6 @@ func (pf *PortForward) Init() error {
 	}
 
 	return nil
-}
-
-// Ready returns a channel that will receive a message when the port-forward
-// connection is ready. Clients should block and wait for the message before
-// using the port-forward connection.
-func (pf *PortForward) Ready() <-chan struct{} {
-	return pf.readyCh
 }
 
 // Stop terminates the port-forward connection.
