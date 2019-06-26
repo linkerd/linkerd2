@@ -23,7 +23,6 @@ RUN curl -Lo /tmp/docker.deb https://download.docker.com/linux/debian/dists/stre
 RUN curl -Lo /tmp/go.tar.gz https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm -rf /tmp/go.tar.gz
-ENV GOPATH /go
 ENV PATH $PATH:/usr/local/go/bin
 
 RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
