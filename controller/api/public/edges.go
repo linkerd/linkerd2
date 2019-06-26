@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id)"
-	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, no_tls_reason)"
+	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id, namespace, no_tls_reason)"
+	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, namespace, no_tls_reason)"
 )
 
 var formatMsg = map[string]string{
@@ -129,12 +129,14 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 			}
 			edge := &pb.Edge{
 				Src: &pb.Resource{
-					Name: string(src[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: string(src[model.LabelName("namespace")]),
+					Name:      string(src[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
 				Dst: &pb.Resource{
-					Name: string(dst[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: string(src[model.LabelName("namespace")]),
+					Name:      string(dst[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
 				ClientId:      string(dst[model.LabelName("client_id")]),
 				ServerId:      string(src[model.LabelName("server_id")]),
