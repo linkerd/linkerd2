@@ -2,45 +2,33 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: dind
-# ---
-# kind: Service
-# apiVersion: v1
-# metadata:
-#   name: dind
-#   namespace: dind
-# spec:
-#   type: ClusterIP
-#   selector:
-#     app: dind
-#   ports:
-#   - name: dind
-#     port: 2375
-#     targetPort: 2375
+  name: l5d-builder
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dind
-  namespace: dind
+  name: l5d-builder
+  namespace: l5d-builder
 spec:
   selector:
     matchLabels:
-      app: dind
+      app: l5d-builder
   template:
     metadata:
       labels:
-        app: dind
+        app: l5d-builder
     spec:
       containers:
+      - image: gcr.io/linkerd-io/l5d-builder:latest
+        name: l5d-builder
+        env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
       - image: library/docker:18.09.6-dind
         name: dind
         env:
         - name: DOCKER_IN_DOCKER_ENABLED
           value: "true"
-        # ports:
-        # - containerPort: 2375
-        #   name: dind
         securityContext:
           privileged: true
         volumeMounts:
