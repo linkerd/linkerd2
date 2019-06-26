@@ -153,7 +153,7 @@ export class ResourceDetailBase extends React.Component {
 
     if (_indexOf(edgeDataAvailable, resource.type) > 0) {
       apiRequests = apiRequests.concat([
-        this.api.fetchEdges(resource.namespace, resource.type)
+        this.api.fetchEdges(resource.type)
       ]);
     }
 

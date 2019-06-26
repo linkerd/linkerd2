@@ -111,8 +111,8 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return apiFetch(servicesPath);
   };
 
-  const fetchEdges = (namespace, resourceType) => {
-    return apiFetch(edgesPath + "?namespace=" + namespace + "&resource_type=" + resourceType);
+  const fetchEdges = resourceType => {
+    return apiFetch(edgesPath + "?resource_type=" + resourceType + "&all_namespaces=true");
   };
 
   const getMetricsWindow = () => metricsWindow;

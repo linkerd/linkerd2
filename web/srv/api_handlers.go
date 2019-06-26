@@ -253,9 +253,11 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 }
 
 func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	trueStr := fmt.Sprintf("%t", true)
+
 	requestParams := util.EdgesRequestParams{
-		Namespace:    req.FormValue("namespace"),
-		ResourceType: req.FormValue("resource_type"),
+		AllNamespaces: req.FormValue("all_namespaces") == trueStr,
+		ResourceType:  req.FormValue("resource_type"),
 	}
 
 	edgesRequest, err := util.BuildEdgesRequest(requestParams)

@@ -16,14 +16,16 @@ import (
 )
 
 type edgesOptions struct {
-	namespace    string
-	outputFormat string
+	namespace     string
+	outputFormat  string
+	allNamespaces bool
 }
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:    "",
-		outputFormat: tableOutput,
+		namespace:     "",
+		outputFormat:  tableOutput,
+		allNamespaces: false,
 	}
 }
 
@@ -41,7 +43,7 @@ func newCmdEdges() *cobra.Command {
 		Short: "Display connections between resources, and Linkerd proxy identities",
 		Long: `Display connections between resources, and Linkerd proxy identities.
 
-  The RESOURCETYPE argument specifies the type of resource to display edges within. A namespace must be specified.
+  The RESOURCETYPE argument specifies the type of resource to display edges within.
 
   Examples:
   * deploy
@@ -58,8 +60,14 @@ func newCmdEdges() *cobra.Command {
   * pods
   * replicationcontrollers
   * statefulsets`,
-		Example: `  # Get all edges between pods in the test namespace.
-  linkerd edges po -n test`,
+		Example: `  # Get all edges between pods that either originate from or terminate in the demo namespace.
+  linkerd edges po -n test
+
+  # Get all edges between pods that either originate from or terminate in the default namespace.
+  linkerd edges po
+		
+  # Get all edges between pods in all namespaces.
+  linkerd edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,6 +109,7 @@ func newCmdEdges() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\"")
+	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns edges across all namespaces, ignoring the \"--namespace\" flag")
 	return cmd
 }
 
@@ -139,8 +148,9 @@ func buildEdgesRequests(resources []string, options *edgesOptions) ([]*pb.EdgesR
 	requests := make([]*pb.EdgesRequest, 0)
 	for _, target := range targets {
 		requestParams := util.EdgesRequestParams{
-			ResourceType: target.Type,
-			Namespace:    options.namespace,
+			ResourceType:  target.Type,
+			Namespace:     options.namespace,
+			AllNamespaces: options.allNamespaces,
 		}
 
 		req, err := util.BuildEdgesRequest(requestParams)

@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id)"
-	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, no_tls_reason)"
+	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id, namespace, no_tls_reason)"
+	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, namespace, dst_namespace, no_tls_reason)"
 )
 
 var formatMsg = map[string]string{
@@ -60,10 +60,10 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	if len(labelNames) != 2 {
 		return nil, errors.New("unexpected resource selector")
 	}
+	selectedNamespace := req.Selector.Resource.Namespace
 	resourceType := string(labelNames[1]) // skipping first name which is always namespace
-	labels := promQueryLabels(req.Selector.Resource)
-	labelsOutbound := labels.Merge(promDirectionLabels("outbound"))
-	labelsInbound := labels.Merge(promDirectionLabels("inbound"))
+	labelsOutbound := model.LabelSet(promDirectionLabels("outbound"))
+	labelsInbound := model.LabelSet(promDirectionLabels("inbound"))
 
 	// checking that data for the specified resource type exists
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, resourceType)
@@ -82,37 +82,71 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 		return nil, err
 	}
 
-	edge := processEdgeMetrics(inboundResult, outboundResult, resourceType)
+	edge := processEdgeMetrics(inboundResult, outboundResult, resourceType, selectedNamespace)
 	return edge, nil
 }
 
-func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*pb.Edge {
+func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNamespace string) []*pb.Edge {
 	edges := []*pb.Edge{}
 	dstIndex := map[model.LabelValue]model.Metric{}
 	srcIndex := map[model.LabelValue][]model.Metric{}
 	resourceReplacementInbound := resourceType
 	resourceReplacementOutbound := "dst_" + resourceType
 
+	allNamespaces := (len(selectedNamespace) == 0)
+
 	for _, sample := range inbound {
-		// skip any inbound results that do not have a client_id, because this means
-		// the communication was one-sided (i.e. a probe or another instance where
-		// the src/dst are not both known) in future the edges command will support
-		// one-sided edges
-		if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
-			key := sample.Metric[model.LabelName(resourceReplacementInbound)]
-			dstIndex[key] = sample.Metric
+
+		namespace := string(sample.Metric[model.LabelName("namespace")])
+
+		// first, check if namespace matches the request
+		if allNamespaces == true || namespace == selectedNamespace {
+
+			// then skip inbound results without a clientID because we cannot
+			// construct edge information
+			if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
+				key := sample.Metric[model.LabelName(resourceReplacementInbound)]
+				dstIndex[key] = sample.Metric
+			}
 		}
 	}
 
 	for _, sample := range outbound {
-		// skip any outbound results that do not have a server_id for same reason as
-		// above section
-		if _, ok := sample.Metric[model.LabelName("server_id")]; ok {
-			key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
-			if _, ok := srcIndex[key]; !ok {
-				srcIndex[key] = []model.Metric{}
+
+		namespace := string(sample.Metric[model.LabelName("namespace")])
+		dstNamespace := string(sample.Metric[model.LabelName("dst_namespace")])
+		resource := string(sample.Metric[model.LabelName(resourceType)])
+		dstResource := string(sample.Metric[model.LabelName(resourceReplacementOutbound)])
+
+		// first, check if SRC or DST namespaces match the request
+		if allNamespaces == true || namespace == selectedNamespace || dstNamespace == selectedNamespace {
+
+			// second, if secured, add key to srcIndex for matching
+			if _, ok := sample.Metric[model.LabelName("server_id")]; ok {
+				key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
+				if _, ok := srcIndex[key]; !ok {
+					srcIndex[key] = []model.Metric{}
+				}
+				srcIndex[key] = append(srcIndex[key], sample.Metric)
+
+				// third, construct unsecured edge if a resource and dstResource are present
+			} else if len(resource) > 0 && len(dstResource) > 0 {
+				msg := formatMsg[string(sample.Metric[model.LabelName("no_tls_reason")])]
+				edge := &pb.Edge{
+					Src: &pb.Resource{
+						Namespace: string(sample.Metric[model.LabelName("namespace")]),
+						Name:      string(sample.Metric[model.LabelName(resourceType)]),
+						Type:      resourceType,
+					},
+					Dst: &pb.Resource{
+						Namespace: string(sample.Metric[model.LabelName("dst_namespace")]),
+						Name:      string(sample.Metric[model.LabelName(resourceReplacementOutbound)]),
+						Type:      resourceType,
+					},
+					NoIdentityMsg: msg,
+				}
+				edges = append(edges, edge)
 			}
-			srcIndex[key] = append(srcIndex[key], sample.Metric)
 		}
 	}
 
@@ -129,12 +163,14 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 			}
 			edge := &pb.Edge{
 				Src: &pb.Resource{
-					Name: string(src[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: string(src[model.LabelName("namespace")]),
+					Name:      string(src[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
 				Dst: &pb.Resource{
-					Name: string(dst[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: string(dst[model.LabelName("namespace")]),
+					Name:      string(dst[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
 				ClientId:      string(dst[model.LabelName("client_id")]),
 				ServerId:      string(src[model.LabelName("server_id")]),
