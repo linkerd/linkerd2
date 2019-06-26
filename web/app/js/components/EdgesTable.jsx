@@ -1,113 +1,117 @@
 import BaseTable from './BaseTable.jsx';
+import CheckCircleOutline from '@material-ui/icons/CheckCircleOutline';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Tooltip from '@material-ui/core/Tooltip';
+import WarningIcon from '@material-ui/icons/Warning';
+import { directionColumn } from './util/TapUtils.jsx';
 import { processedEdgesPropType } from './util/EdgesUtils.jsx';
-import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
 
-const edgesColumnDefinitions = (PrefixedLink, namespace, type) => {
+const styles = theme => ({
+  secure: {
+    color: theme.status.dark.good
+  },
+  warning: {
+    color: theme.status.dark.warning
+  }
+});
+
+const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
   return [
     {
-      title: "Source",
-      dataIndex: "source",
+      title: " ",
+      dataIndex: "direction",
+      render: d => directionColumn(d.direction),
+    },
+    {
+      title: "Name",
+      dataIndex: "name",
       isNumeric: false,
-      filter: d => d.src.name,
+      filter: d => d.name,
       render: d => {
-        // check that the source is a k8s resource with a name we can link to
-        if (namespace && type && d.src && d.src.name) {
+        // check that the resource is a k8s resource with a name we can link to
+        if (namespace && type && d.name) {
           return (
-            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.src.name}`}>
-              {d.src.name}
+            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.name}`}>
+              {d.name}
             </PrefixedLink>
           );
         } else {
-          return d.src.name;
+          return d.name;
         }
       },
-      sorter: d => d.src.name + d.dst.name
+      sorter: d => d.name
     },
     {
-      title: "Destination",
-      dataIndex: "destination",
+      title: "Identity",
+      dataIndex: "identity",
       isNumeric: false,
-      filter: d => d.dst.name,
-      render: d => {
-        // check that the destination is a k8s resource with a name we can link to
-        if (namespace && type && d.dst && d.dst.name) {
-          return (
-            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.dst.name}`}>
-              {d.dst.name}
-            </PrefixedLink>
-          );
-        } else {
-          return d.dst.name;
-        }
-      },
-      sorter: d => d.dst.name + d.src.name
+      filter: d => d.identity,
+      render: d => d.identity ? `${d.identity.split('.')[0]}.${d.identity.split('.')[1]}` : null,
+      sorter: d => d.identity
     },
     {
-      title: "Client",
-      dataIndex: "client",
-      isNumeric: false,
-      filter: d => d.clientId,
-      render: d => d.clientId.split('.')[0] + '.' + d.clientId.split('.')[1],
-      sorter: d => d.clientId
-    },
-    {
-      title: "Server",
-      dataIndex: "server",
-      isNumeric: false,
-      filter: d => d.serverId,
-      render: d => d.serverId.split('.')[0] + '.' + d.serverId.split('.')[1],
-      sorter: d => d.serverId
-    },
-    {
-      title: "Message",
+      title: "Secured",
       dataIndex: "message",
-      isNumeric: false,
-      filter: d => d.noIdentityMsg,
-      render: d => d.noIdentityMsg,
-      sorter: d => d.noIdentityMsg
+      isNumeric: true,
+      render: d => {
+        if (d.noIdentityMsg === "") {
+          return <CheckCircleOutline className={classes.secure} />;
+        } else {
+          return (
+            <Tooltip title={d.noIdentityMsg}>
+              <WarningIcon className={classes.warning} />
+            </Tooltip>
+          );
+        }
+      }
     }
   ];
 };
 
-const tooltipText = `Edges show the source, destination name and identity
-  for proxied connections. If no identity is known, a message is displayed.`;
+const generateEdgesTableTitle = edges => {
+  let title = "Edges";
+  if (edges.length > 0) {
+    let identity = edges[0].direction === "INBOUND" ? edges[0].serverId : edges[0].clientId;
+    identity = identity.split('.')[0] + '.' + identity.split('.')[1];
+    title = `${title} (Identity: ${identity})`;
+  }
+  return title;
+};
 
 class EdgesTable extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       prefixedUrl: PropTypes.func.isRequired,
     }).isRequired,
+    classes: PropTypes.shape({}).isRequired,
     edges: PropTypes.arrayOf(processedEdgesPropType),
     namespace: PropTypes.string.isRequired,
-    title: PropTypes.string,
     type: PropTypes.string.isRequired
   };
 
   static defaultProps = {
     edges: [],
-    title: ""
   };
 
 
   render() {
-    const { edges, title, api, namespace, type } = this.props;
-    let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type);
+    const { edges, api, namespace, type, classes } = this.props;
+    let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
+    let edgesTableTitle = generateEdgesTableTitle(edges);
 
     return (
       <BaseTable
-        defaultOrderBy="source"
+        defaultOrderBy="name"
         enableFilter={true}
-        showTitleTooltip={true}
         tableRows={edges}
         tableColumns={edgesColumns}
         tableClassName="metric-table"
-        title={title}
-        titleTooltipText={tooltipText}
+        title={edgesTableTitle}
         padding="dense" />
     );
   }
 }
 
-export default withContext(EdgesTable);
+export default withStyles(styles)(EdgesTable);
