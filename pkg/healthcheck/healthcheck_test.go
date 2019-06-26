@@ -1959,12 +1959,12 @@ metadata:
 		}
 
 		expected := []string{
-			"pre-linkerd-global-resources no ClusterRoles exist: - ClusterRoles/cluster-role\n",
-			"pre-linkerd-global-resources no ClusterRoleBindings exist: - ClusterRoleBindings/cluster-role-binding\n",
-			"pre-linkerd-global-resources no CustomResourceDefinitions exist: - CustomResourceDefinitions/custom-resource-definition\n",
-			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: - MutatingWebhookConfigurations/mutating-webhook-configuration\n",
-			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: - ValidatingWebhookConfigurations/validating-webhook-configuration\n",
-			"pre-linkerd-global-resources no PodSecurityPolicies exist: - PodSecurityPolicies/pod-security-policy\n",
+			"pre-linkerd-global-resources no ClusterRoles exist: ClusterRoles found but should not exist: cluster-role",
+			"pre-linkerd-global-resources no ClusterRoleBindings exist: ClusterRoleBindings found but should not exist: cluster-role-binding",
+			"pre-linkerd-global-resources no CustomResourceDefinitions exist: CustomResourceDefinitions found but should not exist: custom-resource-definition",
+			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: MutatingWebhookConfigurations found but should not exist: mutating-webhook-configuration",
+			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: ValidatingWebhookConfigurations found but should not exist: validating-webhook-configuration",
+			"pre-linkerd-global-resources no PodSecurityPolicies exist: PodSecurityPolicies found but should not exist: pod-security-policy",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)

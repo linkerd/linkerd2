@@ -890,10 +890,7 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(shouldExist bool) error {
 	cm, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		if !shouldExist && kerrors.IsNotFound(err) {
-			return nil
-		}
+	if err != nil && !kerrors.IsNotFound(err) {
 		return err
 	}
 
@@ -1075,9 +1072,9 @@ func checkResources(resourceName string, objects []runtime.Object, expectedNames
 				if err != nil {
 					return err
 				}
-				resources += fmt.Sprintf("- %s/%s\n", resourceName, m.GetName())
+				resources += fmt.Sprintf("%s ", m.GetName())
 			}
-			return fmt.Errorf("%s", resources)
+			return fmt.Errorf("%s found but should not exist: %s", resourceName, strings.TrimSpace(resources))
 		}
 		return nil
 	}

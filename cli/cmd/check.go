@@ -227,15 +227,8 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 		}
 
 		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
-		if err := result.Err; err != nil {
-			errMsg := fmt.Sprintf("%s", err)
-
-			// indent multi-line error message
-			if n := strings.Count(errMsg, "\n"); n > 0 {
-				errMsg = strings.Replace(errMsg, "\n", "\n    ", n-1)
-			}
-			fmt.Fprintf(wout, "    %s\n", strings.TrimSpace(errMsg))
-
+		if result.Err != nil {
+			fmt.Fprintf(wout, "    %s\n", result.Err)
 			if result.HintAnchor != "" {
 				fmt.Fprintf(wout, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
 			}
