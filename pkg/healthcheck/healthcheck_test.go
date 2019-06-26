@@ -1959,108 +1959,15 @@ metadata:
 		}
 
 		expected := []string{
-			"pre-linkerd-global-resources no ClusterRoles exist: found 1 Linkerd ClusterRoles",
-			"pre-linkerd-global-resources no ClusterRoleBindings exist: found 1 Linkerd ClusterRoleBindings",
-			"pre-linkerd-global-resources no CustomResourceDefinitions exist: found 1 Linkerd CustomResourceDefinitions",
-			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: found 1 Linkerd MutatingWebhookConfigurations",
-			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: found 1 Linkerd ValidatingWebhookConfigurations",
-			"pre-linkerd-global-resources no PodSecurityPolicies exist: found 1 Linkerd PodSecurityPolicies",
+			"pre-linkerd-global-resources no ClusterRoles exist: - ClusterRoles/cluster-role\n",
+			"pre-linkerd-global-resources no ClusterRoleBindings exist: - ClusterRoleBindings/cluster-role-binding\n",
+			"pre-linkerd-global-resources no CustomResourceDefinitions exist: - CustomResourceDefinitions/custom-resource-definition\n",
+			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: - MutatingWebhookConfigurations/mutating-webhook-configuration\n",
+			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: - ValidatingWebhookConfigurations/validating-webhook-configuration\n",
+			"pre-linkerd-global-resources no PodSecurityPolicies exist: - PodSecurityPolicies/pod-security-policy\n",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
-		}
-	})
-}
-
-func TestLinkerdConfigNotExistsChecks(t *testing.T) {
-	hc := NewHealthChecker(
-		[]CategoryID{LinkerdConfigNotExistsChecks},
-		&Options{
-			ControlPlaneNamespace: "test-ns",
-		})
-
-	t.Run("namespace doesn't exist", func(t *testing.T) {
-		var err error
-		hc.kubeAPI, err = k8s.NewFakeAPI()
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-
-		observer := newObserver()
-		if hc.RunChecks(observer.resultFn) {
-			t.Errorf("Expect RunChecks to return false")
-		}
-
-		expected := []string{
-			"linkerd-config-config-map-not-exists control plane namespace exists: The \"test-ns\" namespace does not exist",
-		}
-		if !reflect.DeepEqual(observer.results, expected) {
-			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
-		}
-	})
-
-	t.Run("namespace exists", func(t *testing.T) {
-		var testCases = []struct {
-			testID       string
-			resources    []string
-			expected     []string
-			checksPassed bool
-		}{
-			{
-				testID: "'linkerd-config' config map does not exist",
-				resources: []string{
-					`apiVersion: v1
-kind: Namespace
-metadata:
-  name: test-ns`,
-				},
-				expected: []string{
-					"linkerd-config-config-map-not-exists control plane namespace exists",
-					"linkerd-config-config-map-not-exists 'linkerd-config' config map does not exist",
-				},
-				checksPassed: true,
-			},
-			{
-				testID: "'linkerd-config' config map exists",
-				resources: []string{
-					`apiVersion: v1
-kind: Namespace
-metadata:
-  name: test-ns`,
-					`apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: linkerd-config
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns`,
-				},
-				expected: []string{
-					"linkerd-config-config-map-not-exists control plane namespace exists",
-					"linkerd-config-config-map-not-exists 'linkerd-config' config map does not exist: found existing 'linkerd-config' config map",
-				},
-				checksPassed: false,
-			},
-		}
-
-		for _, testCase := range testCases {
-			testCase := testCase
-			t.Run(fmt.Sprint(testCase.testID), func(t *testing.T) {
-				var err error
-				hc.kubeAPI, err = k8s.NewFakeAPI(testCase.resources...)
-				if err != nil {
-					t.Fatalf("Unexpected error: %s", err)
-				}
-
-				observer := newObserver()
-				if hc.RunChecks(observer.resultFn) != testCase.checksPassed {
-					t.Errorf("Expect RunChecks to return %t", testCase.checksPassed)
-				}
-
-				if !reflect.DeepEqual(observer.results, testCase.expected) {
-					t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", testCase.expected, observer.results)
-				}
-			})
 		}
 	})
 }

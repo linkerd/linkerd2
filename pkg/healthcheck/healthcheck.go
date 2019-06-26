@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -21,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,12 +62,6 @@ const (
 	// and pod security policies during the pre-install phase. This check is used
 	// to determine if a control plane is already installed.
 	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
-
-	// LinkerdConfigNotExistsChecks adds a series of checks to determine
-	// if the `linkerd-config` config map already exist. In order to install a
-	// control plane in a namespace, this config map must not exist in that
-	// namespace.
-	LinkerdConfigNotExistsChecks CategoryID = "linkerd-config-config-map-not-exists"
 
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
@@ -388,14 +381,6 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
 					check: func(context.Context) error {
-						if hc.kubeAPI == nil {
-							var err error
-							hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
-							if err != nil {
-								return err
-							}
-						}
-
 						return hc.checkClusterRoles(false)
 					},
 				},
@@ -506,41 +491,6 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdConfigNotExistsChecks,
-			checkers: []checker{
-				{
-					description: "control plane namespace exists",
-					hintAnchor:  "l5d-control-plane-ns-exists",
-					fatal:       true,
-					check: func(context.Context) error {
-						if hc.kubeAPI == nil {
-							var err error
-							hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
-							if err != nil {
-								return err
-							}
-						}
-
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
-					},
-				},
-				{
-					description: "'linkerd-config' config map does not exist",
-					hintAnchor:  "l5d-linkerd-config-not-exists",
-					fatal:       true,
-					check: func(context.Context) error {
-						// to successfully install the control plane, the `linkerd-config`
-						// config map must not exist.
-						if err := hc.checkLinkerdConfigConfigMap(); !kerrors.IsNotFound(err) {
-							return fmt.Errorf("found existing 'linkerd-config' config map")
-						}
-
-						return nil
-					},
-				},
-			},
-		},
-		{
 			id: LinkerdControlPlaneExistenceChecks,
 			checkers: []checker{
 				{
@@ -548,11 +498,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(context.Context) error {
-						if err := hc.checkLinkerdConfigConfigMap(); err != nil {
-							return fmt.Errorf("%s", err)
-						}
-
-						return nil
+						return hc.checkLinkerdConfigConfigMap(true)
 					},
 				},
 				{
@@ -942,13 +888,16 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap() error {
+func (hc *HealthChecker) checkLinkerdConfigConfigMap(shouldExist bool) error {
 	cm, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
+		if !shouldExist && kerrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
-	return checkResources("ConfigMaps", []runtime.Object{cm}, []string{k8s.ConfigConfigMapName})
+	return checkResources("ConfigMaps", []runtime.Object{cm}, []string{k8s.ConfigConfigMapName}, shouldExist)
 }
 
 // CheckNamespace checks whether the given namespace exists, and returns an
@@ -1006,14 +955,7 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd ClusterRoles", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("ClusterRoles", objects, hc.expectedRBACNames())
+	return checkResources("ClusterRoles", objects, hc.expectedRBACNames(), shouldExist)
 }
 
 func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
@@ -1031,14 +973,7 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd ClusterRoleBindings", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames())
+	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
 func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
@@ -1056,14 +991,7 @@ func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd ServiceAccounts", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames())
+	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(), shouldExist)
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
@@ -1081,14 +1009,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error 
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd CustomResourceDefinitions", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"})
+	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
 }
 
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {
@@ -1106,14 +1027,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) er
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd MutatingWebhookConfigurations", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName})
+	return checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName}, shouldExist)
 }
 
 func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) error {
@@ -1131,14 +1045,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) 
 		objects = append(objects, &item)
 	}
 
-	if !shouldExist {
-		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd ValidatingWebhookConfigurations", len(objects))
-		}
-		return nil
-	}
-
-	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName})
+	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
 func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
@@ -1156,17 +1063,25 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
+	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
+}
+
+func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
 	if !shouldExist {
 		if len(objects) > 0 {
-			return fmt.Errorf("found %d Linkerd PodSecurityPolicies", len(objects))
+			resources := ""
+			for _, obj := range objects {
+				m, err := meta.Accessor(obj)
+				if err != nil {
+					return err
+				}
+				resources += fmt.Sprintf("- %s/%s\n", resourceName, m.GetName())
+			}
+			return fmt.Errorf("%s", resources)
 		}
 		return nil
 	}
 
-	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)})
-}
-
-func checkResources(resourceName string, objects []runtime.Object, expectedNames []string) error {
 	expected := map[string]bool{}
 	for _, name := range expectedNames {
 		expected[name] = false
