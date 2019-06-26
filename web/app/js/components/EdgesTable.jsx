@@ -48,7 +48,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       dataIndex: "identity",
       isNumeric: false,
       filter: d => d.identity,
-      render: d => d.identity ? d.identity.split('.')[0] + '.' + d.identity.split('.')[1] : null,
+      render: d => d.identity ? `${d.identity.split('.')[0]}.${d.identity.split('.')[1]}` : null,
       sorter: d => d.identity
     },
     {
@@ -72,11 +72,10 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
 
 const generateEdgesTableTitle = edges => {
   let title = "Edges";
-  let identity = "";
   if (edges.length > 0) {
-    edges[0].direction === "INBOUND" ? identity = edges[0].serverId : identity = edges[0].clientId;
+    let identity = edges[0].direction === "INBOUND" ? edges[0].serverId : edges[0].clientId;
     identity = identity.split('.')[0] + '.' + identity.split('.')[1];
-    title = title + " (Identity: " + identity + ")";
+    title = `${title} (Identity: ${identity})`;
   }
   return title;
 };
