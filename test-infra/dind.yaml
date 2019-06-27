@@ -1,0 +1,69 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dind
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dind
+  namespace: dind
+spec:
+  type: ClusterIP
+  selector:
+    app: dind
+  ports:
+  - name: dind
+    port: 2375
+    targetPort: 2375
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dind
+  namespace: dind
+spec:
+  selector:
+    matchLabels:
+      app: dind
+  template:
+    metadata:
+      labels:
+        app: dind
+    spec:
+      containers:
+      - image: library/docker:18.09.6-dind
+        name: dind
+        env:
+        - name: DOCKER_IN_DOCKER_ENABLED
+          value: "true"
+        securityContext:
+          privileged: true
+        ports:
+        - name: dind
+          containerPort: 2375
+        volumeMounts:
+        - name: dind-storage
+          mountPath: /var/lib/docker
+        - name: docker-graph
+          mountPath: /docker-graph
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+      volumes:
+      - name: dind-storage
+        emptyDir: {}
+      - name: docker-graph
+        emptyDir:
+          medium: "Memory"
+      - name: modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+          type: Directory
