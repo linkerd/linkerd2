@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"text/tabwriter"
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -61,7 +61,11 @@ func newCmdEndpoints() *cobra.Command {
   linkerd endpoints emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
 
   # get that same information in json format
-  linkerd endpoints -o json emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80`
+  linkerd endpoints -o json emoji-svc.emojivoto.svc.cluster.local:8080 web-svc.emojivoto.svc.cluster.local:80
+
+  # get the endpoints for authorities in Linkerd's control-plane itself
+  linkerd endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
+  linkerd endpoints linkerd-web.linkerd.svc.cluster.local:8084`
 
 	cmd := &cobra.Command{
 		Use:     "endpoints [flags] authorities",
@@ -70,19 +74,15 @@ func newCmdEndpoints() *cobra.Command {
 		Long: `Introspect Linkerd's service discovery state.
 
 This command provides debug information about the internal state of the
-control-plane's destination container. Note that this cache of service discovery
-information is populated on-demand via linkerd-proxy requests. This command
-will return "No endpoints found." until a linkerd-proxy begins routing
-requests.`,
+control-plane's destination container. It queries the same Destination service
+endpoint as the linkerd-proxy's, and returns the addresses associated with that
+destination.`,
 		Example: example,
+		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := options.validate()
 			if err != nil {
 				return err
-			}
-
-			if len(args) < 1 {
-				return errors.New("please specify at least one authority")
 			}
 
 			endpoints, err := requestEndpointsFromAPI(checkPublicAPIClientOrExit(), args)
@@ -104,12 +104,16 @@ requests.`,
 
 func requestEndpointsFromAPI(client public.APIClient, authorities []string) (endpointsInfo, error) {
 	info := make(endpointsInfo)
-	events := make(chan *destinationPb.Update)
-	errors := make(chan error)
+	// buffered channels to avoid blocking
+	events := make(chan *destinationPb.Update, len(authorities))
+	errors := make(chan error, len(authorities))
+	var wg sync.WaitGroup
 
 	for _, authority := range authorities {
-		if len(errors) == 0 {
-			go func(authority string) {
+		wg.Add(1)
+		go func(authority string) {
+			defer wg.Done()
+			if len(errors) == 0 {
 				dest := &destinationPb.GetDestination{
 					Scheme: "http:",
 					Path:   authority,
@@ -121,15 +125,22 @@ func requestEndpointsFromAPI(client public.APIClient, authorities []string) (end
 					return
 				}
 
-				event, _ := rsp.Recv()
+				event, err := rsp.Recv()
+				if err != nil {
+					errors <- err
+					return
+				}
 				events <- event
-			}(authority)
-		}
+			}
+		}(authority)
 	}
+	// Block till all goroutines above are done
+	wg.Wait()
 
 	for i := 0; i < len(authorities); i++ {
 		select {
 		case err := <-errors:
+			// we only care about the first error
 			return nil, err
 		case event := <-events:
 			addressSet := event.GetAdd()
