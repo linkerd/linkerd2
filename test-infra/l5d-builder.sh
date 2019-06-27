@@ -6,7 +6,16 @@ set -eu
 # cd $GOPATH/src/github.com/$REPO_OWNER/$REPO_NAME
 
 CLUSTER=$PROW_JOB_ID
-kind create cluster --name=$CLUSTER
+cat << EOF |
+kind: Cluster
+apiVersion: kind.sigs.k8s.io/v1alpha3
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+EOF
+kind create cluster --name=$CLUSTER --config=/dev/stdin
+# kind create cluster --name=$CLUSTER
 KINDCONFIG=$(kind get kubeconfig-path --name=$CLUSTER)
 POD=$(kubectl -n dind get po --selector=app=dind -o jsonpath='{.items[*].metadata.name}')
 KINDSERVER=$(kubectl --kubeconfig=$KINDCONFIG config view -o jsonpath='{.clusters[*].cluster.server}')
