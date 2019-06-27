@@ -1953,6 +1953,8 @@ spec:
         ports:
         - containerPort: 8443
           name: proxy-injector
+        - containerPort: 9995
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -2190,6 +2192,8 @@ spec:
         ports:
         - containerPort: 8443
           name: sp-validator
+        - containerPort: 9997
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
