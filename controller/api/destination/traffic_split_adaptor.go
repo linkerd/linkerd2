@@ -38,10 +38,11 @@ func (tsa *trafficSplitAdaptor) Update(profile *sp.ServiceProfile) {
 }
 
 func (tsa *trafficSplitAdaptor) UpdateTrafficSplit(split *ts.TrafficSplit) {
-	if tsa.split != split {
-		tsa.split = split
-		tsa.publish()
+	if tsa.split == nil && split == nil {
+		return
 	}
+	tsa.split = split
+	tsa.publish()
 }
 
 func (tsa *trafficSplitAdaptor) publish() {
