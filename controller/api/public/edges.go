@@ -62,8 +62,8 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	}
 	selectedNamespace := req.Selector.Resource.Namespace
 	resourceType := string(labelNames[1]) // skipping first name which is always namespace
-	labelsOutbound := model.LabelSet(promDirectionLabels("outbound"))
-	labelsInbound := model.LabelSet(promDirectionLabels("inbound"))
+	labelsOutbound := promDirectionLabels("outbound")
+	labelsInbound := promDirectionLabels("inbound")
 
 	// checking that data for the specified resource type exists
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, resourceType)
@@ -93,88 +93,88 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 	resourceReplacementInbound := resourceType
 	resourceReplacementOutbound := "dst_" + resourceType
 
-	allNamespaces := (len(selectedNamespace) == 0)
-
 	for _, sample := range inbound {
-
-		namespace := string(sample.Metric[model.LabelName("namespace")])
-
-		// first, check if namespace matches the request
-		if allNamespaces == true || namespace == selectedNamespace {
-
-			// then skip inbound results without a clientID because we cannot
-			// construct edge information
-			if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
-				key := sample.Metric[model.LabelName(resourceReplacementInbound)]
-				dstIndex[key] = sample.Metric
-			}
+		// skip inbound results without a clientID because we cannot construct edge
+		// information
+		if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
+			key := sample.Metric[model.LabelName(resourceReplacementInbound)]
+			dstIndex[key] = sample.Metric
 		}
 	}
 
 	for _, sample := range outbound {
+		key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
+		if _, ok := srcIndex[key]; !ok {
+			srcIndex[key] = []model.Metric{}
+		}
+		srcIndex[key] = append(srcIndex[key], sample.Metric)
+	}
 
-		namespace := string(sample.Metric[model.LabelName("namespace")])
-		dstNamespace := string(sample.Metric[model.LabelName("dst_namespace")])
-		resource := string(sample.Metric[model.LabelName(resourceType)])
-		dstResource := string(sample.Metric[model.LabelName(resourceReplacementOutbound)])
+	for key, sources := range srcIndex {
+		for _, src := range sources {
+			srcNamespace := string(src[model.LabelName("namespace")])
 
-		// first, check if SRC or DST namespaces match the request
-		if allNamespaces == true || namespace == selectedNamespace || dstNamespace == selectedNamespace {
+			dst, ok := dstIndex[key]
 
-			// second, if secured, add key to srcIndex for matching
-			if _, ok := sample.Metric[model.LabelName("server_id")]; ok {
-				key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
-				if _, ok := srcIndex[key]; !ok {
-					srcIndex[key] = []model.Metric{}
+			// if no destination, build edge entirely from source data
+			if !ok {
+				dstNamespace := string(src[model.LabelName("dst_namespace")])
+
+				// skip if selected namespace is given and neither the source nor
+				// destination is in the selected namespace
+				if selectedNamespace != "" && srcNamespace != selectedNamespace &&
+					dstNamespace != selectedNamespace {
+					continue
 				}
-				srcIndex[key] = append(srcIndex[key], sample.Metric)
 
-				// third, construct unsecured edge if a resource and dstResource are present
-			} else if len(resource) > 0 && len(dstResource) > 0 {
-				msg := formatMsg[string(sample.Metric[model.LabelName("no_tls_reason")])]
+				srcResource := string(src[model.LabelName(resourceType)])
+				dstResource := string(src[model.LabelName(resourceReplacementOutbound)])
+
+				// skip if source or destination resource is not present
+				if srcResource == "" || dstResource == "" {
+					continue
+				}
+
+				msg := formatMsg[string(src[model.LabelName("no_tls_reason")])]
 				edge := &pb.Edge{
 					Src: &pb.Resource{
-						Namespace: string(sample.Metric[model.LabelName("namespace")]),
-						Name:      string(sample.Metric[model.LabelName(resourceType)]),
+						Namespace: srcNamespace,
+						Name:      srcResource,
 						Type:      resourceType,
 					},
 					Dst: &pb.Resource{
-						Namespace: string(sample.Metric[model.LabelName("dst_namespace")]),
-						Name:      string(sample.Metric[model.LabelName(resourceReplacementOutbound)]),
+						Namespace: dstNamespace,
+						Name:      dstResource,
 						Type:      resourceType,
 					},
 					NoIdentityMsg: msg,
 				}
 				edges = append(edges, edge)
-			}
-		}
-	}
-
-	for key, sources := range srcIndex {
-		for _, src := range sources {
-			dst, ok := dstIndex[key]
-			if !ok {
-				log.Errorf("missing resource in destination metrics: %s", key)
 				continue
 			}
-			msg := ""
-			if val, ok := src[model.LabelName("no_tls_reason")]; ok {
-				msg = formatMsg[string(val)]
+
+			dstNamespace := string(dst[model.LabelName("namespace")])
+
+			// skip if selected namespace is given and neither the source nor
+			// destination is in the selected namespace
+			if selectedNamespace != "" && srcNamespace != selectedNamespace &&
+				dstNamespace != selectedNamespace {
+				continue
 			}
+
 			edge := &pb.Edge{
 				Src: &pb.Resource{
-					Namespace: string(src[model.LabelName("namespace")]),
+					Namespace: srcNamespace,
 					Name:      string(src[model.LabelName(resourceType)]),
 					Type:      resourceType,
 				},
 				Dst: &pb.Resource{
-					Namespace: string(dst[model.LabelName("namespace")]),
+					Namespace: dstNamespace,
 					Name:      string(dst[model.LabelName(resourceType)]),
 					Type:      resourceType,
 				},
-				ClientId:      string(dst[model.LabelName("client_id")]),
-				ServerId:      string(src[model.LabelName("server_id")]),
-				NoIdentityMsg: msg,
+				ClientId: string(dst[model.LabelName("client_id")]),
+				ServerId: string(src[model.LabelName("server_id")]),
 			}
 			edges = append(edges, edge)
 		}
