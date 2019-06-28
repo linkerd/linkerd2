@@ -164,7 +164,7 @@ const (
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 
-	errMsgGlobalResourcesExist           = "Can't install the Linkerd control plane in the '%s' namespace. Global resources from an existing Linkerd installation detected:\n%s\nRemove these resources, or use the --ignore-cluster flag to overwrite them.\n"
+	errMsgGlobalResourcesExist           = "Can't install the Linkerd control plane in the '%s' namespace. Global resources from an existing Linkerd installation detected:\n%s\n\nRemove these resources, or use the --ignore-cluster flag to overwrite them.\n"
 	errMsgLinkerdConfigConfigMapNotFound = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nIf this is expected, use the --ignore-cluster flag to continue the installation.\n"
 	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
@@ -872,7 +872,7 @@ func errIfGlobalResourcesExist() error {
 	})
 
 	if len(errMsgs) > 0 {
-		return errors.New(strings.Join(errMsgs, ","))
+		return errors.New(strings.Join(errMsgs, "\n"))
 	}
 
 	return nil
