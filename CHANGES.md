@@ -1,8 +1,8 @@
 ## edge-19.6.4
 
 This release adds support for the SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
-API.  Creating a TrafficSplit resource will cause Linkerd to split traffic
-between the specified backend services.  Please see [the spec](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+API. Creating a TrafficSplit resource will cause Linkerd to split traffic
+between the specified backend services. Please see [the spec](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
 for more details.
 
 * CLI
