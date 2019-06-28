@@ -143,21 +143,22 @@ func read(path string) ([]io.Reader, error) {
 	if path == "-" {
 		in = append(in, os.Stdin)
 	} else if isValidURL(path) {
-		var resp *http.Response
-		resp, err = http.Get(path)
+		resp, err := http.Get(path)
 		if err != nil {
 			return nil, err
 		}
 
-		if resp.StatusCode == 404 {
-			return nil, errors.New("Couldn't get the file from the specified URL")
+		if resp.StatusCode != http.StatusOK {
+			return nil, errors.New(fmt.Sprintf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode))
 		}
 
 		// Save to a buffer, so that response can be closed here
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 		resp.Body.Close()
-
 		in = append(in, buf)
 	} else {
 		in, err = walk(path)
