@@ -11,6 +11,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -23,6 +24,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -41,6 +43,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 ---
 kind: Secret
 apiVersion: v1
@@ -50,6 +53,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{ .CreatedByAnnotation }}: {{ .CliVersion }}
 type: Opaque
@@ -64,6 +68,7 @@ metadata:
   labels:
     {{ .ControllerComponentLabel }}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:

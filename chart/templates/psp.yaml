@@ -10,6 +10,7 @@ metadata:
   name: linkerd-{{.Namespace}}-control-plane
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -52,6 +53,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -66,6 +68,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 roleRef:
   kind: Role
   name: linkerd-psp

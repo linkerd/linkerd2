@@ -939,7 +939,7 @@ func expectedServiceAccountNames() []string {
 
 func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(options)
 	if err != nil {
@@ -957,7 +957,7 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 
 func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(options)
 	if err != nil {
@@ -975,7 +975,7 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 
 func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(options)
 	if err != nil {
@@ -993,7 +993,7 @@ func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(options)
 	if err != nil {
@@ -1011,7 +1011,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error 
 
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(options)
 	if err != nil {
@@ -1029,7 +1029,7 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) er
 
 func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(options)
 	if err != nil {
@@ -1047,7 +1047,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) 
 
 func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	options := metav1.ListOptions{
-		LabelSelector: k8s.ControllerNSLabel,
+		LabelSelector: k8s.SharedComponentLabel,
 	}
 	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(options)
 	if err != nil {

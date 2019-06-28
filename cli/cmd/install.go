@@ -50,6 +50,7 @@ type (
 		PrometheusLogLevel       string
 		ControllerComponentLabel string
 		ControllerNamespaceLabel string
+		SharedComponentLabel     string
 		CreatedByAnnotation      string
 		ProxyContainerName       string
 		ProxyInjectAnnotation    string
@@ -585,6 +586,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		ControllerComponentLabel: k8s.ControllerComponentLabel,
 		ControllerNamespaceLabel: k8s.ControllerNSLabel,
+		SharedComponentLabel:     k8s.SharedComponentLabel,
 		ProxyContainerName:       k8s.ProxyContainerName,
 		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
 		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,

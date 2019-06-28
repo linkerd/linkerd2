@@ -12,6 +12,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: grafana
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
@@ -69,6 +70,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: grafana
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -88,6 +90,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: grafana
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

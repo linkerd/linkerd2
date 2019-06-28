@@ -11,6 +11,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -29,6 +30,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -47,6 +49,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 ---
 kind: Secret
 apiVersion: v1
@@ -54,8 +57,9 @@ metadata:
   name: linkerd-proxy-injector-tls
   namespace: {{ .Namespace }}
   labels:
-    {{ .ControllerComponentLabel }}: proxy-injector
+    {{.ControllerComponentLabel}}: proxy-injector
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{ .CreatedByAnnotation }}: {{ .CliVersion }}
 type: Opaque
@@ -68,8 +72,9 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    {{ .ControllerComponentLabel }}: proxy-injector
+    {{.ControllerComponentLabel}}: proxy-injector
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:

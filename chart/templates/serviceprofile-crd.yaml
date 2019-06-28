@@ -11,7 +11,7 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "true"
 spec:
   group: linkerd.io
   version: v1alpha1

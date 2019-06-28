@@ -12,4 +12,5 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: grafana
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 {{- end}}

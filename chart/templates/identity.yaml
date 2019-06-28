@@ -14,6 +14,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
     {{- if .Identity.Issuer.CrtExpiryAnnotation}}
@@ -32,6 +33,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -51,6 +53,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

@@ -11,6 +11,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: tap
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces"]
@@ -29,6 +30,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: tap
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -46,4 +48,5 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: tap
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 {{end -}}

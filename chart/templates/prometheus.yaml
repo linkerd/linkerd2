@@ -12,6 +12,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 data:
@@ -101,6 +102,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -120,6 +122,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

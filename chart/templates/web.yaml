@@ -12,6 +12,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -34,6 +35,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

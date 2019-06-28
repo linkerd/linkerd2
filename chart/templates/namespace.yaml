@@ -12,4 +12,5 @@ metadata:
     {{.ProxyInjectAnnotation}}: {{.ProxyInjectDisabled}}
   labels:
     {{.LinkerdNamespaceLabel}}: "true"
+    {{.SharedComponentLabel}}: "false"
 {{end -}}

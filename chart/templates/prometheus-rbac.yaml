@@ -11,6 +11,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -23,6 +24,7 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -40,4 +42,5 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.SharedComponentLabel}}: "false"
 {{- end}}
