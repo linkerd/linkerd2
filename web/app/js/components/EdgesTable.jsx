@@ -25,6 +25,18 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       render: d => directionColumn(d.direction),
     },
     {
+      title: "Namespace",
+      dataIndex: "namespace",
+      isNumeric: false,
+      filter: d => d.namespace,
+      render: d => (
+        <PrefixedLink to={`/namespaces/${d.namespace}`}>
+          {d.namespace}
+        </PrefixedLink>
+      ),
+      sorter: d => d.namespace
+    },
+    {
       title: "Name",
       dataIndex: "name",
       isNumeric: false,
@@ -48,7 +60,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       dataIndex: "identity",
       isNumeric: false,
       filter: d => d.identity,
-      render: d => d.identity ? `${d.identity.split('.')[0]}.${d.identity.split('.')[1]}` : null,
+      render: d => d.identity !== "" ? `${d.identity.split('.')[0]}.${d.identity.split('.')[1]}` : null,
       sorter: d => d.identity
     },
     {
@@ -74,8 +86,10 @@ const generateEdgesTableTitle = edges => {
   let title = "Edges";
   if (edges.length > 0) {
     let identity = edges[0].direction === "INBOUND" ? edges[0].serverId : edges[0].clientId;
-    identity = identity.split('.')[0] + '.' + identity.split('.')[1];
-    title = `${title} (Identity: ${identity})`;
+    if (identity) {
+      identity = identity.split('.')[0] + '.' + identity.split('.')[1];
+      title = `${title} (Identity: ${identity})`;
+    }
   }
   return title;
 };

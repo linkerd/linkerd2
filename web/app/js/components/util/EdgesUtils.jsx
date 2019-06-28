@@ -18,6 +18,7 @@ export const processEdges = (rawEdges, resourceName) => {
       edge.direction = "OUTBOUND";
       edge.identity = edge.serverId;
       edge.name = edge.dst.name;
+      edge.namespace = edge.dst.namespace;
       edge.key = edge.dst.name + edge.src.name;
       edges.push(edge);
     } else if (_startsWith(edge.dst.name, resourceName)) {
@@ -25,6 +26,7 @@ export const processEdges = (rawEdges, resourceName) => {
       edge.direction = "INBOUND";
       edge.identity = edge.clientId;
       edge.name = edge.src.name;
+      edge.namespace = edge.src.namespace;
       edge.key = edge.src.name + edge.dst.name;
       edges.push(edge);
     }
