@@ -1,27 +1,12 @@
 package watcher
 
 import (
-	"reflect"
 	"testing"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
-
-type bufferingProfileListener struct {
-	profiles []*sp.ServiceProfile
-}
-
-func newBufferingProfileListener() *bufferingProfileListener {
-	return &bufferingProfileListener{
-		profiles: []*sp.ServiceProfile{},
-	}
-}
-
-func (bpl *bufferingProfileListener) Update(profile *sp.ServiceProfile) {
-	bpl.profiles = append(bpl.profiles, profile)
-}
 
 func TestProfileWatcher(t *testing.T) {
 	for _, tt := range []struct {
@@ -93,13 +78,13 @@ spec:
 
 			k8sAPI.Sync()
 
-			listener := newBufferingProfileListener()
+			listener := NewBufferingProfileListener()
 
 			watcher.Subscribe(tt.authority, tt.contextToken, listener)
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
 
-			for _, profile := range listener.profiles {
+			for _, profile := range listener.Profiles {
 				if profile == nil {
 					actualProfiles = append(actualProfiles, nil)
 				} else {
@@ -107,9 +92,7 @@ spec:
 				}
 			}
 
-			if !reflect.DeepEqual(actualProfiles, tt.expectedProfiles) {
-				t.Fatalf("Expected profiles %v, got %v", tt.expectedProfiles, listener.profiles)
-			}
+			testCompare(t, tt.expectedProfiles, actualProfiles)
 		})
 	}
 }

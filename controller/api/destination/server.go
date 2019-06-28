@@ -2,7 +2,6 @@ package destination
 
 import (
 	"context"
-	"fmt"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -11,13 +10,16 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 type (
 	server struct {
-		endpoints *watcher.EndpointsWatcher
-		profiles  *watcher.ProfileWatcher
+		endpoints     *watcher.EndpointsWatcher
+		profiles      *watcher.ProfileWatcher
+		trafficSplits *watcher.TrafficSplitWatcher
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -54,10 +56,12 @@ func NewServer(
 	})
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
+	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 
 	srv := server{
 		endpoints,
 		profiles,
+		trafficSplits,
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -118,9 +122,30 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	log.Debugf("GetProfile(%+v)", dest)
 
+	// We build up the pipeline of profile updaters backwards, starting from
+	// the translator which takes profile updates, translates them to protobuf
+	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
-	primary, secondary := newFallbackProfileListener(translator)
+	service, port, err := watcher.GetServiceAndPort(dest.GetPath())
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	}
+
+	// The adaptor merges profile updates with traffic split updates and
+	// publishes the result to the translator.
+	tsAdaptor := newTrafficSplitAdaptor(translator, service, port)
+
+	// Subscribe the adaptor to traffic split updates.
+	err = s.trafficSplits.Subscribe(service, tsAdaptor)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Invalid authority [%s]: %s", dest.GetPath(), err)
+	}
+	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
+
+	// The fallback accepts updates from a primary and secondary source and
+	// passes the appropriate profile updates to the adaptor.
+	primary, secondary := newFallbackProfileListener(tsAdaptor)
 
 	// If we have a context token, we create two subscriptions: one with the
 	// context token which sends updates to the primary listener and one without
@@ -136,7 +161,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		defer s.profiles.Unsubscribe(dest.GetPath(), dest.GetContextToken(), primary)
 	}
 
-	err := s.profiles.Subscribe(dest.GetPath(), "", secondary)
+	err = s.profiles.Subscribe(dest.GetPath(), "", secondary)
 	if err != nil {
 		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
 		return err
@@ -154,5 +179,5 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
 	s.log.Debugf("serving endpoints request")
-	return nil, fmt.Errorf("Not implemented")
+	return nil, status.Error(codes.Unimplemented, "Not implemented")
 }
