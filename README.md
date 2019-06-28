@@ -51,6 +51,12 @@ contributing changes.
 This project is for everyone. We ask that our users and contributors take a few
 minutes to review our [code of conduct][coc].
 
+## Security
+
+### Security Audit
+
+A third party security audit was performed by Cure53. You can see the full report [here](SECURITY_AUDIT.pdf).
+
 ## License
 
 Copyright 2019, Linkerd Authors. All rights reserved.
