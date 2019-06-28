@@ -31,12 +31,13 @@ const (
 	ControllerComponentLabel = Prefix + "/control-plane-component"
 
 	// SharedComponentLabel is used to identify if a resource is a shared global
-	// resource e.g. CRD and PSP. All Linkerd resources should have this label.
+	// resource e.g. CRD. All Linkerd resources should have this label with its value
+	// set to either 'true' or 'false'.
 	SharedComponentLabel = Prefix + "/shared-component"
 
 	// ControllerNSLabel is injected into mesh-enabled apps, identifying the
-	// namespace of the Linkerd control plane. All non-shared resources should
-	// have this label.
+	// namespace of the Linkerd control plane. In addition to linkerd.io/shared-component,
+	// all non-shared resources should have this label.
 	ControllerNSLabel = Prefix + "/control-plane-ns"
 
 	// ProxyDeploymentLabel is injected into mesh-enabled apps, identifying the
