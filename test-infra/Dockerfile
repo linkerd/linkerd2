@@ -6,6 +6,7 @@ RUN apt-get update \
       build-essential \
       ca-certificates \
       git \
+      procps \
     && rm -rf /var/lib/apt/lists/*
 
 # should match Dockerfile-base Debian version
@@ -31,8 +32,5 @@ RUN chmod +x /usr/local/bin/kubectl
 RUN curl -Lo /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64
 RUN chmod +x /usr/local/bin/kind
 
-COPY l5d-builder.sh /usr/local/bin/
-
-ENTRYPOINT ["l5d-builder.sh"]
+ENTRYPOINT ["/bin/bash"]
 CMD []
-
