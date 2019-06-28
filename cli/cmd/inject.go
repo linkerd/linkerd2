@@ -56,8 +56,8 @@ sub-folders, or coming from stdin.`,
 		Example: `  # Inject all the deployments in the default namespace.
   kubectl get deploy -o yaml | linkerd inject - | kubectl apply -f -
 
-  # Download a resource and inject it through stdin.
-  curl http://url.to/yml | linkerd inject - | kubectl apply -f -
+  # Injecting a file from a remote URL
+  linkerd inject http://url.to/yml | kubectl apply -f -
 
   # Inject all the resources inside a folder and its sub-folders.
   linkerd inject <folder> | kubectl apply -f -`,
