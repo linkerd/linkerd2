@@ -10,7 +10,7 @@ for more details.
     into different namespaces
   * Added support for passing a URL directly to `linkerd inject` (thanks
     @Pothulapati!)
-  * Added a `--all-namespaces` flag to `linkerd edges`
+  * Added the `--all-namespaces` flag to `linkerd edges`
 * Controller
   * Added support for the SMI TrafficSplit API which allows users to define
     traffic splits in TrafficSplit custom resources
