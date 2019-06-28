@@ -46,6 +46,7 @@ func TestRender(t *testing.T) {
 		PrometheusLogLevel:       "PrometheusLogLevel",
 		ControllerComponentLabel: "ControllerComponentLabel",
 		ControllerNamespaceLabel: "ControllerNamespaceLabel",
+		SharedComponentLabel:     "SharedComponentLabel",
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyContainerName:       "ProxyContainerName",
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",

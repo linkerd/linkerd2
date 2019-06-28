@@ -7,6 +7,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
@@ -29,6 +30,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/identity-issuer-expiry: 2029-02-28T02:03:52Z
@@ -44,6 +46,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -64,6 +67,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-identity
   namespace: linkerd
 spec:
@@ -253,6 +257,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -272,6 +277,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -292,6 +298,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-controller
   namespace: linkerd
 spec:
@@ -509,6 +516,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -532,6 +540,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-web
   namespace: linkerd
 spec:
@@ -718,6 +727,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
@@ -807,6 +817,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -827,6 +838,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-prometheus
   namespace: linkerd
 spec:
@@ -1020,6 +1032,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
@@ -1077,6 +1090,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1097,6 +1111,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-grafana
   namespace: linkerd
 spec:
@@ -1291,6 +1306,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
@@ -1480,6 +1496,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1503,6 +1520,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1523,6 +1541,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
@@ -1711,6 +1730,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1731,6 +1751,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/shared-component: "false"
   name: linkerd-tap
   namespace: linkerd
 spec:

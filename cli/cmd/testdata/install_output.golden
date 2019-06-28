@@ -11,6 +11,7 @@ metadata:
     ProxyInjectAnnotation: ProxyInjectDisabled
   labels:
     LinkerdNamespaceLabel: "true"
+    SharedComponentLabel: "false"
 ---
 ###
 ### Identity Controller Service RBAC
@@ -23,6 +24,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -35,6 +37,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -52,6 +55,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Controller RBAC
@@ -64,6 +68,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -88,6 +93,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -105,6 +111,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Web RBAC
@@ -118,6 +125,7 @@ metadata:
   labels:
     ControllerComponentLabel: web
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Service Profile CRD
@@ -130,7 +138,7 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
-    ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "true"
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -264,6 +272,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -276,6 +285,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -293,6 +303,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Grafana RBAC
@@ -306,6 +317,7 @@ metadata:
   labels:
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Proxy Injector RBAC
@@ -318,6 +330,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -336,6 +349,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -354,6 +368,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 kind: Secret
 apiVersion: v1
@@ -363,6 +378,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -377,6 +393,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -408,6 +425,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -420,6 +438,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -438,6 +457,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 kind: Secret
 apiVersion: v1
@@ -447,6 +467,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 type: Opaque
@@ -461,6 +482,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -488,6 +510,7 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces"]
@@ -506,6 +529,7 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -523,6 +547,7 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 ---
 ###
 ### Control Plane PSP
@@ -534,6 +559,7 @@ metadata:
   name: linkerd-Namespace-control-plane
   labels:
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -574,6 +600,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -588,6 +615,7 @@ metadata:
   namespace: Namespace
   labels:
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -626,6 +654,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -648,6 +677,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
     linkerd.io/identity-issuer-expiry: 2029-02-28T02:03:52Z
@@ -663,6 +693,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -683,6 +714,7 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-identity
   namespace: Namespace
 spec:
@@ -837,6 +869,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -856,6 +889,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -876,6 +910,7 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-controller
   namespace: Namespace
 spec:
@@ -1058,6 +1093,7 @@ metadata:
   labels:
     ControllerComponentLabel: web
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1081,6 +1117,7 @@ metadata:
   labels:
     ControllerComponentLabel: web
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-web
   namespace: Namespace
 spec:
@@ -1232,6 +1269,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1321,6 +1359,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1341,6 +1380,7 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-prometheus
   namespace: Namespace
 spec:
@@ -1499,6 +1539,7 @@ metadata:
   labels:
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 data:
@@ -1556,6 +1597,7 @@ metadata:
   labels:
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1576,6 +1618,7 @@ metadata:
   labels:
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-grafana
   namespace: Namespace
 spec:
@@ -1735,6 +1778,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-proxy-injector
   namespace: Namespace
 spec:
@@ -1889,6 +1933,7 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1912,6 +1957,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -1932,6 +1978,7 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-sp-validator
   namespace: Namespace
 spec:
@@ -2085,6 +2132,7 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
@@ -2105,6 +2153,7 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+    SharedComponentLabel: "false"
   name: linkerd-tap
   namespace: Namespace
 spec:

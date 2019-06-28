@@ -469,7 +469,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -477,7 +477,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -485,7 +485,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -493,7 +493,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -501,7 +501,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -509,7 +509,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -531,7 +531,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -539,7 +539,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -547,7 +547,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -555,7 +555,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -563,7 +563,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -571,7 +571,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -579,7 +579,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -587,7 +587,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -595,7 +595,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -603,7 +603,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -611,7 +611,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -619,7 +619,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -628,7 +628,7 @@ metadata:
   name: linkerd-controller
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -637,7 +637,7 @@ metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -646,7 +646,7 @@ metadata:
   name: linkerd-prometheus
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -655,7 +655,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -664,7 +664,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -673,7 +673,7 @@ metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -682,7 +682,7 @@ metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -691,7 +691,7 @@ metadata:
   name: linkerd-tap
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -715,7 +715,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -723,7 +723,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -731,7 +731,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -739,7 +739,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -747,7 +747,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -755,7 +755,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -763,7 +763,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -771,7 +771,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -779,7 +779,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -787,7 +787,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -795,7 +795,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -803,7 +803,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -812,7 +812,7 @@ metadata:
   name: linkerd-controller
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -821,7 +821,7 @@ metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -830,7 +830,7 @@ metadata:
   name: linkerd-prometheus
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -839,7 +839,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -848,7 +848,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -857,7 +857,7 @@ metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -866,7 +866,7 @@ metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -875,7 +875,7 @@ metadata:
   name: linkerd-tap
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -883,7 +883,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -908,7 +908,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -916,7 +916,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -924,7 +924,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -932,7 +932,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -940,7 +940,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -948,7 +948,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -956,7 +956,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -964,7 +964,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -972,7 +972,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -980,7 +980,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -988,7 +988,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -996,7 +996,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1005,7 +1005,7 @@ metadata:
   name: linkerd-controller
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1014,7 +1014,7 @@ metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1023,7 +1023,7 @@ metadata:
   name: linkerd-prometheus
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1032,7 +1032,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1041,7 +1041,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1050,7 +1050,7 @@ metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1059,7 +1059,7 @@ metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1068,7 +1068,7 @@ metadata:
   name: linkerd-tap
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -1076,7 +1076,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1084,7 +1084,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -1110,7 +1110,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1118,7 +1118,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1126,7 +1126,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1134,7 +1134,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1142,7 +1142,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1150,7 +1150,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1158,7 +1158,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1166,7 +1166,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1174,7 +1174,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1182,7 +1182,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1190,7 +1190,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1198,7 +1198,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1207,7 +1207,7 @@ metadata:
   name: linkerd-controller
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1216,7 +1216,7 @@ metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1225,7 +1225,7 @@ metadata:
   name: linkerd-prometheus
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1234,7 +1234,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1243,7 +1243,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1252,7 +1252,7 @@ metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1261,7 +1261,7 @@ metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1270,7 +1270,7 @@ metadata:
   name: linkerd-tap
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -1278,7 +1278,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1286,7 +1286,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1294,7 +1294,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -1321,7 +1321,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1329,7 +1329,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1337,7 +1337,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1345,7 +1345,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1353,7 +1353,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRole
@@ -1361,7 +1361,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1369,7 +1369,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-controller
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1377,7 +1377,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1385,7 +1385,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-prometheus
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1393,7 +1393,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1401,7 +1401,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ClusterRoleBinding
@@ -1409,7 +1409,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-tap
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1418,7 +1418,7 @@ metadata:
   name: linkerd-controller
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1427,7 +1427,7 @@ metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1436,7 +1436,7 @@ metadata:
   name: linkerd-prometheus
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1445,7 +1445,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1454,7 +1454,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1463,7 +1463,7 @@ metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1472,7 +1472,7 @@ metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 kind: ServiceAccount
@@ -1481,7 +1481,7 @@ metadata:
   name: linkerd-tap
   namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -1489,7 +1489,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1497,7 +1497,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1505,7 +1505,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 				`
 apiVersion: policy/v1beta1
@@ -1513,7 +1513,7 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-test-ns-control-plane
   labels:
-    linkerd.io/control-plane-ns: test-ns
+    linkerd.io/shared-component: "false"
 `,
 			},
 			[]string{
@@ -1914,37 +1914,37 @@ kind: ClusterRole
 metadata:
   name: cluster-role
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 			`apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: cluster-role-binding
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 			`apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: custom-resource-definition
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 			`apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: mutating-webhook-configuration
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 			`apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: validating-webhook-configuration
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 			`apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: pod-security-policy
   labels:
-    linkerd.io/control-plane-ns: test-ns`,
+    linkerd.io/shared-component: "false"`,
 		}
 
 		var err error
