@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -149,7 +148,7 @@ func read(path string) ([]io.Reader, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.New(fmt.Sprintf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode))
+			return nil, fmt.Errorf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode)
 		}
 
 		// Save to a buffer, so that response can be closed here
