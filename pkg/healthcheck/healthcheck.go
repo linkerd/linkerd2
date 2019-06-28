@@ -183,6 +183,11 @@ type checker struct {
 	// retried; if the deadline has passed, the check fails (default: no retries)
 	retryDeadline time.Time
 
+	// surfaceErrorOnRetry indicates that the error message should be displayed
+	// even if the check will be retried.  This is useful if the error message
+	// contains the current status of the check.
+	surfaceErrorOnRetry bool
+
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
 	check func(context.Context) error
@@ -574,10 +579,11 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:   "controller pod is running",
-					hintAnchor:    "l5d-existence-controller",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
+					description:         "controller pod is running",
+					hintAnchor:          "l5d-existence-controller",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					fatal:               true,
 					check: func(ctx context.Context) error {
 						// save this into hc.controlPlanePods, since this check only
 						// succeeds when all pods are up
@@ -619,10 +625,11 @@ func (hc *HealthChecker) allCategories() []category {
 			id: LinkerdAPIChecks,
 			checkers: []checker{
 				{
-					description:   "control plane pods are ready",
-					hintAnchor:    "l5d-api-control-ready",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
+					description:         "control plane pods are ready",
+					hintAnchor:          "l5d-api-control-ready",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					fatal:               true,
 					check: func(context.Context) error {
 						var err error
 						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
@@ -868,7 +875,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 
 		if err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
-			checkResult.Err = errors.New("waiting for check to complete")
+			if !c.surfaceErrorOnRetry {
+				checkResult.Err = errors.New("waiting for check to complete")
+			}
 			log.Debugf("Retrying on error: %s", err)
 
 			observer(checkResult)
@@ -1331,6 +1340,79 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 	return statuses
 }
 
+const (
+	completed   = "Completed"
+	running     = "Running"
+	terminating = "Terminating"
+)
+
+// Logic copied from private pod status printing function:
+// https://github.com/kubernetes/kubernetes/blob/f3a03f71af11e7ac10e74db5b94c9597d7cbe946/pkg/printers/internalversion/printers.go#L558
+func getPodStatusString(pod corev1.Pod) string {
+	reason := string(pod.Status.Phase)
+	if pod.Status.Reason != "" {
+		reason = pod.Status.Reason
+	}
+
+	initializing := false
+	for i := range pod.Status.InitContainerStatuses {
+		container := pod.Status.InitContainerStatuses[i]
+		switch {
+		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
+			continue
+		case container.State.Terminated != nil:
+			// initialization is failed
+			if len(container.State.Terminated.Reason) == 0 {
+				if container.State.Terminated.Signal != 0 {
+					reason = fmt.Sprintf("Init:Signal:%d", container.State.Terminated.Signal)
+				} else {
+					reason = fmt.Sprintf("Init:ExitCode:%d", container.State.Terminated.ExitCode)
+				}
+			} else {
+				reason = "Init:" + container.State.Terminated.Reason
+			}
+			initializing = true
+		case container.State.Waiting != nil && len(container.State.Waiting.Reason) > 0 && container.State.Waiting.Reason != "PodInitializing":
+			reason = "Init:" + container.State.Waiting.Reason
+			initializing = true
+		default:
+			reason = fmt.Sprintf("Init:%d/%d", i, len(pod.Spec.InitContainers))
+			initializing = true
+		}
+		break
+	}
+	if !initializing {
+		hasRunning := false
+		for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
+			container := pod.Status.ContainerStatuses[i]
+
+			if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
+				reason = container.State.Waiting.Reason
+			} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
+				reason = container.State.Terminated.Reason
+			} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
+				if container.State.Terminated.Signal != 0 {
+					reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
+				} else {
+					reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
+				}
+			} else if container.Ready && container.State.Running != nil {
+				hasRunning = true
+			}
+		}
+
+		// change pod status back to "Running" if there is at least one container still reporting as "Running" status
+		if reason == completed && hasRunning {
+			reason = running
+		}
+	}
+
+	if pod.DeletionTimestamp != nil {
+		reason = terminating
+	}
+	return reason
+}
+
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
@@ -1378,6 +1460,12 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 func checkControllerRunning(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 	if _, ok := statuses["controller"]; !ok {
+		for _, pod := range pods {
+			podStatus := getPodStatusString(pod)
+			if podStatus != running {
+				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
+			}
+		}
 		return errors.New("No running pods for \"linkerd-controller\"")
 	}
 	return nil
