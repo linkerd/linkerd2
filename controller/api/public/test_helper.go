@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
@@ -32,6 +34,7 @@ type MockAPIClient struct {
 	ConfigResponseToReturn         *configPb.All
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
+	DestinationGetClientToReturn   destinationPb.Destination_GetClient
 	*discovery.MockDiscoveryClient
 }
 
@@ -75,6 +78,17 @@ func (c *MockAPIClient) TapByResource(ctx context.Context, in *pb.TapByResourceR
 	return c.APITapByResourceClientToReturn, c.ErrorToReturn
 }
 
+// Get provides a mock of a Public API method.
+func (c *MockAPIClient) Get(ctx context.Context, in *destinationPb.GetDestination, opts ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
+	return c.DestinationGetClientToReturn, c.ErrorToReturn
+}
+
+// GetProfile provides a mock of a Public API method
+func (c *MockAPIClient) GetProfile(ctx context.Context, _ *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetProfileClient, error) {
+	// Not implemented through this client. The proxies use the gRPC server directly instead.
+	return nil, errors.New("Not implemented")
+}
+
 // SelfCheck provides a mock of a Public API method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
@@ -107,6 +121,30 @@ func (a *MockAPITapByResourceClient) Recv() (*pb.TapEvent, error) {
 	}
 
 	return &eventPopped, errorPopped
+}
+
+// MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
+type MockDestinationGetClient struct {
+	UpdatesToReturn []destinationPb.Update
+	ErrorsToReturn  []error
+	grpc.ClientStream
+}
+
+// Recv satisfies the Destination_GetClient.Recv() gRPC method.
+func (a *MockDestinationGetClient) Recv() (*destinationPb.Update, error) {
+	var updatePopped destinationPb.Update
+	var errorPopped error
+	if len(a.UpdatesToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
+		return nil, io.EOF
+	}
+	if len(a.UpdatesToReturn) != 0 {
+		updatePopped, a.UpdatesToReturn = a.UpdatesToReturn[0], a.UpdatesToReturn[1:]
+	}
+	if len(a.ErrorsToReturn) != 0 {
+		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
+	}
+
+	return &updatePopped, errorPopped
 }
 
 //
