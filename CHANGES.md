@@ -6,14 +6,14 @@ between the specified backend services.  Please see [the spec](https://github.co
 for more details.
 
 * CLI
-  * Added a check to install to prevent installing multiple control planes into
-    different namespaces
-  * Added support for passing a URL directly to linkerd inject
+  * Added a check to `install` to prevent installing multiple control planes
+    into different namespaces
+  * Added support for passing a URL directly to `linkerd inject` (thanks
+    @Pothulapati!)
   * Added a `--all-namespaces` flag to `linkerd edges`
 * Controller
   * Added support for the SMI TrafficSplit API which allows users to define
     traffic splits in TrafficSplit custom resources
-* Proxy
 * Web UI
   * Improved UI for Edges table in dashboard by changing column names, adding a
     "Secured" icon and showing an empty Edges table in the case of no returned
