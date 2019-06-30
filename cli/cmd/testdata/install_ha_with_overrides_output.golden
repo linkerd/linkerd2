@@ -245,6 +245,8 @@ metadata:
   name: trafficsplits.split.smi-spec.io
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/shared-component: "true"
 spec:
   group: split.smi-spec.io
   version: v1alpha1
