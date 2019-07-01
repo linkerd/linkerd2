@@ -41,10 +41,13 @@ stages:
     - task: DockerCompose@0
       displayName: Docker Compose
       inputs:
+        action: Run services
+        buildImages: false
         containerregistrytype: Azure Container Registry
         azureSubscriptionEndpoint: $(azureSubscriptionEndpoint)
         azureContainerRegistry: $(azureContainerRegistry)
         dockerComposeFile: test-infra/docker-compose.yml
         dockerComposeFileArgs: |
           REPO=$(Build.SourcesDirectory)
-        # dockerComposeCommand: run
+        abortOnContainerExit: true
+        detached: false
