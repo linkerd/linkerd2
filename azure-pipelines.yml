@@ -9,6 +9,7 @@ resources:
 - repo: self
 
 variables:
+  azureSubscriptionEndpoint: 'azure-resource-manager-connection'
   # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: '09d773f8-fb84-404b-a6a9-43c765c71c7d'
   imageRepository: 'siggylinkerd'
