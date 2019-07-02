@@ -4,7 +4,8 @@
   * Added more descriptive output to the `linkerd check` for control plane
     ReplicaSet readiness
   * **Breaking change** Renamed `config.linkerd.io/debug` annotation to
-    `config.linkerd.io/enable-debug-sidecar`, to match the CLI flag that sets it
+    `config.linkerd.io/enable-debug-sidecar`, to match the
+    `--enable-debug-sidecar` CLI flag that sets it
   * Fixed a bug in `linkerd edges` that caused incorrect identities to be
     displayed when requests were sent from two or more namespaces
 * Controller
