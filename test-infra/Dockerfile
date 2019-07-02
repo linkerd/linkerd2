@@ -32,5 +32,5 @@ RUN chmod +x /usr/local/bin/kubectl
 RUN curl -Lo /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64
 RUN chmod +x /usr/local/bin/kind
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT []
 CMD []
