@@ -18,4 +18,4 @@ services:
     - "2375:2375"
     volumes:
     - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
-    - "/lib/modules:/lib/modules"
+    - "/lib/modules:/lib/modules:ro"
