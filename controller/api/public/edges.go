@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/prometheus/common/model"
@@ -96,14 +97,22 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 	for _, sample := range inbound {
 		// skip inbound results without a clientID because we cannot construct edge
 		// information
-		if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
-			key := sample.Metric[model.LabelName(resourceReplacementInbound)]
+		if clientID, ok := sample.Metric[model.LabelName("client_id")]; ok {
+			dstResource := string(sample.Metric[model.LabelName(resourceReplacementInbound)])
+
+			// format of clientId is id.namespace.serviceaccount.cluster.local
+			clientIDSlice := strings.Split(string(clientID), ".")
+			srcNs := clientIDSlice[1]
+			key := model.LabelValue(dstResource + srcNs)
 			dstIndex[key] = sample.Metric
 		}
 	}
 
 	for _, sample := range outbound {
-		key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
+		dstResource := sample.Metric[model.LabelName(resourceReplacementOutbound)]
+		srcNs := sample.Metric[model.LabelName("namespace")]
+
+		key := dstResource + srcNs
 		if _, ok := srcIndex[key]; !ok {
 			srcIndex[key] = []model.Metric{}
 		}
