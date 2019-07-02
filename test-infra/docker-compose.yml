@@ -16,5 +16,6 @@ services:
     privileged: true
     ports:
     - "2375:2375"
-    # volumes:
-    # - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    volumes:
+    - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    - "/lib/modules:/lib/modules"
