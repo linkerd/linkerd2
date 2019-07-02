@@ -112,7 +112,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const fetchEdges = (namespace, resourceType) => {
-    return apiFetch(edgesPath + "?namespace=" + namespace + "&resource_type=" + resourceType);
+    return apiFetch(edgesPath + "?resource_type=" + resourceType + "&namespace=" + namespace);
   };
 
   const getMetricsWindow = () => metricsWindow;

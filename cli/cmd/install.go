@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
-	identity "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -88,21 +86,15 @@ type (
 	installIdentityValues struct {
 		Replicas uint
 
-		TrustDomain      string
-		TrustAnchorsPEM  string
-		IssuanceLifetime string
+		TrustDomain     string
+		TrustAnchorsPEM string
 
-		AwsAcmPcaIssuer       *awsAcmPcaIssuerValues
-		LinkerdIdentityIssuer *linkerdIdentityIssuerValues
+		Issuer *issuerValues
 	}
 
-	awsAcmPcaIssuerValues struct {
-		CaArn    string
-		CaRegion string
-	}
-
-	linkerdIdentityIssuerValues struct {
+	issuerValues struct {
 		ClockSkewAllowance string
+		IssuanceLifetime   string
 
 		KeyPEM, CrtPEM string
 
@@ -149,23 +141,13 @@ type (
 	}
 
 	installIdentityOptions struct {
-		replicas         uint
-		trustDomain      string
-		trustPEMFile     string
-		caType           int
-		issuanceLifetime time.Duration
+		replicas    uint
+		trustDomain string
 
-		*linkerdIdentityIssuerOptions
-		*awsAcmPcaIssuerOptions
-	}
+		issuanceLifetime   time.Duration
+		clockSkewAllowance time.Duration
 
-	awsAcmPcaIssuerOptions struct {
-		region, arn string
-	}
-
-	linkerdIdentityIssuerOptions struct {
-		crtPEMFile, keyPEMFile string
-		clockSkewAllowance     time.Duration
+		trustPEMFile, crtPEMFile, keyPEMFile string
 	}
 )
 
@@ -180,7 +162,10 @@ const (
 	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
-	defaultCaType                     = identity.LinkerdIdentityIssuer
+
+	errMsgGlobalResourcesExist           = "Can't install the Linkerd control plane in the '%s' namespace. Global resources from an existing Linkerd installation detected:\n%s\nRemove these resources, or use the --ignore-cluster flag to overwrite them.\n"
+	errMsgLinkerdConfigConfigMapNotFound = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nIf this is expected, use the --ignore-cluster flag to continue the installation.\n"
+	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -247,22 +232,10 @@ func newInstallOptionsWithDefaults() *installOptions {
 
 func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 	return &installIdentityOptions{
-		trustDomain:                  defaultIdentityTrustDomain,
-		caType:                       defaultCaType,
-		issuanceLifetime:             defaultIdentityIssuanceLifetime,
-		linkerdIdentityIssuerOptions: newLinkerdIdentityIssuerOptionsWithDefaults(),
-		awsAcmPcaIssuerOptions:       newAwsAcmPcaOptionsWithDefaults(),
-	}
-}
-
-func newLinkerdIdentityIssuerOptionsWithDefaults() *linkerdIdentityIssuerOptions {
-	return &linkerdIdentityIssuerOptions{
+		trustDomain:        defaultIdentityTrustDomain,
+		issuanceLifetime:   defaultIdentityIssuanceLifetime,
 		clockSkewAllowance: defaultIdentityClockSkewAllowance,
 	}
-}
-
-func newAwsAcmPcaOptionsWithDefaults() *awsAcmPcaIssuerOptions {
-	return &awsAcmPcaIssuerOptions{}
 }
 
 // newCmdInstallConfig is a subcommand for `linkerd install config`
@@ -282,6 +255,11 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				os.Exit(1)
+			}
+
 			return installRunE(options, configStage, parentFlags)
 		},
 	}
@@ -313,8 +291,16 @@ control plane. It should be run after "linkerd install config".`,
   # Install Linkerd into a non-default namespace.
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !options.skipChecks {
-				exitIfNamespaceDoesNotExist()
+			// check if global resources exist to determine if the `install config`
+			// stage succeeded
+			if err := errIfGlobalResourcesExist(); err == nil && !options.skipChecks {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+				os.Exit(1)
+			}
+
+			if err := errIfLinkerdConfigConfigMapExists(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgLinkerdConfigConfigMapNotFound, controlPlaneNamespace, err.Error())
+				os.Exit(1)
 			}
 
 			return installRunE(options, controlPlaneStage, flags)
@@ -361,6 +347,11 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				os.Exit(1)
+			}
+
 			return installRunE(options, "", flags)
 		},
 	}
@@ -378,12 +369,6 @@ control plane.`,
 }
 
 func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
-	if !options.ignoreCluster {
-		// TODO: consider cobra.SilenceUsage, so we can return errors from
-		// `RunE`, rather than calling `os.Exit(1)`
-		exitIfClusterExists()
-	}
-
 	values, configs, err := options.validateAndBuild(stage, flags)
 	if err != nil {
 		return err
@@ -462,14 +447,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
 		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 	)
-	flags.StringVar(
-		&options.identityOptions.region, "identity-ca-region", options.identityOptions.region,
-		"The region where the CA is located.",
-	)
-	flags.StringVar(
-		&options.identityOptions.arn, "identity-ca-arn", options.identityOptions.arn,
-		"The arn of the CA.",
-	)
 	flags.DurationVar(
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
 		"The amount of time for which the Identity issuer should certify identity",
@@ -509,10 +486,6 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.StringVar(
 		&options.identityOptions.keyPEMFile, "identity-issuer-key-file", options.identityOptions.keyPEMFile,
 		"A path to a PEM-encoded file containing the Linkerd Identity issuer private key (generated by default)",
-	)
-	flags.IntVar(
-		&options.identityOptions.caType, "identity-ca-type", options.identityOptions.caType,
-		"The type of CA to use for issuing proxy certificates. (0 = linkerd-identity (default), 1 = awsacmpca)",
 	)
 
 	return flags
@@ -705,6 +678,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/controller-rbac.yaml"},
 			{Name: "templates/web-rbac.yaml"},
 			{Name: "templates/serviceprofile-crd.yaml"},
+			{Name: "templates/trafficsplit-crd.yaml"},
 			{Name: "templates/prometheus-rbac.yaml"},
 			{Name: "templates/grafana-rbac.yaml"},
 			{Name: "templates/proxy_injector-rbac.yaml"},
@@ -877,61 +851,51 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-// exitIfClusterExists checks the kubernetes API to determine
-// whether a config exists and exits if it does exist or if an error is
-// encountered.
-//
-// This bypasses the public API so that public API errors cannot cause us to
-// misdiagnose a controller error to indicate that no control plane exists.
-func exitIfClusterExists() {
-	k, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+func errIfGlobalResourcesExist() error {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
 	}
 
-	c := k.CoreV1().ConfigMaps(controlPlaneNamespace)
-	if _, err = c.Get(k8s.ConfigConfigMapName, metav1.GetOptions{}); err != nil {
-		if kerrors.IsNotFound(err) {
-			return
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+	})
+
+	errMsgs := []string{}
+	hc.RunChecks(func(result *healthcheck.CheckResult) {
+		if result.Err != nil {
+			errMsgs = append(errMsgs, result.Err.Error())
 		}
+	})
 
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+	if len(errMsgs) > 0 {
+		return errors.New(strings.Join(errMsgs, ","))
 	}
 
-	fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
-	os.Exit(1)
+	return nil
 }
 
-// exitIfNamespaceDoesNotExist checks the kubernetes API to determine if the
-// control-plane namespace exists, and returns an error if it does not.
-//
-// This is useful when running `linkerd install control-plane`, where the
-// namespace must exist, but `linkerd-config` should not.
-func exitIfNamespaceDoesNotExist() {
-	hc := newHealthChecker(
-		[]healthcheck.CategoryID{healthcheck.KubernetesAPIChecks},
-		time.Time{},
-	)
-
-	success := hc.RunChecks(exitOnError)
-	if !success {
-		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --skip-checks flag.")
-		os.Exit(1)
-	}
-
-	err := hc.CheckNamespace(controlPlaneNamespace, true)
+func errIfLinkerdConfigConfigMapExists() error {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
-			controlPlaneNamespace, controlPlaneNamespace,
-		)
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = fetchConfigs(kubeAPI)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
 func (idopts *installIdentityOptions) validate() error {
@@ -939,55 +903,31 @@ func (idopts *installIdentityOptions) validate() error {
 		return nil
 	}
 
-	switch caType := idopts.caType; caType {
-	case identity.LinkerdIdentityIssuer:
-		if idopts.trustDomain != "" {
-			if errs := validation.IsDNS1123Subdomain(idopts.trustDomain); len(errs) > 0 {
-				return fmt.Errorf("invalid trust domain '%s': %s", idopts.trustDomain, errs[0])
-			}
+	if idopts.trustDomain != "" {
+		if errs := validation.IsDNS1123Subdomain(idopts.trustDomain); len(errs) > 0 {
+			return fmt.Errorf("invalid trust domain '%s': %s", idopts.trustDomain, errs[0])
+		}
+	}
+
+	if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
+		if idopts.trustPEMFile == "" {
+			return errors.New("a trust anchors file must be specified if other credentials are provided")
+		}
+		if idopts.crtPEMFile == "" {
+			return errors.New("a certificate file must be specified if other credentials are provided")
+		}
+		if idopts.keyPEMFile == "" {
+			return errors.New("a private key file must be specified if other credentials are provided")
 		}
 
-		if idopts.trustPEMFile != "" || idopts.crtPEMFile != "" || idopts.keyPEMFile != "" {
-			if idopts.trustPEMFile == "" {
-				return errors.New("a trust anchors file must be specified if other credentials are provided")
+		for _, f := range []string{idopts.trustPEMFile, idopts.crtPEMFile, idopts.keyPEMFile} {
+			stat, err := os.Stat(f)
+			if err != nil {
+				return fmt.Errorf("missing file: %s", err)
 			}
-			if idopts.crtPEMFile == "" {
-				return errors.New("a certificate file must be specified if other credentials are provided")
+			if stat.IsDir() {
+				return fmt.Errorf("not a file: %s", f)
 			}
-			if idopts.keyPEMFile == "" {
-				return errors.New("a private key file must be specified if other credentials are provided")
-			}
-
-			for _, f := range []string{idopts.trustPEMFile, idopts.crtPEMFile, idopts.keyPEMFile} {
-				stat, err := os.Stat(f)
-				if err != nil {
-					return fmt.Errorf("missing file: %s", err)
-				}
-				if stat.IsDir() {
-					return fmt.Errorf("not a file: %s", f)
-				}
-			}
-		}
-	case identity.AwsAcmPcaIssuer:
-		if len(idopts.region) == 0 {
-			return errors.New("a region must be specified if using the awsacmpca caType")
-		}
-		if len(idopts.arn) == 0 {
-			return errors.New("the awsacmpca arn must be specified if using the awsacmpca caType")
-		}
-		if len(idopts.trustPEMFile) == 0 {
-			return errors.New("a trust anchors file must be specified if uswing the awsacmpca caType")
-		}
-		if idopts.issuanceLifetime < time.Hour*24 {
-			return errors.New("an issuance lifetime of > 1 day must be provided if using the awsacmpca caType")
-		}
-
-		stat, err := os.Stat(idopts.trustPEMFile)
-		if err != nil {
-			return fmt.Errorf("missing file: %s", err)
-		}
-		if stat.IsDir() {
-			return fmt.Errorf("not a file: %s", idopts.trustPEMFile)
 		}
 	}
 
@@ -1003,29 +943,8 @@ func (idopts *installIdentityOptions) validateAndBuild() (*installIdentityValues
 		return nil, err
 	}
 
-	switch idopts.caType {
-	case identity.LinkerdIdentityIssuer:
-		if idopts.trustPEMFile != "" && idopts.crtPEMFile != "" && idopts.keyPEMFile != "" {
-			return idopts.readValues()
-		}
-	case identity.AwsAcmPcaIssuer:
-		if len(idopts.trustPEMFile) > 0 {
-			_, trustAnchorsPEM, err := idopts.readTrustAnchorsPemFile()
-			if err != nil {
-				return nil, err
-			}
-
-			return &installIdentityValues{
-				Replicas:         idopts.replicas,
-				TrustDomain:      idopts.trustDomain,
-				TrustAnchorsPEM:  trustAnchorsPEM,
-				IssuanceLifetime: idopts.issuanceLifetime.String(),
-				AwsAcmPcaIssuer: &awsAcmPcaIssuerValues{
-					CaArn:    idopts.arn,
-					CaRegion: idopts.region,
-				},
-			}, nil
-		}
+	if idopts.trustPEMFile != "" && idopts.crtPEMFile != "" && idopts.keyPEMFile != "" {
+		return idopts.readValues()
 	}
 
 	return idopts.genValues()
@@ -1042,12 +961,12 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 	}
 
 	return &installIdentityValues{
-		Replicas:         idopts.replicas,
-		TrustDomain:      idopts.trustDomain,
-		TrustAnchorsPEM:  root.Cred.Crt.EncodeCertificatePEM(),
-		IssuanceLifetime: idopts.issuanceLifetime.String(),
-		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
+		Replicas:        idopts.replicas,
+		TrustDomain:     idopts.trustDomain,
+		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
+		Issuer: &issuerValues{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 			KeyPEM: root.Cred.EncodePrivateKeyPEM(),
@@ -1068,7 +987,12 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 		return nil, err
 	}
 
-	roots, trustAnchorsPEM, err := idopts.readTrustAnchorsPemFile()
+	trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
+	if err != nil {
+		return nil, err
+	}
+	trustAnchorsPEM := string(trustb)
+	roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
 	if err != nil {
 		return nil, err
 	}
@@ -1078,12 +1002,12 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 	}
 
 	return &installIdentityValues{
-		Replicas:         idopts.replicas,
-		TrustDomain:      idopts.trustDomain,
-		TrustAnchorsPEM:  trustAnchorsPEM,
-		IssuanceLifetime: idopts.issuanceLifetime.String(),
-		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
+		Replicas:        idopts.replicas,
+		TrustDomain:     idopts.trustDomain,
+		TrustAnchorsPEM: trustAnchorsPEM,
+		Issuer: &issuerValues{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 
 			KeyPEM: creds.EncodePrivateKeyPEM(),
@@ -1094,53 +1018,27 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 	}, nil
 }
 
-func (idopts *installIdentityOptions) readTrustAnchorsPemFile() (*x509.CertPool, string, error) {
-	trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
-	if err != nil {
-		return nil, "", err
-	}
-
-	trustAnchorsPEM := string(trustb)
-	roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return roots, trustAnchorsPEM, nil
-}
-
 func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}
 
-	identityContext := &pb.IdentityContext{
-		TrustDomain:     idvals.TrustDomain,
-		TrustAnchorsPem: idvals.TrustAnchorsPEM,
-	}
-	il, err := time.ParseDuration(idvals.IssuanceLifetime)
+	il, err := time.ParseDuration(idvals.Issuer.IssuanceLifetime)
 	if err != nil {
 		il = defaultIdentityIssuanceLifetime
 	}
-	identityContext.IssuanceLifetime = ptypes.DurationProto(il)
 
-	if idvals.LinkerdIdentityIssuer != nil {
-		identityContext.CaType = 0
-		csa, err := time.ParseDuration(idvals.LinkerdIdentityIssuer.ClockSkewAllowance)
-		if err != nil {
-			csa = defaultIdentityClockSkewAllowance
-		}
-		identityContext.ClockSkewAllowance = ptypes.DurationProto(csa)
-	} else if idvals.AwsAcmPcaIssuer != nil {
-		identityContext.CaType = 1
-		awsacmpcaContext := &pb.IdentityContext_AwsAcmPca{
-			CaArn:    idvals.AwsAcmPcaIssuer.CaArn,
-			CaRegion: idvals.AwsAcmPcaIssuer.CaRegion,
-		}
-		identityContext.Awsacmpca = awsacmpcaContext
+	csa, err := time.ParseDuration(idvals.Issuer.ClockSkewAllowance)
+	if err != nil {
+		csa = defaultIdentityClockSkewAllowance
 	}
 
-	return identityContext
+	return &pb.IdentityContext{
+		TrustDomain:        idvals.TrustDomain,
+		TrustAnchorsPem:    idvals.TrustAnchorsPEM,
+		IssuanceLifetime:   ptypes.DurationProto(il),
+		ClockSkewAllowance: ptypes.DurationProto(csa),
+	}
 }
 
 func webhookCommonName(webhook string) string {

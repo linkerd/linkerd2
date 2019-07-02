@@ -1,3 +1,24 @@
+## edge-19.6.4
+
+This release adds support for the SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+API. Creating a TrafficSplit resource will cause Linkerd to split traffic
+between the specified backend services. Please see [the spec](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+for more details.
+
+* CLI
+  * Added a check to `install` to prevent installing multiple control planes
+    into different namespaces
+  * Added support for passing a URL directly to `linkerd inject` (thanks
+    @Pothulapati!)
+  * Added the `--all-namespaces` flag to `linkerd edges`
+* Controller
+  * Added support for the SMI TrafficSplit API which allows users to define
+    traffic splits in TrafficSplit custom resources
+* Web UI
+  * Improved UI for Edges table in dashboard by changing column names, adding a
+    "Secured" icon and showing an empty Edges table in the case of no returned
+    edges
+
 ## edge-19.6.3
 
 * CLI

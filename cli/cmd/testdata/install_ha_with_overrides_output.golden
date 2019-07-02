@@ -77,6 +77,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -222,6 +225,33 @@ spec:
                                 type: object
                             not:
                               type: object
+---
+###
+### TrafficSplit CRD
+### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+###
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: trafficsplits.split.smi-spec.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  group: split.smi-spec.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: TrafficSplit
+    shortNames:
+      - ts
+    plural: trafficsplits
+    singular: trafficsplit
+  additionalPrinterColumns:
+  - name: Service
+    type: string
+    description: The apex service of this split.
+    JSONPath: .spec.service
 ---
 ###
 ### Prometheus RBAC
@@ -1948,6 +1978,8 @@ spec:
         ports:
         - containerPort: 8443
           name: proxy-injector
+        - containerPort: 9995
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -2184,6 +2216,8 @@ spec:
         ports:
         - containerPort: 8443
           name: sp-validator
+        - containerPort: 9997
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -137,8 +138,9 @@ func newPortForward(
 	}, nil
 }
 
-// Run creates and runs the port-forward connection.
-func (pf *PortForward) Run() error {
+// run creates and runs the port-forward connection.
+// When the connection is established it blocks until Stop() is called.
+func (pf *PortForward) run() error {
 	transport, upgrader, err := spdy.RoundTripperFor(pf.config)
 	if err != nil {
 		return err
@@ -162,16 +164,51 @@ func (pf *PortForward) Run() error {
 	return fw.ForwardPorts()
 }
 
-// Ready returns a channel that will receive a message when the port-forward
-// connection is ready. Clients should block and wait for the message before
-// using the port-forward connection.
-func (pf *PortForward) Ready() <-chan struct{} {
-	return pf.readyCh
+// Init creates and runs a port-forward connection.
+// This function blocks until the connection is established, in which case it returns nil.
+// It's the caller's responsibility to call Stop() to finish the connection.
+func (pf *PortForward) Init() error {
+	log.Debugf("Starting port forward to %s %d:%d", pf.url, pf.localPort, pf.remotePort)
+
+	failure := make(chan error)
+
+	go func() {
+		if err := pf.run(); err != nil {
+			failure <- err
+		}
+
+		select {
+		case <-pf.GetStop():
+			// stopCh was closed, do nothing
+		default:
+			// pf.run() returned for some other reason, close stopCh
+			pf.Stop()
+		}
+	}()
+
+	// The `select` statement below depends on one of two outcomes from `pf.run()`:
+	// 1) Succeed and block, causing a receive on `<-pf.readyCh`
+	// 2) Return an err, causing a receive `<-failure`
+	select {
+	case <-pf.readyCh:
+		log.Debug("Port forward initialised")
+	case err := <-failure:
+		log.Debugf("Port forward failed: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // Stop terminates the port-forward connection.
 func (pf *PortForward) Stop() {
 	close(pf.stopCh)
+}
+
+// GetStop returns the stopCh.
+// Receiving on stopCh will block until the port forwarding stops.
+func (pf *PortForward) GetStop() <-chan struct{} {
+	return pf.stopCh
 }
 
 // URLFor returns the URL for the port-forward connection.

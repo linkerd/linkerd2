@@ -102,10 +102,12 @@ spec:
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
+	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 
 	return &server{
 		endpoints,
 		profiles,
+		trafficSplits,
 		false,
 		"linkerd",
 		"trust.domain",

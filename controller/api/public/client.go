@@ -252,27 +252,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI)
 		return nil, err
 	}
 
-	log.Debugf("Starting port forward on [%s]", apiURL)
-
-	wait := make(chan error, 1)
-
-	go func() {
-		if err := portforward.Run(); err != nil {
-			wait <- err
-		}
-
-		portforward.Stop()
-	}()
-
-	select {
-	case <-portforward.Ready():
-		log.Debugf("Port forward initialised")
-
-		break
-
-	case err := <-wait:
-		log.Debugf("Port forward failed: %v", err)
-
+	if err = portforward.Init(); err != nil {
 		return nil, err
 	}
 
