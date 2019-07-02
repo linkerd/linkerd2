@@ -237,6 +237,8 @@ metadata:
   name: trafficsplits.split.smi-spec.io
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 spec:
   group: split.smi-spec.io
   version: v1alpha1
