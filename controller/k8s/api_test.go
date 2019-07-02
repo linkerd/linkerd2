@@ -814,3 +814,134 @@ spec:
 		}
 	}
 }
+
+func TestGetServicesFor(t *testing.T) {
+
+	type getServicesForExpected struct {
+		err error
+
+		// all 3 of these are used to seed the k8s client
+		k8sResInput   string   // object used as input to GetServicesFor()
+		k8sResResults []string // expected results from GetServicesFor
+		k8sResMisc    []string // additional k8s objects for seeding the k8s client
+	}
+
+	t.Run("GetServicesFor", func(t *testing.T) {
+		expectations := []getServicesForExpected{
+			// If a service contains a pod, GetPodsFor should return the service.
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: emojivoto
+  labels:
+    app: my-pod
+status:
+  phase: Running`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-svc
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: my-pod`,
+				},
+				k8sResMisc: []string{},
+			},
+			// If a service is the apex of a traffic split, GetPodsFor should
+			// return the pods of the backends.
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: leaf-1-pod
+  namespace: emojivoto
+  labels:
+    app: leaf-1
+status:
+  phase: Running`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: apex
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: apex`,
+					`
+apiVersion: v1
+kind: Service
+metadata:
+  name: leaf-1
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: leaf-1`,
+				},
+				k8sResMisc: []string{`
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: leaf-2
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: leaf-2`,
+					`
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: banana-split
+  namespace: emojivoto
+spec:
+  service: apex
+  backends:
+  - service: leaf-1
+    weight: 500m
+  - service: leaf-2
+    weight: 500m`,
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			k8sInputObj, err := k8s.ToRuntimeObject(exp.k8sResInput)
+			if err != nil {
+				t.Fatalf("could not decode yml: %s", err)
+			}
+
+			api, k8sResults, err := newAPI(true, exp.k8sResResults, append(exp.k8sResMisc, exp.k8sResInput)...)
+			if err != nil {
+				t.Fatalf("newAPI error: %s", err)
+			}
+
+			k8sResultServices := []*corev1.Service{}
+			for _, obj := range k8sResults {
+				k8sResultServices = append(k8sResultServices, obj.(*corev1.Service))
+			}
+
+			services, err := api.GetServicesFor(k8sInputObj, false)
+			if err != exp.err {
+				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
+			}
+
+			if !reflect.DeepEqual(services, k8sResultServices) {
+				t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
+			}
+		}
+
+	})
+}

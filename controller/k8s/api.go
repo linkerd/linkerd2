@@ -780,15 +780,54 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 	}
 	services := make([]*corev1.Service, 0)
 	for _, svc := range allServices {
-		svcPods, err := api.GetPodsFor(svc, includeFailed)
+		leaves, err := api.getLeafServices(svc)
 		if err != nil {
 			return nil, err
 		}
+		svcPods := []*corev1.Pod{}
+		if len(leaves) > 0 {
+			for _, leaf := range leaves {
+				pods, err := api.GetPodsFor(leaf, includeFailed)
+				if err != nil {
+					return nil, err
+				}
+				svcPods = append(svcPods, pods...)
+			}
+		} else {
+			svcPods, err = api.GetPodsFor(svc, includeFailed)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		if hasOverlap(pods, svcPods) {
 			services = append(services, svc)
 		}
 	}
 	return services, nil
+}
+
+func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error) {
+	splits, err := api.TS().Lister().TrafficSplits(apex.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	leaves := []*corev1.Service{}
+	for _, split := range splits {
+		if split.Spec.Service == apex.Name {
+			for _, backend := range split.Spec.Backends {
+				if backend.Weight.Sign() == 1 {
+					svc, err := api.Svc().Lister().Services(apex.Namespace).Get(backend.Service)
+					if err != nil {
+						log.Errorf("TrafficSplit %s/%s references non-existent service %s", apex.Namespace, split.Name, backend.Service)
+						continue
+					}
+					leaves = append(leaves, svc)
+				}
+			}
+		}
+	}
+	return leaves, nil
 }
 
 // GetServiceProfileFor returns the service profile for a given service.  We
