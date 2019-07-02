@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -135,7 +134,6 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 	}
 
 	output := renderEndpoints(endpoints, exp.options)
-	fmt.Printf("output:\n%s\n", output)
 
 	diffTestdata(t, exp.file, output)
 }

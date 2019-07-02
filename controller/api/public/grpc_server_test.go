@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -522,12 +521,6 @@ metadata:
 			}
 		}
 	})
-}
-
-type endpointsExpected struct {
-	err error
-	req *discoveryPb.EndpointsParams
-	res *discoveryPb.EndpointsResponse
 }
 
 func TestConfig(t *testing.T) {
