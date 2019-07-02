@@ -7,6 +7,7 @@ import (
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	tslisters "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
@@ -28,7 +29,8 @@ type (
 		split     *ts.TrafficSplit
 		listeners []TrafficSplitUpdateListener
 
-		log *logging.Entry
+		log          *logging.Entry
+		splitMetrics metrics
 		// All access to the trafficSplitPublisher is explicitly synchronized by this mutex.
 		sync.Mutex
 	}
@@ -38,6 +40,8 @@ type (
 		UpdateTrafficSplit(split *ts.TrafficSplit)
 	}
 )
+
+var splitVecs = newMetricsVecs("trafficsplit", []string{"namespace", "service"})
 
 // NewTrafficSplitWatcher creates a TrafficSplitWatcher and begins watching the k8sAPI for
 // TrafficSplit changes.
@@ -141,6 +145,10 @@ func (tsw *TrafficSplitWatcher) getOrNewTrafficSplitPublisher(id ServiceID, spli
 				"ns":        id.Namespace,
 				"service":   id.Name,
 			}),
+			splitMetrics: splitVecs.newMetrics(prometheus.Labels{
+				"namespace": id.Namespace,
+				"service":   id.Name,
+			}),
 		}
 		tsw.publishers[id] = publisher
 	}
@@ -165,6 +173,8 @@ func (tsp *trafficSplitPublisher) subscribe(listener TrafficSplitUpdateListener)
 
 	tsp.listeners = append(tsp.listeners, listener)
 	listener.UpdateTrafficSplit(tsp.split)
+
+	tsp.splitMetrics.setSubscribers(len(tsp.listeners))
 }
 
 func (tsp *trafficSplitPublisher) unsubscribe(listener TrafficSplitUpdateListener) {
@@ -178,9 +188,11 @@ func (tsp *trafficSplitPublisher) unsubscribe(listener TrafficSplitUpdateListene
 			tsp.listeners[i] = tsp.listeners[n-1]
 			tsp.listeners[n-1] = nil
 			tsp.listeners = tsp.listeners[:n-1]
-			return
+			break
 		}
 	}
+
+	tsp.splitMetrics.setSubscribers(len(tsp.listeners))
 }
 
 func (tsp *trafficSplitPublisher) update(split *ts.TrafficSplit) {
@@ -192,4 +204,6 @@ func (tsp *trafficSplitPublisher) update(split *ts.TrafficSplit) {
 	for _, listener := range tsp.listeners {
 		listener.UpdateTrafficSplit(split)
 	}
+
+	tsp.splitMetrics.incUpdates()
 }
