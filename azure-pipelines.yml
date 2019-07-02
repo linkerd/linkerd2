@@ -18,7 +18,8 @@ variables:
   tag: '$(Build.BuildId)'
 
   # Agent VM image name
-  vmImageName: 'ubuntu-latest'
+  # vmImageName: 'ubuntu-latest'
+  # vmImageName: 'gcr.io/linkerd-io/l5d-builder:latest'
 
 stages:
 - stage: Build
@@ -27,8 +28,14 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      vmImage: $(vmImageName)
+      vmImage: 'ubuntu-16.04'
+    container: gcr.io/linkerd-io/l5d-builder:latest
     steps:
+    - script: printenv
+
+    # pool:
+    #   vmImage: $(vmImageName)
+    # steps:
     # - task: Docker@2
     #   displayName: Build and push an image to container registry
     #   inputs:
@@ -38,16 +45,16 @@ stages:
     #     containerRegistry: $(dockerRegistryServiceConnection)
     #     tags: |
     #       $(tag)
-    - task: DockerCompose@0
-      displayName: Docker Compose
-      inputs:
-        action: Run services
-        buildImages: false
-        containerregistrytype: Azure Container Registry
-        azureSubscriptionEndpoint: $(azureSubscriptionEndpoint)
-        azureContainerRegistry: $(azureContainerRegistry)
-        dockerComposeFile: test-infra/docker-compose.yml
-        dockerComposeFileArgs: |
-          REPO=$(Build.SourcesDirectory)
-        abortOnContainerExit: true
-        detached: false
+    # - task: DockerCompose@0
+    #   displayName: Docker Compose
+    #   inputs:
+    #     action: Run services
+    #     buildImages: false
+    #     containerregistrytype: Azure Container Registry
+    #     azureSubscriptionEndpoint: $(azureSubscriptionEndpoint)
+    #     azureContainerRegistry: $(azureContainerRegistry)
+    #     dockerComposeFile: test-infra/docker-compose.yml
+    #     dockerComposeFileArgs: |
+    #       REPO=$(Build.SourcesDirectory)
+    #     abortOnContainerExit: true
+    #     detached: false
