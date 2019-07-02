@@ -22,7 +22,7 @@ linkerd-config
 linkerd-existence
 -----------------
 √ 'linkerd-config' config map exists
-√ control plane components ready
+√ control plane replica sets are ready
 √ no unschedulable pods
 √ controller pod is running
 √ can initialize the client
