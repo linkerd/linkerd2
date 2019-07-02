@@ -4,7 +4,7 @@ services:
   build:
     image: gcr.io/linkerd-io/l5d-builder:latest
     command:
-    - "${REPO}/test-infra/integration-tests.sh"
+    - "/go/src/github.com/linkerd/linkerd2/test-infra/integration-tests.sh"
     environment:
     - "DOCKER_HOST=tcp://dind:2375"
     - "DOCKER_TRACE=1"
