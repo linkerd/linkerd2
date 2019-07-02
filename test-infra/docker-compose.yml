@@ -9,7 +9,7 @@ services:
     - "DOCKER_HOST=tcp://dind:2375"
     - "DOCKER_TRACE=1"
     volumes:
-      "${REPO}:${REPO}"
+    - "${REPO}:${REPO}"
     depends_on:
     - dind
   dind:
