@@ -4,12 +4,13 @@ services:
   build:
     image: gcr.io/linkerd-io/l5d-builder:latest
     command:
-    - "/home/vsts/go/src/github.com/linkerd/linkerd2/test-infra/integration-tests.sh"
+    - "/go/src/github.com/linkerd/linkerd2/test-infra/integration-tests.sh"
     environment:
     - "DOCKER_HOST=tcp://dind:2375"
     - "DOCKER_TRACE=1"
+    - "GOPATH=/go"
     volumes:
-    - "${REPO}:/home/vsts/go/src/github.com/linkerd/linkerd2"
+    - "${REPO}:/go/src/github.com/linkerd/linkerd2"
     depends_on:
     - dind
   dind:
