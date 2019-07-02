@@ -5,27 +5,14 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	net "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/public"
 )
 
 type endpointsExp struct {
 	options     *endpointsOptions
 	authorities []string
-	endpoints   []authorityEndpoint
+	endpoints   []public.AuthorityEndpoints
 	file        string
-}
-
-type authorityEndpoint struct {
-	namespace string
-	serviceID string
-	pods      []podDetails
-}
-
-type podDetails struct {
-	name string
-	ip   uint32
-	port uint32
 }
 
 func TestEndpoints(t *testing.T) {
@@ -35,26 +22,26 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto.svc.cluster.local:8080"},
-			endpoints: []authorityEndpoint{
+			endpoints: []public.AuthorityEndpoints{
 				{
-					namespace: "emojivoto",
-					serviceID: "emoji-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto",
+					ServiceID: "emoji-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "emoji-6bf9f47bd5-jjcrl",
-							ip:   16909060,
-							port: 8080,
+							Name: "emoji-6bf9f47bd5-jjcrl",
+							IP:   16909060,
+							Port: 8080,
 						},
 					},
 				},
 				{
-					namespace: "emojivoto",
-					serviceID: "voting-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto",
+					ServiceID: "voting-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "voting-7bf9f47bd5-jjdrl",
-							ip:   84281096,
-							port: 8080,
+							Name: "voting-7bf9f47bd5-jjdrl",
+							IP:   84281096,
+							Port: 8080,
 						},
 					},
 				},
@@ -67,26 +54,26 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto2.svc.cluster.local:8080"},
-			endpoints: []authorityEndpoint{
+			endpoints: []public.AuthorityEndpoints{
 				{
-					namespace: "emojivoto",
-					serviceID: "emoji-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto",
+					ServiceID: "emoji-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "emoji-6bf9f47bd5-jjcrl",
-							ip:   16909060,
-							port: 8080,
+							Name: "emoji-6bf9f47bd5-jjcrl",
+							IP:   16909060,
+							Port: 8080,
 						},
 					},
 				},
 				{
-					namespace: "emojivoto2",
-					serviceID: "voting-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto2",
+					ServiceID: "voting-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "voting-7bf9f47bd5-jjdrl",
-							ip:   84281096,
-							port: 8080,
+							Name: "voting-7bf9f47bd5-jjdrl",
+							IP:   84281096,
+							Port: 8080,
 						},
 					},
 				},
@@ -100,26 +87,26 @@ func TestEndpoints(t *testing.T) {
 		testEndpointsCall(endpointsExp{
 			options:     options,
 			authorities: []string{"emoji-svc.emojivoto.svc.cluster.local:8080", "voting-svc.emojivoto.svc.cluster.local:8080"},
-			endpoints: []authorityEndpoint{
+			endpoints: []public.AuthorityEndpoints{
 				{
-					namespace: "emojivoto",
-					serviceID: "emoji-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto",
+					ServiceID: "emoji-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "emoji-6bf9f47bd5-jjcrl",
-							ip:   16909060,
-							port: 8080,
+							Name: "emoji-6bf9f47bd5-jjcrl",
+							IP:   16909060,
+							Port: 8080,
 						},
 					},
 				},
 				{
-					namespace: "emojivoto",
-					serviceID: "voting-svc",
-					pods: []podDetails{
+					Namespace: "emojivoto",
+					ServiceID: "voting-svc",
+					Pods: []public.PodDetails{
 						{
-							name: "voting-7bf9f47bd5-jjdrl",
-							ip:   84281096,
-							port: 8080,
+							Name: "voting-7bf9f47bd5-jjdrl",
+							IP:   84281096,
+							Port: 8080,
 						},
 					},
 				},
@@ -129,25 +116,10 @@ func TestEndpoints(t *testing.T) {
 	})
 }
 
-func buildAddrSet(endpoint authorityEndpoint) *pb.WeightedAddrSet {
-	addrs := make([]*pb.WeightedAddr, 0)
-	for _, pod := range endpoint.pods {
-		addr := &net.TcpAddress{
-			Ip:   &net.IPAddress{Ip: &net.IPAddress_Ipv4{Ipv4: pod.ip}},
-			Port: pod.port,
-		}
-		labels := map[string]string{"pod": pod.name}
-		weightedAddr := &pb.WeightedAddr{Addr: addr, MetricLabels: labels}
-		addrs = append(addrs, weightedAddr)
-	}
-	labels := map[string]string{"namespace": endpoint.namespace, "service": endpoint.serviceID}
-	return &pb.WeightedAddrSet{Addrs: addrs, MetricLabels: labels}
-}
-
 func testEndpointsCall(exp endpointsExp, t *testing.T) {
 	updates := make([]pb.Update, 0)
 	for _, endpoint := range exp.endpoints {
-		addrSet := buildAddrSet(endpoint)
+		addrSet := public.BuildAddrSet(endpoint)
 		updates = append(updates, pb.Update{Update: &pb.Update_Add{Add: addrSet}})
 	}
 

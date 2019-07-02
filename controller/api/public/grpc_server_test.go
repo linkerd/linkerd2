@@ -8,9 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/discovery"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -403,6 +401,7 @@ status:
 				&mProm,
 				nil,
 				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -505,6 +504,7 @@ metadata:
 				&mockProm{},
 				nil,
 				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -530,48 +530,6 @@ type endpointsExpected struct {
 	res *discoveryPb.EndpointsResponse
 }
 
-func TestEndpoints(t *testing.T) {
-	t.Run("Queries to the Endpoints endpoint", func(t *testing.T) {
-		expectations := []endpointsExpected{
-			{
-				err: nil,
-				req: &discoveryPb.EndpointsParams{},
-				res: &discoveryPb.EndpointsResponse{},
-			},
-		}
-
-		for _, exp := range expectations {
-			k8sAPI, err := k8s.NewFakeAPI()
-			if err != nil {
-				t.Fatalf("NewFakeAPI returned an error: %s", err)
-			}
-			k8sAPI.Sync()
-
-			discoveryClient := &discovery.MockDiscoveryClient{
-				EndpointsResponseToReturn: exp.res,
-			}
-
-			fakeGrpcServer := newGrpcServer(
-				&mockProm{},
-				nil,
-				discoveryClient,
-				k8sAPI,
-				"linkerd",
-				[]string{},
-			)
-
-			rsp, err := fakeGrpcServer.Endpoints(context.TODO(), exp.req)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
-			}
-
-			if !proto.Equal(exp.res, rsp) {
-				t.Fatalf("Unexpected response: [%+v] != [%+v]", exp.res, rsp)
-			}
-		}
-	})
-}
-
 func TestConfig(t *testing.T) {
 	t.Run("Configs are parsed and returned", func(t *testing.T) {
 		k8sAPI, err := k8s.NewFakeAPI()
@@ -581,6 +539,7 @@ func TestConfig(t *testing.T) {
 
 		fakeGrpcServer := newGrpcServer(
 			&mockProm{},
+			nil,
 			nil,
 			nil,
 			k8sAPI,
