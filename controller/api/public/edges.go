@@ -103,7 +103,7 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 			// format of clientId is id.namespace.serviceaccount.cluster.local
 			clientIDSlice := strings.Split(string(clientID), ".")
 			srcNs := clientIDSlice[1]
-			key := model.LabelValue(dstResource + srcNs)
+			key := model.LabelValue(fmt.Sprintf("%s.%s", dstResource, srcNs))
 			dstIndex[key] = sample.Metric
 		}
 	}
@@ -112,7 +112,7 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 		dstResource := sample.Metric[model.LabelName(resourceReplacementOutbound)]
 		srcNs := sample.Metric[model.LabelName("namespace")]
 
-		key := dstResource + srcNs
+		key := model.LabelValue(fmt.Sprintf("%s.%s", dstResource, srcNs))
 		if _, ok := srcIndex[key]; !ok {
 			srcIndex[key] = []model.Metric{}
 		}
