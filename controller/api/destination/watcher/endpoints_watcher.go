@@ -352,11 +352,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 }
 
 func (sp *servicePublisher) metricsLabels(port Port) prometheus.Labels {
-	return prometheus.Labels{
-		"namespace": sp.id.Namespace,
-		"service":   sp.id.Name,
-		"port":      strconv.Itoa(int(port)),
-	}
+	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)))
 }
 
 /////////////////////

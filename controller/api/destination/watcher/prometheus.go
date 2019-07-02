@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -57,8 +58,24 @@ func newMetricsVecs(name string, labels []string) metricsVecs {
 	}
 }
 
+func endpointsLabels(namespace, service, port string) prometheus.Labels {
+	return prometheus.Labels{
+		"namespace": namespace,
+		"service":   service,
+		"port":      port,
+	}
+}
+
+func labelNames(labels prometheus.Labels) []string {
+	names := []string{}
+	for label := range labels {
+		names = append(names, label)
+	}
+	return names
+}
+
 func newEndpointsMetricsVecs() endpointsMetricsVecs {
-	labels := []string{"namespace", "service", "port"}
+	labels := labelNames(endpointsLabels("", "", ""))
 	vecs := newMetricsVecs("endpoints", labels)
 
 	pods := promauto.NewGaugeVec(
@@ -102,10 +119,18 @@ func (emv endpointsMetricsVecs) newEndpointsMetrics(labels prometheus.Labels) en
 }
 
 func (emv endpointsMetricsVecs) unregister(labels prometheus.Labels) {
-	emv.metricsVecs.subscribers.Delete(labels)
-	emv.metricsVecs.updates.Delete(labels)
-	emv.pods.Delete(labels)
-	emv.exists.Delete(labels)
+	if !emv.metricsVecs.subscribers.Delete(labels) {
+		log.Warnf("unable to delete endpoints_subscribers metric with labels %s", labels)
+	}
+	if !emv.metricsVecs.updates.Delete(labels) {
+		log.Warnf("unable to delete endpoints_updates metric with labels %s", labels)
+	}
+	if !emv.pods.Delete(labels) {
+		log.Warnf("unable to delete endpoints_pods metric with labels %s", labels)
+	}
+	if !emv.exists.Delete(labels) {
+		log.Warnf("unable to delete endpoints_exists metric with labels %s", labels)
+	}
 }
 
 func (m metrics) setSubscribers(n int) {
