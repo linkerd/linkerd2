@@ -6,6 +6,9 @@
 
 set -eux
 
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+cd $ROOT
+
 # export PROW_JOB_ID=${PROW_JOB_ID:=fake-prow-job}
 
 # # set up kind cluster in the background, kick off docker-build in parallel

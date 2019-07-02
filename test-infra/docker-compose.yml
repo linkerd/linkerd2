@@ -4,13 +4,14 @@ services:
   build:
     image: gcr.io/linkerd-io/l5d-builder:latest
     command:
-    - "test-infra/integration-tests.sh"
+    - "${REPO}/test-infra/integration-tests.sh"
     environment:
     - "DOCKER_HOST=tcp://dind:2375"
     - "DOCKER_TRACE=1"
+    volumes:
+      "${REPO}:${REPO}"
     depends_on:
     - dind
-
   dind:
     image: library/docker:18.09.6-dind
     privileged: true
