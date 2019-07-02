@@ -302,17 +302,19 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 
 // GenEdgesResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenEdgesResponse(resourceType string, resSrc, resDst, resClient, resServer, msg []string) pb.EdgesResponse {
+func GenEdgesResponse(resourceType string, resSrc, resDst, resSrcNamespace, resDstNamespace, resClient, resServer, msg []string) pb.EdgesResponse {
 	edges := []*pb.Edge{}
 	for i := range resSrc {
 		edge := &pb.Edge{
 			Src: &pb.Resource{
-				Name: resSrc[i],
-				Type: resourceType,
+				Name:      resSrc[i],
+				Namespace: resSrcNamespace[i],
+				Type:      resourceType,
 			},
 			Dst: &pb.Resource{
-				Name: resDst[i],
-				Type: resourceType,
+				Name:      resDst[i],
+				Namespace: resDstNamespace[i],
+				Type:      resourceType,
 			},
 			ClientId:      resClient[i],
 			ServerId:      resServer[i],
