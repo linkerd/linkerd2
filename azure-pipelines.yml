@@ -31,7 +31,7 @@ stages:
       vmImage: 'ubuntu-16.04'
     container: gcr.io/linkerd-io/l5d-builder:latest
     steps:
-    - script: printenv
+    - script: $(Build.SourcesDirectory)/test-infra/integration-tests.sh
 
     # pool:
     #   vmImage: $(vmImageName)
