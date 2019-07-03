@@ -1,15 +1,15 @@
 ## edge-19.7.1
 
 * CLI
-  * Added more descriptive output to the `linkerd check` for control plane
-    ReplicaSet readiness
+  * Added more descriptive output to the `linkerd check` output for control
+    plane ReplicaSet readiness
   * **Breaking change** Renamed `config.linkerd.io/debug` annotation to
     `config.linkerd.io/enable-debug-sidecar`, to match the
     `--enable-debug-sidecar` CLI flag that sets it
   * Fixed a bug in `linkerd edges` that caused incorrect identities to be
     displayed when requests were sent from two or more namespaces
 * Controller
-  * Addws the `linkerd.io/control-plane-ns` label to the SMI Traffic Split CRD
+  * Added the `linkerd.io/control-plane-ns` label to the SMI Traffic Split CRD
 * Proxy
   * Fixed proxied HTTP/2 connections returning 502 errors when the upstream
     connection is reset, rather than propagating the reset to the client
