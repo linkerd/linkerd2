@@ -1,3 +1,21 @@
+## edge-19.7.1
+
+* CLI
+  * Added more descriptive output to the `linkerd check` output for control
+    plane ReplicaSet readiness
+  * **Breaking change** Renamed `config.linkerd.io/debug` annotation to
+    `config.linkerd.io/enable-debug-sidecar`, to match the
+    `--enable-debug-sidecar` CLI flag that sets it
+  * Fixed a bug in `linkerd edges` that caused incorrect identities to be
+    displayed when requests were sent from two or more namespaces
+* Controller
+  * Added the `linkerd.io/control-plane-ns` label to the SMI Traffic Split CRD
+* Proxy
+  * Fixed proxied HTTP/2 connections returning 502 errors when the upstream
+    connection is reset, rather than propagating the reset to the client
+  * Changed the proxy to treat unexpected HTTP/2 frames as stream errors rather
+    than connection errors
+
 ## edge-19.6.4
 
 This release adds support for the SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
@@ -25,7 +43,7 @@ for more details.
   * Updated `linkerd check` to validate the caller can create
     `PodSecurityPolicy` resources
 * Controller
-  * Default the mutating and validating webhook configurations `sideEffects` 
+  * Default the mutating and validating webhook configurations `sideEffects`
     property to `None` to indicate that the webhooks have no side effects on
     other resources (thanks @Pothulapati!)
 * Proxy
