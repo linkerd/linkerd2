@@ -1,0 +1,60 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- master
+
+resources:
+- repo: self
+
+variables:
+  azureSubscriptionEndpoint: 'azure-resource-manager-connection'
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '09d773f8-fb84-404b-a6a9-43c765c71c7d'
+  imageRepository: 'siggylinkerd'
+  containerRegistry: 'acrbuoyant.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/cni-plugin/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+  # Agent VM image name
+  # vmImageName: 'ubuntu-latest'
+  # vmImageName: 'gcr.io/linkerd-io/l5d-builder:latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container: gcr.io/linkerd-io/l5d-builder:latest
+    steps:
+    - script: $(Build.SourcesDirectory)/test-infra/integration-tests.sh
+
+    # pool:
+    #   vmImage: $(vmImageName)
+    # steps:
+    # - task: Docker@2
+    #   displayName: Build and push an image to container registry
+    #   inputs:
+    #     command: buildAndPush
+    #     repository: $(imageRepository)
+    #     dockerfile: $(dockerfilePath)
+    #     containerRegistry: $(dockerRegistryServiceConnection)
+    #     tags: |
+    #       $(tag)
+    # - task: DockerCompose@0
+    #   displayName: Docker Compose
+    #   inputs:
+    #     action: Run services
+    #     buildImages: false
+    #     containerregistrytype: Azure Container Registry
+    #     azureSubscriptionEndpoint: $(azureSubscriptionEndpoint)
+    #     azureContainerRegistry: $(azureContainerRegistry)
+    #     dockerComposeFile: test-infra/docker-compose.yml
+    #     dockerComposeFileArgs: |
+    #       REPO=$(Build.SourcesDirectory)
+    #     abortOnContainerExit: true
+    #     detached: false

@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  build:
+    image: gcr.io/linkerd-io/l5d-builder:latest
+    command:
+    - "/go/src/github.com/linkerd/linkerd2/test-infra/integration-tests.sh"
+    environment:
+    - "DOCKER_HOST=tcp://dind:2375"
+    - "DOCKER_TRACE=1"
+    - "GOPATH=/go"
+    volumes:
+    - "${REPO}:/go/src/github.com/linkerd/linkerd2"
+    depends_on:
+    - dind
+  dind:
+    image: library/docker:18.09.6-dind
+    privileged: true
+    ports:
+    - "2375:2375"
+    volumes:
+    - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    - "/lib/modules:/lib/modules:ro"

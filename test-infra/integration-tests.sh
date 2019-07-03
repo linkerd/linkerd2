@@ -6,6 +6,9 @@
 
 set -eux
 
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+cd $ROOT
+
 export PROW_JOB_ID=${PROW_JOB_ID:=fake-prow-job}
 
 # set up kind cluster in the background, kick off docker-build in parallel
@@ -33,26 +36,26 @@ TAG=$(bin/linkerd version --client --short)
 # wait for kind cluster to be ready
 wait
 
-# set up port-forwarded connection to kind cluster via localhost:#####
+# # set up port-forwarded connection to kind cluster via localhost:#####
 export KUBECONFIG=$(kind get kubeconfig-path --name=$PROW_JOB_ID)
-POD=$(KUBECONFIG= kubectl -n dind get po --selector=app=dind --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')
-KINDSERVER=$(kubectl config view -o jsonpath='{.clusters[*].cluster.server}')
-KINDPORT=$(echo $KINDSERVER | cut -d':' -f3)
-KUBECONFIG= kubectl -n dind port-forward $POD $KINDPORT > /dev/null &
-PORT_FORWARD_PID=$!
-function cleanup {
-  kill $PORT_FORWARD_PID
-  # TODO: handle this in a periodic prow job
-  kind delete cluster --name=$PROW_JOB_ID
-}
-trap cleanup EXIT
+# POD=$(KUBECONFIG= kubectl -n dind get po --selector=app=dind --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')
+# KINDSERVER=$(kubectl config view -o jsonpath='{.clusters[*].cluster.server}')
+# KINDPORT=$(echo $KINDSERVER | cut -d':' -f3)
+# KUBECONFIG= kubectl -n dind port-forward $POD $KINDPORT > /dev/null &
+# PORT_FORWARD_PID=$!
+# function cleanup {
+#   # kill $PORT_FORWARD_PID
+#   # TODO: handle this in a periodic prow job
+#   kind delete cluster --name=$PROW_JOB_ID
+# }
+# trap cleanup EXIT
 
-# allow 5 seconds for port-forward to connect
-ATTEMPTS=0
-until kubectl cluster-info || [ $ATTEMPTS -eq 5 ]; do
-  ATTEMPTS=$((ATTEMPTS+1))
-  sleep 1
-done
+# # allow 5 seconds for port-forward to connect
+# ATTEMPTS=0
+# until kubectl cluster-info || [ $ATTEMPTS -eq 5 ]; do
+#   ATTEMPTS=$((ATTEMPTS+1))
+#   sleep 1
+# done
 kubectl version
 
 for IMG in controller grafana proxy web ; do
