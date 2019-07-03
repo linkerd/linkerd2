@@ -1,22 +1,33 @@
 ## stable-2.4.0
 
-* Blurbs
-  * edge-19.4.5
-    * Auto-inject on by default
-    * Introduction of install stages
-      * `linkerd install config` and `linkerd install control-plan` (applies
-      to `linkerd upgrade` as well)
-  * edge-19.6.4
-    * Added support for [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+This stable release introduces adds support for SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md),
+fine-grained observability into the TLS-based identity system via the new
+`linkerd edges` command, default automatic proxy injection, installation stages,
+and a host of performance and usability improvements in the proxy and Web UI.
 
-This stable release introduces several new features that help manage the
-complexity of Kubernetes deployments.
+Creating an SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+resource will allow Linkerd to split traffic between the specified backend
+services. The `linkerd edges` command provides a thorough breakdown of the name
+and identity for proxied connections, as well as an exciting new "Edges" table
+in the Web UI!
 
-For more details, see the announcement [blog post](https://linkerd.io/blog/)
+Significant changes to the installation lifecycle have introduced default
+automatic proxy injection, and optional installation stages via the `linkerd
+install config` and `linkerd install control-plane` commands which separate the
+concerns for cluster-level and namespace-level privileges.
+
+Among the many performance and usability improvements to the proxy and Web UI,
+debugging efforts have been accompanied by a new a new `--enable-debug-sidecar`
+flag for the `linkerd inject` command and more accurate metric collection of
+proxied connections.
+
+TODO: Update blog post link. For more details, see the announcement [blog post](https://linkerd.io/blog/)
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
-**Upgrade notes**:
+**Upgrade notes**: TODO: Add summary of upgrade notes link. Please see the
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/index.html) for more
+details.
 
 **Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr
 @matej-g, @Pothulapati, @zaharidichev, 
@@ -140,7 +151,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     before the entire payload is sent to the destination
   * The `l5d-override-dst` header is now used for inbound service profile
     discovery
-  * Include errors in `response_total` metrics
+  * Added errors totals to `response_total` metrics
   * Changed the load balancer to require that Kubernetes services are resolved
     via the control plane
   * Added the `NET_RAW` capability to the proxy-init container to be compatible
