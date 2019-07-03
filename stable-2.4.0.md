@@ -9,9 +9,10 @@
   * edge-19.6.4
     * Added support for [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
 
-This stable release introduces several new features that help manage the complexity of Kubernetes deployments. 
+This stable release introduces several new features that help manage the
+complexity of Kubernetes deployments.
 
-For more details, see the announcement [blog post](TODO)
+For more details, see the announcement [blog post](https://linkerd.io/blog/)
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
@@ -29,9 +30,6 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     `--proxy-version` flag in the `linkerd install` and `linkerd upgrade`
     commands, which allows setting the version for the injected proxy sidecar
     image, without changing the image versions for the control plane
-  * **New** Added a `linkerd edges` command that shows the source and
-    destination name and identity for proxied connections, to assist in
-    debugging
   * Introduced install stages: `linkerd install config` and `linkerd install
     control-plane`
   * Introduced upgrade stages: `linkerd upgrade config` and `linkerd upgrade
@@ -57,31 +55,36 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     to the control plane using a port-forward (thanks, @jackprice!)
   * Fixed `linkerd check` and `linkerd dashboard` failing when any control plane
     pod is not ready, even when multiple replicas exist (as in HA mode)
+  * **New** Added a `linkerd edges` command that shows the source and
+    destination name and identity for proxied connections, to assist in
+    debugging
   * Tap can now be disabled for specific pods during injection by using the
     `--disable-tap` flag, or by using the `config.linkerd.io/disable-tap`
     annotation
   * Introduced pre-install healthcheck for clock skew (thanks, @matej-g!)
   * Added a JSON option to the `linkerd edges` command so that output is
     scripting friendly and can be parsed easily (thanks @alenkacz!)
-  * Fixed an issue where, when Linkerd is installed with `--ha`, running
-    `linkerd upgrade` without `--ha` will disable the high availability control
-    plane
+  * Fixed an issue when Linkerd is installed with `--ha`, running `linkerd
+    upgrade` without `--ha` will disable the high availability control plane
   * Added a `--init-image-version` flag to `linkerd inject` to override the
     injected proxy-init container version
   * Added the `--linkerd-cni-enabled` flag to the `install` subcommands so that
     `NET_ADMIN` capability is omitted from the CNI-enabled control plane's PSP
   * Updated `linkerd check` to validate the caller can create
     `PodSecurityPolicy` resources
-  * Added a check to `install` to prevent installing multiple control planes
-    into different namespaces
+  * Added a check to `linkerd install` to prevent installing multiple control
+    planes into different namespaces
   * Added support for passing a URL directly to `linkerd inject` (thanks
     @Pothulapati!)
   * Added the `--all-namespaces` flag to `linkerd edges`
-
+  * Added more descriptive output to the `linkerd check` output for control
+    plane ReplicaSet readiness
+  * **Breaking change** Renamed `config.linkerd.io/debug` annotation to
+    `config.linkerd.io/enable-debug-sidecar`, to match the
+    `--enable-debug-sidecar` CLI flag that sets it
+  * Fixed a bug in `linkerd edges` that caused incorrect identities to be
+    displayed when requests were sent from two or more namespaces
 * Controller
-  * **New** Control plane installations now generate a self-signed certificate
-    and private key pair for each webhook, to prepare for future work to make
-    the proxy injector and service profile validator HA
   * Added Go pprof HTTP endpoints to all control plane components' admin servers
     to better assist debugging efforts
   * Fixed bug in the proxy injector, where sporadically the pod workload owner
@@ -95,12 +98,13 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
   * Added Controller Component Labels to the webhook config resources (thanks,
     @Pothulapati!)
   * Moved the tap service into its own pod
+  * **New** Control plane installations now generate a self-signed certificate
+    and private key pair for each webhook, to prepare for future work to make
+    the proxy injector and service profile validator HA
   * Added a debug container annotation, allowing the `--enable-debug-sidecar`
     flag to work when auto-injecting Linkerd proxies
   * Added multiple replicas for the `proxy-injector` and `sp-validator`
     controllers when run in high availability mode (thanks to @Pothulapati!)
-  * Default to least-privilege security context values for the proxy container
-    so that auto-inject does not fail on restricted PSPs (thanks @codeman9!)
   * Defined least privilege default security context values for the proxy
     container so that auto-injection does not fail on (thanks @codeman9!)
   * Default the webhook failure policy to `Fail` in order to account for
@@ -115,7 +119,7 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
     other resources (thanks @Pothulapati!)
   * Added support for the SMI TrafficSplit API which allows users to define
     traffic splits in TrafficSplit custom resources
-
+  * Added the `linkerd.io/control-plane-ns` label to the SMI Traffic Split CRD
 * Proxy
   * Replaced the fixed reconnect backoff with an exponential one (thanks,
     @zaharidichev!)
@@ -144,7 +148,10 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
   * Fixed the proxy rejecting HTTP2 requests that don't have an `:authority`
   * Improved idle service eviction to reduce resource consumption for clients
     that send requests to many services
-
+  * Fixed proxied HTTP/2 connections returning 502 errors when the upstream
+    connection is reset, rather than propagating the reset to the client
+  * Changed the proxy to treat unexpected HTTP/2 frames as stream errors rather
+    than connection errors
 * Web UI
   * Added the Font Awesome stylesheet locally; this allows both Font Awesome and
     Material-UI sidebar icons to display consistently with no/limited internet
@@ -159,7 +166,6 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
   * Improved UI for Edges table in dashboard by changing column names, adding a
     "Secured" icon and showing an empty Edges table in the case of no returned
     edges
-
 * Internal
   * Known container errors were hidden in the integration tests; now they are
     reported in the output without having the tests fail
