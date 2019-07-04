@@ -1,3 +1,63 @@
+## edge-19.7.1
+
+* CLI
+  * Added more descriptive output to the `linkerd check` output for control
+    plane ReplicaSet readiness
+  * **Breaking change** Renamed `config.linkerd.io/debug` annotation to
+    `config.linkerd.io/enable-debug-sidecar`, to match the
+    `--enable-debug-sidecar` CLI flag that sets it
+  * Fixed a bug in `linkerd edges` that caused incorrect identities to be
+    displayed when requests were sent from two or more namespaces
+* Controller
+  * Added the `linkerd.io/control-plane-ns` label to the SMI Traffic Split CRD
+* Proxy
+  * Fixed proxied HTTP/2 connections returning 502 errors when the upstream
+    connection is reset, rather than propagating the reset to the client
+  * Changed the proxy to treat unexpected HTTP/2 frames as stream errors rather
+    than connection errors
+
+## edge-19.6.4
+
+This release adds support for the SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+API. Creating a TrafficSplit resource will cause Linkerd to split traffic
+between the specified backend services. Please see [the spec](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
+for more details.
+
+* CLI
+  * Added a check to `install` to prevent installing multiple control planes
+    into different namespaces
+  * Added support for passing a URL directly to `linkerd inject` (thanks
+    @Pothulapati!)
+  * Added the `--all-namespaces` flag to `linkerd edges`
+* Controller
+  * Added support for the SMI TrafficSplit API which allows users to define
+    traffic splits in TrafficSplit custom resources
+* Web UI
+  * Improved UI for Edges table in dashboard by changing column names, adding a
+    "Secured" icon and showing an empty Edges table in the case of no returned
+    edges
+
+## edge-19.6.3
+
+* CLI
+  * Updated `linkerd check` to validate the caller can create
+    `PodSecurityPolicy` resources
+* Controller
+  * Default the mutating and validating webhook configurations `sideEffects`
+    property to `None` to indicate that the webhooks have no side effects on
+    other resources (thanks @Pothulapati!)
+* Proxy
+  * Added the `NET_RAW` capability to the proxy-init container to be compatible
+    with `PodSecurityPolicy`s that use `drop: all`
+  * Fixed the proxy rejecting HTTP2 requests that don't have an `:authority`
+  * Improved idle service eviction to reduce resource consumption for clients
+    that send requests to many services
+* Web UI
+  * Removed the "Debug" page from the Linkerd dashboard while the functionality
+    of that page is being redesigned
+  * Added an Edges table to the resource detail view that shows the source,
+    destination name, and identity for proxied connections
+
 ## edge-19.6.2
 
 * CLI

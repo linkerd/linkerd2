@@ -11,6 +11,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -36,6 +37,8 @@ spec:
         ports:
         - name: proxy-injector
           containerPort: 8443
+        - name: admin-http
+          containerPort: 9995
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config
@@ -72,6 +75,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

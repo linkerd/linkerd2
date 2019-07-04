@@ -145,7 +145,9 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 	}
 
 	if options.preInstallOnly {
-		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
+		checks = append(checks,
+			healthcheck.LinkerdPreInstallChecks,
+			healthcheck.LinkerdPreInstallGlobalResourcesChecks)
 		if !options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}

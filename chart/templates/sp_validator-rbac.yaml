@@ -8,6 +8,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Namespace}}-sp-validator
+  labels:
+    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -17,6 +20,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Namespace}}-sp-validator
+  labels:
+    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -32,6 +38,9 @@ apiVersion: v1
 metadata:
   name: linkerd-sp-validator
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 kind: Secret
 apiVersion: v1
@@ -39,7 +48,8 @@ metadata:
   name: linkerd-sp-validator-tls
   namespace: {{ .Namespace }}
   labels:
-    {{ .ControllerComponentLabel }}: sp-validator
+    {{.ControllerComponentLabel}}: sp-validator
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{ .CreatedByAnnotation }}: {{ .CliVersion }}
 type: Opaque
@@ -53,6 +63,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     {{ .ControllerComponentLabel }}: sp-validator
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -67,4 +78,7 @@ webhooks:
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1"]
     resources: ["serviceprofiles"]
+{{- if not .OmitWebhookSideEffects }}
+  sideEffects: None
+{{- end }}
 {{end -}}

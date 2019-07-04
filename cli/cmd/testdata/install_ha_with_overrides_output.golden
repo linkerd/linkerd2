@@ -20,6 +20,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-identity
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -29,6 +32,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-identity
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -43,6 +49,9 @@ apiVersion: v1
 metadata:
   name: linkerd-identity
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Controller RBAC
@@ -52,6 +61,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-controller
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -65,11 +77,17 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-controller
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -84,6 +102,9 @@ apiVersion: v1
 metadata:
   name: linkerd-controller
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Web RBAC
@@ -94,6 +115,9 @@ apiVersion: v1
 metadata:
   name: linkerd-web
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: web
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Service Profile CRD
@@ -105,6 +129,8 @@ metadata:
   name: serviceprofiles.linkerd.io
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
   version: v1alpha1
@@ -201,6 +227,35 @@ spec:
                               type: object
 ---
 ###
+### TrafficSplit CRD
+### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+###
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: trafficsplits.split.smi-spec.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: split.smi-spec.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: TrafficSplit
+    shortNames:
+      - ts
+    plural: trafficsplits
+    singular: trafficsplit
+  additionalPrinterColumns:
+  - name: Service
+    type: string
+    description: The apex service of this split.
+    JSONPath: .spec.service
+---
+###
 ### Prometheus RBAC
 ###
 ---
@@ -208,6 +263,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-prometheus
+  labels:
+    linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -217,6 +275,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-prometheus
+  labels:
+    linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -231,6 +292,9 @@ apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Grafana RBAC
@@ -241,6 +305,9 @@ apiVersion: v1
 metadata:
   name: linkerd-grafana
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: grafana
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Proxy Injector RBAC
@@ -250,6 +317,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-proxy-injector
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -265,6 +335,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-proxy-injector
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -280,6 +353,9 @@ apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
 ---
 kind: Secret
 apiVersion: v1
@@ -288,6 +364,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 type: Opaque
@@ -301,6 +378,7 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -319,6 +397,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+  sideEffects: None
 ---
 ###
 ### Service Profile Validator RBAC
@@ -328,6 +407,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-sp-validator
+  labels:
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -337,6 +419,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-sp-validator
+  labels:
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
@@ -352,6 +437,9 @@ apiVersion: v1
 metadata:
   name: linkerd-sp-validator
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
 ---
 kind: Secret
 apiVersion: v1
@@ -360,6 +448,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 type: Opaque
@@ -373,6 +462,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
     linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   clientConfig:
@@ -387,6 +477,7 @@ webhooks:
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1"]
     resources: ["serviceprofiles"]
+  sideEffects: None
 ---
 ###
 ### Tap RBAC
@@ -396,6 +487,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-tap
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces"]
@@ -411,6 +505,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-linkerd-tap
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -425,6 +522,9 @@ apiVersion: v1
 metadata:
   name: linkerd-tap
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
 ---
 ###
 ### Control Plane PSP
@@ -434,29 +534,48 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-linkerd-control-plane
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   allowedCapabilities:
   - NET_ADMIN
+  - NET_RAW
+  requiredDropCapabilities:
+  - ALL
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
   seLinux:
-    rule: RunAsAny
-  supplementalGroups:
     rule: RunAsAny
   runAsUser:
     rule: RunAsAny
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
   fsGroup:
-    rule: RunAsAny
+    rule: MustRunAs
+    ranges:
+    - min: 1
+      max: 65535
   volumes:
   - configMap
   - emptyDir
   - secret
+  - projected
+  - downwardAPI
+  - persistentVolumeClaim
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -469,6 +588,8 @@ kind: RoleBinding
 metadata:
   name: linkerd-psp
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -506,11 +627,12 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null,"omitWebhookSideEffects":false}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"400m","requestMemory":"300Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.0.0"}
   install: |
@@ -527,6 +649,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
     linkerd.io/identity-issuer-expiry: 2029-02-28T02:03:52Z
@@ -541,6 +664,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -560,6 +684,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-identity
   namespace: linkerd
 spec:
@@ -724,6 +849,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -753,6 +879,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -771,6 +898,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -790,6 +918,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-controller
   namespace: linkerd
 spec:
@@ -988,6 +1117,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1014,6 +1144,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: web
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1036,6 +1167,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: web
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-web
   namespace: linkerd
 spec:
@@ -1200,6 +1332,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1226,6 +1359,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
@@ -1314,6 +1448,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1333,6 +1468,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-prometheus
   namespace: linkerd
 spec:
@@ -1356,7 +1492,7 @@ spec:
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.level=info
-        image: prom/prometheus:v2.7.1
+        image: prom/prometheus:v2.10.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1502,6 +1638,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1530,6 +1667,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
@@ -1586,6 +1724,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -1605,6 +1744,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: grafana
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-grafana
   namespace: linkerd
 spec:
@@ -1767,6 +1907,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1803,6 +1944,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
@@ -1838,6 +1980,8 @@ spec:
         ports:
         - containerPort: 8443
           name: proxy-injector
+        - containerPort: 9995
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -1969,6 +2113,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -1994,6 +2139,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -2016,6 +2162,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -2035,6 +2182,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: sp-validator
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
@@ -2070,6 +2218,8 @@ spec:
         ports:
         - containerPort: 8443
           name: sp-validator
+        - containerPort: 9997
+          name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
@@ -2199,6 +2349,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
@@ -2225,6 +2376,7 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
@@ -2244,6 +2396,7 @@ metadata:
   creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-tap
   namespace: linkerd
 spec:
@@ -2404,6 +2557,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - NET_RAW
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false

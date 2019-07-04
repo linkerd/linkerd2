@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"testing"
 
@@ -378,9 +377,7 @@ spec:
 			actualAddresses = append(actualAddresses, listener.added...)
 			sort.Strings(actualAddresses)
 
-			if !reflect.DeepEqual(actualAddresses, tt.expectedAddresses) {
-				t.Fatalf("Expected addresses %v, got %v", tt.expectedAddresses, actualAddresses)
-			}
+			testCompare(t, tt.expectedAddresses, actualAddresses)
 
 			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",

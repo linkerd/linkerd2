@@ -8,6 +8,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Namespace}}-prometheus
+  labels:
+    {{.ControllerComponentLabel}}: prometheus
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -17,6 +20,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-{{.Namespace}}-prometheus
+  labels:
+    {{.ControllerComponentLabel}}: prometheus
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -31,4 +37,7 @@ apiVersion: v1
 metadata:
   name: linkerd-prometheus
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: prometheus
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 {{- end}}
