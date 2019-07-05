@@ -684,6 +684,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -860,6 +869,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1053,6 +1071,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1255,6 +1282,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1466,6 +1502,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns

@@ -22,6 +22,7 @@ func testUpgradeOptions() *upgradeOptions {
 	o.controlPlaneVersion = upgradeControlPlaneVersion
 	o.proxyVersion = upgradeProxyVersion
 	o.generateWebhookTLS = fakeGenerateWebhookTLS
+	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.verifyTLS = func(tls *tlsValues, service string) error {
 		return nil
 	}
