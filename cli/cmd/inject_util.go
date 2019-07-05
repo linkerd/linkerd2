@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -141,7 +141,7 @@ func read(path string) ([]io.Reader, error) {
 	)
 	if path == "-" {
 		in = append(in, os.Stdin)
-	} else if isValidURL(path) {
+	} else if strings.Index(path, "http://") == 0 || strings.Index(path, "https://") == 0 {
 		resp, err := http.Get(path)
 		if err != nil {
 			return nil, err
@@ -167,12 +167,6 @@ func read(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
-}
-
-// checks if the given string is a valid URL
-func isValidURL(path string) bool {
-	_, err := url.ParseRequestURI(path)
-	return err == nil
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.
