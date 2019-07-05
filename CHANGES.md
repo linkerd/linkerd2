@@ -1,3 +1,14 @@
+## edge-19.7.2
+
+* CLI
+  * Refactored the `linkerd endpoints` to use the same interface as used by the
+    proxy for service discovery information
+  * Fixed a bug where `linkerd inject` would fail when given a path to a file
+    outside the current directory
+* Proxy
+  * Fixed a bug where DNS queries could persist longer than necessary
+  * Improved router eviction to remove idle services in a more timely manner
+
 ## edge-19.7.1
 
 * CLI
