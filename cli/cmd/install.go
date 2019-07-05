@@ -887,7 +887,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 		return err
 	}
 
-	_, err = fetchConfigs(kubeAPI)
+	_, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil
