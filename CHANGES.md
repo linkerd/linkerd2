@@ -8,6 +8,8 @@
 * Proxy
   * Fixed a bug where DNS queries could persist longer than necessary
   * Improved router eviction to remove idle services in a more timely manner
+  * Fixed a bug where the proxy would fail to process requests with obscure
+    characters in the URI
 
 ## edge-19.7.1
 
