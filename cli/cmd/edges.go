@@ -227,7 +227,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			msg := r.NoIdentityMsg
 
 			if len(msg) == 0 {
-				if options.outputFormat == "json" {
+				if options.outputFormat == jsonOutput {
 					msg = "-"
 				} else {
 					msg = okStatus
@@ -314,7 +314,7 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 		fmt.Sprintf(msgTemplate, msgHeader),
 	}
 
-	if outputFormat == "wide" {
+	if outputFormat == wideOutput {
 		// insert CLIENT_ID and SERVER_ID headers before final SECURED header
 		headers = append(headers[:len(headers)-1], append([]string{
 			fmt.Sprintf(clientTemplate, clientHeader),
@@ -336,7 +336,7 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 		}
 		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, msgTemplate)
 
-		if outputFormat == "wide" {
+		if outputFormat == wideOutput {
 			templateString = fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, clientTemplate, serverTemplate, msgTemplate)
 
 			// insert CLIENT_ID and SERVER_ID values before final SECURED value
