@@ -2,9 +2,11 @@ package watcher
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -69,6 +71,7 @@ type (
 		exists    bool
 		pods      PodSet
 		listeners []EndpointUpdateListener
+		metrics   endpointsMetrics
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
@@ -78,6 +81,8 @@ type (
 		NoEndpoints(exists bool)
 	}
 )
+
+var endpointsVecs = newEndpointsMetricsVecs()
 
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes.
@@ -292,8 +297,6 @@ func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListe
 	port.subscribe(listener)
 }
 
-// unsubscribe returns true iff the listener was found and removed.
-// it also returns the number of listeners remaining after unsubscribing.
 func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener) {
 	sp.Lock()
 	defer sp.Unlock()
@@ -301,6 +304,10 @@ func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateLis
 	port, ok := sp.ports[srcPort]
 	if ok {
 		port.unsubscribe(listener)
+		if len(port.listeners) == 0 {
+			endpointsVecs.unregister(sp.metricsLabels(srcPort))
+			delete(sp.ports, srcPort)
+		}
 	}
 }
 
@@ -322,12 +329,15 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 		exists = true
 	}
 
+	log := sp.log.WithField("port", srcPort)
+
 	port := &portPublisher{
 		listeners:  []EndpointUpdateListener{},
 		targetPort: targetPort,
 		exists:     exists,
 		k8sAPI:     sp.k8sAPI,
-		log:        sp.log.WithField("port", srcPort),
+		log:        log,
+		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort)),
 	}
 
 	endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
@@ -339,6 +349,10 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	}
 
 	return port
+}
+
+func (sp *servicePublisher) metricsLabels(port Port) prometheus.Labels {
+	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)))
 }
 
 /////////////////////
@@ -368,6 +382,10 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	}
 	pp.exists = true
 	pp.pods = newPods
+
+	pp.metrics.incUpdates()
+	pp.metrics.setPods(len(pp.pods))
+	pp.metrics.setExists(true)
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSet {
@@ -425,9 +443,14 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
+	pp.pods = make(PodSet)
 	for _, listener := range pp.listeners {
 		listener.NoEndpoints(exists)
 	}
+
+	pp.metrics.incUpdates()
+	pp.metrics.setExists(exists)
+	pp.metrics.setPods(0)
 }
 
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
@@ -441,6 +464,8 @@ func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 		listener.NoEndpoints(false)
 	}
 	pp.listeners = append(pp.listeners, listener)
+
+	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
 func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
@@ -450,9 +475,11 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 			pp.listeners[i] = pp.listeners[n-1]
 			pp.listeners[n-1] = nil
 			pp.listeners = pp.listeners[:n-1]
-			return
+			break
 		}
 	}
+
+	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
 ////////////
