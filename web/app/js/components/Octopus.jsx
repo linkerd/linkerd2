@@ -39,10 +39,12 @@ const styles = () => ({
     marginRight: "auto"
   },
   centerNode: {
-    width: "244px"
+    width: "244px",
+    height: `${baseHeight - 24}px` // grid alignment adds 24px vertical padding
   },
   neighborNode: {
-    width: "220px"
+    width: "220px",
+    height: `${baseHeight - 24}px` // grid alignment adds 24px vertical padding
   }
 });
 class Octopus extends React.Component {
