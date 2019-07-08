@@ -92,6 +92,10 @@ for more details.
     @Pothulapati!)
   * Added more descriptive output to the `linkerd check` output for control
     plane ReplicaSet readiness
+  * Refactored the `linkerd endpoints` to use the same interface as used by the
+    proxy for service discovery information
+  * Fixed a bug where `linkerd inject` would fail when given a path to a file
+    outside the current directory
 * Controller
   * Added Go pprof HTTP endpoints to all control plane components' admin servers
     to better assist debugging efforts
@@ -161,6 +165,10 @@ for more details.
     connection is reset, rather than propagating the reset to the client
   * Changed the proxy to treat unexpected HTTP/2 frames as stream errors rather
     than connection errors
+  * Fixed a bug where DNS queries could persist longer than necessary
+  * Improved router eviction to remove idle services in a more timely manner
+  * Fixed a bug where the proxy would fail to process requests with obscure
+    characters in the URI
 * Web UI
   * Added the Font Awesome stylesheet locally; this allows both Font Awesome and
     Material-UI sidebar icons to display consistently with no/limited internet
@@ -184,6 +192,19 @@ for more details.
     reflect the typical use case
   * Moved the proxy-init container to a separate `linkerd/proxy-init` Git
     repository
+
+## edge-19.7.2
+
+* CLI
+  * Refactored the `linkerd endpoints` to use the same interface as used by the
+    proxy for service discovery information
+  * Fixed a bug where `linkerd inject` would fail when given a path to a file
+    outside the current directory
+* Proxy
+  * Fixed a bug where DNS queries could persist longer than necessary
+  * Improved router eviction to remove idle services in a more timely manner
+  * Fixed a bug where the proxy would fail to process requests with obscure
+    characters in the URI
 
 ## edge-19.7.1
 

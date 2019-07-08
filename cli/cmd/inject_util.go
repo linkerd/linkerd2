@@ -171,8 +171,12 @@ func read(path string) ([]io.Reader, error) {
 
 // checks if the given string is a valid URL
 func isValidURL(path string) bool {
-	_, err := url.ParseRequestURI(path)
-	return err == nil
+	u, err := url.ParseRequestURI(path)
+	if err != nil {
+		return false
+	}
+
+	return u.Host != "" && u.Scheme != ""
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.
