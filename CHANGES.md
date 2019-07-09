@@ -25,13 +25,17 @@ proxy and UI, as well as production-ready features including:
 * A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
   debugging efforts
 
-TODO: For more details, see the announcement [blog post](https://linkerd.io/blog/)
+TODO: For more details, see the announcement [blog post](https://linkerd.io/blog/).
+
+Linkerd recently passed a CNCF-sponsored security audit! Check out the in-depth
+report [here](https://github.com/linkerd/linkerd2/blob/master/SECURITY_AUDIT.pdf).
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
-**Upgrade notes**: TODO: Add summary of upgrade notes link. Please see the
-[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0)
-for more details.
+**Upgrade notes**: Use the `linkerd upgrade` command to upgrade the control
+plane. This command ensures that all existing control plane's configuration and
+mTLS secrets are retained. For more details, please see the [upgrade
+instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) for more details.
 
 **Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr
 @matej-g, @Pothulapati, @zaharidichev, 
