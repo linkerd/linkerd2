@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 )
@@ -126,6 +127,38 @@ var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
 )
+
+// Resource provides a way to describe a Kubernetes object, kind, and name.
+// TODO: Consider sharing with the inject package's ResourceConfig.workload
+// struct, as it wraps both runtime.Object and metav1.TypeMeta.
+type Resource struct {
+	groupVersionKind schema.GroupVersionKind
+	name             string
+}
+
+// String outputs the resource in kind.group/name format, intended for
+// `linkerd install`.
+func (r *Resource) String() string {
+	return fmt.Sprintf("%s/%s", strings.ToLower(r.groupVersionKind.GroupKind().String()), r.name)
+}
+
+// ResourceError provides a custom error type for resource existence checks,
+// useful in printing detailed error messages in `linkerd check` and
+// `linkerd install`.
+type ResourceError struct {
+	resourceName string
+	Resources    []Resource
+}
+
+// Error satisfies the error interface for ResourceError. The output is intended
+// for `linkerd check`.
+func (e *ResourceError) Error() string {
+	names := []string{}
+	for _, res := range e.Resources {
+		names = append(names, res.name)
+	}
+	return fmt.Sprintf("%s found but should not exist: %s", e.resourceName, strings.Join(names, " "))
+}
 
 type checker struct {
 	// description is the short description that's printed to the command line
@@ -1069,15 +1102,21 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
 	if !shouldExist {
 		if len(objects) > 0 {
-			resources := ""
+			resources := []Resource{}
 			for _, obj := range objects {
 				m, err := meta.Accessor(obj)
 				if err != nil {
 					return err
 				}
-				resources += fmt.Sprintf("%s ", m.GetName())
+
+				res := Resource{name: m.GetName()}
+				gvks, _, err := k8s.ObjectKinds(obj)
+				if err == nil && len(gvks) > 0 {
+					res.groupVersionKind = gvks[0]
+				}
+				resources = append(resources, res)
 			}
-			return fmt.Errorf("%s found but should not exist: %s", resourceName, strings.TrimSpace(resources))
+			return &ResourceError{resourceName, resources}
 		}
 		return nil
 	}

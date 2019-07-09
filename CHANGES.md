@@ -100,6 +100,9 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) f
     proxy for service discovery information
   * Fixed a bug where `linkerd inject` would fail when given a path to a file
     outside the current directory
+  * Graduated high-availability support out of experimental status
+  * Modified the error message for `linkerd install` to provide instructions for
+    proceeding when an existing installation is found
 * Controller
   * Added Go pprof HTTP endpoints to all control plane components' admin servers
     to better assist debugging efforts
@@ -136,7 +139,9 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) f
   * Added support for the SMI TrafficSplit API which allows users to define
     traffic splits in TrafficSplit custom resources
   * Added the `linkerd.io/control-plane-ns` label to all Linkerd resources
-    allowing them to be identified using a label selector.
+    allowing them to be identified using a label selector
+  * Added Prometheus metrics for the Kubernetes watchers in the destination
+    service for better visibility
 * Proxy
   * Replaced the fixed reconnect backoff with an exponential one (thanks,
     @zaharidichev!)
@@ -196,6 +201,16 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) f
     reflect the typical use case
   * Moved the proxy-init container to a separate `linkerd/proxy-init` Git
     repository
+
+## edge-19.7.3
+
+* CLI
+  * Graduated high-availability support out of experimental status
+  * Modified the error message for `linkerd install` to provide instructions for
+    proceeding when an existing installation is found
+* Controller
+  * Added Prometheus metrics for the Kubernetes watchers in the destination
+    service for better visibility
 
 ## edge-19.7.2
 
