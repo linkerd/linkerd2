@@ -6,6 +6,7 @@ COPY chart chart
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
 COPY controller/gen controller/gen
+COPY controller/identity controller/identity
 COPY pkg pkg
 RUN mkdir -p /out
 
