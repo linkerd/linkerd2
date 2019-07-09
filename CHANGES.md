@@ -18,10 +18,12 @@ config` and `linkerd install control-plane` commands, the default behavior of
 the `linkerd inject` command only adds annotations and defers injection to the
 always-installed proxy injector component.
 
-Among the many performance and usability improvements to the proxy and UI, the
-new `linkerd edges` command provides fine-grained observability into the
-TLS-based identity system, and debugging efforts have been accompanied by a new
-`--enable-debug-sidecar` flag for the `linkerd inject` command
+Finally, there have been many performance and usability improvements to the
+proxy and UI, as well as production-ready features including: 
+* A new `linkerd edges` command that provides fine-grained observability into
+  the TLS-based identity system
+* A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
+  debugging efforts
 
 TODO: For more details, see the announcement [blog post](https://linkerd.io/blog/)
 
