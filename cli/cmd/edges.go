@@ -311,18 +311,13 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 		fmt.Sprintf(dstTemplate, dstHeader),
 		fmt.Sprintf(srcNamespaceTemplate, srcNamespaceHeader),
 		fmt.Sprintf(dstNamespaceTemplate, dstNamespaceHeader),
-		fmt.Sprintf(msgTemplate, msgHeader),
 	}
 
 	if outputFormat == wideOutput {
-		// insert CLIENT_ID and SERVER_ID headers before final SECURED header
-		headers = append(headers[:len(headers)-1], append([]string{
-			fmt.Sprintf(clientTemplate, clientHeader),
-			fmt.Sprintf(serverTemplate, serverHeader),
-		}, headers[len(headers)-1:]...)...)
+		headers = append(headers, fmt.Sprintf(clientTemplate, clientHeader), fmt.Sprintf(serverTemplate, serverHeader))
 	}
 
-	headers[len(headers)-1] = headers[len(headers)-1] + "\t" // trailing \t is required to format last column
+	headers = append(headers, fmt.Sprintf(msgTemplate, msgHeader)+"\t")
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
@@ -339,7 +334,6 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 		if outputFormat == wideOutput {
 			templateString = fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, clientTemplate, serverTemplate, msgTemplate)
 
-			// insert CLIENT_ID and SERVER_ID values before final SECURED value
 			values = append(values[:len(values)-1], append([]interface{}{
 				row.client,
 				row.server,
