@@ -1,27 +1,29 @@
 ## stable-2.4.0
 
-This stable release adds percentage-based traffic splitting, fine-grained
-observability into the TLS-based identity system via the new `linkerd edges`
-command, installation stages, and a host of performance and usability
-improvements in the proxy and UI.
+This release adds traffic splitting functionality, support for the Kubernetes
+Service Mesh Interface (SMI), graduates high-availability support out of
+experimental status, and adds a tremendous list of other improvements,
+performance enhancements, and bug fixes
 
-Creating an SMI [Traffic Split](https://github.com/deislabs/smi-spec/blob/master/traffic-split.md)
-resource will allow Linkerd to split traffic between the specified backend
-services. The `linkerd edges` command provides a thorough breakdown of the name
-and identity for proxied connections, as well as a new "Edges" table in the web
-UI!
+Linkerd's new traffic splitting feature allows users to dynamically control the
+percentage of traffic destined for a service. This powerful feature can be used
+to implement rollout strategies like canary releases and blue-green deploys.
 
-Significant changes to the installation lifecycle have introduced default
-automatic proxy injection, and optional installation stages via the `linkerd
-install config` and `linkerd install control-plane` commands which separate the
-concerns for cluster-level and namespace-level privileges.
+Support for the [Service Mesh Interface](https://smi-spec.io) (SMI) makes it
+easier for ecosystem tools to work across all service mesh implementations. As
+part of this work, we're happy to report that [Flagger now supports Linkerd](https://docs.flagger.app/usage/linkerd-progressive-delivery)!
 
-Among the many performance and usability improvements to the proxy and web UI,
-debugging efforts have been accompanied by a new `--enable-debug-sidecar`
-flag for the `linkerd inject` command and more accurate metric collection of
-proxied connections.
+Along with the introduction of optional install stages via the `linkerd install
+config` and `linkerd install control-plane` commands, the default behavior of
+the `linkerd inject` command only adds annotations and defers injection to the
+always-installed proxy injector component.
 
-TODO: Update blog post link. For more details, see the announcement [blog post](https://linkerd.io/blog/)
+Among the many performance and usability improvements to the proxy and UI, the
+new `linkerd edges` command provides fine-grained observability into the
+TLS-based identity system, and debugging efforts have been accompanied by a new
+`--enable-debug-sidecar` flag for the `linkerd inject` command
+
+TODO: For more details, see the announcement [blog post](https://linkerd.io/blog/)
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
