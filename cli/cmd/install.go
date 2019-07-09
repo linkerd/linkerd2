@@ -437,7 +437,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
-		"Experimental: Enable HA deployment config for the control plane (default false)",
+		"Enable HA deployment config for the control plane (default false)",
 	)
 	flags.Int64Var(
 		&options.controllerUID, "controller-uid", options.controllerUID,
