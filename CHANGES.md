@@ -1,3 +1,13 @@
+## edge-19.7.3
+
+* CLI
+  * Graduated high-availability support out of experimental status
+  * Modified the error message for `linkerd install` to provide instructions for
+    proceeding when an existing installation is found
+* Controller
+  * Added Prometheus metrics for the Kubernetes watchers in the destination
+    service for better visibility
+
 ## edge-19.7.2
 
 * CLI
