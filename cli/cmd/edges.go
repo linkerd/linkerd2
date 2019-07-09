@@ -327,18 +327,16 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 			row.dst,
 			row.srcNamespace,
 			row.dstNamespace,
-			row.msg,
 		}
 		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, msgTemplate)
 
 		if outputFormat == wideOutput {
 			templateString = fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, clientTemplate, serverTemplate, msgTemplate)
 
-			values = append(values[:len(values)-1], append([]interface{}{
-				row.client,
-				row.server,
-			}, values[len(values)-1:]...)...)
+			values = append(values, row.client, row.server)
 		}
+
+		values = append(values, row.msg)
 
 		fmt.Fprintf(w, templateString, values...)
 	}
