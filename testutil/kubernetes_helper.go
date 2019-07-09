@@ -260,8 +260,9 @@ func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) 
 		return "", err
 	}
 
-	go pf.Run()
-	<-pf.Ready()
+	if err = pf.Init(); err != nil {
+		return "", err
+	}
 
 	return pf.URLFor(""), nil
 }

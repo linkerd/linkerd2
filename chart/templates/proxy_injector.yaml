@@ -37,6 +37,8 @@ spec:
         ports:
         - name: proxy-injector
           containerPort: 8443
+        - name: admin-http
+          containerPort: 9995
         volumeMounts:
         - name: config
           mountPath: /var/run/linkerd/config

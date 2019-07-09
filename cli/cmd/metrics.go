@@ -161,16 +161,9 @@ func getMetrics(
 	}
 
 	defer portforward.Stop()
-
-	go func() {
-		err := portforward.Run()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-			portforward.Stop()
-		}
-	}()
-
-	<-portforward.Ready()
+	if err = portforward.Init(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+	}
 
 	metricsURL := portforward.URLFor("/metrics")
 	resp, err := http.Get(metricsURL)

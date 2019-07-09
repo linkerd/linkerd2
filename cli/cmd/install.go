@@ -181,6 +181,10 @@ const (
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 	defaultCaType                     = identity.LinkerdIdentityIssuer
+
+	errMsgGlobalResourcesExist           = "Can't install the Linkerd control plane in the '%s' namespace. Global resources from an existing Linkerd installation detected:\n%s\n\nRemove these resources, or use the --ignore-cluster flag to overwrite them.\n"
+	errMsgLinkerdConfigConfigMapNotFound = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nIf this is expected, use the --ignore-cluster flag to continue the installation.\n"
+	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -282,6 +286,11 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				os.Exit(1)
+			}
+
 			return installRunE(options, configStage, parentFlags)
 		},
 	}
@@ -313,8 +322,16 @@ control plane. It should be run after "linkerd install config".`,
   # Install Linkerd into a non-default namespace.
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !options.skipChecks {
-				exitIfNamespaceDoesNotExist()
+			// check if global resources exist to determine if the `install config`
+			// stage succeeded
+			if err := errIfGlobalResourcesExist(); err == nil && !options.skipChecks {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+				os.Exit(1)
+			}
+
+			if err := errIfLinkerdConfigConfigMapExists(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgLinkerdConfigConfigMapNotFound, controlPlaneNamespace, err.Error())
+				os.Exit(1)
 			}
 
 			return installRunE(options, controlPlaneStage, flags)
@@ -361,6 +378,11 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				os.Exit(1)
+			}
+
 			return installRunE(options, "", flags)
 		},
 	}
@@ -378,12 +400,6 @@ control plane.`,
 }
 
 func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
-	if !options.ignoreCluster {
-		// TODO: consider cobra.SilenceUsage, so we can return errors from
-		// `RunE`, rather than calling `os.Exit(1)`
-		exitIfClusterExists()
-	}
-
 	values, configs, err := options.validateAndBuild(stage, flags)
 	if err != nil {
 		return err
@@ -705,6 +721,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/controller-rbac.yaml"},
 			{Name: "templates/web-rbac.yaml"},
 			{Name: "templates/serviceprofile-crd.yaml"},
+			{Name: "templates/trafficsplit-crd.yaml"},
 			{Name: "templates/prometheus-rbac.yaml"},
 			{Name: "templates/grafana-rbac.yaml"},
 			{Name: "templates/proxy_injector-rbac.yaml"},
@@ -877,61 +894,51 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-// exitIfClusterExists checks the kubernetes API to determine
-// whether a config exists and exits if it does exist or if an error is
-// encountered.
-//
-// This bypasses the public API so that public API errors cannot cause us to
-// misdiagnose a controller error to indicate that no control plane exists.
-func exitIfClusterExists() {
-	k, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+func errIfGlobalResourcesExist() error {
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
 	}
 
-	c := k.CoreV1().ConfigMaps(controlPlaneNamespace)
-	if _, err = c.Get(k8s.ConfigConfigMapName, metav1.GetOptions{}); err != nil {
-		if kerrors.IsNotFound(err) {
-			return
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+	})
+
+	errMsgs := []string{}
+	hc.RunChecks(func(result *healthcheck.CheckResult) {
+		if result.Err != nil {
+			errMsgs = append(errMsgs, result.Err.Error())
 		}
+	})
 
-		fmt.Fprintln(os.Stderr, "Unable to build a Kubernetes client to check for configuration. If this expected, use the --ignore-cluster flag.")
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+	if len(errMsgs) > 0 {
+		return errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	fmt.Fprintln(os.Stderr, "Linkerd has already been installed on your cluster in the linkerd namespace. Please run upgrade if you'd like to update this installation. Otherwise, use the --ignore-cluster flag.")
-	os.Exit(1)
+	return nil
 }
 
-// exitIfNamespaceDoesNotExist checks the kubernetes API to determine if the
-// control-plane namespace exists, and returns an error if it does not.
-//
-// This is useful when running `linkerd install control-plane`, where the
-// namespace must exist, but `linkerd-config` should not.
-func exitIfNamespaceDoesNotExist() {
-	hc := newHealthChecker(
-		[]healthcheck.CategoryID{healthcheck.KubernetesAPIChecks},
-		time.Time{},
-	)
-
-	success := hc.RunChecks(exitOnError)
-	if !success {
-		fmt.Fprintln(os.Stderr, "Failed to connect to Kubernetes. If this expected, use the --skip-checks flag.")
-		os.Exit(1)
-	}
-
-	err := hc.CheckNamespace(controlPlaneNamespace, true)
+func errIfLinkerdConfigConfigMapExists() error {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
 	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"Failed to find required control-plane namespace: %s. Run \"linkerd install config -l %s | kubectl apply -f -\" to create it (this requires cluster administration permissions).\nSee https://linkerd.io/2/getting-started/ for more information. Or use \"--skip-checks\" to proceed anyway.\n",
-			controlPlaneNamespace, controlPlaneNamespace,
-		)
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
 func (idopts *installIdentityOptions) validate() error {

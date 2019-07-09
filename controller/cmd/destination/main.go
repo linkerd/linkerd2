@@ -30,7 +30,7 @@ func main() {
 
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
-		k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP,
+		k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS,
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
