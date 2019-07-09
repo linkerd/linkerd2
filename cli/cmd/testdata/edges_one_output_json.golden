@@ -6,7 +6,7 @@
     "dst_namespace": "emojivoto",
     "client_id": "default.emojivoto",
     "server_id": "web.emojivoto",
-    "no_tls_reason": "-"
+    "no_tls_reason": ""
   },
   {
     "src": "web",
@@ -15,7 +15,7 @@
     "dst_namespace": "emojivoto",
     "client_id": "web.emojivoto",
     "server_id": "emoji.emojivoto",
-    "no_tls_reason": "-"
+    "no_tls_reason": ""
   },
   {
     "src": "web",
@@ -24,7 +24,7 @@
     "dst_namespace": "emojivoto",
     "client_id": "web.emojivoto",
     "server_id": "voting.emojivoto",
-    "no_tls_reason": "-"
+    "no_tls_reason": ""
   },
   {
     "src": "linkerd-controller",
@@ -33,6 +33,6 @@
     "dst_namespace": "linkerd",
     "client_id": "linkerd-controller.linkerd",
     "server_id": "linkerd-prometheus.linkerd",
-    "no_tls_reason": "-"
+    "no_tls_reason": ""
   }
 ]

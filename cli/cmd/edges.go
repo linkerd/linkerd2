@@ -228,7 +228,7 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 
 			if len(msg) == 0 {
 				if options.outputFormat == jsonOutput {
-					msg = "-"
+					msg = ""
 				} else {
 					msg = okStatus
 				}
