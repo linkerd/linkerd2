@@ -3,15 +3,13 @@
 This release adds traffic splitting functionality, support for the Kubernetes
 Service Mesh Interface (SMI), graduates high-availability support out of
 experimental status, and adds a tremendous list of other improvements,
-performance enhancements, and bug fixes
+performance enhancements, and bug fixes.
 
 Linkerd's new traffic splitting feature allows users to dynamically control the
 percentage of traffic destined for a service. This powerful feature can be used
 to implement rollout strategies like canary releases and blue-green deploys.
-
 Support for the [Service Mesh Interface](https://smi-spec.io) (SMI) makes it
-easier for ecosystem tools to work across all service mesh implementations. As
-part of this work, we're happy to report that [Flagger now supports Linkerd](https://docs.flagger.app/usage/linkerd-progressive-delivery)!
+easier for ecosystem tools to work across all service mesh implementations.
 
 Along with the introduction of optional install stages via the `linkerd install
 config` and `linkerd install control-plane` commands, the default behavior of
@@ -24,8 +22,6 @@ proxy and UI, as well as production-ready features including:
   the TLS-based identity system
 * A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
   debugging efforts
-
-TODO: For more details, see the announcement [blog post](https://linkerd.io/blog/).
 
 Linkerd recently passed a CNCF-sponsored security audit! Check out the in-depth
 report [here](https://github.com/linkerd/linkerd2/blob/master/SECURITY_AUDIT.pdf).
