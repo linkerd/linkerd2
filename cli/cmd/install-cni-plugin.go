@@ -28,6 +28,7 @@ type installCNIPluginConfig struct {
 	DestCNIBinDir       string
 	CreatedByAnnotation string
 	CliVersion          string
+	UseWaitFlag         bool
 }
 
 type cniPluginOptions struct {
@@ -44,6 +45,7 @@ type cniPluginOptions struct {
 	logLevel            string
 	destCNINetDir       string
 	destCNIBinDir       string
+	useWaitFlag         bool
 }
 
 func newCNIPluginOptions() *cniPluginOptions {
@@ -61,6 +63,7 @@ func newCNIPluginOptions() *cniPluginOptions {
 		logLevel:            "info",
 		destCNINetDir:       "/etc/cni/net.d",
 		destCNIBinDir:       "/opt/cni/bin",
+		useWaitFlag:         false,
 	}
 }
 
@@ -154,6 +157,7 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 		DestCNIBinDir:       options.destCNIBinDir,
 		CreatedByAnnotation: k8s.CreatedByAnnotation,
 		CliVersion:          k8s.CreatedByAnnotationValue(),
+		UseWaitFlag:         options.useWaitFlag,
 	}, nil
 }
 

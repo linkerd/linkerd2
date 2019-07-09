@@ -117,6 +117,7 @@ data:
   log_level: "{{.LogLevel}}"
   dest_cni_net_dir: "{{.DestCNINetDir}}"
   dest_cni_bin_dir: "{{.DestCNIBinDir}}"
+  use_wait_flag: "{{.UseWaitFlag}}"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
@@ -139,7 +140,8 @@ data:
         "ports-to-redirect": [__PORTS_TO_REDIRECT__],
         "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
         "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
-        "simulate": __SIMULATE__
+        "simulate": __SIMULATE__,
+        "use-wait-flag": __USE_WAIT_FLAG__
       }
     }
 ---
