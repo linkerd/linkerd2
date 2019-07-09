@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
@@ -31,12 +32,14 @@ import (
 type APIServer interface {
 	pb.ApiServer
 	discoveryPb.DiscoveryServer
+	destinationPb.DestinationServer
 }
 
 type grpcServer struct {
 	prometheusAPI         promv1.API
 	tapClient             tapPb.TapClient
 	discoveryClient       discoveryPb.DiscoveryClient
+	destinationClient     destinationPb.DestinationClient
 	k8sAPI                *k8s.API
 	controllerNamespace   string
 	ignoredNamespaces     []string
@@ -61,6 +64,7 @@ func newGrpcServer(
 	promAPI promv1.API,
 	tapClient tapPb.TapClient,
 	discoveryClient discoveryPb.DiscoveryClient,
+	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	ignoredNamespaces []string,
@@ -70,6 +74,7 @@ func newGrpcServer(
 		prometheusAPI:         promAPI,
 		tapClient:             tapClient,
 		discoveryClient:       discoveryClient,
+		destinationClient:     destinationClient,
 		k8sAPI:                k8sAPI,
 		controllerNamespace:   controllerNamespace,
 		ignoredNamespaces:     ignoredNamespaces,
@@ -262,6 +267,33 @@ func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_T
 			tapStream.Send(event)
 		}
 	}
+}
+
+// Pass through to Destination service
+func (s *grpcServer) Get(req *destinationPb.GetDestination, stream destinationPb.Destination_GetServer) error {
+	destinationStream := stream.(destinationServer)
+	destinationClient, err := s.destinationClient.Get(destinationStream.Context(), req)
+	if err != nil {
+		log.Errorf("Unexpected error on Destination.Get [%v]: %v", req, err)
+		return err
+	}
+	for {
+		select {
+		case <-destinationStream.Context().Done():
+			return nil
+		default:
+			event, err := destinationClient.Recv()
+			if err != nil {
+				return err
+			}
+			destinationStream.Send(event)
+		}
+	}
+}
+
+func (s *grpcServer) GetProfile(_ *destinationPb.GetDestination, _ destinationPb.Destination_GetProfileServer) error {
+	// Not implemented in the Public API. Instead, the proxies should reach the Destination gRPC server directly.
+	return errors.New("Not implemented")
 }
 
 func (s *grpcServer) shouldIgnore(pod *corev1.Pod) bool {

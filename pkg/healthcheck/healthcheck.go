@@ -11,7 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -19,11 +21,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -201,6 +203,7 @@ type HealthChecker struct {
 	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
+	linkerdConfig    *configPb.All
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -286,7 +289,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, false)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -429,7 +432,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -497,13 +500,14 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkLinkerdConfigConfigMap(true)
+					check: func(context.Context) (err error) {
+						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						return
 					},
 				},
 				{
-					description: "control plane components ready",
-					hintAnchor:  "l5d-existence-psp", // needs https://github.com/linkerd/website/issues/272
+					description: "control plane replica sets are ready",
+					hintAnchor:  "l5d-existence-replicasets",
 					fatal:       true,
 					check: func(context.Context) error {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
@@ -515,7 +519,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "no unschedulable pods",
-					hintAnchor:  "l5d-existence-unschedulable-pods", // needs https://github.com/linkerd/website/issues/272
+					hintAnchor:  "l5d-existence-unschedulable-pods",
 					fatal:       true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
@@ -615,21 +619,10 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// The UUID is only known to the web process. At some point we may want
-							// to consider providing it in the Public API.
+							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							for _, pod := range hc.controlPlanePods {
-								if strings.Split(pod.Name, "-")[0] == "web" {
-									for _, container := range pod.Spec.Containers {
-										if container.Name == "web" {
-											for _, arg := range container.Args {
-												if strings.HasPrefix(arg, "-uuid=") {
-													uuid = strings.TrimPrefix(arg, "-uuid=")
-												}
-											}
-										}
-									}
-								}
+							if hc.linkerdConfig != nil {
+								uuid = hc.linkerdConfig.GetInstall().GetUuid()
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -682,7 +675,7 @@ func (hc *HealthChecker) allCategories() []category {
 							// when checking proxies in all namespaces, this check is a no-op
 							return nil
 						}
-						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
+						return hc.checkNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -888,18 +881,28 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap(shouldExist bool) error {
-	cm, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil && !kerrors.IsNotFound(err) {
-		return err
-	}
-
-	return checkResources("ConfigMaps", []runtime.Object{cm}, []string{k8s.ConfigConfigMapName}, shouldExist)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
+	return FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 }
 
-// CheckNamespace checks whether the given namespace exists, and returns an
+// FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
+// Kubernetes and parses it into `linkerd2.config` protobuf.
+// TODO: Consider a different package for this function. This lives in the
+// healthcheck package because healthcheck depends on it, along with other
+// packages that also depend on healthcheck. This function depends on both
+// `pkg/k8s` and `pkg/config`, which do not depend on each other.
+func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*configPb.All, error) {
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return config.FromConfigMap(cm.Data)
+}
+
+// checkNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) CheckNamespace(namespace string, shouldExist bool) error {
+func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(namespace)
 	if err != nil {
 		return err

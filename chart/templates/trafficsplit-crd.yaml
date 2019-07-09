@@ -11,6 +11,8 @@ metadata:
   name: trafficsplits.split.smi-spec.io
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 spec:
   group: split.smi-spec.io
   version: v1alpha1

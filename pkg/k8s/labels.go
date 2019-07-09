@@ -167,7 +167,7 @@ const (
 
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
-	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/debug"
+	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
