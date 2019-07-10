@@ -9,6 +9,8 @@ import (
 	tsfake "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
+
+	tsscheme "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +19,7 @@ import (
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
@@ -145,7 +148,19 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, 
 func ToRuntimeObject(config string) (runtime.Object, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err
+}
+
+// ObjectKinds wraps client-go's scheme.Scheme.ObjectKinds()
+// It returns all possible group,version,kind of the go object, true if the
+// object is considered unversioned, or an error if it's not a pointer or is
+// unregistered.
+func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
+	return scheme.Scheme.ObjectKinds(obj)
 }

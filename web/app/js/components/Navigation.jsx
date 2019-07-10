@@ -2,14 +2,13 @@ import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
-import BuildIcon from '@material-ui/icons/Build';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import CloudQueueIcon from '@material-ui/icons/CloudQueue';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import HomeIcon from '@material-ui/icons/Home';
-import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
@@ -28,6 +27,9 @@ import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
+import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
+import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
+import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
@@ -285,12 +287,11 @@ class NavigationBase extends React.Component {
 
           <MenuList>
             { this.menuItem("/overview", "Overview", <HomeIcon />) }
-            { this.menuItem("/tap", "Tap", <Icon className={classNames("fas fa-microscope", classes.shrinkIcon)} />) }
-            { this.menuItem("/top", "Top", <Icon className={classNames("fas fa-stream", classes.shrinkIcon)} />) }
-            { this.menuItem("/routes", "Top Routes", <Icon className={classNames("fas fa-random", classes.shrinkIcon)} />) }
+            { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
+            { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
+            { this.menuItem("/routes", "Top Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
             { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
             <NavigationResources />
-            { this.menuItem("/debug", "Debug", <BuildIcon className={classes.shrinkIcon} />) }
           </MenuList>
 
           <Divider />

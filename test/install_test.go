@@ -240,20 +240,6 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func TestInstallSP(t *testing.T) {
-	cmd := []string{"install-sp"}
-
-	out, _, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		t.Fatalf("linkerd install-sp command failed\n%s", out)
-	}
-
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
-	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
-	}
-}
-
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
 	cmd := []string{"check", "config", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
@@ -298,6 +284,20 @@ func TestCheckPostInstall(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+}
+
+func TestInstallSP(t *testing.T) {
+	cmd := []string{"install-sp"}
+
+	out, _, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("linkerd install-sp command failed\n%s", out)
+	}
+
+	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	if err != nil {
+		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 }
 
@@ -434,7 +434,7 @@ func TestCheckProxy(t *testing.T) {
 			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 			golden := "check.proxy.golden"
 
-			err := TestHelper.RetryFor(time.Minute, func() error {
+			err := TestHelper.RetryFor(time.Minute*5, func() error {
 				out, _, err := TestHelper.LinkerdRun(cmd...)
 				if err != nil {
 					return fmt.Errorf("Check command failed\n%s", out)

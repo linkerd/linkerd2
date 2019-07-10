@@ -1,6 +1,0 @@
-NAMESPACE   IP        PORT   POD          VERSION   SERVICE
-books       1.2.3.4   8080   authors      1234      authors.books
-
-NAMESPACE   IP        PORT   POD          VERSION   SERVICE
-emojivoto   1.2.3.4   8080   emoji-svc    1234      emoji-svc.emojivoto
-emojivoto   1.2.3.4   8080   voting-svc   1234      voting-svc.emojivoto

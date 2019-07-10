@@ -436,7 +436,7 @@
   version = "v1.1"
 
 [[projects]]
-  digest = "1:f290ea91c428cd9482eac37f4feba06d8774683fcd503c18efdec57c432ca484"
+  digest = "1:c271c2acfc381e4b2f60f7d1fd70ef405dcbf70c58069028f0d2b64d11b10a0a"
   name = "github.com/linkerd/linkerd2-proxy-api"
   packages = [
     "go/destination",
@@ -446,8 +446,7 @@
     "go/tap",
   ]
   pruneopts = ""
-  revision = "be7667cfd0cca15b55724949f4e625ddf49f740f"
-  version = "v0.1.7"
+  revision = "ddbc3a4f7f8b0058801f896d27974d19ee98094c"
 
 [[projects]]
   digest = "1:ee5461d303279aa5cab1f39aa1fd977bcd6072418e343563aa338ec83d5b1491"
@@ -575,6 +574,7 @@
     "api/prometheus/v1",
     "prometheus",
     "prometheus/internal",
+    "prometheus/promauto",
     "prometheus/promhttp",
   ]
   pruneopts = ""
@@ -1288,10 +1288,13 @@
     "github.com/containernetworking/cni/pkg/types",
     "github.com/containernetworking/cni/pkg/types/current",
     "github.com/containernetworking/cni/pkg/version",
+    "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1",
     "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned",
     "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme",
     "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions",
     "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1",
+    "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1",
     "github.com/emicklei/proto",
     "github.com/evanphx/json-patch",
     "github.com/fatih/color",
@@ -1321,6 +1324,7 @@
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/client_golang/api/prometheus/v1",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promauto",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/common/model",
     "github.com/sergi/go-diff/diffmatchpatch",

@@ -1,7 +1,5 @@
 /* material-ui uses Roboto */
 @import url("https://fonts.googleapis.com/css?family=Montserrat:400,700|Roboto:100,300,400");
-/* fontawesome v 5.3.1  */
-@import url('./fa.css');
 
 :root {
   --linkblue: #2196f3;
@@ -27,6 +25,6 @@ a:focus, a:hover, a:visited, a:link, a:active {
   color: white;
 }
 
-i.tapGrayed {
+.tapGrayed {
   color: lightgray;
 }

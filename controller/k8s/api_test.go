@@ -689,7 +689,7 @@ metadata:
 				}
 
 				pod := objs[0].(*corev1.Pod)
-				ownerKind, ownerName := api.GetOwnerKindAndName(pod)
+				ownerKind, ownerName := api.GetOwnerKindAndName(pod, !enableInformers)
 
 				if ownerKind != tt.expectedOwnerKind {
 					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)

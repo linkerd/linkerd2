@@ -9,7 +9,7 @@ required = [
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-api"
-  version = "v0.1.7"
+  revision = "ddbc3a4f7f8b0058801f896d27974d19ee98094c"
 
 [[constraint]]
   name = "github.com/linkerd/linkerd2-proxy-init"

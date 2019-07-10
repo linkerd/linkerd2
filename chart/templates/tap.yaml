@@ -11,6 +11,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: tap
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -29,6 +30,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: tap
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:

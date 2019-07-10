@@ -6,9 +6,9 @@ import (
 	"io"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination"
 	addrUtil "github.com/linkerd/linkerd2/pkg/addr"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 // This is a throwaway script for testing the destination service
@@ -19,7 +19,7 @@ func main() {
 	method := flag.String("method", "get", "which gRPC method to invoke")
 	flag.Parse()
 
-	client, conn, err := newClient(*addr)
+	client, conn, err := destination.NewClient(*addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -38,16 +38,6 @@ func main() {
 	default:
 		log.Fatalf("Unknown method: %s; supported methods: get, getProfile", *method)
 	}
-}
-
-// newClient creates a new gRPC client to the Destination service.
-func newClient(addr string) (pb.DestinationClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return pb.NewDestinationClient(conn), conn, nil
 }
 
 func get(client pb.DestinationClient, req *pb.GetDestination) {

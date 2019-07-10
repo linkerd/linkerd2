@@ -11,7 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -22,7 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -54,6 +58,13 @@ const (
 	// capability is required by the `linkerd-init` container to modify IP tables.
 	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
+
+	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
+	// the existence of the global resources like cluster roles, cluster role
+	// bindings, mutating webhook configuration validating webhook configuration
+	// and pod security policies during the pre-install phase. This check is used
+	// to determine if a control plane is already installed.
+	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
 
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
@@ -116,6 +127,38 @@ var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
 )
+
+// Resource provides a way to describe a Kubernetes object, kind, and name.
+// TODO: Consider sharing with the inject package's ResourceConfig.workload
+// struct, as it wraps both runtime.Object and metav1.TypeMeta.
+type Resource struct {
+	groupVersionKind schema.GroupVersionKind
+	name             string
+}
+
+// String outputs the resource in kind.group/name format, intended for
+// `linkerd install`.
+func (r *Resource) String() string {
+	return fmt.Sprintf("%s/%s", strings.ToLower(r.groupVersionKind.GroupKind().String()), r.name)
+}
+
+// ResourceError provides a custom error type for resource existence checks,
+// useful in printing detailed error messages in `linkerd check` and
+// `linkerd install`.
+type ResourceError struct {
+	resourceName string
+	Resources    []Resource
+}
+
+// Error satisfies the error interface for ResourceError. The output is intended
+// for `linkerd check`.
+func (e *ResourceError) Error() string {
+	names := []string{}
+	for _, res := range e.Resources {
+		names = append(names, res.name)
+	}
+	return fmt.Sprintf("%s found but should not exist: %s", e.resourceName, strings.Join(names, " "))
+}
 
 type checker struct {
 	// description is the short description that's printed to the command line
@@ -193,6 +236,7 @@ type HealthChecker struct {
 	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
+	linkerdConfig    *configPb.All
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -278,7 +322,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, false)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -307,6 +351,13 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
 						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "customresourcedefinitions")
+					},
+				},
+				{
+					description: "can create PodSecurityPolicies",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "policy", "v1beta1", "podsecuritypolicies")
 					},
 				},
 				{
@@ -352,8 +403,56 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
+					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkNetAdmin()
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdPreInstallGlobalResourcesChecks,
+			checkers: []checker{
+				{
+					description: "no ClusterRoles exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkClusterRoles(false)
+					},
+				},
+				{
+					description: "no ClusterRoleBindings exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkClusterRoleBindings(false)
+					},
+				},
+				{
+					description: "no CustomResourceDefinitions exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkCustomResourceDefinitions(false)
+					},
+				},
+				{
+					description: "no MutatingWebhookConfigurations exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkMutatingWebhookConfigurations(false)
+					},
+				},
+				{
+					description: "no ValidatingWebhookConfigurations exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkValidatingWebhookConfigurations(false)
+					},
+				},
+				{
+					description: "no PodSecurityPolicies exist",
+					hintAnchor:  "pre-l5d-existence",
+					check: func(context.Context) error {
+						return hc.checkPodSecurityPolicies(false)
 					},
 				},
 			},
@@ -366,7 +465,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -374,7 +473,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-cr",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkClusterRoles()
+						return hc.checkClusterRoles(true)
 					},
 				},
 				{
@@ -382,7 +481,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-crb",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings()
+						return hc.checkClusterRoleBindings(true)
 					},
 				},
 				{
@@ -390,7 +489,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts()
+						return hc.checkServiceAccounts(true)
 					},
 				},
 				{
@@ -398,7 +497,31 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions()
+						return hc.checkCustomResourceDefinitions(true)
+					},
+				},
+				{
+					description: "control plane MutatingWebhookConfigurations exist",
+					hintAnchor:  "l5d-existence-mwc",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkMutatingWebhookConfigurations(true)
+					},
+				},
+				{
+					description: "control plane ValidatingWebhookConfigurations exist",
+					hintAnchor:  "l5d-existence-vwc",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkValidatingWebhookConfigurations(true)
+					},
+				},
+				{
+					description: "control plane PodSecurityPolicies exist",
+					hintAnchor:  "l5d-existence-psp",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkPodSecurityPolicies(true)
 					},
 				},
 			},
@@ -407,8 +530,17 @@ func (hc *HealthChecker) allCategories() []category {
 			id: LinkerdControlPlaneExistenceChecks,
 			checkers: []checker{
 				{
-					description: "control plane components ready",
-					hintAnchor:  "l5d-existence-psp",
+					description: "'linkerd-config' config map exists",
+					hintAnchor:  "l5d-existence-linkerd-config",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						return
+					},
+				},
+				{
+					description: "control plane replica sets are ready",
+					hintAnchor:  "l5d-existence-replicasets",
 					fatal:       true,
 					check: func(context.Context) error {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
@@ -520,21 +652,10 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// The UUID is only known to the web process. At some point we may want
-							// to consider providing it in the Public API.
+							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							for _, pod := range hc.controlPlanePods {
-								if strings.Split(pod.Name, "-")[0] == "web" {
-									for _, container := range pod.Spec.Containers {
-										if container.Name == "web" {
-											for _, arg := range container.Args {
-												if strings.HasPrefix(arg, "-uuid=") {
-													uuid = strings.TrimPrefix(arg, "-uuid=")
-												}
-											}
-										}
-									}
-								}
+							if hc.linkerdConfig != nil {
+								uuid = hc.linkerdConfig.GetInstall().GetUuid()
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -587,7 +708,7 @@ func (hc *HealthChecker) allCategories() []category {
 							// when checking proxies in all namespaces, this check is a no-op
 							return nil
 						}
-						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
+						return hc.checkNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -793,9 +914,28 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-// CheckNamespace checks whether the given namespace exists, and returns an
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
+	return FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+}
+
+// FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
+// Kubernetes and parses it into `linkerd2.config` protobuf.
+// TODO: Consider a different package for this function. This lives in the
+// healthcheck package because healthcheck depends on it, along with other
+// packages that also depend on healthcheck. This function depends on both
+// `pkg/k8s` and `pkg/config`, which do not depend on each other.
+func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*configPb.All, error) {
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return config.FromConfigMap(cm.Data)
+}
+
+// checkNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) CheckNamespace(namespace string, shouldExist bool) error {
+func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(namespace)
 	if err != nil {
 		return err
@@ -833,8 +973,11 @@ func expectedServiceAccountNames() []string {
 	}
 }
 
-func (hc *HealthChecker) checkClusterRoles() error {
-	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(options)
 	if err != nil {
 		return err
 	}
@@ -845,11 +988,14 @@ func (hc *HealthChecker) checkClusterRoles() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ClusterRoles", objects, hc.expectedRBACNames())
+	return checkResources("ClusterRoles", objects, hc.expectedRBACNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkClusterRoleBindings() error {
-	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(options)
 	if err != nil {
 		return err
 	}
@@ -860,11 +1006,14 @@ func (hc *HealthChecker) checkClusterRoleBindings() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames())
+	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkServiceAccounts() error {
-	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(metav1.ListOptions{})
+func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).List(options)
 	if err != nil {
 		return err
 	}
@@ -875,11 +1024,14 @@ func (hc *HealthChecker) checkServiceAccounts() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames())
+	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkCustomResourceDefinitions() error {
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(options)
 	if err != nil {
 		return err
 	}
@@ -890,10 +1042,85 @@ func (hc *HealthChecker) checkCustomResourceDefinitions() error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"})
+	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
 }
 
-func checkResources(resourceName string, objects []runtime.Object, expectedNames []string) error {
+func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range mwc.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName}, shouldExist)
+}
+
+func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range vwc.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
+}
+
+func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
+	options := metav1.ListOptions{
+		LabelSelector: k8s.ControllerNSLabel,
+	}
+	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+	for _, item := range psp.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
+}
+
+func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
+	if !shouldExist {
+		if len(objects) > 0 {
+			resources := []Resource{}
+			for _, obj := range objects {
+				m, err := meta.Accessor(obj)
+				if err != nil {
+					return err
+				}
+
+				res := Resource{name: m.GetName()}
+				gvks, _, err := k8s.ObjectKinds(obj)
+				if err == nil && len(gvks) > 0 {
+					res.groupVersionKind = gvks[0]
+				}
+				resources = append(resources, res)
+			}
+			return &ResourceError{resourceName, resources}
+		}
+		return nil
+	}
+
 	expected := map[string]bool{}
 	for _, name := range expectedNames {
 		expected[name] = false
@@ -1005,7 +1232,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 		}
 	}
 
-	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN", len(pspList.Items))
+	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running", len(pspList.Items))
 }
 
 func (hc *HealthChecker) checkClockSkew() error {

@@ -434,6 +434,30 @@ func TestInjectFilePath(t *testing.T) {
 	})
 }
 
+func TestValidURL(t *testing.T) {
+	// if the string follows a URL pattern, true has to be returned
+	// if not false is returned
+
+	tests := map[string]bool{
+		"http://www.linkerd.io":  true,
+		"https://www.linkerd.io": true,
+		"www.linkerd.io/":        false,
+		"~/foo/bar.yaml":         false,
+		"./foo/bar.yaml":         false,
+		"/foo/bar/baz.yml":       false,
+		"../foo/bar/baz.yaml":    false,
+		"https//":                false,
+	}
+
+	for url, expectedValue := range tests {
+		value := isValidURL(url)
+		if value != expectedValue {
+			t.Errorf("Result mismatch for %s. expected %v, but got %v", url, expectedValue, value)
+		}
+	}
+
+}
+
 func TestWalk(t *testing.T) {
 	// create two data files, one in the root folder and the other in a subfolder.
 	// walk should be able to read the content of the two data files recursively.

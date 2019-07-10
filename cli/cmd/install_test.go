@@ -45,6 +45,7 @@ func TestRender(t *testing.T) {
 		ControllerLogLevel:       "ControllerLogLevel",
 		PrometheusLogLevel:       "PrometheusLogLevel",
 		ControllerComponentLabel: "ControllerComponentLabel",
+		ControllerNamespaceLabel: "ControllerNamespaceLabel",
 		CreatedByAnnotation:      "CreatedByAnnotation",
 		ProxyContainerName:       "ProxyContainerName",
 		ProxyInjectAnnotation:    "ProxyInjectAnnotation",
@@ -53,6 +54,7 @@ func TestRender(t *testing.T) {
 		ControllerUID:            2103,
 		EnableH2Upgrade:          true,
 		NoInitContainer:          false,
+		WebhookFailurePolicy:     "WebhookFailurePolicy",
 		Configs: configJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",

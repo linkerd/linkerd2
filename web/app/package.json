@@ -4,6 +4,9 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "1.2.0-7",
+    "@fortawesome/free-solid-svg-icons": "5.9.0",
+    "@fortawesome/react-fontawesome": "0.1.4",
     "@material-ui/core": "3.6.1",
     "@material-ui/icons": "3.0.1",
     "classnames": "2.2.6",
@@ -43,7 +46,7 @@
     "css-loader": "2.1.1",
     "enzyme": "3.7.0",
     "enzyme-adapter-react-16": "1.6.0",
-    "eslint": "4.12.1",
+    "eslint": "4.18.2",
     "eslint-config-airbnb": "16.1.0",
     "eslint-loader": "2.0.0",
     "eslint-plugin-import": "2.12.0",

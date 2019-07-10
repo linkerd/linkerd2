@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/prometheus/common/model"
@@ -11,8 +12,8 @@ import (
 )
 
 const (
-	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id)"
-	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, no_tls_reason)"
+	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id, namespace, no_tls_reason)"
+	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, namespace, dst_namespace, no_tls_reason)"
 )
 
 var formatMsg = map[string]string{
@@ -60,10 +61,10 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	if len(labelNames) != 2 {
 		return nil, errors.New("unexpected resource selector")
 	}
+	selectedNamespace := req.Selector.Resource.Namespace
 	resourceType := string(labelNames[1]) // skipping first name which is always namespace
-	labels := promQueryLabels(req.Selector.Resource)
-	labelsOutbound := labels.Merge(promDirectionLabels("outbound"))
-	labelsInbound := labels.Merge(promDirectionLabels("inbound"))
+	labelsOutbound := promDirectionLabels("outbound")
+	labelsInbound := promDirectionLabels("inbound")
 
 	// checking that data for the specified resource type exists
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, resourceType)
@@ -82,11 +83,11 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 		return nil, err
 	}
 
-	edge := processEdgeMetrics(inboundResult, outboundResult, resourceType)
+	edge := processEdgeMetrics(inboundResult, outboundResult, resourceType, selectedNamespace)
 	return edge, nil
 }
 
-func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*pb.Edge {
+func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNamespace string) []*pb.Edge {
 	edges := []*pb.Edge{}
 	dstIndex := map[model.LabelValue]model.Metric{}
 	srcIndex := map[model.LabelValue][]model.Metric{}
@@ -94,51 +95,95 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType string) []*
 	resourceReplacementOutbound := "dst_" + resourceType
 
 	for _, sample := range inbound {
-		// skip any inbound results that do not have a client_id, because this means
-		// the communication was one-sided (i.e. a probe or another instance where
-		// the src/dst are not both known) in future the edges command will support
-		// one-sided edges
-		if _, ok := sample.Metric[model.LabelName("client_id")]; ok {
-			key := sample.Metric[model.LabelName(resourceReplacementInbound)]
+		// skip inbound results without a clientID because we cannot construct edge
+		// information
+		if clientID, ok := sample.Metric[model.LabelName("client_id")]; ok {
+			dstResource := string(sample.Metric[model.LabelName(resourceReplacementInbound)])
+
+			// format of clientId is id.namespace.serviceaccount.cluster.local
+			clientIDSlice := strings.Split(string(clientID), ".")
+			srcNs := clientIDSlice[1]
+			key := model.LabelValue(fmt.Sprintf("%s.%s", dstResource, srcNs))
 			dstIndex[key] = sample.Metric
 		}
 	}
 
 	for _, sample := range outbound {
-		// skip any outbound results that do not have a server_id for same reason as
-		// above section
-		if _, ok := sample.Metric[model.LabelName("server_id")]; ok {
-			key := sample.Metric[model.LabelName(resourceReplacementOutbound)]
-			if _, ok := srcIndex[key]; !ok {
-				srcIndex[key] = []model.Metric{}
-			}
-			srcIndex[key] = append(srcIndex[key], sample.Metric)
+		dstResource := sample.Metric[model.LabelName(resourceReplacementOutbound)]
+		srcNs := sample.Metric[model.LabelName("namespace")]
+
+		key := model.LabelValue(fmt.Sprintf("%s.%s", dstResource, srcNs))
+		if _, ok := srcIndex[key]; !ok {
+			srcIndex[key] = []model.Metric{}
 		}
+		srcIndex[key] = append(srcIndex[key], sample.Metric)
 	}
 
 	for key, sources := range srcIndex {
 		for _, src := range sources {
+			srcNamespace := string(src[model.LabelName("namespace")])
+
 			dst, ok := dstIndex[key]
+
+			// if no destination, build edge entirely from source data
 			if !ok {
-				log.Errorf("missing resource in destination metrics: %s", key)
+				dstNamespace := string(src[model.LabelName("dst_namespace")])
+
+				// skip if selected namespace is given and neither the source nor
+				// destination is in the selected namespace
+				if selectedNamespace != "" && srcNamespace != selectedNamespace &&
+					dstNamespace != selectedNamespace {
+					continue
+				}
+
+				srcResource := string(src[model.LabelName(resourceType)])
+				dstResource := string(src[model.LabelName(resourceReplacementOutbound)])
+
+				// skip if source or destination resource is not present
+				if srcResource == "" || dstResource == "" {
+					continue
+				}
+
+				msg := formatMsg[string(src[model.LabelName("no_tls_reason")])]
+				edge := &pb.Edge{
+					Src: &pb.Resource{
+						Namespace: srcNamespace,
+						Name:      srcResource,
+						Type:      resourceType,
+					},
+					Dst: &pb.Resource{
+						Namespace: dstNamespace,
+						Name:      dstResource,
+						Type:      resourceType,
+					},
+					NoIdentityMsg: msg,
+				}
+				edges = append(edges, edge)
 				continue
 			}
-			msg := ""
-			if val, ok := src[model.LabelName("no_tls_reason")]; ok {
-				msg = formatMsg[string(val)]
+
+			dstNamespace := string(dst[model.LabelName("namespace")])
+
+			// skip if selected namespace is given and neither the source nor
+			// destination is in the selected namespace
+			if selectedNamespace != "" && srcNamespace != selectedNamespace &&
+				dstNamespace != selectedNamespace {
+				continue
 			}
+
 			edge := &pb.Edge{
 				Src: &pb.Resource{
-					Name: string(src[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: srcNamespace,
+					Name:      string(src[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
 				Dst: &pb.Resource{
-					Name: string(dst[model.LabelName(resourceType)]),
-					Type: resourceType,
+					Namespace: dstNamespace,
+					Name:      string(dst[model.LabelName(resourceType)]),
+					Type:      resourceType,
 				},
-				ClientId:      string(dst[model.LabelName("client_id")]),
-				ServerId:      string(src[model.LabelName("server_id")]),
-				NoIdentityMsg: msg,
+				ClientId: string(dst[model.LabelName("client_id")]),
+				ServerId: string(src[model.LabelName("server_id")]),
 			}
 			edges = append(edges, edge)
 		}

@@ -24,6 +24,22 @@ if ! clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname | gre
   echo "no clusterroles found for [$linkerd_namespace]" >&2
 fi
 
-if [[ $namespaces || $clusterrolebindings || $clusterroles ]]; then
-  kubectl --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles
+if ! webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname | grep -E  "/linkerd(-|$)"); then
+  echo "no mutatingwebhookconfigurations found" >&2
+fi
+
+if ! validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname | grep -E  "/linkerd(-|$)"); then
+  echo "no validatingwebhookconfigurations found" >&2
+fi
+
+if ! podsecuritypolicies=$(kubectl --context=$k8s_context get podsecuritypolicies -oname | grep -E "/linkerd-$linkerd_namespace(-|$)"); then
+  echo "no podsecuritypolicies found for [$linkerd_namespace]" >&2
+fi
+
+if ! customresourcedefinitions=$(kubectl --context=$k8s_context get customresourcedefinitions -l linkerd.io/control-plane-ns -oname); then
+  echo "no customresourcedefinitions found for [$linkerd_namespace]" >&2
+fi
+
+if [[ $namespaces || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs || $podsecuritypolicies || $customresourcedefinitions ]]; then
+  kubectl --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs $podsecuritypolicies $customresourcedefinitions
 fi

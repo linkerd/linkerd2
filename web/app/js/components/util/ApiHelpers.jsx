@@ -59,6 +59,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   let metricsWindow = defaultMetricsWindow;
   const podsPath = `/api/pods`;
   const servicesPath = `/api/services`;
+  const edgesPath = `/api/edges`;
 
   const validMetricsWindows = {
     "10s": "10 minutes",
@@ -108,6 +109,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
       return apiFetch(servicesPath + "?namespace=" + namespace);
     }
     return apiFetch(servicesPath);
+  };
+
+  const fetchEdges = (namespace, resourceType) => {
+    return apiFetch(edgesPath + "?resource_type=" + resourceType + "&namespace=" + namespace);
   };
 
   const getMetricsWindow = () => metricsWindow;
@@ -211,6 +216,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     fetchMetrics,
     fetchPods,
     fetchServices,
+    fetchEdges,
     getMetricsWindow,
     setMetricsWindow,
     getValidMetricsWindows: () => Object.keys(validMetricsWindows),
