@@ -142,6 +142,7 @@ kind: Deployment
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -152,6 +153,26 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
+`, `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -160,6 +181,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -170,6 +195,10 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -181,6 +210,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Completed
 `,
@@ -860,6 +893,7 @@ kind: Deployment
 metadata:
   name: emoji-deploy
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -869,6 +903,26 @@ spec:
     spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
 `, `
 apiVersion: v1
 kind: Service
@@ -899,6 +953,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `,
@@ -1276,6 +1334,7 @@ kind: Deployment
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -1286,6 +1345,26 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
+`, `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1294,6 +1373,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -1304,6 +1387,10 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -1315,6 +1402,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Failed
 `, `
@@ -1326,6 +1417,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Succeeded
 `},

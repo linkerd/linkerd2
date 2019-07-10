@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -411,6 +412,8 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
 status:
   phase: Finished`,
 				},
@@ -424,6 +427,7 @@ kind: Service
 metadata:
   name: emoji-svc
   namespace: emojivoto
+  uid: serviceUIDdoesntMatter
 spec:
   type: ClusterIP
   selector:
@@ -436,6 +440,8 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
 status:
   phase: Running`,
 				},
@@ -466,6 +472,7 @@ status:
   phase: Running`,
 				},
 			},
+			// Daemonset
 			{
 				err: nil,
 				k8sResInput: `
@@ -474,6 +481,7 @@ kind: DaemonSet
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: daemonset
 spec:
   selector:
     matchLabels:
@@ -486,11 +494,15 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: daemonset
 status:
   phase: Running`,
 				},
 				k8sResMisc: []string{},
 			},
+			// replicaset
 			{
 				err: nil,
 				k8sResInput: `
@@ -499,6 +511,7 @@ kind: ReplicaSet
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: replicaset
 spec:
   selector:
     matchLabels:
@@ -511,6 +524,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: replicaset
 status:
   phase: Running`,
 				},
@@ -522,10 +538,14 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: replicaset
 status:
   phase: Finished`,
 				},
 			},
+			// single pod
 			{
 				err: nil,
 				k8sResInput: `
@@ -536,6 +556,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: singlePod
 status:
   phase: Running`,
 				k8sResResults: []string{`
@@ -546,6 +569,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: singlePod
 status:
   phase: Running`,
 				},
@@ -557,6 +583,275 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+status:
+  phase: Running`,
+				},
+			},
+			// deployment
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deploymentRS
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPod
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: deploymentRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPod
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: deploymentPod`,
+					`apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: deploymentRSOld
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  name: emojivoto-meshed_1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPodOld
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: deploymentPodOld`,
+				},
+			},
+			// deployment without RS
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deploymentWithoutRS
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: AnotherRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: doesntMatter
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: doesntMatch
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: doesntMatter`,
+				},
+			},
+			// Deployment with 2 replicasets
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment2RS
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-pod1
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: RS1
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod1
+status:
+  phase: Running`,
+					`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-pod2
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: RS2
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod2
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: RS1
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod1
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2RS
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: pod1`,
+					`apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: RS2
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  name: emojivoto-meshed_1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod2
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2RS
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: pod2`,
+				},
+			},
+			// Deployment 2 Pods just one valid
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment2Pods
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-with-RS
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: validRS
+  labels:
+    app: emoji-svc
+    pod-template-hash: podWithRS
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: validRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: podWithRS
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2Pods
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: podWithRS`,
+					`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-without-RS
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: notHere
+  labels:
+    app: emoji-svc
+    pod-template-hash: invalidPod
 status:
   phase: Running`,
 				},
@@ -584,6 +879,8 @@ status:
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
+			sort.Sort(byPod(pods))
+			sort.Sort(byPod(k8sResultPods))
 			if !reflect.DeepEqual(pods, k8sResultPods) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultPods, pods)
 			}
