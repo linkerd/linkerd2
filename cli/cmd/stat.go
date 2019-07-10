@@ -217,6 +217,7 @@ type rowStats struct {
 
 type row struct {
 	meshed string
+	status string
 	*rowStats
 }
 
@@ -268,6 +269,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 		statTables[resourceKey][key] = &row{
 			meshed: meshedCount,
+			status: r.Status,
 		}
 
 		if r.Stats != nil {
@@ -333,8 +335,14 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers,
 			namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
 	}
+
+	headers = append(headers, nameHeader+strings.Repeat(" ", maxNameLength-len(nameHeader)))
+
+	if resourceType == k8s.Pod {
+		headers = append(headers, "STATUS")
+	}
+
 	headers = append(headers, []string{
-		nameHeader + strings.Repeat(" ", maxNameLength-len(nameHeader)),
 		"MESHED",
 		"SUCCESS",
 		"RPS",
@@ -359,17 +367,23 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 	for _, key := range sortedKeys {
 		namespace, name := namespaceName(resourceTypeLabel, key)
 		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%d\t\n"
-		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t\n"
-
-		if showTCPBytes(options, resourceType) {
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t%d\t%.1fB/s\t%.1fB/s\t\n"
-			templateStringEmpty = "%s\t%s\t-\t-\t-\t-\t-\t-\t-\t-\t\n"
+		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t"
+		if resourceType == k8s.Pod {
+			templateString = "%s\t" + templateString
+			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
 		if !showTCPConns(resourceType) {
 			// always show TCP Connections as - for Authorities
-			templateString = "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t-\t\n"
+			templateString = templateString + "-\t"
+		} else {
+			templateString = templateString + "%d\t"
+		}
+
+		if showTCPBytes(options, resourceType) {
+			templateString = templateString + "%.1fB/s\t%.1fB/s\t"
+			templateStringEmpty = templateStringEmpty + "-\t-\t"
 		}
 
 		if options.allNamespaces {
@@ -379,12 +393,20 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
+		templateString = templateString + "\n"
+		templateStringEmpty = templateStringEmpty + "\n"
+
 		padding := 0
 		if maxNameLength > len(name) {
 			padding = maxNameLength - len(name)
 		}
+
+		values = append(values, name+strings.Repeat(" ", padding))
+		if resourceType == k8s.Pod {
+			values = append(values, stats[key].status)
+		}
+
 		values = append(values, []interface{}{
-			name + strings.Repeat(" ", padding),
 			stats[key].meshed,
 		}...)
 

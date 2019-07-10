@@ -43,6 +43,7 @@ const (
 )
 
 type podStats struct {
+	status string
 	inMesh uint64
 	total  uint64
 	failed uint64
@@ -216,6 +217,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		}
 
 		podStat := objInfo.podStats
+		row.Status = podStat.status
 		row.MeshedPodCount = podStat.inMesh
 		row.RunningPodCount = podStat.total
 		row.FailedPodCount = podStat.failed
@@ -428,6 +430,10 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 	podErrors := make(map[string]*pb.PodErrors)
 	meshCount := &podStats{}
 
+	if pod, ok := obj.(*corev1.Pod); ok {
+		meshCount.status = k8s.GetPodStatus(pod)
+	}
+
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodFailed {
 			meshCount.failed++
@@ -470,7 +476,7 @@ func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodE
 				errors = append(errors, toPodError(st.Name, st.Image, st.State.Waiting.Reason, st.State.Waiting.Message))
 			}
 
-			if st.State.Terminated != nil {
+			if st.State.Terminated != nil && (st.State.Terminated.ExitCode != 0 || st.State.Terminated.Signal != 0) {
 				errors = append(errors, toPodError(st.Name, st.Image, st.State.Terminated.Reason, st.State.Terminated.Message))
 			}
 
