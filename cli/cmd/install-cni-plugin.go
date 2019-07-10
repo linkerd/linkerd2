@@ -123,6 +123,11 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin.")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed.")
 	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside.")
+	cmd.PersistentFlags().BoolVar(
+		&options.useWaitFlag,
+		"use-wait-flag",
+		options.useWaitFlag,
+		"Configures the CNI plugin to use the \"-w\" flag for the iptables command.")
 
 	return cmd
 }

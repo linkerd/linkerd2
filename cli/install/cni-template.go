@@ -226,6 +226,8 @@ spec:
               key: log_level
         - name: SLEEP
           value: "true"
+        - name: USE_WAIT_FLAG
+          value: "{{.UseWaitFlag}}"
         lifecycle:
           preStop:
             exec:
