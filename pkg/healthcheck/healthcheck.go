@@ -54,9 +54,10 @@ const (
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
 	// LinkerdPreInstallCapabilityChecks adds a check to validate the user has the
-	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN
-	// capability is required by the `linkerd-init` container to modify IP tables.
-	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
+	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN and
+	// NET_RAW capabilities are required by the `linkerd-init` container to modify
+	// IP tables. These checks are not run when the `--linkerd-cni-enabled` flag
+	// is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
 
 	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
@@ -405,7 +406,15 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s-cluster-net-admin",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.checkNetAdmin()
+						return hc.checkCapability("NET_ADMIN")
+					},
+				},
+				{
+					description: "has NET_RAW capability",
+					hintAnchor:  "pre-k8s-cluster-net-raw",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.checkCapability("NET_RAW")
 					},
 				},
 			},
@@ -1193,7 +1202,7 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 	)
 }
 
-func (hc *HealthChecker) checkNetAdmin() error {
+func (hc *HealthChecker) checkCapability(cap string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
@@ -1212,7 +1221,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	// if PodSecurityPolicies are found, validate one exists that:
 	// 1) permits usage
 	// AND
-	// 2) provides NET_ADMIN
+	// 2) provides the specified capability
 	for _, psp := range pspList.Items {
 		err := k8s.ResourceAuthz(
 			hc.kubeAPI,
@@ -1225,14 +1234,14 @@ func (hc *HealthChecker) checkNetAdmin() error {
 		)
 		if err == nil {
 			for _, capability := range psp.Spec.AllowedCapabilities {
-				if capability == "*" || capability == "NET_ADMIN" {
+				if capability == "*" || string(capability) == cap {
 					return nil
 				}
 			}
 		}
 	}
 
-	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running", len(pspList.Items))
+	return fmt.Errorf("found %d PodSecurityPolicies, but none provide %s, proxy injection will fail if the PSP admission controller is running", len(pspList.Items), cap)
 }
 
 func (hc *HealthChecker) checkClockSkew() error {
