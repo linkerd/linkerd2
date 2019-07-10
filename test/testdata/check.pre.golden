@@ -25,6 +25,7 @@ pre-kubernetes-setup
 pre-kubernetes-capability
 -------------------------
 √ has NET_ADMIN capability
+√ has NET_RAW capability
 
 pre-linkerd-global-resources
 ----------------------------

@@ -391,7 +391,7 @@ status:
 
 }
 
-func TestCheckNetAdmin(t *testing.T) {
+func TestChecCapability(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
 		err        error
@@ -409,13 +409,13 @@ spec:
   requiredDropCapabilities:
     - ALL`,
 			},
-			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running"),
+			fmt.Errorf("found 1 PodSecurityPolicies, but none provide TEST_CAP, proxy injection will fail if the PSP admission controller is running"),
 		},
 	}
 
 	for i, test := range tests {
 		test := test // pin
-		t.Run(fmt.Sprintf("%d: returns expected NET_ADMIN result", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d: returns expected capability result", i), func(t *testing.T) {
 			hc := NewHealthChecker(
 				[]CategoryID{},
 				&Options{},
@@ -427,7 +427,7 @@ spec:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkNetAdmin()
+			err = hc.checkCapability("TEST_CAP")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
