@@ -63,7 +63,7 @@ function run_upgrade_test() {
     install_stable $stable_namespace
 
     printf "Upgrading release [%s] to [%s]\n" "$stable_version" "$linkerd_version"
-    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace || exit_code=$?
+    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
 linkerd_path=$1
@@ -88,10 +88,10 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 
 exit_code=0
 
-run_upgrade_test "$linkerd_namespace"-upgrade
+run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
 # if run_upgrade_test succeeded, delete the installation to prepare for subsequent
 # full integration tests.
-# TODO: Consider running the the upgrade tests and normal integration tests on
+# TODO: Consider running the upgrade tests and normal integration tests on
 # separate clusters (in parallel? via kind?).
 if [ $exit_code -eq 0 ]; then
     $bindir/test-cleanup "$linkerd_namespace"-upgrade $k8s_context
