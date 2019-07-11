@@ -23,10 +23,10 @@ tmp=$(mktemp -d -t l2-proxy.XXX)
 git clone --depth=100 https://github.com/linkerd/linkerd2-proxy "$tmp"
 cd "$tmp"
 
-sha="$(git rev-parse "${new_proxy_revision}")"
+sha="$(git rev-parse --verify --quiet "${new_proxy_revision}")"
 new_proxy_version="${sha:0:7}"
 
-if ! git-rev-parse --verify --quiet "${old_proxy_version}" ; then
+if ! git rev-parse --verify --quiet "${old_proxy_version}" ; then
     echo "The old proxy-version ${old_proxy_version} does not exist in the last 100 proxy commits." >&2
     exit 2
 fi
