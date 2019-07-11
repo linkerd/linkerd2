@@ -163,7 +163,17 @@ const (
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
 
-	errMsgGlobalResourcesExist           = "Can't install the Linkerd control plane in the '%s' namespace. Global resources from an existing Linkerd installation detected:\n%s\n\nRemove these resources, or use the --ignore-cluster flag to overwrite them.\n"
+	errMsgGlobalResourcesExist = `Unable to install the Linkerd control plane. It appears that there is an existing installation:
+
+%s
+
+If you are sure you'd like to have a fresh install, remove these resources with:
+
+    linkerd install --ignore-cluster | kubectl delete -f -
+
+Otherwise, you can use the --ignore-cluster flag to overwrite the existing global resources.
+`
+
 	errMsgLinkerdConfigConfigMapNotFound = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nIf this is expected, use the --ignore-cluster flag to continue the installation.\n"
 	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
@@ -256,7 +266,7 @@ resources for the Linkerd control plane. This command should be followed by
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
 
@@ -348,7 +358,7 @@ control plane.`,
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, controlPlaneNamespace, err)
+				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
 
@@ -437,7 +447,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
-		"Experimental: Enable HA deployment config for the control plane (default false)",
+		"Enable HA deployment config for the control plane (default false)",
 	)
 	flags.Int64Var(
 		&options.controllerUID, "controller-uid", options.controllerUID,
@@ -865,7 +875,15 @@ func errIfGlobalResourcesExist() error {
 	errMsgs := []string{}
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
-			errMsgs = append(errMsgs, result.Err.Error())
+			if re, ok := result.Err.(*healthcheck.ResourceError); ok {
+				// resource error, print in kind.group/name format
+				for _, res := range re.Resources {
+					errMsgs = append(errMsgs, res.String())
+				}
+			} else {
+				// unknown error, just print it
+				errMsgs = append(errMsgs, result.Err.Error())
+			}
 		}
 	})
 
@@ -887,7 +905,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 		return err
 	}
 
-	_, err = fetchConfigs(kubeAPI)
+	_, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil

@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
@@ -413,9 +414,10 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, st
 func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Pod, error) {
 	var namespace string
 	var selector labels.Selector
-	var pods []*corev1.Pod
+	var ownerUID types.UID
 	var err error
 
+	pods := []*corev1.Pod{}
 	switch typed := obj.(type) {
 	case *corev1.Namespace:
 		namespace = typed.Name
@@ -424,22 +426,40 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	case *appsv1.DaemonSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ownerUID = typed.UID
 
 	case *appsv1beta2.Deployment:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ret, err := api.RS().Lister().ReplicaSets(namespace).List(selector)
+		if err != nil {
+			return nil, err
+		}
+		for _, rs := range ret {
+			if isOwner(typed.UID, rs.GetOwnerReferences()) {
+				podsRS, err := api.GetPodsFor(rs, includeFailed)
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, podsRS...)
+			}
+		}
+		return pods, nil
 
 	case *appsv1beta2.ReplicaSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ownerUID = typed.UID
 
 	case *batchv1.Job:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ownerUID = typed.UID
 
 	case *corev1.ReplicationController:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector).AsSelector()
+		ownerUID = typed.UID
 
 	case *corev1.Service:
 		if typed.Spec.Type == corev1.ServiceTypeExternalName {
@@ -451,6 +471,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	case *appsv1.StatefulSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ownerUID = typed.UID
 
 	case *corev1.Pod:
 		// Special case for pods:
@@ -478,11 +499,23 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	allPods := []*corev1.Pod{}
 	for _, pod := range pods {
 		if isPendingOrRunning(pod) || (includeFailed && isFailed(pod)) {
-			allPods = append(allPods, pod)
+			if ownerUID == "" {
+				allPods = append(allPods, pod)
+			} else if isOwner(ownerUID, pod.GetOwnerReferences()) {
+				allPods = append(allPods, pod)
+			}
 		}
 	}
-
 	return allPods, nil
+}
+
+func isOwner(u types.UID, ownerRefs []metav1.OwnerReference) bool {
+	for _, or := range ownerRefs {
+		if u == or.UID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetNameAndNamespaceOf returns the name and namespace of the given object.
@@ -780,15 +813,54 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 	}
 	services := make([]*corev1.Service, 0)
 	for _, svc := range allServices {
-		svcPods, err := api.GetPodsFor(svc, includeFailed)
+		leaves, err := api.getLeafServices(svc)
 		if err != nil {
 			return nil, err
 		}
+		svcPods := []*corev1.Pod{}
+		if len(leaves) > 0 {
+			for _, leaf := range leaves {
+				pods, err := api.GetPodsFor(leaf, includeFailed)
+				if err != nil {
+					return nil, err
+				}
+				svcPods = append(svcPods, pods...)
+			}
+		} else {
+			svcPods, err = api.GetPodsFor(svc, includeFailed)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		if hasOverlap(pods, svcPods) {
 			services = append(services, svc)
 		}
 	}
 	return services, nil
+}
+
+func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error) {
+	splits, err := api.TS().Lister().TrafficSplits(apex.Namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	leaves := []*corev1.Service{}
+	for _, split := range splits {
+		if split.Spec.Service == apex.Name {
+			for _, backend := range split.Spec.Backends {
+				if backend.Weight.Sign() == 1 {
+					svc, err := api.Svc().Lister().Services(apex.Namespace).Get(backend.Service)
+					if err != nil {
+						log.Errorf("TrafficSplit %s/%s references non-existent service %s", apex.Namespace, split.Name, backend.Service)
+						continue
+					}
+					leaves = append(leaves, svc)
+				}
+			}
+		}
+	}
+	return leaves, nil
 }
 
 // GetServiceProfileFor returns the service profile for a given service.  We

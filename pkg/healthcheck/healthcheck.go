@@ -11,7 +11,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -19,11 +21,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -51,9 +54,10 @@ const (
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
 	// LinkerdPreInstallCapabilityChecks adds a check to validate the user has the
-	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN
-	// capability is required by the `linkerd-init` container to modify IP tables.
-	// These checks are no run when the `--linkerd-cni-enabled` flag is set.
+	// capabilities necessary to deploy Linkerd. For example, the NET_ADMIN and
+	// NET_RAW capabilities are required by the `linkerd-init` container to modify
+	// IP tables. These checks are not run when the `--linkerd-cni-enabled` flag
+	// is set.
 	LinkerdPreInstallCapabilityChecks CategoryID = "pre-kubernetes-capability"
 
 	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
@@ -124,6 +128,38 @@ var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
 )
+
+// Resource provides a way to describe a Kubernetes object, kind, and name.
+// TODO: Consider sharing with the inject package's ResourceConfig.workload
+// struct, as it wraps both runtime.Object and metav1.TypeMeta.
+type Resource struct {
+	groupVersionKind schema.GroupVersionKind
+	name             string
+}
+
+// String outputs the resource in kind.group/name format, intended for
+// `linkerd install`.
+func (r *Resource) String() string {
+	return fmt.Sprintf("%s/%s", strings.ToLower(r.groupVersionKind.GroupKind().String()), r.name)
+}
+
+// ResourceError provides a custom error type for resource existence checks,
+// useful in printing detailed error messages in `linkerd check` and
+// `linkerd install`.
+type ResourceError struct {
+	resourceName string
+	Resources    []Resource
+}
+
+// Error satisfies the error interface for ResourceError. The output is intended
+// for `linkerd check`.
+func (e *ResourceError) Error() string {
+	names := []string{}
+	for _, res := range e.Resources {
+		names = append(names, res.name)
+	}
+	return fmt.Sprintf("%s found but should not exist: %s", e.resourceName, strings.Join(names, " "))
+}
 
 type checker struct {
 	// description is the short description that's printed to the command line
@@ -201,6 +237,7 @@ type HealthChecker struct {
 	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
+	linkerdConfig    *configPb.All
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -286,7 +323,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, false)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
@@ -369,7 +406,15 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "pre-k8s-cluster-net-admin",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.checkNetAdmin()
+						return hc.checkCapability("NET_ADMIN")
+					},
+				},
+				{
+					description: "has NET_RAW capability",
+					hintAnchor:  "pre-k8s-cluster-net-raw",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.checkCapability("NET_RAW")
 					},
 				},
 			},
@@ -429,7 +474,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.CheckNamespace(hc.ControlPlaneNamespace, true)
+						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
@@ -497,8 +542,9 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkLinkerdConfigConfigMap(true)
+					check: func(context.Context) (err error) {
+						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						return
 					},
 				},
 				{
@@ -615,21 +661,10 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// The UUID is only known to the web process. At some point we may want
-							// to consider providing it in the Public API.
+							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							for _, pod := range hc.controlPlanePods {
-								if strings.Split(pod.Name, "-")[0] == "web" {
-									for _, container := range pod.Spec.Containers {
-										if container.Name == "web" {
-											for _, arg := range container.Args {
-												if strings.HasPrefix(arg, "-uuid=") {
-													uuid = strings.TrimPrefix(arg, "-uuid=")
-												}
-											}
-										}
-									}
-								}
+							if hc.linkerdConfig != nil {
+								uuid = hc.linkerdConfig.GetInstall().GetUuid()
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -682,7 +717,7 @@ func (hc *HealthChecker) allCategories() []category {
 							// when checking proxies in all namespaces, this check is a no-op
 							return nil
 						}
-						return hc.CheckNamespace(hc.DataPlaneNamespace, true)
+						return hc.checkNamespace(hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -888,18 +923,28 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap(shouldExist bool) error {
-	cm, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil && !kerrors.IsNotFound(err) {
-		return err
-	}
-
-	return checkResources("ConfigMaps", []runtime.Object{cm}, []string{k8s.ConfigConfigMapName}, shouldExist)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
+	return FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 }
 
-// CheckNamespace checks whether the given namespace exists, and returns an
+// FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
+// Kubernetes and parses it into `linkerd2.config` protobuf.
+// TODO: Consider a different package for this function. This lives in the
+// healthcheck package because healthcheck depends on it, along with other
+// packages that also depend on healthcheck. This function depends on both
+// `pkg/k8s` and `pkg/config`, which do not depend on each other.
+func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*configPb.All, error) {
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return config.FromConfigMap(cm.Data)
+}
+
+// checkNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) CheckNamespace(namespace string, shouldExist bool) error {
+func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
 	exists, err := hc.kubeAPI.NamespaceExists(namespace)
 	if err != nil {
 		return err
@@ -1066,15 +1111,21 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
 	if !shouldExist {
 		if len(objects) > 0 {
-			resources := ""
+			resources := []Resource{}
 			for _, obj := range objects {
 				m, err := meta.Accessor(obj)
 				if err != nil {
 					return err
 				}
-				resources += fmt.Sprintf("%s ", m.GetName())
+
+				res := Resource{name: m.GetName()}
+				gvks, _, err := k8s.ObjectKinds(obj)
+				if err == nil && len(gvks) > 0 {
+					res.groupVersionKind = gvks[0]
+				}
+				resources = append(resources, res)
 			}
-			return fmt.Errorf("%s found but should not exist: %s", resourceName, strings.TrimSpace(resources))
+			return &ResourceError{resourceName, resources}
 		}
 		return nil
 	}
@@ -1151,7 +1202,7 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 	)
 }
 
-func (hc *HealthChecker) checkNetAdmin() error {
+func (hc *HealthChecker) checkCapability(cap string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
@@ -1170,7 +1221,7 @@ func (hc *HealthChecker) checkNetAdmin() error {
 	// if PodSecurityPolicies are found, validate one exists that:
 	// 1) permits usage
 	// AND
-	// 2) provides NET_ADMIN
+	// 2) provides the specified capability
 	for _, psp := range pspList.Items {
 		err := k8s.ResourceAuthz(
 			hc.kubeAPI,
@@ -1183,14 +1234,14 @@ func (hc *HealthChecker) checkNetAdmin() error {
 		)
 		if err == nil {
 			for _, capability := range psp.Spec.AllowedCapabilities {
-				if capability == "*" || capability == "NET_ADMIN" {
+				if capability == "*" || string(capability) == cap {
 					return nil
 				}
 			}
 		}
 	}
 
-	return fmt.Errorf("found %d PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running", len(pspList.Items))
+	return fmt.Errorf("found %d PodSecurityPolicies, but none provide %s, proxy injection will fail if the PSP admission controller is running", len(pspList.Items), cap)
 }
 
 func (hc *HealthChecker) checkClockSkew() error {

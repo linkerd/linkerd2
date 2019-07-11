@@ -8,6 +8,7 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
 	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
@@ -29,7 +30,8 @@ type (
 		profile   *sp.ServiceProfile
 		listeners []ProfileUpdateListener
 
-		log *logging.Entry
+		log            *logging.Entry
+		profileMetrics metrics
 		// All access to the profilePublisher is explicitly synchronized by this mutex.
 		sync.Mutex
 	}
@@ -39,6 +41,8 @@ type (
 		Update(profile *sp.ServiceProfile)
 	}
 )
+
+var profileVecs = newMetricsVecs("profile", []string{"namespace", "profile"})
 
 // NewProfileWatcher creates a ProfileWatcher and begins watching the k8sAPI for
 // service profile changes.
@@ -151,6 +155,10 @@ func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.Ser
 				"ns":        id.Namespace,
 				"profile":   id.Name,
 			}),
+			profileMetrics: profileVecs.newMetrics(prometheus.Labels{
+				"namespace": id.Namespace,
+				"profile":   id.Name,
+			}),
 		}
 		pw.profiles[id] = publisher
 	}
@@ -175,6 +183,8 @@ func (pp *profilePublisher) subscribe(listener ProfileUpdateListener) {
 
 	pp.listeners = append(pp.listeners, listener)
 	listener.Update(pp.profile)
+
+	pp.profileMetrics.setSubscribers(len(pp.listeners))
 }
 
 // unsubscribe returns true if and only if the listener was found and removed.
@@ -190,9 +200,11 @@ func (pp *profilePublisher) unsubscribe(listener ProfileUpdateListener) {
 			pp.listeners[i] = pp.listeners[n-1]
 			pp.listeners[n-1] = nil
 			pp.listeners = pp.listeners[:n-1]
-			return
+			break
 		}
 	}
+
+	pp.profileMetrics.setSubscribers(len(pp.listeners))
 }
 
 func (pp *profilePublisher) update(profile *sp.ServiceProfile) {
@@ -204,6 +216,8 @@ func (pp *profilePublisher) update(profile *sp.ServiceProfile) {
 	for _, listener := range pp.listeners {
 		listener.Update(profile)
 	}
+
+	pp.profileMetrics.incUpdates()
 }
 
 ////////////

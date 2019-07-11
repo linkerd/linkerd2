@@ -26,7 +26,21 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
+	})
+
+	t.Run("Returns pod stats", func(t *testing.T) {
+		testStatCall(paramsExp{
+			counts: &public.PodCounts{
+				Status:      "Running",
+				MeshedPods:  1,
+				RunningPods: 1,
+				FailedPods:  0,
+			},
+			options: options,
+			resNs:   []string{"emojivoto1"},
+			file:    "stat_one_pod_output.golden",
+		}, k8s.Pod, t)
 	})
 
 	options.outputFormat = jsonOutput
@@ -40,7 +54,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_output_json.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	options = newStatOptions()
@@ -55,7 +69,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1", "emojivoto2"},
 			file:    "stat_all_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	options.outputFormat = jsonOutput
@@ -69,7 +83,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1", "emojivoto2"},
 			file:    "stat_all_output_json.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	options = newStatOptions()
@@ -84,7 +98,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_tcp_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	t.Run("Returns an error for named resource queries with the --all-namespaces flag", func(t *testing.T) {
@@ -150,9 +164,9 @@ func TestStat(t *testing.T) {
 	})
 }
 
-func testStatCall(exp paramsExp, t *testing.T) {
+func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, true)
+	response := public.GenStatSummaryResponse("emoji", resourceType, exp.resNs, exp.counts, true, true)
 
 	mockClient.StatSummaryResponseToReturn = &response
 

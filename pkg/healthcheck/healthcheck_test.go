@@ -8,12 +8,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type observer struct {
@@ -386,7 +391,7 @@ status:
 
 }
 
-func TestCheckNetAdmin(t *testing.T) {
+func TestChecCapability(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
 		err        error
@@ -404,13 +409,13 @@ spec:
   requiredDropCapabilities:
     - ALL`,
 			},
-			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running"),
+			fmt.Errorf("found 1 PodSecurityPolicies, but none provide TEST_CAP, proxy injection will fail if the PSP admission controller is running"),
 		},
 	}
 
 	for i, test := range tests {
 		test := test // pin
-		t.Run(fmt.Sprintf("%d: returns expected NET_ADMIN result", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d: returns expected capability result", i), func(t *testing.T) {
 			hc := NewHealthChecker(
 				[]CategoryID{},
 				&Options{},
@@ -422,7 +427,7 @@ spec:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkNetAdmin()
+			err = hc.checkCapability("TEST_CAP")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -1970,4 +1975,132 @@ metadata:
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
+}
+
+func TestFetchLinkerdConfigMap(t *testing.T) {
+	testCases := []struct {
+		k8sConfigs []string
+		expected   *configPb.All
+		err        error
+	}{
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.0.0"}
+  install: |
+    {"uuid":"deaab91a-f4ab-448a-b7d1-c832a2fa0a60","cliVersion":"dev-undefined","flags":[]}`,
+			},
+			&configPb.All{
+				Global: &configPb.Global{
+					LinkerdNamespace: "linkerd",
+					Version:          "install-control-plane-version",
+					IdentityContext: &configPb.IdentityContext{
+						TrustDomain:     "cluster.local",
+						TrustAnchorsPem: "fake-trust-anchors-pem",
+						IssuanceLifetime: &duration.Duration{
+							Seconds: 86400,
+						},
+						ClockSkewAllowance: &duration.Duration{
+							Seconds: 20,
+						},
+					},
+				}, Proxy: &configPb.Proxy{
+					ProxyImage: &configPb.Image{
+						ImageName:  "gcr.io/linkerd-io/proxy",
+						PullPolicy: "IfNotPresent",
+					},
+					ProxyInitImage: &configPb.Image{
+						ImageName:  "gcr.io/linkerd-io/proxy-init",
+						PullPolicy: "IfNotPresent",
+					},
+					ControlPort: &configPb.Port{
+						Port: 4190,
+					},
+					InboundPort: &configPb.Port{
+						Port: 4143,
+					},
+					AdminPort: &configPb.Port{
+						Port: 4191,
+					},
+					OutboundPort: &configPb.Port{
+						Port: 4140,
+					},
+					Resource: &configPb.ResourceRequirements{},
+					ProxyUid: 2102,
+					LogLevel: &configPb.LogLevel{
+						Level: "warn,linkerd2_proxy=info",
+					},
+					DisableExternalProfiles: true,
+					ProxyVersion:            "install-proxy-version",
+					ProxyInitImageVersion:   "v1.0.0",
+				}, Install: &configPb.Install{
+					Uuid:       "deaab91a-f4ab-448a-b7d1-c832a2fa0a60",
+					CliVersion: "dev-undefined",
+				}},
+			nil,
+		},
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"ns","identityContext":null}
+  proxy: "{}"
+  install: "{}"`,
+			},
+			&configPb.All{Global: &configPb.Global{LinkerdNamespace: "ns", IdentityContext: nil}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
+			nil,
+		},
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: "{}"
+  proxy: "{}"
+  install: "{}"`,
+			},
+			&configPb.All{Global: &configPb.Global{}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
+			nil,
+		},
+		{
+			nil,
+			nil,
+			k8sErrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "linkerd-config"),
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
+			}
+
+			if !proto.Equal(configs, tc.expected) {
+				t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
+			}
+		})
+	}
 }
