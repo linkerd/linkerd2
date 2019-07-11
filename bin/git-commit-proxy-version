@@ -14,7 +14,7 @@ rootdir="$( cd $bindir/.. && pwd )"
 old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
 if [ -z "$old_proxy_version" ]; then
     echo "missing .proxy-version" >&2
-    exit 1;
+    exit 1
 fi
 
 # Checkout the linkerd2-proxy repo to resolve the new proxy version to a SHA
@@ -25,6 +25,11 @@ cd "$tmp"
 
 sha="$(git rev-parse "${new_proxy_revision}")"
 new_proxy_version="${sha:0:7}"
+
+if ! git-rev-parse --verify --quiet "${old_proxy_version}" ; then
+    echo "The old proxy-version ${old_proxy_version} does not exist in the last 100 proxy commits." >&2
+    exit 2
+fi
 
 echo "proxy: Update proxy to ${new_proxy_revision}" >"$tmp/commit.template"
 echo "" >>"$tmp/commit.template"
