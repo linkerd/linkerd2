@@ -35,7 +35,7 @@ echo "proxy: Update proxy to ${new_proxy_revision}" >"$tmp/commit.template"
 echo "" >>"$tmp/commit.template"
 
 git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_version}..${new_proxy_version}" | \
-sed -E -e 's,^,* linkerd/linker2-proxy#,' \
+sed -E -e 's,^,* linkerd/linkerd2-proxy#,' \
     -e 's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),' \
     >>"$tmp/commit.template"
 
