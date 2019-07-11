@@ -10,51 +10,62 @@ resources:
 
 variables:
   azureSubscriptionEndpoint: 'azure-resource-manager-connection'
-  # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '09d773f8-fb84-404b-a6a9-43c765c71c7d'
-  imageRepository: 'siggylinkerd'
-  containerRegistry: 'acrbuoyant.azurecr.io'
-  dockerfilePath: '$(Build.SourcesDirectory)/cni-plugin/Dockerfile'
-  tag: '$(Build.BuildId)'
-
-  # Agent VM image name
-  # vmImageName: 'ubuntu-latest'
-  # vmImageName: 'gcr.io/linkerd-io/l5d-builder:latest'
 
 stages:
-- stage: Build
-  displayName: Build and push stage
+- stage: Build_and_run
+  displayName: Build and run
   jobs:
-  - job: Build
-    displayName: Build
+  - job: Go_lint
+    displayName: Go lint
     pool:
       vmImage: 'ubuntu-16.04'
-    container: gcr.io/linkerd-io/l5d-builder:latest
+    container:
+      image: gcr.io/linkerd-io/go-deps:7ac58ac0
     steps:
-    - script: $(Build.SourcesDirectory)/test-infra/integration-tests.sh
-
-    # pool:
-    #   vmImage: $(vmImageName)
-    # steps:
-    # - task: Docker@2
-    #   displayName: Build and push an image to container registry
-    #   inputs:
-    #     command: buildAndPush
-    #     repository: $(imageRepository)
-    #     dockerfile: $(dockerfilePath)
-    #     containerRegistry: $(dockerRegistryServiceConnection)
-    #     tags: |
-    #       $(tag)
-    # - task: DockerCompose@0
-    #   displayName: Docker Compose
-    #   inputs:
-    #     action: Run services
-    #     buildImages: false
-    #     containerregistrytype: Azure Container Registry
-    #     azureSubscriptionEndpoint: $(azureSubscriptionEndpoint)
-    #     azureContainerRegistry: $(azureContainerRegistry)
-    #     dockerComposeFile: test-infra/docker-compose.yml
-    #     dockerComposeFileArgs: |
-    #       REPO=$(Build.SourcesDirectory)
-    #     abortOnContainerExit: true
-    #     detached: false
+    - checkout: self
+      path: linkerd2-checkout
+      # path: go/src/github.com/linkerd/linkerd2
+      fetchDepth: 1
+    - script: $(Build.SourcesDirectory)/test-infra/go-lint.sh
+      env:
+        GOPATH: $(Pipeline.Workspace)/go
+  - job: Go_tests
+    displayName: Go tests
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container:
+      image: gcr.io/linkerd-io/go-deps:7ac58ac0
+    steps:
+    - checkout: self
+      path: linkerd2-checkout
+      # path: go/src/github.com/linkerd/linkerd2
+      fetchDepth: 1
+    - script: $(Build.SourcesDirectory)/test-infra/go-tests.sh
+      env:
+        GOPATH: $(Pipeline.Workspace)/go
+  - job: JS_tests
+    displayName: JS tests
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container:
+      image: node:10.16.0-stretch
+    steps:
+    - checkout: self
+      path: go/src/github.com/linkerd/linkerd2
+      fetchDepth: 1
+    - script: $(Build.SourcesDirectory)/test-infra/js-tests.sh
+  - job: Integration_tests
+    displayName: Integration tests
+    pool:
+      name: Default
+    container:
+      image: gcr.io/linkerd-io/l5d-builder:latest
+      options: --privileged
+    steps:
+    - checkout: self
+      path: linkerd2-checkout
+      # path: go/src/github.com/linkerd/linkerd2
+      fetchDepth: 1
+    - script: $(Build.SourcesDirectory)/test-infra/integration-tests-pipelines.sh
+      env:
+        GOPATH: $(Pipeline.Workspace)/go

@@ -4,6 +4,9 @@
 
 set -eux
 
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+cd $ROOT
+
 curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
 
 export PATH="$HOME/.yarn/bin:$PATH"

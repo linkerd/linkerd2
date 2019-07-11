@@ -21,7 +21,7 @@ docker_repo() {
 
     echo "$name"
 }
-
+1>&2
 docker_build() {
     repo=$(docker_repo "$1")
     shift
@@ -36,7 +36,7 @@ docker_build() {
 
     output="/dev/null"
     if [ -n "$DOCKER_TRACE" ]; then
-        output="/dev/stderr"
+        output="&2"
     fi
 
     rootdir="$( cd $bindir/.. && pwd )"
@@ -46,7 +46,7 @@ docker_build() {
         -t "$repo:$tag" \
         -f "$file" \
         $extra \
-        > "$output"
+        >"$output"
 
     echo "$repo:$tag"
 }

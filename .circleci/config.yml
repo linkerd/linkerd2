@@ -57,8 +57,8 @@ jobs:
           docker pull gcr.io/linkerd-io/proxy-init:v1.0.0
           kind load docker-image --name $ROOT_TAG gcr.io/linkerd-io/proxy-init:v1.0.0
 
-          docker pull prom/prometheus:v2.7.1
-          kind load docker-image --name $ROOT_TAG prom/prometheus:v2.7.1
+          docker pull prom/prometheus:v2.10.0
+          kind load docker-image --name $ROOT_TAG prom/prometheus:v2.10.0
 
           docker pull buoyantio/helloworld:0.1.6
           kind load docker-image --name $ROOT_TAG buoyantio/helloworld:0.1.6

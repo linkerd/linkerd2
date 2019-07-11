@@ -15,7 +15,7 @@ ENV DEBIAN_VERSION debian-stretch
 ENV DOCKER_VERSION 18.09.6~3-0
 ENV GO_VERSION 1.11.5
 ENV KUBECTL_VERSION v1.14.3
-ENV KIND_VERSION v0.3.0
+ENV KIND_VERSION v0.4.0
 
 RUN curl -Lo /tmp/docker.deb https://download.docker.com/linux/debian/dists/stretch/pool/stable/amd64/docker-ce-cli_${DOCKER_VERSION}~${DEBIAN_VERSION}_amd64.deb \
     && dpkg -i /tmp/docker.deb \
