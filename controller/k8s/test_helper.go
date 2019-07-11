@@ -3,7 +3,6 @@ package k8s
 import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // NewFakeAPI provides a mock Kubernetes API for testing.
@@ -34,30 +33,14 @@ func NewFakeAPI(configs ...string) (*API, error) {
 	), nil
 }
 
-type hasUID interface {
-	GetUID() types.UID
-}
+type byPod []*corev1.Pod
 
-type byUID []hasUID
+func (bp byPod) Len() int           { return len(bp) }
+func (bp byPod) Swap(i, j int)      { bp[i], bp[j] = bp[j], bp[i] }
+func (bp byPod) Less(i, j int) bool { return bp[i].Name <= bp[j].Name }
 
-func (s byUID) Len() int { return len(s) }
+type byService []*corev1.Service
 
-func (s byUID) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-func (s byUID) Less(i, j int) bool { return s[i].GetUID() < s[j].GetUID() }
-
-func podByUID(pods []*corev1.Pod) byUID {
-	uids := make(byUID, len(pods))
-	for i := range pods {
-		uids[i] = pods[i]
-	}
-	return uids
-}
-
-func serviceByUID(services []*corev1.Service) byUID {
-	uids := make(byUID, len(services))
-	for i := range services {
-		uids[i] = services[i]
-	}
-	return uids
-}
+func (bs byService) Len() int           { return len(bs) }
+func (bs byService) Swap(i, j int)      { bs[i], bs[j] = bs[j], bs[i] }
+func (bs byService) Less(i, j int) bool { return bs[i].Name <= bs[j].Name }

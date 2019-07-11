@@ -879,8 +879,8 @@ status:
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
-			sort.Sort(podByUID(pods))
-			sort.Sort(podByUID(k8sResultPods))
+			sort.Sort(byPod(pods))
+			sort.Sort(byPod(k8sResultPods))
 			if !reflect.DeepEqual(pods, k8sResultPods) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultPods, pods)
 			}
@@ -1235,9 +1235,8 @@ spec:
 				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
-			sort.Sort(serviceByUID(k8sResultServices))
-			sort.Sort(serviceByUID(services))
-
+			sort.Sort(byService(k8sResultServices))
+			sort.Sort(byService(services))
 			if !reflect.DeepEqual(services, k8sResultServices) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
 			}
