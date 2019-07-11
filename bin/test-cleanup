@@ -41,5 +41,5 @@ if ! customresourcedefinitions=$(kubectl --context=$k8s_context get customresour
 fi
 
 if [[ $namespaces || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs || $podsecuritypolicies || $customresourcedefinitions ]]; then
-  kubectl --context=$k8s_context delete --wait=false $namespaces $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs $podsecuritypolicies $customresourcedefinitions
+  kubectl --context=$k8s_context delete $namespaces $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs $podsecuritypolicies $customresourcedefinitions
 fi
