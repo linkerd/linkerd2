@@ -1,7 +1,7 @@
 package installsp
 
 // Template provides the base template for the `linkerd install-sp` command.
-const Template = `apiVersion: linkerd.io/v1alpha1
+const Template = `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: linkerd-controller-api.{{.Namespace}}.svc.cluster.local
@@ -41,7 +41,7 @@ spec:
       method: POST
       pathRegex: /api/v1/SelfCheck
 ---
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: linkerd-destination.{{.Namespace}}.svc.cluster.local
@@ -57,7 +57,7 @@ spec:
       method: POST
       pathRegex: /io\.linkerd\.proxy\.destination\.Destination/GetProfile
 ---
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: linkerd-prometheus.{{.Namespace}}.svc.cluster.local
@@ -77,7 +77,7 @@ spec:
       method: GET
       pathRegex: /api/v1/series
 ---
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: linkerd-grafana.{{.Namespace}}.svc.cluster.local

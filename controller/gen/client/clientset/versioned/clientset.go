@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	linkerdv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha1"
+	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -27,27 +27,27 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	LinkerdV1alpha1() linkerdv1alpha1.LinkerdV1alpha1Interface
+	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Linkerd() linkerdv1alpha1.LinkerdV1alpha1Interface
+	Linkerd() linkerdv1alpha2.LinkerdV1alpha2Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	linkerdV1alpha1 *linkerdv1alpha1.LinkerdV1alpha1Client
+	linkerdV1alpha2 *linkerdv1alpha2.LinkerdV1alpha2Client
 }
 
-// LinkerdV1alpha1 retrieves the LinkerdV1alpha1Client
-func (c *Clientset) LinkerdV1alpha1() linkerdv1alpha1.LinkerdV1alpha1Interface {
-	return c.linkerdV1alpha1
+// LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
+func (c *Clientset) LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface {
+	return c.linkerdV1alpha2
 }
 
 // Deprecated: Linkerd retrieves the default version of LinkerdClient.
 // Please explicitly pick a version.
-func (c *Clientset) Linkerd() linkerdv1alpha1.LinkerdV1alpha1Interface {
-	return c.linkerdV1alpha1
+func (c *Clientset) Linkerd() linkerdv1alpha2.LinkerdV1alpha2Interface {
+	return c.linkerdV1alpha2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -66,7 +66,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.linkerdV1alpha1, err = linkerdv1alpha1.NewForConfig(&configShallowCopy)
+	cs.linkerdV1alpha2, err = linkerdv1alpha2.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.linkerdV1alpha1 = linkerdv1alpha1.NewForConfigOrDie(c)
+	cs.linkerdV1alpha2 = linkerdv1alpha2.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -91,7 +91,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.linkerdV1alpha1 = linkerdv1alpha1.New(c)
+	cs.linkerdV1alpha2 = linkerdv1alpha2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

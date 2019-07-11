@@ -1282,7 +1282,7 @@ func (hc *HealthChecker) validateServiceProfiles() error {
 		return err
 	}
 
-	svcProfiles, err := spClientset.LinkerdV1alpha1().ServiceProfiles("").List(metav1.ListOptions{})
+	svcProfiles, err := spClientset.LinkerdV1alpha2().ServiceProfiles("").List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
 // BufferingProfileListener implements ProfileUpdateListener and stores updates

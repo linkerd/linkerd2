@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	linkerdv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha1"
-	fakelinkerdv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha1/fake"
+	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
+	fakelinkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -71,12 +71,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// LinkerdV1alpha1 retrieves the LinkerdV1alpha1Client
-func (c *Clientset) LinkerdV1alpha1() linkerdv1alpha1.LinkerdV1alpha1Interface {
-	return &fakelinkerdv1alpha1.FakeLinkerdV1alpha1{Fake: &c.Fake}
+// LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
+func (c *Clientset) LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface {
+	return &fakelinkerdv1alpha2.FakeLinkerdV1alpha2{Fake: &c.Fake}
 }
 
-// Linkerd retrieves the LinkerdV1alpha1Client
-func (c *Clientset) Linkerd() linkerdv1alpha1.LinkerdV1alpha1Interface {
-	return &fakelinkerdv1alpha1.FakeLinkerdV1alpha1{Fake: &c.Fake}
+// Linkerd retrieves the LinkerdV1alpha2Client
+func (c *Clientset) Linkerd() linkerdv1alpha2.LinkerdV1alpha2Interface {
+	return &fakelinkerdv1alpha2.FakeLinkerdV1alpha2{Fake: &c.Fake}
 }

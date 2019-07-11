@@ -133,7 +133,13 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
-  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: false
+  - name: v1alpha2
+    served: true
+    storage: true
   scope: Namespaced
   names:
     plural: serviceprofiles

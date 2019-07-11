@@ -69,7 +69,7 @@ metadata:
     phase: Running
     podIP: 172.17.0.12`,
 		`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: name1.ns.svc.cluster.local
@@ -81,7 +81,7 @@ spec:
     condition:
       pathRegex: "/a/b/c"`,
 		`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: name1.ns.svc.cluster.local

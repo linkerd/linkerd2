@@ -2,7 +2,7 @@ package profiles
 
 // Template provides the base template for the `linkerd profile --template` command.
 const Template = `### ServiceProfile for {{.ServiceName}}.{{.ServiceNamespace}} ###
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: {{.ServiceName}}.{{.ServiceNamespace}}.{{.ClusterZone}}
