@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -eu
+
+if [ $# -ne 1 ]; then
+    echo "usage: $(basename $0) PROXY-VERSION" >&2
+    exit 64
+fi
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+
+new_proxy_version="$1"
+
+old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
+if [ -z "$old_proxy_version" ]; then
+    echo "missing .proxy-version" >&2
+    exit 1;
+fi
+
+tmp=$(mktemp -d -t l2-proxy.XXX)
+git clone --depth=100 https://github.com/linkerd/linkerd2-proxy "$tmp"
+
+echo "proxy: Update to linkerd/linkerd2-proxy#${new_proxy_version}" >"$tmp/commit.template"
+echo "" >>"$tmp/commit.template"
+( cd "$tmp" &&
+    git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_version}..${new_proxy_version}" | \
+    sed -E -e 's,^,* linkerd/linker2-proxy#,' \
+        -e 's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),'
+) >>"$tmp/commit.template"
+
+echo "$new_proxy_version" >"$rootdir/.proxy-version"
+
+git commit --file="$tmp/commit.template" -- "$rootdir/.proxy-version"
+
+rm -rf "$tmp"
+
+git --no-pager show HEAD
