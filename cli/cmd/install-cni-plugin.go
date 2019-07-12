@@ -127,7 +127,7 @@ assumes that the 'linkerd install' command will be executed with the
 		&options.useWaitFlag,
 		"use-wait-flag",
 		options.useWaitFlag,
-		"Configures the CNI plugin to use the \"-w\" flag for the iptables command.")
+		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. Default value is false")
 
 	return cmd
 }

@@ -16,7 +16,7 @@ var Version = undefinedVersion
 // https://github.com/linkerd/linkerd2-proxy-init
 // This has to be kept in sync with the constraint version for
 // github.com/linkerd/linkerd2-proxy-init in /Gopkg.toml
-var ProxyInitVersion = "87ab4bd22a6e45ae74ff05efca7c7bed5b5a5cce"
+var ProxyInitVersion = "v1.1.0"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to
