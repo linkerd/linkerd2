@@ -163,7 +163,7 @@ jobs:
         - |
           # Run integration tests.
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup linkerd-$version
+          ./bin/test-cleanup
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
@@ -171,8 +171,7 @@ jobs:
       after_script:
         - |
           # Cleanup after integration test run.
-          version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup linkerd-$version
+          ./bin/test-cleanup
 
 notifications:
   email:

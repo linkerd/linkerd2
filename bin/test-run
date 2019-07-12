@@ -94,7 +94,7 @@ run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
 # TODO: Consider running the upgrade tests and normal integration tests on
 # separate clusters (in parallel? via kind?).
 if [ $exit_code -eq 0 ]; then
-    $bindir/test-cleanup "$linkerd_namespace"-upgrade $k8s_context
+    $bindir/test-cleanup $k8s_context
 fi
 
 run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace || exit_code=$?
