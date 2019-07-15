@@ -8,10 +8,10 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Namespace}}-proxy-injector
+  labels:
+    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingwebhookconfigurations"]
-  verbs: ["create", "get", "delete"]
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
@@ -26,6 +26,9 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Namespace}}-proxy-injector
+  labels:
+    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
@@ -41,6 +44,9 @@ apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 kind: Secret
 apiVersion: v1
@@ -49,6 +55,7 @@ metadata:
   namespace: {{ .Namespace }}
   labels:
     {{ .ControllerComponentLabel }}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{ .CreatedByAnnotation }}: {{ .CliVersion }}
 type: Opaque
@@ -62,17 +69,26 @@ metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
     {{ .ControllerComponentLabel }}: proxy-injector
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: {{ .LinkerdNamespaceLabel }}
+      operator: DoesNotExist
   clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: {{ .Namespace }}
       path: "/"
     caBundle: {{ b64enc .ProxyInjector.CrtPEM }}
+  failurePolicy: {{ .WebhookFailurePolicy }}
   rules:
-  - operations: [ "CREATE" , "UPDATE" ]
+  - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+{{- if not .OmitWebhookSideEffects }}
+  sideEffects: None
+{{- end }}
 {{end -}}

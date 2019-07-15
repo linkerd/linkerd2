@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -eu
+
+if [ $# -ne 1 ]; then
+    echo "usage: $(basename $0) PROXY-REVISION" >&2
+    exit 64
+fi
+new_proxy_revision="$1"
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
+
+old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
+if [ -z "$old_proxy_version" ]; then
+    echo "missing .proxy-version" >&2
+    exit 1
+fi
+
+# Checkout the linkerd2-proxy repo to resolve the new proxy version to a SHA
+# and obtain the commit log since the prior version.
+tmp=$(mktemp -d -t l2-proxy.XXX)
+git clone --depth=100 https://github.com/linkerd/linkerd2-proxy "$tmp"
+cd "$tmp"
+
+sha="$(git rev-parse --verify --quiet "${new_proxy_revision}")"
+new_proxy_version="${sha:0:7}"
+
+if ! git rev-parse --verify --quiet "${old_proxy_version}" ; then
+    echo "The old proxy-version ${old_proxy_version} does not exist in the last 100 proxy commits." >&2
+    exit 2
+fi
+
+echo "proxy: Update proxy to ${new_proxy_revision}" >"$tmp/commit.template"
+echo "" >>"$tmp/commit.template"
+
+git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_version}..${new_proxy_version}" | \
+    sed -E -e 's,^[a-f0-9]{7} ,* ,' \
+    -e 's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),' \
+    >>"$tmp/commit.template"
+
+cd "$rootdir"
+echo "$new_proxy_version" >"$rootdir/.proxy-version"
+
+git commit --file="$tmp/commit.template" --edit -- "$rootdir/.proxy-version"
+
+rm -rf "$tmp"
+
+git --no-pager show HEAD

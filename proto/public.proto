@@ -362,6 +362,8 @@ message StatTable {
       Resource resource = 1;
       string time_window = 2;
 
+      // pod status on Kubernetes
+      string status = 9;
       // number of pending or running pods in this resource that have linkerd injected
       uint64 meshed_pod_count = 3;
       // number of pending or running pods in this resource

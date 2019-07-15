@@ -18,16 +18,62 @@
 
 package install
 
-// CNITemplate provides the base template for the `linkerd install-cni-plugin` command.
-const CNITemplate = `### Namespace ###
+const (
+	// CNITemplate provides the base template for the `linkerd install-cni-plugin` command.
+	CNITemplate = `### Namespace ###
 kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Namespace}}
 ---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-{{.Namespace}}-cni
+spec:
+  allowPrivilegeEscalation: false
+  fsGroup:
+    rule: RunAsAny
+  hostNetwork: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - hostPath
+  - secret
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: linkerd-cni
+  namespace: {{.Namespace}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-cni
+  namespace: {{.Namespace}}
+rules:
+- apiGroups: ['extensions', 'policy']
+  resources: ['podsecuritypolicies']
+  resourceNames:
+  - linkerd-{{.Namespace}}-cni
+  verbs: ['use']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-cni
+  namespace: {{.Namespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-cni
+subjects:
+- kind: ServiceAccount
   name: linkerd-cni
   namespace: {{.Namespace}}
 ---
@@ -207,3 +253,4 @@ spec:
           path: {{.DestCNINetDir}}
       {{- end }}
 `
+)

@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -139,6 +141,24 @@ func read(path string) ([]io.Reader, error) {
 	)
 	if path == "-" {
 		in = append(in, os.Stdin)
+	} else if isValidURL(path) {
+		resp, err := http.Get(path)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode)
+		}
+
+		// Save to a buffer, so that response can be closed here
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		resp.Body.Close()
+		in = append(in, buf)
 	} else {
 		in, err = walk(path)
 		if err != nil {
@@ -147,6 +167,16 @@ func read(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
+}
+
+// checks if the given string is a valid URL
+func isValidURL(path string) bool {
+	u, err := url.ParseRequestURI(path)
+	if err != nil {
+		return false
+	}
+
+	return u.Host != "" && u.Scheme != ""
 }
 
 // walk walks the file tree rooted at path. path may be a file or a directory.

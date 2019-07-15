@@ -5,8 +5,12 @@ import (
 	"io"
 	"strings"
 
+	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	tsfake "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
+
+	tsscheme "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +19,7 @@ import (
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
@@ -25,7 +30,7 @@ import (
 
 // NewFakeAPI provides a mock KubernetesAPI backed by hard-coded resources
 func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
-	client, apiextClient, _, err := NewFakeClientSets(configs...)
+	client, apiextClient, _, _, err := NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +44,7 @@ func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 // NewFakeAPIFromManifests reads from a slice of readers, each representing a
 // manifest or collection of manifests, and returns a mock KubernetesAPI.
 func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
-	client, apiextClient, _, err := newFakeClientSetsFromManifests(readers)
+	client, apiextClient, _, _, err := newFakeClientSetsFromManifests(readers)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +57,16 @@ func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
 
 // NewFakeClientSets provides mock Kubernetes ClientSets.
 // TODO: make this private once KubernetesAPI (and NewFakeAPI) supports spClient
-func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionsclient.Interface, spclient.Interface, error) {
+func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionsclient.Interface, spclient.Interface, tsclient.Interface, error) {
 	objs := []runtime.Object{}
 	apiextObjs := []runtime.Object{}
 	discoveryObjs := []runtime.Object{}
 	spObjs := []runtime.Object{}
+	tsObjs := []runtime.Object{}
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		switch strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind) {
 		case "customresourcedefinition":
@@ -69,6 +75,8 @@ func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionscl
 			discoveryObjs = append(discoveryObjs, obj)
 		case ServiceProfile:
 			spObjs = append(spObjs, obj)
+		case TrafficSplit:
+			tsObjs = append(tsObjs, obj)
 		default:
 			objs = append(objs, obj)
 		}
@@ -84,13 +92,14 @@ func NewFakeClientSets(configs ...string) (kubernetes.Interface, apiextensionscl
 	return cs,
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		spfake.NewSimpleClientset(spObjs...),
+		tsfake.NewSimpleClientset(tsObjs...),
 		nil
 }
 
 // newFakeClientSetsFromManifests reads from a slice of readers, each
 // representing a manifest or collection of manifests, and returns a mock
 // Kubernetes ClientSet.
-func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, apiextensionsclient.Interface, spclient.Interface, error) {
+func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, apiextensionsclient.Interface, spclient.Interface, tsclient.Interface, error) {
 	configs := []string{}
 
 	for _, reader := range readers {
@@ -104,13 +113,13 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, 
 				break
 			}
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 
 			// check for kind
 			var typeMeta metav1.TypeMeta
 			if err := yaml.Unmarshal(bytes, &typeMeta); err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 
 			switch typeMeta.Kind {
@@ -120,7 +129,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, 
 			case "List":
 				var sourceList corev1.List
 				if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				for _, item := range sourceList.Items {
 					configs = append(configs, string(item.Raw))
@@ -139,7 +148,19 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (kubernetes.Interface, 
 func ToRuntimeObject(config string) (runtime.Object, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err
+}
+
+// ObjectKinds wraps client-go's scheme.Scheme.ObjectKinds()
+// It returns all possible group,version,kind of the go object, true if the
+// object is considered unversioned, or an error if it's not a pointer or is
+// unregistered.
+func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
+	return scheme.Scheme.ObjectKinds(obj)
 }

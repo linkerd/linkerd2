@@ -21,6 +21,7 @@ const (
 	Service               = "service"
 	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
+	TrafficSplit          = "trafficsplit"
 
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha1"
 	ServiceProfileKind       = "ServiceProfile"

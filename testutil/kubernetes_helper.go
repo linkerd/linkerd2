@@ -54,13 +54,16 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
 	return err
 }
 
-// CreateNamespaceIfNotExists creates a namespace if it does not already exist.
+// CreateNamespaceIfNotExists creates a dataplane namespace if it does not already exist,
+// with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
 func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotations map[string]string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
+		labels := map[string]string{"linkerd.io/is-test-data-plane": "true"}
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
+				Labels:      labels,
 				Annotations: annotations,
 				Name:        namespace,
 			},
@@ -81,11 +84,6 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotati
 func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string, error) {
 	if namespace == "" {
 		namespace = "default"
-	}
-
-	err := h.CreateNamespaceIfNotExists(namespace, nil)
-	if err != nil {
-		return "", err
 	}
 
 	return h.Kubectl(stdin, "apply", "-f", "-", "--namespace", namespace)
@@ -260,8 +258,9 @@ func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) 
 		return "", err
 	}
 
-	go pf.Run()
-	<-pf.Ready()
+	if err = pf.Init(); err != nil {
+		return "", err
+	}
 
 	return pf.URLFor(""), nil
 }

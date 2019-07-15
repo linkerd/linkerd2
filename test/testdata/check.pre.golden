@@ -15,6 +15,7 @@ pre-kubernetes-setup
 √ can create ClusterRoles
 √ can create ClusterRoleBindings
 √ can create CustomResourceDefinitions
+√ can create PodSecurityPolicies
 √ can create ServiceAccounts
 √ can create Services
 √ can create Deployments
@@ -24,6 +25,16 @@ pre-kubernetes-setup
 pre-kubernetes-capability
 -------------------------
 √ has NET_ADMIN capability
+√ has NET_RAW capability
+
+pre-linkerd-global-resources
+----------------------------
+√ no ClusterRoles exist
+√ no ClusterRoleBindings exist
+√ no CustomResourceDefinitions exist
+√ no MutatingWebhookConfigurations exist
+√ no ValidatingWebhookConfigurations exist
+√ no PodSecurityPolicies exist
 
 linkerd-version
 ---------------

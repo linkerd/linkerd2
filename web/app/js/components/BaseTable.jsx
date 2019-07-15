@@ -17,7 +17,7 @@ import Typography from '@material-ui/core/Typography';
 import _find from 'lodash/find';
 import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
-import _sortBy from 'lodash/sortBy';
+import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -89,8 +89,9 @@ class BaseTable extends React.Component {
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
     let rows = tableRows;
     let col = _find(tableColumns, d => d.dataIndex === orderBy);
+
     if (orderBy && col.sorter) {
-      rows = _sortBy(rows, row => col.sorter(row));
+      rows = _orderBy(rows, row => col.sorter(row), order);
     }
     if (filterBy) {
       let columnsToFilter = tableColumns.filter(col => col.filter);
@@ -102,7 +103,8 @@ class BaseTable extends React.Component {
       });
       rows = filteredRows;
     }
-    return order === 'desc' ? rows.reverse() : rows;
+
+    return rows;
   }
 
   renderHeaderCell = (col, order, orderBy) => {

@@ -35,7 +35,7 @@ function run_test(){
     shift
 
     printf "Running test [%s] %s\\n" "$(basename "$filename")" "$@"
-    go test -v "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
+    go test "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
 }
 
 # Install the latest stable release.
@@ -63,7 +63,7 @@ function run_upgrade_test() {
     install_stable $stable_namespace
 
     printf "Upgrading release [%s] to [%s]\n" "$stable_version" "$linkerd_version"
-    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace || exit_code=$?
+    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
 linkerd_path=$1
@@ -88,8 +88,16 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 
 exit_code=0
 
+run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
+# if run_upgrade_test succeeded, delete the installation to prepare for subsequent
+# full integration tests.
+# TODO: Consider running the upgrade tests and normal integration tests on
+# separate clusters (in parallel? via kind?).
+if [ $exit_code -eq 0 ]; then
+    $bindir/test-cleanup $k8s_context
+fi
+
 run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace || exit_code=$?
-run_upgrade_test "$linkerd_namespace"-upgrade
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
 done

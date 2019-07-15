@@ -1,3 +1,3 @@
-IP        PORT   POD          VERSION   SERVICE
-1.2.3.4   8080   emoji-svc    1234      emoji-svc.emojivoto
-1.2.3.4   8080   voting-svc   1234      voting-svc.emojivoto
+NAMESPACE   IP        PORT   POD                       SERVICE
+emojivoto   1.2.3.4   8080   emoji-6bf9f47bd5-jjcrl    emoji-svc.emojivoto
+emojivoto   5.6.7.8   8080   voting-7bf9f47bd5-jjdrl   voting-svc.emojivoto

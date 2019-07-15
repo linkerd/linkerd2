@@ -7,7 +7,7 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -189,7 +189,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	// to upgrade/reinstall the control plane when the API is not available; and
 	// this also serves as a passive check that we have privileges to access this
 	// control plane.
-	configs, err := fetchConfigs(k)
+	configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
@@ -218,6 +218,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
 	configs.GetInstall().Flags = options.recordedFlags
+	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 
 	var identity *installIdentityValues
 	idctx := configs.GetGlobal().GetIdentityContext()
@@ -285,22 +286,6 @@ func repairInstall(generateUUID func() string, install *pb.Install) {
 	install.CliVersion = version.Version
 
 	// Install flags are updated separately.
-}
-
-// fetchConfigs checks the kubernetes API to fetch an existing
-// linkerd configuration.
-//
-// This bypasses the public API so that upgrades can proceed when the API pod is
-// not available.
-func fetchConfigs(k kubernetes.Interface) (*pb.All, error) {
-	configMap, err := k.CoreV1().
-		ConfigMaps(controlPlaneNamespace).
-		Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return config.FromConfigMap(configMap.Data)
 }
 
 func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*tlsValues, error) {

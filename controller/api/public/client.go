@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
+	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
@@ -17,7 +19,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -37,6 +38,7 @@ const (
 type APIClient interface {
 	pb.ApiClient
 	discoveryPb.DiscoveryClient
+	destinationPb.DestinationClient
 }
 
 type grpcOverHTTPClient struct {
@@ -104,18 +106,32 @@ func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByRes
 		return nil, err
 	}
 
-	if err := checkIfResponseHasError(httpRsp); err != nil {
-		httpRsp.Body.Close()
+	client, err := getStreamClient(ctx, httpRsp)
+	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		<-ctx.Done()
-		log.Debug("Closing response body after context marked as done")
-		httpRsp.Body.Close()
-	}()
+	return &tapClient{client}, nil
+}
 
-	return &tapClient{ctx: ctx, reader: bufio.NewReader(httpRsp.Body)}, nil
+func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
+	url := c.endpointNameToPublicAPIURL("DestinationGet")
+	httpRsp, err := c.post(ctx, url, req)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := getStreamClient(ctx, httpRsp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &destinationClient{client}, nil
+}
+
+func (c *grpcOverHTTPClient) GetProfile(ctx context.Context, _ *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetProfileClient, error) {
+	// Not implemented through this client. The proxies use the gRPC server directly instead.
+	return nil, errors.New("Not implemented")
 }
 
 func (c *grpcOverHTTPClient) Endpoints(ctx context.Context, req *discoveryPb.EndpointsParams, _ ...grpc.CallOption) (*discoveryPb.EndpointsResponse, error) {
@@ -173,8 +189,7 @@ func (c *grpcOverHTTPClient) endpointNameToPublicAPIURL(endpoint string) *url.UR
 }
 
 type tapClient struct {
-	ctx    context.Context
-	reader *bufio.Reader
+	streamClient
 }
 
 func (c tapClient) Recv() (*pb.TapEvent, error) {
@@ -183,13 +198,15 @@ func (c tapClient) Recv() (*pb.TapEvent, error) {
 	return &msg, err
 }
 
-// satisfy the pb.Api_TapClient interface
-func (c tapClient) Header() (metadata.MD, error) { return nil, nil }
-func (c tapClient) Trailer() metadata.MD         { return nil }
-func (c tapClient) CloseSend() error             { return nil }
-func (c tapClient) Context() context.Context     { return c.ctx }
-func (c tapClient) SendMsg(interface{}) error    { return nil }
-func (c tapClient) RecvMsg(interface{}) error    { return nil }
+type destinationClient struct {
+	streamClient
+}
+
+func (c destinationClient) Recv() (*destinationPb.Update, error) {
+	var msg destinationPb.Update
+	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
+	return &msg, err
+}
 
 func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
 	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
@@ -252,27 +269,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI)
 		return nil, err
 	}
 
-	log.Debugf("Starting port forward on [%s]", apiURL)
-
-	wait := make(chan error, 1)
-
-	go func() {
-		if err := portforward.Run(); err != nil {
-			wait <- err
-		}
-
-		portforward.Stop()
-	}()
-
-	select {
-	case <-portforward.Ready():
-		log.Debugf("Port forward initialised")
-
-		break
-
-	case err := <-wait:
-		log.Debugf("Port forward failed: %v", err)
-
+	if err = portforward.Init(); err != nil {
 		return nil, err
 	}
 

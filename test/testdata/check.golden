@@ -15,10 +15,14 @@ linkerd-config
 √ control plane ClusterRoleBindings exist
 √ control plane ServiceAccounts exist
 √ control plane CustomResourceDefinitions exist
+√ control plane MutatingWebhookConfigurations exist
+√ control plane ValidatingWebhookConfigurations exist
+√ control plane PodSecurityPolicies exist
 
 linkerd-existence
 -----------------
-√ control plane components ready
+√ 'linkerd-config' config map exists
+√ control plane replica sets are ready
 √ no unschedulable pods
 √ controller pod is running
 √ can initialize the client

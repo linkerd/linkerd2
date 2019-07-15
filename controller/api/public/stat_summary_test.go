@@ -131,7 +131,148 @@ func (s byStatResult) Less(i, j int) bool {
 }
 
 func TestStatSummary(t *testing.T) {
-	t.Run("Successfully performs a query based on resource type", func(t *testing.T) {
+	t.Run("Successfully performs a query based on resource type Pod", func(t *testing.T) {
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emoji
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Running
+`,
+					},
+					mockPromResponse: prometheusMetric("emoji", "pod"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}, true, false),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource type Pod when pod Reason is filled", func(t *testing.T) {
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emoji
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Pending
+  reason: podReason
+`,
+					},
+					mockPromResponse: prometheusMetric("emoji", "pod"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "podReason",
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+				}, true, false),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource type Pod when pod init container is initializing", func(t *testing.T) {
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emoji
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+status:
+  phase: Pending
+  initContainerStatuses:
+  - state:
+      waiting:
+        reason: PodInitializing
+`,
+					},
+					mockPromResponse: prometheusMetric("emoji", "pod"),
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "emojivoto",
+							Type:      pkgK8s.Pod,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Init:0/0",
+					MeshedPods:  1,
+					RunningPods: 1,
+					FailedPods:  0,
+					Errors: map[string]*pb.PodErrors{
+						"emoji": {
+							Errors: []*pb.PodErrors_PodError{
+								{
+									Error: &pb.PodErrors_PodError_Container{
+										Container: &pb.PodErrors_PodError_ContainerError{
+											Reason: "PodInitializing",
+										},
+									},
+								},
+							},
+						},
+					},
+				}, true, false),
+			},
+		}
+
+		testStatSummary(t, expectations)
+	})
+
+	t.Run("Successfully performs a query based on resource type Deployment", func(t *testing.T) {
 		expectations := []statSumExpected{
 			{
 				expectedStatRPC: expectedStatRPC{
@@ -142,6 +283,7 @@ kind: Deployment
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -152,6 +294,26 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
+`, `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -160,6 +322,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -170,6 +336,10 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -181,6 +351,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Completed
 `,
@@ -496,6 +670,7 @@ status:
 					TcpStats:   true,
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -543,6 +718,7 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -649,6 +825,7 @@ status:
 					},
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -705,6 +882,7 @@ status:
 					},
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -772,6 +950,7 @@ status:
 					},
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -839,6 +1018,7 @@ status:
 					},
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -860,6 +1040,7 @@ kind: Deployment
 metadata:
   name: emoji-deploy
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -869,6 +1050,26 @@ spec:
     spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
+`, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
 `, `
 apiVersion: v1
 kind: Service
@@ -899,6 +1100,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `,
@@ -1004,6 +1209,7 @@ status:
 														Type:      pkgK8s.Pod,
 														Name:      "emojivoto-pod-2",
 													},
+													Status:          "Running",
 													TimeWindow:      "1m",
 													MeshedPodCount:  1,
 													RunningPodCount: 1,
@@ -1090,6 +1296,7 @@ status:
 				&mockProm{Res: exp.mockPromResponse},
 				nil,
 				nil,
+				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -1113,6 +1320,7 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&mockProm{Res: model.Vector{}},
+			nil,
 			nil,
 			nil,
 			k8sAPI,
@@ -1274,6 +1482,7 @@ kind: Deployment
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: a1b2c3
 spec:
   selector:
     matchLabels:
@@ -1284,6 +1493,26 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: 3c2b1a
+`, `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1292,6 +1521,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -1302,6 +1535,10 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Running
 `, `
@@ -1313,6 +1550,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Failed
 `, `
@@ -1324,6 +1565,10 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+    pod-template-hash: 3c2b1a
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
 status:
   phase: Succeeded
 `},
@@ -1522,6 +1767,7 @@ status:
 					SkipStats:  true,
 				},
 				expectedResponse: GenStatSummaryResponse("emojivoto-1", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
+					Status:      "Running",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
