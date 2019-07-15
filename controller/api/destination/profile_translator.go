@@ -97,7 +97,7 @@ func toDstOverrides(dsts []*sp.WeightedDst) []*pb.WeightedDst {
 	pbDsts := []*pb.WeightedDst{}
 	for _, dst := range dsts {
 		pbDst := &pb.WeightedDst{
-			Authority: dst.Authority,
+			Authority: dst.Service,
 			// Weights are expressed in decimillis: 10_000 represents 100%
 			Weight: uint32(dst.Weight.MilliValue() * millisPerDecimilli),
 		}

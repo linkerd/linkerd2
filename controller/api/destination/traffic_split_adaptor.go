@@ -2,10 +2,13 @@ package destination
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	log "github.com/sirupsen/logrus"
 )
 
 // trafficSplitAdaptor merges traffic splits into service profiles, encoding
@@ -50,12 +53,42 @@ func (tsa *trafficSplitAdaptor) publish() {
 	if tsa.profile != nil {
 		merged = *tsa.profile
 	}
-	if tsa.split != nil {
+	// Use `DstOverrides` from the service profile if they exist.
+	if len(merged.Spec.DstOverrides) != 0 {
+		overrides := []*sp.WeightedDst{}
+		for _, dst := range merged.Spec.DstOverrides {
+			hostPort := strings.Split(dst.Service, ":")
+			if len(hostPort) > 2 {
+				log.Errorf("invalid dstOverride service: %s", dst.Service)
+				continue
+			}
+			port := 80
+			if len(hostPort) == 2 {
+				var err error
+				port, err = strconv.Atoi(hostPort[1])
+				if err != nil {
+					log.Errorf("invalid dstOverride service port: %s", hostPort[1])
+					break
+				}
+			}
+			segments := strings.Split(hostPort[0], ".")
+			namespace := tsa.id.Namespace
+			if len(segments) >= 2 {
+				namespace = segments[1]
+			}
+			service := segments[0]
+
+			dst.Service = fmt.Sprintf("%s.%s.svc.cluster.local:%d", service, namespace, port)
+			overrides = append(overrides, dst)
+		}
+		merged.Spec.DstOverrides = overrides
+		// Otherwise, use `DstOverrides` from the traffic split if it exists.
+	} else if tsa.split != nil {
 		overrides := []*sp.WeightedDst{}
 		for _, backend := range tsa.split.Spec.Backends {
 			dst := &sp.WeightedDst{
-				Authority: fmt.Sprintf("%s.%s.svc.cluster.local:%d", backend.Service, tsa.id.Namespace, tsa.port),
-				Weight:    backend.Weight,
+				Service: fmt.Sprintf("%s.%s.svc.cluster.local:%d", backend.Service, tsa.id.Namespace, tsa.port),
+				Weight:  backend.Weight,
 			}
 			overrides = append(overrides, dst)
 		}

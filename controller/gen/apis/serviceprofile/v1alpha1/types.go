@@ -82,8 +82,8 @@ type RetryBudget struct {
 
 // WeightedDst is a weighted alternate destination.
 type WeightedDst struct {
-	Authority string            `json:"authority"`
-	Weight    resource.Quantity `json:"weight"`
+	Service string            `json:"service"`
+	Weight  resource.Quantity `json:"weight"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

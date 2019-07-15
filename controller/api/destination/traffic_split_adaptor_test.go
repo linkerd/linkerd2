@@ -22,8 +22,8 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			},
 			DstOverrides: []*sp.WeightedDst{
 				{
-					Authority: "foo",
-					Weight:    resource.MustParse("500m"),
+					Service: "foo",
+					Weight:  resource.MustParse("500m"),
 				},
 			},
 		},
@@ -66,8 +66,8 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			Spec: sp.ServiceProfileSpec{
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
-						Weight:    resource.MustParse("1000m"),
+						Service: "bar.ns.svc.cluster.local:80",
+						Weight:  resource.MustParse("1000m"),
 					},
 				},
 			},
@@ -76,7 +76,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 		testCompare(t, expected.Spec, listener.Profiles[0].Spec)
 	})
 
-	t.Run("Profile merged with traffic split", func(t *testing.T) {
+	t.Run("Profile has precidence over traffic split", func(t *testing.T) {
 		listener := watcher.NewBufferingProfileListener()
 		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80))
 
@@ -96,8 +96,8 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				},
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
-						Weight:    resource.MustParse("1000m"),
+						Service: "foo.ns.svc.cluster.local:80",
+						Weight:  resource.MustParse("500m"),
 					},
 				},
 			},
