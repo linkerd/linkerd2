@@ -68,7 +68,7 @@ func (tsa *trafficSplitAdaptor) publish() {
 				port, err = strconv.Atoi(hostPort[1])
 				if err != nil {
 					log.Errorf("invalid dstOverride service port: %s", hostPort[1])
-					break
+					continue
 				}
 			}
 			segments := strings.Split(hostPort[0], ".")
