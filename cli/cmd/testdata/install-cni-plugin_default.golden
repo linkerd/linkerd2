@@ -62,8 +62,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-cni
   namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
 ---
 # Include a clusterrole for the linkerd CNI DaemonSet,
 # and bind it to the linkerd-cni serviceaccount.
