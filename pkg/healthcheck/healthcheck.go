@@ -1367,7 +1367,7 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 					// restructuring health checks to allow individual checks to return
 					// either fatal or warning, rather than setting this property at
 					// compile time.
-					err = fmt.Errorf("%s container %s is not ready", pod, container.Name)
+					err = fmt.Errorf("pod/%s container %s is not ready", pod, container.Name)
 					containersReady = false
 				}
 			}
