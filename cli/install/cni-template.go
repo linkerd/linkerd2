@@ -84,8 +84,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-cni
   namespace: {{.Namespace}}
-  labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 # Include a clusterrole for the linkerd CNI DaemonSet,
 # and bind it to the linkerd-cni serviceaccount.
