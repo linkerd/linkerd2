@@ -8,6 +8,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -28,12 +30,16 @@ kind: ServiceAccount
 metadata:
   name: linkerd-cni
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -46,6 +52,8 @@ kind: RoleBinding
 metadata:
   name: linkerd-cni
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -54,6 +62,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-cni
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 ---
 # Include a clusterrole for the linkerd CNI DaemonSet,
 # and bind it to the linkerd-cni serviceaccount.
@@ -61,6 +71,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -70,6 +82,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -85,6 +99,8 @@ apiVersion: v1
 metadata:
   name: linkerd-cni-config
   namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
 data:
   incoming_proxy_port: "4143"
   outgoing_proxy_port: "4140"
@@ -132,6 +148,7 @@ metadata:
   namespace: linkerd
   labels:
     k8s-app: linkerd-cni
+    linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:

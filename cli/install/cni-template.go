@@ -60,6 +60,8 @@ kind: Role
 metadata:
   name: linkerd-cni
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -72,6 +74,8 @@ kind: RoleBinding
 metadata:
   name: linkerd-cni
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
