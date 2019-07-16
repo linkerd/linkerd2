@@ -16,19 +16,20 @@ import (
 )
 
 type installCNIPluginConfig struct {
-	Namespace           string
-	CNIPluginImage      string
-	LogLevel            string
-	InboundPort         uint
-	OutboundPort        uint
-	IgnoreInboundPorts  string
-	IgnoreOutboundPorts string
-	ProxyUID            int64
-	DestCNINetDir       string
-	DestCNIBinDir       string
-	CreatedByAnnotation string
-	CliVersion          string
-	UseWaitFlag         bool
+	Namespace                string
+	ControllerNamespaceLabel string
+	CNIPluginImage           string
+	LogLevel                 string
+	InboundPort              uint
+	OutboundPort             uint
+	IgnoreInboundPorts       string
+	IgnoreOutboundPorts      string
+	ProxyUID                 int64
+	DestCNINetDir            string
+	DestCNIBinDir            string
+	CreatedByAnnotation      string
+	CliVersion               string
+	UseWaitFlag              bool
 }
 
 type cniPluginOptions struct {
@@ -150,19 +151,20 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 	}
 
 	return &installCNIPluginConfig{
-		Namespace:           controlPlaneNamespace,
-		CNIPluginImage:      options.taggedCNIPluginImage(),
-		LogLevel:            options.logLevel,
-		InboundPort:         options.inboundPort,
-		OutboundPort:        options.outboundPort,
-		IgnoreInboundPorts:  strings.Join(ignoreInboundPorts, ","),
-		IgnoreOutboundPorts: strings.Join(ignoreOutboundPorts, ","),
-		ProxyUID:            options.proxyUID,
-		DestCNINetDir:       options.destCNINetDir,
-		DestCNIBinDir:       options.destCNIBinDir,
-		CreatedByAnnotation: k8s.CreatedByAnnotation,
-		CliVersion:          k8s.CreatedByAnnotationValue(),
-		UseWaitFlag:         options.useWaitFlag,
+		Namespace:                controlPlaneNamespace,
+		ControllerNamespaceLabel: k8s.ControllerNSLabel,
+		CNIPluginImage:           options.taggedCNIPluginImage(),
+		LogLevel:                 options.logLevel,
+		InboundPort:              options.inboundPort,
+		OutboundPort:             options.outboundPort,
+		IgnoreInboundPorts:       strings.Join(ignoreInboundPorts, ","),
+		IgnoreOutboundPorts:      strings.Join(ignoreOutboundPorts, ","),
+		ProxyUID:                 options.proxyUID,
+		DestCNINetDir:            options.destCNINetDir,
+		DestCNIBinDir:            options.destCNIBinDir,
+		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		CliVersion:               k8s.CreatedByAnnotationValue(),
+		UseWaitFlag:              options.useWaitFlag,
 	}, nil
 }
 

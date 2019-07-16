@@ -30,6 +30,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Namespace}}-cni
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -50,6 +52,8 @@ kind: ServiceAccount
 metadata:
   name: linkerd-cni
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -76,6 +80,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-cni
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 # Include a clusterrole for the linkerd CNI DaemonSet,
 # and bind it to the linkerd-cni serviceaccount.
@@ -83,6 +89,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -92,6 +100,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -107,6 +117,8 @@ apiVersion: v1
 metadata:
   name: linkerd-cni-config
   namespace: {{.Namespace}}
+  labels:
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
 data:
   incoming_proxy_port: "{{.InboundPort}}"
   outgoing_proxy_port: "{{.OutboundPort}}"
@@ -154,6 +166,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     k8s-app: linkerd-cni
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
