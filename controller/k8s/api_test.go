@@ -1235,6 +1235,8 @@ spec:
 				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
+			sort.Sort(byService(k8sResultServices))
+			sort.Sort(byService(services))
 			if !reflect.DeepEqual(services, k8sResultServices) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
 			}
