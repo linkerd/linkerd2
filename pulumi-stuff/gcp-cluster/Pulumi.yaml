@@ -1,0 +1,3 @@
+name: gcp-cluster
+runtime: nodejs
+description: A minimal TypeScript Pulumi program

@@ -1,0 +1,15 @@
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: "2019-07-05T09:52:40Z"
+  name: cluster-admin-name
+  resourceVersion: "7031"
+  selfLink: /apis/rbac.authorization.k8s.io/v1beta1/clusterrolebindings/cluster-admin-name
+  uid: 76441bf1-9e41-11e9-9000-42010a8a0180
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: email id

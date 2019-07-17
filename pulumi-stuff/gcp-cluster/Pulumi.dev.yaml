@@ -1,0 +1,3 @@
+config:
+  gcp:project: sincere-almanac-243215
+  gcp:zone: us-west1-a

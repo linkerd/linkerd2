@@ -1,0 +1,362 @@
+{
+    "version": 3,
+    "deployment": {
+        "manifest": {
+            "time": "2019-07-04T15:33:44.405501+05:30",
+            "magic": "1b7a05a9ab30f17b27a079ae9c410b548f2ccc0c4f3eace22c42b8f9649842c6",
+            "version": "v0.17.16"
+        },
+        "secrets_providers": {
+            "type": "service",
+            "state": {
+                "url": "https://api.pulumi.com",
+                "owner": "drholmie",
+                "project": "gcp-cluster",
+                "stack": "dev"
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::pulumi:pulumi:Stack::gcp-cluster-dev",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "outputs": {
+                    "kubeconfig": "apiVersion: v1alpha1\nclusters:\n- cluster:\n    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURERENDQWZTZ0F3SUJBZ0lSQUk0ZzJUc3FvMmF6Z085UDJjVk52TzB3RFFZSktvWklodmNOQVFFTEJRQXcKTHpFdE1Dc0dBMVVFQXhNa01qYzVNRGswT1RVdFl6YzNNQzAwT0dGbUxXSXhaR1F0WVRFMU1USXlOakkwWWpjMgpNQjRYRFRFNU1EY3dOREE0TWpBeU9Gb1hEVEkwTURjd01qQTVNakF5T0Zvd0x6RXRNQ3NHQTFVRUF4TWtNamM1Ck1EazBPVFV0WXpjM01DMDBPR0ZtTFdJeFpHUXRZVEUxTVRJeU5qSTBZamMyTUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdStXV2UyUUFqbVBibGRWblkwMHpMOVN2MzFyejZtRnR4WmFWMms3Ygo2UmhDU0VJMjBIMzNvOFlWamI2ZGNweXdZN3djcUdXaXlobmR1cXRUSGI2bFdoSURqQ0ZENm9KNnlEMmw5NEp1Cis4MExzcXp2Z1BkVVJrYzZjQkI1YWtpR0lKMkhkcHNTQnN3M0tnMDZHUVF1VFBXM29mNlhqcW9TM2VXVzlOQ1gKT2o0dklGMGhrOTlLK3J2dGxBWTJxdHp0V1NXZFIyM1VKd1A2ZFNSc01oNWZPamdnMHVIWkYyNkNIZ3dNRG9XYwprRXpDZGgxMUNOOFl5ajhQNU0vTkVLQ0V4aU5KUG5DWTllcUxzWnZuSkY0ZVpYbDBBZUVLUWFwTVVSRnVyek5rClZEOS9ndStqK3NvbnhvR3IrTjBoM3VhT1hLaTRRTWxIcHdBcDVuWU1ka2kzendJREFRQUJveU13SVRBT0JnTlYKSFE4QkFmOEVCQU1DQWdRd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQQppaENpcGNRMDZJSXYySGdFWkRnSHRVTkM2TGw1bE80d21UR2ROMDI4ejBKejB3WEozTXVKM1B0VE1SR0gxU3Q1Ci9lVEdtY0RCb3h6RFNjNjJQMCtITE1rMEZBdEx3TUgzbjNtREE5UEhrOEprU0NtUGJPdjZoakdzeDZYKzdSWGkKR29jYVlIc3JVYk5nK2JmbTF5UkhXUGVuSnBjZktJVGVQbkw2a2thMjZzNHBrTTIzRXlaK3VMSUFmMHRGdzZqZgpGOTlXVXd6d2xEdE5sTnMwMWJRUVFoNXFOTUFUa0VleDNlV1c1cmpuVHdWUVFncU0yZEQwb1luWVU3empYRWNqCnRpcVpJQjdpVmR0ekFnV3pwclI0YlNQMFNTRExoT3JPM2NWdkN5RHhKYWxBR3cyelZlVlQyNE1pNi9ZYU4yemoKZjAvenpFcDZ0Tk44MzZLK3ZiRm9HZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K\n    server: https://35.247.108.248\n  name: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\ncontexts:\n- context:\n    cluster: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\n    user: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\n  name: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\ncurrent-context: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\nkind: Config\npreferences: {}\nusers:\n- name: sincere-almanac-243215_us-west1-a_ronin-dev-6cebae0\n  user:\n    auth-provider:\n      config:\n        cmd-args: config config-helper --format=json\n        cmd-path: gcloud\n        expiry-key: '{.credential.token_expiry}'\n        token-key: '{.credential.access_token}'\n      name: gcp\n"
+                }
+            },
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::pulumi:providers:gcp::default",
+                "custom": true,
+                "id": "75eab57f-4cc6-4db2-b58f-246f44f6166f",
+                "type": "pulumi:providers:gcp",
+                "inputs": {
+                    "project": "sincere-almanac-243215",
+                    "version": "0.18.9",
+                    "zone": "us-west1-a"
+                },
+                "outputs": {
+                    "project": "sincere-almanac-243215",
+                    "version": "0.18.9",
+                    "zone": "us-west1-a"
+                }
+            },
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::pulumi:providers:pulumi::default",
+                "custom": true,
+                "id": "2a6bebc7-7315-450c-be1f-c170f9b62ddb",
+                "type": "pulumi:providers:pulumi"
+            },
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::pulumi:pulumi:StackReference::/gcp-network/dev",
+                "custom": true,
+                "id": "/gcp-network/dev",
+                "type": "pulumi:pulumi:StackReference",
+                "inputs": {
+                    "name": "/gcp-network/dev"
+                },
+                "outputs": {
+                    "name": "/gcp-network/dev",
+                    "outputs": {
+                        "scriptNetwork": {
+                            "autoCreateSubnetworks": true,
+                            "deleteDefaultRoutesOnCreate": false,
+                            "description": "",
+                            "gatewayIpv4": "",
+                            "id": "dev-0f65de6",
+                            "ipv4Range": "",
+                            "name": "dev-0f65de6",
+                            "project": "sincere-almanac-243215",
+                            "routingMode": "REGIONAL",
+                            "selfLink": "https://www.googleapis.com/compute/v1/projects/sincere-almanac-243215/global/networks/dev-0f65de6",
+                            "urn": "urn:pulumi:dev::gcp-network::gcp:compute/network:Network::dev"
+                        }
+                    }
+                },
+                "parent": "urn:pulumi:dev::gcp-cluster::pulumi:pulumi:Stack::gcp-cluster-dev",
+                "external": true,
+                "provider": "urn:pulumi:dev::gcp-cluster::pulumi:providers:pulumi::default::2a6bebc7-7315-450c-be1f-c170f9b62ddb"
+            },
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::gcp:container/cluster:Cluster::ronin-dev",
+                "custom": true,
+                "id": "ronin-dev-6cebae0",
+                "type": "gcp:container/cluster:Cluster",
+                "inputs": {
+                    "__defaults": [
+                        "enableBinaryAuthorization",
+                        "enableIntranodeVisibility",
+                        "enableTpu",
+                        "name"
+                    ],
+                    "addonsConfig": {
+                        "__defaults": [],
+                        "horizontalPodAutoscaling": {
+                            "__defaults": [],
+                            "disabled": false
+                        },
+                        "httpLoadBalancing": {
+                            "__defaults": [],
+                            "disabled": false
+                        },
+                        "kubernetesDashboard": {
+                            "__defaults": [],
+                            "disabled": false
+                        },
+                        "networkPolicyConfig": {
+                            "__defaults": [],
+                            "disabled": false
+                        }
+                    },
+                    "enableBinaryAuthorization": false,
+                    "enableIntranodeVisibility": false,
+                    "enableKubernetesAlpha": true,
+                    "enableLegacyAbac": false,
+                    "enableTpu": false,
+                    "initialNodeCount": 1,
+                    "ipAllocationPolicy": {
+                        "__defaults": [],
+                        "useIpAliases": false
+                    },
+                    "location": "us-west1-a",
+                    "loggingService": "none",
+                    "masterAuth": {
+                        "__defaults": [],
+                        "clientCertificateConfig": {
+                            "__defaults": [],
+                            "issueClientCertificate": false
+                        },
+                        "password": "",
+                        "username": ""
+                    },
+                    "minMasterVersion": "latest",
+                    "monitoringService": "none",
+                    "name": "ronin-dev-6cebae0",
+                    "network": "dev",
+                    "networkPolicy": {
+                        "__defaults": [
+                            "provider"
+                        ],
+                        "enabled": true,
+                        "provider": "PROVIDER_UNSPECIFIED"
+                    },
+                    "nodeVersion": "latest",
+                    "podSecurityPolicyConfig": {
+                        "__defaults": [],
+                        "enabled": true
+                    },
+                    "removeDefaultNodePool": true,
+                    "verticalPodAutoscaling": {
+                        "__defaults": [],
+                        "enabled": true
+                    }
+                },
+                "outputs": {
+                    "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":1800000000000,\"delete\":1800000000000,\"update\":3600000000000},\"schema_version\":\"1\"}",
+                    "additionalZones": [],
+                    "addonsConfig": {
+                        "horizontalPodAutoscaling": {
+                            "disabled": false
+                        },
+                        "httpLoadBalancing": {
+                            "disabled": false
+                        },
+                        "kubernetesDashboard": {
+                            "disabled": false
+                        },
+                        "networkPolicyConfig": {
+                            "disabled": false
+                        }
+                    },
+                    "clusterAutoscaling": {
+                        "enabled": false,
+                        "resourceLimits": []
+                    },
+                    "clusterIpv4Cidr": "10.4.0.0/14",
+                    "databaseEncryption": {
+                        "keyName": "",
+                        "state": "DECRYPTED"
+                    },
+                    "defaultMaxPodsPerNode": 110,
+                    "description": "",
+                    "enableBinaryAuthorization": false,
+                    "enableIntranodeVisibility": false,
+                    "enableKubernetesAlpha": true,
+                    "enableLegacyAbac": false,
+                    "enableTpu": false,
+                    "endpoint": "35.247.108.248",
+                    "id": "ronin-dev-6cebae0",
+                    "initialNodeCount": 1,
+                    "instanceGroupUrls": [],
+                    "location": "us-west1-a",
+                    "loggingService": "none",
+                    "masterAuth": {
+                        "clientCertificate": "",
+                        "clientCertificateConfig": {
+                            "issueClientCertificate": false
+                        },
+                        "clientKey": "",
+                        "clusterCaCertificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURERENDQWZTZ0F3SUJBZ0lSQUk0ZzJUc3FvMmF6Z085UDJjVk52TzB3RFFZSktvWklodmNOQVFFTEJRQXcKTHpFdE1Dc0dBMVVFQXhNa01qYzVNRGswT1RVdFl6YzNNQzAwT0dGbUxXSXhaR1F0WVRFMU1USXlOakkwWWpjMgpNQjRYRFRFNU1EY3dOREE0TWpBeU9Gb1hEVEkwTURjd01qQTVNakF5T0Zvd0x6RXRNQ3NHQTFVRUF4TWtNamM1Ck1EazBPVFV0WXpjM01DMDBPR0ZtTFdJeFpHUXRZVEUxTVRJeU5qSTBZamMyTUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdStXV2UyUUFqbVBibGRWblkwMHpMOVN2MzFyejZtRnR4WmFWMms3Ygo2UmhDU0VJMjBIMzNvOFlWamI2ZGNweXdZN3djcUdXaXlobmR1cXRUSGI2bFdoSURqQ0ZENm9KNnlEMmw5NEp1Cis4MExzcXp2Z1BkVVJrYzZjQkI1YWtpR0lKMkhkcHNTQnN3M0tnMDZHUVF1VFBXM29mNlhqcW9TM2VXVzlOQ1gKT2o0dklGMGhrOTlLK3J2dGxBWTJxdHp0V1NXZFIyM1VKd1A2ZFNSc01oNWZPamdnMHVIWkYyNkNIZ3dNRG9XYwprRXpDZGgxMUNOOFl5ajhQNU0vTkVLQ0V4aU5KUG5DWTllcUxzWnZuSkY0ZVpYbDBBZUVLUWFwTVVSRnVyek5rClZEOS9ndStqK3NvbnhvR3IrTjBoM3VhT1hLaTRRTWxIcHdBcDVuWU1ka2kzendJREFRQUJveU13SVRBT0JnTlYKSFE4QkFmOEVCQU1DQWdRd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQQppaENpcGNRMDZJSXYySGdFWkRnSHRVTkM2TGw1bE80d21UR2ROMDI4ejBKejB3WEozTXVKM1B0VE1SR0gxU3Q1Ci9lVEdtY0RCb3h6RFNjNjJQMCtITE1rMEZBdEx3TUgzbjNtREE5UEhrOEprU0NtUGJPdjZoakdzeDZYKzdSWGkKR29jYVlIc3JVYk5nK2JmbTF5UkhXUGVuSnBjZktJVGVQbkw2a2thMjZzNHBrTTIzRXlaK3VMSUFmMHRGdzZqZgpGOTlXVXd6d2xEdE5sTnMwMWJRUVFoNXFOTUFUa0VleDNlV1c1cmpuVHdWUVFncU0yZEQwb1luWVU3empYRWNqCnRpcVpJQjdpVmR0ekFnV3pwclI0YlNQMFNTRExoT3JPM2NWdkN5RHhKYWxBR3cyelZlVlQyNE1pNi9ZYU4yemoKZjAvenpFcDZ0Tk44MzZLK3ZiRm9HZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+                        "password": "",
+                        "username": ""
+                    },
+                    "masterVersion": "1.13.7-gke.8",
+                    "minMasterVersion": "latest",
+                    "monitoringService": "none",
+                    "name": "ronin-dev-6cebae0",
+                    "network": "projects/sincere-almanac-243215/global/networks/dev",
+                    "networkPolicy": {
+                        "enabled": true,
+                        "provider": ""
+                    },
+                    "nodeLocations": [],
+                    "nodePools": [],
+                    "nodeVersion": "1.13.7-gke.8",
+                    "podSecurityPolicyConfig": {
+                        "enabled": true
+                    },
+                    "project": "sincere-almanac-243215",
+                    "removeDefaultNodePool": true,
+                    "resourceLabels": {},
+                    "servicesIpv4Cidr": "10.7.240.0/20",
+                    "subnetwork": "projects/sincere-almanac-243215/regions/us-west1/subnetworks/dev",
+                    "tpuIpv4CidrBlock": "",
+                    "verticalPodAutoscaling": {
+                        "enabled": true
+                    },
+                    "zone": "us-west1-a"
+                },
+                "parent": "urn:pulumi:dev::gcp-cluster::pulumi:pulumi:Stack::gcp-cluster-dev",
+                "provider": "urn:pulumi:dev::gcp-cluster::pulumi:providers:gcp::default::75eab57f-4cc6-4db2-b58f-246f44f6166f",
+                "propertyDependencies": {
+                    "addonsConfig": null,
+                    "enableKubernetesAlpha": null,
+                    "enableLegacyAbac": null,
+                    "initialNodeCount": null,
+                    "ipAllocationPolicy": null,
+                    "location": null,
+                    "loggingService": null,
+                    "masterAuth": null,
+                    "minMasterVersion": null,
+                    "monitoringService": null,
+                    "network": null,
+                    "networkPolicy": null,
+                    "nodeVersion": null,
+                    "podSecurityPolicyConfig": null,
+                    "removeDefaultNodePool": null,
+                    "verticalPodAutoscaling": null
+                }
+            },
+            {
+                "urn": "urn:pulumi:dev::gcp-cluster::gcp:container/nodePool:NodePool::ronin-dev-preemtible",
+                "custom": true,
+                "id": "us-west1-a/ronin-dev-6cebae0/ronin-dev-preemtible-82bb268",
+                "type": "gcp:container/nodePool:NodePool",
+                "inputs": {
+                    "__defaults": [
+                        "name"
+                    ],
+                    "autoscaling": {
+                        "__defaults": [],
+                        "maxNodeCount": 10,
+                        "minNodeCount": 1
+                    },
+                    "cluster": "ronin-dev-6cebae0",
+                    "location": "us-west1-a",
+                    "management": {
+                        "__defaults": [],
+                        "autoRepair": false,
+                        "autoUpgrade": false
+                    },
+                    "name": "ronin-dev-preemtible-82bb268",
+                    "nodeConfig": {
+                        "__defaults": [],
+                        "diskSizeGb": 100,
+                        "diskType": "pd-standard",
+                        "imageType": "COS",
+                        "machineType": "n1-standard-2",
+                        "metadata": {
+                            "__defaults": [],
+                            "disable-legacy-endpoints": "true"
+                        },
+                        "minCpuPlatform": "Intel Skylake",
+                        "oauthScopes": [
+                            "https://www.googleapis.com/auth/devstorage.read_only",
+                            "https://www.googleapis.com/auth/service.management.readonly",
+                            "https://www.googleapis.com/auth/servicecontrol",
+                            "https://www.googleapis.com/auth/logging.write",
+                            "https://www.googleapis.com/auth/monitoring"
+                        ],
+                        "preemptible": true
+                    },
+                    "nodeCount": 1
+                },
+                "outputs": {
+                    "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":1800000000000,\"delete\":600000000000,\"update\":600000000000},\"schema_version\":\"1\"}",
+                    "autoscaling": {
+                        "maxNodeCount": 10,
+                        "minNodeCount": 1
+                    },
+                    "cluster": "ronin-dev-6cebae0",
+                    "id": "us-west1-a/ronin-dev-6cebae0/ronin-dev-preemtible-82bb268",
+                    "initialNodeCount": 1,
+                    "instanceGroupUrls": [
+                        "https://www.googleapis.com/compute/v1/projects/sincere-almanac-243215/zones/us-west1-a/instanceGroupManagers/gke-ronin-dev-6cebae-ronin-dev-preemt-7fa4d202-grp"
+                    ],
+                    "location": "us-west1-a",
+                    "management": {
+                        "autoRepair": false,
+                        "autoUpgrade": false
+                    },
+                    "name": "ronin-dev-preemtible-82bb268",
+                    "namePrefix": "",
+                    "nodeConfig": {
+                        "diskSizeGb": 100,
+                        "diskType": "pd-standard",
+                        "guestAccelerators": [],
+                        "imageType": "COS",
+                        "labels": {},
+                        "localSsdCount": 0,
+                        "machineType": "n1-standard-2",
+                        "metadata": {
+                            "disable-legacy-endpoints": "true"
+                        },
+                        "minCpuPlatform": "Intel Skylake",
+                        "oauthScopes": [
+                            "https://www.googleapis.com/auth/monitoring",
+                            "https://www.googleapis.com/auth/devstorage.read_only",
+                            "https://www.googleapis.com/auth/logging.write",
+                            "https://www.googleapis.com/auth/service.management.readonly",
+                            "https://www.googleapis.com/auth/servicecontrol"
+                        ],
+                        "preemptible": true,
+                        "serviceAccount": "default",
+                        "tags": [],
+                        "taints": []
+                    },
+                    "nodeCount": 1,
+                    "project": "sincere-almanac-243215",
+                    "version": "1.13.7-gke.8",
+                    "zone": "us-west1-a"
+                },
+                "parent": "urn:pulumi:dev::gcp-cluster::pulumi:pulumi:Stack::gcp-cluster-dev",
+                "dependencies": [
+                    "urn:pulumi:dev::gcp-cluster::gcp:container/cluster:Cluster::ronin-dev"
+                ],
+                "provider": "urn:pulumi:dev::gcp-cluster::pulumi:providers:gcp::default::75eab57f-4cc6-4db2-b58f-246f44f6166f",
+                "propertyDependencies": {
+                    "autoscaling": null,
+                    "cluster": [
+                        "urn:pulumi:dev::gcp-cluster::gcp:container/cluster:Cluster::ronin-dev"
+                    ],
+                    "location": null,
+                    "management": null,
+                    "nodeConfig": null,
+                    "nodeCount": null
+                }
+            }
+        ],
+        "pending_operations": [
+            
+        ]
+    }
+}
