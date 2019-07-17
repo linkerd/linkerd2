@@ -87,13 +87,38 @@ cluster resources it should not change that experience.
   through the Kubernetes API allows users to be authenticated through RBAC,
   rather than implementing a separate Linkerd ACL and associated RBAC.
 
-# Unresolved questions
+# Unresolved Questions
 
 - Should the proxy Tap server continue serving protobuf over HTTP or move to
   only serving HTTP?
 - When should the code path on the public API for TapByResource be removed?
 - How will the new resources required for authorizing request made to the Tap
   Service affect install/upgrade/uinstall lifecycle?
+- What is the desired behavior in HA?
 
-# Timeline
-- Adding
+# Possible Sub-projects
+
+- [x] The Tap Service should be moved out of the controller Pod into it's own in
+  preparation for becoming an extension apiserver
+- [ ] Communication between the Tap Service and Tap servers is secured
+    * Tap Service queries the Kubernetes API for the identities of the requested
+      resources
+    * The returned identities are used as header values in the requests made by
+      the Tap Service
+    * Proxies are injected with the identity of the Tap Service as an
+      environment variable
+    * The Tap servers on the proxies validate TLS connections are made only by
+      the Tap Service
+- [ ] The Tap Service becomes an extension apiserver
+    * The Tap Service generates a CA to include in the APIService object
+    * The Tap Service serves HTTPS which is a requirement for the aggregator
+      layer
+    * CLI and Web Deployment talk to the Kubernetes API server instead of the
+      public API
+    * RBAC lifecycle works for a user in the CLI and the Web ServiceAccount
+        * The Web ServiceAccount is authorized through RBAC
+        * Users through the CLI are authorized through RBAC
+- [ ] Cleanup existing Tap infrastructure that would be deprecated
+    * Remove GRPC server from the Tap Service
+    * Remove existing public API Tap infrastructure
+    * Update documentation
