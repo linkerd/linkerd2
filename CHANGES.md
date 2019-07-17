@@ -1,10 +1,7 @@
 ## edge-19.7.4
 
 * CLI
-  * Made the `linkerd routes` command traffic-split aware; it now considers
-    resources which are members of a leaf service with non-zero weight to be
-    members of the apex service for the purpose of determining which routes to
-    display
+  * Made the `linkerd routes` command traffic-split aware
   * Added pod status to the output of the `linkerd stat`command (thanks
     @jonathanbeber!)
   * Fixed `linkerd stat` wrong "meshed" count when resources share the same
