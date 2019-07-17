@@ -702,6 +702,27 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - identity
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+            weight: 100
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: linkerd.io/control-plane-component
+                  operator: In
+                  values:
+                  - identity
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
       - args:
         - identity
