@@ -80,7 +80,6 @@ spec:
                       values:
                         - proxy-injector
                 topologyKey: failure-domain.beta.kubernetes.io/zone
-{{- if .RequiredHostAntiAffinity}}
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchExpressions:
@@ -89,17 +88,6 @@ spec:
                     values:
                       - proxy-injector
               topologyKey: kubernetes.io/hostname
-{{- else}}
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: {{.ControllerComponentLabel}}
-                      operator: In
-                      values:
-                        - proxy-injector
-                topologyKey: kubernetes.io/hostname
-{{ end }}
 {{ end }}
 
 ---

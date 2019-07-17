@@ -58,7 +58,6 @@ type (
 		ControllerUID            int64
 		EnableH2Upgrade          bool
 		HighAvailability         bool
-		RequiredHostAntiAffinity bool
 		NoInitContainer          bool
 		WebhookFailurePolicy     string
 		OmitWebhookSideEffects   bool
@@ -123,17 +122,16 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion      string
-		controllerReplicas       uint
-		controllerLogLevel       string
-		highAvailability         bool
-		requiredHostAntiAffinity bool
-		controllerUID            int64
-		disableH2Upgrade         bool
-		noInitContainer          bool
-		skipChecks               bool
-		omitWebhookSideEffects   bool
-		identityOptions          *installIdentityOptions
+		controlPlaneVersion    string
+		controllerReplicas     uint
+		controllerLogLevel     string
+		highAvailability       bool
+		controllerUID          int64
+		disableH2Upgrade       bool
+		noInitContainer        bool
+		skipChecks             bool
+		omitWebhookSideEffects bool
+		identityOptions        *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -189,15 +187,14 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion:      version.Version,
-		controllerReplicas:       defaultControllerReplicas,
-		controllerLogLevel:       "info",
-		highAvailability:         false,
-		requiredHostAntiAffinity: false,
-		controllerUID:            2103,
-		disableH2Upgrade:         false,
-		noInitContainer:          false,
-		omitWebhookSideEffects:   false,
+		controlPlaneVersion:    version.Version,
+		controllerReplicas:     defaultControllerReplicas,
+		controllerLogLevel:     "info",
+		highAvailability:       false,
+		controllerUID:          2103,
+		disableH2Upgrade:       false,
+		noInitContainer:        false,
+		omitWebhookSideEffects: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -453,10 +450,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.highAvailability, "ha", options.highAvailability,
 		"Enable HA deployment config for the control plane (default false)",
 	)
-	flags.BoolVar(
-		&options.requiredHostAntiAffinity, "required-host-anti-affinity", options.requiredHostAntiAffinity,
-		"Experimental: ",
-	)
 	flags.Int64Var(
 		&options.controllerUID, "controller-uid", options.controllerUID,
 		"Run the control plane components under this user ID",
@@ -563,10 +556,6 @@ func (options *installOptions) validate() error {
 		return errors.New("--proxy-log-level must not be empty")
 	}
 
-	if !options.highAvailability && options.requiredHostAntiAffinity {
-		return fmt.Errorf("--required-host-anti-affinity needs ha flag to be switched on")
-	}
-
 	return nil
 }
 
@@ -613,18 +602,17 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:                controlPlaneNamespace,
-		UUID:                     configs.GetInstall().GetUuid(),
-		ControllerReplicas:       options.controllerReplicas,
-		ControllerLogLevel:       options.controllerLogLevel,
-		ControllerUID:            options.controllerUID,
-		HighAvailability:         options.highAvailability,
-		RequiredHostAntiAffinity: options.requiredHostAntiAffinity,
-		EnableH2Upgrade:          !options.disableH2Upgrade,
-		NoInitContainer:          options.noInitContainer,
-		WebhookFailurePolicy:     "Ignore",
-		OmitWebhookSideEffects:   options.omitWebhookSideEffects,
-		PrometheusLogLevel:       toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		Namespace:              controlPlaneNamespace,
+		UUID:                   configs.GetInstall().GetUuid(),
+		ControllerReplicas:     options.controllerReplicas,
+		ControllerLogLevel:     options.controllerLogLevel,
+		ControllerUID:          options.controllerUID,
+		HighAvailability:       options.highAvailability,
+		EnableH2Upgrade:        !options.disableH2Upgrade,
+		NoInitContainer:        options.noInitContainer,
+		WebhookFailurePolicy:   "Ignore",
+		OmitWebhookSideEffects: options.omitWebhookSideEffects,
+		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
 
 		Configs: configJSONs{
 			Global:  globalJSON,

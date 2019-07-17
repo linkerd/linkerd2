@@ -115,7 +115,6 @@ spec:
                       values:
                         - identity
                 topologyKey: failure-domain.beta.kubernetes.io/zone
-{{- if .RequiredHostAntiAffinity}}
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchExpressions:
@@ -124,17 +123,6 @@ spec:
                     values:
                       - identity
               topologyKey: kubernetes.io/hostname
-{{- else}}
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: {{.ControllerComponentLabel}}
-                      operator: In
-                      values:
-                        - identity
-                topologyKey: kubernetes.io/hostname
-{{ end }}
 {{ end }}
 {{end -}}
 {{end -}}
