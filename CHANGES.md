@@ -14,7 +14,7 @@
     PSP is enabled, the NET_RAW capability is available
 
 * Proxy
-  * Improve performance by using a constant-time load balancer
+  * Improved performance by using a constant-time load balancer
   * Added a new `/proxy-log-level` endpoint to update the log level at runtime
 
 ## stable-2.4.0
