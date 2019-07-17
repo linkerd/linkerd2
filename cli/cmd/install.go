@@ -647,8 +647,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		values.WebhookFailurePolicy = "Fail"
 
 		defaultConstraints := &resources{
-			CPU:    constraints{Request: "100m"},
-			Memory: constraints{Request: "50Mi"},
+			CPU:    constraints{Request: "100m", Limit: "1"},
+			Memory: constraints{Request: "50Mi", Limit: "250Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
 		*values.DestinationResources = *defaultConstraints
@@ -663,11 +663,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// The identity controller maintains no internal state, so it need not request
 		// 50Mi.
 		*values.IdentityResources = *defaultConstraints
-		values.IdentityResources.Memory = constraints{Request: "10Mi"}
+		values.IdentityResources.Memory = constraints{Request: "10Mi", Limit: "250Mi"}
 
+		values.GrafanaResources.Memory.Limit = "1024Mi"
 		values.PrometheusResources = &resources{
-			CPU:    constraints{Request: "300m"},
-			Memory: constraints{Request: "300Mi"},
+			CPU:    constraints{Request: "300m", Limit: "4"},
+			Memory: constraints{Request: "300Mi", Limit: "8192Mi"},
 		}
 	}
 

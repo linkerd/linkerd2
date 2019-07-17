@@ -712,6 +712,9 @@ spec:
             path: /ready
             port: 9990
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 10Mi
@@ -969,6 +972,9 @@ spec:
             path: /ready
             port: 9995
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1002,6 +1008,9 @@ spec:
             path: /ready
             port: 9996
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1260,6 +1269,9 @@ spec:
             path: /ready
             port: 9994
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1561,6 +1573,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources:
+          limits:
+            cpu: "4"
+            memory: 8Gi
           requests:
             cpu: 300m
             memory: 300Mi
@@ -1835,6 +1850,9 @@ spec:
             path: /api/health
             port: 3000
         resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2061,6 +2079,9 @@ spec:
             path: /ready
             port: 9995
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2319,6 +2340,9 @@ spec:
             path: /ready
             port: 9997
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2551,6 +2575,9 @@ spec:
             path: /ready
             port: 9998
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
