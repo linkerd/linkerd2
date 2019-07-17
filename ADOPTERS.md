@@ -3,6 +3,7 @@
 - [Apester](https://apester.com)
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
+- [Candide](https://candidegardening.com)
 - [Expedia](https://www.expedia.com)
 - [figo](https://www.figo.io/)
 - [Just Football](https://justfootball.io)
