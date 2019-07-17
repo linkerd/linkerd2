@@ -93,6 +93,9 @@ cluster resources it should not change that experience.
 - How will the new resources required for authorizing request made to the Tap
   Service affect install/upgrade/uinstall lifecycle?
 - What is the desired behavior in HA?
+- How will streaming work? Will the dashboard need websockets?
+- Will cluster-admin users just get permission or do we need to ship the control
+  plane with a new set of bindings for everyone?
 
 # Possible Sub-projects
 
