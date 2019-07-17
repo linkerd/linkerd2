@@ -1,15 +1,16 @@
 ## edge-19.7.4
 
 * CLI
-  * Made the `linkerd routes` command traffic-split aware; consider resources
-    which are members of a leaf service with non-zero weight to be members of
-    the apex service for the purpose of determining which routes to display
+  * Made the `linkerd routes` command traffic-split aware; it now consider
+    resources which are members of a leaf service with non-zero weight to be
+    members of the apex service for the purpose of determining which routes to
+    display
   * Added pod status to the output of the `linkerd stat`command (thanks
     @jonathanbeber!)
   * Fixed `linkerd stat` wrong "meshed" count when resources share the same
     label selector for pods (thanks @jonathanbeber!)
-  * Improved output of the `linkerd edges` command and added a new `-o wide`
-    flag to show the identity of the client and server if known
+  * Added namespace information to the `linkerd edges` command output and a new
+    `-o wide` flag that shows the identity of the client and server if known
   * Added a new check to the `linkerd check --pre` command validating that if
     PSP is enabled, the NET_RAW capability is available
 
