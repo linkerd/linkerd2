@@ -1,7 +1,7 @@
 ## edge-19.7.4
 
 * CLI
-  * Made the `linkerd routes` command traffic-split aware; it now consider
+  * Made the `linkerd routes` command traffic-split aware; it now considers
     resources which are members of a leaf service with non-zero weight to be
     members of the apex service for the purpose of determining which routes to
     display
