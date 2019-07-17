@@ -225,13 +225,8 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
-
-			if len(msg) == 0 {
-				if options.outputFormat == jsonOutput {
-					msg = ""
-				} else {
-					msg = okStatus
-				}
+			if len(msg) == 0 && options.outputFormat != jsonOutput {
+				msg = okStatus
 			}
 			if len(clientID) > 0 {
 				parts := strings.Split(clientID, ".")
@@ -328,14 +323,14 @@ func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSr
 			row.srcNamespace,
 			row.dstNamespace,
 		}
-		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, msgTemplate)
+		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate)
 
 		if outputFormat == wideOutput {
-			templateString = fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate, clientTemplate, serverTemplate, msgTemplate)
-
+			templateString += fmt.Sprintf("%s\t%s\t", clientTemplate, serverTemplate)
 			values = append(values, row.client, row.server)
 		}
 
+		templateString += fmt.Sprintf("%s\t\n", msgTemplate)
 		values = append(values, row.msg)
 
 		fmt.Fprintf(w, templateString, values...)
