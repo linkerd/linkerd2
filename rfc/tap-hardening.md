@@ -2,10 +2,10 @@
 
 The goal of the Tap Hardening project is to restrict the set of users by
 integrating with native Kubernetes RBAC. The current proposal is for the Tap
-Service to become an [Extension API server](https://kubernetes.io/docs/tasks/access-kubernetes-api/setup-extension-api-server/).
-This will allow requests to be both authorized and authenticated through the
-Kubernetes API. The TapByResource route currently served by the public API will
-be served by the APIService object on the now separate Tap Pod.
+Service to become an [Extension API server](https://kubernetes.io/docs/tasks/access-kubernetes-api/setup-extension-api-server/). This will allow requests to be
+both authorized and authenticated through the Kubernetes API. The TapByResource
+route currently served by the public API will be served by the APIService object
+on the now separate Tap Pod.
 
 The data plane proxies will also begin authenticating and authorizing Tap
 requests. The proxy’s Tap server will require a TLS connection and the client
@@ -27,12 +27,11 @@ open a connection over TLS it will, but it is not required.
 ## Control Plane
 
 The Tap Controller becoming an Extension API server will allow requests to be
-authenticated and authorized through an [aggregation layer](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/).
-The Tap APIService will claim the TapByResource route in the Kubernetes API.
-This will allow the aggregation layer to proxy anything sent to that API path to
-the Tap extension apiserver on the Tap Pod. Tap requests made by the CLI and Web
-Deployment will therefore be proxied through the aggregation layer to the
-APIService.
+authenticated and authorized through an [aggregation layer](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/). The Tap APIService
+will claim the TapByResource route in the Kubernetes API. This will allow the
+aggregation layer to proxy anything sent to that API path to the Tap extension
+apiserver on the Tap Pod. Tap requests made by the CLI and Web Deployment will
+therefore be proxied through the aggregation layer to the APIService.
 
 The Kubernetes API will authenticate the requesting user and authorize the
 rights for the TapByResource API path via RBAC. The Tap extension apiserver will
