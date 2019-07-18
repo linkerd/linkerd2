@@ -57,6 +57,7 @@ type (
 		LinkerdNamespaceLabel    string
 		ControllerUID            int64
 		EnableH2Upgrade          bool
+		HighAvailability         bool
 		NoInitContainer          bool
 		WebhookFailurePolicy     string
 		OmitWebhookSideEffects   bool
@@ -606,6 +607,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ControllerReplicas:     options.controllerReplicas,
 		ControllerLogLevel:     options.controllerLogLevel,
 		ControllerUID:          options.controllerUID,
+		HighAvailability:       options.highAvailability,
 		EnableH2Upgrade:        !options.disableH2Upgrade,
 		NoInitContainer:        options.noInitContainer,
 		WebhookFailurePolicy:   "Ignore",
@@ -701,6 +703,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	if values.stage == "" || values.stage == controlPlaneStage {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_resources.yaml"},
+			{Name: "templates/_affinity.yaml"},
 			{Name: "templates/config.yaml"},
 			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},

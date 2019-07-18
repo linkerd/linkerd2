@@ -131,4 +131,8 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "controller" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}
