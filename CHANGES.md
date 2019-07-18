@@ -11,7 +11,9 @@
     `-o wide` flag that shows the identity of the client and server if known
   * Added a new check to the `linkerd check --pre` command validating that if
     PSP is enabled, the NET_RAW capability is available
-
+* Controller
+  * Added pod anti-affinity rules to the control plane pods when HA is enabled
+    (thanks @Pothulapati!)
 * Proxy
   * Improved performance by using a constant-time load balancer
   * Added a new `/proxy-log-level` endpoint to update the log level at runtime
