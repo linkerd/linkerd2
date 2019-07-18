@@ -39,7 +39,7 @@ That would install linkerd using the most common settings. The `NOTES.txt` file 
 This will replace the current single chart under the `charts` directory.
 ```
 charts
-├── control-plane
+├── control-plane # This is the only chart that will be pushed to incubator/linkerd2
 │   ├── charts
 │   │   └── partials -> ../../partials
 │   ├── Chart.yaml
@@ -117,12 +117,6 @@ The user experience for `linkerd install` remains the same as well.
 New alternative `helm install` mechanism
 ---------------------------------------------
 The mechanism is the same as `linkerd install` just explained; the main chart will be `charts/control-plane` which depends on `charts/partials` for, among other things, the proxy insertion. The main difference will be that the chart values will come from `values.yml` (or provided by the user through `--set` on Helm's CLI).
-
-Published charts
-----------------
-The `control-plane` chart should be the main chart, published under `https://github.com/helm/charts/incubator/linkerd2`, copying the `partials` chart to `control-plane/charts` prior to publication. I'm not sure if there's a better way of doing this, given `partials` isn't suitable as as stand-alone public chart.
-
-`data-plane` can remain unpublished.
 
 Tasks
 ---------
