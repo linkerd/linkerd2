@@ -297,7 +297,7 @@ status:
 			t.Fatalf("could not convert returned object to pod")
 		}
 
-		got := GetPodStatus(pod)
+		got := GetPodStatus(*pod)
 		if s.expected != got {
 			t.Fatalf("Wrong pod status on '%s'. Expected '%s', got '%s'", s.desc, s.expected, got)
 		}
