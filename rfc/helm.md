@@ -28,6 +28,12 @@ This is an optional pre-install check that validates the options in the provided
 
 ```               
 helm install incubator/linkerd2
+
+# or, for users with cluster-level privileges
+helm install incubator/linkerd2 --set stage=config
+# followed by, for users with just namespace-level privileges
+helm upgrade incubator/linkerd2 --set stage=control-plane
+
 ```                                                                                                                                                                                                                                          
 That would install linkerd using the most common settings. The `NOTES.txt` file (rendered and shown when this command completes) could provide the follow instructions/warnings:
 - Instructions on how to, optionally, install the linkerd CLI
