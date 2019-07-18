@@ -2,6 +2,7 @@
 
 * CLI
   * Made the `linkerd routes` command traffic-split aware
+  * Fixed bug the `linkerd upgrade config` command that was causing it to crash
   * Added pod status to the output of the `linkerd stat`command (thanks
     @jonathanbeber!)
   * Fixed incorrect "meshed" count in `linkerd stat` when resources share the
