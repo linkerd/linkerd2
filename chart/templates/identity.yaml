@@ -101,28 +101,10 @@ spec:
           name: linkerd-config
       - name: identity-issuer
         secret:
-          secretName: linkerd-identity-issuer
-{{- if .HighAvailability}}
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: {{.ControllerComponentLabel}}
-                      operator: In
-                      values:
-                        - identity
-                topologyKey: failure-domain.beta.kubernetes.io/zone
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: {{.ControllerComponentLabel}}
-                    operator: In
-                    values:
-                      - identity
-              topologyKey: kubernetes.io/hostname
-{{ end }}
+          secretName: linkerd-identity-issuer 
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "identity" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}
 {{end -}}

@@ -703,6 +703,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	if values.stage == "" || values.stage == controlPlaneStage {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_resources.yaml"},
+			{Name: "templates/_affinity.yaml"},
 			{Name: "templates/config.yaml"},
 			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},

@@ -81,26 +81,8 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
-{{- if .HighAvailability}}
-      affinity:
-          podAntiAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 100
-                    podAffinityTerm:
-                        labelSelector:
-                            matchExpressions:
-                                - key: {{.ControllerComponentLabel}}
-                                  operator: In
-                                  values:
-                                      - sp-validator
-                        topologyKey: failure-domain.beta.kubernetes.io/zone
-              requiredDuringSchedulingIgnoredDuringExecution:
-                  - labelSelector:
-                        matchExpressions:
-                            - key: {{.ControllerComponentLabel}}
-                              operator: In
-                              values:
-                                  - sp-validator
-                    topologyKey: kubernetes.io/hostname
-{{ end }}
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "sp-validator" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}
