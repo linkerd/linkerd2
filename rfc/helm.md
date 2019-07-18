@@ -6,22 +6,32 @@ The current CLI install process uses Helm libraries under the hood, but just as 
 The intention here is to provide a new chart with an injected control plane so that users can install linkerd through a simple `helm install incubator/linkerd2` command.
                                                                                                                                                                                                                                              
 Helm charts can't rely on go code besides the functions provided by the go template library, the Sprig library, and a few extra functions provided by Helm itself. This implies a few compromises:
-                                                         
+
+- We can't have the same level of validation that `linkerd install` currently provides. Some of the basic checks can be performed and have `helm install` fail using [Sprig's fail](http://masterminds.github.io/sprig/flow_control.html). The other checks can be performed with a new command `linkerd check --chart values.yaml`.
 - We can't validate the install options provided in `values.yaml`. Instead, a new set of `linkerd check` checks could help catching invalid options, post-install.
-- We should provide a comprehensive `values.yaml` file that would contain the most common settings, but heavily annotated to instruct users about alternate settings for advanced scenarios.                                                              
+- We should provide a comprehensive `values.yaml` file that would contain the most common settings, but heavily annotated to instruct users about alternate settings for advanced scenarios.    
+- Other alternative `values.yaml` files should be available, for different configuration scenarios like HA for example.
 - Helm's crypto functions only allow us to use RSA certs/keys. We can move the cert/keys from the webhook configs (`proxy-injector` and `sp-validator`) to use RSA. As for the trust root for identity, we decided the user should provide their own in `values.yaml`. The docs should have instructions on how to generate that cert/key.
    
 These compromises entail a less straightforward experience than what `linkerd install` provides, so the Helm installation alternative should be considered an "advanced" feature.                                                             
                                                                                                                                                                                                                                              
 New alternative install workflow through Helm
 -----------------------------------------------
+
+### values.yml validation
+```
+linkerd check --chart values.yaml
+```
+This is an optional pre-install check that validates the options in the provided `values.yaml` file. Some of these validations are also performed when `helm install` runs, but given Helm's limitations some others can only be done through go with this new check.
+
+### Installing the chart
+
 ```               
 helm install incubator/linkerd2
 ```                                                                                                                                                                                                                                          
 That would install linkerd using the most common settings. The `NOTES.txt` file (rendered and shown when this command completes) could provide the follow instructions/warnings:
-- Warn that the identity trust root should have been provided, and show instructions on how to generate it.
 - Instructions on how to, optionally, install the linkerd CLI
-- Instructions on running `linkerd check` to verify everything is ok                                                                                                                                                                         
+- Instructions on running `linkerd check` to verify everything is ok                                                                                                                        
 - Instructions on how to change the most basic settings
 - Instructions on how to get ahold of `values.yaml` containing all the possible settings?
 
@@ -116,14 +126,19 @@ The `control-plane` chart should be the main chart, published under `https://git
 
 Tasks
 ---------
+- Create new `linkerd check --chart values.yaml` command to fully validate the options in `values.yaml`. This includes ensuring the trust root for identity has been provided.
 - Refactor `injectPodSpec()` and `injectProxyInit()` in `pkg/inject/inject.go` that currently generates a JSON patch, but have it use the `data-plane` chart instead of the hard-coded go-client structs.
 - Refactor the TLS libraries relied upon by the `proxy-injector` and `sp-validor` webhooks to have them work with RSA as well (they currently only deal with EC).
 - Refactor the  `proxy-injector` and `sp-validator` charts so that they generate the certs/keys with Helm's `genSelfSignedCert()`.
 - Create `values.yaml` with all the default values, by hand (later, we can have this be automated based off of protobuf for the config part). The trust root for identity is expected to be provided by the user in this file.
+- As much as possible, copy the options validations into the Helm template files, leveraging [Sprig's fail](http://masterminds.github.io/sprig/flow_control.html) function. This includes a new check for ensuring the identity trust root has been provided.
 - Have a well annotated main `values.yaml` file with the most common settings by default.
 - Create a detailed `NOTES.txt` file with the instructions/warnings detailed above.
 - Create a new website doc for Helm. A section should have a tutorial for generating the cert/key for identity.
-- Enhance `linkerd check` with new checks that cover the options validations currently done in `linkerd install` that can't be performed with `helm install` (Maybe be leave this for later?)
+
+### Not necessarily for the first iteration of this project
+- Have `linkerd check --chart` highlight changes between versions.
+
 
 To-do
 ------
