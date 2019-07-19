@@ -102,9 +102,9 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 # run upgrade test:
 # 1. install latest stable
 # 2. upgrade to HEAD
-# 3. if failed, exit script to avoid leaving behind stale resources which fail
-# subsequent tests. `cleanup` is called only if test completed without errors
-# to avoid debugging opportunity.
+# 3. if failed, exit script to avoid leaving behind stale resources which will
+# fail subsequent tests. `cleanup` is not called if this test failed so that
+# there is a chance to debug the problem
 run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
 if [ $exit_code -ne 0 ]; then
   printf "\\n=== FAIL: Can't upgrade to version $linkerd_version\\n"
@@ -112,7 +112,8 @@ if [ $exit_code -ne 0 ]; then
 fi
 cleanup
 
-# run the rest of the test suite
+# run the rest of the test suite. `cleanup` is not called if this test failed
+# so that there is a chance to debug the problem
 run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
