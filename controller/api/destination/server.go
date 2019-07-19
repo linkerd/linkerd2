@@ -127,7 +127,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
-	service, port, err := watcher.GetServiceAndPort(dest.GetPath())
+	service, port, _, err := watcher.GetServiceAndPort(dest.GetPath())
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}

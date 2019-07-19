@@ -58,11 +58,12 @@ func newMetricsVecs(name string, labels []string) metricsVecs {
 	}
 }
 
-func endpointsLabels(namespace, service, port string) prometheus.Labels {
+func endpointsLabels(namespace, service, port string, hostname string) prometheus.Labels {
 	return prometheus.Labels{
 		"namespace": namespace,
 		"service":   service,
 		"port":      port,
+		"hostname":  hostname,
 	}
 }
 
@@ -75,7 +76,7 @@ func labelNames(labels prometheus.Labels) []string {
 }
 
 func newEndpointsMetricsVecs() endpointsMetricsVecs {
-	labels := labelNames(endpointsLabels("", "", ""))
+	labels := labelNames(endpointsLabels("", "", "", ""))
 	vecs := newMetricsVecs("endpoints", labels)
 
 	pods := promauto.NewGaugeVec(

@@ -239,7 +239,7 @@ func profileID(authority string, contextToken string) (ProfileID, error) {
 	if err != nil {
 		return ProfileID{}, err
 	}
-	service, _, err := GetServiceAndPort(authority)
+	service, _, _, err := GetServiceAndPort(authority)
 	if err != nil {
 		return ProfileID{}, err
 	}

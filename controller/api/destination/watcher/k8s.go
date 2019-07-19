@@ -50,26 +50,39 @@ func getHostAndPort(authority string) (string, Port, error) {
 // GetServiceAndPort is a utility function that destructures an authority into
 // a service and port.  If the authority does not represent a Kubernetes
 // service, an error is returned.  If no port is specified in the authority,
-// the HTTP default (80) is returned as the port number.
-func GetServiceAndPort(authority string) (ServiceID, Port, error) {
+// the HTTP default (80) is returned as the port number.  If the authority
+// is a pod DNS name then the pod hostname is also returned as the 3rd return
+// value.  See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
+func GetServiceAndPort(authority string) (ServiceID, Port, string, error) {
 	host, port, err := getHostAndPort(authority)
 	if err != nil {
-		return ServiceID{}, 0, err
+		return ServiceID{}, 0, "", err
 	}
 	domains := strings.Split(host, ".")
-	// S.N.svc.cluster.local
-	if len(domains) != 5 {
-		return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
-	}
 	suffix := []string{"svc", "cluster", "local"}
-	for i, subdomain := range domains[2:] {
+	n := len(domains)
+	if n < 5 {
+		return ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+	}
+	for i, subdomain := range domains[n-3:] {
 		if subdomain != suffix[i] {
-			return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
+			return ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
 		}
 	}
-	service := ServiceID{
-		Name:      domains[0],
-		Namespace: domains[1],
+	if n == 5 {
+		// <service>.<namespace>.svc.cluster.local
+		service := ServiceID{
+			Name:      domains[0],
+			Namespace: domains[1],
+		}
+		return service, port, "", nil
+	} else if n == 6 {
+		// <hostname>.<service>.<namespace>.svc.cluster.local
+		service := ServiceID{
+			Name:      domains[1],
+			Namespace: domains[2],
+		}
+		return service, port, domains[0], nil
 	}
-	return service, port, nil
+	return ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
 }

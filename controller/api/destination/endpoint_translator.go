@@ -37,7 +37,7 @@ func newEndpointTranslator(
 		"service":   authority,
 	})
 
-	service, _, err := watcher.GetServiceAndPort(authority)
+	service, _, _, err := watcher.GetServiceAndPort(authority)
 	if err != nil {
 		return nil, err
 	}

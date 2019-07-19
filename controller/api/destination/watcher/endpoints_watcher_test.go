@@ -357,6 +357,88 @@ spec:
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: false,
 		},
+		{
+			serviceType: "stateful sets",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    hostname: name1-1
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  - ip: 172.17.0.19
+    hostname: name1-2
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
+  - ip: 172.17.0.20
+    hostname: name1-3
+    targetRef:
+      kind: Pod
+      name: name1-3
+      namespace: ns
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.19`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-3
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.20`,
+			},
+			authority:                        "name1-3.name1.ns.svc.cluster.local:5959",
+			expectedAddresses:                []string{"172.17.0.20:5959"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
 	} {
 		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
