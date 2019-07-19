@@ -140,6 +140,8 @@ Tasks
 ### Not necessarily for the first iteration of this project
 - Have `linkerd check --chart` highlight changes between versions.
 
+### Definetely for later
+- Consider `install-cni`. Could be as a separate stage (`--set stage=cni`) or a regular option (`--set cni`). The latter would imply solving the timing issues that motivated having that as a separate command to begin with (control plane components trying to come up without the iptables having been modified yet).
 
 To-do
 ------
