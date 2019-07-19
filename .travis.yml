@@ -163,7 +163,6 @@ jobs:
         - |
           # Run integration tests.
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
