@@ -7,6 +7,7 @@ sudo: false
 branches:
   only:
     - master
+    - isim/intg-test-script
     - /^(edge|stable)-\d+\.\d+\.[\w-]+$/ # build version tags
 
 stages:
@@ -163,7 +164,6 @@ jobs:
         - |
           # Run integration tests.
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
