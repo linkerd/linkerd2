@@ -235,16 +235,12 @@ func nsFromToken(token string) string {
 }
 
 func profileID(authority string, contextToken string) (ProfileID, error) {
-	host, _, err := getHostAndPort(authority)
-	if err != nil {
-		return ProfileID{}, err
-	}
 	service, _, _, err := GetServiceAndPort(authority)
 	if err != nil {
 		return ProfileID{}, err
 	}
 	id := ProfileID{
-		Name:      host,
+		Name:      fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, service.Namespace),
 		Namespace: service.Namespace,
 	}
 	if contextNs := nsFromToken(contextToken); contextNs != "" {

@@ -66,6 +66,48 @@ spec:
 				nil,
 			},
 		},
+		{
+			name: "hostname is dropped",
+			k8sConfigs: []string{`
+apiVersion: linkerd.io/v1alpha1
+kind: ServiceProfile
+metadata:
+  name: foobar.ns.svc.cluster.local
+  namespace: linkerd
+spec:
+  routes:
+  - condition:
+      pathRegex: "/x/y/z"
+    responseClasses:
+    - condition:
+        status:
+          min: 500
+      isFailure: true`,
+			},
+			authority:    "hostname.foobar.ns.svc.cluster.local",
+			contextToken: "ns:linkerd",
+			expectedProfiles: []*sp.ServiceProfileSpec{
+				{
+					Routes: []*sp.RouteSpec{
+						{
+							Condition: &sp.RequestMatch{
+								PathRegex: "/x/y/z",
+							},
+							ResponseClasses: []*sp.ResponseClass{
+								{
+									Condition: &sp.ResponseMatch{
+										Status: &sp.Range{
+											Min: 500,
+										},
+									},
+									IsFailure: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		tt := tt // pin
 		t.Run(tt.name, func(t *testing.T) {
