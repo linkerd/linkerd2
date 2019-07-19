@@ -7,7 +7,6 @@ sudo: false
 branches:
   only:
     - master
-    - isim/intg-test-script
     - /^(edge|stable)-\d+\.\d+\.[\w-]+$/ # build version tags
 
 stages:
