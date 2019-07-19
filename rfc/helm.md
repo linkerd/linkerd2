@@ -45,7 +45,7 @@ That would install linkerd using the most common settings. The `NOTES.txt` file 
 This will replace the current single chart under the `charts` directory.
 ```
 charts
-├── control-plane # This is the only chart that will be pushed to incubator/linkerd2
+├── linkerd2
 │   ├── charts
 │   │   └── partials -> ../../partials
 │   ├── Chart.yaml
@@ -74,7 +74,7 @@ charts
 │   │   ├── web-rbac.yaml
 │   │   └── web.yaml
 │   └── values.yaml
-├── data-plane
+├── patch
 │   ├── charts
 │   │   └── partials -> ../../partials
 │   ├── Chart.yaml
@@ -102,7 +102,7 @@ The user experience for the current way of doing things remains the same. There 
 
 Currently the `proxy-injector` webhook is invoked for any pod that gets created. If the pod's namespace or the pod itself contains a `linkerd.io/inject: enabled` annotation then the webhook relies on the library `pkg/inject/inject.go` to programatically generate a proxy container (and a proxy-init container if necessary) using go-client structs. Those structs are transformed into JSON-patch format which is returned to Kubernetes, which will do the actual injection of the container into the pod.                                                                                                                                       
 
-The functionality and contract for `pkg/inject/inject.go` will remain the same but with a different mechanism underneath. The JSON-patch will be generated through the new `data-plane` chart which itself depends on the `_proxy.yaml` template under the `charts/partials` chart. `_proxy.yaml` will be the sole place containing the structure of the proxy container and it will replace the go-client structs currently used. This partial will also be used when doing `helm install` (see below) thus avoiding having more than one place for the proxy structure source-of-truth.                                                                  
+The functionality and contract for `pkg/inject/inject.go` will remain the same but with a different mechanism underneath. The JSON-patch will be generated through the new `patch` chart which itself depends on the `_proxy.yaml` template under the `charts/partials` chart. `_proxy.yaml` will be the sole place containing the structure of the proxy container and it will replace the go-client structs currently used. This partial will also be used when doing `helm install` (see below) thus avoiding having more than one place for the proxy structure source-of-truth.
 
 ### `linkerd inject`
 
@@ -116,24 +116,25 @@ Currently this calls `pkg/inject/inject.go` to perform the injection, just as th
 
 Currently this relies on the Helm go library and the charts under the `charts` directory to generate the control plane resources. The options passed as CLI arguments are converted into template values that are passed to the Helm template engine to be replaced in the placeholders inside those charts. Then, the generated yaml is fed into the `pkg/inject/inject.go` library to inject the proxies, just as `linkerd inject --manual` would do.
 
-Here we will be replacing the current chart with a new one under `charts/control-plane` to create the control plane resources, and that chart depends on various templates under the `charts/partials` charts, in particular the `_proxy.yaml` template for inserting the yaml for the proxy into all the control plane resources. Note that `charts/control-plane` doesn't depend on `charts/data-plane` because the latter's sole purpose is to generate a JSON-patch, which Helm can't interpret.                                                                                                                                                      
+Here we will be replacing the current chart with a new one under `charts/linkerd2` to create the control plane resources, and that chart depends on various templates under the `charts/partials` charts, in particular the `_proxy.yaml` template for inserting the yaml for the proxy into all the control plane resources. Note that `charts/linkerd2` doesn't depend on `charts/patch` because the latter's sole purpose is to generate a JSON-patch, which Helm can't interpret.
 
 The user experience for `linkerd install` remains the same as well.
 
 New alternative `helm install` mechanism
 ---------------------------------------------
-The mechanism is the same as `linkerd install` just explained; the main chart will be `charts/control-plane` which depends on `charts/partials` for, among other things, the proxy insertion. The main difference will be that the chart values will come from `values.yml` (or provided by the user through `--set` on Helm's CLI).
+The mechanism is the same as `linkerd install` just explained; the main chart will be `charts/linkerd2` which depends on `charts/partials` for, among other things, the proxy insertion. The main difference will be that the chart values will come from `values.yml` (or provided by the user through `--set` on Helm's CLI).
 
 Tasks
 ---------
 - Create new `linkerd check --chart values.yaml` command to fully validate the options in `values.yaml`. This includes ensuring the trust root for identity has been provided.
-- Refactor `injectPodSpec()` and `injectProxyInit()` in `pkg/inject/inject.go` that currently generates a JSON patch, but have it use the `data-plane` chart instead of the hard-coded go-client structs.
+- Refactor `injectPodSpec()` and `injectProxyInit()` in `pkg/inject/inject.go` that currently generates a JSON patch, but have it use the `patch` chart instead of the hard-coded go-client structs.
 - Refactor the TLS libraries relied upon by the `proxy-injector` and `sp-validor` webhooks to have them work with RSA as well (they currently only deal with EC).
 - Refactor the  `proxy-injector` and `sp-validator` charts so that they generate the certs/keys with Helm's `genSelfSignedCert()`.
 - Create `values.yaml` with all the default values, by hand (later, we can have this be automated based off of protobuf for the config part). The trust root for identity is expected to be provided by the user in this file.
 - As much as possible, copy the options validations into the Helm template files, leveraging [Sprig's fail](http://masterminds.github.io/sprig/flow_control.html) function. This includes a new check for ensuring the identity trust root has been provided.
 - Have a well annotated main `values.yaml` file with the most common settings by default.
 - Create a detailed `NOTES.txt` file with the instructions/warnings detailed above.
+- Create a script to publish the `linkerd2` chart to https://github.com/helm/charts
 - Create a new website doc for Helm. A section should have a tutorial for generating the cert/key for identity.
 
 ### Not necessarily for the first iteration of this project
