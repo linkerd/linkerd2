@@ -15,6 +15,6 @@ rootdir="$( cd $bindir/.. && pwd )"
 
 dockerfile=$rootdir/grafana/Dockerfile
 
-extra=" --platform ${DOCKER_BUILD_ARCH:-amd64}"
-extra+=" --pull" # IMPORTANT: always try to pull the image with correct platform
+# IMPORTANT: always try to pull the image with correct arch
+extra="--platform ${DOCKER_BUILD_ARCH:-amd64} --pull"
 docker_build grafana "$(head_root_tag)" $dockerfile $extra

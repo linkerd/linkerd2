@@ -20,7 +20,7 @@ tag=$(go_deps_sha)
 if (docker_pull go-deps "${tag}"); then
     echo "$(docker_repo go-deps):${tag}"
 else
-    extra=" --platform ${DOCKER_BUILD_ARCH:-amd64}"
-    extra+=" --pull" # IMPORTANT: always try to pull the image with correct platform
+    # IMPORTANT: always try to pull the image with correct arch
+    extra="--platform ${DOCKER_BUILD_ARCH:-amd64} --pull"
     docker_build go-deps "${tag}" $rootdir/Dockerfile-go-deps $extra
 fi
