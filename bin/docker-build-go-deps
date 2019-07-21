@@ -10,6 +10,7 @@ if [ $# -ne 0 ]; then
 fi
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
 
 . $bindir/_docker.sh
 . $bindir/_tag.sh
@@ -19,6 +20,11 @@ tag=$(go_deps_sha)
 if (docker_pull go-deps "${tag}"); then
     echo "$(docker_repo go-deps):${tag}"
 else
-    rootdir="$( cd $bindir/.. && pwd )"
-    docker_build go-deps "${tag}" $rootdir/Dockerfile-go-deps
+    extra=""
+    if [ -n "${DOCKER_BUILD_ARCH:-}" ]; then
+        extra+=" --platform $DOCKER_BUILD_ARCH"
+        extra+=" --pull" # IMPORTANT: always try to pull the image with correct platform
+    fi
+
+    docker_build go-deps "${tag}" $rootdir/Dockerfile-go-deps $extra
 fi
