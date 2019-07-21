@@ -22,6 +22,12 @@ docker_repo() {
         name="$DOCKER_REGISTRY/$name"
     fi
 
+    # Reuse go-deps image as builder image, no need create a different repo
+    if [ $repo == "go-deps" ]; then
+        echo $name
+        exit 0
+    fi
+
     # amd64 is the default image, no need to explicitly specify it
     if [ "${DOCKER_BUILD_ARCH:-}" == "amd64" ]; then
         DOCKER_BUILD_ARCH=""
