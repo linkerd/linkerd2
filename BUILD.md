@@ -322,17 +322,6 @@ bin/dep ensure
 bin/protoc-go.sh
 ```
 
-### Updating Docker dependencies
-
-The go Docker images rely on base dependency images with
-hard-coded SHA's:
-
-`gcr.io/linkerd-io/go-deps` depends on
-- [`Gopkg.lock`](Gopkg.lock)
-- [`Dockerfile-go-deps`](Dockerfile-go-deps)
-
-`bin/update-go-deps-shas` must be run when go dependencies change.
-
 ## Build Architecture
 
 ![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
@@ -449,12 +438,6 @@ build_architecture
     ".travis.yml" -> "docker-retag-all";
     ".travis.yml" -> "lint";
     ".travis.yml" -> "protoc-go.sh";
-
-    "update-go-deps-shas" -> "_tag.sh";
-    "update-go-deps-shas" -> "cli/Dockerfile-bin";
-    "update-go-deps-shas" -> "controller/Dockerfile";
-    "update-go-deps-shas" -> "grafana/Dockerfile";
-    "update-go-deps-shas" -> "web/Dockerfile";
 
     "web" -> "go-run";
   }

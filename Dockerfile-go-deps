@@ -2,8 +2,6 @@
 #
 # Fetches all required Go dependencies. All Linkerd sources are omitted from the resulting
 # image so that artifacts may be built from source over this image.
-#
-# When this file is changed, run `bin/update-go-deps-shas`.
 
 FROM golang:1.11.5
 ENV TEMP_GOPATH=/temp-gopath

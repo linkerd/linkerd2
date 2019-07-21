@@ -54,16 +54,6 @@ jobs:
       script:
         - ./bin/web test --reporters=jest-dot-reporter
 
-    - language: generic
-      script:
-        - |
-          (
-            . bin/_tag.sh
-            for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
-              validate_go_deps_tag $f
-            done
-          )
-
     # Push container images to Google Container Registry.
     - stage: docker-deploy
 

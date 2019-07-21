@@ -44,33 +44,3 @@ clean_head_root_tag() {
         exit 3
     fi
 }
-
-validate_tag() {
-    file="$1"
-    shift
-
-    image="$1"
-    shift
-
-    sha="$1"
-    shift
-
-    dockerfile_tag=$(grep -oe $image':[^ ]*' $file) || true
-    deps_tag="$image:$sha"
-    if [ "$dockerfile_tag" != "" ] && [ "$dockerfile_tag" != "$deps_tag" ]; then
-        echo "Tag in "$file" does not match source tree:"
-        echo $dockerfile_tag" ("$file")"
-        echo $deps_tag" (source)"
-        return 3
-    fi
-}
-
-# This function should be called by any docker-build-* script that relies on Go
-# dependencies. To confirm the set of scripts that should call this function,
-# run:
-# $ grep -ER 'docker-build-go-deps' .
-
-validate_go_deps_tag() {
-    file="$1"
-    validate_tag "$file" "gcr.io/linkerd-io/go-deps" "$(go_deps_sha)"
-}
