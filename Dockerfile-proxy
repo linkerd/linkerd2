@@ -12,14 +12,13 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version)) && \
 ## compile proxy-identity agent
 FROM $BUILDER_IMAGE as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
-ARG GOARCH
-ENV CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls
 COPY pkg/version pkg/version
-RUN go build ./pkg/...
+ARG GOARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build ./pkg/...
 COPY proxy-identity proxy-identity
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go install ./proxy-identity
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /go/bin/proxy-identity ./proxy-identity
 
 FROM $RUNTIME_IMAGE as runtime
 COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
