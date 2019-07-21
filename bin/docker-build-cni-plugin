@@ -23,4 +23,5 @@ validate_go_deps_tag "$dockerfile"
 ) >/dev/null
 
 docker_build cni-plugin "$(head_root_tag)" "$dockerfile" \
-  --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_version)"
+  --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_version)" \
+  --build-arg "GOARCH=${DOCKER_BUILD_ARCH:-amd64}"

@@ -23,4 +23,6 @@ validate_go_deps_tag $dockerfile
 ) >/dev/null
 
 tag="$(head_root_tag)"
-docker_build controller $tag $dockerfile --build-arg LINKERD_VERSION=$tag
+docker_build controller $tag $dockerfile \
+  --build-arg "LINKERD_VERSION=$tag" \
+  --build-arg "GOARCH=${DOCKER_BUILD_ARCH:-amd64}"
