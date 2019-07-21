@@ -1,4 +1,5 @@
 ARG RUNTIME_IMAGE
+ARG GOARCH
 
 ## bundle web assets
 FROM node:10 as webpack-bundle
@@ -36,7 +37,7 @@ COPY web/srv web/srv
 COPY controller controller
 COPY pkg pkg
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o web/web ./web
 
 ## package it all up
 FROM $RUNTIME_IMAGE

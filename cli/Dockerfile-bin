@@ -1,3 +1,5 @@
+ARG GOARCH
+
 ## compile binaries
 FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
@@ -14,13 +16,13 @@ RUN go generate ./cli
 
 # Cache builds without version info
 RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "-s -w" ./cli
 RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "-s -w" ./cli
 
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
 RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "${GO_LDFLAGS}" ./cli
 RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "${GO_LDFLAGS}" ./cli
 
 ## export without sources & dependencies

@@ -1,4 +1,5 @@
 ARG RUNTIME_IMAGE
+ARG GOARCH
 
 FROM $RUNTIME_IMAGE as fetch
 RUN apt-get update && apt-get install -y ca-certificates
@@ -11,13 +12,13 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version)) && \
 ## compile proxy-identity agent
 FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
-ENV CGO_ENABLED=0 GOOS=linux
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls
 COPY pkg/version pkg/version
 RUN go build ./pkg/...
 COPY proxy-identity proxy-identity
-RUN CGO_ENABLED=0 GOOS=linux go install ./proxy-identity
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go install ./proxy-identity
 
 FROM $RUNTIME_IMAGE as runtime
 COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
