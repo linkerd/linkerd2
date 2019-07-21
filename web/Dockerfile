@@ -1,6 +1,5 @@
 ARG RUNTIME_IMAGE
 ARG BUILDER_IMAGE
-ARG GOARCH
 
 ## bundle web assets
 FROM node:10 as webpack-bundle
@@ -37,7 +36,7 @@ COPY web/main.go web
 COPY web/srv web/srv
 COPY controller controller
 COPY pkg pkg
-
+ARG GOARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o web/web ./web
 
 ## package it all up

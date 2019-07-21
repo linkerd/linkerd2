@@ -1,5 +1,4 @@
 ARG BUILDER_IMAGE
-ARG GOARCH
 
 ## compile controller services
 FROM $BUILDER_IMAGE as golang
@@ -9,6 +8,7 @@ COPY pkg pkg
 COPY controller controller
 
 # use `install` so that we produce multiple binaries
+ARG GOARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go install ./pkg/...
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go install ./controller/cmd/...
 
