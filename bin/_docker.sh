@@ -11,12 +11,24 @@ export DOCKER_REGISTRY="${DOCKER_REGISTRY:-gcr.io/linkerd-io}"
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE="${DOCKER_TRACE:-}"
 
+# Set the output arch of the resulting docker images
+export DOCKER_BUILD_ARCH="${DOCKER_BUILD_ARCH:-}"
+
 docker_repo() {
     repo="$1"
 
     name="$repo"
     if [ -n "${DOCKER_REGISTRY:-}" ]; then
         name="$DOCKER_REGISTRY/$name"
+    fi
+
+    # amd64 is the default image, no need to explicitly specify it
+    if [ "${DOCKER_BUILD_ARCH:-}" == "amd64" ]; then
+        DOCKER_BUILD_ARCH=""
+    fi
+
+    if [ -n "${DOCKER_BUILD_ARCH:-}" ]; then
+        name="$name-$DOCKER_BUILD_ARCH"
     fi
 
     echo "$name"
@@ -41,12 +53,21 @@ docker_build() {
 
     rootdir="$( cd $bindir/.. && pwd )"
 
-    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $extra"
-    docker build $rootdir \
-        -t "$repo:$tag" \
-        -f "$file" \
-        $extra \
-        > "$output"
+    cmd="docker build $rootdir \
+           -t "$repo:$tag" \
+           -f "$file" \
+           $extra"
+
+    if [ -n "${DOCKER_BUILD_ARCH:-}" ]; then
+        cmd+=" --platform $DOCKER_BUILD_ARCH"
+        cmd+=" --pull" # IMPORTANT: always try to pull the image with correct platform
+    fi
+
+    # remove the extra whitespaces
+    cmd=$(echo $cmd | xargs)
+
+    log_debug "  :; $cmd"
+    $cmd > $output
 
     echo "$repo:$tag"
 }
