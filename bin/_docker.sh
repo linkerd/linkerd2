@@ -22,7 +22,7 @@ docker_repo() {
         name="$DOCKER_REGISTRY/$name"
     fi
 
-    # Reuse go-deps image as builder image, no need create a different repo
+    # Reuse go-deps image as builder image, no need to create a different repo
     if [ $repo == "go-deps" ]; then
         echo $name
         exit 0
