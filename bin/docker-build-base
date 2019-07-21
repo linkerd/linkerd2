@@ -15,7 +15,7 @@ rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_docker.sh
 . $bindir/_tag.sh
 
-tag=$(base_version)
+tag=$(base_sha)
 
 if (docker_pull base "${tag}"); then
     echo "$(docker_repo base):${tag}"

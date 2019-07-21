@@ -22,4 +22,4 @@ dockerfile=$rootdir/Dockerfile-debug
 tag="$(head_root_tag)"
 
 docker_build debug $tag $dockerfile \
-  --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_version)"
+  --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_sha)"
