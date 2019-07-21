@@ -53,21 +53,12 @@ docker_build() {
 
     rootdir="$( cd $bindir/.. && pwd )"
 
-    cmd="docker build $rootdir \
-           -t "$repo:$tag" \
-           -f "$file" \
-           $extra"
-
-    if [ -n "${DOCKER_BUILD_ARCH:-}" ]; then
-        cmd+=" --platform $DOCKER_BUILD_ARCH"
-        cmd+=" --pull" # IMPORTANT: always try to pull the image with correct platform
-    fi
-
-    # remove the extra whitespaces
-    cmd=$(echo $cmd | xargs)
-
-    log_debug "  :; $cmd"
-    $cmd > $output
+    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $extra"
+    docker build $rootdir \
+        -t "$repo:$tag" \
+        -f "$file" \
+        $extra \
+        > "$output"
 
     echo "$repo:$tag"
 }
