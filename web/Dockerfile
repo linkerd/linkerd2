@@ -1,3 +1,5 @@
+ARG RUNTIME_IMAGE
+
 ## bundle web assets
 FROM node:10 as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
@@ -37,7 +39,6 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
 
 ## package it all up
-ARG RUNTIME_IMAGE
 FROM $RUNTIME_IMAGE
 WORKDIR /linkerd
 
