@@ -23,5 +23,6 @@ validate_go_deps_tag "$dockerfile"
 ) >/dev/null
 
 tag="$(head_root_tag)"
-docker_build proxy "$tag" "$dockerfile" \
-  --build-arg "LINKERD_VERSION=$tag"
+docker_build proxy $tag $dockerfile \
+  --build-arg "LINKERD_VERSION=$tag" \
+  --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_version)"

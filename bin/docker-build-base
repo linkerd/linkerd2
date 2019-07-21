@@ -20,5 +20,11 @@ tag=$(base_version)
 if (docker_pull base "${tag}"); then
     echo "$(docker_repo base):${tag}"
 else
-    docker_build base "${tag}" $rootdir/Dockerfile-base
+    extra=""
+    if [ -n "${DOCKER_BUILD_ARCH:-}" ]; then
+        extra+=" --platform $DOCKER_BUILD_ARCH"
+        extra+=" --pull" # IMPORTANT: always try to pull the image with correct platform
+    fi
+
+    docker_build base "${tag}" $rootdir/Dockerfile-base $extra
 fi
