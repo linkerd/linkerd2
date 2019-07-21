@@ -1,4 +1,5 @@
 ARG RUNTIME_IMAGE
+ARG BUILDER_IMAGE
 ARG GOARCH
 
 ## bundle web assets
@@ -29,7 +30,7 @@ COPY web/app .
 RUN $ROOT/bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
+FROM $BUILDER_IMAGE as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 RUN mkdir -p web
 COPY web/main.go web

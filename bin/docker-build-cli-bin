@@ -25,6 +25,7 @@ validate_go_deps_tag $dockerfile
 tag="$(head_root_tag)"
 docker_build cli-bin $tag $dockerfile \
   --build-arg "LINKERD_VERSION=$tag" \
+  --build-arg "BUILDER_IMAGE=$(docker_repo go-deps):$(go_deps_sha)" \
   --build-arg "GOARCH=${DOCKER_BUILD_ARCH:-amd64}"
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")

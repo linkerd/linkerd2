@@ -26,4 +26,5 @@ tag="$(head_root_tag)"
 docker_build proxy $tag $dockerfile \
   --build-arg "LINKERD_VERSION=$tag" \
   --build-arg "RUNTIME_IMAGE=$(docker_repo base):$(base_version)" \
+  --build-arg "BUILDER_IMAGE=$(docker_repo go-deps):$(go_deps_sha)" \
   --build-arg "GOARCH=${DOCKER_BUILD_ARCH:-amd64}"

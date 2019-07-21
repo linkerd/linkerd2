@@ -1,7 +1,8 @@
+ARG BUILDER_IMAGE
 ARG GOARCH
 
 ## compile controller services
-FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
+FROM $BUILDER_IMAGE as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY controller/gen controller/gen
 COPY pkg pkg

@@ -1,8 +1,9 @@
 ARG RUNTIME_IMAGE
+ARG BUILDER_IMAGE
 ARG GOARCH
 
 ## compile cni-plugin utility
-FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
+FROM $BUILDER_IMAGE as golang
 WORKDIR /go/src/github.com/linkerd/linkerd2
 COPY pkg pkg
 COPY controller controller
