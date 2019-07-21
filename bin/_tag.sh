@@ -6,6 +6,10 @@ git_sha_head() {
     git rev-parse --short=8 HEAD
 }
 
+base_version() {
+    echo "2019-02-19.01"
+}
+
 go_deps_sha() {
     bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     rootdir="$( cd $bindir/.. && pwd )"

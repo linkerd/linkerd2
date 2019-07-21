@@ -1,4 +1,5 @@
-FROM gcr.io/linkerd-io/base:2019-02-19.01
+ARG RUNTIME_IMAGE
+FROM $RUNTIME_IMAGE
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tcpdump \
     iproute2 \

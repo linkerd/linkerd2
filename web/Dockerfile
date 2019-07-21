@@ -37,7 +37,8 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
 
 ## package it all up
-FROM gcr.io/linkerd-io/base:2019-02-19.01
+ARG RUNTIME_IMAGE
+FROM $RUNTIME_IMAGE
 WORKDIR /linkerd
 
 COPY LICENSE .
