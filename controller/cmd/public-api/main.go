@@ -27,7 +27,6 @@ func main() {
 	destinationAPIAddr := flag.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	clusterDomain := flag.String("cluster-domain", "cluster.local", "custom cluster domain")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
@@ -73,7 +72,6 @@ func main() {
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
-		*clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 

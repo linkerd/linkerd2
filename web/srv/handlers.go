@@ -23,7 +23,6 @@ type (
 		apiClient           public.APIClient
 		uuid                string
 		controllerNamespace string
-		clusterDomain       string
 		grafanaProxy        *grafanaProxy
 	}
 )

@@ -27,7 +27,6 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	clusterDomain := flag.String("cluster-domain", "cluster.local", "custom cluster domain")
 	flags.ConfigureAndParse()
 
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
@@ -48,7 +47,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, *clusterDomain, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

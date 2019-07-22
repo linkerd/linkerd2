@@ -56,7 +56,6 @@ func NewServer(
 	staticDir string,
 	uuid string,
 	controllerNamespace string,
-	clusterDomain string,
 	reload bool,
 	apiClient public.APIClient,
 ) *http.Server {
@@ -77,7 +76,6 @@ func NewServer(
 		render:              server.RenderTemplate,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
-		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 

@@ -356,7 +356,6 @@ func NewServer(
 	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
-	clusterDomain string,
 	ignoredNamespaces []string,
 ) *http.Server {
 	baseHandler := &handler{
@@ -367,7 +366,6 @@ func NewServer(
 			destinationClient,
 			k8sAPI,
 			controllerNamespace,
-			clusterDomain,
 			ignoredNamespaces,
 		),
 	}
