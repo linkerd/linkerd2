@@ -933,7 +933,12 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
-	return FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return configPB, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -942,13 +947,18 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
 // healthcheck package because healthcheck depends on it, along with other
 // packages that also depend on healthcheck. This function depends on both
 // `pkg/k8s` and `pkg/config`, which do not depend on each other.
-func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*configPb.All, error) {
+func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *configPb.All, error) {
 	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return config.FromConfigMap(cm.Data)
+	configPB, err := config.FromConfigMap(cm.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cm, configPB, nil
 }
 
 // checkNamespace checks whether the given namespace exists, and returns an

@@ -22,16 +22,12 @@ func TestK8sValues(t *testing.T) {
 		{
 			"linkerd",
 			[]string{`
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: linkerd
-  creationTimestamp: 2019-02-15T12:34:56Z`, `
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
   namespace: linkerd
+  creationTimestamp: 2019-02-15T12:34:56Z
 data:
   install: |
     {"uuid":"fake-uuid"}`,
@@ -90,7 +86,7 @@ func TestPromValues(t *testing.T) {
 				},
 			},
 			url.Values{
-				"rps":         []string{"100"},
+				"total-rps":   []string{"100"},
 				"meshed-pods": []string{"100"},
 			},
 		},

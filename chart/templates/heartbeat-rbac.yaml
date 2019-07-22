@@ -16,10 +16,6 @@ rules:
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get"]
-  resourceNames: ["{{.Namespace}}"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

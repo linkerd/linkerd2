@@ -16,18 +16,18 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // K8sValues gathers relevant heartbeat information from Kubernetes
 func K8sValues(kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	config, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	cm, configPB, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {
-		v.Set("uuid", config.GetInstall().GetUuid())
+		v.Set("uuid", configPB.GetInstall().GetUuid())
+		v.Set("install-time", strconv.FormatInt(cm.GetCreationTimestamp().Unix(), 10))
 	}
 
 	versionInfo, err := kubeAPI.GetVersionInfo()
@@ -35,13 +35,6 @@ func K8sValues(kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Val
 		log.Errorf("Failed to fetch Kubernetes version info: %s", err)
 	} else {
 		v.Set("k8s-version", versionInfo.String())
-	}
-
-	ns, err := kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
-	if err != nil {
-		log.Errorf("Failed to fetch Linkerd namespace: %s", err)
-	} else {
-		v.Set("install-time", strconv.FormatInt(ns.GetCreationTimestamp().Unix(), 10))
 	}
 
 	return v
@@ -55,7 +48,7 @@ func PromValues(promAPI promv1.API) url.Values {
 	if err != nil {
 		log.Errorf("Prometheus query failed: %s", err)
 	} else {
-		v.Set("rps", value)
+		v.Set("total-rps", value)
 	}
 
 	value, err = promQuery(promAPI, "count(count by (pod) (request_total))")

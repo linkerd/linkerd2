@@ -2138,7 +2138,7 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}
