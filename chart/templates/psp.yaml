@@ -26,16 +26,16 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
-    rule: RunAsAny
+    rule: MustRunAsNonRoot
   supplementalGroups:
     rule: MustRunAs
     ranges:
-    - min: 1
+    - min: 10001
       max: 65535
   fsGroup:
     rule: MustRunAs
     ranges:
-    - min: 1
+    - min: 10001
       max: 65535
   volumes:
   - configMap
