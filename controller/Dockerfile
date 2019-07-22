@@ -14,7 +14,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go install ./controller/cmd/...
 
 ## package runtime
 FROM scratch
-ENV PATH=$PATH:/go/bin
+ARG GOARCH
+ENV PATH=$PATH:/go/bin:/go/bin/linux_$GOARCH
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /go/bin /go/bin
 
