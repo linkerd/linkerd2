@@ -129,6 +129,12 @@ func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateL
 	if err != nil {
 		return err
 	}
+
+	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
+	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
+		return invalidService(authority)
+	}
+
 	ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
 
 	sp := ew.getOrNewServicePublisher(id)

@@ -24,7 +24,21 @@ type (
 	// Port is a numeric port.
 	Port      = uint32
 	namedPort = intstr.IntOrString
+
+	// InvalidService is n error which indicates that the authority is not a
+	// valid service.
+	InvalidService struct {
+		authority string
+	}
 )
+
+func (is InvalidService) Error() string {
+	return fmt.Sprintf("Invalid k8s service %s", is.authority)
+}
+
+func invalidService(authority string) InvalidService {
+	return InvalidService{authority}
+}
 
 func (i ID) String() string {
 	return fmt.Sprintf("%s/%s", i.Namespace, i.Name)
@@ -59,12 +73,12 @@ func GetServiceAndPort(authority string) (ServiceID, Port, error) {
 	domains := strings.Split(host, ".")
 	// S.N.svc.cluster.local
 	if len(domains) != 5 {
-		return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
+		return ServiceID{}, 0, invalidService(host)
 	}
 	suffix := []string{"svc", "cluster", "local"}
 	for i, subdomain := range domains[2:] {
 		if subdomain != suffix[i] {
-			return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
+			return ServiceID{}, 0, invalidService(host)
 		}
 	}
 	service := ServiceID{

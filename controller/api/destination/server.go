@@ -101,6 +101,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	err = s.endpoints.Subscribe(dest.GetPath(), translator)
 	if err != nil {
 		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
+		if _, ok := err.(watcher.InvalidService); ok {
+			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		}
 		return err
 	}
 	defer s.endpoints.Unsubscribe(dest.GetPath(), translator)
