@@ -339,10 +339,13 @@ build_architecture
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
     "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "cni-plugin/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "Dockerfile-debug" [color=lightblue, style=filled, shape=rect];
 
     "_docker.sh" -> "_log.sh";
     "_gcp.sh";
     "_log.sh";
+    "_tag.sh" -> "Dockerfile-base";
     "_tag.sh" -> "Dockerfile-go-deps";
 
     "build-cli-bin" -> "_tag.sh";
@@ -353,12 +356,15 @@ build_architecture
 
     "docker-build" -> "build-cli-bin";
     "docker-build" -> "docker-build-cli-bin";
+    "docker-build" -> "docker-build-cni-plugin";
     "docker-build" -> "docker-build-controller";
+    "docker-build" -> "docker-build-debug";
     "docker-build" -> "docker-build-grafana";
     "docker-build" -> "docker-build-proxy";
     "docker-build" -> "docker-build-web";
 
     "docker-build-base" -> "_docker.sh";
+    "docker-build-base" -> "_tag.sh";
     "docker-build-base" -> "Dockerfile-base";
 
     "docker-build-cli-bin" -> "_docker.sh";
@@ -367,11 +373,22 @@ build_architecture
     "docker-build-cli-bin" -> "docker-build-go-deps";
     "docker-build-cli-bin" -> "cli/Dockerfile-bin";
 
+    "docker-build-cni-plugin" -> "_docker.sh";
+    "docker-build-cni-plugin" -> "_tag.sh";
+    "docker-build-cni-plugin" -> "docker-build-base";
+    "docker-build-cni-plugin" -> "docker-build-go-deps";
+    "docker-build-cni-plugin" -> "cni-plugin/Dockerfile";
+
     "docker-build-controller" -> "_docker.sh";
     "docker-build-controller" -> "_tag.sh";
     "docker-build-controller" -> "docker-build-base";
     "docker-build-controller" -> "docker-build-go-deps";
     "docker-build-controller" -> "controller/Dockerfile";
+
+    "docker-build-debug" -> "_docker.sh";
+    "docker-build-debug" -> "_tag.sh";
+    "docker-build-debug" -> "docker-build-base";
+    "docker-build-debug" -> "Dockerfile-debug";
 
     "docker-build-go-deps" -> "_docker.sh";
     "docker-build-go-deps" -> "_tag.sh";
@@ -383,6 +400,8 @@ build_architecture
 
     "docker-build-proxy" -> "_docker.sh";
     "docker-build-proxy" -> "_tag.sh";
+    "docker-build-proxy" -> "docker-build-base";
+    "docker-build-proxy" -> "docker-build-go-deps";
     "docker-build-proxy" -> "Dockerfile-proxy";
 
     "docker-build-web" -> "_docker.sh";
