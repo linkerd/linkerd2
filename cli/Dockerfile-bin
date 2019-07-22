@@ -16,15 +16,15 @@ RUN go generate ./cli
 
 # Cache builds without version info
 ARG GOARCH
-RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64   go build -o /out/linkerd-darwin  -tags prod -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=linux   GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64   go build -o /out/linkerd-windows -tags prod -ldflags "-s -w" ./cli
 
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
-RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64   go build -o /out/linkerd-darwin  -tags prod -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=linux   GOARCH=$GOARCH go build -o /out/linkerd-linux   -tags prod -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64   go build -o /out/linkerd-windows -tags prod -ldflags "${GO_LDFLAGS}" ./cli
 
 ## export without sources & dependencies
 FROM scratch
