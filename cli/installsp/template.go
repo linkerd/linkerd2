@@ -125,7 +125,7 @@ spec:
       method: GET
       pathRegex: /public/img/.*
 ---
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: linkerd-tap.{{.Namespace}}.svc.cluster.local
