@@ -23,7 +23,7 @@ const (
 	StatefulSet           = "statefulset"
 	TrafficSplit          = "trafficsplit"
 
-	ServiceProfileAPIVersion = "linkerd.io/v1alpha1"
+	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
 
 	// special case k8s job label, to not conflict with Prometheus' job label

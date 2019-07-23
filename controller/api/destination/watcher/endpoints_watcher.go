@@ -140,12 +140,12 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 // Subscribe to an authority.
 // The provided listener will be updated each time the address set for the
 // given authority is changed.
-func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateListener) error {
-	id, port, hostname, err := GetServiceAndPort(authority)
-	if err != nil {
-		return err
+func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) error {
+	if hostname == "" {
+		ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
+	} else {
+		ew.log.Infof("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
-	ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
 
 	sp := ew.getOrNewServicePublisher(id)
 
@@ -154,13 +154,12 @@ func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateL
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
-func (ew *EndpointsWatcher) Unsubscribe(authority string, listener EndpointUpdateListener) {
-	id, port, hostname, err := GetServiceAndPort(authority)
-	if err != nil {
-		ew.log.Errorf("Invalid service name [%s]", authority)
-		return
+func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) {
+	if hostname == "" {
+		ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
+	} else {
+		ew.log.Infof("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
-	ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
 
 	sp, ok := ew.getServicePublisher(id)
 	if !ok {

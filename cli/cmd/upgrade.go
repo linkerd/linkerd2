@@ -220,6 +220,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	configs.GetInstall().Flags = options.recordedFlags
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
+	if configs.GetGlobal().GetClusterDomain() == "" {
+		configs.GetGlobal().ClusterDomain = defaultClusterDomain
+	}
 
 	var identity *installIdentityValues
 	idctx := configs.GetGlobal().GetIdentityContext()

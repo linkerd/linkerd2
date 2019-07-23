@@ -1,4 +1,4 @@
-package v1alpha1
+package v1alpha2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +12,7 @@ import (
 // the name of the group and the version of the API
 var SchemeGroupVersion = schema.GroupVersion{
 	Group:   sp.GroupName,
-	Version: "v1alpha1",
+	Version: "v1alpha2",
 }
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind

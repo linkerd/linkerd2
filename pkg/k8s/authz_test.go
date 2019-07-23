@@ -64,7 +64,7 @@ func TestServiceProfilesAccess(t *testing.T) {
 	fakeResources := []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: linkerd.io/v1alpha1
+groupVersion: linkerd.io/v1alpha2
 resources:
 - name: serviceprofiles
   singularName: serviceprofile

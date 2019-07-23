@@ -2,6 +2,8 @@ package destination
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -24,6 +26,7 @@ type (
 		enableH2Upgrade     bool
 		controllerNS        string
 		identityTrustDomain string
+		clusterDomain       string
 
 		log      *logging.Entry
 		shutdown <-chan struct{}
@@ -48,6 +51,7 @@ func NewServer(
 	identityTrustDomain string,
 	enableH2Upgrade bool,
 	k8sAPI *k8s.API,
+	clusterDomain string,
 	shutdown <-chan struct{},
 ) *grpc.Server {
 	log := logging.WithFields(logging.Fields{
@@ -65,6 +69,7 @@ func NewServer(
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
+		clusterDomain,
 		log,
 		shutdown,
 	}
@@ -85,25 +90,27 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
-	translator, err := newEndpointTranslator(
-		s.controllerNS,
-		s.identityTrustDomain,
-		s.enableH2Upgrade,
-		dest.GetPath(),
-		stream,
-		log,
-	)
+	service, port, hostname, err := watcher.GetServiceAndPort(dest.GetPath(), s.clusterDomain)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("Invalid authority %s", dest.GetPath())
 		return err
 	}
 
-	err = s.endpoints.Subscribe(dest.GetPath(), translator)
+	translator := newEndpointTranslator(
+		s.controllerNS,
+		s.identityTrustDomain,
+		s.enableH2Upgrade,
+		service,
+		stream,
+		log,
+	)
+
+	err = s.endpoints.Subscribe(service, port, hostname, translator)
 	if err != nil {
 		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 		return err
 	}
-	defer s.endpoints.Unsubscribe(dest.GetPath(), translator)
+	defer s.endpoints.Unsubscribe(service, port, hostname, translator)
 
 	select {
 	case <-s.shutdown:
@@ -127,7 +134,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
-	service, port, _, err := watcher.GetServiceAndPort(dest.GetPath())
+	service, port, _, err := watcher.GetServiceAndPort(dest.GetPath(), s.clusterDomain)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
@@ -153,20 +160,29 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		err := s.profiles.Subscribe(dest.GetPath(), dest.GetContextToken(), primary)
+		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		}
+
+		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
 			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
 			return err
 		}
-		defer s.profiles.Unsubscribe(dest.GetPath(), dest.GetContextToken(), primary)
+		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	err = s.profiles.Subscribe(dest.GetPath(), "", secondary)
+	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	}
+	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
 		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
 		return err
 	}
-	defer s.profiles.Unsubscribe(dest.GetPath(), "", secondary)
+	defer s.profiles.Unsubscribe(profile, secondary)
 
 	select {
 	case <-s.shutdown:
@@ -180,4 +196,33 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
 	s.log.Debugf("serving endpoints request")
 	return nil, status.Error(codes.Unimplemented, "Not implemented")
+}
+
+////////////
+/// util ///
+////////////
+
+func nsFromToken(token string) string {
+	// ns:<namespace>
+	parts := strings.Split(token, ":")
+	if len(parts) == 2 && parts[0] == "ns" {
+		return parts[1]
+	}
+
+	return ""
+}
+
+func profileID(authority string, contextToken string, clusterDomain string) (watcher.ProfileID, error) {
+	service, _, _, err := watcher.GetServiceAndPort(authority, clusterDomain)
+	if err != nil {
+		return watcher.ProfileID{}, err
+	}
+	id := watcher.ProfileID{
+		Name:      fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, clusterDomain),
+		Namespace: service.Namespace,
+	}
+	if contextNs := nsFromToken(contextToken); contextNs != "" {
+		id.Namespace = contextNs
+	}
+	return id, nil
 }

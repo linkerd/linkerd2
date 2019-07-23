@@ -38,6 +38,7 @@ type (
 		stage string
 
 		Namespace                string
+		ClusterDomain            string
 		ControllerImage          string
 		WebImage                 string
 		PrometheusImage          string
@@ -603,6 +604,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 		// Controller configuration:
 		Namespace:              controlPlaneNamespace,
+		ClusterDomain:          defaultClusterDomain,
 		UUID:                   configs.GetInstall().GetUuid(),
 		ControllerReplicas:     options.controllerReplicas,
 		ControllerLogLevel:     options.controllerLogLevel,
@@ -798,6 +800,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
+		ClusterDomain:          defaultClusterDomain,
 	}
 }
 

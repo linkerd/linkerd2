@@ -28,25 +28,20 @@ func newEndpointTranslator(
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
-	authority string,
+	service watcher.ServiceID,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
-) (*endpointTranslator, error) {
+) *endpointTranslator {
 	log = log.WithFields(logging.Fields{
 		"component": "endpoint-translator",
-		"service":   authority,
+		"service":   service,
 	})
-
-	service, _, _, err := watcher.GetServiceAndPort(authority)
-	if err != nil {
-		return nil, err
-	}
 
 	labels := map[string]string{
 		"namespace": service.Namespace,
 		"service":   service.Name,
 	}
-	return &endpointTranslator{controllerNS, identityTrustDomain, enableH2Upgrade, labels, stream, log}, nil
+	return &endpointTranslator{controllerNS, identityTrustDomain, enableH2Upgrade, labels, stream, log}
 }
 
 func (et *endpointTranslator) Add(set watcher.PodSet) {
