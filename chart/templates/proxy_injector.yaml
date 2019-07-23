@@ -67,6 +67,11 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "proxy-injector" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
+
 ---
 kind: Service
 apiVersion: v1

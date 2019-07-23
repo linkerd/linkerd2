@@ -61,11 +61,10 @@ func GetServiceAndPort(authority string) (ServiceID, Port, error) {
 	if len(domains) != 5 {
 		return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
 	}
-	suffix := []string{"svc", "cluster", "local"}
-	for i, subdomain := range domains[2:] {
-		if subdomain != suffix[i] {
-			return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
-		}
+
+	// Needs to have `".svc."` to be a valid k8s svc
+	if domains[2] != "svc" {
+		return ServiceID{}, 0, fmt.Errorf("Invalid k8s service %s", host)
 	}
 	service := ServiceID{
 		Name:      domains[0],

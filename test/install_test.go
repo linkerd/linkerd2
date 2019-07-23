@@ -434,7 +434,7 @@ func TestCheckProxy(t *testing.T) {
 			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 			golden := "check.proxy.golden"
 
-			err := TestHelper.RetryFor(time.Minute*5, func() error {
+			err := TestHelper.RetryFor(time.Minute, func() error {
 				out, _, err := TestHelper.LinkerdRun(cmd...)
 				if err != nil {
 					return fmt.Errorf("Check command failed\n%s", out)

@@ -35,8 +35,12 @@ func NewFakeAPI(configs ...string) (*API, error) {
 
 type byPod []*corev1.Pod
 
-func (s byPod) Len() int { return len(s) }
+func (bp byPod) Len() int           { return len(bp) }
+func (bp byPod) Swap(i, j int)      { bp[i], bp[j] = bp[j], bp[i] }
+func (bp byPod) Less(i, j int) bool { return bp[i].Name <= bp[j].Name }
 
-func (s byPod) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+type byService []*corev1.Service
 
-func (s byPod) Less(i, j int) bool { return s[i].Name < s[j].Name }
+func (bs byService) Len() int           { return len(bs) }
+func (bs byService) Swap(i, j int)      { bs[i], bs[j] = bs[j], bs[i] }
+func (bs byService) Less(i, j int) bool { return bs[i].Name <= bs[j].Name }

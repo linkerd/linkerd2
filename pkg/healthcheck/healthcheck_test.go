@@ -1678,7 +1678,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-grafana-5b7d796646-hh46d\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})

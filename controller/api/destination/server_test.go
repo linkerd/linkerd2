@@ -72,7 +72,7 @@ metadata:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: name1.ns.svc.cluster.local
+  name: name1.ns.svc.mycluster.local
   namespace: ns
 spec:
   routes:
@@ -84,7 +84,7 @@ spec:
 apiVersion: linkerd.io/v1alpha1
 kind: ServiceProfile
 metadata:
-  name: name1.ns.svc.cluster.local
+  name: name1.ns.svc.mycluster.local
   namespace: client-ns
 spec:
   routes:
@@ -166,7 +166,7 @@ func TestGet(t *testing.T) {
 		// test.
 		stream.cancel()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.cluster.local:8989"}, stream)
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.mycluster.local:8989"}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -208,7 +208,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.cancel() // See note above on pre-emptive cancellation.
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.cluster.local:8989",
+			Path:         "name1.ns.svc.mycluster.local:8989",
 			ContextToken: "ns:other",
 		}, stream)
 		if err != nil {
@@ -247,7 +247,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.cluster.local:8989",
+			Path:         "name1.ns.svc.mycluster.local:8989",
 			ContextToken: "ns:client-ns",
 		}, stream)
 		if err != nil {

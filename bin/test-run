@@ -30,11 +30,28 @@ function check_if_k8s_reachable(){
     printf "[ok]\\n"
 }
 
+function remove_l5d_if_exists() {
+  resources=$(kubectl get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
+  if [ ! -z "$resources" ]; then
+    printf "Removing existing l5d installation..."
+    cleanup
+    printf "[ok]\\n"
+  fi
+}
+
+function cleanup() {
+    $bindir/test-cleanup $k8s_context > /dev/null 2>&1 || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\nFailed to remove existing Linkerd resources\\n"
+        exit $exit_code
+    fi
+}
+
 function run_test(){
     filename="$1"
     shift
 
-    printf "Running test [%s] %s\\n" "$(basename "$filename")" "$@"
+    printf "Test script: [%s] Params: [%s]\n" "$(basename $filename)" "$*"
     go test "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
 }
 
@@ -42,7 +59,7 @@ function run_test(){
 # $1 - namespace to use for the stable release
 function install_stable() {
     tmp=$(mktemp -d -t l5dbin.XXX)
-    trap "rm -rf $tmp" EXIT
+    trap "rm -rf $tmp" RETURN
 
     curl -s https://run.linkerd.io/install | HOME=$tmp sh > /dev/null 2>&1
 
@@ -59,15 +76,11 @@ function run_upgrade_test() {
     local stable_namespace="$1"
     local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
 
-    printf "Installing release [%s] namespace [%s]\n" "$stable_version" "$stable_namespace"
     install_stable $stable_namespace
-
-    printf "Upgrading release [%s] to [%s]\n" "$stable_version" "$linkerd_version"
-    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
+    run_test "$test_directory/install_test.go" -failfast --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
 linkerd_path=$1
-
 if [ -z "$linkerd_path" ]; then
     echo "usage: $(basename "$0") /path/to/linkerd [namespace] [k8s-context]" >&2
     exit 64
@@ -81,29 +94,34 @@ k8s_context=${3:-""}
 
 check_linkerd_binary
 check_if_k8s_reachable
+remove_l5d_if_exists
 
 printf "==================RUNNING ALL TESTS==================\\n"
-
 printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linkerd_version" "$linkerd_namespace" "$k8s_context"
 
-exit_code=0
-
+# run upgrade test:
+# 1. install latest stable
+# 2. upgrade to HEAD
+# 3. if failed, exit script to avoid leaving behind stale resources which will
+# fail subsequent tests. `cleanup` is not called if this test failed so that
+# there is a chance to debug the problem
 run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
-# if run_upgrade_test succeeded, delete the installation to prepare for subsequent
-# full integration tests.
-# TODO: Consider running the upgrade tests and normal integration tests on
-# separate clusters (in parallel? via kind?).
-if [ $exit_code -eq 0 ]; then
-    $bindir/test-cleanup $k8s_context
+if [ $exit_code -ne 0 ]; then
+  printf "\\n=== FAIL: Can't upgrade to version $linkerd_version\\n"
+  exit $exit_code
 fi
+cleanup
 
-run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace || exit_code=$?
+# run the rest of the test suite. `cleanup` is not called if this test failed
+# so that there is a chance to debug the problem
+run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace || exit_code=$?
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
 done
 
 if [ $exit_code -eq 0 ]; then
     printf "\\n=== PASS: all tests passed\\n"
+    cleanup
 else
     printf "\\n=== FAIL: at least one test failed\\n"
 fi
