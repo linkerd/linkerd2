@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
-	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
