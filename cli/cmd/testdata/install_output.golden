@@ -1445,6 +1445,9 @@ data:
     [analytics]
     check_for_updates = false
 
+    [panels]
+    disable_sanitize_html = true
+
   datasources.yaml: |-
     apiVersion: 1
     datasources:

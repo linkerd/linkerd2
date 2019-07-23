@@ -20,9 +20,9 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">job/$job<\/span>\n<\/div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">job/$job</span>\n</div>",
       "gridPos": {
-        "h": 2.4,
+        "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
@@ -30,6 +30,7 @@
       "id": 20,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -57,7 +58,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2.4
+        "y": 2
       },
       "id": 5,
       "interval": null,
@@ -76,15 +77,16 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
       "prefixFontSize": "50%",
       "rangeMaps": [
         {
-          "from": null,
+          "from": "null",
           "text": "N/A",
-          "to": null
+          "to": "null"
         }
       ],
       "sparkline": {
@@ -113,7 +115,7 @@
         {
           "op": "=",
           "text": "N/A",
-          "value": null
+          "value": "null"
         }
       ],
       "valueName": "current"
@@ -141,7 +143,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2.4
+        "y": 2
       },
       "id": 4,
       "interval": null,
@@ -160,15 +162,16 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": " RPS",
       "postfixFontSize": "100%",
       "prefix": "",
       "prefixFontSize": "50%",
       "rangeMaps": [
         {
-          "from": null,
+          "from": "null",
           "text": "N/A",
-          "to": null
+          "to": "null"
         }
       ],
       "sparkline": {
@@ -197,7 +200,7 @@
         {
           "op": "=",
           "text": "N/A",
-          "value": null
+          "value": "null"
         }
       ],
       "valueName": "current"
@@ -225,7 +228,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2.4
+        "y": 2
       },
       "id": 11,
       "interval": null,
@@ -244,15 +247,16 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
       "prefixFontSize": "100%",
       "rangeMaps": [
         {
-          "from": null,
+          "from": "null",
           "text": "N/A",
-          "to": null
+          "to": "null"
         }
       ],
       "sparkline": {
@@ -280,7 +284,7 @@
         {
           "op": "=",
           "text": "N/A",
-          "value": null
+          "value": "null"
         }
       ],
       "valueName": "current"
@@ -307,7 +311,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2.4
+        "y": 2
       },
       "id": 15,
       "interval": null,
@@ -326,15 +330,16 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
       "prefixFontSize": "50%",
       "rangeMaps": [
         {
-          "from": null,
+          "from": "null",
           "text": "N/A",
-          "to": null
+          "to": "null"
         }
       ],
       "sparkline": {
@@ -362,22 +367,23 @@
         {
           "op": "=",
           "text": "N/A",
-          "value": null
+          "value": "null"
         }
       ],
       "valueName": "current"
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC<\/span>\n<\/div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6.4
+        "y": 6
       },
       "id": 17,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -393,7 +399,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.6
+        "y": 8
       },
       "id": 67,
       "legend": {
@@ -408,7 +414,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -428,6 +435,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -478,7 +486,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.6
+        "y": 8
       },
       "id": 2,
       "legend": {
@@ -493,7 +501,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -520,6 +529,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -570,7 +580,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.6
+        "y": 8
       },
       "id": 68,
       "legend": {
@@ -585,7 +595,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -620,6 +631,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -665,7 +677,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15.6
+        "y": 15
       },
       "id": 148,
       "panels": [
@@ -680,7 +692,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 16.6
+            "y": 16
           },
           "id": 167,
           "legend": {
@@ -695,7 +707,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -715,6 +728,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -765,7 +779,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 16.6
+            "y": 16
           },
           "id": 168,
           "legend": {
@@ -780,7 +794,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -800,6 +815,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -856,15 +872,18 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 16.6
+            "y": 16
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 169,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", k8s_job=\"$job\", direction=\"inbound\"}",
@@ -907,7 +926,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16.6
+        "y": 16
       },
       "id": 152,
       "panels": [],
@@ -915,16 +934,17 @@
       "type": "row"
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND JOBS<\/span>\n<\/div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND JOBS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 17.6
+        "y": 17
       },
       "id": 76,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -935,21 +955,22 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19.8
+        "y": 19
       },
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">job/$inbound<\/span>\n<\/div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">job/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 20.8
+            "y": 22.2
           },
           "id": 39,
           "links": [],
           "mode": "html",
+          "options": {},
           "title": "",
           "transparent": true,
           "type": "text"
@@ -965,7 +986,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 36,
           "legend": {
@@ -980,7 +1001,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1001,6 +1023,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "SUCCESS RATE",
           "tooltip": {
@@ -1051,7 +1074,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 22,
           "legend": {
@@ -1066,7 +1089,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1093,6 +1117,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "REQUEST RATE",
           "tooltip": {
@@ -1143,7 +1168,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 29,
           "legend": {
@@ -1158,7 +1183,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1192,6 +1218,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "LATENCY",
           "tooltip": {
@@ -1241,7 +1268,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20.8
+        "y": 20
       },
       "id": 34,
       "panels": [],
@@ -1250,16 +1277,17 @@
       "type": "row"
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC<\/span>\n<\/div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 21.8
+        "y": 21
       },
       "id": 32,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1275,7 +1303,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 24
+        "y": 23
       },
       "id": 77,
       "legend": {
@@ -1290,7 +1318,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1310,6 +1339,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -1360,7 +1390,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 24
+        "y": 23
       },
       "id": 78,
       "legend": {
@@ -1375,7 +1405,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1402,6 +1433,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1451,7 +1483,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 24
+        "y": 23
       },
       "id": 79,
       "legend": {
@@ -1466,7 +1498,8 @@
       "lines": true,
       "linewidth": 2,
       "links": [],
-      "nullPointMode": null,
+      "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1486,6 +1519,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "P95 LATENCY",
       "tooltip": {
@@ -1530,7 +1564,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 30
       },
       "id": 154,
       "panels": [
@@ -1545,7 +1579,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 41
+            "y": 29
           },
           "id": 157,
           "legend": {
@@ -1560,7 +1594,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1580,6 +1615,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -1630,7 +1666,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 41
+            "y": 29
           },
           "id": 166,
           "legend": {
@@ -1645,7 +1681,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1665,6 +1702,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -1721,15 +1759,18 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 41
+            "y": 29
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 160,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", k8s_job=\"$job\", direction=\"outbound\"}",
@@ -1772,7 +1813,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 31
       },
       "id": 156,
       "panels": [],
@@ -1780,16 +1821,17 @@
       "type": "row"
     },
     {
-      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND JOBS<\/span>\n<\/div>",
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND JOBS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 32
       },
       "id": 80,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1800,21 +1842,22 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35.2
+        "y": 34
       },
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">job/$outbound<\/span>\n<\/div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">job/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 36.2
+            "y": 36
           },
           "id": 40,
           "links": [],
           "mode": "html",
+          "options": {},
           "title": "",
           "transparent": true,
           "type": "text"
@@ -1830,7 +1873,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 38.2
+            "y": 38
           },
           "id": 28,
           "legend": {
@@ -1845,7 +1888,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1865,6 +1909,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "SUCCESS RATE",
           "tooltip": {
@@ -1915,7 +1960,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 38.2
+            "y": 38
           },
           "id": 35,
           "legend": {
@@ -1930,7 +1975,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1957,6 +2003,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "REQUEST RATE",
           "tooltip": {
@@ -2006,7 +2053,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 38.2
+            "y": 38
           },
           "id": 41,
           "legend": {
@@ -2021,7 +2068,8 @@
           "lines": true,
           "linewidth": 2,
           "links": [],
-          "nullPointMode": null,
+          "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -2055,6 +2103,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "LATENCY",
           "tooltip": {
@@ -2099,24 +2148,25 @@
       "type": "row"
     },
     {
-      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://linkerd.io\" target=\"_blank\"><img src=\"https://linkerd.io/images/identity/svg/linkerd_primary_color_white.svg\" style=\"height: 30px;\"><\/a>\n  <\/div>\n  <div id=\"version\" style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n  <\/div>\n<\/div>\n<script type=\"text/javascript\">\nvar localReqURL =\n  window.location.href.substring(\n    0,\n    window.location.href.indexOf(\n    \"/grafana/\"\n    )\n  )+'/overview';\n\nfetch(localReqURL, {\n  credentials: 'include',\n  headers: {\n    \"Content-Type\": \"text/html; charset=utf-8\",\n  },\n})\n.then(response => response.text())\n.then(text => (new window.DOMParser()).parseFromString(text, \"text/html\"))\n.then(html => {\n  var main = html.getElementById('main');\n  var localVersion = main.getAttribute(\"data-release-version\");\n  var versionElem = document.getElementById('version');\n\n  var channel;\n  var parts = localVersion.split(\"-\", 2);\n  if (parts.length === 2) {\n    channel = parts[0];\n    versionElem.innerHTML += 'Running Linkerd ' + parts[1] + ' (' + parts[0] + ')' + '.<br>';\n  } else {\n    versionElem.innerHTML += 'Running Linkerd ' + localVersion + '.<br>';\n  }\n  var uuid = main.getAttribute(\"data-uuid\");\n\n  fetch('https://versioncheck.linkerd.io/version.json?version='+localVersion+'&uuid='+uuid+'&source=grafana', {\n    credentials: 'include',\n    headers: {\n      \"Content-Type\": \"application/json; charset=utf-8\",\n    },\n  })\n  .then(response => response.json())\n  .then(json => {\n    if (!channel || !json[channel]) {\n      versionElem.innerHTML += 'Version check failed.'\n    } else if (json[channel] === localVersion) {\n      versionElem.innerHTML += 'Linkerd is up to date.';\n    } else {\n      parts = json[channel].split(\"-\", 2);\n      if (parts.length === 2) {\n        versionElem.innerHTML += \"A new \"+parts[0]+\" version (\"+parts[1]+\") is available.\"\n      } else {\n        versionElem.innerHTML += \"A new version (\"+json[channel]+\") is available.\"\n      }\n      versionElem.innerHTML += \" <a href='https://versioncheck.linkerd.io/update' target='_blank'>Update now<\/a>.\";\n    }\n  });\n});\n<\/script>",
+      "content": "<div>\n  <div style=\"position: absolute; top: 0, left: 0\">\n    <a href=\"https://linkerd.io\" target=\"_blank\"><img src=\"https://linkerd.io/images/identity/svg/linkerd_primary_color_white.svg\" style=\"height: 30px;\"></a>\n  </div>\n  <div id=\"version\" style=\"position: absolute; top: 0; right: 0; font-size: 15px\">\n  </div>\n</div>\n<script type=\"text/javascript\">\nvar localReqURL =\n  window.location.href.substring(\n    0,\n    window.location.href.indexOf(\n    \"/grafana/\"\n    )\n  )+'/overview';\n\nfetch(localReqURL, {\n  credentials: 'include',\n  headers: {\n    \"Content-Type\": \"text/html; charset=utf-8\",\n  },\n})\n.then(response => response.text())\n.then(text => (new window.DOMParser()).parseFromString(text, \"text/html\"))\n.then(html => {\n  var main = html.getElementById('main');\n  var localVersion = main.getAttribute(\"data-release-version\");\n  var versionElem = document.getElementById('version');\n\n  var channel;\n  var parts = localVersion.split(\"-\", 2);\n  if (parts.length === 2) {\n    channel = parts[0];\n    versionElem.innerHTML += 'Running Linkerd ' + parts[1] + ' (' + parts[0] + ')' + '.<br>';\n  } else {\n    versionElem.innerHTML += 'Running Linkerd ' + localVersion + '.<br>';\n  }\n  var uuid = main.getAttribute(\"data-uuid\");\n\n  fetch('https://versioncheck.linkerd.io/version.json?version='+localVersion+'&uuid='+uuid+'&source=grafana', {\n    credentials: 'include',\n    headers: {\n      \"Content-Type\": \"application/json; charset=utf-8\",\n    },\n  })\n  .then(response => response.json())\n  .then(json => {\n    if (!channel || !json[channel]) {\n      versionElem.innerHTML += 'Version check failed.'\n    } else if (json[channel] === localVersion) {\n      versionElem.innerHTML += 'Linkerd is up to date.';\n    } else {\n      parts = json[channel].split(\"-\", 2);\n      if (parts.length === 2) {\n        versionElem.innerHTML += \"A new \"+parts[0]+\" version (\"+parts[1]+\") is available.\"\n      } else {\n        versionElem.innerHTML += \"A new version (\"+json[channel]+\") is available.\"\n      }\n      versionElem.innerHTML += \" <a href='https://versioncheck.linkerd.io/update' target='_blank'>Update now</a>.\";\n    }\n  });\n});\n</script>",
       "gridPos": {
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 36.2
+        "y": 35
       },
       "height": "1px",
       "id": 171,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -2127,6 +2177,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
@@ -2136,6 +2187,7 @@
         "query": "label_values(process_start_time_seconds{k8s_job!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2147,6 +2199,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Job",
@@ -2156,6 +2209,7 @@
         "query": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, k8s_job)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2167,6 +2221,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": null,
@@ -2176,6 +2231,7 @@
         "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_k8s_job=\"$job\"}, k8s_job)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2187,6 +2243,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": null,
@@ -2196,6 +2253,7 @@
         "query": "label_values(request_total{namespace=\"$namespace\", k8s_job=\"$job\"}, dst_k8s_job)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
