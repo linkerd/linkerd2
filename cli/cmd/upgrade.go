@@ -56,6 +56,7 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 
 // newCmdUpgradeConfig is a subcommand for `linkerd upgrade config`
 func newCmdUpgradeConfig(options *upgradeOptions) *cobra.Command {
+	flags := options.recordableFlagSet()
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
 		Args:  cobra.NoArgs,
@@ -66,7 +67,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, configStage, nil)
+			return upgradeRunE(options, configStage, flags)
 		},
 	}
 

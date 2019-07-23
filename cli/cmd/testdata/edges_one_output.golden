@@ -1,4 +1,5 @@
-SRC                         DST                       CLIENT              SERVER             MSG
-vote-bot-7466ffc7f7-5rc4l   web-57b7f9db85-297dw      default.emojivoto   web.emojivoto      -  
-web-57b7f9db85-297dw        emoji-646ddcc5f9-zjgs9    web.emojivoto       emoji.emojivoto    -  
-web-57b7f9db85-297dw        voting-689f845d98-rj6nz   web.emojivoto       voting.emojivoto   -  
+SRC                  DST                  SRC_NS      DST_NS      SECURED
+vote-bot             web                  emojivoto   emojivoto   √      
+web                  emoji                emojivoto   emojivoto   √      
+web                  voting               emojivoto   emojivoto   √      
+linkerd-controller   linkerd-prometheus   linkerd     linkerd     √      

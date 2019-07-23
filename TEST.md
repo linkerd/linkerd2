@@ -150,7 +150,7 @@ specialtest-get-test      Active    1m
 To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup specialtest
+$ bin/test-cleanup
 ```
 
 ### Testing against a locally-built version of the CLI
@@ -322,7 +322,7 @@ bin/test-scale `pwd`/bin/linkerd
 ## Cleanup
 
 ```bash
-bin/test-cleanup l5d-scale
+bin/test-cleanup
 ```
 
 # Test against multiple cloud providers

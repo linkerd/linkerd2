@@ -81,4 +81,8 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "sp-validator" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}

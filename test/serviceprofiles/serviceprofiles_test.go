@@ -33,6 +33,10 @@ func TestMain(m *testing.M) {
 func TestServiceProfiles(t *testing.T) {
 
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
+	err := TestHelper.CreateNamespaceIfNotExists(testNamespace, nil)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", testNamespace, err)
+	}
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)

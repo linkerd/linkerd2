@@ -1,3 +1,23 @@
+## edge-19.7.4
+
+* CLI
+  * Made the `linkerd routes` command traffic-split aware
+  * Fixed bug the `linkerd upgrade config` command that was causing it to crash
+  * Added pod status to the output of the `linkerd stat`command (thanks
+    @jonathanbeber!)
+  * Fixed incorrect "meshed" count in `linkerd stat` when resources share the
+    same label selector for pods (thanks @jonathanbeber!)
+  * Added namespace information to the `linkerd edges` command output and a new
+    `-o wide` flag that shows the identity of the client and server if known
+  * Added a new check to the `linkerd check --pre` command validating that if
+    PSP is enabled, the NET_RAW capability is available
+* Controller
+  * Added pod anti-affinity rules to the control plane pods when HA is enabled
+    (thanks @Pothulapati!)
+* Proxy
+  * Improved performance by using a constant-time load balancer
+  * Added a new `/proxy-log-level` endpoint to update the log level at runtime
+
 ## stable-2.4.0
 
 This release adds traffic splitting functionality, support for the Kubernetes
