@@ -20,9 +20,9 @@
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">sts/$statefulset</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">ss/$statefulset</span>\n</div>",
       "gridPos": {
-        "h": 2.4,
+        "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
@@ -30,6 +30,7 @@
       "id": 20,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -57,7 +58,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2.4
+        "y": 2
       },
       "id": 5,
       "interval": null,
@@ -76,6 +77,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -141,7 +143,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2.4
+        "y": 2
       },
       "id": 4,
       "interval": null,
@@ -160,6 +162,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": " RPS",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -225,7 +228,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2.4
+        "y": 2
       },
       "id": 11,
       "interval": null,
@@ -244,6 +247,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -307,7 +311,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2.4
+        "y": 2
       },
       "id": 15,
       "interval": null,
@@ -326,6 +330,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -370,14 +375,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6.4
+        "y": 6
       },
       "id": 17,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -393,7 +399,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 67,
       "legend": {
@@ -409,6 +415,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -422,12 +429,13 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "sts/{{statefulset}}",
+          "legendFormat": "ss/{{statefulset}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -478,7 +486,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 2,
       "legend": {
@@ -494,6 +502,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -507,19 +516,20 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls=\"true\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒sts/{{statefulset}}",
+          "legendFormat": "🔒ss/{{statefulset}}",
           "refId": "A"
         },
         {
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls!=\"true\"}[30s])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "sts/{{statefulset}}",
+          "legendFormat": "ss/{{statefulset}}",
           "refId": "B"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -570,7 +580,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 68,
       "legend": {
@@ -586,6 +596,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -599,7 +610,7 @@
           "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50 sts/{{statefulset}}",
+          "legendFormat": "p50 ss/{{statefulset}}",
           "refId": "A"
         },
         {
@@ -607,19 +618,20 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "p95 sts/{{statefulset}}",
+          "legendFormat": "p95 ss/{{statefulset}}",
           "refId": "B"
         },
         {
           "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p99 sts/{{statefulset}}",
+          "legendFormat": "p99 ss/{{statefulset}}",
           "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -665,7 +677,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15.600000000000001
+        "y": 15
       },
       "id": 148,
       "panels": [
@@ -680,7 +692,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 16.6
+            "y": 16
           },
           "id": 167,
           "legend": {
@@ -696,6 +708,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -715,6 +728,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -765,7 +779,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 16.6
+            "y": 16
           },
           "id": 168,
           "legend": {
@@ -781,6 +795,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -800,6 +815,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -856,15 +872,18 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 16.6
+            "y": 16
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 169,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}",
@@ -907,7 +926,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16.6
+        "y": 16
       },
       "id": 152,
       "panels": [],
@@ -917,14 +936,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND STATEFULSETS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 17.6
+        "y": 17
       },
       "id": 76,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -935,21 +955,22 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19.8
+        "y": 19
       },
       "id": 59,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">sts/$inbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">ss/$inbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 20.8
+            "y": 22.2
           },
           "id": 39,
           "links": [],
           "mode": "html",
+          "options": {},
           "title": "",
           "transparent": true,
           "type": "text"
@@ -965,7 +986,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 36,
           "legend": {
@@ -981,6 +1002,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1001,6 +1023,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "SUCCESS RATE",
           "tooltip": {
@@ -1051,7 +1074,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 22,
           "legend": {
@@ -1067,6 +1090,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1093,6 +1117,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "REQUEST RATE",
           "tooltip": {
@@ -1143,7 +1168,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 22.8
+            "y": 24.2
           },
           "id": 29,
           "legend": {
@@ -1159,6 +1184,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1172,26 +1198,27 @@
               "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 sts/{{statefulset}}",
+              "legendFormat": "P50 ss/{{statefulset}}",
               "refId": "A"
             },
             {
               "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 sts/{{statefulset}}",
+              "legendFormat": "P95 ss/{{statefulset}}",
               "refId": "B"
             },
             {
               "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 sts/{{statefulset}}",
+              "legendFormat": "P99 ss/{{statefulset}}",
               "refId": "C"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "LATENCY",
           "tooltip": {
@@ -1232,7 +1259,7 @@
         }
       ],
       "repeat": "inbound",
-      "title": "sts/$inbound",
+      "title": "ss/$inbound",
       "type": "row"
     },
     {
@@ -1241,7 +1268,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20.8
+        "y": 20
       },
       "id": 34,
       "panels": [],
@@ -1252,14 +1279,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 21.8
+        "y": 21
       },
       "id": 32,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1275,7 +1303,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 24
+        "y": 23
       },
       "id": 77,
       "legend": {
@@ -1291,6 +1319,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1304,12 +1333,13 @@
           "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "sts/{{dst_statefulset}}",
+          "legendFormat": "ss/{{dst_statefulset}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -1360,7 +1390,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 24
+        "y": 23
       },
       "id": 78,
       "legend": {
@@ -1376,6 +1406,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1389,19 +1420,20 @@
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "🔒sts/{{dst_statefulset}}",
+          "legendFormat": "🔒ss/{{dst_statefulset}}",
           "refId": "A"
         },
         {
           "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "sts/{{dst_statefulset}}",
+          "legendFormat": "ss/{{dst_statefulset}}",
           "refId": "B"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1451,7 +1483,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 24
+        "y": 23
       },
       "id": 79,
       "legend": {
@@ -1467,6 +1499,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1480,12 +1513,13 @@
           "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "P95 sts/{{dst_statefulset}}",
+          "legendFormat": "P95 ss/{{dst_statefulset}}",
           "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "P95 LATENCY",
       "tooltip": {
@@ -1530,7 +1564,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 30
       },
       "id": 154,
       "panels": [
@@ -1545,7 +1579,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 41
+            "y": 29
           },
           "id": 157,
           "legend": {
@@ -1561,6 +1595,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1580,6 +1615,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -1630,7 +1666,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 41
+            "y": 29
           },
           "id": 166,
           "legend": {
@@ -1646,6 +1682,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1665,6 +1702,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -1721,15 +1759,18 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 41
+            "y": 29
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 160,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}",
@@ -1772,7 +1813,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 31
       },
       "id": 156,
       "panels": [],
@@ -1782,14 +1823,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND STATEFULSETS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 32
       },
       "id": 80,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1800,21 +1842,22 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35.2
+        "y": 34
       },
       "id": 27,
       "panels": [
         {
-          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">sts/$outbound</span>\n</div>",
+          "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:30px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">ss/$outbound</span>\n</div>",
           "gridPos": {
             "h": 2,
             "w": 24,
             "x": 0,
-            "y": 36.2
+            "y": 36
           },
           "id": 40,
           "links": [],
           "mode": "html",
+          "options": {},
           "title": "",
           "transparent": true,
           "type": "text"
@@ -1830,7 +1873,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 38.2
+            "y": 38
           },
           "id": 28,
           "legend": {
@@ -1846,6 +1889,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1859,12 +1903,13 @@
               "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "sts/{{dst_statefulset}}",
+              "legendFormat": "ss/{{dst_statefulset}}",
               "refId": "A"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "SUCCESS RATE",
           "tooltip": {
@@ -1915,7 +1960,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 38.2
+            "y": 38
           },
           "id": 35,
           "legend": {
@@ -1931,6 +1976,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1944,19 +1990,20 @@
               "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "🔒sts/{{dst_statefulset}}",
+              "legendFormat": "🔒ss/{{dst_statefulset}}",
               "refId": "A"
             },
             {
               "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "sts/{{dst_statefulset}}",
+              "legendFormat": "ss/{{dst_statefulset}}",
               "refId": "B"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "REQUEST RATE",
           "tooltip": {
@@ -2006,7 +2053,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 38.2
+            "y": 38
           },
           "id": 41,
           "legend": {
@@ -2022,6 +2069,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -2035,26 +2083,27 @@
               "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P50 sts/{{dst_statefulset}}",
+              "legendFormat": "P50 ss/{{dst_statefulset}}",
               "refId": "A"
             },
             {
               "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P95 sts/{{dst_statefulset}}",
+              "legendFormat": "P95 ss/{{dst_statefulset}}",
               "refId": "B"
             },
             {
               "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
-              "legendFormat": "P99 sts/{{dst_statefulset}}",
+              "legendFormat": "P99 ss/{{dst_statefulset}}",
               "refId": "C"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "LATENCY",
           "tooltip": {
@@ -2095,7 +2144,7 @@
         }
       ],
       "repeat": "outbound",
-      "title": "sts/$outbound",
+      "title": "ss/$outbound",
       "type": "row"
     },
     {
@@ -2104,19 +2153,20 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 36.2
+        "y": 35
       },
       "height": "1px",
       "id": 171,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -2127,6 +2177,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
@@ -2136,6 +2187,7 @@
         "query": "label_values(process_start_time_seconds{statefulset!=\"\"}, namespace)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2147,6 +2199,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "StatefulSet",
@@ -2156,6 +2209,7 @@
         "query": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, statefulset)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2167,6 +2221,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": null,
@@ -2176,6 +2231,7 @@
         "query": "label_values(request_total{dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\"}, statefulset)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2187,6 +2243,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": null,
@@ -2196,6 +2253,7 @@
         "query": "label_values(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\"}, dst_statefulset)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
