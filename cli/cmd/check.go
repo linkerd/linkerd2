@@ -212,7 +212,7 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 		spin.Stop()
 		if result.Retry {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
+				spin.Suffix = fmt.Sprintf(" %s", result.Err)
 				spin.Color("bold") // this calls spin.Restart()
 			}
 			return

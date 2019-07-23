@@ -133,7 +133,7 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(namespace string) ([]appsv1.Replica
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
 // https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640
-func GetPodStatus(pod *corev1.Pod) string {
+func GetPodStatus(pod corev1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason

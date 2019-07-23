@@ -101,6 +101,10 @@ spec:
           name: linkerd-config
       - name: identity-issuer
         secret:
-          secretName: linkerd-identity-issuer
+          secretName: linkerd-identity-issuer 
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "identity" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}
 {{end -}}

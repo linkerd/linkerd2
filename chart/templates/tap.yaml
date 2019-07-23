@@ -71,4 +71,8 @@ spec:
         {{ end -}}
         securityContext:
           runAsUser: {{.ControllerUID}}
+      {{- if .HighAvailability }}
+      {{- $local := dict "Label" .ControllerComponentLabel "Component" "tap" }}
+      {{- include "pod-affinity" $local | nindent 6 }}
+      {{- end }}
 {{end -}}

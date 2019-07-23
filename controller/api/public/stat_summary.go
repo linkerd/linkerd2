@@ -431,7 +431,7 @@ func (s *grpcServer) getPodStats(obj runtime.Object) (*podStats, error) {
 	meshCount := &podStats{}
 
 	if pod, ok := obj.(*corev1.Pod); ok {
-		meshCount.status = k8s.GetPodStatus(pod)
+		meshCount.status = k8s.GetPodStatus(*pod)
 	}
 
 	for _, pod := range pods {
