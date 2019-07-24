@@ -22,7 +22,7 @@
     {
       "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">po/$pod</span>\n</div>",
       "gridPos": {
-        "h": 2.4,
+        "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
@@ -30,6 +30,7 @@
       "id": 20,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -57,7 +58,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2.4
+        "y": 2
       },
       "id": 5,
       "interval": null,
@@ -76,6 +77,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -141,7 +143,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2.4
+        "y": 2
       },
       "id": 4,
       "interval": null,
@@ -160,6 +162,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": " RPS",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -225,7 +228,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 2.4
+        "y": 2
       },
       "id": 11,
       "interval": null,
@@ -244,6 +247,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -308,7 +312,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 2.4
+        "y": 2
       },
       "id": 15,
       "interval": null,
@@ -327,6 +331,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -371,14 +376,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6.4
+        "y": 6
       },
       "id": 17,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -394,7 +400,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 67,
       "legend": {
@@ -410,6 +416,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -429,6 +436,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -479,7 +487,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 2,
       "legend": {
@@ -495,6 +503,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -521,6 +530,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -571,7 +581,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 68,
       "legend": {
@@ -587,6 +597,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -621,6 +632,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -666,7 +678,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 15.600000000000001
+        "y": 15
       },
       "id": 201,
       "panels": [
@@ -681,7 +693,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 16.6
+            "y": 16
           },
           "id": 173,
           "legend": {
@@ -697,6 +709,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -716,6 +729,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS FAILURES",
           "tooltip": {
@@ -765,7 +779,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 16.6
+            "y": 16
           },
           "id": 175,
           "legend": {
@@ -781,6 +795,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -800,6 +815,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -856,15 +872,18 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 16.6
+            "y": 16
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 177,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", pod=\"$pod\" ,deployment=\"$deployment\", direction=\"inbound\"}",
@@ -907,7 +926,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16.6
+        "y": 16
       },
       "id": 199,
       "panels": [],
@@ -917,14 +936,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND PODS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 17.6
+        "y": 17
       },
       "id": 80,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -940,7 +960,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 19.8
+        "y": 19
       },
       "id": 81,
       "legend": {
@@ -956,6 +976,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -976,6 +997,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -1026,7 +1048,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 19.8
+        "y": 19
       },
       "id": 82,
       "legend": {
@@ -1042,6 +1064,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1068,6 +1091,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1118,7 +1142,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 19.8
+        "y": 19
       },
       "id": 83,
       "legend": {
@@ -1134,6 +1158,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1168,6 +1193,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -1210,14 +1236,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 26.8
+        "y": 26
       },
       "id": 88,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1233,7 +1260,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 29
+        "y": 28
       },
       "id": 89,
       "legend": {
@@ -1249,6 +1276,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1269,6 +1297,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -1319,7 +1348,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 29
+        "y": 28
       },
       "id": 90,
       "legend": {
@@ -1335,6 +1364,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1361,6 +1391,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1411,7 +1442,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 29
+        "y": 28
       },
       "id": 91,
       "legend": {
@@ -1427,6 +1458,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1461,6 +1493,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -1506,7 +1539,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 35
       },
       "id": 197,
       "panels": [
@@ -1521,7 +1554,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 37
+            "y": 36
           },
           "id": 191,
           "legend": {
@@ -1537,6 +1570,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1556,6 +1590,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -1605,7 +1640,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 37
+            "y": 36
           },
           "id": 183,
           "legend": {
@@ -1621,6 +1656,7 @@
           "linewidth": 2,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
@@ -1640,6 +1676,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTIONS OPEN",
           "tooltip": {
@@ -1696,15 +1733,18 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 37
+            "y": 36
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 189,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", deployment=\"$deployment\", direction=\"outbound\"}",
@@ -1747,7 +1787,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 36
       },
       "id": 187,
       "panels": [],
@@ -1757,14 +1797,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>OUTBOUND PODS</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 37
       },
       "id": 84,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1780,7 +1821,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 40.2
+        "y": 39
       },
       "id": 85,
       "legend": {
@@ -1796,6 +1837,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1816,6 +1858,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -1866,7 +1909,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 40.2
+        "y": 39
       },
       "id": 86,
       "legend": {
@@ -1882,6 +1925,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1908,6 +1952,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1958,7 +2003,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 40.2
+        "y": 39
       },
       "id": 87,
       "legend": {
@@ -1974,6 +2019,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -2008,6 +2054,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -2053,19 +2100,20 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 47.2
+        "y": 46
       },
       "height": "1px",
       "id": 171,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -2076,6 +2124,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
@@ -2097,6 +2146,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Pod",
@@ -2138,7 +2188,10 @@
       },
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "prometheus",
         "definition": "label_values(request_total{dst_namespace=\"$namespace\", dst_deployment=\"$deployment\"}, deployment)",
         "hide": 2,
@@ -2160,7 +2213,10 @@
       },
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "prometheus",
         "definition": "label_values(request_total{namespace=\"$namespace\", deployment=\"$deployment\"}, dst_deployment)",
         "hide": 2,

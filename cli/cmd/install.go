@@ -62,11 +62,13 @@ type (
 		NoInitContainer          bool
 		WebhookFailurePolicy     string
 		OmitWebhookSideEffects   bool
+		HeartbeatSchedule        string
 
 		Configs configJSONs
 
 		DestinationResources,
 		GrafanaResources,
+		HeartbeatResources,
 		IdentityResources,
 		PrometheusResources,
 		ProxyInjectorResources,
@@ -140,6 +142,7 @@ type (
 		// function pointers that can be overridden for tests
 		generateUUID       func() string
 		generateWebhookTLS func(webhook string) (*tlsValues, error)
+		heartbeatSchedule  func() string
 	}
 
 	installIdentityOptions struct {
@@ -157,7 +160,7 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	prometheusImage                   = "prom/prometheus:v2.10.0"
+	prometheusImage                   = "prom/prometheus:v2.11.1"
 	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
 	defaultHAControllerReplicas       = 3
@@ -238,6 +241,11 @@ func newInstallOptionsWithDefaults() *installOptions {
 				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 			}, nil
+		},
+
+		heartbeatSchedule: func() string {
+			t := time.Now().Add(5 * time.Minute).UTC()
+			return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
 		},
 	}
 }
@@ -615,6 +623,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		WebhookFailurePolicy:   "Ignore",
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
 		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		HeartbeatSchedule:      options.heartbeatSchedule(),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
@@ -624,6 +633,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 		DestinationResources:   &resources{},
 		GrafanaResources:       &resources{},
+		HeartbeatResources:     &resources{},
 		IdentityResources:      &resources{},
 		PrometheusResources:    &resources{},
 		ProxyInjectorResources: &resources{},
@@ -643,6 +653,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// Copy constraints to each so that further modification isn't global.
 		*values.DestinationResources = *defaultConstraints
 		*values.GrafanaResources = *defaultConstraints
+		*values.HeartbeatResources = *defaultConstraints
 		*values.ProxyInjectorResources = *defaultConstraints
 		*values.PublicAPIResources = *defaultConstraints
 		*values.SPValidatorResources = *defaultConstraints
@@ -690,6 +701,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/namespace.yaml"},
 			{Name: "templates/identity-rbac.yaml"},
 			{Name: "templates/controller-rbac.yaml"},
+			{Name: "templates/heartbeat-rbac.yaml"},
 			{Name: "templates/web-rbac.yaml"},
 			{Name: "templates/serviceprofile-crd.yaml"},
 			{Name: "templates/trafficsplit-crd.yaml"},
@@ -709,6 +721,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/config.yaml"},
 			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},
+			{Name: "templates/heartbeat.yaml"},
 			{Name: "templates/web.yaml"},
 			{Name: "templates/prometheus.yaml"},
 			{Name: "templates/grafana.yaml"},
@@ -911,7 +924,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 		return err
 	}
 
-	_, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	_, _, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil

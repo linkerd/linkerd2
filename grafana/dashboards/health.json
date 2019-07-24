@@ -22,7 +22,7 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Data-Plane Telemetry</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
@@ -30,6 +30,7 @@
       "id": 400,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -45,7 +46,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 2.2
+        "y": 2
       },
       "id": 397,
       "legend": {
@@ -61,6 +62,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -87,6 +89,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "MEMORY USAGE",
       "tooltip": {
@@ -136,7 +139,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 2.2
+        "y": 2
       },
       "id": 399,
       "legend": {
@@ -152,6 +155,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -171,6 +175,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "CPU USAGE",
       "tooltip": {
@@ -220,7 +225,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 2.2
+        "y": 2
       },
       "id": 398,
       "legend": {
@@ -236,6 +241,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -255,6 +261,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "OPEN FILE DESCRIPTORS",
       "tooltip": {
@@ -296,43 +303,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Traffic</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 9.2
+        "y": 9
       },
       "id": 401,
       "links": [],
       "mode": "html",
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 11.399999999999999
-      },
-      "id": 19,
-      "panels": [],
-      "repeat": "deployment",
-      "title": "",
-      "type": "row"
-    },
-    {
-      "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
-      "gridPos": {
-        "h": 2.2,
-        "w": 24,
-        "x": 0,
-        "y": 12.399999999999999
-      },
-      "id": 21,
-      "links": [],
-      "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -348,7 +327,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 14.599999999999998
+        "y": 11
       },
       "id": 23,
       "legend": {
@@ -364,17 +343,23 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "deployment": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod) / sum(irate(response_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod) / sum(irate(response_total{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -383,6 +368,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -432,7 +418,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 14.599999999999998
+        "y": 11
       },
       "id": 24,
       "legend": {
@@ -448,17 +434,23 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "deployment": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (deployment, pod)",
+          "expr": "sum(irate(request_total{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -467,6 +459,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -511,12 +504,13 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "prometheus",
+      "description": "",
       "fill": 1,
       "gridPos": {
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 14.599999999999998
+        "y": 11
       },
       "id": 25,
       "legend": {
@@ -532,41 +526,34 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "deployment": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "p50 po/{{pod}}",
+          "legendFormat": "po/{{pod}}",
           "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p95 po/{{pod}}",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment, pod))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "p99 po/{{pod}}",
-          "refId": "C"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
-      "title": "LATENCY",
+      "title": "P95 LATENCY",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -604,29 +591,17 @@
       }
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 21.599999999999998
-      },
-      "id": 339,
-      "panels": [],
-      "title": "",
-      "type": "row"
-    },
-    {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane TCP Metrics</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 22.599999999999998
+        "y": 18
       },
-      "id": 340,
+      "id": 731,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -637,22 +612,28 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24.799999999999997
+        "y": 20
       },
       "id": 179,
       "panels": [
         {
           "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">deploy/$deployment</span>\n</div>",
           "gridPos": {
-            "h": 2.2,
+            "h": 2,
             "w": 24,
             "x": 0,
-            "y": 21.799999999999997
+            "y": 21
           },
           "id": 282,
           "links": [],
           "mode": "html",
+          "options": {},
           "repeatedByRow": true,
+          "scopedVars": {
+            "deployment": {
+              "selected": false
+            }
+          },
           "title": "",
           "transparent": true,
           "type": "text"
@@ -668,7 +649,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 23.999999999999996
+            "y": 23
           },
           "id": 227,
           "legend": {
@@ -684,10 +665,16 @@
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
+          "scopedVars": {
+            "deployment": {
+              "selected": false
+            }
+          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -703,6 +690,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "TCP CONNECTION FAILURES",
           "tooltip": {
@@ -752,7 +740,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 23.999999999999996
+            "y": 23
           },
           "id": 132,
           "legend": {
@@ -768,10 +756,16 @@
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {},
           "percentage": false,
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
+          "scopedVars": {
+            "deployment": {
+              "selected": false
+            }
+          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -787,6 +781,7 @@
           ],
           "thresholds": [],
           "timeFrom": null,
+          "timeRegions": [],
           "timeShift": null,
           "title": "OPEN TCP CONNECTIONS",
           "tooltip": {
@@ -843,15 +838,23 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 23.999999999999996
+            "y": 23
           },
           "heatmap": {},
+          "hideZeroBuckets": false,
           "highlightCards": true,
           "id": 229,
           "legend": {
             "show": false
           },
           "links": [],
+          "options": {},
+          "reverseYBuckets": false,
+          "scopedVars": {
+            "deployment": {
+              "selected": false
+            }
+          },
           "targets": [
             {
               "expr": "tcp_connection_duration_ms_bucket{deployment=\"$deployment\", namespace=\"$namespace\", direction=\"inbound\"}",
@@ -886,33 +889,26 @@
         }
       ],
       "repeat": "deployment",
-      "title": "$deployment",
-      "type": "row"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 25.799999999999997
+      "scopedVars": {
+        "deployment": {
+          "selected": false
+        }
       },
-      "id": 90,
-      "panels": [],
-      "title": "",
+      "title": "$deployment",
       "type": "row"
     },
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Telemetry</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 26.799999999999997
+        "y": 28
       },
       "id": 27,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -928,7 +924,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 28.999999999999996
+        "y": 30
       },
       "id": 2,
       "legend": {
@@ -944,6 +940,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -963,6 +960,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "goroutines",
       "tooltip": {
@@ -1012,7 +1010,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 28.999999999999996
+        "y": 30
       },
       "id": 5,
       "legend": {
@@ -1028,6 +1026,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1054,6 +1053,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Process Memory",
       "tooltip": {
@@ -1103,7 +1103,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 28.999999999999996
+        "y": 30
       },
       "id": 7,
       "legend": {
@@ -1119,6 +1119,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1138,6 +1139,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Open FDs",
       "tooltip": {
@@ -1187,7 +1189,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 36
+        "y": 37
       },
       "id": 9,
       "legend": {
@@ -1203,6 +1205,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1222,6 +1225,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Threads",
       "tooltip": {
@@ -1263,30 +1267,18 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>Control-Plane Clients/Servers</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 44
       },
       "id": 625,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 44.2
-      },
-      "id": 90,
-      "panels": [],
-      "title": "",
-      "type": "row"
     },
     {
       "aliasColors": {},
@@ -1299,7 +1291,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 45.2
+        "y": 46
       },
       "id": 622,
       "legend": {
@@ -1315,6 +1307,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1334,6 +1327,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Server Request Rate",
       "tooltip": {
@@ -1383,7 +1377,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 45.2
+        "y": 46
       },
       "id": 12,
       "legend": {
@@ -1399,6 +1393,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1432,6 +1427,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "HTTP Server Latency",
       "tooltip": {
@@ -1481,7 +1477,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 45.2
+        "y": 46
       },
       "id": 624,
       "legend": {
@@ -1497,6 +1493,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1530,6 +1527,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "HTTP Server Response Size",
       "tooltip": {
@@ -1579,7 +1577,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 52.2
+        "y": 53
       },
       "id": 623,
       "legend": {
@@ -1595,6 +1593,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1614,6 +1613,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Client Request Rate",
       "tooltip": {
@@ -1663,7 +1663,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 52.2
+        "y": 53
       },
       "id": 570,
       "legend": {
@@ -1679,6 +1679,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1712,6 +1713,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "HTTP Client Latency",
       "tooltip": {
@@ -1761,7 +1763,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 52.2
+        "y": 53
       },
       "id": 621,
       "legend": {
@@ -1777,6 +1779,7 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1796,6 +1799,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Client In-Flight Requests",
       "tooltip": {
@@ -1840,25 +1844,36 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59.2
+        "y": 60
       },
       "id": 458,
       "panels": [],
       "repeat": "component",
+      "scopedVars": {
+        "component": {
+          "selected": false
+        }
+      },
       "title": "",
       "type": "row"
     },
     {
       "content": "<div>\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"baseline; height:40px;\"/>&nbsp;\n  <span style=\"font-size: 15px; border-image:none\">$component</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 60.2
+        "y": 61
       },
       "id": 30,
       "links": [],
       "mode": "html",
+      "options": {},
+      "scopedVars": {
+        "component": {
+          "selected": false
+        }
+      },
       "title": "",
       "transparent": true,
       "type": "text"
@@ -1874,7 +1889,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 62.400000000000006
+        "y": 63
       },
       "id": 6,
       "legend": {
@@ -1890,10 +1905,16 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "component": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
@@ -1930,6 +1951,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "Go Memstats",
       "tooltip": {
@@ -1979,7 +2001,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 62.400000000000006
+        "y": 63
       },
       "id": 8,
       "legend": {
@@ -1995,10 +2017,16 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "component": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
@@ -2028,6 +2056,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "GC Duration",
       "tooltip": {
@@ -2077,7 +2106,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 62.400000000000006
+        "y": 63
       },
       "id": 14,
       "legend": {
@@ -2093,10 +2122,16 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
+      "scopedVars": {
+        "component": {
+          "selected": false
+        }
+      },
       "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
@@ -2119,6 +2154,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "gRPC Message Volume",
       "tooltip": {
@@ -2163,7 +2199,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 69.4
+        "y": 141.4
       },
       "id": 515,
       "panels": [],
@@ -2176,19 +2212,20 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 70.4
+        "y": 142.4
       },
       "height": "1px",
       "id": 519,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -2197,8 +2234,12 @@
     "list": [
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": "Deployment",
@@ -2208,6 +2249,7 @@
         "query": "label_values(process_start_time_seconds{control_plane_component!=\"\"}, deployment)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2217,8 +2259,12 @@
       },
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": "prometheus",
+        "definition": "",
         "hide": 2,
         "includeAll": true,
         "label": "Component",
@@ -2228,6 +2274,7 @@
         "query": "label_values(component)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -2239,6 +2286,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Linkerd Namespace",
@@ -2248,6 +2296,7 @@
         "query": "label_values(process_start_time_seconds{control_plane_ns!=\"\"},  control_plane_ns)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
         "tags": [],

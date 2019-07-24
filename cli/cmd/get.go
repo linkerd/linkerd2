@@ -74,7 +74,7 @@ Only pod resources (aka pods, po) are supported.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of pods")
-	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns pods across all namespaces, ignoring the \"--namespace\" flag")
+	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns pods across all namespaces, ignoring the \"--namespace\" flag")
 	return cmd
 }
 
