@@ -107,6 +107,48 @@ metadata:
     ControllerNamespaceLabel: Namespace
 ---
 ###
+### Heartbeat RBAC
+###
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-heartbeat
+  namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-heartbeat
+  namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
+roleRef:
+  kind: Role
+  name: linkerd-heartbeat
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: Namespace
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: heartbeat
+    ControllerNamespaceLabel: Namespace
+---
+###
 ### Web RBAC
 ###
 ---
@@ -522,6 +564,9 @@ subjects:
   namespace: Namespace
 - kind: ServiceAccount
   name: linkerd-grafana
+  namespace: Namespace
+- kind: ServiceAccount
+  name: linkerd-heartbeat
   namespace: Namespace
 - kind: ServiceAccount
   name: linkerd-identity
@@ -969,6 +1014,46 @@ spec:
           name: linkerd-config
         name: config
 status: {}
+---
+###
+### Heartbeat
+###
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: linkerd-heartbeat
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: heartbeat
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  schedule: ""
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            ControllerComponentLabel: heartbeat
+          annotations:
+            CreatedByAnnotation: CliVersion
+        spec:
+          serviceAccountName: linkerd-heartbeat
+          restartPolicy: OnFailure
+          containers:
+          - name: heartbeat
+            image: ControllerImage
+            imagePullPolicy: ImagePullPolicy
+            args:
+            - "heartbeat"
+            - "-prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090"
+            - "-controller-namespace=Namespace"
+            - "-log-level=ControllerLogLevel"
+            resources:
+            securityContext:
+              runAsUser: 2103
 ---
 ###
 ### Web
