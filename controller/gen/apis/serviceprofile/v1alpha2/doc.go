@@ -1,4 +1,4 @@
 // +k8s:deepcopy-gen=package
 // +groupName=linkerd.io
 
-package v1alpha1
+package v1alpha2

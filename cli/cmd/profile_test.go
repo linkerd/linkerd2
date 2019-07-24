@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"sigs.k8s.io/yaml"
 )
@@ -19,7 +19,7 @@ func TestParseProfile(t *testing.T) {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}
 
-	var serviceProfile v1alpha1.ServiceProfile
+	var serviceProfile v1alpha2.ServiceProfile
 	err = yaml.Unmarshal(buf.Bytes(), &serviceProfile)
 	if err != nil {
 		t.Fatalf("Error parsing service profile: %v", err)

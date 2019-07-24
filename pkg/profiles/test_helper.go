@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
 // GenServiceProfile generates a mock ServiceProfile.
-func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
-	return v1alpha1.ServiceProfile{
+func GenServiceProfile(service, namespace string) v1alpha2.ServiceProfile {
+	return v1alpha2.ServiceProfile{
 		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      service + "." + namespace + ".svc.cluster.local",
 			Namespace: namespace,
 		},
-		Spec: v1alpha1.ServiceProfileSpec{
-			Routes: []*v1alpha1.RouteSpec{
+		Spec: v1alpha2.ServiceProfileSpec{
+			Routes: []*v1alpha2.RouteSpec{
 				{
 					Name: "/authors/{id}",
-					Condition: &v1alpha1.RequestMatch{
+					Condition: &v1alpha2.RequestMatch{
 						PathRegex: "/authors/\\d+",
 						Method:    "POST",
 					},
-					ResponseClasses: []*v1alpha1.ResponseClass{
+					ResponseClasses: []*v1alpha2.ResponseClass{
 						{
-							Condition: &v1alpha1.ResponseMatch{
-								Status: &v1alpha1.Range{
+							Condition: &v1alpha2.ResponseMatch{
+								Status: &v1alpha2.Range{
 									Min: 500,
 									Max: 599,
 								},
@@ -43,7 +43,7 @@ func GenServiceProfile(service, namespace string) v1alpha1.ServiceProfile {
 }
 
 // ServiceProfileYamlEquals validates whether two ServiceProfiles are equal.
-func ServiceProfileYamlEquals(actual, expected v1alpha1.ServiceProfile) error {
+func ServiceProfileYamlEquals(actual, expected v1alpha2.ServiceProfile) error {
 	if !reflect.DeepEqual(actual, expected) {
 		actualYaml, err := yaml.Marshal(actual)
 		if err != nil {

@@ -137,6 +137,7 @@ func testInstallOptions() *installOptions {
 		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	}
 	o.generateWebhookTLS = fakeGenerateWebhookTLS
+	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
@@ -237,4 +238,8 @@ func fakeGenerateWebhookTLS(webhook string) (*tlsValues, error) {
 		}, nil
 	}
 	return nil, nil
+}
+
+func fakeHeartbeatSchedule() string {
+	return "1 2 3 4 5"
 }

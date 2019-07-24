@@ -78,6 +78,9 @@ subjects:
   name: linkerd-grafana
   namespace: {{.Namespace}}
 - kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: {{.Namespace}}
+- kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Namespace}}
 - kind: ServiceAccount

@@ -14,6 +14,8 @@ FROM scratch
 ENV PATH=$PATH:/go/bin
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /go/bin /go/bin
+# for heartbeat (https://versioncheck.linkerd.io/version.json)
+COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
