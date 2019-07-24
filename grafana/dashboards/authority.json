@@ -15,14 +15,14 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 1,
-  "id": 10,
+  "id": null,
   "iteration": 1539806914987,
   "links": [],
   "panels": [
     {
       "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">au/$authority</span>\n</div>",
       "gridPos": {
-        "h": 2.4,
+        "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
@@ -30,6 +30,7 @@
       "id": 2,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -57,7 +58,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 2.4
+        "y": 2
       },
       "id": 4,
       "interval": null,
@@ -76,6 +77,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": "",
       "postfixFontSize": "50%",
       "prefix": "",
@@ -141,7 +143,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 2.4
+        "y": 2
       },
       "id": 6,
       "interval": null,
@@ -160,6 +162,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": " RPS",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -225,7 +228,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 2.4
+        "y": 2
       },
       "id": 8,
       "interval": null,
@@ -244,6 +247,7 @@
       "maxDataPoints": 100,
       "nullPointMode": "connected",
       "nullText": null,
+      "options": {},
       "postfix": " ms",
       "postfixFontSize": "100%",
       "prefix": "",
@@ -289,14 +293,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP-LINE TRAFFIC</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 6.4
+        "y": 6
       },
       "id": 10,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -312,7 +317,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 12,
       "legend": {
@@ -328,6 +333,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -347,6 +353,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -397,7 +404,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 14,
       "legend": {
@@ -413,6 +420,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -439,6 +447,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -489,7 +498,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8.600000000000001
+        "y": 8
       },
       "id": 16,
       "legend": {
@@ -505,6 +514,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -539,6 +549,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "LATENCY",
       "tooltip": {
@@ -581,14 +592,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY DEPLOYMENT</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 15.600000000000001
+        "y": 15
       },
       "id": 18,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -604,7 +616,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 17.8
+        "y": 17
       },
       "id": 20,
       "legend": {
@@ -620,6 +632,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -639,6 +652,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -689,7 +703,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 17.8
+        "y": 17
       },
       "id": 22,
       "legend": {
@@ -705,6 +719,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -731,6 +746,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -780,7 +796,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 17.8
+        "y": 17
       },
       "id": 24,
       "legend": {
@@ -796,6 +812,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -815,6 +832,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "P95 LATENCY",
       "tooltip": {
@@ -856,14 +874,15 @@
     {
       "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY POD</span>\n</div>",
       "gridPos": {
-        "h": 2.2,
+        "h": 2,
         "w": 24,
         "x": 0,
-        "y": 24.8
+        "y": 24
       },
       "id": 26,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
@@ -879,7 +898,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 27
+        "y": 26
       },
       "id": 28,
       "legend": {
@@ -895,6 +914,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -914,6 +934,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "SUCCESS RATE",
       "tooltip": {
@@ -964,7 +985,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 27
+        "y": 26
       },
       "id": 30,
       "legend": {
@@ -980,6 +1001,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1006,6 +1028,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "REQUEST RATE",
       "tooltip": {
@@ -1055,7 +1078,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 27
+        "y": 26
       },
       "id": 32,
       "legend": {
@@ -1071,6 +1094,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
+      "options": {},
       "percentage": false,
       "pointradius": 5,
       "points": false,
@@ -1090,6 +1114,7 @@
       ],
       "thresholds": [],
       "timeFrom": null,
+      "timeRegions": [],
       "timeShift": null,
       "title": "P95 LATENCY",
       "tooltip": {
@@ -1134,19 +1159,20 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 33
       },
       "height": "1px",
       "id": 34,
       "links": [],
       "mode": "html",
+      "options": {},
       "title": "",
       "transparent": true,
       "type": "text"
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 16,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -1157,6 +1183,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
@@ -1166,6 +1193,7 @@
         "query": "label_values(request_total, namespace)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
@@ -1177,6 +1205,7 @@
         "allValue": null,
         "current": {},
         "datasource": "prometheus",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Authority",
@@ -1186,6 +1215,7 @@
         "query": "label_values(request_total{namespace=\"$namespace\"}, authority)",
         "refresh": 2,
         "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
         "tags": [],

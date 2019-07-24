@@ -190,7 +190,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	// to upgrade/reinstall the control plane when the API is not available; and
 	// this also serves as a passive check that we have privileges to access this
 	// control plane.
-	configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
+	_, configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}

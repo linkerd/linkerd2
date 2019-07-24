@@ -684,6 +684,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -860,6 +869,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1053,6 +1071,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1255,6 +1282,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1466,6 +1502,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -2093,7 +2138,7 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}

@@ -1,0 +1,42 @@
+{{with .Values -}}
+---
+###
+### Heartbeat
+###
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: linkerd-heartbeat
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: heartbeat
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  schedule: "{{.HeartbeatSchedule}}"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{.ControllerComponentLabel}}: heartbeat
+          annotations:
+            {{.CreatedByAnnotation}}: {{.CliVersion}}
+        spec:
+          serviceAccountName: linkerd-heartbeat
+          restartPolicy: OnFailure
+          containers:
+          - name: heartbeat
+            image: {{.ControllerImage}}
+            imagePullPolicy: {{.ImagePullPolicy}}
+            args:
+            - "heartbeat"
+            - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
+            - "-controller-namespace={{.Namespace}}"
+            - "-log-level={{.ControllerLogLevel}}"
+            {{- include "resources" .HeartbeatResources | indent 4 | trimPrefix "    " }}
+            securityContext:
+              runAsUser: {{.ControllerUID}}
+{{end -}}
