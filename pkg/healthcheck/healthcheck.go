@@ -388,6 +388,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "can create CronJobs",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")
+					},
+				},
+				{
 					description: "can create ConfigMaps",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
