@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -90,7 +91,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
-	service, port, hostname, err := watcher.GetServiceAndPort(dest.GetPath(), s.clusterDomain)
+	service, port, hostname, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
 	if err != nil {
 		log.Errorf("Invalid authority %s", dest.GetPath())
 		return err
@@ -134,7 +135,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
-	service, port, _, err := watcher.GetServiceAndPort(dest.GetPath(), s.clusterDomain)
+	service, port, _, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
@@ -213,7 +214,7 @@ func nsFromToken(token string) string {
 }
 
 func profileID(authority string, contextToken string, clusterDomain string) (watcher.ProfileID, error) {
-	service, _, _, err := watcher.GetServiceAndPort(authority, clusterDomain)
+	service, _, _, err := parseServiceAuthority(authority, clusterDomain)
 	if err != nil {
 		return watcher.ProfileID{}, err
 	}
@@ -225,4 +226,71 @@ func profileID(authority string, contextToken string, clusterDomain string) (wat
 		id.Namespace = contextNs
 	}
 	return id, nil
+}
+
+func getHostAndPort(authority string) (string, watcher.Port, error) {
+	hostPort := strings.Split(authority, ":")
+	if len(hostPort) > 2 {
+		return "", 0, fmt.Errorf("Invalid destination %s", authority)
+	}
+	host := hostPort[0]
+	port := 80
+	if len(hostPort) == 2 {
+		var err error
+		port, err = strconv.Atoi(hostPort[1])
+		if err != nil {
+			return "", 0, fmt.Errorf("Invalid port %s", hostPort[1])
+		}
+	}
+	return host, watcher.Port(port), nil
+}
+
+// parseServiceAuthority is a utility function that destructures an authority
+// into a service, port, and optionally a pod hostname.  If the authority does
+// not represent a Kubernetes service, an error is returned.  If no port is
+// specified in the authority, the HTTP default (80) is returned as the port
+// number.  If the authority is a pod DNS name then the pod hostname is returned
+// as the 3rd return value.  See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
+func parseServiceAuthority(authority string, clusterDomain string) (watcher.ServiceID, watcher.Port, string, error) {
+	host, port, err := getHostAndPort(authority)
+	if err != nil {
+		return watcher.ServiceID{}, 0, "", err
+	}
+	domains := strings.Split(host, ".")
+	suffix := append([]string{"svc"}, strings.Split(clusterDomain, ".")...)
+	n := len(domains)
+	// S.N.{suffix}
+	if n < 2+len(suffix) {
+		return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+	}
+	if !hasSuffix(domains, suffix) {
+		return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+	}
+
+	if n == 2+len(suffix) {
+		// <service>.<namespace>.<suffix>
+		service := watcher.ServiceID{
+			Name:      domains[0],
+			Namespace: domains[1],
+		}
+		return service, port, "", nil
+	}
+	if n == 3+len(suffix) {
+		// <hostname>.<service>.<namespace>.<suffix>
+		service := watcher.ServiceID{
+			Name:      domains[1],
+			Namespace: domains[2],
+		}
+		return service, port, domains[0], nil
+	}
+	return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+}
+
+func hasSuffix(slice []string, suffix []string) bool {
+	for i, s := range slice[len(slice)-len(suffix):] {
+		if s != suffix[i] {
+			return false
+		}
+	}
+	return true
 }
