@@ -55,9 +55,7 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{ with .ProxyInjectorResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .ProxyInjectorResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:

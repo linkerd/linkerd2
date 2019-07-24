@@ -36,7 +36,7 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
             - "-controller-namespace={{.Namespace}}"
             - "-log-level={{.ControllerLogLevel}}"
-            {{- include "resources" .HeartbeatResources | indent 4 | trimPrefix "    " }}
+            {{- include "resources" .HeartbeatResources | nindent 12 }}
             securityContext:
               runAsUser: {{.ControllerUID}}
 {{end -}}

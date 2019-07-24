@@ -90,9 +90,7 @@ spec:
             path: /ready
             port: 9990
           failureThreshold: 7
-        {{ with .IdentityResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .IdentityResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:
@@ -101,7 +99,7 @@ spec:
           name: linkerd-config
       - name: identity-issuer
         secret:
-          secretName: linkerd-identity-issuer 
+          secretName: linkerd-identity-issuer
       {{- if .HighAvailability }}
       {{- $local := dict "Label" .ControllerComponentLabel "Component" "identity" }}
       {{- include "pod-affinity" $local | nindent 6 }}
