@@ -90,9 +90,7 @@ spec:
             path: /ready
             port: 9995
           failureThreshold: 7
-        {{ with .PublicAPIResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .PublicAPIResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       - name: destination
@@ -122,9 +120,7 @@ spec:
             path: /ready
             port: 9996
           failureThreshold: 7
-        {{ with .DestinationResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .DestinationResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:

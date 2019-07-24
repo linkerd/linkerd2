@@ -72,9 +72,7 @@ spec:
             path: /ready
             port: 9994
           failureThreshold: 7
-        {{ with .WebResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .WebResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       serviceAccountName: linkerd-web
