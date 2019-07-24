@@ -65,7 +65,7 @@ func newCmdEdges() *cobra.Command {
 
   # Get all edges between pods that either originate from or terminate in the default namespace.
   linkerd edges po
-		
+
   # Get all edges between pods in all namespaces.
   linkerd edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
@@ -109,7 +109,7 @@ func newCmdEdges() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
-	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns edges across all namespaces, ignoring the \"--namespace\" flag")
+	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns edges across all namespaces, ignoring the \"--namespace\" flag")
 	return cmd
 }
 
