@@ -111,6 +111,7 @@ spec:
 		false,
 		"linkerd",
 		"trust.domain",
+		"mycluster.local",
 		log,
 		make(<-chan struct{}),
 	}

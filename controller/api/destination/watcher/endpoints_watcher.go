@@ -35,6 +35,11 @@ type (
 	// PodSet is a set of pods, indexed by IP.
 	PodSet = map[PodID]Address
 
+	portAndHostname struct {
+		port     Port
+		hostname string
+	}
+
 	// EndpointsWatcher watches all endpoints and services in the Kubernetes
 	// cluster.  Listeners can subscribe to a particular service and port and
 	// EndpointsWatcher will publish the address set and all future changes for
@@ -47,24 +52,35 @@ type (
 		sync.RWMutex // This mutex protects modification of the map itself.
 	}
 
-	// servicePublisher represents a service along with a port number.  Multiple
-	// listeners may be subscribed to a servicePublisher.  servicePublisher maintains the
-	// current state of the address set and publishes diffs to all listeners when
-	// updates come from either the endpoints API or the service API.
+	// servicePublisher represents a service.  It keeps a map of portPublishers
+	// keyed by port and hostname.  This is because each watch on a service
+	// will have a port and optionally may specify a hostname.  The port
+	// and hostname will influence the endpoint set which is why a separate
+	// portPublisher is required for each port and hostname combination.  The
+	// service's port mapping will be applied to the requested port and the
+	// mapped port will be used in the addresses set.  If a hostname is
+	// requested, the address set will be filtered to only include addresses
+	// with the requested hostname.
 	servicePublisher struct {
 		id     ServiceID
 		log    *logging.Entry
 		k8sAPI *k8s.API
 
-		ports map[Port]*portPublisher
+		ports map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
 		sync.Mutex
 	}
 
+	// portPublisher represents a service along with a port and optionally a
+	// hostname.  Multiple listeners may be subscribed to a portPublisher.
+	// portPublisher maintains the current state of the address set and
+	// publishes diffs to all listeners when updates come from either the
+	// endpoints API or the service API.
 	portPublisher struct {
 		id         ServiceID
 		targetPort namedPort
+		hostname   string
 		log        *logging.Entry
 		k8sAPI     *k8s.API
 
@@ -124,34 +140,33 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 // Subscribe to an authority.
 // The provided listener will be updated each time the address set for the
 // given authority is changed.
-func (ew *EndpointsWatcher) Subscribe(authority string, listener EndpointUpdateListener) error {
-	id, port, err := GetServiceAndPort(authority)
-	if err != nil {
-		return err
+func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) error {
+	if hostname == "" {
+		ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
+	} else {
+		ew.log.Infof("Establishing watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
-	ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
 
 	sp := ew.getOrNewServicePublisher(id)
 
-	sp.subscribe(port, listener)
+	sp.subscribe(port, hostname, listener)
 	return nil
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
-func (ew *EndpointsWatcher) Unsubscribe(authority string, listener EndpointUpdateListener) {
-	id, port, err := GetServiceAndPort(authority)
-	if err != nil {
-		ew.log.Errorf("Invalid service name [%s]", authority)
-		return
+func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) {
+	if hostname == "" {
+		ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
+	} else {
+		ew.log.Infof("Stopping watch on endpoint [%s.%s:%d]", hostname, id, port)
 	}
-	ew.log.Infof("Stopping watch on endpoint [%s:%d]", id, port)
 
 	sp, ok := ew.getServicePublisher(id)
 	if !ok {
 		ew.log.Errorf("Cannot unsubscribe from unknown service [%s:%d]", id, port)
 		return
 	}
-	sp.unsubscribe(port, listener)
+	sp.unsubscribe(port, hostname, listener)
 }
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
@@ -234,7 +249,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"svc":       id.Name,
 			}),
 			k8sAPI: ew.k8sAPI,
-			ports:  make(map[Port]*portPublisher),
+			ports:  make(map[portAndHostname]*portPublisher),
 		}
 		ew.publishers[id] = sp
 	}
@@ -277,41 +292,49 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
-	for srcPort, port := range sp.ports {
-		newTargetPort := getTargetPort(newService, srcPort)
+	for key, port := range sp.ports {
+		newTargetPort := getTargetPort(newService, key.port)
 		if newTargetPort != port.targetPort {
 			port.updatePort(newTargetPort)
 		}
 	}
 }
 
-func (sp *servicePublisher) subscribe(srcPort Port, listener EndpointUpdateListener) {
+func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
 	sp.Lock()
 	defer sp.Unlock()
 
-	port, ok := sp.ports[srcPort]
+	key := portAndHostname{
+		port:     srcPort,
+		hostname: hostname,
+	}
+	port, ok := sp.ports[key]
 	if !ok {
-		port = sp.newPortPublisher(srcPort)
-		sp.ports[srcPort] = port
+		port = sp.newPortPublisher(srcPort, hostname)
+		sp.ports[key] = port
 	}
 	port.subscribe(listener)
 }
 
-func (sp *servicePublisher) unsubscribe(srcPort Port, listener EndpointUpdateListener) {
+func (sp *servicePublisher) unsubscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
 	sp.Lock()
 	defer sp.Unlock()
 
-	port, ok := sp.ports[srcPort]
+	key := portAndHostname{
+		port:     srcPort,
+		hostname: hostname,
+	}
+	port, ok := sp.ports[key]
 	if ok {
 		port.unsubscribe(listener)
 		if len(port.listeners) == 0 {
-			endpointsVecs.unregister(sp.metricsLabels(srcPort))
-			delete(sp.ports, srcPort)
+			endpointsVecs.unregister(sp.metricsLabels(srcPort, hostname))
+			delete(sp.ports, key)
 		}
 	}
 }
 
-func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
+func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *portPublisher {
 	targetPort := intstr.FromInt(int(srcPort))
 	svc, err := sp.k8sAPI.Svc().Lister().Services(sp.id.Namespace).Get(sp.id.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -334,10 +357,11 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	port := &portPublisher{
 		listeners:  []EndpointUpdateListener{},
 		targetPort: targetPort,
+		hostname:   hostname,
 		exists:     exists,
 		k8sAPI:     sp.k8sAPI,
 		log:        log,
-		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort)),
+		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 	}
 
 	endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
@@ -351,8 +375,8 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port) *portPublisher {
 	return port
 }
 
-func (sp *servicePublisher) metricsLabels(port Port) prometheus.Labels {
-	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)))
+func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus.Labels {
+	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
 /////////////////////
@@ -393,6 +417,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
+			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
+				continue
+			}
 			if endpoint.TargetRef.Kind == "Pod" {
 				id := PodID{
 					Name:      endpoint.TargetRef.Name,

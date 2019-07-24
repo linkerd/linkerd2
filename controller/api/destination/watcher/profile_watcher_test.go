@@ -12,8 +12,7 @@ func TestProfileWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		name             string
 		k8sConfigs       []string
-		authority        string
-		contextToken     string
+		id               ProfileID
 		expectedProfiles []*sp.ServiceProfileSpec
 	}{
 		{
@@ -34,8 +33,7 @@ spec:
           min: 500
       isFailure: true`,
 			},
-			authority:    "foobar.ns.svc.cluster.local",
-			contextToken: "ns:linkerd",
+			id: ProfileID{Name: "foobar.ns.svc.cluster.local", Namespace: "linkerd"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
 				{
 					Routes: []*sp.RouteSpec{
@@ -61,7 +59,7 @@ spec:
 		{
 			name:       "service without profile",
 			k8sConfigs: []string{},
-			authority:  "foobar.ns.svc.cluster.local",
+			id:         ProfileID{Name: "foobar.ns.svc.cluster.local", Namespace: "ns"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
 				nil,
 			},
@@ -80,7 +78,7 @@ spec:
 
 			listener := NewBufferingProfileListener()
 
-			watcher.Subscribe(tt.authority, tt.contextToken, listener)
+			watcher.Subscribe(tt.id, listener)
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
 
