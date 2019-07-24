@@ -26,17 +26,31 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
+    {{- if .NoInitContainer }}
+    rule: MustRunAsNonRoot
+    {{- else }}
     rule: RunAsAny
+    {{- end }}
   supplementalGroups:
     rule: MustRunAs
     ranges:
+    {{- if .NoInitContainer }}
+    - min: 10001
+      max: 65535
+    {{- else }}
     - min: 1
       max: 65535
+    {{- end }}
   fsGroup:
     rule: MustRunAs
     ranges:
+    {{- if .NoInitContainer }}
+    - min: 10001
+      max: 65535
+    {{- else }}
     - min: 1
       max: 65535
+    {{- end }}
   volumes:
   - configMap
   - emptyDir
