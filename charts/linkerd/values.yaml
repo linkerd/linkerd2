@@ -1,0 +1,66 @@
+# Default values for linkerd.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+ClusterDomain: &cluster_domain cluster.local
+EnableH2Upgrade: true
+HighAvailability: &high_availability true
+ImagePullPolicy: IfNotPresent
+Namespace: &namespace linkerd
+
+# controller configuration
+ControllerReplicas: 1
+ControllerImage: gcr.io/linkerd-io/controller
+ControllerLogLevel: info
+ControllerUID: 2103
+
+# proxy configuration
+Proxy:
+  ClusterDomain: *cluster_domain
+  EnableExternalProfile: false
+  HighAvailability: *high_availability
+  IdentityTrustAnchors: |
+    -----BEGIN CERTIFICATE-----
+    MIIBgjCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
+    eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI0MTY1OTM4WhcNMjAwNzIz
+    MTY1OTU4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
+    YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQQiUcsrdv4rhQ9THRlPQrLshFY
+    YgvHgyAyGfqlrukGR4OsNzv1tX3lNsMZggvqr7skiXozt7R9SwMrTZK7EkU0o0Iw
+    QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
+    MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgHKe2J1SooDemPrjC
+    4YMyvoEmZ/7lGzeUOcIxN8bGcHwCIEp5zIp8+2QEPfKwS01sW0fjQwHBzV87Dm4G
+    eHrLH7qz
+    -----END CERTIFICATE-----
+  Image:
+    Name: gcr.io/linkerd-io/proxy
+    PullPolicy: IfNotPresent
+  InboundAcceptKeepAlive: 10000ms
+  LogLevel: warn,linkerd2_proxy=info
+  ControlPlaneNamespace: *namespace
+  OutboundAcceptKeepAlive: 10000ms
+  Port:
+    Admin: 4191
+    Control: 4190
+    Inbound: 4143
+    Outbound: 4140
+  ResourceRequirements:
+    limits:
+      cpu: "1"
+      memory: 250Mi
+    requests:
+      cpu: 100m
+      memory: 20Mi
+  UID: 2102
+
+# proxy-init configuration
+ProxyInit:
+
+# annotations
+CreatedByAnnotation: linkerd.io/created-by
+ProxyInjectAnnotation: linkerd.io/inject
+ProxyInjectDisabled: disabled
+
+# labels
+ControllerComponentLabel: linkerd.io/control-plane-component
+ControllerNamespaceLabel: linkerd.io/control-plane-ns
+LinkerdNamespaceLabel: linkerd.io/is-control-plane
