@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -12,9 +13,25 @@ import (
 )
 
 type (
+	// PrivateKeyEC wraps an EC private key
+	PrivateKeyEC struct {
+		*ecdsa.PrivateKey
+	}
+
+	// PrivateKeyRSA wraps an RSA private key
+	PrivateKeyRSA struct {
+		*rsa.PrivateKey
+	}
+
+	// GenericPrivateKey represents either an EC or an RSA private key
+	GenericPrivateKey interface {
+		matchesCertificate(*x509.Certificate) bool
+		marshal() ([]byte, error)
+	}
+
 	// Cred is a container for a certificate, trust chain, and private key.
 	Cred struct {
-		PrivateKey *ecdsa.PrivateKey
+		PrivateKey GenericPrivateKey
 		Crt
 	}
 
@@ -28,9 +45,28 @@ type (
 	}
 )
 
+func (k PrivateKeyEC) matchesCertificate(c *x509.Certificate) bool {
+	pub, ok := c.PublicKey.(*ecdsa.PublicKey)
+	return ok && pub.X.Cmp(k.X) == 0 && pub.Y.Cmp(k.Y) == 0
+}
+
+func (k PrivateKeyEC) marshal() ([]byte, error) {
+	return x509.MarshalECPrivateKey(k.PrivateKey)
+}
+
+func (k PrivateKeyRSA) matchesCertificate(c *x509.Certificate) bool {
+	pub, ok := c.PublicKey.(*rsa.PublicKey)
+	return ok && pub.N.Cmp(k.N) == 0 && pub.E == k.E
+}
+
+func (k PrivateKeyRSA) marshal() ([]byte, error) {
+	return x509.MarshalPKCS1PrivateKey(k.PrivateKey), nil
+}
+
 // validCredOrPanic creates a  Cred, panicking if the key does not match the certificate.
-func validCredOrPanic(k *ecdsa.PrivateKey, crt Crt) Cred {
-	if !certificateMatchesKey(crt.Certificate, k) {
+func validCredOrPanic(ecKey *ecdsa.PrivateKey, crt Crt) Cred {
+	k := PrivateKeyEC{ecKey}
+	if !k.matchesCertificate(crt.Certificate) {
 		panic("Cert's public key does not match private key")
 	}
 	return Cred{Crt: crt, PrivateKey: k}
@@ -89,9 +125,9 @@ func (crt *Crt) EncodeCertificatePEM() string {
 
 // EncodePrivateKeyPEM emits the private key as PEM-encoded text.
 func (cred *Cred) EncodePrivateKeyPEM() string {
-	b, err := x509.MarshalECPrivateKey(cred.PrivateKey)
+	b, err := cred.PrivateKey.marshal()
 	if err != nil {
-		panic(fmt.Sprintf("Invalid elliptic curve: %s", err))
+		panic(fmt.Sprintf("Invalid private key: %s", err))
 	}
 
 	return string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b}))
@@ -100,12 +136,6 @@ func (cred *Cred) EncodePrivateKeyPEM() string {
 // EncodePrivateKeyP8 encodes the provided key to the PKCS#8 binary form.
 func (cred *Cred) EncodePrivateKeyP8() ([]byte, error) {
 	return x509.MarshalPKCS8PrivateKey(cred.PrivateKey)
-}
-
-// certificateMatchesKey returns whether the key and certificate match.
-func certificateMatchesKey(c *x509.Certificate, k *ecdsa.PrivateKey) bool {
-	pub, ok := c.PublicKey.(*ecdsa.PublicKey)
-	return ok && pub.X.Cmp(k.X) == 0 && pub.Y.Cmp(k.Y) == 0
 }
 
 // SignCrt uses this Cred to sign a new certificate.
@@ -154,7 +184,7 @@ func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !certificateMatchesKey(crt.Certificate, key) {
+	if !key.matchesCertificate(crt.Certificate) {
 		return nil, errors.New("tls: Public and private key do not match")
 	}
 	return &Cred{PrivateKey: key, Crt: *crt}, nil
