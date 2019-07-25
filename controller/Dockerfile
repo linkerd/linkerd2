@@ -1,13 +1,13 @@
 ## compile controller services
-FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
-WORKDIR /go/src/github.com/linkerd/linkerd2
+FROM gcr.io/linkerd-io/go-deps:b62fe1ae as golang
+WORKDIR /linkerd-build
 COPY controller/gen controller/gen
 COPY pkg pkg
 COPY controller controller
 
 # use `install` so that we produce multiple binaries
-RUN CGO_ENABLED=0 GOOS=linux go install ./pkg/...
-RUN CGO_ENABLED=0 GOOS=linux go install ./controller/cmd/...
+RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly ./pkg/...
+RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly ./controller/cmd/...
 
 ## package runtime
 FROM scratch

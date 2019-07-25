@@ -11,6 +11,6 @@ if [ "$#" -eq 0 ]; then
 fi
 
 ldflags="-X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)"
-go build -v -i -race -o .gorun -ldflags "$ldflags" "./$1"
+GO111MODULE=on go build -v -mod=readonly -i -race -o .gorun -ldflags "$ldflags" "./$1"
 shift
 exec ./.gorun "$@"
