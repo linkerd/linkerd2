@@ -421,7 +421,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 				continue
 			}
 			if endpoint.TargetRef == nil {
-				pp.log.Debugf("Endpoint missing TargetRef: %+v", endpoint)
+				pp.log.Warnf("Endpoint missing TargetRef: %+v", endpoint)
 				continue
 			}
 			if endpoint.TargetRef.Kind == "Pod" {
