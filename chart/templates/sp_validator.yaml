@@ -72,9 +72,7 @@ spec:
             path: /ready
             port: 9997
           failureThreshold: 7
-        {{ with .SPValidatorResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .SPValidatorResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       volumes:

@@ -7,7 +7,7 @@ import (
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -66,7 +66,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			Spec: sp.ServiceProfileSpec{
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
+						Authority: "bar.ns.svc.cluster.local.:80",
 						Weight:    resource.MustParse("1000m"),
 					},
 				},
@@ -96,7 +96,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				},
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
+						Authority: "bar.ns.svc.cluster.local.:80",
 						Weight:    resource.MustParse("1000m"),
 					},
 				},

@@ -34,6 +34,9 @@ data:
     [analytics]
     check_for_updates = false
 
+    [panels]
+    disable_sanitize_html = true
+
   datasources.yaml: |-
     apiVersion: 1
     datasources:
@@ -137,9 +140,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        {{- with .GrafanaResources }}
-        {{- template "resources" . }}
-        {{- end }}
+        {{- include "resources" .GrafanaResources | nindent 8 }}
         securityContext:
           runAsUser: 472
       serviceAccountName: linkerd-grafana

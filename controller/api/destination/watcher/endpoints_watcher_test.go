@@ -49,7 +49,9 @@ func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
 		k8sConfigs                       []string
-		authority                        string
+		id                               ServiceID
+		hostname                         string
+		port                             Port
 		expectedAddresses                []string
 		expectedNoEndpoints              bool
 		expectedNoEndpointsServiceExists bool
@@ -129,7 +131,8 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			authority: "name1.ns.svc.cluster.local:8989",
+			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			port: 8989,
 			expectedAddresses: []string{
 				"172.17.0.12:8989",
 				"172.17.0.19:8989",
@@ -199,7 +202,8 @@ status:
   podIp: 10.233.88.244
   phase: Running`,
 			},
-			authority: "name1.ns.svc.cluster.local:8989",
+			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			port: 8989,
 			expectedAddresses: []string{
 				"10.233.66.239:8990",
 				"10.233.88.244:8990",
@@ -253,7 +257,8 @@ status:
   podIp: 10.1.30.135
   phase: Running`,
 			},
-			authority: "world.ns.svc.cluster.local:7778",
+			id:   ServiceID{Name: "world", Namespace: "ns"},
+			port: 7778,
 			expectedAddresses: []string{
 				"10.1.30.135:7779",
 			},
@@ -311,7 +316,8 @@ status:
   phase: Running
   podIP: 172.17.0.25`,
 			},
-			authority: "name1.ns.svc.cluster.local:8989",
+			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			port: 8989,
 			expectedAddresses: []string{
 				"172.17.0.25:8989",
 			},
@@ -332,7 +338,8 @@ spec:
   ports:
   - port: 7979`,
 			},
-			authority:                        "name2.ns.svc.cluster.local:7979",
+			id:                               ServiceID{Name: "name2", Namespace: "ns"},
+			port:                             7979,
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: true,
@@ -350,7 +357,8 @@ spec:
   type: ExternalName
   externalName: foo`,
 			},
-			authority:                        "name3.ns.svc.cluster.local:6969",
+			id:                               ServiceID{Name: "name3", Namespace: "ns"},
+			port:                             6969,
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
@@ -359,11 +367,96 @@ spec:
 		{
 			serviceType:                      "services that do not yet exist",
 			k8sConfigs:                       []string{},
-			authority:                        "name4.ns.svc.cluster.local:5959",
+			id:                               ServiceID{Name: "name4", Namespace: "ns"},
+			port:                             5959,
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
+		},
+		{
+			serviceType: "stateful sets",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    hostname: name1-1
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  - ip: 172.17.0.19
+    hostname: name1-2
+    targetRef:
+      kind: Pod
+      name: name1-2
+      namespace: ns
+  - ip: 172.17.0.20
+    hostname: name1-3
+    targetRef:
+      kind: Pod
+      name: name1-3
+      namespace: ns
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.19`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-3
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.20`,
+			},
+			id:                               ServiceID{Name: "name1", Namespace: "ns"},
+			hostname:                         "name1-3",
+			port:                             5959,
+			expectedAddresses:                []string{"172.17.0.20:5959"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
 		},
 	} {
 		tt := tt // pin
@@ -379,7 +472,7 @@ spec:
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.authority, listener)
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
 			if tt.expectedError && err == nil {
 				t.Fatal("Expected error but was ok")
 			}

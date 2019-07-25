@@ -5,7 +5,7 @@ import (
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
 // trafficSplitAdaptor merges traffic splits into service profiles, encoding
@@ -54,7 +54,9 @@ func (tsa *trafficSplitAdaptor) publish() {
 		overrides := []*sp.WeightedDst{}
 		for _, backend := range tsa.split.Spec.Backends {
 			dst := &sp.WeightedDst{
-				Authority: fmt.Sprintf("%s.%s.svc.cluster.local:%d", backend.Service, tsa.id.Namespace, tsa.port),
+				// The proxy expects authorities to be absolute and have the
+				// host part end with a trailing dot.
+				Authority: fmt.Sprintf("%s.%s.svc.cluster.local.:%d", backend.Service, tsa.id.Namespace, tsa.port),
 				Weight:    backend.Weight,
 			}
 			overrides = append(overrides, dst)

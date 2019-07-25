@@ -96,17 +96,14 @@ var (
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
 	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
-	translator, err := newEndpointTranslator(
+	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
 		false,
-		"service-name.service-ns.svc.cluster.local",
+		watcher.ServiceID{Name: "service-name", Namespace: "service-ns"},
 		mockGetServer,
 		logging.WithField("test", t.Name),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
 	return mockGetServer, translator
 }
 

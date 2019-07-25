@@ -1,4 +1,4 @@
-FROM grafana/grafana:5.4.3
+FROM grafana/grafana:6.2.5
 
 COPY LICENSE                          /linkerd/LICENSE
 COPY grafana/dashboards               /var/lib/grafana/dashboards

@@ -168,9 +168,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{ with .PrometheusResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .PrometheusResources | nindent 8 }}
         securityContext:
           runAsUser: 65534
 {{- end}}

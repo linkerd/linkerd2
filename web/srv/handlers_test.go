@@ -9,7 +9,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
-	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	helpers "github.com/linkerd/linkerd2/pkg/profiles"
 	"sigs.k8s.io/yaml"
@@ -103,7 +103,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		t.Errorf("Expected:          %+v", header)
 	}
 
-	var serviceProfile v1alpha1.ServiceProfile
+	var serviceProfile v1alpha2.ServiceProfile
 	err := yaml.Unmarshal(recorder.Body.Bytes(), &serviceProfile)
 	if err != nil {
 		t.Fatalf("Error parsing service profile: %v", err)

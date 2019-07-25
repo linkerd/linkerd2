@@ -66,9 +66,7 @@ spec:
             path: /ready
             port: 9998
           failureThreshold: 7
-        {{ with .TapResources -}}
-        {{- template "resources" . }}
-        {{ end -}}
+        {{- include "resources" .TapResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
       {{- if .HighAvailability }}

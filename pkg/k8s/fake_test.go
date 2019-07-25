@@ -153,7 +153,7 @@ data:
 		},
 		{
 			[]string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: foobar.ns.svc.cluster.local
@@ -202,7 +202,7 @@ data:
 		},
 		{
 			[]string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: foobar.ns.svc.cluster.local
@@ -226,7 +226,7 @@ items:
     namespace: ns
   data:
     foo: YmFyCg==
-- apiVersion: linkerd.io/v1alpha1
+- apiVersion: linkerd.io/v1alpha2
   kind: ServiceProfile
   metadata:
     name: foobar.ns.svc.cluster.local
@@ -288,7 +288,7 @@ data:
 		},
 		{
 			`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: foobar.ns.svc.cluster.local

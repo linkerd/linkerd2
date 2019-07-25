@@ -88,7 +88,7 @@ func TestCliGet(t *testing.T) {
 			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 		}
 
-		err := checkPodOutput(out, deployReplicas, prefixedNs)
+		err := checkPodOutput(out, deployReplicas, "", prefixedNs)
 		if err != nil {
 			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
 		}
@@ -101,14 +101,14 @@ func TestCliGet(t *testing.T) {
 			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 		}
 
-		err := checkPodOutput(out, linkerdPods, TestHelper.GetLinkerdNamespace())
+		err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
 		}
 	})
 }
 
-func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespace string) error {
+func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, optionalPod string, namespace string) error {
 	expectedPods := []string{}
 	for podName, replicas := range expectedPodCounts {
 		for i := 0; i < replicas; i++ {
@@ -146,7 +146,15 @@ func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, namespac
 	sort.Strings(expectedPods)
 	sort.Strings(actualPods)
 	if !reflect.DeepEqual(expectedPods, actualPods) {
-		return fmt.Errorf("Expected linkerd get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
+		if optionalPod == "" {
+			return fmt.Errorf("Expected linkerd get to return:\n%v\nBut got:\n%v", expectedPods, actualPods)
+		}
+
+		expectedPlusOptionalPods := append(expectedPods, optionalPod)
+		sort.Strings(expectedPlusOptionalPods)
+		if !reflect.DeepEqual(expectedPlusOptionalPods, actualPods) {
+			return fmt.Errorf("Expected linkerd get to return:\n%v\nor:\n%v\nBut got:\n%v", expectedPods, expectedPlusOptionalPods, actualPods)
+		}
 	}
 
 	return nil
