@@ -14,12 +14,12 @@ import (
 
 type (
 	// PrivateKeyEC wraps an EC private key
-	PrivateKeyEC struct {
+	privateKeyEC struct {
 		*ecdsa.PrivateKey
 	}
 
 	// PrivateKeyRSA wraps an RSA private key
-	PrivateKeyRSA struct {
+	privateKeyRSA struct {
 		*rsa.PrivateKey
 	}
 
@@ -45,27 +45,27 @@ type (
 	}
 )
 
-func (k PrivateKeyEC) matchesCertificate(c *x509.Certificate) bool {
+func (k privateKeyEC) matchesCertificate(c *x509.Certificate) bool {
 	pub, ok := c.PublicKey.(*ecdsa.PublicKey)
 	return ok && pub.X.Cmp(k.X) == 0 && pub.Y.Cmp(k.Y) == 0
 }
 
-func (k PrivateKeyEC) marshal() ([]byte, error) {
+func (k privateKeyEC) marshal() ([]byte, error) {
 	return x509.MarshalECPrivateKey(k.PrivateKey)
 }
 
-func (k PrivateKeyRSA) matchesCertificate(c *x509.Certificate) bool {
+func (k privateKeyRSA) matchesCertificate(c *x509.Certificate) bool {
 	pub, ok := c.PublicKey.(*rsa.PublicKey)
 	return ok && pub.N.Cmp(k.N) == 0 && pub.E == k.E
 }
 
-func (k PrivateKeyRSA) marshal() ([]byte, error) {
+func (k privateKeyRSA) marshal() ([]byte, error) {
 	return x509.MarshalPKCS1PrivateKey(k.PrivateKey), nil
 }
 
 // validCredOrPanic creates a  Cred, panicking if the key does not match the certificate.
 func validCredOrPanic(ecKey *ecdsa.PrivateKey, crt Crt) Cred {
-	k := PrivateKeyEC{ecKey}
+	k := privateKeyEC{ecKey}
 	if !k.matchesCertificate(crt.Certificate) {
 		panic("Cert's public key does not match private key")
 	}

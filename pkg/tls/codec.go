@@ -52,7 +52,7 @@ func encode(buf *bytes.Buffer, blk *pem.Block) {
 func DecodePEMKey(txt string) (GenericPrivateKey, error) {
 	block, _ := pem.Decode([]byte(txt))
 	if block == nil {
-		return nil, errors.New("Not PEM-encoded")
+		return nil, errors.New("not PEM-encoded")
 	}
 	switch block.Type {
 	case "EC PRIVATE KEY":
@@ -60,15 +60,15 @@ func DecodePEMKey(txt string) (GenericPrivateKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return PrivateKeyEC{k}, nil
+		return privateKeyEC{k}, nil
 	case "RSA PRIVATE KEY":
 		k, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, err
 		}
-		return PrivateKeyRSA{k}, nil
+		return privateKeyRSA{k}, nil
 	default:
-		return nil, fmt.Errorf("Unsupported block type: '%s'", block.Type)
+		return nil, fmt.Errorf("unsupported block type: '%s'", block.Type)
 	}
 }
 
@@ -96,7 +96,7 @@ func DecodePEMCertPool(txt string) (pool *x509.CertPool, err error) {
 		return
 	}
 	if len(certs) == 0 {
-		err = errors.New("No certificates found")
+		err = errors.New("no certificates found")
 		return
 	}
 
