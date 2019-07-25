@@ -23,7 +23,7 @@ type (
 	Port      = uint32
 	namedPort = intstr.IntOrString
 
-	// InvalidService is n error which indicates that the authority is not a
+	// InvalidService is an error which indicates that the authority is not a
 	// valid service.
 	InvalidService struct {
 		authority string

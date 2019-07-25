@@ -346,13 +346,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		sp.log.Errorf("error getting service: %s", err)
 	}
 	exists := false
-	if err == nil && svc.Spec.Type != corev1.ServiceTypeExternalName {
-		// XXX: The proxy will use DNS to discover the service if it is told
-		// the service doesn't exist. An external service is represented in DNS
-		// as a CNAME, which the proxy will correctly resolve. Thus, there's no
-		// benefit (yet) to distinguishing between "the service exists but it
-		// is an ExternalName service so use DNS anyway" and "the service does
-		// not exist."
+	if err == nil {
 		targetPort = getTargetPort(svc, srcPort)
 		exists = true
 	}
