@@ -1,13 +1,10 @@
 .travis.yml
-.dep
-.dep.exe
 .git
 **/.idea
 **/cmake-*
 **/CMakeLists.txt
 *.iml
 bin
-!bin/dep
 !bin/fetch-proxy
 !bin/web
 **/Dockerfile*
