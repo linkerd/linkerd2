@@ -66,7 +66,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			Spec: sp.ServiceProfileSpec{
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
+						Authority: "bar.ns.svc.cluster.local.:80",
 						Weight:    resource.MustParse("1000m"),
 					},
 				},
@@ -96,7 +96,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				},
 				DstOverrides: []*sp.WeightedDst{
 					{
-						Authority: "bar.ns.svc.cluster.local:80",
+						Authority: "bar.ns.svc.cluster.local.:80",
 						Weight:    resource.MustParse("1000m"),
 					},
 				},
