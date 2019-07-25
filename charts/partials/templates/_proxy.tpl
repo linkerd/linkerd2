@@ -34,7 +34,7 @@
   - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
     value: /var/run/secrets/kubernetes.io/serviceaccount/token
   - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-    value: linkerd-identity.linkerd.svc.cluster.local:8080
+    value: linkerd-identity.{{.ControlPlaneNamespace}}.svc.cluster.local:8080
   - name: _pod_sa
     valueFrom:
       fieldRef:
