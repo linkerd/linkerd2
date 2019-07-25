@@ -420,6 +420,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
 				continue
 			}
+			if endpoint.TargetRef == nil {
+				pp.log.Debugf("Endpoint missing TargetRef: %+v", endpoint)
+				continue
+			}
 			if endpoint.TargetRef.Kind == "Pod" {
 				id := PodID{
 					Name:      endpoint.TargetRef.Name,
