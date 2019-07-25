@@ -39,22 +39,43 @@ Proxy:
   LogLevel: warn,linkerd2_proxy=info
   ControlPlaneNamespace: *namespace
   OutboundAcceptKeepAlive: 10000ms
-  Port:
+  Port: &proxy_ports
     Admin: 4191
     Control: 4190
     Inbound: 4143
     Outbound: 4140
-  ResourceRequirements:
-    limits:
-      cpu: "1"
-      memory: 250Mi
-    requests:
-      cpu: 100m
-      memory: 20Mi
-  UID: 2102
+  UID: &proxy_uid 2102
+
+  # use this to override the default resource requirements in HA mode
+  #ResourceRequirements:
+    #limits:
+      #cpu: "1"
+      #memory: 250Mi
+    #requests:
+      #cpu: 100m
+      #memory: 20Mi
 
 # proxy-init configuration
 ProxyInit:
+  Image:
+    Name: gcr.io/linkerd-io/proxy-init
+    PullPolicy: IfNotPresent
+    Version: v1.0.0
+  Proxy:
+    Port:
+      <<: *proxy_ports
+      IgnoreInboundPorts: ""
+      IgnoreOutboundPorts: "443"
+    UID: *proxy_uid
+
+  # use this to override the default resource requirements in HA mode
+  #ResourceRequirements:
+    #limits:
+      #cpu: "100m"
+      #memory: 50Mi
+    #requests:
+      #cpu: 10m
+      #memory: 10Mi
 
 # annotations
 CreatedByAnnotation: linkerd.io/created-by

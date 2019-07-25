@@ -68,9 +68,13 @@
     httpGet:
       path: /ready
       port: {{.Port.Admin}}
-  {{- if and (eq .HighAvailability true) .ResourceRequirements -}}
+  {{ if eq .HighAvailability true -}}
   resources:
-  {{- toYaml .ResourceRequirements | trim | nindent 2 -}}
+  {{- if .ResourceRequirements -}}
+  {{- toYaml .ResourceRequirements | trim | nindent 4 -}}
+  {{- else -}}
+  {{- include "partials.proxy.resource" .Proxy | nindent 4 -}}
+  {{- end }}
   {{- end }}
   securityContext:
     allowPrivilegeEscalation: false

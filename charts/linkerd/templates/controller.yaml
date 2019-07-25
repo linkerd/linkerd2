@@ -137,6 +137,8 @@ spec:
         securityContext:
           runAsUser: {{.ControllerUID}}
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
+      initContainers:
+      {{- include "partials.proxy-init" .ProxyInit | nindent 6 -}}
       volumes:
       - name: config
         configMap:
