@@ -1,3 +1,26 @@
+## edge-19.7.5
+
+* CLI
+  * Improved the installation report produced by the `linkerd check` command
+    to include the control plane pods' live status
+  * Added the `--all-namespaces` (`-A`) option to the `linkerd get`,
+    `linkerd edges` and `linkerd stat` commands to retrieve resources across
+    all namespaces
+* Controller
+  * Fixed an issue with discovering StatefulSet pods via their unique hostname
+  * Fixed an issue with traffic split where outbound proxy stats are missing
+  * Bumped Prometheus to 2.11.1
+  * Bumped Grafana to 6.2.5
+  * Upgraded the service profile CRD to v1alpha2 where the openAPIV3Schema
+    validation is replaced by a validating admission webhook. No changes
+    required for users currently using v1alpha1
+  * Updated the control plane's pod security policy to restrict workloads from
+    running as `root` in the CNI mode (thanks @codeman9!)
+  * Introduced cluster heartbeat cron job
+* Proxy
+  * Introduced the `l5d-require-id` header to enforce TLS outbound
+    communication from the Tap server
+
 ## edge-19.7.4
 
 * CLI
