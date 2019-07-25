@@ -4,12 +4,12 @@
 
 ClusterDomain: &cluster_domain cluster.local
 EnableH2Upgrade: true
-HighAvailability: &high_availability true
+HighAvailability: &high_availability false
 ImagePullPolicy: IfNotPresent
 Namespace: &namespace linkerd
 
 # controller configuration
-ControllerReplicas: 1
+ControllerReplicas: 2
 ControllerImage: gcr.io/linkerd-io/controller
 ControllerLogLevel: info
 ControllerUID: 2103
@@ -17,6 +17,7 @@ ControllerUID: 2103
 # proxy configuration
 Proxy:
   ClusterDomain: *cluster_domain
+  DisableIdentity: false
   EnableExternalProfile: false
   HighAvailability: *high_availability
   IdentityTrustAnchors: |

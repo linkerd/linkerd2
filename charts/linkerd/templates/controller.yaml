@@ -42,6 +42,11 @@ spec:
     port: 8086
     targetPort: 8086
 ---
+{{ if not .Proxy.Image.Version -}}
+{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
+{{ end -}}
+{{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
+{{ $_ := set .Proxy "Component" "controller" -}}
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -53,16 +58,21 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
 spec:
-  replicas: {{.ControllerReplicas}}
+  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: controller
+      {{.ControllerNamespaceLabel}}: {{.Namespace}}
+      {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
     metadata:
       labels:
         {{.ControllerComponentLabel}}: controller
+        {{.ControllerNamespaceLabel}}: {{.Namespace}}
+        {{- include "partials.proxy.labels" .Proxy | nindent 8}}
       annotations:
         {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+        {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
     spec:
       serviceAccountName: linkerd-controller
       containers:
@@ -126,9 +136,6 @@ spec:
         {{- include "linkerd.resources" .DestinationResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
-      {{- if not .Proxy.Image.Version -}}
-      {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-      {{ end -}}
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       volumes:
       - name: config
@@ -136,7 +143,7 @@ spec:
           name: linkerd-config
       {{- include "partials.proxy-identity-volume" . | nindent 6 -}}
       {{- if eq .HighAvailability true -}}
-      {{- $local := dict "Label" .ControllerComponentLabel "Component" "controller" -}}
+      {{- $local := dict "Kind" "deployment" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end -}}
 {{end -}}
