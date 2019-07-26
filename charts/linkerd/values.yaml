@@ -30,6 +30,11 @@ GrafanaImage: gcr.io/linkerd-io/grafana
 GrafanaResources:
   <<: *controller_resources
 
+# heartbeat configuration
+HeartbeatSchedule: "21 3 * * * "
+HeartbeatResources:
+  <<: *controller_resources
+
 # proxy configuration
 Proxy:
   ClusterDomain: *cluster_domain
