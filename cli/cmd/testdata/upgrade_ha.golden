@@ -601,7 +601,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local"}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.0.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.0.0"}
   install: |
     {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[{"name":"ha","value":"true"}]}
 ---
@@ -712,6 +712,9 @@ spec:
             path: /ready
             port: 9990
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 10Mi
@@ -799,6 +802,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -970,6 +976,9 @@ spec:
             path: /ready
             port: 9995
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1003,6 +1012,9 @@ spec:
             path: /ready
             port: 9996
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1088,6 +1100,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -1182,6 +1197,9 @@ spec:
               requests:
                 cpu: 100m
                 memory: 50Mi
+              limits:
+                cpu: 1
+                memory: 250Mi
             securityContext:
               runAsUser: 2103
 ---
@@ -1262,6 +1280,9 @@ spec:
             path: /ready
             port: 9994
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1347,6 +1368,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -1564,6 +1588,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         resources:
+          limits:
+            cpu: "4"
+            memory: 8Gi
           requests:
             cpu: 300m
             memory: 300Mi
@@ -1654,6 +1681,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -1839,6 +1869,9 @@ spec:
             path: /api/health
             port: 3000
         resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -1927,6 +1960,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -2066,6 +2102,9 @@ spec:
             path: /ready
             port: 9995
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2154,6 +2193,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -2325,6 +2367,9 @@ spec:
             path: /ready
             port: 9997
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2411,6 +2456,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
@@ -2558,6 +2606,9 @@ spec:
             path: /ready
             port: 9998
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 50Mi
@@ -2640,6 +2691,9 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
+          limits:
+            cpu: "1"
+            memory: 250Mi
           requests:
             cpu: 100m
             memory: 20Mi
