@@ -581,6 +581,14 @@ func (options *installOptions) handleHA() {
 		if options.proxyMemoryRequest == "" {
 			options.proxyMemoryRequest = "20Mi"
 		}
+
+		if options.proxyCPULimit == "" {
+			options.proxyCPULimit = "1"
+		}
+
+		if options.proxyMemoryLimit == "" {
+			options.proxyMemoryLimit = "250Mi"
+		}
 	}
 
 	options.identityOptions.replicas = options.controllerReplicas
