@@ -37,7 +37,7 @@ spec:
             - "-controller-namespace={{.Namespace}}"
             - "-log-level={{.ControllerLogLevel}}"
             {{- if eq .HighAvailability true -}}
-            {{- include "linkerd.resources" .HeartbeatResources | nindent 12 }}
+            {{- include "partials.resources" .HeartbeatResources | nindent 12 }}
             {{- end -}}
             securityContext:
               runAsUser: {{.ControllerUID}}

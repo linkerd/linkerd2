@@ -13,7 +13,7 @@
   image: {{.Image.Name}}:{{.Image.Version}}
   imagePullPolicy: {{.Image.PullPolicy}}
   name: linkerd-init
-  {{- include "partials.resource" .ResourceRequirements | nindent 2 }}
+  {{- include "partials.resources" .ResourceRequirements | nindent 2 }}
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:

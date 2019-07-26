@@ -1,4 +1,4 @@
-{{- define "partials.resource" -}}
+{{- define "partials.resources" -}}
 resources:
   {{- if or .CPU.Limit .Memory.Limit }}
   limits:

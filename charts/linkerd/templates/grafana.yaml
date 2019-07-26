@@ -135,7 +135,7 @@ spec:
             path: /api/health
             port: 3000
         {{- if eq .HighAvailability true -}}
-        {{- include "linkerd.resources" .GrafanaResources | nindent 8 }}
+        {{- include "partials.resources" .GrafanaResources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: 472
