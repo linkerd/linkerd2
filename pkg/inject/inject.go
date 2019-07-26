@@ -205,7 +205,7 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPatch(bytes []byte, injectProxy bool) (*Patch, error) {
+func (conf *ResourceConfig) GetPatch(injectProxy bool) (*Patch, error) {
 	patch := NewPatch(conf.workload.metaType.Kind)
 	if conf.pod.spec != nil {
 		conf.injectPodAnnotations(patch)

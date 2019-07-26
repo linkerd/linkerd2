@@ -119,7 +119,7 @@ func TestGetPatch(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				p, err := fullConf.GetPatch(fakeReq.Object.Raw, true)
+				p, err := fullConf.GetPatch(true)
 				if err != nil {
 					t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 				}
@@ -153,7 +153,7 @@ func TestGetPatch(t *testing.T) {
 
 		fakeReq := getFakeReq(deployment)
 		conf := confNsDisabled().WithKind(fakeReq.Kind.Kind)
-		p, err := conf.GetPatch(fakeReq.Object.Raw, true)
+		p, err := conf.GetPatch(true)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
