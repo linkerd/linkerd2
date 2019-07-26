@@ -71,12 +71,7 @@
       port: {{.Port.Admin}}
     initialDelaySeconds: 2
   {{- if eq .HighAvailability true -}}
-  resources:
-  {{- if .ResourceRequirements -}}
-  {{- toYaml .ResourceRequirements | trim | nindent 4 -}}
-  {{- else -}}
-  {{- include "partials.proxy.resource" .Proxy | nindent 4 -}}
-  {{- end }}
+  {{- include "partials.resource" .ResourceRequirements | nindent 2 -}}
   {{- end }}
   securityContext:
     allowPrivilegeEscalation: false

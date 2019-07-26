@@ -1,17 +1,21 @@
-{{- define "partials.proxy.resource" -}}
-limits:
-  cpu: "1"
-  memory: 250Mi
-requests:
-  cpu: 100m
-  memory: 20Mi
-{{- end -}}
-
-{{- define "partials.proxy-init.resource" -}}
-limits:
-  cpu: 100m
-  memory: 50Mi
-requests:
-  cpu: 10m
-  memory: 10Mi
-{{- end -}}
+{{- define "partials.resource" -}}
+resources:
+  {{- if or .CPU.Limit .Memory.Limit }}
+  limits:
+    {{- with .CPU.Limit }}
+    cpu: {{.}}
+    {{- end }}
+    {{- with .Memory.Limit }}
+    memory: {{.}}
+    {{- end }}
+  {{- end }}
+  {{- if or .CPU.Request .Memory.Request }}
+  requests:
+    {{- with .CPU.Request }}
+    cpu: {{.}}
+    {{- end }}
+    {{- with .Memory.Request }}
+    memory: {{.}}
+    {{- end }}
+  {{- end }}
+{{- end }}

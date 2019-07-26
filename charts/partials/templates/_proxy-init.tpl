@@ -13,12 +13,7 @@
   image: {{.Image.Name}}:{{.Image.Version}}
   imagePullPolicy: {{.Image.PullPolicy}}
   name: linkerd-init
-  resources:
-  {{- if .ResourceRequirements -}}
-  {{- toYaml .ResourceRequirements | trim | nindent 4 -}}
-  {{- else -}}
-  {{- include "partials.proxy-init.resource" .Proxy | nindent 4 -}}
-  {{- end }}
+  {{- include "partials.resource" .ResourceRequirements | nindent 2 }}
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
