@@ -20,11 +20,14 @@ ControllerResources: &controller_resources
   Memory:
     Limit: 250Mi
     Request: 50Mi
-
 PublicAPIResources:
   <<: *controller_resources
-
 DestinationResources:
+  <<: *controller_resources
+
+# grafana configuration
+GrafanaImage: gcr.io/linkerd-io/grafana
+GrafanaResources:
   <<: *controller_resources
 
 # proxy configuration

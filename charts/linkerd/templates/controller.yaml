@@ -145,7 +145,7 @@ spec:
           name: config
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       initContainers:
-      {{- include "partials.proxy-init" .ProxyInit | nindent 6 -}}
+      {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
       serviceAccountName: linkerd-controller
       volumes:
       - name: config
