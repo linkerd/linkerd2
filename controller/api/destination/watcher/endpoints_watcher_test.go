@@ -92,6 +92,7 @@ subsets:
       kind: Pod
       name: name1-3
       namespace: ns
+  - ip: 172.17.0.21
   ports:
   - port: 8989`,
 				`

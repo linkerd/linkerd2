@@ -1,4 +1,3 @@
 # By default, collapse for these files in in GitHub reviews.
-Cargo.lock linguist-generated=false
-Gopkg.lock linguist-generated=false
+go.sum linguist-generated=false
 controller/gen/**/*.pb.go linguist-generated=true

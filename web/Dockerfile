@@ -2,48 +2,43 @@
 FROM node:10 as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
 
-ENV HOME /root
-ENV PATH $HOME/.yarn/bin:$PATH
-ENV GOPATH /go
-ENV PROJECT github.com/linkerd/linkerd2
-ENV PACKAGE $PROJECT/web/app
-ENV ROOT $GOPATH/src/$PROJECT
-ENV PACKAGEDIR $GOPATH/src/$PACKAGE
-WORKDIR $PACKAGEDIR
+ENV PATH /root/.yarn/bin:$PATH
+ENV ROOT /linkerd-build
+WORKDIR $ROOT
 
 # copy build script
-COPY bin/web $ROOT/bin/web
+COPY bin/web ./bin/web
 
 # install yarn dependencies
-COPY web/app/package.json web/app/yarn.lock ./
-RUN $ROOT/bin/web setup install --frozen-lockfile
+COPY web/app/package.json web/app/yarn.lock ./web/app/
+RUN ./bin/web setup install --frozen-lockfile
 
 # build frontend assets
 # set the env to production *after* yarn has done an install, to make sure all
 # libraries required for building are included.
 ENV NODE_ENV production
-COPY web/app .
-RUN $ROOT/bin/web build
+COPY web/app ./web/app
+RUN ./bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:4c8f4294 as golang
-WORKDIR /go/src/github.com/linkerd/linkerd2
+FROM gcr.io/linkerd-io/go-deps:b62fe1ae as golang
+WORKDIR /linkerd-build
 RUN mkdir -p web
 COPY web/main.go web
 COPY web/srv web/srv
 COPY controller controller
 COPY pkg pkg
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o web/web ./web
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o web/web ./web
 
 ## package it all up
 FROM gcr.io/linkerd-io/base:2019-02-19.01
 WORKDIR /linkerd
 
 COPY LICENSE .
-COPY --from=golang /go/src/github.com/linkerd/linkerd2/web/web .
+COPY --from=golang /linkerd-build/web/web .
 RUN mkdir -p app
-COPY --from=webpack-bundle /go/src/github.com/linkerd/linkerd2/web/app/dist app/dist
+COPY --from=webpack-bundle /linkerd-build/web/app/dist app/dist
 COPY web/templates templates
 
 ARG LINKERD_VERSION
