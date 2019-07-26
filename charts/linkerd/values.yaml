@@ -4,15 +4,28 @@
 
 ClusterDomain: &cluster_domain cluster.local
 EnableH2Upgrade: true
-HighAvailability: &high_availability false
+HighAvailability: &high_availability true
 ImagePullPolicy: IfNotPresent
 Namespace: &namespace linkerd
 
 # controller configuration
-ControllerReplicas: 2
+ControllerReplicas: 3
 ControllerImage: gcr.io/linkerd-io/controller
 ControllerLogLevel: info
 ControllerUID: 2103
+ControllerResources: &controller_resources
+  CPU:
+    Limit: "1"
+    Request: 100m
+  Memory:
+    Limit: 250Mi
+    Request: 50Mi
+
+PublicAPIResources:
+  <<: *controller_resources
+
+DestinationResources:
+  <<: *controller_resources
 
 # proxy configuration
 Proxy:

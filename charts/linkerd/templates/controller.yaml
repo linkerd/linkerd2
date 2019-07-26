@@ -47,16 +47,16 @@ spec:
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "controller" -}}
-kind: Deployment
 apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: linkerd-controller
-  namespace: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
   labels:
     {{.ControllerComponentLabel}}: controller
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+  name: linkerd-controller
+  namespace: {{.Namespace}}
 spec:
   replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
   selector:
@@ -66,86 +66,90 @@ spec:
       {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
     metadata:
+      annotations:
+        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+        {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
         {{.ControllerComponentLabel}}: controller
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
-      annotations:
-        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
-        {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
     spec:
-      serviceAccountName: linkerd-controller
+      {{- if eq .HighAvailability true -}}
+      {{- $local := dict "Component" "controller" "Label" .ControllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
       containers:
-      - name: public-api
-        ports:
-        - name: http
-          containerPort: 8085
-        - name: admin-http
-          containerPort: 9995
-        volumeMounts:
-        - name: config
-          mountPath: /var/run/linkerd/config
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
+      - args:
         - "public-api"
         - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.cluster.local:9090"
-        - "-tap-addr=linkerd-tap.{{.Namespace}}.svc.cluster.local:8088"
+        - "-tap-addr=linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}:8088"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
+        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
             port: 9995
           initialDelaySeconds: 10
+        name: public-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9995
-          failureThreshold: 7
+        {{- if eq .HighAvailability true -}}
         {{- include "linkerd.resources" .PublicAPIResources | nindent 8 }}
+        {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
-      - name: destination
-        ports:
-        - name: grpc
-          containerPort: 8086
-        - name: admin-http
-          containerPort: 9996
         volumeMounts:
-        - name: config
-          mountPath: /var/run/linkerd/config
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        args:
+        - mountPath: /var/run/linkerd/config
+          name: config
+      - args:
         - "destination"
         - "-addr=:8086"
         - "-controller-namespace={{.Namespace}}"
         - "-enable-h2-upgrade={{.EnableH2Upgrade}}"
         - "-log-level={{.ControllerLogLevel}}"
+        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
+        name: destination
+        ports:
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
+          name: admin-http
         readinessProbe:
+          failureThreshold: 7
           httpGet:
             path: /ready
             port: 9996
-          failureThreshold: 7
+        {{- if eq .HighAvailability true -}}
         {{- include "linkerd.resources" .DestinationResources | nindent 8 }}
+        {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       initContainers:
       {{- include "partials.proxy-init" .ProxyInit | nindent 6 -}}
+      serviceAccountName: linkerd-controller
       volumes:
       - name: config
         configMap:
           name: linkerd-config
       {{- include "partials.proxy-identity-volume" . | nindent 6 -}}
-      {{- if eq .HighAvailability true -}}
-      {{- $local := dict "Kind" "deployment" "Label" .ControllerComponentLabel -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end -}}
 {{end -}}

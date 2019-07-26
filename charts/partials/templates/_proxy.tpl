@@ -30,7 +30,7 @@
     value: /var/run/linkerd/identity/end-entity
   - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
     value: |
-    {{- .IdentityTrustAnchors | nindent 6 -}}
+    {{- .IdentityTrustAnchors | trim | nindent 6 }}
   - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
     value: /var/run/secrets/kubernetes.io/serviceaccount/token
   - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
@@ -56,6 +56,7 @@
     httpGet:
       path: /metrics
       port: {{.Port.Admin}}
+    initialDelaySeconds: 10
   name: linkerd-proxy
   ports:
   - containerPort: {{.Port.Inbound}}
@@ -68,7 +69,8 @@
     httpGet:
       path: /ready
       port: {{.Port.Admin}}
-  {{ if eq .HighAvailability true -}}
+    initialDelaySeconds: 2
+  {{- if eq .HighAvailability true -}}
   resources:
   {{- if .ResourceRequirements -}}
   {{- toYaml .ResourceRequirements | trim | nindent 4 -}}
@@ -81,6 +83,6 @@
     readOnlyRootFilesystem: true
     runAsUser: {{.UID}}
   volumeMounts:
-  - name: linkerd-identity-end-entity
-    mountPath: /var/run/linkerd/identity/end-entity
+  - mountPath: /var/run/linkerd/identity/end-entity
+    name: linkerd-identity-end-entity
 {{ end -}}
