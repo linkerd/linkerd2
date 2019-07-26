@@ -152,7 +152,6 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 		out = string(buffer.Bytes()[padding:])
 		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
 	}
-
 	return out
 }
 

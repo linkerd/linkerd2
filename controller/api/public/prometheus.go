@@ -18,6 +18,7 @@ type promType string
 type promResult struct {
 	prom promType
 	vec  model.Vector
+	key  rKey
 	err  error
 }
 
@@ -132,6 +133,19 @@ func generateLabelStringWithExclusion(l model.LabelSet, labelName string) string
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
 }
 
+// insert a regex-match check into a LabelSet for labels that match the provided
+// string. this is modeled on generateLabelStringWithExclusion().
+func generateLabelStringWithRegex(l model.LabelSet, labelName string, label string) string {
+	lstrs := make([]string, 0, len(l))
+	for l, v := range l { // label and value i guess?
+		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
+	}
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, label))
+
+	sort.Strings(lstrs)
+	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
+}
+
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
 	return resource.Type != k8s.Namespace && resource.Namespace != ""
@@ -149,7 +163,7 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(l5dLabel)
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string, key rKey) ([]promResult, error) {
 	resultChan := make(chan promResult)
 
 	// kick off asynchronous queries: request count queries + 3 latency queries
@@ -165,6 +179,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
 				prom: typ,
+				key:  key,
 				vec:  resultVector,
 				err:  err,
 			}
@@ -180,6 +195,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 
 			resultChan <- promResult{
 				prom: quantile,
+				key:  key,
 				vec:  latencyResult,
 				err:  err,
 			}

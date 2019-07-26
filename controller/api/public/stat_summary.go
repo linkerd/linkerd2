@@ -2,6 +2,8 @@ package public
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"reflect"
 
 	proto "github.com/golang/protobuf/proto"
@@ -23,6 +25,7 @@ type resourceResult struct {
 type k8sStat struct {
 	object   metav1.Object
 	podStats *podStats
+	tsStats  *tsStat
 }
 
 type rKey struct {
@@ -32,8 +35,9 @@ type rKey struct {
 }
 
 const (
-	success = "success"
-	failure = "failure"
+	success  = "success"
+	failure  = "failure"
+	tsString = "trafficsplit"
 
 	reqQuery             = "sum(increase(response_total%s[%s])) by (%s, classification, tls)"
 	latencyQuantileQuery = "histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, %s))"
@@ -48,6 +52,21 @@ type podStats struct {
 	total  uint64
 	failed uint64
 	errors map[string]*pb.PodErrors
+}
+
+type leaves struct {
+	leafName string
+	weight   string
+}
+
+type tsStat struct {
+	apex   string
+	leaves []singleLeaf
+}
+
+type singleLeaf struct {
+	singleLeafName   string
+	singleLeafWeight string
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -92,6 +111,8 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		go func() {
 			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
+			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
+				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
 			} else {
 				resultChan <- s.k8sResourceQuery(ctx, statReq)
 			}
@@ -113,7 +134,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 			},
 		},
 	}
-
+	fmt.Printf("this is what we are returning here! \n%+v\n", &rsp)
 	return &rsp, nil
 }
 
@@ -170,6 +191,72 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 	return objectMap, nil
 }
 
+func (s *grpcServer) getTrafficSplitStats(req *pb.StatSummaryRequest) (map[rKey]k8sStat, error) {
+
+	requestedResource := req.GetSelector().GetResource()
+	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	objectMap := map[rKey]k8sStat{}
+
+	type Leaf struct {
+		apex   string
+		leaf   string
+		weight string
+	}
+
+	for _, object := range objects {
+		metaObj, err := meta.Accessor(object)
+		if err != nil {
+			return nil, err
+		}
+
+		key := rKey{
+			Name:      metaObj.GetName(),
+			Namespace: metaObj.GetNamespace(),
+			Type:      requestedResource.GetType(),
+		}
+
+		tsAnnotations := metaObj.GetAnnotations()
+		ts1 := tsAnnotations["kubectl.kubernetes.io/last-applied-configuration"]
+		sec := map[string]interface{}{}
+		json.Unmarshal([]byte(ts1), &sec)
+		spec := sec["spec"].(map[string]interface{})
+
+		backends := spec["backends"].(interface{})
+		myApex := spec["service"].(string)
+		tsStat := &tsStat{apex: myApex, leaves: []singleLeaf{}}
+
+		switch backends := backends.(type) {
+		case []interface{}:
+			for _, value := range backends {
+				leaf := fmt.Sprint(value.(map[string]interface{})["service"])
+				weight := fmt.Sprint(value.(map[string]interface{})["weight"])
+				tsStat.leaves = append(tsStat.leaves, singleLeaf{singleLeafName: leaf, singleLeafWeight: weight})
+			}
+		default:
+			{
+				fmt.Println("no interface to go through")
+			}
+		}
+
+		podStats, err := s.getPodStats(object)
+
+		if err != nil {
+			return nil, err
+		}
+		objectMap[key] = k8sStat{
+			object:   metaObj,
+			podStats: podStats,
+			tsStats:  tsStat,
+		}
+
+	}
+	return objectMap, nil
+}
+
 func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
 	k8sObjects, err := s.getKubernetesObjectStats(req)
 	if err != nil {
@@ -179,7 +266,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	var requestMetrics map[rKey]*pb.BasicStats
 	var tcpMetrics map[rKey]*pb.TcpStats
 	if !req.SkipStats {
-		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, k8sObjects, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -202,6 +289,10 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 		var basicStats *pb.BasicStats
 		if !reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
 			basicStats = requestMetrics[key]
+		}
+
+		if err != nil {
+			fmt.Printf("err is:\n%+v\n", err)
 		}
 
 		k8sResource := objInfo.object
@@ -233,6 +324,89 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 			},
 		},
 	}
+	return resourceResult{res: &rsp, err: nil}
+}
+
+func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	k8sObjects, err := s.getTrafficSplitStats(req)
+
+	if err != nil {
+		return resourceResult{res: nil, err: err}
+	}
+
+	var requestMetrics map[carolKey]*pb.BasicStats
+	var tcpMetrics map[carolKey]*pb.TcpStats
+	if !req.SkipStats {
+		requestMetrics, tcpMetrics, err = s.getTrafficSplitMetrics(ctx, req, k8sObjects, req.TimeWindow)
+
+		if err != nil {
+			return resourceResult{res: nil, err: err}
+		}
+	}
+
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
+	keys := getTrafficSplitResultKeys(req, k8sObjects, requestMetrics)
+
+	for _, object := range k8sObjects {
+		infoGrouping := object.tsStats
+
+		for _, leafService := range infoGrouping.leaves {
+			for _, info := range keys {
+				if leafService.singleLeafName == info.Leaf {
+					var tcpStats *pb.TcpStats
+					if req.TcpStats {
+						tcpStats = tcpMetrics[info]
+					}
+
+					var basicStats *pb.BasicStats
+					if !reflect.DeepEqual(requestMetrics[info], &pb.BasicStats{}) {
+						basicStats = requestMetrics[info]
+					}
+
+					tsStats := &pb.TrafficSplitStats{
+						Apex:   info.Apex,
+						Leaf:   leafService.singleLeafName,
+						Weight: leafService.singleLeafWeight,
+					}
+
+					if err != nil {
+						fmt.Printf("err is:\n%+v\n", err)
+					}
+
+					k8sResource := object.object
+					row := pb.StatTable_PodGroup_Row{
+						Resource: &pb.Resource{
+							Name:      k8sResource.GetName(),
+							Namespace: k8sResource.GetNamespace(),
+							Type:      req.GetSelector().GetResource().GetType(),
+						},
+						TimeWindow: req.TimeWindow,
+						Stats:      basicStats,
+						TcpStats:   tcpStats,
+						TsStats:    tsStats,
+					}
+
+					podStat := object.podStats
+					row.Status = podStat.status
+					row.MeshedPodCount = podStat.inMesh
+					row.RunningPodCount = podStat.total
+					row.FailedPodCount = podStat.failed
+					row.ErrorsByPod = podStat.errors
+
+					rows = append(rows, &row)
+
+				}
+			}
+		}
+	}
+
+	rsp := pb.StatTable{
+		Table: &pb.StatTable_PodGroup_{
+			PodGroup: &pb.StatTable_PodGroup{
+				Rows: rows,
+			},
+		},
+	}
 
 	return resourceResult{res: &rsp, err: nil}
 }
@@ -241,7 +415,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 	var requestMetrics map[rKey]*pb.BasicStats
 	if !req.SkipStats {
 		var err error
-		requestMetrics, _, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, _, err = s.getStatMetrics(ctx, req, nil, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -277,6 +451,10 @@ func isNonK8sResourceQuery(resourceType string) bool {
 	return resourceType == k8s.Authority
 }
 
+func isTrafficSplitQuery(resourceType string) bool {
+	return resourceType == k8s.TrafficSplit
+}
+
 // get the list of objects for which we want to return results
 func getResultKeys(
 	req *pb.StatSummaryRequest,
@@ -289,6 +467,38 @@ func getResultKeys(
 		// if the request doesn't have outbound filtering, return all rows
 		for key := range k8sObjects {
 			keys = append(keys, key)
+		}
+	} else {
+		// if the request does have outbound filtering,
+		// only return rows for which we have stats
+		for key := range metricResults {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+func getTrafficSplitResultKeys(
+	req *pb.StatSummaryRequest,
+	k8sObjects map[rKey]k8sStat,
+	metricResults map[carolKey]*pb.BasicStats,
+) []carolKey {
+	var keys []carolKey
+
+	if req.GetOutbound() == nil || req.GetNone() != nil {
+		for key := range k8sObjects {
+
+			objInfo, _ := k8sObjects[key]
+
+			tsStat := objInfo.tsStats.leaves
+			apexName := objInfo.tsStats.apex
+			for _, boom := range tsStat {
+				leafy := boom.singleLeafName
+				apexy := apexName
+				jarjar := carolKey{Name: key.Name, Namespace: key.Namespace, Type: key.Type, Leaf: leafy, Apex: apexy}
+				keys = append(keys, jarjar)
+
+			}
 		}
 	} else {
 		// if the request does have outbound filtering,
@@ -321,15 +531,26 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	default:
 		labelNames = promGroupByLabelNames(req.Selector.Resource)
-
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-		labels = labels.Merge(promDirectionLabels("inbound"))
+
+		if req.Selector.Resource.Type == "trafficsplit" {
+			for index, n := range labelNames {
+				if n == "trafficsplit" {
+					dstServiceLabel := model.LabelName("dst_service")
+					labelNames = append(labelNames[:index], labelNames[index+1:]...)
+					labelNames = append(labelNames, dstServiceLabel)
+					labels = labels.Merge(promDirectionLabels("outbound"))
+				} else {
+					labels = labels.Merge(promDirectionLabels("inbound"))
+				}
+			}
+		}
 	}
 
 	return
 }
 
-func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
+func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
@@ -340,7 +561,14 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		promQueries[promTCPReadBytes] = tcpReadBytesQuery
 		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
 	}
-	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
+
+	stringifiedReqLabels := reqLabels.String()
+	stringifiedGroupBy := groupBy.String()
+
+	var results []promResult
+	var err error
+
+	results, err = s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, stringifiedReqLabels, timeWindow, stringifiedGroupBy, rKey{})
 
 	if err != nil {
 		return nil, nil, err
@@ -348,6 +576,65 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 
 	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
 	return basicStats, tcpStats, nil
+}
+
+type carolKey struct {
+	Namespace string
+	Type      string
+	Name      string
+	Apex      string
+	Leaf      string
+}
+
+func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, timeWindow string) (map[carolKey]*pb.BasicStats, map[carolKey]*pb.TcpStats, error) {
+
+	basicStats1 := make(map[carolKey]*pb.BasicStats)
+	tcpStats1 := make(map[carolKey]*pb.TcpStats)
+
+	for leafServiceKey, leafServiceVal := range k8sObjects {
+		reqLabels, groupBy := buildRequestLabels(req)
+
+		apexToQuery := leafServiceVal.tsStats.apex
+		stringifiedReqLabels := generateLabelStringWithRegex(reqLabels, "authority", apexToQuery)
+
+		promQueries := map[promType]string{
+			promRequests: reqQuery,
+		}
+
+		if req.TcpStats {
+			promQueries[promTCPConnections] = tcpConnectionsQuery
+			promQueries[promTCPReadBytes] = tcpReadBytesQuery
+			promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
+		}
+		results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, stringifiedReqLabels, timeWindow, groupBy.String(), rKey{})
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		returnedBasicStats, returnedTCPStats := processPrometheusMetrics(req, results, groupBy)
+
+		for rBSKey, rBSVal := range returnedBasicStats {
+
+			basicStats1[carolKey{
+				Namespace: leafServiceKey.Namespace,
+				Name:      leafServiceKey.Name,
+				Type:      leafServiceKey.Type,
+				Apex:      apexToQuery,
+				Leaf:      rBSKey.Name,
+			}] = rBSVal
+		}
+		for rBSKey, rBSVal := range returnedTCPStats {
+			tcpStats1[carolKey{
+				Namespace: leafServiceKey.Namespace,
+				Name:      leafServiceKey.Name,
+				Type:      leafServiceKey.Type,
+				Apex:      apexToQuery,
+				Leaf:      rBSKey.Name,
+			}] = rBSVal
+		}
+	}
+	return basicStats1, tcpStats1, nil
 }
 
 func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {

@@ -1,0 +1,83 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+    project: booksapp
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+    project: booksapp
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+        project: booksapp
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.6
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password
+        - name: MYSQL_DATABASE
+          value: booksapp_production
+        - name: MYSQL_USER
+          value: booksapp
+        - name: MYSQL_PASSWORD
+          value: booksapp
+        - name: MYSQL_INITDB_SKIP_TZINFO
+          value: "1"
+        ports:
+        - containerPort: 3306
+          name: mysql
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-init
+  labels:
+    app: mysql-init
+    project: booksapp
+spec:
+  template:
+    metadata:
+      name: mysql-init
+      labels:
+        app: mysql-init
+        project: booksapp
+    spec:
+      containers:
+      - name: mysql-init
+        image: buoyantio/booksapp:v0.0.3
+        env:
+        - name: DATABASE_URL
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          set -e
+          bundle exec rake db:ready
+          bundle exec rake db:migrate
+          bundle exec rake db:seed
+      restartPolicy: OnFailure

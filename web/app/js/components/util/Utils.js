@@ -173,7 +173,8 @@ export const shortNameLookup = {
   "service": "svc",
   "statefulset": "sts",
   "job": "job",
-  "authority": "au"
+  "authority": "au",
+  "trafficsplit": "ts",
 };
 
 export const podOwnerLookup = {

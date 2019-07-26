@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authors-clone
+  labels:
+    app: authors-clone
+    project: booksapp
+spec:
+  selector:
+    app: authors-clone
+  clusterIP: None
+  ports:
+  - name: service
+    port: 7009
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: authors-clone
+  labels:
+    app: authors-clone
+    project: booksapp
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: authors-clone
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: service
+        image: buoyantio/booksapp:v0.0.3
+        env:
+        - name: DATABASE_URL
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
+        - name: BOOKS_SITE
+          value: http://books:7002
+        args: ["prod:authors"]
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 7001
+        ports:
+        - name: service
+          containerPort: 7009
