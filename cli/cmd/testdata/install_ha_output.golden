@@ -1195,6 +1195,9 @@ spec:
               requests:
                 cpu: 100m
                 memory: 50Mi
+              limits:
+                cpu: 1
+                memory: 250Mi
             securityContext:
               runAsUser: 2103
 ---
