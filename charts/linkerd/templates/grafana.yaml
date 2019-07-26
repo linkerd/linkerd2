@@ -119,7 +119,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.GrafanaImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.GrafanaImage}}:{{default $.Chart.AppVersion .GrafanaImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
