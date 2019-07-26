@@ -2,7 +2,10 @@ package public
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"reflect"
+	"regexp"
 
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -21,14 +24,26 @@ type resourceResult struct {
 }
 
 type k8sStat struct {
-	object   metav1.Object
-	podStats *podStats
+	object           metav1.Object
+	podStats         *podStats
+	trafficSplitInfo tsInfo
 }
 
 type rKey struct {
 	Namespace string
 	Type      string
 	Name      string
+	// adding Apex, Leaf and Weight to rKey so we can match k8s results to prometheus results
+	Apex   string
+	Leaf   string
+	Weight string
+}
+
+type tsInfo struct {
+	Name   string
+	Apex   string
+	Leaf   string
+	Weight string
 }
 
 const (
@@ -145,6 +160,14 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 
 	objectMap := map[rKey]k8sStat{}
 
+	type Leaf struct {
+		apex   string
+		leaf   string
+		weight string
+	}
+
+	var leaves = []Leaf{}
+
 	for _, object := range objects {
 		metaObj, err := meta.Accessor(object)
 		if err != nil {
@@ -157,16 +180,57 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 			Type:      requestedResource.GetType(),
 		}
 
+		if requestedResource.GetType() == "trafficsplit" {
+			tsAnnotations := metaObj.GetAnnotations()
+			ts1 := tsAnnotations["kubectl.kubernetes.io/last-applied-configuration"]
+			sec := map[string]interface{}{}
+			json.Unmarshal([]byte(ts1), &sec)
+			spec := sec["spec"].(map[string]interface{})
+
+			backends := spec["backends"].(interface{})
+
+			switch backends := backends.(type) {
+			case []interface{}:
+				for _, value := range backends {
+					apex := spec["service"].(string)
+					leaf := fmt.Sprint(value.(map[string]interface{})["service"])
+					weight := fmt.Sprint(value.(map[string]interface{})["weight"])
+					leaves = append(leaves, Leaf{leaf: leaf, weight: weight, apex: apex})
+				}
+			default:
+				{
+					fmt.Println("no interface to go through")
+				}
+			}
+
+		}
+
 		podStats, err := s.getPodStats(object)
 		if err != nil {
 			return nil, err
 		}
+		if len(leaves) > 0 {
+			for _, leaf := range leaves {
+				key.Apex = leaf.apex
+				key.Leaf = leaf.leaf
+				key.Weight = leaf.weight
 
-		objectMap[key] = k8sStat{
-			object:   metaObj,
-			podStats: podStats,
+				objectMap[key] = k8sStat{
+					object:   metaObj,
+					podStats: podStats,
+				}
+
+			}
+		} else {
+			objectMap[key] = k8sStat{
+				object:   metaObj,
+				podStats: podStats,
+			}
+
 		}
+		leaves = nil
 	}
+
 	return objectMap, nil
 }
 
@@ -179,7 +243,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	var requestMetrics map[rKey]*pb.BasicStats
 	var tcpMetrics map[rKey]*pb.TcpStats
 	if !req.SkipStats {
-		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, k8sObjects, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -204,6 +268,16 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 			basicStats = requestMetrics[key]
 		}
 
+		tsStats := &pb.TrafficSplitStats{
+			Apex:   key.Apex,
+			Leaf:   key.Leaf,
+			Weight: key.Weight,
+		}
+
+		if err != nil {
+			fmt.Printf("err is:\n%+v\n", err)
+		}
+
 		k8sResource := objInfo.object
 		row := pb.StatTable_PodGroup_Row{
 			Resource: &pb.Resource{
@@ -214,6 +288,7 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 			TimeWindow: req.TimeWindow,
 			Stats:      basicStats,
 			TcpStats:   tcpStats,
+			TsStats:    tsStats,
 		}
 
 		podStat := objInfo.podStats
@@ -241,7 +316,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 	var requestMetrics map[rKey]*pb.BasicStats
 	if !req.SkipStats {
 		var err error
-		requestMetrics, _, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		requestMetrics, _, err = s.getStatMetrics(ctx, req, nil, req.TimeWindow)
 		if err != nil {
 			return resourceResult{res: nil, err: err}
 		}
@@ -329,7 +404,7 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 	return
 }
 
-func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
+func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
 	reqLabels, groupBy := buildRequestLabels(req)
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
@@ -340,7 +415,33 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		promQueries[promTCPReadBytes] = tcpReadBytesQuery
 		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
 	}
-	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
+
+	stringifiedReqLabels := reqLabels.String()
+	stringifiedGroupBy := groupBy.String()
+
+	if req.Selector.Resource.Type == "trafficsplit" {
+
+		re := regexp.MustCompile("trafficsplit")
+		stringifiedGroupBy = re.ReplaceAllString(stringifiedGroupBy, "authority")
+	}
+	var results []promResult
+	var err error
+
+	if req.Selector.Resource.Type == "trafficsplit" {
+		for key := range k8sObjects {
+			// use regex to look for any authority that matches the leaf service name -- this needs to be thought out since could return
+			// false positives
+			stringifiedReqLabels = `{direction="inbound", namespace="default", authority=~"^` + key.Leaf + `[.].+"}`
+			returnedResults, returnedResultsErr := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, stringifiedReqLabels, timeWindow, stringifiedGroupBy, key)
+			if returnedResultsErr != nil {
+				return nil, nil, err
+			}
+			results = append(results, returnedResults...)
+		}
+
+	} else {
+		results, err = s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, stringifiedReqLabels, timeWindow, stringifiedGroupBy, rKey{})
+	}
 
 	if err != nil {
 		return nil, nil, err
@@ -357,6 +458,12 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 	for _, result := range results {
 		for _, sample := range result.vec {
 			resource := metricToKey(req, sample.Metric, groupBy)
+			if len(result.key.Apex) > 0 {
+				resource.Apex = result.key.Apex
+				resource.Leaf = result.key.Leaf
+				resource.Weight = result.key.Weight
+				resource.Name = result.key.Name
+			}
 
 			addBasicStats := func() {
 				if basicStats[resource] == nil {

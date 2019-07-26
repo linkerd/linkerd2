@@ -241,7 +241,7 @@ func (s *grpcServer) getRouteMetrics(ctx context.Context, req *pb.TopRoutesReque
 		queries[promActualRequests] = actualRouteReqQuery
 	}
 
-	results, err := s.getPrometheusMetrics(ctx, queries, routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy)
+	results, err := s.getPrometheusMetrics(ctx, queries, routeLatencyQuantileQuery, reqLabels, timeWindow, groupBy, rKey{})
 	if err != nil {
 		return nil, err
 	}

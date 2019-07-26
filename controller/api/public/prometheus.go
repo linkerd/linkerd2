@@ -18,6 +18,7 @@ type promType string
 type promResult struct {
 	prom promType
 	vec  model.Vector
+	key  rKey
 	err  error
 }
 
@@ -149,7 +150,7 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(l5dLabel)
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string, key rKey) ([]promResult, error) {
 	resultChan := make(chan promResult)
 
 	// kick off asynchronous queries: request count queries + 3 latency queries
@@ -165,6 +166,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
 				prom: typ,
+				key:  key,
 				vec:  resultVector,
 				err:  err,
 			}
@@ -180,6 +182,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 
 			resultChan <- promResult{
 				prom: quantile,
+				key:  key,
 				vec:  latencyResult,
 				err:  err,
 			}
@@ -201,6 +204,5 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 	if err != nil {
 		return nil, err
 	}
-
 	return results, nil
 }

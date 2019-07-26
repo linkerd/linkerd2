@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	ts "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
 	tsinformers "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
@@ -362,6 +363,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getServices(namespace, name)
 	case k8s.StatefulSet:
 		return api.getStatefulsets(namespace, name)
+	case k8s.TrafficSplit:
+		return api.getTrafficSplits(namespace, name)
 	default:
 		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
@@ -471,6 +474,11 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	case *appsv1.StatefulSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
+		ownerUID = typed.UID
+
+	case *v1alpha1.TrafficSplit:
+		namespace = typed.Namespace
+		selector = labels.Everything()
 		ownerUID = typed.UID
 
 	case *corev1.Pod:
@@ -726,6 +734,32 @@ func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error
 	objects := []runtime.Object{}
 	for _, ss := range statefulsets {
 		objects = append(objects, ss)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getTrafficSplits(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var trafficSplits []*v1alpha1.TrafficSplit
+
+	if namespace == "" {
+		trafficSplits, err = api.TS().Lister().List(labels.Everything())
+	} else if name == "" {
+		trafficSplits, err = api.TS().Lister().TrafficSplits(namespace).List(labels.Everything())
+	} else {
+		var ts *v1alpha1.TrafficSplit
+		ts, err = api.TS().Lister().TrafficSplits(namespace).Get(name)
+		trafficSplits = []*v1alpha1.TrafficSplit{ts}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, ts := range trafficSplits {
+		objects = append(objects, ts)
 	}
 
 	return objects, nil
