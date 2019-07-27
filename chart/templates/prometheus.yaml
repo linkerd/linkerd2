@@ -132,6 +132,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-prometheus
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       volumes:
       - name: data
         emptyDir: {}

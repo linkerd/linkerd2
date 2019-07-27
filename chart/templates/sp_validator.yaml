@@ -46,6 +46,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-sp-validator
+      nodeSelector:
+          beta.kubernetes.io/os: linux
       containers:
       - name: sp-validator
         image: {{.ControllerImage}}

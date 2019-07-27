@@ -228,6 +228,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-identity
       volumes:
       - configMap:
@@ -487,6 +489,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-controller
       volumes:
       - configMap:
@@ -523,6 +527,8 @@ spec:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
           serviceAccountName: linkerd-heartbeat
+          nodeSelector:
+            beta.kubernetes.io/os: linux
           restartPolicy: OnFailure
           containers:
           - name: heartbeat
@@ -736,6 +742,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-web
       volumes:
       - configMap:
@@ -1036,6 +1044,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-prometheus
       volumes:
       - emptyDir: {}
@@ -1302,6 +1312,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
@@ -1502,6 +1514,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
@@ -1732,6 +1746,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
@@ -1934,6 +1950,8 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       serviceAccountName: linkerd-tap
       volumes:
       - emptyDir:

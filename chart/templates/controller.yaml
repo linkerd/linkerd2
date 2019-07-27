@@ -62,6 +62,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-controller
+      nodeSelector:
+          beta.kubernetes.io/os: linux
       containers:
       - name: public-api
         ports:

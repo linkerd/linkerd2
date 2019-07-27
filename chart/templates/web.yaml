@@ -45,6 +45,8 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - name: web
         ports:

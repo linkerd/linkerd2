@@ -102,6 +102,8 @@ spec:
       annotations:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       volumes:
       - name: data
         emptyDir: {}

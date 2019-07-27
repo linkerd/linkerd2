@@ -26,6 +26,8 @@ spec:
             {{.CreatedByAnnotation}}: {{.CliVersion}}
         spec:
           serviceAccountName: linkerd-heartbeat
+          nodeSelector:
+            beta.kubernetes.io/os: linux
           restartPolicy: OnFailure
           containers:
           - name: heartbeat

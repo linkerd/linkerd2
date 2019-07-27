@@ -27,6 +27,8 @@ spec:
         {{.CreatedByAnnotation}}: {{.CliVersion}}
     spec:
       serviceAccountName: linkerd-proxy-injector
+      nodeSelector:
+          beta.kubernetes.io/os: linux
       containers:
       - name: proxy-injector
         image: {{.ControllerImage}}
