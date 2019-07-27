@@ -618,7 +618,7 @@ func tbprint(x, y int, msg string) {
 
 func tbprintBold(x, y int, msg string) {
 	for _, c := range msg {
-		termbox.SetCell(x, y, c, termbox.AttrBold, termbox.ColorDefault)
+		termbox.SetCell(x, y, c, termbox.AttrBold|termbox.ColorWhite, termbox.ColorDefault)
 		x += runewidth.RuneWidth(c)
 	}
 }
