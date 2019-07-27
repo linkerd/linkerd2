@@ -1,17 +1,21 @@
 package cmd
 
 import (
-	"context"
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -112,7 +116,12 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, checkPublicAPIClientOrExit(), req, wide)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+			if err != nil {
+				return err
+			}
+
+			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, wide)
 		},
 	}
 
@@ -138,22 +147,51 @@ func newCmdTap() *cobra.Command {
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, wide bool) error {
+func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, wide bool) error {
 	var resource string
 	if wide {
-		resource = req.Target.Resource.GetType()
+		resource = req.GetTarget().GetResource().GetType()
 	}
 
-	rsp, err := client.TapByResource(context.Background(), req)
+	client, err := k8sAPI.NewClient()
 	if err != nil {
 		return err
 	}
-	return renderTap(w, rsp, resource)
+
+	reqBytes, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	url := protohttp.TapReqToURL(req)
+	httpReq, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("%s%s", k8sAPI.Host, url),
+		bytes.NewReader(reqBytes),
+	)
+	if err != nil {
+		return err
+	}
+
+	httpRsp, err := client.Do(httpReq)
+	if err != nil {
+		log.Debugf("Error invoking [%s]: %v", "taps", err)
+		return err
+	}
+	defer httpRsp.Body.Close()
+	log.Debugf("Response from [%s] had headers: %v", "taps", httpRsp.Header)
+
+	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
+		return err
+	}
+
+	reader := bufio.NewReader(httpRsp.Body)
+	return renderTap(w, reader, resource)
 }
 
-func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource string) error {
+func renderTap(w io.Writer, tapStream *bufio.Reader, resource string) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapClient, tableWriter, resource)
+	err := writeTapEventsToBuffer(tapStream, tableWriter, resource)
 	if err != nil {
 		return err
 	}
@@ -162,10 +200,11 @@ func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource strin
 	return nil
 }
 
-func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer, resource string) error {
+func writeTapEventsToBuffer(tapStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
-		event, err := tapClient.Recv()
+		event := pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapStream, &event)
 		if err == io.EOF {
 			break
 		}
@@ -173,7 +212,7 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, renderTapEvent(event, resource))
+		_, err = fmt.Fprintln(w, renderTapEvent(&event, resource))
 		if err != nil {
 			return err
 		}

@@ -36,7 +36,43 @@ func ResourceAuthz(
 		return err
 	}
 
-	if result.Status.Allowed {
+	return evaluateAccessReviewStatus(group, resource, result.Status)
+}
+
+// ResourceAuthzForUser checks whether a given user is authorized to perform a
+// given action.
+func ResourceAuthzForUser(
+	client kubernetes.Interface,
+	namespace, verb, group, version, resource, subresource, name, user string, userGroups []string) error {
+	sar := &authV1.SubjectAccessReview{
+		Spec: authV1.SubjectAccessReviewSpec{
+			User:   user,
+			Groups: userGroups,
+			ResourceAttributes: &authV1.ResourceAttributes{
+				Namespace:   namespace,
+				Verb:        verb,
+				Group:       group,
+				Version:     version,
+				Resource:    resource,
+				Subresource: subresource,
+				Name:        name,
+			},
+		},
+	}
+
+	result, err := client.
+		AuthorizationV1().
+		SubjectAccessReviews().
+		Create(sar)
+	if err != nil {
+		return err
+	}
+
+	return evaluateAccessReviewStatus(group, resource, result.Status)
+}
+
+func evaluateAccessReviewStatus(group, resource string, status authV1.SubjectAccessReviewStatus) error {
+	if status.Allowed {
 		return nil
 	}
 
@@ -44,8 +80,8 @@ func ResourceAuthz(
 		Group: group,
 		Kind:  resource,
 	}
-	if len(result.Status.Reason) > 0 {
-		return fmt.Errorf("not authorized to access %s: %s", gk, result.Status.Reason)
+	if len(status.Reason) > 0 {
+		return fmt.Errorf("not authorized to access %s: %s", gk, status.Reason)
 	}
 	return fmt.Errorf("not authorized to access %s", gk)
 }

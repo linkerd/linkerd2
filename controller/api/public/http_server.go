@@ -13,6 +13,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
@@ -43,7 +44,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}).Debugf("Serving %s %s", req.Method, req.URL.Path)
 	// Validate request method
 	if req.Method != http.MethodPost {
-		writeErrorToHTTPResponse(w, fmt.Errorf("POST required"))
+		protohttp.WriteErrorToHTTPResponse(w, fmt.Errorf("POST required"))
 		return
 	}
 
@@ -80,20 +81,20 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.StatSummaryRequest
 
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.StatSummary(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -101,20 +102,20 @@ func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {
 func (h *handler) handleEdges(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.EdgesRequest
 
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.Edges(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -122,83 +123,83 @@ func (h *handler) handleEdges(w http.ResponseWriter, req *http.Request) {
 func (h *handler) handleTopRoutes(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.TopRoutesRequest
 
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.TopRoutes(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleVersion(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.Empty
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.Version(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleSelfCheck(w http.ResponseWriter, req *http.Request) {
 	var protoRequest healthcheckPb.SelfCheckRequest
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.SelfCheck(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.ListPodsRequest
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.ListPods(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
@@ -206,92 +207,92 @@ func (h *handler) handleListPods(w http.ResponseWriter, req *http.Request) {
 func (h *handler) handleListServices(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.ListServicesRequest
 
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.ListServices(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
-	flushableWriter, err := newStreamingWriter(w)
+	flushableWriter, err := protohttp.NewStreamingWriter(w)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	var protoRequest pb.TapByResourceRequest
-	err = httpRequestToProto(req, &protoRequest)
+	err = protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	server := tapServer{streamServer{w: flushableWriter, req: req}}
 	err = h.grpcServer.TapByResource(&protoRequest, server)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
-	flushableWriter, err := newStreamingWriter(w)
+	flushableWriter, err := protohttp.NewStreamingWriter(w)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	var protoRequest destinationPb.GetDestination
-	err = httpRequestToProto(req, &protoRequest)
+	err = protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	server := destinationServer{streamServer{w: flushableWriter, req: req}}
 	err = h.grpcServer.Get(&protoRequest, server)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 func (h *handler) handleConfig(w http.ResponseWriter, req *http.Request) {
 	var protoRequest pb.Empty
-	err := httpRequestToProto(req, &protoRequest)
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
 	rsp, err := h.grpcServer.Config(req.Context(), &protoRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }
 
 type streamServer struct {
-	w   flushableResponseWriter
+	w   protohttp.FlushableResponseWriter
 	req *http.Request
 }
 
@@ -304,9 +305,9 @@ func (s streamServer) SendMsg(interface{}) error    { return nil }
 func (s streamServer) RecvMsg(interface{}) error    { return nil }
 
 func (s streamServer) Send(msg proto.Message) error {
-	err := writeProtoToHTTPResponse(s.w, msg)
+	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
 	if err != nil {
-		writeErrorToHTTPResponse(s.w, err)
+		protohttp.WriteErrorToHTTPResponse(s.w, err)
 		return err
 	}
 
@@ -337,12 +338,12 @@ func fullURLPathFor(method string) string {
 func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
 	rsp, err := h.grpcServer.Endpoints(req.Context(), &discoveryPb.EndpointsParams{})
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
-	err = writeProtoToHTTPResponse(w, rsp)
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err)
+		protohttp.WriteErrorToHTTPResponse(w, err)
 		return
 	}
 }

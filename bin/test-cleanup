@@ -40,6 +40,18 @@ if ! customresourcedefinitions=$(kubectl --context=$k8s_context get customresour
   echo "no customresourcedefinitions found" >&2
 fi
 
-if [[ $namespaces_controlplane || $namespaces_dataplane || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs || $podsecuritypolicies || $customresourcedefinitions ]]; then
-  kubectl --context=$k8s_context delete $namespaces_controlplane $namespaces_dataplane $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs $podsecuritypolicies $customresourcedefinitions
+if ! apiservices=$(kubectl --context=$k8s_context get apiservices -l linkerd.io/control-plane-ns -oname); then
+  echo "no apiservices found" >&2
+fi
+
+if [[ $namespaces_controlplane || $namespaces_dataplane || $clusterrolebindings || $clusterroles || $webhookconfigs || $validatingconfigs || $podsecuritypolicies || $customresourcedefinitions || $apiservices ]]; then
+  kubectl --context=$k8s_context delete $namespaces_controlplane $namespaces_dataplane $clusterrolebindings $clusterroles $webhookconfigs $validatingconfigs $podsecuritypolicies $customresourcedefinitions $apiservices
+fi
+
+echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_context}]"
+if ! rolebindings=$(kubectl --context=$k8s_context -n kube-system get rolebindings -l linkerd.io/control-plane-ns -oname); then
+  echo "no rolebindings found in the kube-system namespace" >&2
+fi
+if [[ $rolebindings ]]; then
+  kubectl --context=$k8s_context delete $rolebindings -n kube-system
 fi

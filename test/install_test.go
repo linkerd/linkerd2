@@ -168,7 +168,7 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 
 		// apply stage 1
-		out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+		out, err = TestHelper.KubectlApply(out, "")
 		if err != nil {
 			t.Fatalf("kubectl apply command failed\n%s", out)
 		}
@@ -204,7 +204,7 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 	}
 
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}

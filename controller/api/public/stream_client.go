@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
 )
@@ -23,7 +24,7 @@ func (c streamClient) SendMsg(interface{}) error    { return nil }
 func (c streamClient) RecvMsg(interface{}) error    { return nil }
 
 func getStreamClient(ctx context.Context, httpRsp *http.Response) (streamClient, error) {
-	if err := checkIfResponseHasError(httpRsp); err != nil {
+	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
 		httpRsp.Body.Close()
 		return streamClient{}, err
 	}

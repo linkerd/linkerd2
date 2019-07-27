@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 )
 
@@ -36,6 +37,7 @@ func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 	}
 
 	return &KubernetesAPI{
+		Config:        &rest.Config{},
 		Interface:     client,
 		Apiextensions: apiextClient,
 	}, nil

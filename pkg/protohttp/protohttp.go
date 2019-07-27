@@ -1,4 +1,4 @@
-package public
+package protohttp
 
 import (
 	"bufio"
@@ -11,8 +11,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/status"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -28,16 +30,20 @@ type httpError struct {
 	WrappedError error
 }
 
-type flushableResponseWriter interface {
+// FlushableResponseWriter wraps a ResponseWriter for use in streaming
+// responses, such as Tap.
+type FlushableResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
 }
 
+// Error satisfies the error interface for httpError.
 func (e httpError) Error() string {
 	return fmt.Sprintf("HTTP error, status Code [%d], wrapped error is: %v", e.Code, e.WrappedError)
 }
 
-func httpRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
+// HTTPRequestToProto converts an HTTP Request to a protobuf request.
+func HTTPRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
 	bytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return httpError{
@@ -57,7 +63,8 @@ func httpRequestToProto(req *http.Request, protoRequestOut proto.Message) error 
 	return nil
 }
 
-func writeErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
+// WriteErrorToHTTPResponse writes a protobuf-encoded error to an HTTP Response.
+func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 	statusCode := defaultHTTPErrorStatusCode
 	errorToReturn := errorObtained
 
@@ -75,27 +82,31 @@ func writeErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 
 	errorAsProto := &pb.ApiError{Error: errorMessageToReturn}
 
-	err := writeProtoToHTTPResponse(w, errorAsProto)
+	err := WriteProtoToHTTPResponse(w, errorAsProto)
 	if err != nil {
 		log.Errorf("Error writing error to http response: %v", err)
 		w.Header().Set(errorHeader, err.Error())
 	}
 }
 
-func writeProtoToHTTPResponse(w http.ResponseWriter, msg proto.Message) error {
+// WriteProtoToHTTPResponse writes a protobuf-encoded message to an HTTP
+// Response.
+func WriteProtoToHTTPResponse(w http.ResponseWriter, msg proto.Message) error {
 	w.Header().Set(contentTypeHeader, protobufContentType)
 	marshalledProtobufMessage, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	fullPayload := serializeAsPayload(marshalledProtobufMessage)
+	fullPayload := SerializeAsPayload(marshalledProtobufMessage)
 	_, err = w.Write(fullPayload)
 	return err
 }
 
-func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) {
-	flushableWriter, ok := w.(flushableResponseWriter)
+// NewStreamingWriter takes a ResponseWriter and returns it wrapped in a
+// FlushableResponseWriter.
+func NewStreamingWriter(w http.ResponseWriter) (FlushableResponseWriter, error) {
+	flushableWriter, ok := w.(FlushableResponseWriter)
 	if !ok {
 		return nil, fmt.Errorf("streaming not supported by this writer")
 	}
@@ -105,7 +116,8 @@ func newStreamingWriter(w http.ResponseWriter) (flushableResponseWriter, error) 
 	return flushableWriter, nil
 }
 
-func serializeAsPayload(messageContentsInBytes []byte) []byte {
+// SerializeAsPayload appends a 4-byte length in front of a byte slice.
+func SerializeAsPayload(messageContentsInBytes []byte) []byte {
 	lengthOfThePayload := uint32(len(messageContentsInBytes))
 
 	messageLengthInBytes := make([]byte, numBytesForMessageLength)
@@ -131,14 +143,19 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	return messageContentsAsBytes, nil
 }
 
-func checkIfResponseHasError(rsp *http.Response) error {
+// CheckIfResponseHasError checks an HTTP Response for errors and returns error
+// information with the following precedence:
+// 1. "linkerd-error" header, with protobuf-encoded apiError
+// 2. non-200 Status Code, with Kubernetes StatusError
+// 3. non-200 Status Code
+func CheckIfResponseHasError(rsp *http.Response) error {
+	// check for protobuf-encoded error
 	errorMsg := rsp.Header.Get(errorHeader)
-
 	if errorMsg != "" {
 		reader := bufio.NewReader(rsp.Body)
 		var apiError pb.ApiError
 
-		err := fromByteStreamToProtocolBuffers(reader, &apiError)
+		err := FromByteStreamToProtocolBuffers(reader, &apiError)
 		if err != nil {
 			return fmt.Errorf("Response has %s header [%s], but response body didn't contain protobuf error: %v", errorHeader, errorMsg, err)
 		}
@@ -146,9 +163,57 @@ func checkIfResponseHasError(rsp *http.Response) error {
 		return errors.New(apiError.Error)
 	}
 
+	// check for JSON-encoded error
 	if rsp.StatusCode != http.StatusOK {
+		if rsp.Body != nil {
+			bytes, err := ioutil.ReadAll(rsp.Body)
+			if err == nil && len(bytes) > 0 {
+				body := string(bytes)
+				obj, err := k8s.ToRuntimeObject(body)
+				if err == nil {
+					return fmt.Errorf("Unexpected API response: %s (%s)", rsp.Status, kerrors.FromObject(obj))
+				}
+				return fmt.Errorf("Unexpected API response: %s (%s)", rsp.Status, body)
+			}
+		}
+
 		return fmt.Errorf("Unexpected API response: %s", rsp.Status)
 	}
 
 	return nil
+}
+
+// FromByteStreamToProtocolBuffers converts a byte stream to a protobuf message.
+func FromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
+	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
+	if err != nil {
+		return fmt.Errorf("error reading byte stream header: %v", err)
+	}
+
+	err = proto.Unmarshal(messageAsBytes, out)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %v", len(messageAsBytes), err)
+	}
+
+	return nil
+}
+
+// TapReqToURL converts a TapByResourceRequest protobuf object to a URL for use
+// with the Kubernetes tap.linkerd.io APIService.
+func TapReqToURL(req *pb.TapByResourceRequest) string {
+	res := req.GetTarget().GetResource()
+
+	// non-namespaced
+	if res.GetType() == k8s.Namespace {
+		return fmt.Sprintf(
+			"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/tap",
+			res.GetName(),
+		)
+	}
+
+	// namespaced
+	return fmt.Sprintf(
+		"/apis/tap.linkerd.io/v1alpha1/watch/namespaces/%s/%s/%s/tap",
+		res.GetNamespace(), res.GetType()+"s", res.GetName(),
+	)
 }

@@ -80,6 +80,7 @@ type (
 		Identity         *installIdentityValues
 		ProxyInjector    *proxyInjectorValues
 		ProfileValidator *profileValidatorValues
+		Tap              *tapValues
 	}
 
 	configJSONs struct{ Global, Proxy, Install string }
@@ -112,6 +113,10 @@ type (
 	}
 
 	profileValidatorValues struct {
+		*tlsValues
+	}
+
+	tapValues struct {
 		*tlsValues
 	}
 
@@ -231,6 +236,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 			return id.String()
 		},
 
+		// TODO: rename to generateTLS or something
 		generateWebhookTLS: func(webhook string) (*tlsValues, error) {
 			root, err := tls.GenerateRootCAWithDefaults(webhookCommonName(webhook))
 			if err != nil {
@@ -428,6 +434,12 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+
+	tapTLS, err := options.generateWebhookTLS(k8s.TapServiceName)
+	if err != nil {
+		return nil, nil, err
+	}
+	values.Tap = &tapValues{tapTLS}
 
 	values.stage = stage
 

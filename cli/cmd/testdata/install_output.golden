@@ -481,6 +481,22 @@ subjects:
   name: linkerd-tap
   namespace: Namespace
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-Namespace-tap-auth-delegator
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: Namespace
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -489,6 +505,55 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-Namespace-tap-auth-reader
+  namespace: kube-system
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: Namespace
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-tap-tls
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+type: Opaque
+data:
+  crt.pem: dGFwIGNydA==
+  key.pem: dGFwIGtleQ==
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    ControllerComponentLabel: tap
+    ControllerNamespaceLabel: Namespace
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: Namespace
+  caBundle: dGFwIGNydA==
 ---
 ###
 ### Control Plane PSP
@@ -2107,6 +2172,9 @@ spec:
   - name: grpc
     port: 8088
     targetPort: 8088
+  - name: apiserver
+    port: 443
+    targetPort: apiserver
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -2151,6 +2219,8 @@ spec:
         ports:
         - containerPort: 8088
           name: grpc
+        - containerPort: 8089
+          name: apiserver
         - containerPort: 9998
           name: admin-http
         readinessProbe:
@@ -2161,6 +2231,10 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -2246,5 +2320,9 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
+      volumes:
+      - name: tls
+        secret:
+          secretName: linkerd-tap-tls
 status: {}
 ---

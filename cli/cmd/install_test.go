@@ -75,6 +75,12 @@ func TestRender(t *testing.T) {
 				CrtPEM: "profile validator crt",
 			},
 		},
+		Tap: &tapValues{
+			&tlsValues{
+				KeyPEM: "tap key",
+				CrtPEM: "tap crt",
+			},
+		},
 	}
 
 	haOptions := testInstallOptions()
@@ -236,7 +242,13 @@ func fakeGenerateWebhookTLS(webhook string) (*tlsValues, error) {
 			KeyPEM: "profile validator key",
 			CrtPEM: "profile validator crt",
 		}, nil
+	case k8s.TapServiceName:
+		return &tlsValues{
+			KeyPEM: "tap key",
+			CrtPEM: "tap crt",
+		}, nil
 	}
+
 	return nil, nil
 }
 
