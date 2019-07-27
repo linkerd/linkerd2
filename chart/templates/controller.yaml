@@ -43,7 +43,7 @@ spec:
     targetPort: 8086
 ---
 kind: Deployment
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1beta1
 metadata:
   name: linkerd-controller
   namespace: {{.Namespace}}
