@@ -20,11 +20,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
+const requireIDHeader = "l5d-require-id"
 const podIPIndex = "ip"
 const defaultMaxRps = 100.0
 
@@ -105,8 +107,16 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	for _, pod := range pods {
+		// create the expected pod identity from the pod spec
+		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.cluster.local", pod.Spec.ServiceAccountName, req.Target.Resource.Namespace, s.controllerNamespace)
+		log.Debugf("requiring pod name={%s}", name)
+
+		// pass the header metadata into the request context
+		ctx := stream.Context()
+		ctx = metadata.AppendToOutgoingContext(ctx, requireIDHeader, name)
+
 		// initiate a tap on the pod
-		go s.tapProxy(stream.Context(), rpsPerPod, match, pod.Status.PodIP, events)
+		go s.tapProxy(ctx, rpsPerPod, match, pod.Status.PodIP, events)
 	}
 
 	// read events from the taps and send them back
