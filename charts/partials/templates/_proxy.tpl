@@ -3,7 +3,7 @@
   - name: LINKERD2_PROXY_LOG
     value: {{.LogLevel}}
   - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-    value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .ControlPlaneNamespace .ClusterDomain) (eq .Component "controller")}}
+    value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .ControlPlaneNamespace .ClusterDomain) (eq .Component "linkerd-controller")}}
   - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
     value: 0.0.0.0:{{.Port.Control}}
   - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -13,37 +13,40 @@
   - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
     value: 0.0.0.0:{{.Port.Inbound}}
   - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-    {{- $internalProfileSuffix := printf "svc.%s" .ClusterDomain }}
+    {{- $internalProfileSuffix := printf "svc.%s." .ClusterDomain }}
     value: {{ternary "." $internalProfileSuffix .EnableExternalProfile}}
   - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-    value: {{.InboundAcceptKeepAlive}}
+    value: 10000ms
   - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-    value: {{.OutboundAcceptKeepAlive}}
+    value: 10000ms
   - name: _pod_ns
     valueFrom:
       fieldRef:
-        apiVersion: v1
         fieldPath: metadata.namespace
   - name: LINKERD2_PROXY_DESTINATION_CONTEXT
     value: ns:$(_pod_ns)
+  {{ if eq .Component "linkerd-prometheus" -}}
+  - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
+    value: "10000"
+  {{ end -}}
   - name: LINKERD2_PROXY_IDENTITY_DIR
     value: /var/run/linkerd/identity/end-entity
   - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
     value: |
-    {{- .IdentityTrustAnchors | trim | nindent 6 }}
+    {{- .Identity.TrustAnchors | trim | nindent 6 }}
   - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
     value: /var/run/secrets/kubernetes.io/serviceaccount/token
   - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-    value: linkerd-identity.{{.ControlPlaneNamespace}}.svc.cluster.local:8080
+    {{- $identitySvcAddr := printf "linkerd-identity.%s.svc.%s:8080" .ControlPlaneNamespace .ClusterDomain }}
+    value: {{ternary "localhost.:8080" $identitySvcAddr (eq .Component "linkerd-identity")}}
   - name: _pod_sa
     valueFrom:
       fieldRef:
-        apiVersion: v1
         fieldPath: spec.serviceAccountName
   - name: _l5d_ns
     value: {{.ControlPlaneNamespace}}
   - name: _l5d_trustdomain
-    value: {{.ClusterDomain}}
+    value: {{.Identity.TrustDomain}}
   - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
     value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
   - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
@@ -61,10 +64,8 @@
   ports:
   - containerPort: {{.Port.Inbound}}
     name: linkerd-proxy
-    protocol: TCP
   - containerPort: {{.Port.Admin}}
     name: linkerd-admin
-    protocol: TCP
   readinessProbe:
     httpGet:
       path: /ready
@@ -77,6 +78,7 @@
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     runAsUser: {{.UID}}
+  terminationMessagePolicy: FallbackToLogsOnError
   volumeMounts:
   - mountPath: /var/run/linkerd/identity/end-entity
     name: linkerd-identity-end-entity

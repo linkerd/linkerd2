@@ -83,7 +83,7 @@ spec:
     port: 3000
     targetPort: 3000
 ---
-{{ if not .Proxy.Image.Version -}}
+{{ if empty .Proxy.Image.Version -}}
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
@@ -162,5 +162,5 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      {{- include "partials.proxy-identity-volume" . | nindent 6 -}}
+      {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}
 {{end -}}

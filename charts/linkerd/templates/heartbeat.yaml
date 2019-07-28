@@ -36,9 +36,11 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090"
             - "-controller-namespace={{.Namespace}}"
             - "-log-level={{.ControllerLogLevel}}"
+            image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+            imagePullPolicy: {{.ImagePullPolicy}}
             {{- if eq .HighAvailability true -}}
             {{- include "partials.resources" .HeartbeatResources | nindent 12 }}
-            {{- end -}}
+            {{- end }}
             securityContext:
               runAsUser: {{.ControllerUID}}
-{{end -}}
+{{- end -}}

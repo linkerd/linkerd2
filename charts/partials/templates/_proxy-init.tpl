@@ -24,4 +24,5 @@
     readOnlyRootFilesystem: true
     runAsNonRoot: false
     runAsUser: 0
+  terminationMessagePolicy: FallbackToLogsOnError
 {{- end -}}

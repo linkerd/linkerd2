@@ -1,4 +1,4 @@
-{{ define "partials.proxy-identity-volume" -}}
+{{ define "partials.proxy.volumes.identity" -}}
 - emptyDir:
     medium: Memory
   name: linkerd-identity-end-entity

@@ -1,0 +1,15 @@
+{{with .Values -}}
+---
+###
+### Web RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: web
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+{{- end -}}

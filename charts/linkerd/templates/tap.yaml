@@ -1,0 +1,96 @@
+{{with .Values -}}
+---
+###
+### Tap
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-tap
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: tap
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: tap
+  ports:
+  - name: grpc
+    port: 8088
+    targetPort: 8088
+---
+{{ if empty .Proxy.Image.Version -}}
+{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
+{{ end -}}
+{{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
+{{ $_ := set .Proxy "Component" "linkerd-tap" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+  labels:
+    {{.ControllerComponentLabel}}: tap
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  name: linkerd-tap
+  namespace: {{.Namespace}}
+spec:
+  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  selector:
+    matchLabels:
+      {{.ControllerComponentLabel}}: tap
+      {{.ControllerNamespaceLabel}}: {{.Namespace}}
+      {{- include "partials.proxy.labels" .Proxy | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+        {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
+      labels:
+        {{.ControllerComponentLabel}}: tap
+        {{.ControllerNamespaceLabel}}: {{.Namespace}}
+        {{- include "partials.proxy.labels" .Proxy | nindent 8}}
+    spec:
+      {{- if eq .HighAvailability true -}}
+      {{- $local := dict "Component" "tap" "Label" .ControllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      containers:
+      - args:
+        - tap
+        - -controller-namespace={{.Namespace}}
+        - -log-level={{.ControllerLogLevel}}
+        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9998
+          initialDelaySeconds: 10
+        name: tap
+        ports:
+        - containerPort: 8088
+          name: grpc
+        - containerPort: 9998
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9998
+        {{- if eq .HighAvailability true -}}
+        {{- include "partials.resources" .TapResources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
+      {{- include "partials.proxy" .Proxy | nindent 6 -}}
+      initContainers:
+      {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
+      serviceAccountName: linkerd-tap
+      volumes:
+      {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}
+{{- end -}}

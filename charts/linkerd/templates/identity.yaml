@@ -1,67 +1,68 @@
 {{with .Values -}}
+{{if .Identity -}}
 ---
 ###
-### Controller
+### Identity Controller Service
 ###
+{{ if .Identity.Issuer -}}
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: identity
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{- if .Identity.Issuer.CrtExpiryAnnotation}}
+    {{.Identity.Issuer.CrtExpiryAnnotation}}: {{required "Please provide the identity issuer certificate expiry date" .Identity.Issuer.CrtExpiry}}
+    {{- end}}
+data:
+  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Identity.Issuer.CrtPEM)}}
+  key.pem: {{b64enc (required "Please provide the identity issue private key" .Identity.Issuer.KeyPEM)}}
+{{- end}}
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-controller-api
+  name: linkerd-identity
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: controller
-  ports:
-  - name: http
-    port: 8085
-    targetPort: 8085
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-destination
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: controller
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
-spec:
-  type: ClusterIP
-  selector:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: identity
   ports:
   - name: grpc
-    port: 8086
-    targetPort: 8086
+    port: 8080
+    targetPort: 8080
 ---
 {{ if empty .Proxy.Image.Version -}}
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Proxy "Component" "linkerd-controller" -}}
+{{ $_ := set .Proxy "Component" "linkerd-identity" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  name: linkerd-controller
+  name: linkerd-identity
   namespace: {{.Namespace}}
 spec:
   replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
   selector:
     matchLabels:
-      {{.ControllerComponentLabel}}: controller
+      {{.ControllerComponentLabel}}: identity
       {{.ControllerNamespaceLabel}}: {{.Namespace}}
       {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
@@ -70,86 +71,57 @@ spec:
         {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
         {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
-        {{.ControllerComponentLabel}}: controller
+        {{.ControllerComponentLabel}}: identity
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
       {{- if eq .HighAvailability true -}}
-      {{- $local := dict "Component" "controller" "Label" .ControllerComponentLabel -}}
+      {{- $local := dict "Component" "identity" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
-        - public-api
-        - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
-        - -tap-addr=linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}:8088
-        - -controller-namespace={{.Namespace}}
+        - identity
         - -log-level={{.ControllerLogLevel}}
         image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9995
+            port: 9990
           initialDelaySeconds: 10
-        name: public-api
+        name: identity
         ports:
-        - containerPort: 8085
-          name: http
-        - containerPort: 9995
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9995
-        {{- if eq .HighAvailability true -}}
-        {{- include "partials.resources" .PublicAPIResources | nindent 8 }}
-        {{- end }}
-        securityContext:
-          runAsUser: {{.ControllerUID}}
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
-      - args:
-        - destination
-        - -addr=:8086
-        - -controller-namespace={{.Namespace}}
-        - -enable-h2-upgrade={{.EnableH2Upgrade}}
-        - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8086
+        - containerPort: 8080
           name: grpc
-        - containerPort: 9996
+        - containerPort: 9990
           name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9996
+            port: 9990
         {{- if eq .HighAvailability true -}}
-        {{- include "partials.resources" .DestinationResources | nindent 8 }}
+        {{- include "partials.resources" .Identity.Resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/identity/issuer
+          name: identity-issuer
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       initContainers:
       {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
-      serviceAccountName: linkerd-controller
+      serviceAccountName: linkerd-identity
       volumes:
       - configMap:
           name: linkerd-config
         name: config
+      - name: identity-issuer
+        secret:
+          secretName: linkerd-identity-issuer
       {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}
+{{end -}}
 {{end -}}
