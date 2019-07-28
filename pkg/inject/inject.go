@@ -64,6 +64,7 @@ const (
 	identityAPIPort = 8080
 
 	envTapDisabled = "LINKERD2_PROXY_TAP_DISABLED"
+	envTapSvcName  = "LINKERD2_PROXY_TAP_SVC_NAME"
 
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
@@ -533,15 +534,6 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 		}
 	}
 
-	if conf.tapDisabled() {
-		sidecar.Env = append(sidecar.Env,
-			corev1.EnvVar{
-				Name:  envTapDisabled,
-				Value: "true",
-			},
-		)
-	}
-
 	if saVolumeMount != nil {
 		sidecar.VolumeMounts = []corev1.VolumeMount{*saVolumeMount}
 	}
@@ -598,6 +590,24 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 			Value: "linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
 		},
 	}...)
+
+	if conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapDisabled,
+				Value: "true",
+			},
+		)
+	}
+
+	if !conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapSvcName,
+				Value: "linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
+			},
+		)
+	}
 
 	if len(conf.pod.spec.Volumes) == 0 {
 		patch.addVolumeRoot()
