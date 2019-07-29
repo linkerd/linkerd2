@@ -55,6 +55,7 @@ func TestEndpointsWatcher(t *testing.T) {
 		expectedAddresses                []string
 		expectedNoEndpoints              bool
 		expectedNoEndpointsServiceExists bool
+		expectedError                    bool
 	}{
 		{
 			serviceType: "local services",
@@ -140,6 +141,7 @@ status:
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 		{
 			// Test for the issue described in linkerd/linkerd2#1405.
@@ -209,6 +211,7 @@ status:
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 		{
 			// Test for the issue described in linkerd/linkerd2#1853.
@@ -262,6 +265,7 @@ status:
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 		{
 			serviceType: "local services with missing pods",
@@ -320,6 +324,7 @@ status:
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 		{
 			serviceType: "local services with no endpoints",
@@ -339,6 +344,7 @@ spec:
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: true,
+			expectedError:                    false,
 		},
 		{
 			serviceType: "external name services",
@@ -355,8 +361,9 @@ spec:
 			id:                               ServiceID{Name: "name3", Namespace: "ns"},
 			port:                             6969,
 			expectedAddresses:                []string{},
-			expectedNoEndpoints:              true,
+			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    true,
 		},
 		{
 			serviceType:                      "services that do not yet exist",
@@ -366,6 +373,7 @@ spec:
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 		{
 			serviceType: "stateful sets",
@@ -465,7 +473,13 @@ status:
 
 			listener := newBufferingEndpointListener()
 
-			watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if tt.expectedError && err == nil {
+				t.Fatal("Expected error but was ok")
+			}
+			if !tt.expectedError && err != nil {
+				t.Fatalf("Expected no error, got [%s]", err)
+			}
 
 			actualAddresses := make([]string, 0)
 			actualAddresses = append(actualAddresses, listener.added...)

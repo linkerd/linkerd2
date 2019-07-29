@@ -93,8 +93,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	service, port, hostname, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
 	if err != nil {
-		log.Errorf("Invalid authority %s", dest.GetPath())
-		return err
+		log.Debugf("Invalid service %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 
 	translator := newEndpointTranslator(
@@ -108,6 +108,10 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 	err = s.endpoints.Subscribe(service, port, hostname, translator)
 	if err != nil {
+		if _, ok := err.(watcher.InvalidService); ok {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		}
 		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 		return err
 	}
@@ -137,6 +141,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	service, port, _, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
 	if err != nil {
+		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 
@@ -147,7 +152,8 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "Invalid authority [%s]: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to traffic split for %s: %s", dest.GetPath(), err)
+		return err
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
 
@@ -163,6 +169,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if dest.GetContextToken() != "" {
 		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
 		if err != nil {
+			log.Debugf("Invalid service %s", dest.GetPath())
 			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 		}
 
@@ -176,6 +183,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
 	if err != nil {
+		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 	err = s.profiles.Subscribe(profile, secondary)
