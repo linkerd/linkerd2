@@ -13,7 +13,7 @@ metadata:
     {{.ControllerComponentLabel}}: heartbeat
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 spec:
   schedule: "{{.HeartbeatSchedule}}"
   jobTemplate:
@@ -23,7 +23,7 @@ spec:
           labels:
             {{.ControllerComponentLabel}}: heartbeat
           annotations:
-            {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+            {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
         spec:
           serviceAccountName: linkerd-heartbeat
           restartPolicy: OnFailure

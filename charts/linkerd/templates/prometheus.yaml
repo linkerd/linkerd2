@@ -13,7 +13,7 @@ metadata:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 data:
   prometheus.yml: |-
     global:
@@ -102,7 +102,7 @@ metadata:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 spec:
   type: ClusterIP
   selector:
@@ -121,7 +121,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
@@ -137,7 +137,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
         {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
         {{.ControllerComponentLabel}}: prometheus

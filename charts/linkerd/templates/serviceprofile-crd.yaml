@@ -9,7 +9,7 @@ kind: CustomResourceDefinition
 metadata:
   name: serviceprofiles.linkerd.io
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 spec:
