@@ -64,6 +64,7 @@ const (
 	identityAPIPort = 8080
 
 	envTapDisabled = "LINKERD2_PROXY_TAP_DISABLED"
+	envTapSvcName  = "LINKERD2_PROXY_TAP_SVC_NAME"
 
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
@@ -598,6 +599,17 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 			Value: "linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
 		},
 	}...)
+
+	// The tap service name depends on the `_l5d_ns` and `_l5d_trustdomain`
+	// variables set above, so ordering is significant
+	if !conf.tapDisabled() {
+		sidecar.Env = append(sidecar.Env,
+			corev1.EnvVar{
+				Name:  envTapSvcName,
+				Value: "linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)",
+			},
+		)
+	}
 
 	if len(conf.pod.spec.Volumes) == 0 {
 		patch.addVolumeRoot()
