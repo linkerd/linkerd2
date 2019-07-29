@@ -108,8 +108,9 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 
 	for _, pod := range pods {
 		// create the expected pod identity from the pod spec
-		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.cluster.local", pod.Spec.ServiceAccountName, req.Target.Resource.Namespace, s.controllerNamespace)
-		log.Debugf("requiring pod name={%s}", name)
+		ns := req.GetTarget().GetResource().GetNamespace()
+		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.cluster.local", pod.Spec.ServiceAccountName, ns, s.controllerNamespace)
+		log.Debugf("initiating tap request to %s with required name %s", pod.Spec.ServiceAccountName, name)
 
 		// pass the header metadata into the request context
 		ctx := stream.Context()
