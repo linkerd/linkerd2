@@ -93,7 +93,7 @@ func TestConfigAccessors(t *testing.T) {
 		{id: "use overrides",
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
-					metav1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
 							k8s.ProxyDisableIdentityAnnotation:        "true",
 							k8s.ProxyImageAnnotation:                  "gcr.io/linkerd-io/proxy",
@@ -114,7 +114,7 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyEnableExternalProfilesAnnotation: "false",
 							k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride},
 					},
-					corev1.PodSpec{},
+					Spec: corev1.PodSpec{},
 				},
 			},
 			expected: expectedProxyConfigs{
@@ -178,8 +178,8 @@ func TestConfigAccessors(t *testing.T) {
 		{id: "use defaults",
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
-					metav1.ObjectMeta{},
-					corev1.PodSpec{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
 				},
 			},
 			expected: expectedProxyConfigs{
