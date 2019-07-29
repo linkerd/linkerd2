@@ -601,7 +601,7 @@ func (conf *ResourceConfig) injectPodSpec(patch *Patch) {
 	}...)
 
 	// The tap service name depends on the `_l5d_ns` and `_l5d_trustdomain`
-	// variables set above, so ordering is significant.
+	// variables set above, so ordering is significant
 	if !conf.tapDisabled() {
 		sidecar.Env = append(sidecar.Env,
 			corev1.EnvVar{
