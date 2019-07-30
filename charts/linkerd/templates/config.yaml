@@ -1,7 +1,4 @@
 {{with .Values -}}
-{{- if empty .Configs -}}
-{{- fail ".Configs must be defined and non-empty" -}}
-{{- end -}}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -15,13 +12,27 @@ metadata:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 data:
   global: |
-    {{- toJson (required ".Configs.Global must be non-empty" .Configs.Global) | nindent 4 }}
+  {{- if .Configs -}}
+  {{- if .Configs.Global -}}
+  {{.Configs.Global}}
+  {{- end }}
+  {{- else -}}
+  {{- include "linkerd.configs.global" . | nindent 4}}
+  {{- end }}
   proxy: |
-    {{- toJson (required ".Configs.Proxy must be non-empty" .Configs.Proxy) | nindent 4 }}
+  {{- if .Configs -}}
+  {{- if .Configs.Proxy -}}
+  {{.Configs.Proxy}}
+  {{- end }}
+  {{- else -}}
+  {{- include "linkerd.configs.proxy" . | nindent 4}}
+  {{- end }}
   install: |
+  {{- if .Configs -}}
   {{- if .Configs.Install -}}
-    {{- toJson .Configs.Install | nindent 4 }}
-  {{ else }}
-    {"uuid":"{{ uuidv4  }}","cliVersion":"{{.LinkerdVersion}}", "flags":[]}
-  {{- end -}}
+  {{.Configs.Instal}}
+  {{- end }}
+  {{- else -}}
+  {{- include "linkerd.configs.install" . | nindent 4}}
+  {{- end }}
 {{- end -}}

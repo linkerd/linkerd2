@@ -3,13 +3,13 @@
 # Declare variables to be passed into your templates.
 
 ClusterDomain: &cluster_domain cluster.local
-CNIEnabled: &cni_enabled false # not supported in Linkerd 2.5
+CNIEnabled: false # not supported in Linkerd 2.5
 EnableH2Upgrade: true
-HighAvailability: &high_availability false
+HighAvailability: false
 ImagePullPolicy: &image_pull_policy IfNotPresent
 LinkerdVersion: &linkerd_version stable-2.4.0
-Namespace: &namespace linkerd
-OmitWebhookSideEffects: &omit_webhook_side_effects false
+Namespace: linkerd
+OmitWebhookSideEffects: false
 
 # controller configuration
 ControllerImage: gcr.io/linkerd-io/controller
@@ -31,8 +31,10 @@ PublicAPIResources:
 # identity configuration
 Identity:
   Issuer:
+    ClockSkewAllowance: 20s
+
     # PEM encoded certificate
-    CrtPEM: &identity_issuer_crt |
+    CrtPEM: |
       -----BEGIN CERTIFICATE-----
       MIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
       eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI2MDMxNjQ4WhcNMjAwNzI1
@@ -48,6 +50,8 @@ Identity:
     # Must match the expiry date in CrtPEM
     CrtExpiry: 2020-07-25T03:17:08Z
     CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+
+    IssuanceLifeTime: 86400s
 
     # PEM encode ECDSA private key
     KeyPEM: |
@@ -83,34 +87,28 @@ Proxy:
   Capabilities:
     Add:
     Drop:
-  ClusterDomain: *cluster_domain
-  ControlPlaneNamespace: *namespace
   EnableExternalProfile: false
-  HighAvailability: *high_availability
-  Identity:
-    TrustDomain: *cluster_domain
-    TrustAnchors: *identity_issuer_crt
   Image:
-    Name: &proxy_image_name gcr.io/linkerd-io/proxy
+    Name: gcr.io/linkerd-io/proxy
     PullPolicy: *image_pull_policy
     Version: *linkerd_version
-  LogLevel: &proxy_log_level warn,linkerd2_proxy=info
+  LogLevel: warn,linkerd2_proxy=info
   MountPaths:
-  Port: &proxy_ports
-    Admin: &proxy_port_admin 4191
-    Control: &proxy_port_control 4190
-    Inbound: &proxy_port_inbound 4143
-    Outbound: &proxy_port_outbound 4140
-  UID: &proxy_uid 2102
+  Port:
+    Admin: 4191
+    Control: 4190
+    Inbound: 4143
+    Outbound: 4140
+  UID: 2102
 
   # use this to override the default resource requirements in HA mode
   ResourceRequirements:
     CPU:
-      Limit: &proxy_cpu_limit "1"
-      Request: &proxy_cpu_request 100m
+      Limit: "1"
+      Request: 100m
     Memory:
-      Limit: &proxy_memory_limit 250Mi
-      Request: &proxy_memory_request 20Mi
+      Limit: 250Mi
+      Request: 20Mi
 
   # inject-only options. Do not change this for control plane installation
   DisableIdentity: false
@@ -122,15 +120,12 @@ ProxyInit:
     Add:
     Drop:
   Image:
-    Name: &proxy_init_image_name gcr.io/linkerd-io/proxy-init
+    Name: gcr.io/linkerd-io/proxy-init
     PullPolicy: *image_pull_policy
-    Version: &proxy_init_image_version v1.0.0
-  Proxy:
-    Port:
-      <<: *proxy_ports
-      IgnoreInboundPorts: ""
-      IgnoreOutboundPorts: "443"
-    UID: *proxy_uid
+    Version: v1.0.0
+  IgnoreInboundPorts: ""
+  IgnoreOutboundPorts: "443"
+  MountPath:
 
   # use this to override the default resource requirements in HA mode
   ResourceRequirements:
@@ -157,46 +152,6 @@ TapResources:
 WebImage: gcr.io/linkerd-io/web
 WebResources:
   <<: *controller_resources
-
-# linkerd-config config map data
-Configs:
-  Global:
-    clusterDomain: *cluster_domain
-    cniEnabled: *cni_enabled
-    identityContext:
-      trustAnchorsPem": *identity_issuer_crt
-      trustDomain: *cluster_domain
-    linkerdNamespace: *namespace
-    omitWebhookSideEffects: *omit_webhook_side_effects
-    version: *linkerd_version
-  Proxy:
-    adminPort:
-      port: *proxy_port_admin
-    controlPort:
-      port: *proxy_port_control
-    ignoreInboundPorts: []
-    ignoreOutboundPorts: []
-    inboundPort:
-      port: *proxy_port_inbound
-    logLevel:
-      level: *proxy_log_level
-    outboundPort:
-      port: *proxy_port_outbound
-    proxyImage:
-      imageName: *proxy_image_name
-      pullPolicy: *image_pull_policy
-    proxyInitImage:
-      imageName: *proxy_init_image_name
-      pullPolicy: *image_pull_policy
-    proxyInitImageVersion: *proxy_init_image_version
-    proxyUid: *proxy_uid
-    proxyVersion: *linkerd_version
-    resource:
-      limitCpu: *proxy_cpu_limit
-      limitMemory: *proxy_memory_limit
-      requestCpu: *proxy_cpu_request
-      requestMemory: *proxy_memory_request
-    disableExternalProfiles: true
 
 # annotations
 CreatedByAnnotation: linkerd.io/created-by

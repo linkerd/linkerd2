@@ -7,25 +7,25 @@
   - --proxy-uid
   - {{.Proxy.UID | quote}}
   - --inbound-ports-to-ignore
-  - {{.Proxy.Port.Control}},{{.Proxy.Port.Admin}}{{ternary (printf ",%s" .Proxy.Port.IgnoreInboundPorts) "" (ne .Proxy.Port.IgnoreInboundPorts "")}}
+  - {{.Proxy.Port.Control}},{{.Proxy.Port.Admin}}{{ternary (printf ",%s" .ProxyInit.IgnoreInboundPorts) "" (ne .ProxyInit.IgnoreInboundPorts "")}}
   - --outbound-ports-to-ignore
-  - {{.Proxy.Port.IgnoreOutboundPorts | quote}}
-  image: {{.Image.Name}}:{{.Image.Version}}
-  imagePullPolicy: {{.Image.PullPolicy}}
+  - {{.ProxyInit.IgnoreOutboundPorts | quote}}
+  image: {{.ProxyInit.Image.Name}}:{{.ProxyInit.Image.Version}}
+  imagePullPolicy: {{.ProxyInit.Image.PullPolicy}}
   name: linkerd-init
-  {{- include "partials.resources" .ResourceRequirements | nindent 2 }}
+  {{- include "partials.resources" .ProxyInit.ResourceRequirements | nindent 2 }}
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
       add:
       - NET_ADMIN
       - NET_RAW
-      {{- if .Capabilities -}}
-      {{- if .Capabilities.Add }}
-      {{- toYaml .Capabilities.Add | trim | nindent 6 }}
+      {{- if .ProxyInit.Capabilities -}}
+      {{- if .ProxyInit.Capabilities.Add }}
+      {{- toYaml .ProxyInit.Capabilities.Add | trim | nindent 6 }}
       {{- end }}
-      {{- if .Capabilities.Drop -}}
-      {{- include "partials.proxy-init.capabilities.drop" . | nindent 6 -}}
+      {{- if .ProxyInit.Capabilities.Drop -}}
+      {{- include "partials.proxy-init.capabilities.drop" .ProxyInit | nindent 6 -}}
       {{- end }}
       {{- end }}
     privileged: false
@@ -33,8 +33,8 @@
     runAsNonRoot: false
     runAsUser: 0
   terminationMessagePolicy: FallbackToLogsOnError
-  {{- if .MountPaths }}
+  {{- if .ProxyInit.MountPaths }}
   volumeMounts:
-  {{- toYaml .MountPaths | trim | nindent 2 -}}
+  {{- toYaml .ProxyInit.MountPaths | trim | nindent 2 -}}
   {{- end }}
 {{- end -}}

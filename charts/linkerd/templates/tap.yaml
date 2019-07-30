@@ -88,9 +88,9 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
-      {{- include "partials.proxy" .Proxy | nindent 6 -}}
+      {{- include "partials.proxy" . | nindent 6 -}}
       initContainers:
-      {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
+      {{- include "partials.proxy-init" . | nindent 6 }}
       serviceAccountName: linkerd-tap
       volumes:
       {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}

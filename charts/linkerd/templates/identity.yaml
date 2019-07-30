@@ -112,9 +112,9 @@ spec:
           name: config
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
-      {{- include "partials.proxy" .Proxy | nindent 6 -}}
+      {{- include "partials.proxy" . | nindent 6 -}}
       initContainers:
-      {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
+      {{- include "partials.proxy-init" . | nindent 6 }}
       serviceAccountName: linkerd-identity
       volumes:
       - configMap:
