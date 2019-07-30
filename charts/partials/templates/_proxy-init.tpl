@@ -20,9 +20,21 @@
       add:
       - NET_ADMIN
       - NET_RAW
+      {{- if .Capabilities -}}
+      {{- if .Capabilities.Add }}
+      {{- toYaml .Capabilities.Add | trim | nindent 6 }}
+      {{- end }}
+      {{- if .Capabilities.Drop -}}
+      {{- include "partials.proxy-init.capabilities.drop" . | nindent 6 -}}
+      {{- end }}
+      {{- end }}
     privileged: false
     readOnlyRootFilesystem: true
     runAsNonRoot: false
     runAsUser: 0
   terminationMessagePolicy: FallbackToLogsOnError
+  {{- if .MountPaths }}
+  volumeMounts:
+  {{- toYaml .MountPaths | trim | nindent 2 -}}
+  {{- end }}
 {{- end -}}

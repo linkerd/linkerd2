@@ -88,10 +88,16 @@
   {{- end }}
   securityContext:
     allowPrivilegeEscalation: false
+    {{- if .Capabilities -}}
+    {{- include "partials.proxy.capabilities" . | nindent 4 -}}
+    {{- end }}
     readOnlyRootFilesystem: true
     runAsUser: {{.UID}}
   terminationMessagePolicy: FallbackToLogsOnError
   volumeMounts:
   - mountPath: /var/run/linkerd/identity/end-entity
     name: linkerd-identity-end-entity
+  {{- if .MountPaths }}
+  {{- toYaml .MountPaths | trim | nindent 2 -}}
+  {{- end }}
 {{ end -}}

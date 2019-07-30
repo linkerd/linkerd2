@@ -80,6 +80,9 @@ PrometheusResources:
 
 # proxy configuration
 Proxy:
+  Capabilities:
+    Add:
+    Drop:
   ClusterDomain: *cluster_domain
   ControlPlaneNamespace: *namespace
   EnableExternalProfile: false
@@ -92,6 +95,7 @@ Proxy:
     PullPolicy: *image_pull_policy
     Version: *linkerd_version
   LogLevel: &proxy_log_level warn,linkerd2_proxy=info
+  MountPaths:
   Port: &proxy_ports
     Admin: &proxy_port_admin 4191
     Control: &proxy_port_control 4190
@@ -114,6 +118,9 @@ Proxy:
 
 # proxy-init configuration
 ProxyInit:
+  Capabilities:
+    Add:
+    Drop:
   Image:
     Name: &proxy_init_image_name gcr.io/linkerd-io/proxy-init
     PullPolicy: *image_pull_policy
