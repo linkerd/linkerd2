@@ -28,6 +28,7 @@ spec:
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-sp-validator" -}}
+{{ include "linkerd.proxy.validation" .Proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
