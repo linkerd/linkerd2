@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
@@ -99,18 +100,29 @@ func newCmdProfile() *cobra.Command {
 				return err
 			}
 
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+			if err != nil {
+				return err
+			}
+
+			_, configs, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+
+			clusterDomain := configs.GetGlobal().GetClusterDomain()
+			if clusterDomain == "" {
+				clusterDomain = defaultClusterDomain
+			}
+
 			if options.template {
-				return profiles.RenderProfileTemplate(options.namespace, options.name, defaultClusterDomain, os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.openAPI != "" {
-				return profiles.RenderOpenAPI(options.openAPI, options.namespace, defaultClusterDomain, options.name, os.Stdout)
+				return profiles.RenderOpenAPI(options.openAPI, options.namespace, clusterDomain, options.name, os.Stdout)
 			} else if options.tap != "" {
-				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
-				if err != nil {
-					return err
-				}
 				return profiles.RenderTapOutputProfile(k8sAPI, options.tap, options.namespace, options.name, defaultClusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
-				return profiles.RenderProto(options.proto, options.namespace, options.name, defaultClusterDomain, os.Stdout)
+				return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
 			}
 
 			// we should never get here
