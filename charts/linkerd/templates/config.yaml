@@ -19,9 +19,9 @@ data:
   proxy: |
     {{- toJson (required ".Configs.Proxy must be non-empty" .Configs.Proxy) | nindent 4 }}
   install: |
-  {{ if .Configs.Install -}}
+  {{- if .Configs.Install -}}
     {{- toJson .Configs.Install | nindent 4 }}
   {{ else }}
     {"uuid":"{{ uuidv4  }}","cliVersion":"{{.LinkerdVersion}}", "flags":[]}
   {{- end -}}
-{{- end}}
+{{- end -}}

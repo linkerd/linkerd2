@@ -29,6 +29,10 @@
   - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
     value: "10000"
   {{ end -}}
+  {{ if .DisableIdentity -}}
+  - name: LINKERD2_PROXY_IDENTITY_DISABLED
+    value: disabled
+  {{ else -}}
   - name: LINKERD2_PROXY_IDENTITY_DIR
     value: /var/run/linkerd/identity/end-entity
   - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -53,6 +57,14 @@
     value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
   - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
     value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  {{ end -}}
+  {{ if .DisableTap -}}
+  - name: LINKERD2_PROXY_TAP_DISABLED
+    value: "true"
+  {{ else -}}
+  - name: LINKERD2_PROXY_TAP_SVC_NAME
+    value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  {{ end -}}
   image: {{.Image.Name}}:{{.Image.Version}}
   imagePullPolicy: {{.Image.PullPolicy}}
   livenessProbe:

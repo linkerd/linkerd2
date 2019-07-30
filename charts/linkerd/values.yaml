@@ -82,13 +82,11 @@ PrometheusResources:
 Proxy:
   ClusterDomain: *cluster_domain
   ControlPlaneNamespace: *namespace
-  DisableIdentity: false
   EnableExternalProfile: false
   HighAvailability: *high_availability
   Identity:
     TrustDomain: *cluster_domain
-    TrustAnchors: |
-      <<: *identity_issuer_crt
+    TrustAnchors: *identity_issuer_crt
   Image:
     Name: &proxy_image_name gcr.io/linkerd-io/proxy
     PullPolicy: *image_pull_policy
@@ -109,6 +107,10 @@ Proxy:
     Memory:
       Limit: &proxy_memory_limit 250Mi
       Request: &proxy_memory_request 20Mi
+
+  # inject-only options. Do not change this for control plane installation
+  DisableIdentity: false
+  DisableTap: false
 
 # proxy-init configuration
 ProxyInit:
