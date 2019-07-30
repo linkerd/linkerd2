@@ -18,22 +18,22 @@
 {{- define "linkerd.configs.proxy" -}}
 {
   "adminPort":{
-    "port": {{.Proxy.Port.Admin}}
+    "port": {{.Proxy.Ports.Admin}}
   },
   "controlPort":{
-    "port": {{.Proxy.Port.Control}}
+    "port": {{.Proxy.Ports.Control}}
   },
   "disableExternalProfiles": {{not .Proxy.EnableExternalProfile}},
   "ignoreInboundPorts": {{splitList "," .ProxyInit.IgnoreInboundPorts}},
   "ignoreOutboundPorts": {{splitList "," .ProxyInit.IgnoreOutboundPorts}},
   "inboundPort":{
-    "port": {{.Proxy.Port.Inbound}}
+    "port": {{.Proxy.Ports.Inbound}}
   },
   "logLevel":{
     "level": "{{.Proxy.LogLevel}}"
   },
   "outboundPort":{
-    "port": {{.Proxy.Port.Outbound}}
+    "port": {{.Proxy.Ports.Outbound}}
   },
   "proxyImage":{
     "imageName":"{{.Proxy.Image.Name}}",
@@ -47,10 +47,10 @@
   "proxyUid": {{.Proxy.UID}},
   "proxyVersion": "{{.Proxy.Image.Version}}",
   "resource":{
-    "limitCpu": "{{.Proxy.ResourceRequirements.CPU.Limit}}",
-    "limitMemory": "{{.Proxy.ResourceRequirements.Memory.Limit}}",
-    "requestCpu": "{{.Proxy.ResourceRequirements.CPU.Request}}",
-    "requestMemory": "{{.Proxy.ResourceRequirements.Memory.Request}}"
+    "limitCpu": "{{.Proxy.Resources.CPU.Limit}}",
+    "limitMemory": "{{.Proxy.Resources.Memory.Limit}}",
+    "requestCpu": "{{.Proxy.Resources.CPU.Request}}",
+    "requestMemory": "{{.Proxy.Resources.Memory.Request}}"
   }
 }
 {{- end -}}

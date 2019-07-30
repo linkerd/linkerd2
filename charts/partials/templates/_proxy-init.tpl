@@ -1,19 +1,19 @@
 {{- define "partials.proxy-init" -}}
 - args:
   - --incoming-proxy-port
-  - {{.Proxy.Port.Inbound | quote}}
+  - {{.Proxy.Ports.Inbound | quote}}
   - --outgoing-proxy-port
-  - {{.Proxy.Port.Outbound | quote}}
+  - {{.Proxy.Ports.Outbound | quote}}
   - --proxy-uid
   - {{.Proxy.UID | quote}}
   - --inbound-ports-to-ignore
-  - {{.Proxy.Port.Control}},{{.Proxy.Port.Admin}}{{ternary (printf ",%s" .ProxyInit.IgnoreInboundPorts) "" (ne .ProxyInit.IgnoreInboundPorts "")}}
+  - {{.Proxy.Ports.Control}},{{.Proxy.Ports.Admin}}{{ternary (printf ",%s" .ProxyInit.IgnoreInboundPorts) "" (not (empty .ProxyInit.IgnoreInboundPorts))}}
   - --outbound-ports-to-ignore
   - {{.ProxyInit.IgnoreOutboundPorts | quote}}
   image: {{.ProxyInit.Image.Name}}:{{.ProxyInit.Image.Version}}
   imagePullPolicy: {{.ProxyInit.Image.PullPolicy}}
   name: linkerd-init
-  {{- include "partials.resources" .ProxyInit.ResourceRequirements | nindent 2 }}
+  {{- include "partials.resources" .ProxyInit.Resources | nindent 2 }}
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:

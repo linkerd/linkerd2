@@ -5,13 +5,13 @@
   - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
     value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .Namespace .ClusterDomain) (eq .Proxy.Component "linkerd-controller")}}
   - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-    value: 0.0.0.0:{{.Proxy.Port.Control}}
+    value: 0.0.0.0:{{.Proxy.Ports.Control}}
   - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-    value: 0.0.0.0:{{.Proxy.Port.Admin}}
+    value: 0.0.0.0:{{.Proxy.Ports.Admin}}
   - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-    value: 127.0.0.1:{{.Proxy.Port.Outbound}}
+    value: 127.0.0.1:{{.Proxy.Ports.Outbound}}
   - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-    value: 0.0.0.0:{{.Proxy.Port.Inbound}}
+    value: 0.0.0.0:{{.Proxy.Ports.Inbound}}
   - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
     {{- $internalProfileSuffix := printf "svc.%s." .ClusterDomain }}
     value: {{ternary "." $internalProfileSuffix .Proxy.EnableExternalProfile}}
@@ -29,7 +29,7 @@
   - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
     value: "10000"
   {{ end -}}
-  {{ if .DisableIdentity -}}
+  {{ if .Proxy.DisableIdentity -}}
   - name: LINKERD2_PROXY_IDENTITY_DISABLED
     value: disabled
   {{ else -}}
@@ -70,21 +70,21 @@
   livenessProbe:
     httpGet:
       path: /metrics
-      port: {{.Proxy.Port.Admin}}
+      port: {{.Proxy.Ports.Admin}}
     initialDelaySeconds: 10
   name: linkerd-proxy
   ports:
-  - containerPort: {{.Proxy.Port.Inbound}}
+  - containerPort: {{.Proxy.Ports.Inbound}}
     name: linkerd-proxy
-  - containerPort: {{.Proxy.Port.Admin}}
+  - containerPort: {{.Proxy.Ports.Admin}}
     name: linkerd-admin
   readinessProbe:
     httpGet:
       path: /ready
-      port: {{.Proxy.Port.Admin}}
+      port: {{.Proxy.Ports.Admin}}
     initialDelaySeconds: 2
   {{- if eq .HighAvailability true -}}
-  {{- include "partials.resources" .Proxy.ResourceRequirements | nindent 2 -}}
+  {{- include "partials.resources" .Proxy.Resources | nindent 2 -}}
   {{- end }}
   securityContext:
     allowPrivilegeEscalation: false

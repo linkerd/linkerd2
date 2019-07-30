@@ -87,6 +87,8 @@ Proxy:
   Capabilities:
     Add:
     Drop:
+  DisableIdentity: false # inject-only options. Do not change during installation
+  DisableTap: false # inject-only option. Do not change during installation
   EnableExternalProfile: false
   Image:
     Name: gcr.io/linkerd-io/proxy
@@ -94,41 +96,33 @@ Proxy:
     Version: *linkerd_version
   LogLevel: warn,linkerd2_proxy=info
   MountPaths:
-  Port:
+  Ports:
     Admin: 4191
     Control: 4190
     Inbound: 4143
     Outbound: 4140
-  UID: 2102
-
-  # use this to override the default resource requirements in HA mode
-  ResourceRequirements:
+  Resources:
     CPU:
       Limit: "1"
       Request: 100m
     Memory:
       Limit: 250Mi
       Request: 20Mi
-
-  # inject-only options. Do not change this for control plane installation
-  DisableIdentity: false
-  DisableTap: false
+  UID: 2102
 
 # proxy-init configuration
 ProxyInit:
   Capabilities:
     Add:
     Drop:
+  IgnoreInboundPorts: ""
+  IgnoreOutboundPorts: "443"
   Image:
     Name: gcr.io/linkerd-io/proxy-init
     PullPolicy: *image_pull_policy
     Version: v1.0.0
-  IgnoreInboundPorts: ""
-  IgnoreOutboundPorts: "443"
   MountPath:
-
-  # use this to override the default resource requirements in HA mode
-  ResourceRequirements:
+  Resources:
     CPU:
       Limit: 100m
       Request: 10m
