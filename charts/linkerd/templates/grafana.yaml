@@ -83,9 +83,6 @@ spec:
     port: 3000
     targetPort: 3000
 ---
-{{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-{{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-grafana" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -120,7 +117,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.GrafanaImage}}:{{default $.Chart.AppVersion .GrafanaImageVersion}}
+        image: {{.GrafanaImage}}:{{default .LinkerdVersion .GrafanaImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

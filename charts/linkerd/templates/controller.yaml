@@ -42,9 +42,6 @@ spec:
     port: 8086
     targetPort: 8086
 ---
-{{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-{{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-controller" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -86,7 +83,7 @@ spec:
         - -tap-addr=linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}:8088
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -118,7 +115,7 @@ spec:
         - -controller-namespace={{.Namespace}}
         - -enable-h2-upgrade={{.EnableH2Upgrade}}
         - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

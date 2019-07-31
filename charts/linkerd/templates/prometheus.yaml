@@ -113,7 +113,7 @@ spec:
     targetPort: 9090
 ---
 {{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
+{{ $_ := set .Proxy.Image "Version" .LinkerdVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-prometheus" -}}

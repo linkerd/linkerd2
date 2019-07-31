@@ -23,9 +23,6 @@ spec:
     port: 8088
     targetPort: 8088
 ---
-{{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-{{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-tap" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -65,7 +62,7 @@ spec:
         - tap
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

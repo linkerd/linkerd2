@@ -29,7 +29,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: heartbeat
-            image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+            image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
             imagePullPolicy: {{.ImagePullPolicy}}
             args:
             - "heartbeat"

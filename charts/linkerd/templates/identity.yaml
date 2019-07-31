@@ -43,9 +43,6 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-{{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-{{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-identity" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -84,7 +81,7 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

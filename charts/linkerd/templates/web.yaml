@@ -26,9 +26,6 @@ spec:
     port: 9994
     targetPort: 9994
 ---
-{{ if empty .Proxy.Image.Version -}}
-{{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
-{{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-web" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -65,7 +62,7 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        image: {{.WebImage}}:{{default $.Chart.AppVersion .WebImageVersion}}
+        image: {{.WebImage}}:{{default .LinkerdVersion .WebImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
