@@ -200,6 +200,8 @@ func FromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, 
 
 // TapReqToURL converts a TapByResourceRequest protobuf object to a URL for use
 // with the Kubernetes tap.linkerd.io APIService.
+// TODO: Move this, probably into its own package, when /controller/gen/public
+// moves into /pkg.
 func TapReqToURL(req *pb.TapByResourceRequest) string {
 	res := req.GetTarget().GetResource()
 
