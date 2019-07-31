@@ -164,7 +164,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	})
 
 	if namespace != "" && podName != "" {
-		client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd-cni-context", 0)
+		client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd-cni-context", "", 0)
 		if err != nil {
 			return err
 		}

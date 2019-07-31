@@ -898,6 +898,7 @@ func errIfGlobalResourcesExist() error {
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
+		Impersonate:           impersonate,
 	})
 
 	errMsgs := []string{}
@@ -923,7 +924,7 @@ func errIfGlobalResourcesExist() error {
 }
 
 func errIfLinkerdConfigConfigMapExists() error {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return err
 	}
