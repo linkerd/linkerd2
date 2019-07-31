@@ -88,13 +88,13 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      {{- include "partials.proxy" . | nindent 6 -}}
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
-      {{- include "partials.proxy-init" . | nindent 6 }}
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
-      {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
 {{end -}}

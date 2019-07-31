@@ -26,7 +26,7 @@ spec:
             {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
         spec:
           serviceAccountName: linkerd-heartbeat
-          restartPolicy: OnFailure
+          restartPolicy: Never
           containers:
           - name: heartbeat
             image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}

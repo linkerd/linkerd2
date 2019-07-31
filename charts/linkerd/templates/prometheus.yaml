@@ -180,9 +180,9 @@ spec:
         - mountPath: /etc/prometheus
           name: prometheus-config
           readOnly: true
-      {{- include "partials.proxy" . | nindent 6 -}}
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
-      {{- include "partials.proxy-init" . | nindent 6 }}
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       serviceAccountName: linkerd-prometheus
       volumes:
       - emptyDir: {}
@@ -190,5 +190,5 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-      {{- include "partials.proxy.volumes.identity" . | nindent 6 -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
 {{ end -}}

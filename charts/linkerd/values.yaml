@@ -39,19 +39,21 @@ Identity:
     # PEM encoded certificate
     CrtPEM: |
       -----BEGIN CERTIFICATE-----
-      MIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
-      eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI2MDMxNjQ4WhcNMjAwNzI1
-      MDMxNzA4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
-      YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATwPFIAEAosip9WpovFw3MrJQ3W
-      NqCzU54MXTMUEaNQBNcHyzz8xfZ2vZY56TQQod3HQ8dEcPwRNgTFJxgzdt03o0Iw
+      MIIBhDCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
+      eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI4MjMxODEzWhcNMjAwNzI3
+      MjMxODMzWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
+      YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASRnMzvjn+4MpDtsLEseoWlBzrF
+      S0iGBVFLD0mYDbRzHDjCzwAvOA3y884B+UYysCOFS9E5O96Q7ftf3FySFGkHo0Iw
       QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
-      MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJpWjlDgXGo8hgvr
-      WX/H+QmI4sSA3EiW1J9ZNweS94UsAiB9IN9rkv/b47tYsynZCpLTzSeF7+16VdyI
-      DT1weqC2Vg==
+      MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKG6GF0/tRTj9IWH
+      3ntw1IpGD3uIxbJjWzl2nVDmqRawAiEAir+H+rVfGWL+UO8EiqtiRSm39hV7qA1g
+      N1B+Z/vF63s=
       -----END CERTIFICATE-----
 
-    # Must match the expiry date in CrtPEM
-    CrtExpiry: 2020-07-25T03:17:08Z
+    # must match the expiry date in CrtPEM
+    CrtExpiry: 2020-07-27T23:18:33Z
+
+    # control plane annotation - do not edit
     CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
 
     IssuanceLifeTime: 86400s
@@ -59,9 +61,9 @@ Identity:
     # PEM encode ECDSA private key
     KeyPEM: |
       -----BEGIN EC PRIVATE KEY-----
-      MHcCAQEEINfi1j8CjonK4FCuDoCUPXRxVMNResGsQDbFqEXTUeJUoAoGCCqGSM49
-      AwEHoUQDQgAE8DxSABAKLIqfVqaLxcNzKyUN1jags1OeDF0zFBGjUATXB8s8/MX2
-      dr2WOek0EKHdx0PHRHD8ETYExScYM3bdNw==
+      MHcCAQEEIGTGK1a6wufBFXuugI9uQ6zQ77TUyMZOvu5DrzAZC++5oAoGCCqGSM49
+      AwEHoUQDQgAEkZzM745/uDKQ7bCxLHqFpQc6xUtIhgVRSw9JmA20cxw4ws8ALzgN
+      8vPOAflGMrAjhUvROTvekO37X9xckhRpBw==
       -----END EC PRIVATE KEY-----
   Resources:
     CPU: *controller_resources_cpu
@@ -84,7 +86,12 @@ HeartbeatSchedule: "0 0 * * * "
 PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 PrometheusResources:
-  <<: *controller_resources
+  CPU:
+    Limit: "4"
+    Request: 300m
+  Memory:
+    Limit: 8192Mi
+    Request: 300Mi
 
 # proxy configuration
 Proxy:
@@ -99,7 +106,6 @@ Proxy:
     PullPolicy: *image_pull_policy
     Version: *linkerd_version
   LogLevel: warn,linkerd2_proxy=info
-  MountPaths:
   Ports:
     Admin: 4191
     Control: 4190
@@ -112,6 +118,7 @@ Proxy:
     Memory:
       Limit: 250Mi
       Request: 20Mi
+  SAMountPath:  # inject-only option. Do not change during installation
   UID: 2102
 
 # proxy-init configuration
@@ -120,12 +127,11 @@ ProxyInit:
     #Add:   # list of capabilities to add
     #Drop:  # list of capabilities to drop
   IgnoreInboundPorts: ""
-  IgnoreOutboundPorts: "443"
+  IgnoreOutboundPorts: ""
   Image:
     Name: gcr.io/linkerd-io/proxy-init
     PullPolicy: *image_pull_policy
     Version: v1.0.0
-  MountPath:
   Resources:
     CPU:
       Limit: 100m
@@ -133,6 +139,7 @@ ProxyInit:
     Memory:
       Limit: 50Mi
       Request: 10Mi
+  SAMountPath:  # inject-only option. Do not change during installation
 
 # proxy injector configuration
 ProxyInjectorResources:
