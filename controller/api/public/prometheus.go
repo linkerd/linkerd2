@@ -204,5 +204,6 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 	if err != nil {
 		return nil, err
 	}
+
 	return results, nil
 }

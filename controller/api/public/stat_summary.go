@@ -228,9 +228,9 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 			}
 
 		}
+		// clearing out this slice so new object starts with no leaves
 		leaves = nil
 	}
-
 	return objectMap, nil
 }
 
