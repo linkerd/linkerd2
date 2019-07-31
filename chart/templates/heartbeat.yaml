@@ -26,7 +26,7 @@ spec:
             {{.CreatedByAnnotation}}: {{.CliVersion}}
         spec:
           serviceAccountName: linkerd-heartbeat
-          restartPolicy: OnFailure
+          restartPolicy: Never
           containers:
           - name: heartbeat
             image: {{.ControllerImage}}

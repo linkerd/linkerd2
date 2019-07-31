@@ -1117,7 +1117,7 @@ spec:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
           serviceAccountName: linkerd-heartbeat
-          restartPolicy: OnFailure
+          restartPolicy: Never
           containers:
           - name: heartbeat
             image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
