@@ -7,7 +7,10 @@ CNIEnabled: false # not supported in Linkerd 2.5
 EnableH2Upgrade: true
 HighAvailability: false
 ImagePullPolicy: &image_pull_policy IfNotPresent
+
+# control plane version. See Proxy section for proxy version
 LinkerdVersion: &linkerd_version stable-2.4.0
+
 Namespace: linkerd
 OmitWebhookSideEffects: false
 
@@ -19,7 +22,7 @@ ControllerResources: &controller_resources
   CPU: &controller_resources_cpu
     Limit: "1"
     Request: 100m
-  Memory: &controller_resources_memory
+  Memory:
     Limit: 250Mi
     Request: 50Mi
 ControllerUID: 2103
@@ -61,9 +64,10 @@ Identity:
       dr2WOek0EKHdx0PHRHD8ETYExScYM3bdNw==
       -----END EC PRIVATE KEY-----
   Resources:
-    CPU:
-      <<: *controller_resources_cpu
-    Memory: *controller_resources_memory
+    CPU: *controller_resources_cpu
+    Memory:
+      Limit: 250Mi
+      Request: 10Mi
   TrustDomain: *cluster_domain
 
 # grafana configuration
@@ -84,11 +88,11 @@ PrometheusResources:
 
 # proxy configuration
 Proxy:
-  Capabilities:
-    Add:
-    Drop:
+  #Capabilities:
+    #Add:    # list of capabilities to add
+    #Drop:   # list of capabilities to drop
   DisableIdentity: false # inject-only options. Do not change during installation
-  DisableTap: false # inject-only option. Do not change during installation
+  DisableTap: false      # inject-only option. Do not change during installation
   EnableExternalProfile: false
   Image:
     Name: gcr.io/linkerd-io/proxy
@@ -112,9 +116,9 @@ Proxy:
 
 # proxy-init configuration
 ProxyInit:
-  Capabilities:
-    Add:
-    Drop:
+  #Capabilities:
+    #Add:   # list of capabilities to add
+    #Drop:  # list of capabilities to drop
   IgnoreInboundPorts: ""
   IgnoreOutboundPorts: "443"
   Image:
@@ -147,12 +151,12 @@ WebImage: gcr.io/linkerd-io/web
 WebResources:
   <<: *controller_resources
 
-# annotations
+# control plane annotations - do not edit
 CreatedByAnnotation: linkerd.io/created-by
 ProxyInjectAnnotation: linkerd.io/inject
 ProxyInjectDisabled: disabled
 
-# labels
+# control plane labels - do not edit
 ControllerComponentLabel: linkerd.io/control-plane-component
 ControllerNamespaceLabel: linkerd.io/control-plane-ns
 LinkerdNamespaceLabel: linkerd.io/is-control-plane

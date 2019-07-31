@@ -1,40 +1,22 @@
 {{- define "linkerd.configs.global" -}}
 {
-  "autoInjectContext": null,
-  "clusterDomain": "{{.ClusterDomain}}",
-  "cniEnabled": {{.CNIEnabled}},
-  "identityContext":{
-    "clockSkewAllowance": "{{.Identity.Issuer.ClockSkewAllowance}}",
-    "issuanceLifeTime": "{{.Identity.Issuer.IssuanceLifeTime}}",
-    "trustAnchorsPem": "{{.Identity.Issuer.CrtPEM}}",
-    "trustDomain": "{{.TrustDomain}}"
-  },
   "linkerdNamespace": "{{.Namespace}}",
+  "cniEnabled": {{.CNIEnabled}},
+  "version": "{{.LinkerdVersion}}",
+  "identityContext":{
+    "trustDomain": "{{.Identity.TrustDomain}}",
+    "trustAnchorsPem": "{{.Identity.Issuer.CrtPEM | replace "\n" "\\n"}}",
+    "issuanceLifeTime": "{{.Identity.Issuer.IssuanceLifeTime}}",
+    "clockSkewAllowance": "{{.Identity.Issuer.ClockSkewAllowance}}"
+  },
+  "autoInjectContext": null,
   "omitWebhookSideEffects": {{.OmitWebhookSideEffects}},
-  "version": "{{.LinkerdVersion}}"
+  "clusterDomain": "{{.ClusterDomain}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.proxy" -}}
 {
-  "adminPort":{
-    "port": {{.Proxy.Ports.Admin}}
-  },
-  "controlPort":{
-    "port": {{.Proxy.Ports.Control}}
-  },
-  "disableExternalProfiles": {{not .Proxy.EnableExternalProfile}},
-  "ignoreInboundPorts": {{splitList "," .ProxyInit.IgnoreInboundPorts}},
-  "ignoreOutboundPorts": {{splitList "," .ProxyInit.IgnoreOutboundPorts}},
-  "inboundPort":{
-    "port": {{.Proxy.Ports.Inbound}}
-  },
-  "logLevel":{
-    "level": "{{.Proxy.LogLevel}}"
-  },
-  "outboundPort":{
-    "port": {{.Proxy.Ports.Outbound}}
-  },
   "proxyImage":{
     "imageName":"{{.Proxy.Image.Name}}",
     "pullPolicy":"{{.Proxy.Image.PullPolicy}}"
@@ -43,15 +25,33 @@
     "imageName":"{{.ProxyInit.Image.Name}}",
     "pullPolicy":"{{.ProxyInit.Image.PullPolicy}}"
   },
-  "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}",
-  "proxyUid": {{.Proxy.UID}},
-  "proxyVersion": "{{.Proxy.Image.Version}}",
+  "controlPort":{
+    "port": {{.Proxy.Ports.Control}}
+  },
+  "ignoreInboundPorts": {{splitList "," .ProxyInit.IgnoreInboundPorts}},
+  "ignoreOutboundPorts": {{splitList "," .ProxyInit.IgnoreOutboundPorts}},
+  "inboundPort":{
+    "port": {{.Proxy.Ports.Inbound}}
+  },
+  "adminPort":{
+    "port": {{.Proxy.Ports.Admin}}
+  },
+  "outboundPort":{
+    "port": {{.Proxy.Ports.Outbound}}
+  },
   "resource":{
-    "limitCpu": "{{.Proxy.Resources.CPU.Limit}}",
-    "limitMemory": "{{.Proxy.Resources.Memory.Limit}}",
-    "requestCpu": "{{.Proxy.Resources.CPU.Request}}",
-    "requestMemory": "{{.Proxy.Resources.Memory.Request}}"
+    "requestCpu": "{{ternary .Proxy.Resources.CPU.Request "" (eq .HighAvailability true)}}",
+    "requestMemory": "{{ternary .Proxy.Resources.Memory.Request "" (eq .HighAvailability true)}}"
+    "limitCpu": "{{ternary .Proxy.Resources.CPU.Limit "" (eq .HighAvailability true)}}",
+    "limitMemory": "{{ternary .Proxy.Resources.Memory.Limit "" (eq .HighAvailability true)}}",
   }
+  "proxyUid": {{.Proxy.UID}},
+  "logLevel":{
+    "level": "{{.Proxy.LogLevel}}"
+  },
+  "disableExternalProfiles": {{not .Proxy.EnableExternalProfile}},
+  "proxyVersion": "{{.Proxy.Image.Version}}",
+  "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}",
 }
 {{- end -}}
 
