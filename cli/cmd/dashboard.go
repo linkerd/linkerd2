@@ -66,7 +66,7 @@ func newCmdDashboard() *cobra.Command {
 			// ensure we can connect to the public API before starting the proxy
 			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 			if err != nil {
 				return err
 			}
