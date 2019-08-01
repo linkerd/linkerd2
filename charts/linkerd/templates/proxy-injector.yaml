@@ -18,7 +18,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: {{.Namespace}}
 spec:
-  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: proxy-injector
@@ -34,7 +34,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
-      {{- if eq .HighAvailability true -}}
+      {{- if .EnablePodAntiAffinity -}}
       {{- $local := dict "Component" "proxy-injector" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
@@ -60,7 +60,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        {{- if eq .HighAvailability true -}}
+        {{- if .ProxyInjectorResources -}}
         {{- include "partials.resources" .ProxyInjectorResources | nindent 8 }}
         {{- end }}
         securityContext:

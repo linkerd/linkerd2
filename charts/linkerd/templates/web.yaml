@@ -80,7 +80,7 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        {{- if eq .HighAvailability true -}}
+        {{- if .WebResources -}}
         {{- include "partials.resources" .WebResources | nindent 8 }}
         {{- end }}
         securityContext:

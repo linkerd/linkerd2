@@ -56,7 +56,7 @@ metadata:
   name: linkerd-controller
   namespace: {{.Namespace}}
 spec:
-  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: controller
@@ -72,7 +72,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
-      {{- if eq .HighAvailability true -}}
+      {{- if eq .EnablePodAntiAffinity true -}}
       {{- $local := dict "Component" "controller" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
@@ -101,7 +101,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        {{- if eq .HighAvailability true -}}
+        {{- if .PublicAPIResources -}}
         {{- include "partials.resources" .PublicAPIResources | nindent 8 }}
         {{- end }}
         securityContext:
@@ -133,7 +133,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        {{- if eq .HighAvailability true -}}
+        {{- if .DestinationResources -}}
         {{- include "partials.resources" .DestinationResources | nindent 8 }}
         {{- end }}
         securityContext:

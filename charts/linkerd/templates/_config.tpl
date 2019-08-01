@@ -1,7 +1,7 @@
 {{- define "linkerd.configs.global" -}}
 {
   "linkerdNamespace": "{{.Namespace}}",
-  "cniEnabled": {{.CNIEnabled}},
+  "cniEnabled": false,
   "version": "{{.LinkerdVersion}}",
   "identityContext":{
     "trustDomain": "{{.Identity.TrustDomain}}",
@@ -40,10 +40,10 @@
     "port": {{.Proxy.Ports.Outbound}}
   },
   "resource":{
-    "requestCpu": "{{ternary .Proxy.Resources.CPU.Request "" (eq .HighAvailability true)}}",
-    "requestMemory": "{{ternary .Proxy.Resources.Memory.Request "" (eq .HighAvailability true)}}"
-    "limitCpu": "{{ternary .Proxy.Resources.CPU.Limit "" (eq .HighAvailability true)}}",
-    "limitMemory": "{{ternary .Proxy.Resources.Memory.Limit "" (eq .HighAvailability true)}}",
+    "requestCpu": "{{.Proxy.Resources.CPU.Request}}",
+    "limitCpu": "{{.Proxy.Resources.CPU.Limit}}",
+    "requestMemory": "{{.Proxy.Resources.Memory.Request}}",
+    "limitMemory": "{{.Proxy.Resources.Memory.Limit}}"
   }
   "proxyUid": {{.Proxy.UID}},
   "logLevel":{

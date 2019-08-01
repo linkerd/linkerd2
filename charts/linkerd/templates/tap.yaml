@@ -37,7 +37,7 @@ metadata:
   name: linkerd-tap
   namespace: {{.Namespace}}
 spec:
-  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: tap
@@ -53,7 +53,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
-      {{- if eq .HighAvailability true -}}
+      {{- if .EnablePodAntiAffinity -}}
       {{- $local := dict "Component" "tap" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
@@ -80,7 +80,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        {{- if eq .HighAvailability true -}}
+        {{- if .TapResources -}}
         {{- include "partials.resources" .TapResources | nindent 8 }}
         {{- end }}
         securityContext:

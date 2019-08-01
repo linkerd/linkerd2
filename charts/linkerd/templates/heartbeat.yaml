@@ -36,7 +36,7 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090"
             - "-controller-namespace={{.Namespace}}"
             - "-log-level={{.ControllerLogLevel}}"
-            {{- if eq .HighAvailability true -}}
+            {{- if .HeartbeatResources -}}
             {{- include "partials.resources" .HeartbeatResources | nindent 12 }}
             {{- end }}
             securityContext:

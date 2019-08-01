@@ -37,7 +37,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: {{.Namespace}}
 spec:
-  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: sp-validator
@@ -53,7 +53,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
-      {{- if eq .HighAvailability true -}}
+      {{- if .EnablePodAntiAffinity -}}
       {{- $local := dict "Component" "sp-validator" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
@@ -79,7 +79,7 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        {{- if eq .HighAvailability true -}}
+        {{- if .SPValidatorResources -}}
         {{- include "partials.resources" .SPValidatorResources | nindent 8 }}
         {{- end }}
         securityContext:

@@ -1,5 +1,5 @@
 {{- define "partials.proxy.annotations" -}}
-linkerd.io/identity-mode: {{ternary "disabled" "default" (eq .DisableIdentity true)}}
+linkerd.io/identity-mode: {{ternary "default" "disabled" (not .DisableIdentity)}}
 linkerd.io/proxy-version: {{.Image.Version}}
 {{- end -}}
 
