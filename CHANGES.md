@@ -1,10 +1,23 @@
 ## edge-19.8.1
 
+**Significant Update**
+
+This edge release introduces a new tap APIService. The Kubernetes apiserver
+authenticates the requesting tap user and then forwards tap requests to the new
+tap APIServer. The `linkerd tap` command now makes requests against the
+APIService.
+
+With this release, additional authorization is not required to use the `linkerd
+tap` command. In future releases, users authorize to the new
+`tap.linkerd.io/v1alpha1` via RBAC. Only the `watch` verb is supported. Access
+is also available via subresources such as `deployments/tap` and `pods/tap`.
+
 * CLI
   * Added a check to the `linkerd check` command to validate the user has
     privileges necessary to create CronJobs
   * Introduced the `linkerd --as` flag which sets a `ImpersonationConfig` in the
     Kubernetes API config
+  * The `linkerd tap` command now makes requests against the tap APIService
 * Controller
   * Added missing HTTP security headers on all dashboard responses
   * Fixed endpoints watcher to check for `TargetRef` prior to dereferencing
@@ -14,6 +27,13 @@
     name services so that the proxy does not immediately fail the request
   * The `l5d-require-id` header is now set on tap requests so that a connection
     is established over TLS
+  * Introduced the `APIService/v1alpha1.tap.linkerd.io` global resource
+  * Introduced the `ClusterRoleBinding/linkerd-linkerd-tap-auth-delegator`
+    global resource
+  * Introduced the `Secret/linkerd-tap-tls` resource into the `linkerd`
+    namespace
+  * Introduced the `RoleBinding/linkerd-linkerd-tap-auth-reader` resource into
+    the `kube-system` namespace
 * Proxy
   * Added the `LINKERD2_PROXY_TAP_SVC_NAME` environment variable so that the tap
     server attempts to authorize client identities
