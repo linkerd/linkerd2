@@ -118,6 +118,8 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		namespace, resource, name, req.Header.Get(h.usernameHeader), req.Header[h.groupHeader],
 	)
 
+	// TODO: it's possible this SubjectAccessReview is redundant, consider
+	// removing, more info at https://github.com/linkerd/linkerd2/issues/3182
 	err := pkgK8s.ResourceAuthzForUser(
 		h.k8sAPI.Client,
 		namespace,
