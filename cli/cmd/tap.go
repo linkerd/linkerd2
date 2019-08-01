@@ -116,7 +116,7 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 			if err != nil {
 				return err
 			}
