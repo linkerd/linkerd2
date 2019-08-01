@@ -98,6 +98,6 @@ volumeMounts:
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
   {{- if .Proxy.SAMountPath }}
-- {{- toYaml .Proxy.SAMountPath | indent 2 | trimPrefix " " -}}
-  {{- end }}
+- {{- toYaml .Proxy.SAMountPath | trim | indent 2 | trimPrefix " " -}}
+  {{- end -}}
 {{- end }}

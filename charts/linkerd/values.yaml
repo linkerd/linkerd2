@@ -82,11 +82,6 @@ PrometheusLogLevel: *controller_log_level
 
 # proxy configuration
 Proxy:
-  #Capabilities:
-    #Add:    # list of capabilities to add
-    #Drop:   # list of capabilities to drop
-  DisableIdentity: false # inject-only options. Do not change during installation
-  DisableTap: false      # inject-only option. Do not change during installation
   EnableExternalProfile: false
   Image:
     Name: gcr.io/linkerd-io/proxy
@@ -105,14 +100,10 @@ Proxy:
     Memory:
       Limit:
       Request:
-  SAMountPath:  # inject-only option. Do not change during installation
   UID: 2102
 
 # proxy-init configuration
 ProxyInit:
-  #Capabilities:
-    #Add:   # list of capabilities to add
-    #Drop:  # list of capabilities to drop
   IgnoreInboundPorts: ""
   IgnoreOutboundPorts: ""
   Image:
@@ -126,7 +117,6 @@ ProxyInit:
     Memory:
       Limit: 50Mi
       Request: 10Mi
-  SAMountPath:  # inject-only option. Do not change during installation
 
 # proxy injector configuration
 #ProxyInjectorResources: *controller_resources

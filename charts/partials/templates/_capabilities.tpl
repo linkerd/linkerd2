@@ -2,11 +2,11 @@
 capabilities:
   {{- if .Capabilities.Add }}
   add:
-  {{- toYaml .Capabilities.Add | trim | nindent 2 }}
+  {{- toYaml .Capabilities.Add | trim | nindent 4 }}
   {{- end }}
   {{- if .Capabilities.Drop }}
   drop:
-  {{- toYaml .Capabilities.Drop | trim | nindent 2 }}
+  {{- toYaml .Capabilities.Drop | trim | nindent 4 }}
   {{- end }}
 {{- end -}}
 

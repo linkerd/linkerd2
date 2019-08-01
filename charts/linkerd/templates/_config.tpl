@@ -28,8 +28,24 @@
   "controlPort":{
     "port": {{.Proxy.Ports.Control}}
   },
-  "ignoreInboundPorts": {{splitList "," .ProxyInit.IgnoreInboundPorts}},
-  "ignoreOutboundPorts": {{splitList "," .ProxyInit.IgnoreOutboundPorts}},
+  "ignoreInboundPorts":[
+    {{- $ports := splitList "," .ProxyInit.IgnoreInboundPorts -}}
+    {{- if gt (len $ports) 1}}
+    {{- $last := sub (len $ports) 1 -}}
+    {{- range $i,$port := $ports -}}
+    {"port":{{$port}}}{{ternary "," "" (ne $i $last)}}
+    {{- end -}}
+    {{- end -}}
+  ],
+  "ignoreOutboundPorts":[
+    {{- $ports := splitList "," .ProxyInit.IgnoreOutboundPorts -}}
+    {{- if gt (len $ports) 1}}
+    {{- $last := sub (len $ports) 1 -}}
+    {{- range $i,$port := $ports -}}
+    {"port":{{$port}}}{{ternary "," "" (ne $i $last)}}
+    {{- end -}}
+    {{- end -}}
+  ],
   "inboundPort":{
     "port": {{.Proxy.Ports.Inbound}}
   },

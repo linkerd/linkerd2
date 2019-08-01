@@ -3,19 +3,19 @@ resources:
   {{- if or .CPU.Limit .Memory.Limit }}
   limits:
     {{- with .CPU.Limit }}
-    cpu: {{.}}
+    cpu: {{. | quote}}
     {{- end }}
     {{- with .Memory.Limit }}
-    memory: {{.}}
+    memory: {{. | quote}}
     {{- end }}
   {{- end }}
   {{- if or .CPU.Request .Memory.Request }}
   requests:
     {{- with .CPU.Request }}
-    cpu: {{.}}
+    cpu: {{. | quote}}
     {{- end }}
     {{- with .Memory.Request }}
-    memory: {{.}}
+    memory: {{. | quote}}
     {{- end }}
   {{- end }}
 {{- end }}
