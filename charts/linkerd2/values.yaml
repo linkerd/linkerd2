@@ -27,20 +27,9 @@ Identity:
 
     # PEM-encoded certificate
     CrtPEM: |
-      -----BEGIN CERTIFICATE-----
-      MIIBhDCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
-      eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI4MjMxODEzWhcNMjAwNzI3
-      MjMxODMzWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
-      YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASRnMzvjn+4MpDtsLEseoWlBzrF
-      S0iGBVFLD0mYDbRzHDjCzwAvOA3y884B+UYysCOFS9E5O96Q7ftf3FySFGkHo0Iw
-      QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
-      MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKG6GF0/tRTj9IWH
-      3ntw1IpGD3uIxbJjWzl2nVDmqRawAiEAir+H+rVfGWL+UO8EiqtiRSm39hV7qA1g
-      N1B+Z/vF63s=
-      -----END CERTIFICATE-----
 
     # must match the expiry date in CrtPEM
-    CrtExpiry: 2020-07-27T23:18:33Z
+    CrtExpiry:
 
     # control plane annotation - do not edit
     CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
@@ -49,24 +38,8 @@ Identity:
 
     # PEM-encoded ECDSA private key
     KeyPEM: |
-      -----BEGIN EC PRIVATE KEY-----
-      MHcCAQEEIGTGK1a6wufBFXuugI9uQ6zQ77TUyMZOvu5DrzAZC++5oAoGCCqGSM49
-      AwEHoUQDQgAEkZzM745/uDKQ7bCxLHqFpQc6xUtIhgVRSw9JmA20cxw4ws8ALzgN
-      8vPOAflGMrAjhUvROTvekO37X9xckhRpBw==
-      -----END EC PRIVATE KEY-----
 
   TrustAnchorsPEM: |
-    -----BEGIN CERTIFICATE-----
-    MIIBhDCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
-    eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI4MjMxODEzWhcNMjAwNzI3
-    MjMxODMzWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
-    YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASRnMzvjn+4MpDtsLEseoWlBzrF
-    S0iGBVFLD0mYDbRzHDjCzwAvOA3y884B+UYysCOFS9E5O96Q7ftf3FySFGkHo0Iw
-    QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
-    MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKG6GF0/tRTj9IWH
-    3ntw1IpGD3uIxbJjWzl2nVDmqRawAiEAir+H+rVfGWL+UO8EiqtiRSm39hV7qA1g
-    N1B+Z/vF63s=
-    -----END CERTIFICATE-----
 
   TrustDomain: *cluster_domain
 
