@@ -189,9 +189,9 @@ func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb
 	return renderTap(w, reader, resource)
 }
 
-func renderTap(w io.Writer, tapStream *bufio.Reader, resource string) error {
+func renderTap(w io.Writer, tapByteStream *bufio.Reader, resource string) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapStream, tableWriter, resource)
+	err := writeTapEventsToBuffer(tapByteStream, tableWriter, resource)
 	if err != nil {
 		return err
 	}
@@ -200,11 +200,11 @@ func renderTap(w io.Writer, tapStream *bufio.Reader, resource string) error {
 	return nil
 }
 
-func writeTapEventsToBuffer(tapStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
+func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := pb.TapEvent{}
-		err := protohttp.FromByteStreamToProtocolBuffers(tapStream, &event)
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err == io.EOF {
 			break
 		}
