@@ -2,17 +2,17 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"google.golang.org/grpc/codes"
 )
 
@@ -74,13 +74,26 @@ func busyTest(t *testing.T, wide bool) {
 		map[string]string{},
 		pb.TapEvent_OUTBOUND,
 	)
-	mockAPIClient := &public.MockAPIClient{}
-	mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-		TapEventsToReturn: []pb.TapEvent{event1, event2},
+	kubeAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
+	ts := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			for _, event := range []pb.TapEvent{event1, event2} {
+				event := event // pin
+				err = protohttp.WriteProtoToHTTPResponse(w, &event)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			}
+		}),
+	)
+	defer ts.Close()
+	kubeAPI.Config.Host = ts.URL
 
 	writer := bytes.NewBufferString("")
-	err = requestTapByResourceFromAPI(writer, mockAPIClient, req, wide)
+	err = requestTapByResourceFromAPI(writer, kubeAPI, req, wide)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -127,13 +140,18 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockAPIClient := &public.MockAPIClient{}
-		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-			TapEventsToReturn: []pb.TapEvent{},
+		kubeAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
+		ts := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {}),
+		)
+		defer ts.Close()
+		kubeAPI.Config.Host = ts.URL
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
+		err = requestTapByResourceFromAPI(writer, kubeAPI, req, false)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -165,13 +183,13 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockAPIClient := &public.MockAPIClient{}
-		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-			ErrorsToReturn: []error{errors.New("expected")},
+		kubeAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
+		err = requestTapByResourceFromAPI(writer, kubeAPI, req, false)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}

@@ -219,6 +219,15 @@ You can also send test requests to the destination's discovery interface:
 bin/go-run controller/script/discovery-client
 ```
 
+##### Running the Tap APIService for development
+
+```bash
+openssl req -nodes -x509 -newkey rsa:4096 -keyout $HOME/key.pem -out $HOME/crt.pem -subj "/C=US"
+bin/go-run controller/cmd/tap --disable-common-names --tls-cert=$HOME/crt.pem --tls-key=$HOME/key.pem
+
+curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
+```
+
 #### Generating CLI docs
 
 The [documentation](https://linkerd.io/2/cli/) for the CLI

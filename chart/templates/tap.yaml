@@ -22,6 +22,9 @@ spec:
   - name: grpc
     port: 8088
     targetPort: 8088
+  - name: apiserver
+    port: 443
+    targetPort: apiserver
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -48,8 +51,14 @@ spec:
         ports:
         - name: grpc
           containerPort: 8088
+        - name: apiserver
+          containerPort: 8089
         - name: admin-http
           containerPort: 9998
+        volumeMounts:
+        - name: tls
+          mountPath: /var/run/linkerd/tls
+          readOnly: true
         image: {{.ControllerImage}}
         imagePullPolicy: {{.ImagePullPolicy}}
         args:
@@ -69,6 +78,10 @@ spec:
         {{- include "resources" .TapResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
+      volumes:
+      - name: tls
+        secret:
+          secretName: linkerd-tap-tls
       {{- if .HighAvailability }}
       {{- $local := dict "Label" .ControllerComponentLabel "Component" "tap" }}
       {{- include "pod-affinity" $local | nindent 6 }}

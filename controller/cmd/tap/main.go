@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,15 +12,21 @@ import (
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	addr := flag.String("addr", ":8088", "address to serve on")
+	apiServerAddr := flag.String("apiserver-addr", ":8089", "address to serve the apiserver on")
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := flag.Uint("tap-port", 4190, "proxy tap port to connect to")
+	tlsCertPath := flag.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
+	tlsKeyPath := flag.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
+	disableCommonNames := flag.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
+
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -45,17 +53,46 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	_, port, err := net.SplitHostPort(lis.Addr().String())
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// TODO: remove the network hop in favor of APIServer calling TapByResource
+	// directly.
+	tapClient, cc, err := tap.NewClient("127.0.0.1:" + port)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer cc.Close()
+
+	// TODO: make this configurable for local development
+	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, tapClient, *disableCommonNames)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
-		log.Println("starting gRPC server on", *addr)
+		log.Infof("starting gRPC server on %s", *addr)
 		server.Serve(lis)
+	}()
+
+	go func() {
+		log.Infof("starting APIServer on %s", *apiServerAddr)
+		apiServer.ServeTLS(apiLis, "", "")
 	}()
 
 	go admin.StartServer(*metricsAddr)
 
 	<-stop
 
-	log.Println("shutting down gRPC server on", *addr)
+	log.Infof("shutting down gRPC server on %s", *addr)
 	server.GracefulStop()
 }

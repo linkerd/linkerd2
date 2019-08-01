@@ -80,13 +80,14 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotati
 
 // KubectlApply applies a given configuration string in a namespace. If the
 // namespace does not exist, it creates it first. If no namespace is provided,
-// it uses the default namespace.
+// it does not specify the `--namespace` flag.
 func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string, error) {
-	if namespace == "" {
-		namespace = "default"
+	args := []string{"apply", "-f", "-"}
+	if namespace != "" {
+		args = append(args, "--namespace", namespace)
 	}
 
-	return h.Kubectl(stdin, "apply", "-f", "-", "--namespace", namespace)
+	return h.Kubectl(stdin, args...)
 }
 
 // Kubectl executes an arbitrary Kubectl command

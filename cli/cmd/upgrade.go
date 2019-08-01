@@ -263,6 +263,13 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
+	// TODO: rename to fetchTLS or something
+	tapTLS, err := fetchWebhookTLS(k, k8s.TapServiceName, options)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
+	}
+	values.Tap = &tapValues{tapTLS}
+
 	values.stage = stage
 
 	return values, configs, nil
