@@ -7,21 +7,21 @@ authenticates the requesting tap user and then forwards tap requests to the new
 tap APIServer. The `linkerd tap` command now makes requests against the
 APIService.
 
-With this release, additional role bindings are not required to use the `linkerd
-tap`
-command. In future releases, users will authorize to the new
-`tap.linkerd.io/v1alpha1` via RBAC. Only the `watch` verb is supported. Access
-is also available via subresources such as `deployments/tap` and `pods/tap`.
+With this release, users must be authorized via RBAC to use the `linkerd tap`
+command. Specifically `linkerd tap` requires the `watch` verb on all resources
+in the `tap.linkerd.io/v1alpha1` APIGroup. More granular access is also
+available via subresources such as `deployments/tap` and `pods/tap`.
 
 * CLI
   * Added a check to the `linkerd check` command to validate the user has
     privileges necessary to create CronJobs
-  * Introduced the `linkerd --as` flag which sets a `ImpersonationConfig` in the
-    Kubernetes API config
+  * Introduced the `linkerd --as` flag which allows users to impersonate another
+    user for Kubernetes operations
   * The `linkerd tap` command now makes requests against the tap APIService
 * Controller
-  * Added missing HTTP security headers on all dashboard responses
-  * Fixed endpoints watcher to check for `TargetRef` prior to dereferencing
+  * Added HTTP security headers on all dashboard responses
+  * Fixed nil pointer dereference in the destination service when an endpoint
+    does not have a `TargetRef`
   * Added resource limits when HA is enabled
   * Added RSA support to TLS libraries
   * Updated the destination service to return `InvalidArgument` for external
