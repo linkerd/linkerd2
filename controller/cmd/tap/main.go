@@ -23,6 +23,10 @@ func main() {
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := flag.Uint("tap-port", 4190, "proxy tap port to connect to")
+	tlsCertPath := flag.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
+	tlsKeyPath := flag.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
+	disableCommonNames := flag.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
+
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
@@ -63,12 +67,12 @@ func main() {
 	defer cc.Close()
 
 	// TODO: make this configurable for local development
-	cert, err := tls.LoadX509KeyPair(pkgK8s.MountPathTLSCrtPEM, pkgK8s.MountPathTLSKeyPEM)
+	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, tapClient)
+	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, tapClient, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
