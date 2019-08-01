@@ -10,7 +10,7 @@ APIService.
 With this release, users must be authorized via RBAC to use the `linkerd tap`
 command. Specifically `linkerd tap` requires the `watch` verb on all resources
 in the `tap.linkerd.io/v1alpha1` APIGroup. More granular access is also
-available via subresources such as `deployments/tap` and `pods/tap`.
+available via sub-resources such as `deployments/tap` and `pods/tap`.
 
 * CLI
   * Added a check to the `linkerd check` command to validate the user has
