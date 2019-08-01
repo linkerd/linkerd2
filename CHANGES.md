@@ -7,8 +7,9 @@ authenticates the requesting tap user and then forwards tap requests to the new
 tap APIServer. The `linkerd tap` command now makes requests against the
 APIService.
 
-With this release, additional authorization is not required to use the `linkerd
-tap` command. In future releases, users authorize to the new
+With this release, additional role bindings are not required to use the `linkerd
+tap`
+command. In future releases, users will authorize to the new
 `tap.linkerd.io/v1alpha1` via RBAC. Only the `watch` verb is supported. Access
 is also available via subresources such as `deployments/tap` and `pods/tap`.
 
