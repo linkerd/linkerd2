@@ -1,3 +1,25 @@
+## edge-19.8.1
+
+* CLI
+  * Added a check to the `linkerd check` command to validate the user has
+    privileges necessary to create CronJobs
+  * Introduced the `linkerd --as` flag which sets a `ImpersonationConfig` in the
+    Kubernetes API config
+* Controller
+  * Added missing HTTP security headers on all dashboard responses
+  * Fixed endpoints watcher to check for `TargetRef` prior to dereferencing
+  * Added resource limits when HA is enabled
+  * Added RSA support to TLS libraries
+  * Updated the destination service to return `InvalidArgument` for external
+    name services so that the proxy does not immediately fail the request
+  * The `l5d-require-id` header is now set on tap requests so that a connection
+    is established over TLS
+* Proxy
+  * Added the `LINKERD2_PROXY_TAP_SVC_NAME` environment variable so that the tap
+    server attempts to authorize client identities
+* Internal
+  * Replaced `dep` with Go modules for dependency management
+
 ## edge-19.7.5
 
 * CLI
