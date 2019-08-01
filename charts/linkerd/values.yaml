@@ -95,11 +95,11 @@ Proxy:
     Outbound: 4140
   Resources:
     CPU:
-      Limit:
-      Request:
+      Limit: ""
+      Request: ""
     Memory:
-      Limit:
-      Request:
+      Limit: ""
+      Request: ""
   UID: 2102
 
 # proxy-init configuration
@@ -118,18 +118,8 @@ ProxyInit:
       Limit: 50Mi
       Request: 10Mi
 
-# proxy injector configuration
-#ProxyInjectorResources: *controller_resources
-
-# service profile validator configuration
-#SPValidatorResources: *controller_resources
-
-# tap configuration
-#TapResources: *controller_resources
-
 # web configuration
 WebImage: gcr.io/linkerd-io/web
-#WebResources: *controller_resources
 
 # control plane annotations - do not edit
 CreatedByAnnotation: linkerd.io/created-by

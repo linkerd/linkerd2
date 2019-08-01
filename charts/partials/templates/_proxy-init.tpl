@@ -40,6 +40,7 @@ securityContext:
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if .ProxyInit.SAMountPath }}
 volumeMounts:
-- {{- toYaml .Proxy.SAMountPath | trim | indent 2 | trimPrefix " " -}}
-{{- end }}
-{{- end }}
+- mountPath:{{.Proxy.SAMountPath.MountPath}}
+  name:{{.Proxy.SAMountPath.Name}}
+{{- end -}}
+{{- end -}}

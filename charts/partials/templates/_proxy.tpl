@@ -94,10 +94,15 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsUser: {{.Proxy.UID}}
 terminationMessagePolicy: FallbackToLogsOnError
+{{- if or (not .DisableIdentity) (.Proxy.SAMountPath) }}
 volumeMounts:
+{{- if not .DisableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity
-  {{- if .Proxy.SAMountPath }}
-- {{- toYaml .Proxy.SAMountPath | trim | indent 2 | trimPrefix " " -}}
-  {{- end -}}
+{{- end -}}
+{{- if .Proxy.SAMountPath }}
+- mountPath:{{.Proxy.SAMountPath.MountPath}}
+  name:{{.Proxy.SAMountPath.Name}}
+{{- end -}}
+{{- end -}}
 {{- end }}
