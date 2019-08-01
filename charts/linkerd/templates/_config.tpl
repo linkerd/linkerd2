@@ -60,14 +60,14 @@
     "limitCpu": "{{.Proxy.Resources.CPU.Limit}}",
     "requestMemory": "{{.Proxy.Resources.Memory.Request}}",
     "limitMemory": "{{.Proxy.Resources.Memory.Limit}}"
-  }
+  },
   "proxyUid": {{.Proxy.UID}},
   "logLevel":{
     "level": "{{.Proxy.LogLevel}}"
   },
   "disableExternalProfiles": {{not .Proxy.EnableExternalProfile}},
   "proxyVersion": "{{.Proxy.Image.Version}}",
-  "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}",
+  "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}"
 }
 {{- end -}}
 
