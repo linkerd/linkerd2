@@ -22,12 +22,15 @@ spec:
   - name: grpc
     port: 8088
     targetPort: 8088
+  - name: apiserver
+    port: 443
+    targetPort: apiserver
 ---
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-tap" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
-apiVersion: apps/v1
 kind: Deployment
+apiVersion: apps/v1
 metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
@@ -54,8 +57,7 @@ spec:
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
       {{- if .EnablePodAntiAffinity -}}
-      {{- $local := dict "Component" "tap" "Label" .ControllerComponentLabel -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- include "linkerd.pod-affinity" . | nindent 6 -}}
       {{- end }}
       containers:
       - args:
@@ -73,6 +75,8 @@ spec:
         ports:
         - containerPort: 8088
           name: grpc
+        - containerPort: 8089
+          name: apiserver
         - containerPort: 9998
           name: admin-http
         readinessProbe:
@@ -85,10 +89,17 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       serviceAccountName: linkerd-tap
       volumes:
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - name: tls
+        secret:
+          secretName: linkerd-tap-tls
 {{- end -}}
