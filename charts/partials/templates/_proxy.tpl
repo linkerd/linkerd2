@@ -37,7 +37,7 @@ env:
   value: /var/run/linkerd/identity/end-entity
 - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
   value: |
-  {{- .Identity.TrustAnchorsPEM | trim | nindent 4 }}
+  {{- required "Please provide the identity trust anchors" .Identity.TrustAnchorsPEM | trim | nindent 4 }}
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
