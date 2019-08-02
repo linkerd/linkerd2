@@ -1,8 +1,7 @@
 package profiles
 
 import (
-	"context"
-	"errors"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -14,15 +13,17 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // RenderTapOutputProfile performs a tap on the desired resource and generates
 // a service profile with routes pre-populated from the tap data
 // Only inbound tap traffic is considered.
-func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
+func RenderTapOutputProfile(k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
 	requestParams := util.TapRequestParams{
 		Resource:  tapResource,
 		Namespace: namespace,
@@ -34,7 +35,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name st
 		return err
 	}
 
-	profile, err := tapToServiceProfile(client, req, namespace, name, tapDuration, routeLimit)
+	profile, err := tapToServiceProfile(k8sAPI, req, namespace, name, tapDuration, routeLimit)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func RenderTapOutputProfile(client pb.ApiClient, tapResource, namespace, name st
 	return nil
 }
 
-func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, namespace, name string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
+func tapToServiceProfile(k8sAPI *k8s.KubernetesAPI, tapReq *pb.TapByResourceRequest, namespace, name string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
 	profile := sp.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
@@ -56,44 +57,38 @@ func tapToServiceProfile(client pb.ApiClient, tapReq *pb.TapByResourceRequest, n
 		TypeMeta: serviceProfileMeta,
 	}
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(tapDuration))
-	defer cancel()
-
-	tapClient, err := client.TapByResource(ctx, tapReq)
+	reader, body, err := tap.Reader(k8sAPI, tapReq, tapDuration)
 	if err != nil {
-		if strings.HasSuffix(err.Error(), context.DeadlineExceeded.Error()) {
-			// return a more user friendly error if we've exceeded the specified duration
-			return profile, errors.New("Tap duration exceeded, try increasing --tap-duration")
-		}
 		return profile, err
 	}
+	defer body.Close()
 
-	routes := routeSpecFromTap(tapClient, routeLimit)
+	routes := routeSpecFromTap(reader, routeLimit)
 
 	profile.Spec.Routes = routes
 
 	return profile, nil
 }
 
-func routeSpecFromTap(tapClient pb.Api_TapByResourceClient, routeLimit int) []*sp.RouteSpec {
+func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSpec {
 	routes := make([]*sp.RouteSpec, 0)
 	routesMap := make(map[string]*sp.RouteSpec)
 
 	for {
 		log.Debug("Waiting for data...")
-		event, err := tapClient.Recv()
-
+		event := pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
 			if err != io.EOF &&
-				!strings.HasSuffix(err.Error(), context.DeadlineExceeded.Error()) &&
+				!strings.HasSuffix(err.Error(), "(Client.Timeout exceeded while reading body)") &&
 				!strings.HasSuffix(err.Error(), "http2: response body closed") {
 				fmt.Fprintln(os.Stderr, err)
 			}
 			break
 		}
 
-		routeSpec := getPathDataFromTap(event)
+		routeSpec := getPathDataFromTap(&event)
 		log.Debugf("Created route spec: %v", routeSpec)
 
 		if routeSpec != nil {
