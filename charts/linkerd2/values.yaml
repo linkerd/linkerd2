@@ -8,7 +8,7 @@ EnablePodAntiAffinity: false
 ImagePullPolicy: &image_pull_policy IfNotPresent
 
 # control plane version. See Proxy section for proxy version
-LinkerdVersion: &linkerd_version stable-2.4.0
+LinkerdVersion: &linkerd_version edge-19.8.1
 
 Namespace: linkerd
 OmitWebhookSideEffects: false

@@ -57,7 +57,8 @@ spec:
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
       {{- if .EnablePodAntiAffinity -}}
-      {{- include "linkerd.pod-affinity" . | nindent 6 -}}
+      {{- $local := dict "Component" "tap" "Label" .ControllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
