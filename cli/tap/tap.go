@@ -3,9 +3,9 @@ package tap
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -27,10 +27,15 @@ func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest) (*bufio.Rea
 		return nil, nil, err
 	}
 
-	url := protohttp.TapReqToURL(req)
+	url, err := url.Parse(k8sAPI.Host)
+	if err != nil {
+		return nil, nil, err
+	}
+	url.Path = protohttp.TapReqToURL(req)
+
 	httpReq, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("%s%s", k8sAPI.Host, url),
+		url.String(),
 		bytes.NewReader(reqBytes),
 	)
 	if err != nil {
@@ -39,11 +44,11 @@ func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest) (*bufio.Rea
 
 	httpRsp, err := client.Do(httpReq)
 	if err != nil {
-		log.Debugf("Error invoking [%s]: %v", "taps", err)
+		log.Debugf("Error invoking [%s]: %v", url, err)
 		return nil, nil, err
 	}
 
-	log.Debugf("Response from [%s] had headers: %v", "taps", httpRsp.Header)
+	log.Debugf("Response from [%s] had headers: %v", url, httpRsp.Header)
 
 	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
 		httpRsp.Body.Close()
