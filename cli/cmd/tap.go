@@ -2,15 +2,13 @@ package cmd
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/linkerd/linkerd2/cli/tap"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -153,39 +151,12 @@ func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb
 		resource = req.GetTarget().GetResource().GetType()
 	}
 
-	client, err := k8sAPI.NewClient()
+	reader, body, err := tap.Reader(k8sAPI, req)
 	if err != nil {
 		return err
 	}
+	defer body.Close()
 
-	reqBytes, err := proto.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	url := protohttp.TapReqToURL(req)
-	httpReq, err := http.NewRequest(
-		http.MethodPost,
-		fmt.Sprintf("%s%s", k8sAPI.Host, url),
-		bytes.NewReader(reqBytes),
-	)
-	if err != nil {
-		return err
-	}
-
-	httpRsp, err := client.Do(httpReq)
-	if err != nil {
-		log.Debugf("Error invoking [%s]: %v", "taps", err)
-		return err
-	}
-	defer httpRsp.Body.Close()
-	log.Debugf("Response from [%s] had headers: %v", "taps", httpRsp.Header)
-
-	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
-		return err
-	}
-
-	reader := bufio.NewReader(httpRsp.Body)
 	return renderTap(w, reader, resource)
 }
 
