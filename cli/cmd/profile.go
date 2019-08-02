@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -103,7 +104,11 @@ func newCmdProfile() *cobra.Command {
 			} else if options.openAPI != "" {
 				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, os.Stdout)
 			} else if options.tap != "" {
-				return profiles.RenderTapOutputProfile(checkPublicAPIClientOrExit(), options.tap, options.namespace, options.name, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+				if err != nil {
+					return err
+				}
+				return profiles.RenderTapOutputProfile(k8sAPI, options.tap, options.namespace, options.name, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, os.Stdout)
 			}

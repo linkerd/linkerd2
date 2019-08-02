@@ -8,12 +8,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/linkerd/linkerd2/cli/tap"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -151,7 +151,7 @@ func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb
 		resource = req.GetTarget().GetResource().GetType()
 	}
 
-	reader, body, err := tap.Reader(k8sAPI, req)
+	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}

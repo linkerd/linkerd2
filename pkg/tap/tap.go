@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -16,11 +17,12 @@ import (
 
 // Reader initiates a TapByResourceRequest and returns a buffered Reader.
 // It is the caller's responsibility to call Close() on the io.ReadCloser.
-func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest) (*bufio.Reader, io.ReadCloser, error) {
+func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, timeout time.Duration) (*bufio.Reader, io.ReadCloser, error) {
 	client, err := k8sAPI.NewClient()
 	if err != nil {
 		return nil, nil, err
 	}
+	client.Timeout = timeout
 
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {

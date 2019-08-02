@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/linkerd/linkerd2/cli/tap"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
@@ -372,7 +372,7 @@ func newCmdTop() *cobra.Command {
 }
 
 func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
-	reader, body, err := tap.Reader(k8sAPI, req)
+	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}
