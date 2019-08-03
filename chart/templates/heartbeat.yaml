@@ -16,6 +16,7 @@ metadata:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
   schedule: "{{.HeartbeatSchedule}}"
+  successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:
