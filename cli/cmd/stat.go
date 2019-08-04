@@ -242,14 +242,14 @@ var (
 	weightHeader    = "WEIGHT"
 )
 
-func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) { // i think we should write a different function for TrafficSplit stats since the table is different.
+func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
+	statTables := make(map[string]map[string]*row)
+
 	maxApexLength := len(apexHeader)
 	maxLeafLength := len(leafHeader)
 	maxWeightLength := len(weightHeader)
-	statTables := make(map[string]map[string]*row) // making new empty statTables map
-	//isTrafficSplit := false
 
 	prefixTypes := make(map[string]bool)
 	for _, r := range rows {
@@ -273,7 +273,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		apex := ""
 		weight := ""
 
-		var key = ""
+		var key string
 		if resourceType == "trafficsplit" {
 			leaf = r.TsStats.Leaf
 			apex = r.TsStats.Apex
@@ -285,7 +285,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		resourceKey := r.Resource.Type
 
 		if _, ok := statTables[resourceKey]; !ok {
-			statTables[resourceKey] = make(map[string]*row) // if the statTables doesn't already have the specific resourceType you are looking at... add it.
+			statTables[resourceKey] = make(map[string]*row)
 		}
 
 		if len(nameWithPrefix) > maxNameLength {
@@ -341,7 +341,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	switch options.outputFormat {
 	case tableOutput, wideOutput:
 		if len(statTables) == 0 {
-			if isTrafficSplit == false {
+			if !isTrafficSplit {
 				fmt.Fprintln(os.Stderr, "No traffic found.")
 			} else {
 				fmt.Fprintln(os.Stderr, "No trafficsplits found.")
@@ -405,14 +405,9 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		weightTemplate := fmt.Sprintf("%%-%ds", maxWeightLength)
 
 		headers = append(headers,
-
 			fmt.Sprintf(apexTemplate, "APEX"),
 			fmt.Sprintf(leafTemplate, "LEAF"),
 			fmt.Sprintf(weightTemplate, "WEIGHT"))
-
-		//apexHeader+strings.Repeat(" ", maxApexLength-len(apexHeader)),
-		//leafHeader+strings.Repeat(" ", maxLeafLength-len(leafHeader)),
-		//weightHeader+strings.Repeat(" ", maxWeightLength-len(weightHeader)))
 	}
 
 	if resourceType != k8s.TrafficSplit {
@@ -445,7 +440,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		values := make([]interface{}, 0)
 		templateString := "%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 		templateStringEmpty := "%s\t%s\t-\t-\t-\t-\t-\t-\t"
-
 		if resourceType == k8s.Pod {
 			templateString = "%s\t" + templateString
 			templateStringEmpty = "%s\t" + templateStringEmpty
@@ -497,12 +491,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 				leafPadding = maxLeafLength - len(stats[key].tsStats.leaf)
 			}
 		}
-		/*
-				weightPadding := 0
-				if maxWeightLength > len(stats[key].tsStats.weight) {
-					weightPadding = maxWeightLength - len(stats[key].tsStats.weight)
-				}
-		//*/
 		values = append(values, name+strings.Repeat(" ", padding))
 		if resourceType == k8s.Pod {
 			values = append(values, stats[key].status)
@@ -517,17 +505,9 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values,
 				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
 				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
-				stats[key].tsStats.weight, //+strings.Repeat(" ", weightPadding),
-			)
-		}
-
-		/*
-			values = append(values,
-				stats[key].tsStats.apex,
-				stats[key].tsStats.leaf,
 				stats[key].tsStats.weight,
 			)
-			//*/
+		}
 
 		if stats[key].rowStats != nil {
 			values = append(values, []interface{}{
@@ -577,6 +557,9 @@ type jsonStats struct {
 	TCPConnections *uint64  `json:"tcp_open_connections"`
 	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
 	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
+	Apex           string   `json:"apex"`
+	Leaf           string   `json:"leaf"`
+	Weight         string   `json:"weight"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -606,7 +589,11 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
 					}
 				}
-
+				if stats[key].tsStats != nil {
+					entry.Apex = stats[key].apex
+					entry.Leaf = stats[key].leaf
+					entry.Weight = stats[key].weight
+				}
 				entries = append(entries, entry)
 			}
 		}

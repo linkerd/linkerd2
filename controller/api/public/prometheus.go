@@ -92,7 +92,7 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource != nil {
-		if resource.Name != "" && resource.GetType() != k8s.Service {
+		if resource.Name != "" && resource.GetType() != k8s.Service && resource.GetType() != k8s.TrafficSplit {
 			set[promResourceType(resource)] = model.LabelValue(resource.Name)
 		}
 		if shouldAddNamespaceLabel(resource) {
