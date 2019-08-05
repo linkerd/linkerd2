@@ -53,17 +53,18 @@ var (
 
 	resources = []struct {
 		name       string
+		shortname  string
 		namespaced bool
 	}{
-		{"namespaces", false},
-		{"pods", true},
-		{"replicationcontrollers", true},
-		{"services", true},
-		{"daemonsets", true},
-		{"deployments", true},
-		{"replicasets", true},
-		{"statefulsets", true},
-		{"jobs", true},
+		{"namespaces", "ns", false},
+		{"pods", "po", true},
+		{"replicationcontrollers", "rc", true},
+		{"services", "svc", true},
+		{"daemonsets", "ds", true},
+		{"deployments", "deploy", true},
+		{"replicasets", "rs", true},
+		{"statefulsets", "sts", true},
+		{"jobs", "", true},
 	}
 )
 
@@ -85,11 +86,13 @@ func initRouter(h *handler) *httprouter.Router {
 	for _, res := range resources {
 		route := ""
 		if !res.namespaced {
-			route = fmt.Sprintf("/apis/%s/watch/%s/:namespace/tap", gvk.GroupVersion().String(), res.name)
+			route = fmt.Sprintf("/apis/%s/watch/%s/:namespace", gvk.GroupVersion().String(), res.name)
 		} else {
-			route = fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/%s/:name/tap", gvk.GroupVersion().String(), res.name)
+			route = fmt.Sprintf("/apis/%s/watch/namespaces/:namespace/%s/:name", gvk.GroupVersion().String(), res.name)
 		}
-		router.POST(route, h.handleTap)
+
+		router.GET(route, handleRoot)
+		router.POST(route+"/tap", h.handleTap)
 	}
 
 	return router
@@ -135,7 +138,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 	if err != nil {
 		err = fmt.Errorf("SubjectAccessReview failed with: %s", err)
 		h.log.Error(err)
-		renderJSONError(w, err, http.StatusInternalServerError)
+		renderJSONError(w, err, http.StatusForbidden)
 		return
 	}
 
@@ -199,6 +202,8 @@ func handleNotFound(w http.ResponseWriter, _ *http.Request) {
 }
 
 // GET /
+// GET /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace
+// GET /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/:name
 func handleRoot(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	handlePaths(w, http.StatusOK)
 }
@@ -263,10 +268,17 @@ func handleAPIResourceList(w http.ResponseWriter, _ *http.Request, _ httprouter.
 	for _, res := range resources {
 		resList.APIResources = append(resList.APIResources,
 			metav1.APIResource{
+				Name:       res.name,
+				ShortNames: []string{res.shortname},
+				Namespaced: res.namespaced,
+				Kind:       gvk.Kind,
+				Verbs:      metav1.Verbs{"watch"},
+			})
+		resList.APIResources = append(resList.APIResources,
+			metav1.APIResource{
 				Name:       fmt.Sprintf("%s/tap", res.name),
 				Namespaced: res.namespaced,
 				Kind:       gvk.Kind,
-				Group:      "tap",
 				Verbs:      metav1.Verbs{"watch"},
 			})
 	}

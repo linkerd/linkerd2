@@ -37,7 +37,7 @@ func TestHandleTap(t *testing.T) {
 					Path: "/apis/tap.linkerd.io/v1alpha1/watch/namespaces/foo/tap",
 				},
 			},
-			code:   http.StatusInternalServerError,
+			code:   http.StatusForbidden,
 			header: http.Header{"Content-Type": []string{"application/json"}},
 			body:   `{"error":"SubjectAccessReview failed with: not authorized to access namespaces.tap.linkerd.io"}`,
 		},
