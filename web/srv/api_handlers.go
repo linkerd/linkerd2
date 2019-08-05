@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -207,25 +208,23 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 
 	go func() {
-		tapClient, err := h.apiClient.TapByResource(req.Context(), tapReq)
+		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
 		if err != nil {
 			websocketError(ws, websocket.CloseInternalServerErr, err.Error())
 			return
 		}
-		defer tapClient.CloseSend()
+		defer body.Close()
 
 		for {
-			rsp, err := tapClient.Recv()
-			if err == io.EOF {
-				break
-			}
+			event := pb.TapEvent{}
+			err := protohttp.FromByteStreamToProtocolBuffers(reader, &event)
 			if err != nil {
 				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
 				break
 			}
 
 			buf := new(bytes.Buffer)
-			err = pbMarshaler.Marshal(buf, rsp)
+			err = pbMarshaler.Marshal(buf, &event)
 			if err != nil {
 				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
 				break
