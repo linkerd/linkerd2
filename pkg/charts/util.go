@@ -22,17 +22,24 @@ type Chart struct {
 
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (chart *Chart) Render() (bytes.Buffer, error) {
-	// Read templates into bytes
-	for _, f := range chart.Files {
-		data, err := readIntoBytes(chart.Dir + "/" + f.Name)
-		if err != nil {
-			return bytes.Buffer{}, err
-		}
-		f.Data = data
+	chart.filesReader(chart.Dir+"/", chart.Files)
+
+	// Keep this slice synced with the contents of /charts/partials
+	partialsFiles := []*chartutil.BufferedFile{
+		{Name: "charts/partials/" + chartutil.ChartfileName},
+		{Name: "charts/partials/templates/_proxy.tpl"},
+		{Name: "charts/partials/templates/_proxy-init.tpl"},
+		{Name: "charts/partials/templates/_volumes.tpl"},
+		{Name: "charts/partials/templates/_resources.tpl"},
+		{Name: "charts/partials/templates/_metadata.tpl"},
+		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_debug.tpl"},
+		{Name: "charts/partials/templates/_capabilities.tpl"},
 	}
+	chart.filesReader("", partialsFiles)
 
 	// Create chart and render templates
-	chrt, err := chartutil.LoadFiles(chart.Files)
+	chrt, err := chartutil.LoadFiles(append(chart.Files, partialsFiles...))
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
@@ -66,16 +73,22 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 	return buf, nil
 }
 
-func readIntoBytes(filename string) ([]byte, error) {
-	// TODO: remove `chart/` after `linkerd install` starts using `/charts`
-	file, err := static.Templates.Open(filename)
-	if err != nil {
-		return nil, err
+func (chart *Chart) filesReader(dir string, files []*chartutil.BufferedFile) error {
+	for _, f := range files {
+		filename := dir + f.Name
+		if dir == "" {
+			filename = filename[7:]
+		}
+		file, err := static.Templates.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(file)
+
+		f.Data = buf.Bytes()
 	}
-	defer file.Close()
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(file)
-
-	return buf.Bytes(), nil
+	return nil
 }

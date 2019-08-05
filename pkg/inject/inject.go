@@ -198,7 +198,6 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		{Name: chartutil.ChartfileName},
 		{Name: "requirements.yaml"},
 		{Name: "templates/patch.json"},
-		{Name: "charts/partials-0.1.0.tgz"},
 	}
 
 	chart := &charts.Chart{
