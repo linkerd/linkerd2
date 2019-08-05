@@ -1,0 +1,40 @@
+[
+  {
+    "namespace": "default",
+    "kind": "trafficsplit",
+    "name": "foo-split",
+    "meshed": "0/0",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "tcp_open_connections": 0,
+    "tcp_read_bytes_rate": 0,
+    "tcp_write_bytes_rate": 0,
+    "ts_stats": {
+      "apex": "apex_name",
+      "leaf_name": "service-1",
+      "weight": "900m"
+    }
+  },
+  {
+    "namespace": "default",
+    "kind": "trafficsplit",
+    "name": "foo-split",
+    "meshed": "0/0",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "tcp_open_connections": 0,
+    "tcp_read_bytes_rate": 0,
+    "tcp_write_bytes_rate": 0,
+    "ts_stats": {
+      "apex": "apex_name",
+      "leaf_name": "service-2",
+      "weight": "100m"
+    }
+  }
+]

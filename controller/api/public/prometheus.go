@@ -18,7 +18,6 @@ type promType string
 type promResult struct {
 	prom promType
 	vec  model.Vector
-	key  rKey
 	err  error
 }
 
@@ -135,12 +134,14 @@ func generateLabelStringWithExclusion(l model.LabelSet, labelName string) string
 
 // insert a regex-match check into a LabelSet for labels that match the provided
 // string. this is modeled on generateLabelStringWithExclusion().
-func generateLabelStringWithRegex(l model.LabelSet, labelName string, label string) string {
+// the regex will match the first section of the string before a period, ex.
+// `dst="authors.default.svc.cluster.local:7001"` will return true for a stringToMatch of `authors`
+func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMatch string) string {
 	lstrs := make([]string, 0, len(l))
-	for l, v := range l { // label and value i guess?
+	for l, v := range l {
 		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
 	}
-	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, label))
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s[.].+"`, labelName, stringToMatch))
 
 	sort.Strings(lstrs)
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
@@ -163,7 +164,7 @@ func promResourceType(resource *pb.Resource) model.LabelName {
 	return model.LabelName(l5dLabel)
 }
 
-func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string, key rKey) ([]promResult, error) {
+func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTemplates map[promType]string, latencyQueryTemplate, labels, timeWindow, groupBy string) ([]promResult, error) {
 	resultChan := make(chan promResult)
 
 	// kick off asynchronous queries: request count queries + 3 latency queries
@@ -179,7 +180,6 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 			resultVector, err := s.queryProm(ctx, promQuery)
 			resultChan <- promResult{
 				prom: typ,
-				key:  key,
 				vec:  resultVector,
 				err:  err,
 			}
@@ -195,7 +195,6 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 
 			resultChan <- promResult{
 				prom: quantile,
-				key:  key,
 				vec:  latencyResult,
 				err:  err,
 			}
