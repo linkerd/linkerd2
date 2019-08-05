@@ -11,6 +11,7 @@ rootdir="$( cd $bindir/.. && pwd )"
 helm lint $rootdir/charts/partials
 
 helm dep up $rootdir/charts/linkerd2
+helm dep up $rootdir/charts/patch
 helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.CrtPEM="fake-cert" --set Identity.Issuer.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
 
 # if tiller is deployed, perform a dry run installation to check for errors

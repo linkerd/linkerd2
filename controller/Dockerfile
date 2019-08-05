@@ -1,13 +1,18 @@
 ## compile controller services
-FROM gcr.io/linkerd-io/go-deps:b62fe1ae as golang
+FROM gcr.io/linkerd-io/go-deps:36d8fabd as golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen
 COPY pkg pkg
 COPY controller controller
+COPY charts/patch charts/patch
+
+# Generate static templates
+# TODO: `go generate` does not honor -mod=readonly
+RUN go generate -mod=readonly ./pkg/charts/static
 
 # use `install` so that we produce multiple binaries
-RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly ./pkg/...
-RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly ./controller/cmd/...
+RUN CGO_ENABLED=0 GOOS=linux go install -tags prod -mod=readonly ./pkg/...
+RUN CGO_ENABLED=0 GOOS=linux go install -tags prod -mod=readonly ./controller/cmd/...
 
 ## package runtime
 FROM scratch
