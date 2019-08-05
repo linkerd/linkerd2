@@ -136,7 +136,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		req.Header[h.groupHeader],
 	)
 	if err != nil {
-		err = fmt.Errorf("SubjectAccessReview failed with: %s", err)
+		err = fmt.Errorf("tap authorization failed (%s), visit https://linkerd.io/tap-rbac for more information", err)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusForbidden)
 		return
