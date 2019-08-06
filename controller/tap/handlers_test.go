@@ -39,7 +39,7 @@ func TestHandleTap(t *testing.T) {
 			},
 			code:   http.StatusForbidden,
 			header: http.Header{"Content-Type": []string{"application/json"}},
-			body:   `{"error":"SubjectAccessReview failed with: not authorized to access namespaces.tap.linkerd.io"}`,
+			body:   `{"error":"tap authorization failed (not authorized to access namespaces.tap.linkerd.io), visit https://linkerd.io/tap-rbac for more information"}`,
 		},
 	}
 
