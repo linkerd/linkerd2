@@ -22,7 +22,9 @@ type Chart struct {
 
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (chart *Chart) Render() (bytes.Buffer, error) {
-	filesReader(chart.Dir+"/", chart.Files)
+	if err := filesReader(chart.Dir+"/", chart.Files); err != nil {
+		return bytes.Buffer{}, err
+	}
 
 	// Keep this slice synced with the contents of /charts/partials
 	partialsFiles := []*chartutil.BufferedFile{
@@ -36,7 +38,9 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_debug.tpl"},
 		{Name: "charts/partials/templates/_capabilities.tpl"},
 	}
-	filesReader("", partialsFiles)
+	if err := filesReader("", partialsFiles); err != nil {
+		return bytes.Buffer{}, nil
+	}
 
 	// Create chart and render templates
 	chrt, err := chartutil.LoadFiles(append(chart.Files, partialsFiles...))
