@@ -32,32 +32,33 @@ type (
 	installValues struct {
 		stage string
 
-		Namespace                string
-		ClusterDomain            string
-		ControllerImage          string
-		WebImage                 string
-		PrometheusImage          string
-		GrafanaImage             string
-		ImagePullPolicy          string
-		UUID                     string
-		CliVersion               string
-		ControllerReplicas       uint
-		ControllerLogLevel       string
-		PrometheusLogLevel       string
-		ControllerComponentLabel string
-		ControllerNamespaceLabel string
-		CreatedByAnnotation      string
-		ProxyContainerName       string
-		ProxyInjectAnnotation    string
-		ProxyInjectDisabled      string
-		LinkerdNamespaceLabel    string
-		ControllerUID            int64
-		EnableH2Upgrade          bool
-		HighAvailability         bool
-		NoInitContainer          bool
-		WebhookFailurePolicy     string
-		OmitWebhookSideEffects   bool
-		HeartbeatSchedule        string
+		Namespace                   string
+		ClusterDomain               string
+		ControllerImage             string
+		WebImage                    string
+		PrometheusImage             string
+		GrafanaImage                string
+		ImagePullPolicy             string
+		UUID                        string
+		CliVersion                  string
+		ControllerReplicas          uint
+		ControllerLogLevel          string
+		PrometheusLogLevel          string
+		ControllerComponentLabel    string
+		ControllerNamespaceLabel    string
+		CreatedByAnnotation         string
+		ProxyContainerName          string
+		ProxyInjectAnnotation       string
+		ProxyInjectDisabled         string
+		LinkerdNamespaceLabel       string
+		ControllerUID               int64
+		EnableH2Upgrade             bool
+		HighAvailability            bool
+		NoInitContainer             bool
+		WebhookFailurePolicy        string
+		OmitWebhookSideEffects      bool
+		RestrictDashboardPrivileges bool
+		HeartbeatSchedule           string
 
 		Configs configJSONs
 
@@ -125,16 +126,17 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion    string
-		controllerReplicas     uint
-		controllerLogLevel     string
-		highAvailability       bool
-		controllerUID          int64
-		disableH2Upgrade       bool
-		noInitContainer        bool
-		skipChecks             bool
-		omitWebhookSideEffects bool
-		identityOptions        *installIdentityOptions
+		controlPlaneVersion         string
+		controllerReplicas          uint
+		controllerLogLevel          string
+		highAvailability            bool
+		controllerUID               int64
+		disableH2Upgrade            bool
+		noInitContainer             bool
+		skipChecks                  bool
+		omitWebhookSideEffects      bool
+		restrictDashboardPrivileges bool
+		identityOptions             *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -190,14 +192,15 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion:    version.Version,
-		controllerReplicas:     defaultControllerReplicas,
-		controllerLogLevel:     "info",
-		highAvailability:       false,
-		controllerUID:          2103,
-		disableH2Upgrade:       false,
-		noInitContainer:        false,
-		omitWebhookSideEffects: false,
+		controlPlaneVersion:         version.Version,
+		controllerReplicas:          defaultControllerReplicas,
+		controllerLogLevel:          "info",
+		highAvailability:            false,
+		controllerUID:               2103,
+		disableH2Upgrade:            false,
+		noInitContainer:             false,
+		omitWebhookSideEffects:      false,
+		restrictDashboardPrivileges: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -485,6 +488,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
+	flags.BoolVar(
+		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
+		"Restrict the Linkerd Dashboard's default privileges to disallow Tap.",
+	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
@@ -625,19 +632,20 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:              controlPlaneNamespace,
-		ClusterDomain:          defaultClusterDomain,
-		UUID:                   configs.GetInstall().GetUuid(),
-		ControllerReplicas:     options.controllerReplicas,
-		ControllerLogLevel:     options.controllerLogLevel,
-		ControllerUID:          options.controllerUID,
-		HighAvailability:       options.highAvailability,
-		EnableH2Upgrade:        !options.disableH2Upgrade,
-		NoInitContainer:        options.noInitContainer,
-		WebhookFailurePolicy:   "Ignore",
-		OmitWebhookSideEffects: options.omitWebhookSideEffects,
-		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
-		HeartbeatSchedule:      options.heartbeatSchedule(),
+		Namespace:                   controlPlaneNamespace,
+		ClusterDomain:               defaultClusterDomain,
+		UUID:                        configs.GetInstall().GetUuid(),
+		ControllerReplicas:          options.controllerReplicas,
+		ControllerLogLevel:          options.controllerLogLevel,
+		ControllerUID:               options.controllerUID,
+		HighAvailability:            options.highAvailability,
+		EnableH2Upgrade:             !options.disableH2Upgrade,
+		NoInitContainer:             options.noInitContainer,
+		WebhookFailurePolicy:        "Ignore",
+		OmitWebhookSideEffects:      options.omitWebhookSideEffects,
+		RestrictDashboardPrivileges: options.restrictDashboardPrivileges,
+		PrometheusLogLevel:          toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		HeartbeatSchedule:           options.heartbeatSchedule(),
 
 		Configs: configJSONs{
 			Global:  globalJSON,
