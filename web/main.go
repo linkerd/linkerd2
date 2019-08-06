@@ -28,6 +28,7 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	flags.ConfigureAndParse()
 
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
@@ -46,7 +47,7 @@ func main() {
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
 
-	k8sAPI, err := k8s.NewAPI("", "", "", 0)
+	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
 		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
 	}
