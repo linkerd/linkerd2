@@ -1,5 +1,3 @@
-//go:generate go run static/generate.go
-
 package main
 
 import (

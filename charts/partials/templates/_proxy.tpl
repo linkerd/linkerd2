@@ -101,8 +101,8 @@ volumeMounts:
   name: linkerd-identity-end-entity
 {{- end -}}
 {{- if .Proxy.SAMountPath }}
-- mountPath:{{.Proxy.SAMountPath.MountPath}}
-  name:{{.Proxy.SAMountPath.Name}}
+- mountPath: {{.Proxy.SAMountPath.MountPath}}
+  name: {{.Proxy.SAMountPath.Name}}
 {{- end -}}
 {{- end -}}
 {{- end }}
