@@ -30,11 +30,13 @@
   },
   {{- end }}
   {{- if .ProxyInit }}
+  {{- if .AddRootInitContainers }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers",
     "value": []
   },
+  {{- end }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",

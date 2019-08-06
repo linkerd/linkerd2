@@ -92,13 +92,14 @@ type ResourceConfig struct {
 
 type patch struct {
 	charts.Values
-	PathPrefix         string
-	AddRootAnnotations bool
-	Annotations        map[string]string
-	AddRootLabels      bool
-	AddRootVolumes     bool
-	Labels             map[string]string
-	DebugContainer     *charts.DebugContainer
+	PathPrefix            string
+	AddRootAnnotations    bool
+	Annotations           map[string]string
+	AddRootLabels         bool
+	AddRootInitContainers bool
+	AddRootVolumes        bool
+	Labels                map[string]string
+	DebugContainer        *charts.DebugContainer
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
@@ -164,10 +165,14 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
 func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+	clusterDomain := conf.configs.GetGlobal().GetClusterDomain()
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
+	}
 	values := &patch{
 		Values: charts.Values{
 			Namespace:     conf.configs.GetGlobal().GetLinkerdNamespace(),
-			ClusterDomain: "cluster.local",
+			ClusterDomain: clusterDomain,
 		},
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
@@ -503,6 +508,9 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 		Capabilities: values.Proxy.Capabilities,
 		SAMountPath:  values.Proxy.SAMountPath,
 	}
+
+	values.AddRootInitContainers = len(conf.pod.spec.InitContainers) == 0
+
 }
 
 func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
