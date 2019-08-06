@@ -240,7 +240,7 @@ var (
 	isTrafficSplit  = false
 )
 
-var key, leafName, apexName, weight string
+var leafName, apexName, weight string
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)

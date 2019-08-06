@@ -305,7 +305,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 	var tsBasicStats map[tsKey]*pb.BasicStats
 	if !req.SkipStats {
-		tsBasicStats, _, err = s.getTrafficSplitMetrics(ctx, req, k8sObjects, req.TimeWindow)
+		tsBasicStats, err = s.getTrafficSplitMetrics(ctx, req, k8sObjects, req.TimeWindow)
 
 		if err != nil {
 			return resourceResult{res: nil, err: err}
@@ -529,7 +529,7 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 // however, the rKey.Name returned is the leaf service name due to the need to query Prometheus for dst_service,
 // whereas the the rKey.Name in the k8sObject data is the trafficsplit name. in order to match the k8sObjects
 // to the Prometheus metrics, we return a new map[tsKey]*pb.BasicStats which includes apex and leaf information.
-func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, timeWindow string) (map[tsKey]*pb.BasicStats, map[tsKey]*pb.TcpStats, error) {
+func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
 
 	tsBasicStats := make(map[tsKey]*pb.BasicStats)
 
@@ -551,7 +551,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 		results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, stringifiedReqLabels, timeWindow, groupBy.String())
 
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
@@ -566,7 +566,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 			}] = basicStatsVal
 		}
 	}
-	return tsBasicStats, nil, nil
+	return tsBasicStats, nil
 }
 
 func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
