@@ -1,0 +1,14 @@
+Linkerd was successfully installed 🎉
+
+Add the linkerd CLI to your path with:
+
+  export PATH=\$PATH:\$HOME/.linkerd2/bin
+
+Now run:
+
+  linkerd check --pre                     # validate that Linkerd can be installed
+  linkerd install | kubectl apply -f -    # install the control plane into the 'linkerd' namespace
+  linkerd check                           # validate everything worked!
+  linkerd dashboard                       # launch the dashboard
+
+Looking for more? Visit https://linkerd.io/2/next-steps
