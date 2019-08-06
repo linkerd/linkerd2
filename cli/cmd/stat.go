@@ -131,9 +131,6 @@ If no resource name is specified, displays stats about all resources of the spec
 			client := checkPublicAPIClientOrExit()
 			c := make(chan indexedResults, len(reqs))
 			for num, req := range reqs {
-				// if response is empty, isTrafficSplit determines whether returned message includes "trafficsplit" or "traffic"
-				isTrafficSplit = req.Selector.Resource.Type == k8s.TrafficSplit
-
 				go func(num int, req *pb.StatSummaryRequest) {
 					resp, err := requestStatsFromAPI(client, req)
 					rows := respToRows(resp)
@@ -237,7 +234,6 @@ var (
 	apexHeader      = "APEX"
 	leafHeader      = "LEAF"
 	weightHeader    = "WEIGHT"
-	isTrafficSplit  = false
 )
 
 var leafName, apexName, weight string
@@ -336,11 +332,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	switch options.outputFormat {
 	case tableOutput, wideOutput:
 		if len(statTables) == 0 {
-			if !isTrafficSplit {
-				fmt.Fprintln(os.Stderr, "No traffic found.")
-			} else {
-				fmt.Fprintln(os.Stderr, "No trafficsplits found.")
-			}
+			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)

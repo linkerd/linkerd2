@@ -492,7 +492,6 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 
 		if req.Selector.Resource.Type == k8s.TrafficSplit {
-			labelNames[1] = model.LabelName("dst_service") // replacing "trafficsplit" with "dst_service"
 			labels = labels.Merge(promQueryLabels(req.Selector.Resource))
 			labels = labels.Merge(promDirectionLabels("outbound"))
 		} else {
@@ -500,6 +499,9 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 		}
 	}
 
+	if req.Selector.Resource.Type == k8s.TrafficSplit {
+		labelNames[1] = model.LabelName("dst_service") // replacing "trafficsplit" with "dst_service"
+	}
 	return labels, labelNames
 }
 
