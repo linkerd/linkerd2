@@ -66,7 +66,7 @@ func Inject(api *k8s.API,
 		return nil, err
 	}
 
-	if patchJSON == nil || len(patchJSON) == 0 {
+	if len(patchJSON) == 0 {
 		return admissionResponse, nil
 	}
 

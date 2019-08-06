@@ -145,7 +145,7 @@ func TestGetPatch(t *testing.T) {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
 		}
 
-		if patchJSON == nil || len(patchJSON) == 0 {
+		if len(patchJSON) == 0 {
 			t.Errorf("Expected empty patch")
 		}
 	})

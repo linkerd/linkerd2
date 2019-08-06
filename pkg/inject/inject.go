@@ -24,9 +24,6 @@ import (
 )
 
 const (
-	// defaultKeepaliveMs is used in the proxy configuration for remote connections
-	defaultKeepaliveMs = 10000
-
 	proxyInitResourceRequestCPU    = "10m"
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
@@ -43,8 +40,6 @@ var (
 		k8s.ReplicationController,
 		k8s.StatefulSet,
 	}
-
-	proxyInitDefaultCapabilities = []corev1.Capability{"NET_ADMIN", "NET_RAW"}
 
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 )
@@ -466,7 +461,10 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	}
 
 	if saVolumeMount != nil {
-		values.Proxy.SAMountPath = &charts.SAMountPath{saVolumeMount.Name, saVolumeMount.MountPath}
+		values.Proxy.SAMountPath = &charts.SAMountPath{
+			Name:      saVolumeMount.Name,
+			MountPath: saVolumeMount.MountPath,
+		}
 	}
 
 	idctx := conf.identityContext()

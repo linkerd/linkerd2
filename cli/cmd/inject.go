@@ -31,11 +31,10 @@ const (
 )
 
 type resourceTransformerInject struct {
-	injectProxy           bool
-	configs               *cfg.All
-	overrideAnnotations   map[string]string
-	proxyOutboundCapacity map[string]uint
-	enableDebugSidecar    bool
+	injectProxy         bool
+	configs             *cfg.All
+	overrideAnnotations map[string]string
+	enableDebugSidecar  bool
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
@@ -161,7 +160,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
-	if patchJSON == nil || len(patchJSON) == 0 {
+	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
 	log.Infof("patch generated for: %s", report.ResName())
