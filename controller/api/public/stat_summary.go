@@ -2,10 +2,10 @@ package public
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
+	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -182,7 +182,7 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 
 		var tsStats *trafficSplitStats
 		if requestedResource.GetType() == k8s.TrafficSplit {
-			tsStats = unpackTrafficSplitInfo(metaObj)
+			tsStats = unpackTrafficSplitInfo(object)
 		}
 
 		podStats, err := s.getPodStats(object)
@@ -199,30 +199,19 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 	return objectMap, nil
 }
 
-func unpackTrafficSplitInfo(metaObj metav1.Object) *trafficSplitStats {
-	tsAnnotations := metaObj.GetAnnotations()
-	config := tsAnnotations["kubectl.kubernetes.io/last-applied-configuration"]
-	tsInfo := map[string]interface{}{}
-
-	json.Unmarshal([]byte(config), &tsInfo)
-
-	spec := tsInfo["spec"].(map[string]interface{})
-	apex := spec["service"].(string)
-	backends := spec["backends"].(interface{})
+func unpackTrafficSplitInfo(object runtime.Object) *trafficSplitStats {
+	tsInfo := object.(*v1alpha1.TrafficSplit)
+	apex := tsInfo.Spec.Service
+	backends := tsInfo.Spec.Backends
 	tsStats := &trafficSplitStats{apex: apex, leaves: []leaf{}}
 
-	switch returnedLeaves := backends.(type) {
-	case []interface{}:
-		for _, returnedLeaf := range returnedLeaves {
-			leafName := fmt.Sprint(returnedLeaf.(map[string]interface{})["service"])
-			weight := fmt.Sprint(returnedLeaf.(map[string]interface{})["weight"])
+	for _, returnedLeaf := range backends {
+		leafName := fmt.Sprint(returnedLeaf.Service)
+		weight := fmt.Sprint(returnedLeaf.Weight.String())
 
-			tsStats.leaves = append(tsStats.leaves, leaf{
-				leafName:   leafName,
-				leafWeight: weight})
-		}
-	default:
-		return nil
+		tsStats.leaves = append(tsStats.leaves, leaf{
+			leafName:   leafName,
+			leafWeight: weight})
 	}
 	return tsStats
 }
