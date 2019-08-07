@@ -6,41 +6,41 @@ k8s_context=${1:-""}
 
 echo "cleaning up control-plane namespaces in k8s-context [${k8s_context}]"
 
-if ! namespaces_controlplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-control-plane); then
+if [ -z "${namespaces_controlplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-control-plane)}" ]; then
   echo "no control-plane namespaces found" >&2
 fi
 
 echo "cleaning up data-plane namespaces in k8s-context [${k8s_context}]"
 
-if ! namespaces_dataplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-test-data-plane); then
+if [ -z "${namespaces_dataplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-test-data-plane)}" ]; then
   echo "no data-plane namespaces found" >&2
 fi
 
-if ! clusterrolebindings=$(kubectl --context=$k8s_context get clusterrolebindings -oname -l linkerd.io/control-plane-ns); then
+if [ -z "${clusterrolebindings=$(kubectl --context=$k8s_context get clusterrolebindings -oname -l linkerd.io/control-plane-ns)}" ]; then
   echo "no clusterrolebindings found" >&2
 fi
 
-if ! clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname -l linkerd.io/control-plane-ns); then
+if [ -z "${clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname -l linkerd.io/control-plane-ns)}" ]; then
   echo "no clusterroles found" >&2
 fi
 
-if ! webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns); then
+if [ -z "${webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns)}" ]; then
   echo "no mutatingwebhookconfigurations found" >&2
 fi
 
-if ! validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns); then
+if [ -z "${validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns)}" ]; then
   echo "no validatingwebhookconfigurations found" >&2
 fi
 
-if ! podsecuritypolicies=$(kubectl --context=$k8s_context get podsecuritypolicies -oname -l linkerd.io/control-plane-ns); then
+if [ -z "${podsecuritypolicies=$(kubectl --context=$k8s_context get podsecuritypolicies -oname -l linkerd.io/control-plane-ns)}" ]; then
   echo "no podsecuritypolicies found" >&2
 fi
 
-if ! customresourcedefinitions=$(kubectl --context=$k8s_context get customresourcedefinitions -l linkerd.io/control-plane-ns -oname); then
+if [ -z "${customresourcedefinitions=$(kubectl --context=$k8s_context get customresourcedefinitions -l linkerd.io/control-plane-ns -oname)}" ]; then
   echo "no customresourcedefinitions found" >&2
 fi
 
-if ! apiservices=$(kubectl --context=$k8s_context get apiservices -l linkerd.io/control-plane-ns -oname); then
+if [ -z "${apiservices=$(kubectl --context=$k8s_context get apiservices -l linkerd.io/control-plane-ns -oname)}" ]; then
   echo "no apiservices found" >&2
 fi
 
