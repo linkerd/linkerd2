@@ -50,14 +50,18 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	if req == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
 	}
-	if req.Target == nil {
+	if req.GetTarget() == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection")
 	}
-	if req.MaxRps == 0.0 {
+	res := req.GetTarget().GetResource()
+	if res == nil {
+		return status.Error(codes.InvalidArgument, "TapByResource received nil target Resource")
+	}
+	if req.GetMaxRps() == 0.0 {
 		req.MaxRps = defaultMaxRps
 	}
 
-	objects, err := s.k8sAPI.GetObjects(req.Target.Resource.Namespace, req.Target.Resource.Type, req.Target.Resource.Name)
+	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName())
 	if err != nil {
 		return apiUtil.GRPCError(err)
 	}
@@ -82,8 +86,8 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 	}
 
 	if len(pods) == 0 {
-		resType := req.GetTarget().GetResource().GetType()
-		resName := req.GetTarget().GetResource().GetName()
+		resType := res.GetType()
+		resName := res.GetName()
 		if foundDisabledPods {
 			return status.Errorf(codes.NotFound,
 				"all pods found for %s/%s have tapping disabled", resType, resName)
@@ -91,24 +95,27 @@ func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_T
 		return status.Errorf(codes.NotFound, "no pods found for %s/%s", resType, resName)
 	}
 
-	log.Infof("Tapping %d pods for target: %+v", len(pods), *req.Target.Resource)
+	log.Infof("Tapping %d pods for target: %+v", len(pods), *res)
 
 	events := make(chan *public.TapEvent)
 
 	// divide the rps evenly between all pods to tap
-	rpsPerPod := req.MaxRps / float32(len(pods))
+	rpsPerPod := req.GetMaxRps() / float32(len(pods))
 	if rpsPerPod < 1 {
 		rpsPerPod = 1
 	}
 
-	match, err := makeByResourceMatch(req.Match)
+	match, err := makeByResourceMatch(req.GetMatch())
 	if err != nil {
 		return apiUtil.GRPCError(err)
 	}
 
 	for _, pod := range pods {
 		// create the expected pod identity from the pod spec
-		ns := req.GetTarget().GetResource().GetNamespace()
+		ns := res.GetNamespace()
+		if res.GetType() == pkgK8s.Namespace {
+			ns = res.GetName()
+		}
 		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.cluster.local", pod.Spec.ServiceAccountName, ns, s.controllerNamespace)
 		log.Debugf("initiating tap request to %s with required name %s", pod.Spec.ServiceAccountName, name)
 
@@ -461,15 +468,26 @@ func NewServer(
 		return nil, nil, err
 	}
 
-	s := prometheus.NewGrpcServer()
-	srv := server{
+	s, _ := newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
+
+	return s, lis, nil
+}
+
+func newGRPCTapServer(
+	tapPort uint,
+	controllerNamespace string,
+	k8sAPI *k8s.API,
+) (*grpc.Server, *server) {
+	srv := &server{
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 	}
-	pb.RegisterTapServer(s, &srv)
 
-	return s, lis, nil
+	s := prometheus.NewGrpcServer()
+	pb.RegisterTapServer(s, srv)
+
+	return s, srv
 }
 
 func indexPodByIP(obj interface{}) ([]string, error) {
