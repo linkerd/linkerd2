@@ -364,12 +364,15 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 }
 
 func showTCPBytes(options *statOptions, resourceType string) bool {
-	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
-		showTCPConns(resourceType)
+	if resourceType != k8s.TrafficSplit {
+		return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
+			showTCPConns(resourceType)
+	}
+	return false
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority
+	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
@@ -407,8 +410,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99",
-		"TCP_CONN",
 	}...)
+
+	if resourceType != k8s.TrafficSplit {
+		headers = append(headers, "TCP_CONN")
+	}
 
 	if showTCPBytes(options, resourceType) {
 		headers = append(headers, []string{
@@ -438,8 +444,10 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		}
 
 		if !showTCPConns(resourceType) {
-			// always show TCP Connections as - for Authorities
-			templateString = templateString + "-\t"
+			if resourceType == k8s.Authority {
+				// always show TCP Connections as - for Authorities
+				templateString = templateString + "-\t"
+			}
 		} else {
 			templateString = templateString + "%d\t"
 		}
