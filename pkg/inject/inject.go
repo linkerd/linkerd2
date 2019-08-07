@@ -461,15 +461,15 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
-	if !conf.configs.GetGlobal().GetCniEnabled() {
-		conf.injectProxyInit(values)
-	}
-
 	if saVolumeMount != nil {
 		values.Proxy.SAMountPath = &charts.SAMountPath{
 			Name:      saVolumeMount.Name,
 			MountPath: saVolumeMount.MountPath,
 		}
+	}
+
+	if !conf.configs.GetGlobal().GetCniEnabled() {
+		conf.injectProxyInit(values)
 	}
 
 	idctx := conf.identityContext()
