@@ -118,7 +118,7 @@ func newCmdProfile() *cobra.Command {
 			if options.template {
 				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.openAPI != "" {
-				return profiles.RenderOpenAPI(options.openAPI, options.namespace, clusterDomain, options.name, os.Stdout)
+				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.tap != "" {
 				return profiles.RenderTapOutputProfile(k8sAPI, options.tap, options.namespace, options.name, defaultClusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
