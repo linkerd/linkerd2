@@ -1,4 +1,4 @@
-package inject
+package charts
 
 type (
 	// Values contains the top-level elements in the Helm charts
