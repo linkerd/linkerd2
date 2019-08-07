@@ -15,6 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const TapRbacURL = "https://linkerd.io/tap-rbac"
+
 // Reader initiates a TapByResourceRequest and returns a buffered Reader.
 // It is the caller's responsibility to call Close() on the io.ReadCloser.
 func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, timeout time.Duration) (*bufio.Reader, io.ReadCloser, error) {

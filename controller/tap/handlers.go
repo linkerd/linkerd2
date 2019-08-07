@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -136,7 +137,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		req.Header[h.groupHeader],
 	)
 	if err != nil {
-		err = fmt.Errorf("tap authorization failed (%s), visit https://linkerd.io/tap-rbac for more information", err)
+		err = fmt.Errorf("tap authorization failed (%s), visit %s for more information", err, tap.TapRbacURL)
 		h.log.Error(err)
 		renderJSONError(w, err, http.StatusForbidden)
 		return

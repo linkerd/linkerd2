@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -169,10 +170,34 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 	renderJSONPb(w, result)
 }
 
+// Control frame payload size must be no longer than 123 bytes. In the case of
+// an unexpected HTTP status code or unexpected error, truncate the message
+// after 123 bytes so that the web socket message is properly written.
+func createTapErrorMessage(err error) string {
+	var msg string
+
+	if httpErr, ok := err.(protohttp.HTTPError); ok {
+		log.Debugf("tap error is HTTPError: %s", httpErr.Error())
+		if httpErr.Code == http.StatusForbidden {
+			msg = fmt.Sprintf("tap authorization failed, visit %s for more information", tap.TapRbacURL)
+		} else {
+			msg = httpErr.WrappedError.Error()[:123]
+		}
+	} else {
+		log.Debugf("tap error: %s", err.Error())
+		msg = err.Error()[:123]
+	}
+
+	return msg
+}
+
 func websocketError(ws *websocket.Conn, wsError int, msg string) {
-	ws.WriteControl(websocket.CloseMessage,
+	err := ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),
 		time.Time{})
+	if err != nil {
+		log.Errorf("Unexpected websocket error: %s", err)
+	}
 }
 
 func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
@@ -210,7 +235,8 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	go func() {
 		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
 		if err != nil {
-			websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+			msg := createTapErrorMessage(err)
+			websocketError(ws, websocket.CloseInternalServerErr, msg)
 			return
 		}
 		defer body.Close()
@@ -218,6 +244,9 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 		for {
 			event := pb.TapEvent{}
 			err := protohttp.FromByteStreamToProtocolBuffers(reader, &event)
+			if err == io.EOF {
+				break
+			}
 			if err != nil {
 				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
 				break

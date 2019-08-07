@@ -16,6 +16,8 @@ import _values from 'lodash/values';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
+const WS_NORMAL_CLOSURE = 1000;
+const WS_ABNORMAL_CLOSURE = 1006;
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }
 };
@@ -106,7 +108,7 @@ class Tap extends React.Component {
     where Chrome browsers incorrectly displays a 1006 close code
     https://github.com/linkerd/linkerd2/issues/1630
     */
-    if (!e.wasClean && e.code !== 1006 && this._isMounted) {
+    if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE && this._isMounted) {
       this.setState({
         error: {
           error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
