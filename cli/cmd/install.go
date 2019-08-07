@@ -261,6 +261,19 @@ func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 	}
 }
 
+// Flag configuration matrix
+//
+//                                 | recordableFlagSet | allStageFlagSet | installOnlyFlagSet | installPersistentFlagSet | upgradeOnlyFlagSet | "skip-checks" |
+// `linkerd install`               |        X          |       X         |         X          |            X             |                    |               |
+// `linkerd install config`        |                   |       X         |                    |            X             |                    |               |
+// `linkerd install control-plane` |        X          |       X         |         X          |            X             |                    |       X       |
+// `linkerd upgrade`               |        X          |       X         |                    |                          |          X         |               |
+// `linkerd upgrade config`        |                   |       X         |                    |                          |                    |               |
+// `linkerd upgrade control-plane` |        X          |       X         |                    |                          |          X         |               |
+//
+// allStageFlagSet is a subset of recordableFlagSet, but is also added to `linkerd [install|upgrade] config`
+// proxyConfigOptions.flagSet is a subset of recordableFlagSet, and is used by `linkerd inject`.
+
 // newCmdInstallConfig is a subcommand for `linkerd install config`
 func newCmdInstallConfig(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	cmd := &cobra.Command{
@@ -287,14 +300,13 @@ resources for the Linkerd control plane. This command should be followed by
 		},
 	}
 
-	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
-	cmd.Flags().AddFlag(cniEnabledFlag)
+	cmd.Flags().AddFlagSet(options.allStageFlagSet())
 
 	return cmd
 }
 
 // newCmdInstallControlPlane is a subcommand for `linkerd install control-plane`
-func newCmdInstallControlPlane(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
+func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
@@ -329,9 +341,6 @@ control plane. It should be run after "linkerd install config".`,
 			return installRunE(options, controlPlaneStage, flags)
 		},
 	}
-
-	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
-	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	cmd.PersistentFlags().BoolVar(
 		&options.skipChecks, "skip-checks", options.skipChecks,
@@ -386,7 +395,7 @@ control plane.`,
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
 
 	cmd.AddCommand(newCmdInstallConfig(options, flags))
-	cmd.AddCommand(newCmdInstallControlPlane(options, flags))
+	cmd.AddCommand(newCmdInstallControlPlane(options))
 
 	return cmd
 }
@@ -450,14 +459,11 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("install", e)
 
 	flags.AddFlagSet(options.proxyConfigOptions.flagSet(e))
+	flags.AddFlagSet(options.allStageFlagSet())
 
 	flags.UintVar(
 		&options.controllerReplicas, "controller-replicas", options.controllerReplicas,
 		"Replicas of the controller to deploy",
-	)
-
-	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
-		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
 	flags.StringVar(
@@ -488,13 +494,27 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
-	flags.BoolVar(
-		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
-		"Restrict the Linkerd Dashboard's default privileges to disallow Tap.",
-	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
+
+	return flags
+}
+
+// allStageFlagSet returns flags usable for single and multi-stage  installs and
+// upgrades. For multi-stage installs, users must set these flags consistently
+// across commands.
+func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
+
+	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
+		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+	)
+
+	flags.BoolVar(
+		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
+		"Restrict the Linkerd Dashboard's default privileges to disallow Tap",
+	)
 
 	return flags
 }
