@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,11 +31,11 @@ import (
 
 type (
 	installValues struct {
-		stage string
-
+		stage                       string
 		Namespace                   string
 		ClusterDomain               string
 		ControllerImage             string
+		ControllerImageVersion      string
 		WebImage                    string
 		PrometheusImage             string
 		GrafanaImage                string
@@ -53,6 +54,7 @@ type (
 		LinkerdNamespaceLabel       string
 		ControllerUID               int64
 		EnableH2Upgrade             bool
+		EnablePodAntiAffinity       bool
 		HighAvailability            bool
 		NoInitContainer             bool
 		WebhookFailurePolicy        string
@@ -77,48 +79,19 @@ type (
 		ProxyInjector    *proxyInjectorValues
 		ProfileValidator *profileValidatorValues
 		Tap              *tapValues
+		Proxy            *proxyValues
+		ProxyInit        *proxyInitValues
 	}
 
 	configJSONs struct{ Global, Proxy, Install string }
 
-	resources   struct{ CPU, Memory constraints }
-	constraints struct{ Request, Limit string }
-
-	installIdentityValues struct {
-		Replicas uint
-
-		TrustDomain     string
-		TrustAnchorsPEM string
-
-		Issuer *issuerValues
-	}
-
-	issuerValues struct {
-		ClockSkewAllowance string
-		IssuanceLifetime   string
-
-		KeyPEM, CrtPEM string
-
-		CrtExpiry time.Time
-
-		CrtExpiryAnnotation string
-	}
-
-	proxyInjectorValues struct {
-		*tlsValues
-	}
-
-	profileValidatorValues struct {
-		*tlsValues
-	}
-
-	tapValues struct {
-		*tlsValues
-	}
-
-	tlsValues struct {
-		KeyPEM, CrtPEM string
-	}
+	resources              charts.Resources
+	installIdentityValues  charts.Identity
+	proxyInjectorValues    charts.ProxyInjector
+	profileValidatorValues charts.ProfileValidator
+	tapValues              charts.Tap
+	proxyValues            charts.Proxy
+	proxyInitValues        charts.ProxyInit
 
 	// installOptions holds values for command line flags that apply to the install
 	// command. All fields in this struct should have corresponding flags added in
@@ -143,7 +116,7 @@ type (
 
 		// function pointers that can be overridden for tests
 		generateUUID       func() string
-		generateWebhookTLS func(webhook string) (*tlsValues, error)
+		generateWebhookTLS func(webhook string) (*charts.TLS, error)
 		heartbeatSchedule  func() string
 	}
 
@@ -234,13 +207,13 @@ func newInstallOptionsWithDefaults() *installOptions {
 		},
 
 		// TODO: rename to generateTLS or something
-		generateWebhookTLS: func(webhook string) (*tlsValues, error) {
+		generateWebhookTLS: func(webhook string) (*charts.TLS, error) {
 			root, err := tls.GenerateRootCAWithDefaults(webhookCommonName(webhook))
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
 			}
 
-			return &tlsValues{
+			return &charts.TLS{
 				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 			}, nil
@@ -635,11 +608,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 	values := &installValues{
 		// Container images:
-		ControllerImage: fmt.Sprintf("%s/controller:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
-		WebImage:        fmt.Sprintf("%s/web:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
-		GrafanaImage:    fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
-		PrometheusImage: prometheusImage,
-		ImagePullPolicy: options.imagePullPolicy,
+		ControllerImage:        fmt.Sprintf("%s/controller", options.dockerRegistry),
+		ControllerImageVersion: configs.GetGlobal().GetVersion(),
+		WebImage:               fmt.Sprintf("%s/web:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
+		GrafanaImage:           fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
+		PrometheusImage:        prometheusImage,
+		ImagePullPolicy:        options.imagePullPolicy,
 
 		// Kubernetes labels/annotations/resources:
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
@@ -659,6 +633,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		ControllerLogLevel:          options.controllerLogLevel,
 		ControllerUID:               options.controllerUID,
 		HighAvailability:            options.highAvailability,
+		EnablePodAntiAffinity:       options.highAvailability,
 		EnableH2Upgrade:             !options.disableH2Upgrade,
 		NoInitContainer:             options.noInitContainer,
 		WebhookFailurePolicy:        "Ignore",
@@ -683,14 +658,71 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		SPValidatorResources:   &resources{},
 		TapResources:           &resources{},
 		WebResources:           &resources{},
+
+		Proxy: &proxyValues{
+			Component:              "deployment", // only Deployment workloads are injected
+			EnableExternalProfiles: options.enableExternalProfiles,
+			Image: &charts.Image{
+				Name:       registryOverride(options.proxyImage, options.dockerRegistry),
+				PullPolicy: options.imagePullPolicy,
+				Version:    options.proxyVersion,
+			},
+			LogLevel: options.proxyLogLevel,
+			Ports: &charts.Ports{
+				Admin:    int32(options.proxyAdminPort),
+				Control:  int32(options.proxyControlPort),
+				Inbound:  int32(options.proxyInboundPort),
+				Outbound: int32(options.proxyOutboundPort),
+			},
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   options.proxyCPULimit,
+					Request: options.proxyCPURequest,
+				},
+				Memory: charts.Constraints{
+					Limit:   options.proxyMemoryLimit,
+					Request: options.proxyMemoryRequest,
+				},
+			},
+			UID: options.proxyUID,
+		},
+
+		ProxyInit: &proxyInitValues{
+			Image: &charts.Image{
+				Name:       registryOverride(options.initImage, options.dockerRegistry),
+				PullPolicy: options.imagePullPolicy,
+				Version:    options.initImageVersion,
+			},
+
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   "100m",
+					Request: "10m",
+				},
+				Memory: charts.Constraints{
+					Limit:   "50Mi",
+					Request: "10Mi",
+				},
+			},
+		},
 	}
+
+	for _, port := range options.ignoreInboundPorts {
+		values.ProxyInit.IgnoreInboundPorts += strconv.FormatUint(uint64(port), 10) + ","
+	}
+	values.ProxyInit.IgnoreInboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreInboundPorts, ",")
+
+	for _, port := range options.ignoreOutboundPorts {
+		values.ProxyInit.IgnoreOutboundPorts += strconv.FormatUint(uint64(port), 10) + ","
+	}
+	values.ProxyInit.IgnoreOutboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreOutboundPorts, ",")
 
 	if options.highAvailability {
 		values.WebhookFailurePolicy = "Fail"
 
 		defaultConstraints := &resources{
-			CPU:    constraints{Request: "100m", Limit: "1"},
-			Memory: constraints{Request: "50Mi", Limit: "250Mi"},
+			CPU:    charts.Constraints{Request: "100m", Limit: "1"},
+			Memory: charts.Constraints{Request: "50Mi", Limit: "250Mi"},
 		}
 		// Copy constraints to each so that further modification isn't global.
 		*values.DestinationResources = *defaultConstraints
@@ -705,12 +737,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		// The identity controller maintains no internal state, so it need not request
 		// 50Mi.
 		*values.IdentityResources = *defaultConstraints
-		values.IdentityResources.Memory = constraints{Request: "10Mi", Limit: "250Mi"}
+		values.IdentityResources.Memory = charts.Constraints{Request: "10Mi", Limit: "250Mi"}
 
 		values.GrafanaResources.Memory.Limit = "1024Mi"
 		values.PrometheusResources = &resources{
-			CPU:    constraints{Request: "300m", Limit: "4"},
-			Memory: constraints{Request: "300Mi", Limit: "8192Mi"},
+			CPU:    charts.Constraints{Request: "300m", Limit: "4"},
+			Memory: charts.Constraints{Request: "300Mi", Limit: "8192Mi"},
 		}
 	}
 
@@ -749,8 +781,8 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/trafficsplit-crd.yaml"},
 			{Name: "templates/prometheus-rbac.yaml"},
 			{Name: "templates/grafana-rbac.yaml"},
-			{Name: "templates/proxy_injector-rbac.yaml"},
-			{Name: "templates/sp_validator-rbac.yaml"},
+			{Name: "templates/proxy-injector-rbac.yaml"},
+			{Name: "templates/sp-validator-rbac.yaml"},
 			{Name: "templates/tap-rbac.yaml"},
 			{Name: "templates/psp.yaml"},
 		}...)
@@ -758,8 +790,10 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 
 	if values.stage == "" || values.stage == controlPlaneStage {
 		files = append(files, []*chartutil.BufferedFile{
-			{Name: "templates/_resources.yaml"},
-			{Name: "templates/_affinity.yaml"},
+			{Name: "templates/_validate.tpl"},
+			{Name: "templates/_affinity.tpl"},
+			{Name: "templates/_config.tpl"},
+			{Name: "templates/_helpers.tpl"},
 			{Name: "templates/config.yaml"},
 			{Name: "templates/identity.yaml"},
 			{Name: "templates/controller.yaml"},
@@ -767,15 +801,15 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 			{Name: "templates/web.yaml"},
 			{Name: "templates/prometheus.yaml"},
 			{Name: "templates/grafana.yaml"},
-			{Name: "templates/proxy_injector.yaml"},
-			{Name: "templates/sp_validator.yaml"},
+			{Name: "templates/proxy-injector.yaml"},
+			{Name: "templates/sp-validator.yaml"},
 			{Name: "templates/tap.yaml"},
 		}...)
 	}
 
 	chart := &charts.Chart{
-		Name:      "linkerd",
-		Dir:       "chart",
+		Name:      "linkerd2",
+		Dir:       "linkerd2",
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
@@ -992,18 +1026,17 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 	}
 
 	return &installIdentityValues{
-		Replicas:        idopts.replicas,
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		Issuer: &issuerValues{
+		Issuer: &charts.Issuer{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
+			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-			KeyPEM: root.Cred.EncodePrivateKeyPEM(),
-			CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
-
-			CrtExpiry: root.Cred.Crt.Certificate.NotAfter,
+			TLS: &charts.TLS{
+				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+			},
 		},
 	}, nil
 }
@@ -1033,18 +1066,17 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 	}
 
 	return &installIdentityValues{
-		Replicas:        idopts.replicas,
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: trustAnchorsPEM,
-		Issuer: &issuerValues{
+		Issuer: &charts.Issuer{
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
+			CrtExpiry:           creds.Crt.Certificate.NotAfter,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-			KeyPEM: creds.EncodePrivateKeyPEM(),
-			CrtPEM: creds.EncodeCertificatePEM(),
-
-			CrtExpiry: creds.Crt.Certificate.NotAfter,
+			TLS: &charts.TLS{
+				KeyPEM: creds.EncodePrivateKeyPEM(),
+				CrtPEM: creds.EncodeCertificatePEM(),
+			},
 		},
 	}, nil
 }
@@ -1080,7 +1112,7 @@ func webhookSecretName(webhook string) string {
 	return fmt.Sprintf("%s-tls", webhook)
 }
 
-func verifyWebhookTLS(value *tlsValues, webhook string) error {
+func verifyWebhookTLS(value *charts.TLS, webhook string) error {
 	crt, err := tls.DecodePEMCrt(value.CrtPEM)
 	if err != nil {
 		return err

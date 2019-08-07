@@ -404,9 +404,9 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.Proxy = &charts.Proxy{
-		Component:             conf.pod.labels[k8s.ProxyDeploymentLabel],
-		EnableExternalProfile: conf.enableExternalProfile(),
-		DisableTap:            conf.tapDisabled(),
+		Component:              conf.pod.labels[k8s.ProxyDeploymentLabel],
+		EnableExternalProfiles: conf.enableExternalProfiles(),
+		DisableTap:             conf.tapDisabled(),
 		Image: &charts.Image{
 			Name:       conf.proxyImage(),
 			Version:    conf.proxyVersion(),
@@ -742,7 +742,7 @@ func (conf *ResourceConfig) proxyUID() int64 {
 	return conf.configs.GetProxy().GetProxyUid()
 }
 
-func (conf *ResourceConfig) enableExternalProfile() bool {
+func (conf *ResourceConfig) enableExternalProfiles() bool {
 	disableExternalProfiles := conf.configs.GetProxy().GetDisableExternalProfiles()
 	if override := conf.getOverride(k8s.ProxyEnableExternalProfilesAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)

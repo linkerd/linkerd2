@@ -4,7 +4,6 @@
 
 ClusterDomain: &cluster_domain cluster.local
 EnableH2Upgrade: true
-EnablePodAntiAffinity: false
 ImagePullPolicy: &image_pull_policy IfNotPresent
 
 # control plane version. See Proxy section for proxy version
@@ -25,9 +24,6 @@ Identity:
   Issuer:
     ClockSkewAllowance: 20s
 
-    # PEM-encoded certificate
-    CrtPEM: |
-
     # must match the expiry date in CrtPEM
     CrtExpiry:
 
@@ -36,8 +32,12 @@ Identity:
 
     IssuanceLifeTime: 86400s
 
-    # PEM-encoded ECDSA private key
-    KeyPEM: |
+    TLS:
+      # PEM-encoded certificate
+      CrtPEM: |
+
+      # PEM-encoded ECDSA private key
+      KeyPEM: |
 
   TrustAnchorsPEM: |
 
@@ -55,7 +55,7 @@ PrometheusLogLevel: *controller_log_level
 
 # proxy configuration
 Proxy:
-  EnableExternalProfile: false
+  EnableExternalProfiles: false
   Image:
     Name: gcr.io/linkerd-io/proxy
     PullPolicy: *image_pull_policy

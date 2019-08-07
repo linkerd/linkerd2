@@ -40,4 +40,4 @@ spec:
             {{- include "resources" .HeartbeatResources | nindent 12 }}
             securityContext:
               runAsUser: {{.ControllerUID}}
-{{end -}}
+{{- end }}

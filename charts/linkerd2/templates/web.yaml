@@ -62,7 +62,7 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        image: {{.WebImage}}:{{default .LinkerdVersion .WebImageVersion}}
+        image: {{.WebImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

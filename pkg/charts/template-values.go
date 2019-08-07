@@ -1,5 +1,7 @@
 package charts
 
+import "time"
+
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
@@ -14,17 +16,17 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities          *Capabilities
-		Component             string
-		DisableIdentity       bool
-		DisableTap            bool
-		EnableExternalProfile bool
-		Image                 *Image
-		LogLevel              string
-		SAMountPath           *SAMountPath
-		Ports                 *Ports
-		Resources             *Resources
-		UID                   int64
+		Capabilities           *Capabilities
+		Component              string
+		DisableIdentity        bool
+		DisableTap             bool
+		EnableExternalProfiles bool
+		Image                  *Image
+		LogLevel               string
+		SAMountPath            *SAMountPath
+		Ports                  *Ports
+		Resources              *Resources
+		UID                    int64
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -87,5 +89,36 @@ type (
 	Identity struct {
 		TrustAnchorsPEM string
 		TrustDomain     string
+		Issuer          *Issuer
+	}
+
+	// Issuer has the Helm variables of the identity issuer
+	Issuer struct {
+		ClockSkewAllowance  string
+		IssuanceLifetime    string
+		CrtExpiryAnnotation string
+		CrtExpiry           time.Time
+		TLS                 *TLS
+	}
+
+	// ProxyInjector has all the proxy injector's Helm variables
+	ProxyInjector struct {
+		*TLS
+	}
+
+	// ProfileValidator has all the profile validator's Helm variables
+	ProfileValidator struct {
+		*TLS
+	}
+
+	// Tap has all the Tap's Helm variables
+	Tap struct {
+		*TLS
+	}
+
+	// TLS has a pair of PEM-encoded key and certificate variables used in the
+	// Helm templates
+	TLS struct {
+		KeyPEM, CrtPEM string
 	}
 )

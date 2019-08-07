@@ -14,7 +14,7 @@ data:
   global: |
   {{- if .Configs -}}
   {{- if .Configs.Global -}}
-  {{.Configs.Global}}
+  {{.Configs.Global | nindent 4}}
   {{- end }}
   {{- else -}}
   {{- include "linkerd.configs.global" . | nindent 4}}
@@ -22,7 +22,7 @@ data:
   proxy: |
   {{- if .Configs -}}
   {{- if .Configs.Proxy -}}
-  {{.Configs.Proxy}}
+  {{.Configs.Proxy | nindent 4}}
   {{- end }}
   {{- else -}}
   {{- include "linkerd.configs.proxy" . | nindent 4}}
@@ -30,9 +30,9 @@ data:
   install: |
   {{- if .Configs -}}
   {{- if .Configs.Install -}}
-  {{.Configs.Instal}}
+  {{.Configs.Install | nindent 4}}
   {{- end }}
   {{- else -}}
   {{- include "linkerd.configs.install" . | nindent 4}}
   {{- end }}
-{{- end -}}
+{{- end }}

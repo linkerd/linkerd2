@@ -39,7 +39,7 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_capabilities.tpl"},
 	}
 	if err := filesReader("", partialsFiles); err != nil {
-		return bytes.Buffer{}, nil
+		return bytes.Buffer{}, err
 	}
 
 	// Create chart and render templates

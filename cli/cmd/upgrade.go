@@ -7,6 +7,7 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -29,7 +30,7 @@ type upgradeOptions struct {
 	manifests string
 	*installOptions
 
-	verifyTLS func(tls *tlsValues, service string) error
+	verifyTLS func(tls *charts.TLS, service string) error
 }
 
 func newUpgradeOptionsWithDefaults() *upgradeOptions {
@@ -300,9 +301,9 @@ func repairInstall(generateUUID func() string, install *pb.Install) {
 	// Install flags are updated separately.
 }
 
-func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*tlsValues, error) {
+func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 
-	var value *tlsValues
+	var value *charts.TLS
 
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
@@ -317,7 +318,7 @@ func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOpt
 			return nil, err
 		}
 	} else {
-		value = &tlsValues{
+		value = &charts.TLS{
 			KeyPEM: string(secret.Data["key.pem"]),
 			CrtPEM: string(secret.Data["crt.pem"]),
 		}
@@ -346,17 +347,17 @@ func fetchIdentityValues(k kubernetes.Interface, replicas uint, idctx *pb.Identi
 	}
 
 	return &installIdentityValues{
-		Replicas:        replicas,
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
-		Issuer: &issuerValues{
+		Issuer: &charts.Issuer{
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
+			CrtExpiry:           expiry,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-			KeyPEM:    keyPEM,
-			CrtPEM:    crtPEM,
-			CrtExpiry: expiry,
+			TLS: &charts.TLS{
+				KeyPEM: keyPEM,
+				CrtPEM: crtPEM,
+			},
 		},
 	}, nil
 }
