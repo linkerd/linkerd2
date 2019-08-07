@@ -61,7 +61,7 @@ env:
 {{ if .Proxy.DisableTap -}}
 - name: LINKERD2_PROXY_TAP_DISABLED
   value: "true"
-{{ else -}}
+{{ else if not .Proxy.DisableIdentity -}}
 - name: LINKERD2_PROXY_TAP_SVC_NAME
   value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
