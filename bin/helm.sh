@@ -14,7 +14,7 @@ helm dep up $rootdir/charts/linkerd2
 helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.CrtPEM="fake-cert" --set Identity.Issuer.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
 
 # if tiller is deployed, perform a dry run installation to check for errors
-if tiller=`kubectl get po -l app=helm,name=tiller --all-namespaces`; then
+if [ ! -z "$(kubectl get po -l app=helm,name=tiller --all-namespaces)" ]; then
   echo "Performing dry run installation"
   helm install --name=linkerd --dry-run --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.CrtPEM="fake-cert" --set Identity.Issuer.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2 2> /dev/null
 
