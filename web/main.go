@@ -38,6 +38,13 @@ func main() {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
 
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	clusterDomain := globalConfig.GetClusterDomain()
+	if err != nil || clusterDomain == "" {
+		clusterDomain = "cluster.local"
+		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	}
+
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
 		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
@@ -47,7 +54,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

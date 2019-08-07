@@ -17,6 +17,7 @@ import (
 func TestTapToServiceProfile(t *testing.T) {
 	name := "service-name"
 	namespace := "service-namespace"
+	clusterDomain := "service-cluster.local"
 	tapDuration := 5 * time.Second
 	routeLimit := 20
 
@@ -95,7 +96,7 @@ func TestTapToServiceProfile(t *testing.T) {
 	expectedServiceProfile := sp.ServiceProfile{
 		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "." + namespace + ".svc.cluster.local",
+			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
@@ -118,7 +119,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile, err := tapToServiceProfile(kubeAPI, tapReq, namespace, name, tapDuration, routeLimit)
+	actualServiceProfile, err := tapToServiceProfile(kubeAPI, tapReq, namespace, name, clusterDomain, tapDuration, routeLimit)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

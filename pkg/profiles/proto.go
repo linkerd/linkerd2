@@ -14,7 +14,7 @@ import (
 // RenderProto reads a protobuf definition file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
 // namespace.
-func RenderProto(fileName, namespace, name string, w io.Writer) error {
+func RenderProto(fileName, namespace, name, clusterDomain string, w io.Writer) error {
 	input, err := readFile(fileName)
 	if err != nil {
 		return err
@@ -22,7 +22,7 @@ func RenderProto(fileName, namespace, name string, w io.Writer) error {
 
 	parser := proto.NewParser(input)
 
-	profile, err := protoToServiceProfile(parser, namespace, name)
+	profile, err := protoToServiceProfile(parser, namespace, name, clusterDomain)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func RenderProto(fileName, namespace, name string, w io.Writer) error {
 	return writeProfile(*profile, w)
 }
 
-func protoToServiceProfile(parser *proto.Parser, namespace, name string) (*sp.ServiceProfile, error) {
+func protoToServiceProfile(parser *proto.Parser, namespace, name, clusterDomain string) (*sp.ServiceProfile, error) {
 	definition, err := parser.Parse()
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name string) (*sp.Se
 
 	return &sp.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace),
+			Name:      fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterDomain),
 			Namespace: namespace,
 		},
 		TypeMeta: serviceProfileMeta,

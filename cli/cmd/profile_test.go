@@ -14,7 +14,7 @@ import (
 func TestParseProfile(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := profiles.RenderProfileTemplate("myns", "mysvc", &buf)
+	err := profiles.RenderProfileTemplate("myns", "mysvc", "mycluster.local", &buf)
 	if err != nil {
 		t.Fatalf("Error rendering service profile template: %v", err)
 	}
@@ -25,7 +25,7 @@ func TestParseProfile(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := profiles.GenServiceProfile("mysvc", "myns")
+	expectedServiceProfile := profiles.GenServiceProfile("mysvc", "myns", "mycluster.local")
 
 	err = profiles.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {
