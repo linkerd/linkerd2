@@ -175,12 +175,12 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 					return HTTPError{Code: rsp.StatusCode, WrappedError: kerrors.FromObject(obj)}
 				}
 
-				body = fmt.Sprintf("Unexpected API response: %s", body)
+				body = fmt.Sprintf("unexpected API response: %s", body)
 				return HTTPError{Code: rsp.StatusCode, WrappedError: errors.New(body)}
 			}
 		}
 
-		return HTTPError{Code: rsp.StatusCode, WrappedError: errors.New("Unexpected API response")}
+		return HTTPError{Code: rsp.StatusCode, WrappedError: errors.New("unexpected API response")}
 	}
 
 	return nil

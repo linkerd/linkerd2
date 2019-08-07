@@ -3,6 +3,7 @@ package srv
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +20,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
 )
+
+const maxControlFrameMsgSize = 123
 
 type (
 	jsonError struct {
@@ -170,29 +173,29 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 	renderJSONPb(w, result)
 }
 
-// Control frame payload size must be no longer than 123 bytes. In the case of
-// an unexpected HTTP status code or unexpected error, truncate the message
-// after 123 bytes so that the web socket message is properly written.
+// Control frame payload size must be no longer than `maxControlFrameMsgSize`
+// bytes. In the case of an unexpected HTTP status code or unexpected error,
+// truncate the message after `maxControlFrameMsgSize` bytes so that the web
+// socket message is properly written.
 func createTapErrorMessage(err error) string {
-	var msg string
+	log.Debugf("tap error: %s", err.Error())
 
-	if httpErr, ok := err.(protohttp.HTTPError); ok {
-		log.Debugf("tap error is HTTPError: %s", httpErr.Error())
-		if httpErr.Code == http.StatusForbidden {
-			msg = fmt.Sprintf("tap authorization failed, visit %s for more information", tap.TapRbacURL)
-		} else {
-			msg = httpErr.WrappedError.Error()[:123]
-		}
-	} else {
-		log.Debugf("tap error: %s", err.Error())
-		msg = err.Error()[:123]
+	if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
+		return fmt.Sprintf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
+	}
+
+	msg := err.Error()
+	if len(msg) > maxControlFrameMsgSize {
+		return msg[:maxControlFrameMsgSize]
 	}
 
 	return msg
 }
 
-func websocketError(ws *websocket.Conn, wsError int, msg string) {
-	err := ws.WriteControl(websocket.CloseMessage,
+func websocketError(ws *websocket.Conn, wsError int, err error) {
+	msg := createTapErrorMessage(err)
+
+	err = ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),
 		time.Time{})
 	if err != nil {
@@ -210,33 +213,32 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 
 	messageType, message, err := ws.ReadMessage()
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	if messageType != websocket.TextMessage {
-		websocketError(ws, websocket.CloseUnsupportedData, "MessageType not supported")
+		websocketError(ws, websocket.CloseUnsupportedData, errors.New("MessageType not supported"))
 		return
 	}
 
 	var requestParams util.TapRequestParams
 	err = json.Unmarshal(message, &requestParams)
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	tapReq, err := util.BuildTapByResourceRequest(requestParams)
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	go func() {
 		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
 		if err != nil {
-			msg := createTapErrorMessage(err)
-			websocketError(ws, websocket.CloseInternalServerErr, msg)
+			websocketError(ws, websocket.ClosePolicyViolation, err)
 			return
 		}
 		defer body.Close()
@@ -248,14 +250,14 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 				break
 			}
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+				websocketError(ws, websocket.CloseInternalServerErr, err)
 				break
 			}
 
 			buf := new(bytes.Buffer)
 			err = pbMarshaler.Marshal(buf, &event)
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+				websocketError(ws, websocket.CloseInternalServerErr, err)
 				break
 			}
 

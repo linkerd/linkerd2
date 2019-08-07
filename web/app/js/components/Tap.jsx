@@ -1,5 +1,5 @@
 import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
-import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
@@ -16,8 +16,6 @@ import _values from 'lodash/values';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
-const WS_NORMAL_CLOSURE = 1000;
-const WS_ABNORMAL_CLOSURE = 1006;
 const urlPropsQueryConfig = {
   autostart: { type: UrlQueryParamTypes.string }
 };
@@ -109,11 +107,19 @@ class Tap extends React.Component {
     https://github.com/linkerd/linkerd2/issues/1630
     */
     if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE && this._isMounted) {
-      this.setState({
-        error: {
-          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
-        }
-      });
+      if (e.code === 1008) {
+        this.setState({
+          error: {
+            error: e.reason
+          }
+        });
+      } else {
+        this.setState({
+          error: {
+            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+          }
+        });
+      }
     }
   }
 

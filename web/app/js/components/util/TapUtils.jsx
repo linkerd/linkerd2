@@ -88,6 +88,9 @@ export const wsCloseCodes = {
   1015: "TLS Handshake"
 };
 
+export const WS_NORMAL_CLOSURE = 1000;
+export const WS_ABNORMAL_CLOSURE = 1006;
+
 /*
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
