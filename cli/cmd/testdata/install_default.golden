@@ -1170,6 +1170,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   schedule: "1 2 3 4 5"
+  successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:

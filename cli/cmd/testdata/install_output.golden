@@ -1096,6 +1096,7 @@ metadata:
     CreatedByAnnotation: CliVersion
 spec:
   schedule: ""
+  successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:
