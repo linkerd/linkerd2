@@ -515,7 +515,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing")
 		}
 
-		expectedErrorMessage := "HTTP error, status Code [503], wrapped error is: unexpected API response"
+		expectedErrorMessage := "HTTP error, status Code [503] (unexpected API response)"
 		actualErrorMessage := err.Error()
 		if actualErrorMessage != expectedErrorMessage {
 			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)
