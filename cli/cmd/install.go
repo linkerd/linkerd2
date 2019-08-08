@@ -1,20 +1,18 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
-	"github.com/linkerd/linkerd2/cli/static"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -27,9 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/timeconv"
 	"sigs.k8s.io/yaml"
 )
 
@@ -166,7 +161,6 @@ const (
 	controlPlaneStage = "control-plane"
 
 	prometheusImage                   = "prom/prometheus:v2.11.1"
-	prometheusProxyOutboundCapacity   = 10000
 	defaultControllerReplicas         = 1
 	defaultHAControllerReplicas       = 3
 	defaultIdentityTrustDomain        = "cluster.local"
@@ -711,7 +705,6 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	if err != nil {
 		return err
 	}
-	chrtConfig := &chart.Config{Raw: string(rawValues), Values: map[string]*chart.Value{}}
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -752,71 +745,22 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		}...)
 	}
 
-	// Read templates into bytes
-	for _, f := range files {
-		data, err := readIntoBytes(f.Name)
-		if err != nil {
-			return err
-		}
-		f.Data = data
+	chart := &charts.Chart{
+		Name:      "linkerd",
+		Dir:       "chart",
+		Namespace: controlPlaneNamespace,
+		RawValues: rawValues,
+		Files:     files,
 	}
-
-	// Create chart and render templates
-	chrt, err := chartutil.LoadFiles(files)
+	buf, err := chart.Render()
 	if err != nil {
 		return err
 	}
-
-	renderOpts := renderutil.Options{
-		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      "linkerd",
-			IsInstall: true,
-			IsUpgrade: false,
-			Time:      timeconv.Now(),
-			Namespace: controlPlaneNamespace,
-		},
-		KubeVersion: "",
-	}
-
-	renderedTemplates, err := renderutil.Render(chrt, chrtConfig, renderOpts)
-	if err != nil {
-		return err
-	}
-
-	// Merge templates and inject
-	var buf bytes.Buffer
-	for _, tmpl := range files {
-		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
-		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
-			return err
-		}
-	}
-
-	// Skip outbound port 443 to enable Kubernetes API access without the proxy.
-	// Once Kubernetes supports sidecar containers, this may be removed, as that
-	// will guarantee the proxy is running prior to control-plane startup.
-	configs.Proxy.IgnoreOutboundPorts = append(configs.Proxy.IgnoreOutboundPorts, &pb.Port{Port: 443})
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
 		injectProxy: true,
 		configs:     configs,
-		proxyOutboundCapacity: map[string]uint{
-			values.PrometheusImage: prometheusProxyOutboundCapacity,
-		},
 	})
-}
-
-func readIntoBytes(filename string) ([]byte, error) {
-	file, err := static.Templates.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(file)
-
-	return buf.Bytes(), nil
 }
 
 func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {

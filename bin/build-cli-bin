@@ -22,7 +22,7 @@ fi
     cd $rootdir
     cd "$(pwd -P)"
     target="target/cli/${host_platform}/linkerd"
-    GO111MODULE=on go generate -mod=readonly ./cli # TODO: `go generate` does not honor -mod=readonly
+    GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
     GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
     echo "$target"
 )
