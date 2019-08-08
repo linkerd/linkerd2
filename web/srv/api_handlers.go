@@ -180,6 +180,7 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 func createTapErrorMessage(err error) string {
 	log.Debugf("tap error: %s", err.Error())
 
+	// TODO: reconcile this cast and 403 check with the one in handleAPITap
 	if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
 		return fmt.Sprintf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
 	}
@@ -238,7 +239,17 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	go func() {
 		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
 		if err != nil {
-			websocketError(ws, websocket.ClosePolicyViolation, err)
+			// If there was a [403] error when initiating a tap, close the
+			// socket with `ClosePolicyViolation` status code so that the error
+			// renders without the error prefix in the banner
+			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
+				websocketError(ws, websocket.ClosePolicyViolation, err)
+				return
+			}
+
+			// All other errors from initiating a tap should close with
+			// `CloseInternalServerErr` status code
+			websocketError(ws, websocket.CloseInternalServerErr, err)
 			return
 		}
 		defer body.Close()
