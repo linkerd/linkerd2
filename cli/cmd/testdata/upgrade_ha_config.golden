@@ -232,7 +232,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
+  resources: ["nodes", "nodes/proxy", "pods"]
   verbs: ["get", "list", "watch"]
 ---
 kind: ClusterRoleBinding
