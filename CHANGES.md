@@ -3,7 +3,7 @@
 **Significant Update**
 
 This edge release introduces the new Linkerd control plane Helm chart, named
-linkerd2. Helm users can now install and remove the Linkerd control plane by
+`linkerd2`. Helm users can now install and remove the Linkerd control plane by
 using the `helm install` and `helm delete` commands. Proxy injection also now
 uses Helm charts.
 
@@ -24,7 +24,7 @@ For detailed installation steps using Helm, see the notes for [PR
   * Introduced a new ClusterRole, `linkerd-linkerd-tap-admin`, which gives
     cluster-wide tap privileges. Also introduced a new ClusterRoleBinding,
     `linkerd-linkerd-web-admin`, which binds the `linkerd-web` service account
-    to the new tap ClusterRole `--restrict-dashboard-privileges`
+    to the new tap ClusterRole
   * Removed successfully completed `linkerd-heartbeat` jobs from pod listing in
     the linkerd control plane to streamline `get po` output (thanks
     @Pothulapati!)
