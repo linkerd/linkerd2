@@ -90,6 +90,7 @@ export const wsCloseCodes = {
 
 export const WS_NORMAL_CLOSURE = 1000;
 export const WS_ABNORMAL_CLOSURE = 1006;
+export const WS_POLICY_VIOLATION = 1008;
 
 /*
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
@@ -238,14 +239,14 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
     podList = (
       <React.Fragment>
         {
-            _map(display.pods, (namespace, pod, i) => {
-              if (i > displayLimit) {
-                return null;
-              } else {
-                return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
-              }
-            })
-          }
+          _map(display.pods, (namespace, pod, i) => {
+            if (i > displayLimit) {
+              return null;
+            } else {
+              return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+            }
+          })
+        }
         { (_size(display.pods) > displayLimit ? "..." : "") }
       </React.Fragment>
     );
@@ -258,7 +259,7 @@ const getIpList = (endpoint, display) => {
   let ipList = endpoint.str;
   if (display) {
     ipList = _take(Object.keys(display.ips), displayLimit).join(", ") +
-    (_size(display.ips) > displayLimit ? "..." : "");
+      (_size(display.ips) > displayLimit ? "..." : "");
   }
   return <div className="popover-td">{ipList}</div>;
 };
