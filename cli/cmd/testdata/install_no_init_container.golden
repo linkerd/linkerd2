@@ -490,7 +490,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: ["tap.linkerd.io"]
-  resources: ["*/tap"]
+  resources: ["*"]
   verbs: ["watch"]
 ---
 kind: ClusterRoleBinding
