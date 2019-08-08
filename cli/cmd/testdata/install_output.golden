@@ -490,7 +490,7 @@ metadata:
     ControllerNamespaceLabel: Namespace
 rules:
 - apiGroups: ["tap.linkerd.io"]
-  resources: ["*/tap"]
+  resources: ["*"]
   verbs: ["watch"]
 ---
 kind: ClusterRoleBinding
