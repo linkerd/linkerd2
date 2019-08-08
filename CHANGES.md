@@ -1,3 +1,36 @@
+## edge-19.8.2
+
+This edge release introduces the new Linkerd control plane Helm chart, named
+`linkerd2`. Helm users can now install and remove the Linkerd control plane by
+using the `helm install` and `helm delete` commands. Proxy injection also now
+uses Helm charts.
+
+No changes were made to the existing `linkerd install` behavior.
+
+For detailed installation steps using Helm, see the notes for [PR
+#3146](https://github.com/linkerd/linkerd2/pull/3146).
+
+* CLI
+  * Updated `linkerd top` and `linkerd profile --tap` to require
+    `tap.linkerd.io` RBAC privileges, see https://linkerd.io/tap-rbac for more
+    info
+  * Modified `tap.linkerd.io` APIService to enable usage in `kubectl auth can-i`
+    commands
+  * Introduced `--restrict-dashboard-privileges` flag to `linkerd install`
+    command, to restrict the dashboard's default privileges to disallow tap
+* Controller
+  * Introduced a new ClusterRole, `linkerd-linkerd-tap-admin`, which gives
+    cluster-wide tap privileges. Also introduced a new ClusterRoleBinding,
+    `linkerd-linkerd-web-admin`, which binds the `linkerd-web` service account
+    to the new tap ClusterRole
+  * Removed successfully completed `linkerd-heartbeat` jobs from pod listing in
+    the linkerd control plane to streamline `get po` output (thanks
+    @Pothulapati!)
+* Web UI
+  * Updated the web server to use the new tap APIService. If the `linkerd-web`
+    service account is not authorized to tap resources, users will see a link to
+    documentation to remedy the error
+
 ## edge-19.8.1
 
 **Significant Update**
