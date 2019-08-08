@@ -1,3 +1,44 @@
+## edge-19.8.2
+
+**Significant Update**
+
+This edge release introduces the new Linkerd control plane Helm chart, named
+linkerd2. Helm users can now install and remove the Linkerd control plane by
+using the `helm install` and `helm delete` commands. Proxy injection also now
+uses Helm charts.
+
+No changes were made to the existing `linkerd install` behavior.
+
+For detailed installation steps using Helm, see the notes for [PR #3146]
+(https://github.com/linkerd/linkerd2/pull/3146).
+
+* CLI
+  * Moved `linkerd top` and `linkerd profile --tap` to the new tap APIService
+  * Introduced parent resources for all tappable subresources in the tap
+    APIService, enabling commands such as `kubectl auth can-i`
+* Controller
+  * Introduced a new ClusterRole, `linkerd-linkerd-tap-admin`, which gives
+    cluster-wide tap privileges. Also introduced a new ClusterRoleBinding,
+    `linkerd-linkerd-web-admin`, which binds the `linkerd-web` service account
+    to the new tap ClusterRole. This ClusterRoleBinding is enabled by default,
+    but may be disabled via a new `linkerd install` flag,
+    `--restrict-dashboard-privileges`
+  * Added the ability to set a custom cluster domain in service profiles (thanks
+    @arminbuerkle!)
+  * Removed successfully completed `linkerd-heartbeat` jobs from pod listing in
+    the linkerd control plane to streamline `get po` output (thanks
+    @Pothulapati!)
+* Proxy
+  * Fixed a bug in `tap` which had caused the tap output to hang when reaching
+    the limit on the number of events
+  * Added an identity requirement to tap requests
+  * Updated the `authority` label in metrics to reflect the logical destination
+    of the request, in order to correctly report traffic split metrics
+* Web UI
+  * Updated the web server to use the new tap APIService. If the `linkerd-web`
+    service account is not authorized to tap resources, users will see a link to
+    documentation to remedy the error
+
 ## edge-19.8.1
 
 **Significant Update**
