@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ func main() {
 	staticDir := flag.String("static-dir", "app/dist", "directory to search for static files")
 	reload := flag.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
 	flags.ConfigureAndParse()
 
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
@@ -45,6 +47,11 @@ func main() {
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
 
+	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
+	if err != nil {
+		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
+	}
+
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
 		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
@@ -54,7 +61,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

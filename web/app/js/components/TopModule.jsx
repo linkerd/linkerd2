@@ -1,4 +1,4 @@
-import { processNeighborData, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, processNeighborData, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import Percentage from './util/Percentage.js';
@@ -18,9 +18,6 @@ import _take from 'lodash/take';
 import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
 import { withContext } from './util/AppContext.jsx';
-
-const WS_NORMAL_CLOSURE = 1000;
-const WS_ABNORMAL_CLOSURE = 1006;
 
 class TopModule extends React.Component {
   static propTypes = {

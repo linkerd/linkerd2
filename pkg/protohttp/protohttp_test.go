@@ -103,7 +103,7 @@ func TestHttpRequestToProto(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing")
 		}
 
-		if httpErr, ok := err.(httpError); ok {
+		if httpErr, ok := err.(HTTPError); ok {
 			expectedStatusCode := http.StatusBadRequest
 			if httpErr.Code != expectedStatusCode || httpErr.WrappedError == nil {
 				t.Fatalf("Expected error status to be [%d] and contain wrapper error, got status [%d] and error [%v]", expectedStatusCode, httpErr.Code, httpErr.WrappedError)
@@ -150,7 +150,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 	t.Run("Writes http specific error correctly to response", func(t *testing.T) {
 		expectedErrorStatusCode := http.StatusBadGateway
 		responseWriter := newStubResponseWriter()
-		httpError := httpError{
+		httpError := HTTPError{
 			WrappedError: errors.New("expected to be wrapped"),
 			Code:         http.StatusBadGateway,
 		}
@@ -497,7 +497,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 		}
 
 		err = CheckIfResponseHasError(response)
-		expectedErr := errors.New("Unexpected API response: 403 Forbidden (res.group \"name\" is forbidden: test-err)")
+		expectedErr := HTTPError{Code: http.StatusForbidden, WrappedError: statusError}
 
 		if !reflect.DeepEqual(err, expectedErr) {
 			t.Fatalf("Expected %s, got %s", expectedErr, err)
@@ -515,7 +515,7 @@ func TestCheckIfResponseHasError(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing")
 		}
 
-		expectedErrorMessage := "Unexpected API response: 503 Service Unavailable"
+		expectedErrorMessage := "HTTP error, status Code [503], wrapped error is: unexpected API response"
 		actualErrorMessage := err.Error()
 		if actualErrorMessage != expectedErrorMessage {
 			t.Fatalf("Expected error message to be [%s], but it was [%s]", expectedErrorMessage, actualErrorMessage)

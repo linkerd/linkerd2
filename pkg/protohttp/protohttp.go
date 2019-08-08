@@ -25,7 +25,8 @@ const (
 	numBytesForMessageLength   = 4
 )
 
-type httpError struct {
+// HTTPError is an error which indicates the HTTP response contained an error
+type HTTPError struct {
 	Code         int
 	WrappedError error
 }
@@ -37,8 +38,8 @@ type FlushableResponseWriter interface {
 	http.Flusher
 }
 
-// Error satisfies the error interface for httpError.
-func (e httpError) Error() string {
+// Error satisfies the error interface for HTTPError.
+func (e HTTPError) Error() string {
 	return fmt.Sprintf("HTTP error, status Code [%d], wrapped error is: %v", e.Code, e.WrappedError)
 }
 
@@ -46,7 +47,7 @@ func (e httpError) Error() string {
 func HTTPRequestToProto(req *http.Request, protoRequestOut proto.Message) error {
 	bytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return httpError{
+		return HTTPError{
 			Code:         http.StatusBadRequest,
 			WrappedError: err,
 		}
@@ -54,7 +55,7 @@ func HTTPRequestToProto(req *http.Request, protoRequestOut proto.Message) error 
 
 	err = proto.Unmarshal(bytes, protoRequestOut)
 	if err != nil {
-		return httpError{
+		return HTTPError{
 			Code:         http.StatusBadRequest,
 			WrappedError: err,
 		}
@@ -68,7 +69,7 @@ func WriteErrorToHTTPResponse(w http.ResponseWriter, errorObtained error) {
 	statusCode := defaultHTTPErrorStatusCode
 	errorToReturn := errorObtained
 
-	if httpErr, ok := errorObtained.(httpError); ok {
+	if httpErr, ok := errorObtained.(HTTPError); ok {
 		statusCode = httpErr.Code
 		errorToReturn = httpErr.WrappedError
 	}
@@ -171,13 +172,15 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 				body := string(bytes)
 				obj, err := k8s.ToRuntimeObject(body)
 				if err == nil {
-					return fmt.Errorf("Unexpected API response: %s (%s)", rsp.Status, kerrors.FromObject(obj))
+					return HTTPError{Code: rsp.StatusCode, WrappedError: kerrors.FromObject(obj)}
 				}
-				return fmt.Errorf("Unexpected API response: %s (%s)", rsp.Status, body)
+
+				body = fmt.Sprintf("unexpected API response: %s", body)
+				return HTTPError{Code: rsp.StatusCode, WrappedError: errors.New(body)}
 			}
 		}
 
-		return fmt.Errorf("Unexpected API response: %s", rsp.Status)
+		return HTTPError{Code: rsp.StatusCode, WrappedError: errors.New("unexpected API response")}
 	}
 
 	return nil

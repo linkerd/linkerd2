@@ -1,5 +1,5 @@
 import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
-import { emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
@@ -106,12 +106,20 @@ class Tap extends React.Component {
     where Chrome browsers incorrectly displays a 1006 close code
     https://github.com/linkerd/linkerd2/issues/1630
     */
-    if (!e.wasClean && e.code !== 1006 && this._isMounted) {
-      this.setState({
-        error: {
-          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
-        }
-      });
+    if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE && this._isMounted) {
+      if (e.code === WS_POLICY_VIOLATION) {
+        this.setState({
+          error: {
+            error: e.reason
+          }
+        });
+      } else {
+        this.setState({
+          error: {
+            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+          }
+        });
+      }
     }
   }
 

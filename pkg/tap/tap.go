@@ -15,6 +15,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TapRbacURL is the link users should visit to remedy issues when attemping
+// to tap resources with missing authorizations
+const TapRbacURL = "https://linkerd.io/tap-rbac"
+
 // Reader initiates a TapByResourceRequest and returns a buffered Reader.
 // It is the caller's responsibility to call Close() on the io.ReadCloser.
 func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, timeout time.Duration) (*bufio.Reader, io.ReadCloser, error) {
