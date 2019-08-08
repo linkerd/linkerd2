@@ -180,6 +180,7 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 func createTapErrorMessage(err error) string {
 	log.Debugf("tap error: %s", err.Error())
 
+	// TODO: reconcile this cast and 403 check with the one in handleAPITap
 	if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
 		return fmt.Sprintf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
 	}
