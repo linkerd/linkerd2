@@ -32,32 +32,33 @@ type (
 	installValues struct {
 		stage string
 
-		Namespace                string
-		ClusterDomain            string
-		ControllerImage          string
-		WebImage                 string
-		PrometheusImage          string
-		GrafanaImage             string
-		ImagePullPolicy          string
-		UUID                     string
-		CliVersion               string
-		ControllerReplicas       uint
-		ControllerLogLevel       string
-		PrometheusLogLevel       string
-		ControllerComponentLabel string
-		ControllerNamespaceLabel string
-		CreatedByAnnotation      string
-		ProxyContainerName       string
-		ProxyInjectAnnotation    string
-		ProxyInjectDisabled      string
-		LinkerdNamespaceLabel    string
-		ControllerUID            int64
-		EnableH2Upgrade          bool
-		HighAvailability         bool
-		NoInitContainer          bool
-		WebhookFailurePolicy     string
-		OmitWebhookSideEffects   bool
-		HeartbeatSchedule        string
+		Namespace                   string
+		ClusterDomain               string
+		ControllerImage             string
+		WebImage                    string
+		PrometheusImage             string
+		GrafanaImage                string
+		ImagePullPolicy             string
+		UUID                        string
+		CliVersion                  string
+		ControllerReplicas          uint
+		ControllerLogLevel          string
+		PrometheusLogLevel          string
+		ControllerComponentLabel    string
+		ControllerNamespaceLabel    string
+		CreatedByAnnotation         string
+		ProxyContainerName          string
+		ProxyInjectAnnotation       string
+		ProxyInjectDisabled         string
+		LinkerdNamespaceLabel       string
+		ControllerUID               int64
+		EnableH2Upgrade             bool
+		HighAvailability            bool
+		NoInitContainer             bool
+		WebhookFailurePolicy        string
+		OmitWebhookSideEffects      bool
+		RestrictDashboardPrivileges bool
+		HeartbeatSchedule           string
 
 		Configs configJSONs
 
@@ -125,16 +126,17 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		controlPlaneVersion    string
-		controllerReplicas     uint
-		controllerLogLevel     string
-		highAvailability       bool
-		controllerUID          int64
-		disableH2Upgrade       bool
-		noInitContainer        bool
-		skipChecks             bool
-		omitWebhookSideEffects bool
-		identityOptions        *installIdentityOptions
+		controlPlaneVersion         string
+		controllerReplicas          uint
+		controllerLogLevel          string
+		highAvailability            bool
+		controllerUID               int64
+		disableH2Upgrade            bool
+		noInitContainer             bool
+		skipChecks                  bool
+		omitWebhookSideEffects      bool
+		restrictDashboardPrivileges bool
+		identityOptions             *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -190,14 +192,15 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // injection-time.
 func newInstallOptionsWithDefaults() *installOptions {
 	return &installOptions{
-		controlPlaneVersion:    version.Version,
-		controllerReplicas:     defaultControllerReplicas,
-		controllerLogLevel:     "info",
-		highAvailability:       false,
-		controllerUID:          2103,
-		disableH2Upgrade:       false,
-		noInitContainer:        false,
-		omitWebhookSideEffects: false,
+		controlPlaneVersion:         version.Version,
+		controllerReplicas:          defaultControllerReplicas,
+		controllerLogLevel:          "info",
+		highAvailability:            false,
+		controllerUID:               2103,
+		disableH2Upgrade:            false,
+		noInitContainer:             false,
+		omitWebhookSideEffects:      false,
+		restrictDashboardPrivileges: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -258,6 +261,19 @@ func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
 	}
 }
 
+// Flag configuration matrix
+//
+//                                 | recordableFlagSet | allStageFlagSet | installOnlyFlagSet | installPersistentFlagSet | upgradeOnlyFlagSet | "skip-checks" |
+// `linkerd install`               |        X          |       X         |         X          |            X             |                    |               |
+// `linkerd install config`        |                   |       X         |                    |            X             |                    |               |
+// `linkerd install control-plane` |        X          |       X         |         X          |            X             |                    |       X       |
+// `linkerd upgrade`               |        X          |       X         |                    |                          |          X         |               |
+// `linkerd upgrade config`        |                   |       X         |                    |                          |                    |               |
+// `linkerd upgrade control-plane` |        X          |       X         |                    |                          |          X         |               |
+//
+// allStageFlagSet is a subset of recordableFlagSet, but is also added to `linkerd [install|upgrade] config`
+// proxyConfigOptions.flagSet is a subset of recordableFlagSet, and is used by `linkerd inject`.
+
 // newCmdInstallConfig is a subcommand for `linkerd install config`
 func newCmdInstallConfig(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
 	cmd := &cobra.Command{
@@ -284,14 +300,13 @@ resources for the Linkerd control plane. This command should be followed by
 		},
 	}
 
-	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
-	cmd.Flags().AddFlag(cniEnabledFlag)
+	cmd.Flags().AddFlagSet(options.allStageFlagSet())
 
 	return cmd
 }
 
 // newCmdInstallControlPlane is a subcommand for `linkerd install control-plane`
-func newCmdInstallControlPlane(options *installOptions, parentFlags *pflag.FlagSet) *cobra.Command {
+func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
@@ -326,9 +341,6 @@ control plane. It should be run after "linkerd install config".`,
 			return installRunE(options, controlPlaneStage, flags)
 		},
 	}
-
-	cniEnabledFlag := parentFlags.Lookup("linkerd-cni-enabled")
-	cmd.Flags().AddFlag(cniEnabledFlag)
 
 	cmd.PersistentFlags().BoolVar(
 		&options.skipChecks, "skip-checks", options.skipChecks,
@@ -383,7 +395,7 @@ control plane.`,
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
 
 	cmd.AddCommand(newCmdInstallConfig(options, flags))
-	cmd.AddCommand(newCmdInstallControlPlane(options, flags))
+	cmd.AddCommand(newCmdInstallControlPlane(options))
 
 	return cmd
 }
@@ -447,14 +459,11 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("install", e)
 
 	flags.AddFlagSet(options.proxyConfigOptions.flagSet(e))
+	flags.AddFlagSet(options.allStageFlagSet())
 
 	flags.UintVar(
 		&options.controllerReplicas, "controller-replicas", options.controllerReplicas,
 		"Replicas of the controller to deploy",
-	)
-
-	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
-		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
 	flags.StringVar(
@@ -488,6 +497,24 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
+
+	return flags
+}
+
+// allStageFlagSet returns flags usable for single and multi-stage  installs and
+// upgrades. For multi-stage installs, users must set these flags consistently
+// across commands.
+func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
+
+	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
+		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+	)
+
+	flags.BoolVar(
+		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
+		"Restrict the Linkerd Dashboard's default privileges to disallow Tap",
+	)
 
 	return flags
 }
@@ -625,19 +652,20 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
 
 		// Controller configuration:
-		Namespace:              controlPlaneNamespace,
-		ClusterDomain:          defaultClusterDomain,
-		UUID:                   configs.GetInstall().GetUuid(),
-		ControllerReplicas:     options.controllerReplicas,
-		ControllerLogLevel:     options.controllerLogLevel,
-		ControllerUID:          options.controllerUID,
-		HighAvailability:       options.highAvailability,
-		EnableH2Upgrade:        !options.disableH2Upgrade,
-		NoInitContainer:        options.noInitContainer,
-		WebhookFailurePolicy:   "Ignore",
-		OmitWebhookSideEffects: options.omitWebhookSideEffects,
-		PrometheusLogLevel:     toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
-		HeartbeatSchedule:      options.heartbeatSchedule(),
+		Namespace:                   controlPlaneNamespace,
+		ClusterDomain:               defaultClusterDomain,
+		UUID:                        configs.GetInstall().GetUuid(),
+		ControllerReplicas:          options.controllerReplicas,
+		ControllerLogLevel:          options.controllerLogLevel,
+		ControllerUID:               options.controllerUID,
+		HighAvailability:            options.highAvailability,
+		EnableH2Upgrade:             !options.disableH2Upgrade,
+		NoInitContainer:             options.noInitContainer,
+		WebhookFailurePolicy:        "Ignore",
+		OmitWebhookSideEffects:      options.omitWebhookSideEffects,
+		RestrictDashboardPrivileges: options.restrictDashboardPrivileges,
+		PrometheusLogLevel:          toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
+		HeartbeatSchedule:           options.heartbeatSchedule(),
 
 		Configs: configJSONs{
 			Global:  globalJSON,

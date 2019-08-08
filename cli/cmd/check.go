@@ -71,7 +71,7 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-// newCmdInstallConfig is a subcommand for `linkerd check config`
+// newCmdCheckConfig is a subcommand for `linkerd check config`
 func newCmdCheckConfig(options *checkOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [flags]",

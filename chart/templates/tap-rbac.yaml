@@ -22,6 +22,18 @@ rules:
   resources: ["jobs"]
   verbs: ["list" , "get", "watch"]
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: linkerd-{{.Namespace}}-tap-admin
+  labels:
+    {{.ControllerComponentLabel}}: tap
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+rules:
+- apiGroups: ["tap.linkerd.io"]
+  resources: ["*/tap"]
+  verbs: ["watch"]
+---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
