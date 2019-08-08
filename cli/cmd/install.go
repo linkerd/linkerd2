@@ -73,7 +73,7 @@ type (
 		PublicAPIResources,
 		SPValidatorResources,
 		TapResources,
-		WebResources *resources
+		WebResources *charts.Resources
 
 		Identity         *installIdentityValues
 		ProxyInjector    *proxyInjectorValues
@@ -85,7 +85,6 @@ type (
 
 	configJSONs struct{ Global, Proxy, Install string }
 
-	resources              charts.Resources
 	installIdentityValues  charts.Identity
 	proxyInjectorValues    charts.ProxyInjector
 	profileValidatorValues charts.ProfileValidator
@@ -115,9 +114,8 @@ type (
 		recordedFlags []*pb.Install_Flag
 
 		// function pointers that can be overridden for tests
-		generateUUID       func() string
-		generateWebhookTLS func(webhook string) (*charts.TLS, error)
-		heartbeatSchedule  func() string
+		generateUUID      func() string
+		heartbeatSchedule func() string
 	}
 
 	installIdentityOptions struct {
@@ -204,19 +202,6 @@ func newInstallOptionsWithDefaults() *installOptions {
 				log.Fatalf("Could not generate UUID: %s", err)
 			}
 			return id.String()
-		},
-
-		// TODO: rename to generateTLS or something
-		generateWebhookTLS: func(webhook string) (*charts.TLS, error) {
-			root, err := tls.GenerateRootCAWithDefaults(webhookCommonName(webhook))
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate root certificate for control plane CA: %s", err)
-			}
-
-			return &charts.TLS{
-				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
-				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
-			}, nil
 		},
 
 		heartbeatSchedule: func() string {
@@ -401,24 +386,6 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 	values.Identity = identityValues
-
-	proxyInjectorTLS, err := options.generateWebhookTLS(k8s.ProxyInjectorWebhookServiceName)
-	if err != nil {
-		return nil, nil, err
-	}
-	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
-
-	profileValidatorTLS, err := options.generateWebhookTLS(k8s.SPValidatorWebhookServiceName)
-	if err != nil {
-		return nil, nil, err
-	}
-	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
-
-	tapTLS, err := options.generateWebhookTLS(k8s.TapServiceName)
-	if err != nil {
-		return nil, nil, err
-	}
-	values.Tap = &tapValues{tapTLS}
 
 	values.stage = stage
 
@@ -648,16 +615,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 			Install: installJSON,
 		},
 
-		DestinationResources:   &resources{},
-		GrafanaResources:       &resources{},
-		HeartbeatResources:     &resources{},
-		IdentityResources:      &resources{},
-		PrometheusResources:    &resources{},
-		ProxyInjectorResources: &resources{},
-		PublicAPIResources:     &resources{},
-		SPValidatorResources:   &resources{},
-		TapResources:           &resources{},
-		WebResources:           &resources{},
+		DestinationResources:   &charts.Resources{},
+		GrafanaResources:       &charts.Resources{},
+		HeartbeatResources:     &charts.Resources{},
+		IdentityResources:      &charts.Resources{},
+		PrometheusResources:    &charts.Resources{},
+		ProxyInjectorResources: &charts.Resources{},
+		PublicAPIResources:     &charts.Resources{},
+		SPValidatorResources:   &charts.Resources{},
+		TapResources:           &charts.Resources{},
+		WebResources:           &charts.Resources{},
 
 		Proxy: &proxyValues{
 			Component:              "deployment", // only Deployment workloads are injected
@@ -720,7 +687,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 	if options.highAvailability {
 		values.WebhookFailurePolicy = "Fail"
 
-		defaultConstraints := &resources{
+		defaultConstraints := &charts.Resources{
 			CPU:    charts.Constraints{Request: "100m", Limit: "1"},
 			Memory: charts.Constraints{Request: "50Mi", Limit: "250Mi"},
 		}
@@ -740,7 +707,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		values.IdentityResources.Memory = charts.Constraints{Request: "10Mi", Limit: "250Mi"}
 
 		values.GrafanaResources.Memory.Limit = "1024Mi"
-		values.PrometheusResources = &resources{
+		values.PrometheusResources = &charts.Resources{
 			CPU:    charts.Constraints{Request: "300m", Limit: "4"},
 			Memory: charts.Constraints{Request: "300Mi", Limit: "8192Mi"},
 		}

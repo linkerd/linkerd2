@@ -312,11 +312,6 @@ func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOpt
 		if !kerrors.IsNotFound(err) {
 			return nil, err
 		}
-
-		value, err = options.generateWebhookTLS(webhook)
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		value = &charts.TLS{
 			KeyPEM: string(secret.Data["key.pem"]),
