@@ -1,7 +1,5 @@
 ## edge-19.8.2
 
-**Significant Update**
-
 This edge release introduces the new Linkerd control plane Helm chart, named
 `linkerd2`. Helm users can now install and remove the Linkerd control plane by
 using the `helm install` and `helm delete` commands. Proxy injection also now
