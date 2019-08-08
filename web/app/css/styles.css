@@ -28,3 +28,7 @@ a:focus, a:hover, a:visited, a:link, a:active {
 .tapGrayed {
   color: lightgray;
 }
+
+.errorMessage a {
+  color: white;
+}
