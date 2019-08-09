@@ -23,6 +23,13 @@ type TestHelper struct {
 	upgradeFromVersion string
 	httpClient         http.Client
 	KubernetesHelper
+	helm
+}
+
+type helm struct {
+	path        string
+	chart       string
+	releaseName string
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -36,6 +43,9 @@ func NewTestHelper() *TestHelper {
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
+	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
+	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -68,6 +78,11 @@ func NewTestHelper() *TestHelper {
 		linkerd:            *linkerd,
 		namespace:          *namespace,
 		upgradeFromVersion: *upgradeFromVersion,
+		helm: helm{
+			path:        *helmPath,
+			chart:       *helmChart,
+			releaseName: *helmReleaseName,
+		},
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -106,6 +121,11 @@ func (h *TestHelper) GetLinkerdNamespace() string {
 // is prefixed with the linkerd namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
 	return h.namespace + "-" + testName
+}
+
+// GetHelmReleaseName returns the name of the Linkerd installation Helm release
+func (h *TestHelper) GetHelmReleaseName() string {
+	return h.helm.releaseName
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
@@ -150,6 +170,17 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	}
 
 	return &Stream{cmd: cmd, out: cmdReader}, nil
+}
+
+// HelmRun runs the provided Helm subcommand, with the provided arguments
+func (h *TestHelper) HelmRun(cmd string, arg ...string) (string, string, error) {
+	withParams := append([]string{
+		cmd,
+		"--name", h.helm.releaseName,
+		"--set", "Namespace=" + h.namespace,
+		h.helm.chart,
+	}, arg...)
+	return combinedOutput("", h.helm.path, withParams...)
 }
 
 // ValidateOutput validates a string against the contents of a file in the
