@@ -440,7 +440,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 
 		if resourceType == k8s.TrafficSplit {
 			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
-			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t"
+			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
 		}
 
 		if !showTCPConns(resourceType) {

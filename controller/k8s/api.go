@@ -476,11 +476,6 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 		ownerUID = typed.UID
 
-	case *v1alpha1.TrafficSplit:
-		namespace = typed.Namespace
-		selector = labels.Everything()
-		ownerUID = typed.UID
-
 	case *corev1.Pod:
 		// Special case for pods:
 		// GetPodsFor a pod should just return the pod itself
