@@ -35,6 +35,8 @@ function remove_l5d_if_exists() {
   if [ ! -z "$resources" ]; then
     printf "Removing existing l5d installation..."
     cleanup
+    # Cleanup Helm, in case it's there (if not, we ignore the error)
+    helm_cleanup &> /dev/null || true
     printf "[ok]\\n"
   fi
 }
@@ -80,6 +82,18 @@ function run_upgrade_test() {
     run_test "$test_directory/install_test.go" -failfast --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
+function run_helm_test() {
+    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
+    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
+    run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helminst \
+        --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name --tiller-ns=$tiller_namespace || exit_code=$?
+}
+
+function helm_cleanup() {
+    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
+    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
+}
+
 function exit_on_err() {
   if [ $exit_code -ne 0 ]; then
     printf "\\n=== FAIL: %s\\n" "$@"
@@ -94,10 +108,23 @@ if [ -z "$linkerd_path" ]; then
 fi
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+rootdir="$( cd $bindir/.. && pwd )"
 test_directory="$bindir/../test"
 linkerd_version=$($linkerd_path version --client --short)
-linkerd_namespace=${2:-l5d-integration}
+linkerd_local_namespace=l5d-integration
+linkerd_namespace=${2:-$linkerd_local_namespace}
 k8s_context=${3:-""}
+helm_path=$bindir/helm
+helm_chart=$rootdir/charts/linkerd2
+helm_release_name=$linkerd_namespace-test
+
+if [ $linkerd_namespace = $linkerd_local_namespace ]; then
+    # Local env
+    tiller_namespace=kube-system
+else
+    # CI
+    tiller_namespace=$linkerd_namespace-helm
+fi
 
 check_linkerd_binary
 check_if_k8s_reachable
@@ -116,17 +143,10 @@ run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
 exit_on_err "can't upgrade to version $linkerd_version"
 cleanup
 
-rootdir="$( cd $bindir/.. && pwd )"
-helm_path=$bindir/helm
-helm_chart=$rootdir/charts/linkerd2
-helm_release_name=$linkerd_namespace-test
-$helm_path init --wait
-$helm_path dependency update charts/linkerd2
-run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
-    --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name || exit_code=$?
+run_helm_test || exit_code=$?
 exit_on_err "failed using helm install|delete"
 cleanup
-$helm_path delete --purge $helm_release_name
+helm_cleanup
 
 run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace || exit_code=$?
 exit_on_err "failed install"

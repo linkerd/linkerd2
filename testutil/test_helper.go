@@ -30,6 +30,7 @@ type helm struct {
 	path        string
 	chart       string
 	releaseName string
+	tillerNs    string
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -46,6 +47,7 @@ func NewTestHelper() *TestHelper {
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
+	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -82,6 +84,7 @@ func NewTestHelper() *TestHelper {
 			path:        *helmPath,
 			chart:       *helmChart,
 			releaseName: *helmReleaseName,
+			tillerNs:    *tillerNs,
 		},
 	}
 
@@ -176,6 +179,8 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 func (h *TestHelper) HelmRun(cmd string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		cmd,
+		"--kube-context", h.k8sContext,
+		"--tiller-namespace", h.helm.tillerNs,
 		"--name", h.helm.releaseName,
 		"--set", "Namespace=" + h.namespace,
 		h.helm.chart,
