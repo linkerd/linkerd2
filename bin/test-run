@@ -31,7 +31,7 @@ function check_if_k8s_reachable(){
 }
 
 function remove_l5d_if_exists() {
-  resources=$(kubectl get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
+  resources=$(kubectl --context=$k8s_context get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
   if [ ! -z "$resources" ]; then
     printf "Removing existing l5d installation..."
     cleanup
@@ -67,7 +67,7 @@ function install_stable() {
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     local stable_namespace="$1"
-    $linkerd_path install --linkerd-namespace="$stable_namespace" | kubectl apply -f - > /dev/null 2>&1
+    $linkerd_path install --linkerd-namespace="$stable_namespace" | kubectl --context=$k8s_context apply -f - > /dev/null 2>&1
     $linkerd_path check --linkerd-namespace="$stable_namespace" > /dev/null 2>&1
 }
 
@@ -83,15 +83,19 @@ function run_upgrade_test() {
 }
 
 function run_helm_test() {
+    kubectl --context=$k8s_context create ns $tiller_namespace
+    kubectl --context=$k8s_context create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
     $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
     $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
-    run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helminst \
+    run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
         --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name --tiller-ns=$tiller_namespace || exit_code=$?
 }
 
 function helm_cleanup() {
     $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
     $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
+    kubectl --context=$k8s_context delete clusterrolebinding tiller-cluster-admin
+    kubectl --context=$k8s_context delete ns $tiller_namespace
 }
 
 function exit_on_err() {
@@ -111,20 +115,12 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 test_directory="$bindir/../test"
 linkerd_version=$($linkerd_path version --client --short)
-linkerd_local_namespace=l5d-integration
-linkerd_namespace=${2:-$linkerd_local_namespace}
+linkerd_namespace=${2:-l5d-integration}
 k8s_context=${3:-""}
 helm_path=$bindir/helm
 helm_chart=$rootdir/charts/linkerd2
 helm_release_name=$linkerd_namespace-test
-
-if [ $linkerd_namespace = $linkerd_local_namespace ]; then
-    # Local env
-    tiller_namespace=kube-system
-else
-    # CI
-    tiller_namespace=$linkerd_namespace-helm
-fi
+tiller_namespace=$linkerd_namespace-tiller
 
 check_linkerd_binary
 check_if_k8s_reachable
