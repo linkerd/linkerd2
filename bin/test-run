@@ -78,7 +78,7 @@ function run_helm_test() {
     (
         set -e
         kubectl --context=$k8s_context create ns $tiller_namespace
-        kubectl --context=$k8s_context create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
+        kubectl --context=$k8s_context create clusterrolebinding ${tiller_namespace}:tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
     )
@@ -92,7 +92,7 @@ function helm_cleanup() {
         set -e
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
-        kubectl --context=$k8s_context delete clusterrolebinding tiller-cluster-admin
+        kubectl --context=$k8s_context delete clusterrolebinding ${tiller_namespace}:tiller-cluster-admin
         echo $tiller_namespace
         kubectl --context=$k8s_context delete ns $tiller_namespace
     )
