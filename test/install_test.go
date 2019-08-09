@@ -235,8 +235,8 @@ func TestInstallHelm(t *testing.T) {
 		"--set", "Identity.Issuer.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
-	if out, _, err := TestHelper.HelmRun("install", args...); err != nil {
-		t.Fatalf("helm install command failed\n%s", out)
+	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
+		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)
 	}
 }
 
