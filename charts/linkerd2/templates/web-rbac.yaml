@@ -30,4 +30,4 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end -}}
+{{- end }}

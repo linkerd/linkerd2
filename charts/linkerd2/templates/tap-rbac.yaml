@@ -101,7 +101,7 @@ metadata:
     {{.ControllerComponentLabel}}: tap
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
-    {{ .CreatedByAnnotation }}: {{ .CliVersion }}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 type: Opaque
 data:
   {{ $ca := genCA (printf "linkerd-tap.%s.svc" .Namespace) 365 -}}

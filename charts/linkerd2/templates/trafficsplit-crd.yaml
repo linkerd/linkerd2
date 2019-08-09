@@ -28,4 +28,4 @@ spec:
     type: string
     description: The apex service of this split.
     JSONPath: .spec.service
-{{- end -}}
+{{ end -}}

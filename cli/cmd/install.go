@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -133,12 +134,11 @@ const (
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
-	prometheusImage                   = "prom/prometheus:v2.11.1"
-	defaultControllerReplicas         = 1
-	defaultHAControllerReplicas       = 3
-	defaultIdentityTrustDomain        = "cluster.local"
 	defaultIdentityIssuanceLifetime   = 24 * time.Hour
 	defaultIdentityClockSkewAllowance = 20 * time.Second
+
+	helmDefaultChartName = "linkerd2"
+	helmDefaultChartDir  = "linkerd2"
 
 	errMsgGlobalResourcesExist = `Unable to install the Linkerd control plane. It appears that there is an existing installation:
 
@@ -161,40 +161,50 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // These options may be overridden on the CLI at install-time and will be
 // persisted in Linkerd's control plane configuration to be used at
 // injection-time.
-func newInstallOptionsWithDefaults() *installOptions {
+func newInstallOptionsWithDefaults() (*installOptions, error) {
+	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	defaults, err := charts.ReadDefaults(chartDir, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &installOptions{
 		controlPlaneVersion:         version.Version,
-		controllerReplicas:          defaultControllerReplicas,
-		controllerLogLevel:          "info",
+		controllerReplicas:          defaults.ControllerReplicas,
+		controllerLogLevel:          defaults.ControllerLogLevel,
 		highAvailability:            false,
-		controllerUID:               2103,
-		disableH2Upgrade:            false,
+		controllerUID:               defaults.ControllerUID,
+		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		noInitContainer:             false,
-		omitWebhookSideEffects:      false,
+		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: false,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
-			proxyImage:             defaultDockerRegistry + "/proxy",
-			initImage:              defaultDockerRegistry + "/proxy-init",
+			proxyImage:             defaults.ProxyImageName,
+			initImage:              defaults.ProxyInitImageName,
 			initImageVersion:       version.ProxyInitVersion,
 			dockerRegistry:         defaultDockerRegistry,
-			imagePullPolicy:        "IfNotPresent",
+			imagePullPolicy:        defaults.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
 			ignoreOutboundPorts:    nil,
-			proxyUID:               2102,
-			proxyLogLevel:          "warn,linkerd2_proxy=info",
-			proxyControlPort:       4190,
-			proxyAdminPort:         4191,
-			proxyInboundPort:       4143,
-			proxyOutboundPort:      4140,
-			proxyCPURequest:        "",
-			proxyMemoryRequest:     "",
-			proxyCPULimit:          "",
-			proxyMemoryLimit:       "",
-			enableExternalProfiles: false,
+			proxyUID:               defaults.ProxyUID,
+			proxyLogLevel:          defaults.ProxyLogLevel,
+			proxyControlPort:       defaults.ProxyControlPort,
+			proxyAdminPort:         defaults.ProxyAdminPort,
+			proxyInboundPort:       defaults.ProxyInboundPort,
+			proxyOutboundPort:      defaults.ProxyOutboundPort,
+			proxyCPURequest:        defaults.ProxyCPURequest,
+			proxyMemoryRequest:     defaults.ProxyMemoryRequest,
+			proxyCPULimit:          defaults.ProxyCPULimit,
+			proxyMemoryLimit:       defaults.ProxyMemoryLimit,
+			enableExternalProfiles: defaults.EnableExternalProfiles,
 		},
-		identityOptions: newInstallIdentityOptionsWithDefaults(),
+		identityOptions: &installIdentityOptions{
+			trustDomain:        defaults.IdentityTrustDomain,
+			issuanceLifetime:   defaults.IdentityIssuerIssuanceLifetime,
+			clockSkewAllowance: defaults.IdentityIssuerClockSkewAllowance,
+		},
 
 		generateUUID: func() string {
 			id, err := uuid.NewRandom()
@@ -208,15 +218,7 @@ func newInstallOptionsWithDefaults() *installOptions {
 			t := time.Now().Add(5 * time.Minute).UTC()
 			return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
 		},
-	}
-}
-
-func newInstallIdentityOptionsWithDefaults() *installIdentityOptions {
-	return &installIdentityOptions{
-		trustDomain:        defaultIdentityTrustDomain,
-		issuanceLifetime:   defaultIdentityIssuanceLifetime,
-		clockSkewAllowance: defaultIdentityClockSkewAllowance,
-	}
+	}, nil
 }
 
 // Flag configuration matrix
@@ -312,7 +314,11 @@ control plane. It should be run after "linkerd install config".`,
 }
 
 func newCmdInstall() *cobra.Command {
-	options := newInstallOptionsWithDefaults()
+	options, err := newInstallOptionsWithDefaults()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
+	}
 
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
@@ -371,7 +377,11 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
-	options.handleHA()
+
+	if err := options.handleHA(); err != nil {
+		return nil, nil, err
+	}
+
 	options.recordFlags(flags)
 
 	identityValues, err := options.identityOptions.validateAndBuild()
@@ -541,30 +551,38 @@ func (options *installOptions) validate() error {
 	return nil
 }
 
-func (options *installOptions) handleHA() {
+func (options *installOptions) handleHA() error {
 	if options.highAvailability {
-		if options.controllerReplicas == defaultControllerReplicas {
-			options.controllerReplicas = defaultHAControllerReplicas
+		chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+		haDefaults, err := charts.ReadDefaults(chartDir, true)
+		if err != nil {
+			return err
+		}
+
+		// should have at least more than 1 replicas
+		if options.controllerReplicas == 1 {
+			options.controllerReplicas = haDefaults.ControllerReplicas
 		}
 
 		if options.proxyCPURequest == "" {
-			options.proxyCPURequest = "100m"
+			options.proxyCPURequest = haDefaults.ProxyCPURequest
 		}
 
 		if options.proxyMemoryRequest == "" {
-			options.proxyMemoryRequest = "20Mi"
+			options.proxyMemoryRequest = haDefaults.ProxyMemoryRequest
 		}
 
 		if options.proxyCPULimit == "" {
-			options.proxyCPULimit = "1"
+			options.proxyCPULimit = haDefaults.ProxyCPULimit
 		}
 
 		if options.proxyMemoryLimit == "" {
-			options.proxyMemoryLimit = "250Mi"
+			options.proxyMemoryLimit = haDefaults.ProxyMemoryLimit
 		}
 	}
 
 	options.identityOptions.replicas = options.controllerReplicas
+	return nil
 }
 
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
@@ -573,13 +591,21 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		return nil, err
 	}
 
+	// any install values that can't be overridden via CLI options will pick up
+	// their defaults from values.yaml
+	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	defaults, err := charts.ReadDefaults(chartDir, false)
+	if err != nil {
+		return nil, err
+	}
+
 	values := &installValues{
 		// Container images:
 		ControllerImage:        fmt.Sprintf("%s/controller", options.dockerRegistry),
 		ControllerImageVersion: configs.GetGlobal().GetVersion(),
-		WebImage:               fmt.Sprintf("%s/web:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
-		GrafanaImage:           fmt.Sprintf("%s/grafana:%s", options.dockerRegistry, configs.GetGlobal().GetVersion()),
-		PrometheusImage:        prometheusImage,
+		WebImage:               fmt.Sprintf("%s/web", options.dockerRegistry),
+		GrafanaImage:           fmt.Sprintf("%s/grafana", options.dockerRegistry),
+		PrometheusImage:        defaults.PrometheusImage,
 		ImagePullPolicy:        options.imagePullPolicy,
 
 		// Kubernetes labels/annotations/resources:
@@ -594,7 +620,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 		// Controller configuration:
 		Namespace:                   controlPlaneNamespace,
-		ClusterDomain:               defaultClusterDomain,
+		ClusterDomain:               configs.GetGlobal().GetClusterDomain(),
 		UUID:                        configs.GetInstall().GetUuid(),
 		ControllerReplicas:          options.controllerReplicas,
 		ControllerLogLevel:          options.controllerLogLevel,
@@ -603,7 +629,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		EnablePodAntiAffinity:       options.highAvailability,
 		EnableH2Upgrade:             !options.disableH2Upgrade,
 		NoInitContainer:             options.noInitContainer,
-		WebhookFailurePolicy:        "Ignore",
+		WebhookFailurePolicy:        defaults.WebhookFailurePolicy,
 		OmitWebhookSideEffects:      options.omitWebhookSideEffects,
 		RestrictDashboardPrivileges: options.restrictDashboardPrivileges,
 		PrometheusLogLevel:          toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
@@ -663,12 +689,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 
 			Resources: &charts.Resources{
 				CPU: charts.Constraints{
-					Limit:   "100m",
-					Request: "10m",
+					Limit:   defaults.ProxyInitCPULimit,
+					Request: defaults.ProxyInitCPURequest,
 				},
 				Memory: charts.Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
+					Limit:   defaults.ProxyInitMemoryLimit,
+					Request: defaults.ProxyInitMemoryRequest,
 				},
 			},
 		},
@@ -685,31 +711,57 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 	values.ProxyInit.IgnoreOutboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreOutboundPorts, ",")
 
 	if options.highAvailability {
-		values.WebhookFailurePolicy = "Fail"
-
-		defaultConstraints := &charts.Resources{
-			CPU:    charts.Constraints{Request: "100m", Limit: "1"},
-			Memory: charts.Constraints{Request: "50Mi", Limit: "250Mi"},
+		controllerConstraints := &charts.Resources{
+			CPU: charts.Constraints{
+				Request: defaults.ControllerCPURequest,
+				Limit:   defaults.ControllerCPULimit,
+			},
+			Memory: charts.Constraints{
+				Request: defaults.ControllerMemoryRequest,
+				Limit:   defaults.ControllerMemoryLimit,
+			},
 		}
+
 		// Copy constraints to each so that further modification isn't global.
-		*values.DestinationResources = *defaultConstraints
-		*values.GrafanaResources = *defaultConstraints
-		*values.HeartbeatResources = *defaultConstraints
-		*values.ProxyInjectorResources = *defaultConstraints
-		*values.PublicAPIResources = *defaultConstraints
-		*values.SPValidatorResources = *defaultConstraints
-		*values.TapResources = *defaultConstraints
-		*values.WebResources = *defaultConstraints
+		*values.DestinationResources = *controllerConstraints
+		*values.HeartbeatResources = *controllerConstraints
+		*values.ProxyInjectorResources = *controllerConstraints
+		*values.PublicAPIResources = *controllerConstraints
+		*values.SPValidatorResources = *controllerConstraints
+		*values.TapResources = *controllerConstraints
+		*values.WebResources = *controllerConstraints
 
-		// The identity controller maintains no internal state, so it need not request
-		// 50Mi.
-		*values.IdentityResources = *defaultConstraints
-		values.IdentityResources.Memory = charts.Constraints{Request: "10Mi", Limit: "250Mi"}
+		values.IdentityResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   defaults.IdentityCPULimit,
+				Request: defaults.IdentityCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.IdentityMemoryLimit,
+				Request: defaults.IdentityMemoryRequest,
+			},
+		}
 
-		values.GrafanaResources.Memory.Limit = "1024Mi"
+		values.GrafanaResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   defaults.GrafanaCPULimit,
+				Request: defaults.GrafanaCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.GrafanaMemoryLimit,
+				Request: defaults.GrafanaMemoryRequest,
+			},
+		}
+
 		values.PrometheusResources = &charts.Resources{
-			CPU:    charts.Constraints{Request: "300m", Limit: "4"},
-			Memory: charts.Constraints{Request: "300Mi", Limit: "8192Mi"},
+			CPU: charts.Constraints{
+				Limit:   defaults.PrometheusCPULimit,
+				Request: defaults.PrometheusCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.PrometheusMemoryLimit,
+				Request: defaults.PrometheusMemoryRequest,
+			},
 		}
 	}
 
@@ -1069,25 +1121,4 @@ func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 	}
-}
-
-func webhookCommonName(webhook string) string {
-	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
-}
-
-func webhookSecretName(webhook string) string {
-	return fmt.Sprintf("%s-tls", webhook)
-}
-
-func verifyWebhookTLS(value *charts.TLS, webhook string) error {
-	crt, err := tls.DecodePEMCrt(value.CrtPEM)
-	if err != nil {
-		return err
-	}
-	roots := crt.CertPool()
-	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
-		return err
-	}
-
-	return nil
 }

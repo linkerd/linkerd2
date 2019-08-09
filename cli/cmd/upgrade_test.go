@@ -21,11 +21,7 @@ func testUpgradeOptions() *upgradeOptions {
 	o := newUpgradeOptionsWithDefaults()
 	o.controlPlaneVersion = upgradeControlPlaneVersion
 	o.proxyVersion = upgradeProxyVersion
-	o.generateWebhookTLS = fakeGenerateWebhookTLS
 	o.heartbeatSchedule = fakeHeartbeatSchedule
-	o.verifyTLS = func(tls *tlsValues, service string) error {
-		return nil
-	}
 	return o
 }
 
@@ -222,8 +218,8 @@ data:
 		values.Identity.TrustAnchorsPEM == "" ||
 		values.Identity.TrustDomain == "" ||
 		values.Identity.Issuer == nil ||
-		values.Identity.Issuer.CrtPEM == "" ||
-		values.Identity.Issuer.KeyPEM == "" {
+		values.Identity.Issuer.TLS.CrtPEM == "" ||
+		values.Identity.Issuer.TLS.KeyPEM == "" {
 		t.Errorf("issuer values not generated")
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {

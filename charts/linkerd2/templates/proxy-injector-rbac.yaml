@@ -91,5 +91,5 @@ webhooks:
     resources: ["pods"]
   {{- if not .OmitWebhookSideEffects }}
   sideEffects: None
-  {{- end -}}
+  {{- end }}
 {{end -}}

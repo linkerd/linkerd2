@@ -112,4 +112,4 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: {{.Namespace}}
-{{- end }}
+{{ end -}}

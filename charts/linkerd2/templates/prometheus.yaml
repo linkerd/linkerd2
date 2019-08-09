@@ -211,4 +211,4 @@ spec:
           name: linkerd-prometheus-config
         name: prometheus-config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
-{{ end -}}
+{{- end }}

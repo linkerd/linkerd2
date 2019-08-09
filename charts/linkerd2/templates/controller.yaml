@@ -150,4 +150,4 @@ spec:
           name: linkerd-config
         name: config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
-{{end -}}
+{{ end -}}

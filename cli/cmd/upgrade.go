@@ -33,12 +33,17 @@ type upgradeOptions struct {
 	verifyTLS func(tls *charts.TLS, service string) error
 }
 
-func newUpgradeOptionsWithDefaults() *upgradeOptions {
+func newUpgradeOptionsWithDefaults() (*upgradeOptions, error) {
+	installOptions, err := newInstallOptionsWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	return &upgradeOptions{
 		manifests:      "",
-		installOptions: newInstallOptionsWithDefaults(),
+		installOptions: installOptions,
 		verifyTLS:      verifyWebhookTLS,
-	}
+	}, nil
 }
 
 // upgradeOnlyFlagSet includes flags that are only accessible at upgrade-time
@@ -102,7 +107,11 @@ install command. It should be run after "linkerd upgrade config".`,
 }
 
 func newCmdUpgrade() *cobra.Command {
-	options := newUpgradeOptionsWithDefaults()
+	options, err := newUpgradeOptionsWithDefaults()
+	if err != nil {
+		upgradeErrorf(err.Error())
+	}
+
 	flags := options.recordableFlagSet()
 	upgradeOnlyFlags := options.upgradeOnlyFlagSet()
 
@@ -209,7 +218,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	setFlagsFromInstall(flags, configs.GetInstall().GetFlags())
 
 	// After retrieving options set during Install, so we can properly determine if HA is set
-	options.handleHA()
+	if err := options.handleHA(); err != nil {
+		return nil, nil, err
+	}
 
 	// Save off the updated set of flags into the installOptions so it gets
 	// persisted with the upgraded config.
@@ -395,4 +406,25 @@ func upgradeErrorf(format string, a ...interface{}) {
 	template := fmt.Sprintf("%s %s\n%s\n", failStatus, format, failMessage)
 	fmt.Fprintf(os.Stderr, template, a...)
 	os.Exit(1)
+}
+
+func webhookCommonName(webhook string) string {
+	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
+}
+
+func webhookSecretName(webhook string) string {
+	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func verifyWebhookTLS(value *charts.TLS, webhook string) error {
+	crt, err := tls.DecodePEMCrt(value.CrtPEM)
+	if err != nil {
+		return err
+	}
+	roots := crt.CertPool()
+	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
+		return err
+	}
+
+	return nil
 }

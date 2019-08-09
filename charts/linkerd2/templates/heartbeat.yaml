@@ -16,6 +16,7 @@ metadata:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 spec:
   schedule: "{{.HeartbeatSchedule}}"
+  successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:
@@ -41,4 +42,4 @@ spec:
             {{- end }}
             securityContext:
               runAsUser: {{.ControllerUID}}
-{{ end -}}
+{{- end }}
