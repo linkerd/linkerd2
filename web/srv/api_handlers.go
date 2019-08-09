@@ -21,6 +21,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
+// reserved for the status code when formatting the message.
 const maxControlFrameMsgSize = 123
 
 type (
@@ -177,13 +179,8 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 // bytes. In the case of an unexpected HTTP status code or unexpected error,
 // truncate the message after `maxControlFrameMsgSize` bytes so that the web
 // socket message is properly written.
-func createTapErrorMessage(err error) string {
+func validateControlFrameMsg(err error) string {
 	log.Debugf("tap error: %s", err.Error())
-
-	// TODO: reconcile this cast and 403 check with the one in handleAPITap
-	if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
-		return fmt.Sprintf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
-	}
 
 	msg := err.Error()
 	if len(msg) > maxControlFrameMsgSize {
@@ -194,7 +191,7 @@ func createTapErrorMessage(err error) string {
 }
 
 func websocketError(ws *websocket.Conn, wsError int, err error) {
-	msg := createTapErrorMessage(err)
+	msg := validateControlFrameMsg(err)
 
 	err = ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),
@@ -219,7 +216,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 
 	if messageType != websocket.TextMessage {
-		websocketError(ws, websocket.CloseUnsupportedData, errors.New("MessageType not supported"))
+		websocketError(ws, websocket.CloseUnsupportedData, errors.New("messageType not supported"))
 		return
 	}
 
@@ -243,6 +240,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 			// socket with `ClosePolicyViolation` status code so that the error
 			// renders without the error prefix in the banner
 			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
+				err := fmt.Errorf("missing authorization, visit %s to remedy", tap.TapRbacURL)
 				websocketError(ws, websocket.ClosePolicyViolation, err)
 				return
 			}
