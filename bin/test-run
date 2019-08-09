@@ -11,22 +11,16 @@ function check_linkerd_binary(){
         exit 1
     fi
     exit_code=0
-    "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        printf "\\nFailed to run linkerd version command\\n"
-        exit $exit_code
-    fi
+    "$linkerd_path" version --client > /dev/null 2>&1
+    exit_on_err "error running linkerd version command"
     printf "[ok]\\n"
 }
 
 function check_if_k8s_reachable(){
     printf "Checking if there is a Kubernetes cluster available..."
     exit_code=0
-    kubectl --context=$k8s_context --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        printf "\\nFailed to connect to Kubernetes cluster\\n"
-        exit $exit_code
-    fi
+    kubectl --context=$k8s_context --request-timeout=5s get ns > /dev/null 2>&1
+    exit_on_err "error connecting to Kubernetes cluster"
     printf "[ok]\\n"
 }
 
@@ -35,18 +29,16 @@ function remove_l5d_if_exists() {
   if [ ! -z "$resources" ]; then
     printf "Removing existing l5d installation..."
     cleanup
-    # Cleanup Helm, in case it's there (if not, we ignore the error)
-    helm_cleanup &> /dev/null || true
     printf "[ok]\\n"
   fi
+  
+  # Cleanup Helm, in case it's there (if not, we ignore the error)
+  helm_cleanup &> /dev/null || true
 }
 
 function cleanup() {
-    $bindir/test-cleanup $k8s_context > /dev/null 2>&1 || exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        printf "\\nFailed to remove existing Linkerd resources\\n"
-        exit $exit_code
-    fi
+    $bindir/test-cleanup $k8s_context > /dev/null 2>&1
+    exit_on_err "error removing existing Linkerd resources"
 }
 
 function run_test(){
@@ -83,26 +75,35 @@ function run_upgrade_test() {
 }
 
 function run_helm_test() {
-    kubectl --context=$k8s_context create ns $tiller_namespace
-    kubectl --context=$k8s_context create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
-    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
-    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
+    (
+        set -e
+        kubectl --context=$k8s_context create ns $tiller_namespace
+        kubectl --context=$k8s_context create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
+        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
+        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
+    )
+    exit_on_err "error setting up Helm"
     run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
-        --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name --tiller-ns=$tiller_namespace || exit_code=$?
+        --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name --tiller-ns=$tiller_namespace
 }
 
 function helm_cleanup() {
-    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
-    $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
-    kubectl --context=$k8s_context delete clusterrolebinding tiller-cluster-admin
-    kubectl --context=$k8s_context delete ns $tiller_namespace
+    (
+        set -e
+        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
+        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
+        kubectl --context=$k8s_context delete clusterrolebinding tiller-cluster-admin
+        echo $tiller_namespace
+        kubectl --context=$k8s_context delete ns $tiller_namespace
+    )
 }
 
 function exit_on_err() {
-  if [ $exit_code -ne 0 ]; then
-    printf "\\n=== FAIL: %s\\n" "$@"
-    exit $exit_code
-  fi
+    exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        printf "\\n=== FAIL: %s\\n" "$@"
+        exit $exit_code
+    fi
 }
 
 linkerd_path=$1
@@ -135,17 +136,18 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 # 3. if failed, exit script to avoid leaving behind stale resources which will
 # fail subsequent tests. `cleanup` is not called if this test failed so that
 # there is a chance to debug the problem
-run_upgrade_test "$linkerd_namespace"-upgrade || exit_code=$?
-exit_on_err "can't upgrade to version $linkerd_version"
+#run_upgrade_test "$linkerd_namespace"-upgrade
+#exit_on_err "can't upgrade to version $linkerd_version"
 cleanup
 
-run_helm_test || exit_code=$?
-exit_on_err "failed using helm install|delete"
+run_helm_test
+exit_on_err "error testing Helm"
 cleanup
 helm_cleanup
+exit_on_err "error cleaning up Helm"
 
-run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace || exit_code=$?
-exit_on_err "failed install"
+run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace
+exit_on_err "error during install"
 
 for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
