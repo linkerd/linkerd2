@@ -121,6 +121,7 @@ helm_path=$bindir/helm
 helm_chart=$rootdir/charts/linkerd2
 helm_release_name=$linkerd_namespace-test
 $helm_path init --wait
+$helm_path dependency update charts/linkerd2
 run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
     --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name || exit_code=$?
 exit_on_err "failed using helm install|delete"
