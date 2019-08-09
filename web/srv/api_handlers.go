@@ -22,7 +22,7 @@ import (
 )
 
 // Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
-// reserverd for the status code when formatting the message.
+// reserved for the status code when formatting the message.
 const maxControlFrameMsgSize = 123
 
 type (
