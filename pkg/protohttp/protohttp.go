@@ -40,7 +40,7 @@ type FlushableResponseWriter interface {
 
 // Error satisfies the error interface for HTTPError.
 func (e HTTPError) Error() string {
-	return fmt.Sprintf("HTTP error, status Code [%d], wrapped error is: %v", e.Code, e.WrappedError)
+	return fmt.Sprintf("HTTP error, status Code [%d] (%v)", e.Code, e.WrappedError)
 }
 
 // HTTPRequestToProto converts an HTTP Request to a protobuf request.
