@@ -240,8 +240,8 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 			// socket with `ClosePolicyViolation` status code so that the error
 			// renders without the error prefix in the banner
 			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
-				msg := fmt.Sprintf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
-				websocketError(ws, websocket.ClosePolicyViolation, errors.New(msg))
+				err := fmt.Errorf("Missing authorization, visit %s to remedy", tap.TapRbacURL)
+				websocketError(ws, websocket.ClosePolicyViolation, err)
 				return
 			}
 
