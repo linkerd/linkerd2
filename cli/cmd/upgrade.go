@@ -14,7 +14,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -262,22 +261,20 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.Identity = identity
 
-	// if exist, re-use the proxy injector and profile validator TLS secrets,
-	// otherwise, generate new ones.
-	proxyInjectorTLS, err := fetchWebhookTLS(k, k8s.ProxyInjectorWebhookServiceName, options)
+	// if exist, re-use the proxy injector and profile validator TLS secrets
+	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
 	}
 	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
 
-	profileValidatorTLS, err := fetchWebhookTLS(k, k8s.SPValidatorWebhookServiceName, options)
+	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
-	// TODO: rename to fetchTLS or something
-	tapTLS, err := fetchWebhookTLS(k, k8s.TapServiceName, options)
+	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
 	}
@@ -312,17 +309,14 @@ func repairInstall(generateUUID func() string, install *pb.Install) {
 	// Install flags are updated separately.
 }
 
-func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-
+func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	var value *charts.TLS
 
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
 	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return nil, err
-		}
+		return nil, err
 	} else {
 		value = &charts.TLS{
 			KeyPEM: string(secret.Data["key.pem"]),

@@ -55,8 +55,8 @@ metadata:
 type: Opaque
 data:
   {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Namespace) 365 -}}
-  crt.pem: {{ b64enc $ca.Cert }}
-  key.pem: {{ b64enc $ca.Key }}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc .ProfileValidator.CrtPEM) (empty .ProfileValidator.CrtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Cert) (b64enc .ProfileValidator.KeyPEM) (empty .ProfileValidator.KeyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -72,7 +72,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: {{ .Namespace }}
       path: "/"
-    caBundle: {{ b64enc $ca.Cert }}
+    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc .ProfileValidator.CrtPEM) (empty .ProfileValidator.CrtPEM) }}
   failurePolicy: {{.WebhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -81,5 +81,5 @@ webhooks:
     resources: ["serviceprofiles"]
   {{- if not .OmitWebhookSideEffects }}
   sideEffects: None
-  {{- end -}}
+  {{- end }}
 {{end -}}
