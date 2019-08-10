@@ -378,10 +378,6 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 
-	if err := options.handleHA(); err != nil {
-		return nil, nil, err
-	}
-
 	options.recordFlags(flags)
 
 	identityValues, err := options.identityOptions.validateAndBuild()
@@ -551,50 +547,109 @@ func (options *installOptions) validate() error {
 	return nil
 }
 
-func (options *installOptions) handleHA() error {
-	if options.highAvailability {
-		chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
-		haDefaults, err := charts.ReadDefaults(chartDir, true)
-		if err != nil {
-			return err
-		}
-
-		// should have at least more than 1 replicas
-		if options.controllerReplicas == 1 {
-			options.controllerReplicas = haDefaults.ControllerReplicas
-		}
-
-		if options.proxyCPURequest == "" {
-			options.proxyCPURequest = haDefaults.ProxyCPURequest
-		}
-
-		if options.proxyMemoryRequest == "" {
-			options.proxyMemoryRequest = haDefaults.ProxyMemoryRequest
-		}
-
-		if options.proxyCPULimit == "" {
-			options.proxyCPULimit = haDefaults.ProxyCPULimit
-		}
-
-		if options.proxyMemoryLimit == "" {
-			options.proxyMemoryLimit = haDefaults.ProxyMemoryLimit
-		}
-	}
-
-	options.identityOptions.replicas = options.controllerReplicas
-	return nil
-}
-
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
-	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
+	// install values that can't be overridden by CLI options will be assigned
+	// defaults from the values.yaml and values-ha.yaml files
+	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	defaults, err := charts.ReadDefaults(chartDir, options.highAvailability)
 	if err != nil {
 		return nil, err
 	}
 
-	// any install values that can't be overridden via CLI options will pick up
-	// their defaults from values.yaml
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
-	defaults, err := charts.ReadDefaults(chartDir, false)
+	controllerResources := &charts.Resources{}
+	identityResources := &charts.Resources{}
+	grafanaResources := &charts.Resources{}
+	prometheusResources := &charts.Resources{}
+
+	// if HA mode, use HA defaults from values-ha.yaml
+	if options.highAvailability {
+		// should have at least more than 1 replicas
+		if options.controllerReplicas == 1 {
+			options.controllerReplicas = defaults.ControllerReplicas
+		}
+
+		if options.proxyCPURequest == "" {
+			options.proxyCPURequest = defaults.ProxyCPURequest
+		}
+
+		if options.proxyMemoryRequest == "" {
+			options.proxyMemoryRequest = defaults.ProxyMemoryRequest
+		}
+
+		if options.proxyCPULimit == "" {
+			options.proxyCPULimit = defaults.ProxyCPULimit
+		}
+
+		if options.proxyMemoryLimit == "" {
+			options.proxyMemoryLimit = defaults.ProxyMemoryLimit
+		}
+
+		if configs.Proxy.Resource.RequestCpu == "" {
+			configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+		}
+
+		// `configs` was built before the HA option is evaluated, so we need
+		// to make sure the HA proxy resources are added here.
+		if configs.Proxy.Resource.RequestMemory == "" {
+			configs.Proxy.Resource.RequestMemory = options.proxyMemoryRequest
+		}
+
+		if configs.Proxy.Resource.LimitCpu == "" {
+			configs.Proxy.Resource.LimitCpu = options.proxyCPULimit
+		}
+
+		if configs.Proxy.Resource.LimitMemory == "" {
+			configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
+		}
+
+		options.identityOptions.replicas = options.controllerReplicas
+
+		controllerResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Request: defaults.ControllerCPURequest,
+				Limit:   defaults.ControllerCPULimit,
+			},
+			Memory: charts.Constraints{
+				Request: defaults.ControllerMemoryRequest,
+				Limit:   defaults.ControllerMemoryLimit,
+			},
+		}
+
+		grafanaResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   defaults.GrafanaCPULimit,
+				Request: defaults.GrafanaCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.GrafanaMemoryLimit,
+				Request: defaults.GrafanaMemoryRequest,
+			},
+		}
+
+		identityResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   defaults.IdentityCPULimit,
+				Request: defaults.IdentityCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.IdentityMemoryLimit,
+				Request: defaults.IdentityMemoryRequest,
+			},
+		}
+
+		prometheusResources = &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   defaults.PrometheusCPULimit,
+				Request: defaults.PrometheusCPURequest,
+			},
+			Memory: charts.Constraints{
+				Limit:   defaults.PrometheusMemoryLimit,
+				Request: defaults.PrometheusMemoryRequest,
+			},
+		}
+	}
+
+	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
 	if err != nil {
 		return nil, err
 	}
@@ -641,16 +696,20 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 			Install: installJSON,
 		},
 
-		DestinationResources:   &charts.Resources{},
-		GrafanaResources:       &charts.Resources{},
-		HeartbeatResources:     &charts.Resources{},
-		IdentityResources:      &charts.Resources{},
-		PrometheusResources:    &charts.Resources{},
-		ProxyInjectorResources: &charts.Resources{},
-		PublicAPIResources:     &charts.Resources{},
-		SPValidatorResources:   &charts.Resources{},
-		TapResources:           &charts.Resources{},
-		WebResources:           &charts.Resources{},
+		DestinationResources:   controllerResources,
+		GrafanaResources:       grafanaResources,
+		HeartbeatResources:     controllerResources,
+		IdentityResources:      identityResources,
+		PrometheusResources:    prometheusResources,
+		ProxyInjectorResources: controllerResources,
+		PublicAPIResources:     controllerResources,
+		SPValidatorResources:   controllerResources,
+		TapResources:           controllerResources,
+		WebResources:           controllerResources,
+
+		ProxyInjector:    &proxyInjectorValues{&charts.TLS{}},
+		ProfileValidator: &profileValidatorValues{&charts.TLS{}},
+		Tap:              &tapValues{&charts.TLS{}},
 
 		Proxy: &proxyValues{
 			Component:              "deployment", // only Deployment workloads are injected
@@ -709,61 +768,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		values.ProxyInit.IgnoreOutboundPorts += strconv.FormatUint(uint64(port), 10) + ","
 	}
 	values.ProxyInit.IgnoreOutboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreOutboundPorts, ",")
-
-	if options.highAvailability {
-		controllerConstraints := &charts.Resources{
-			CPU: charts.Constraints{
-				Request: defaults.ControllerCPURequest,
-				Limit:   defaults.ControllerCPULimit,
-			},
-			Memory: charts.Constraints{
-				Request: defaults.ControllerMemoryRequest,
-				Limit:   defaults.ControllerMemoryLimit,
-			},
-		}
-
-		// Copy constraints to each so that further modification isn't global.
-		*values.DestinationResources = *controllerConstraints
-		*values.HeartbeatResources = *controllerConstraints
-		*values.ProxyInjectorResources = *controllerConstraints
-		*values.PublicAPIResources = *controllerConstraints
-		*values.SPValidatorResources = *controllerConstraints
-		*values.TapResources = *controllerConstraints
-		*values.WebResources = *controllerConstraints
-
-		values.IdentityResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.IdentityCPULimit,
-				Request: defaults.IdentityCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.IdentityMemoryLimit,
-				Request: defaults.IdentityMemoryRequest,
-			},
-		}
-
-		values.GrafanaResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.GrafanaCPULimit,
-				Request: defaults.GrafanaCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.GrafanaMemoryLimit,
-				Request: defaults.GrafanaMemoryRequest,
-			},
-		}
-
-		values.PrometheusResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.PrometheusCPULimit,
-				Request: defaults.PrometheusCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.PrometheusMemoryLimit,
-				Request: defaults.PrometheusMemoryRequest,
-			},
-		}
-	}
 
 	return values, nil
 }

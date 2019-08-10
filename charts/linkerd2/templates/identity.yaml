@@ -99,8 +99,8 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        {{- if .Identity.Resources -}}
-        {{- include "partials.resources" .Identity.Resources | nindent 8 }}
+        {{- if .IdentityResources -}}
+        {{- include "partials.resources" .IdentityResources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
@@ -110,8 +110,10 @@ spec:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .NoInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       serviceAccountName: linkerd-identity
       volumes:
       - configMap:
@@ -120,6 +122,6 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}
 {{end -}}

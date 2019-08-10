@@ -95,8 +95,10 @@ spec:
           name: tls
           readOnly: true
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .NoInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       serviceAccountName: linkerd-tap
       volumes:
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

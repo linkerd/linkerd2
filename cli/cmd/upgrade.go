@@ -216,11 +216,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	// from the control-plane, and not from the defaults specified in the FlagSet.
 	setFlagsFromInstall(flags, configs.GetInstall().GetFlags())
 
-	// After retrieving options set during Install, so we can properly determine if HA is set
-	if err := options.handleHA(); err != nil {
-		return nil, nil, err
-	}
-
 	// Save off the updated set of flags into the installOptions so it gets
 	// persisted with the upgraded config.
 	options.recordFlags(flags)

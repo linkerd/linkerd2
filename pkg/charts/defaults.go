@@ -230,12 +230,12 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 		defaultValues.GrafanaMemoryLimit = grafanaResourcesMemory["Limit"].(string)
 		defaultValues.GrafanaMemoryRequest = grafanaResourcesMemory["Request"].(string)
 
-		identityResourcesCPU, err := defaults.Table("Identity.Resources.CPU")
+		identityResourcesCPU, err := defaults.Table("IdentityResources.CPU")
 		if err != nil {
 			return nil, err
 		}
 
-		identityResourcesMemory, err := defaults.Table("Identity.Resources.Memory")
+		identityResourcesMemory, err := defaults.Table("IdentityResources.Memory")
 		if err != nil {
 			return nil, err
 		}

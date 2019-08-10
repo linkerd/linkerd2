@@ -55,12 +55,11 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
@@ -68,14 +67,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: identity
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-identity
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
@@ -103,7 +105,7 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -188,7 +190,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -214,11 +216,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -241,7 +243,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Controller
@@ -285,12 +286,11 @@ spec:
     port: 8086
     targetPort: 8086
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
@@ -298,14 +298,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: controller
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-controller
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
@@ -336,7 +339,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -366,7 +369,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -449,7 +452,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -475,11 +478,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -499,7 +502,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Heartbeat
@@ -568,12 +570,11 @@ spec:
     port: 9994
     targetPort: 9994
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
@@ -581,14 +582,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: web
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-web
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
@@ -618,7 +622,7 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -701,7 +705,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -727,11 +731,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -751,7 +755,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Prometheus
@@ -885,12 +888,11 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
@@ -898,14 +900,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: prometheus
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-prometheus
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
@@ -935,7 +940,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -1023,7 +1028,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1049,11 +1054,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1075,7 +1080,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Grafana
@@ -1160,12 +1164,11 @@ spec:
     port: 3000
     targetPort: 3000
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
@@ -1173,14 +1176,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: grafana
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
@@ -1205,7 +1211,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -1291,7 +1297,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1317,11 +1323,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1350,7 +1356,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Proxy Injector
@@ -1361,7 +1366,6 @@ kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
@@ -1372,14 +1376,14 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
-  strategy: {}
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-proxy-injector
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
@@ -1407,7 +1411,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1493,7 +1497,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1519,11 +1523,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1546,7 +1550,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 kind: Service
 apiVersion: v1
@@ -1590,12 +1593,11 @@ spec:
     port: 443
     targetPort: sp-validator
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
@@ -1606,14 +1608,14 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
-  strategy: {}
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-sp-validator
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
@@ -1641,7 +1643,7 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1725,7 +1727,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1751,11 +1753,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1775,7 +1777,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 ###
 ### Tap
@@ -1803,12 +1804,11 @@ spec:
     port: 443
     targetPort: apiserver
 ---
-apiVersion: extensions/v1beta1
 kind: Deployment
+apiVersion: apps/v1
 metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-  creationTimestamp: null
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
@@ -1816,14 +1816,17 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy: {}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: tap
+      linkerd.io/control-plane-ns: linkerd
+      linkerd.io/proxy-deployment: linkerd-tap
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
-      creationTimestamp: null
       labels:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
@@ -1854,7 +1857,7 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources: {}
+        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1938,7 +1941,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
+        resources:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1964,11 +1967,11 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: 100m
-            memory: 50Mi
+            cpu: "100m"
+            memory: "50Mi"
           requests:
-            cpu: 10m
-            memory: 10Mi
+            cpu: "10m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1982,11 +1985,10 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
-      - name: tls
-        secret:
-          secretName: linkerd-tap-tls
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
+      - name: tls
+        secret:
+          secretName: linkerd-tap-tls
 ---
