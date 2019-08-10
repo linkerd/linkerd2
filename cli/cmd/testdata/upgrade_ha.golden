@@ -153,7 +153,7 @@ metadata:
 ###
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-web-admin
   labels:
@@ -482,7 +482,7 @@ rules:
   verbs: ["list" , "get", "watch"]
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-tap-admin
   labels:
