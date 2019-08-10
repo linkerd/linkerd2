@@ -831,8 +831,8 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 	}
 
 	chart := &charts.Chart{
-		Name:      "linkerd2",
-		Dir:       "linkerd2",
+		Name:      helmDefaultChartName,
+		Dir:       helmDefaultChartDir,
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,

@@ -242,7 +242,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
 	} else {
-		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
+		identity, err = fetchIdentityValues(k, idctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -312,11 +312,11 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
-	} else {
-		value = &charts.TLS{
-			KeyPEM: string(secret.Data["key.pem"]),
-			CrtPEM: string(secret.Data["crt.pem"]),
-		}
+	}
+
+	value = &charts.TLS{
+		KeyPEM: string(secret.Data["key.pem"]),
+		CrtPEM: string(secret.Data["crt.pem"]),
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {
@@ -331,7 +331,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, replicas uint, idctx *pb.IdentityContext) (*installIdentityValues, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*installIdentityValues, error) {
 	if idctx == nil {
 		return nil, nil
 	}
