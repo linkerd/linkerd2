@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -86,6 +88,67 @@ func TestInjectParams(t *testing.T) {
 	err = validateInject(out, "injected_params.golden")
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
+	}
+}
+
+func TestNamespaceOverrideAnnotations(t *testing.T) {
+	// Check for Namespace level override of proxy Configurations
+	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
+	if err != nil {
+		t.Fatalf("failed to read inject test file: %s", err)
+	}
+
+	injectNS := "inject-test"
+	deployName := "inject-test-namespace-override"
+	nsAnnotations := map[string]string{}
+	nsAnnotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
+
+	// Namespace level proxy configuration override
+	nsInitImage := "test_init_image"
+	nsProxyImage := "test_proxy_image"
+	nsAnnotations[k8s.ProxyInitImageAnnotation] = nsInitImage
+	nsAnnotations[k8s.ProxyImageAnnotation] = nsProxyImage
+
+	ns := TestHelper.GetTestNamespace(injectNS)
+	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", ns, err)
+	}
+
+	// patch injectYAML with unique name and pod annotations
+	podAnnotations := map[string]string{}
+
+	// Pod Level proxy configuration override
+	podInitImage := "proxy_test_init_image"
+	podAnnotations[k8s.ProxyInitImageAnnotation] = podInitImage
+
+	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
+	if err != nil {
+		t.Fatalf("failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
+	}
+
+	o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
+	if err != nil {
+		t.Fatalf("failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
+	}
+
+	pods, err := TestHelper.GetPodsForDeployment(ns, deployName)
+	if err != nil {
+		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
+	}
+
+	containers := pods[0].Spec.Containers
+	initContainers := pods[0].Spec.InitContainers
+	proxyContainer := getProxyContainer(containers)
+
+	// Match the pod configuration with the namespace level overrides
+	if strings.Split(proxyContainer.Image, ":")[0] != nsProxyImage {
+		t.Fatalf("proxy image name falied to match with namespace level override")
+	}
+
+	// Match with proxy level override
+	if strings.Split(initContainers[0].Image, ":")[0] != podInitImage {
+		t.Fatalf("init container image name falied to match with pod level override")
 	}
 }
 
@@ -283,6 +346,18 @@ func validateInject(actual, fixtureFile string) error {
 	if actualPatched != fixturePatched {
 		return fmt.Errorf(
 			"Expected:\n%s\nActual:\n%s", fixturePatched, actualPatched)
+	}
+
+	return nil
+}
+
+// Get Proxy Container from Containers
+func getProxyContainer(containers []v1.Container) *v1.Container {
+	for _, c := range containers {
+		container := c
+		if container.Name == k8s.ProxyContainerName {
+			return &container
+		}
 	}
 
 	return nil
