@@ -85,11 +85,32 @@ ProxyInit:
     Version: v1.0.0
   Resources:
     CPU:
-      Limit: 100m
+      )Limit: 100m
       Request: 10m
     Memory:
       Limit: 50Mi
       Request: 10Mi
+
+# proxy injector configuration
+ProxyInjector:
+  # if empty, Helm will auto-generate these fields
+  CrtPEM: |
+
+  KeyPEM: |
+
+# service profile validator configuration
+ProfileValidator:
+  # if empty, Helm will auto-generate these fields
+  CrtPEM: |
+
+  KeyPEM: |
+
+# tap configuration
+Tap:
+  # if empty, Helm will auto-generate these fields
+  CrtPEM: |
+
+  KeyPEM: |
 
 # web configuration
 WebImage: gcr.io/linkerd-io/web
