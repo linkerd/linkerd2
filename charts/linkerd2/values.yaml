@@ -85,7 +85,7 @@ ProxyInit:
     Version: v1.0.0
   Resources:
     CPU:
-      )Limit: 100m
+      Limit: 100m
       Request: 10m
     Memory:
       Limit: 50Mi

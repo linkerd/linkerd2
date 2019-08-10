@@ -4,11 +4,6 @@ WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts
 
-# TODO: remove this section after `linkerd install` starts using the new Helm charts
-RUN rm charts/chart
-RUN mkdir charts/chart
-COPY chart charts/chart
-
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
 COPY controller/gen controller/gen
