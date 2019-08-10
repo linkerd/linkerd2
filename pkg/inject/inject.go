@@ -465,6 +465,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		values.Proxy.SAMountPath = &charts.SAMountPath{
 			Name:      saVolumeMount.Name,
 			MountPath: saVolumeMount.MountPath,
+			ReadOnly:  saVolumeMount.ReadOnly,
 		}
 	}
 

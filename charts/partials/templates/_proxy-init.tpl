@@ -42,5 +42,6 @@ terminationMessagePolicy: FallbackToLogsOnError
 volumeMounts:
 - mountPath: {{.ProxyInit.SAMountPath.MountPath}}
   name: {{.ProxyInit.SAMountPath.Name}}
+  readOnly: {{.Proxy.SAMountPath.ReadOnly}}
 {{- end -}}
 {{- end -}}

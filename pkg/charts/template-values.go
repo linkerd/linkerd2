@@ -76,6 +76,7 @@ type (
 	SAMountPath struct {
 		Name      string
 		MountPath string
+		ReadOnly  bool
 	}
 
 	// Resources represents the computational resources setup for a given container

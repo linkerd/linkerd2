@@ -103,6 +103,7 @@ volumeMounts:
 {{- if .Proxy.SAMountPath }}
 - mountPath: {{.Proxy.SAMountPath.MountPath}}
   name: {{.Proxy.SAMountPath.Name}}
+  readOnly: {{.Proxy.SAMountPath.ReadOnly}}
 {{- end -}}
 {{- end -}}
 {{- end }}
