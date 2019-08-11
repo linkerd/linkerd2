@@ -56,7 +56,7 @@ type: Opaque
 data:
   {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Namespace) 365 -}}
   crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc .ProfileValidator.CrtPEM) (empty .ProfileValidator.CrtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Cert) (b64enc .ProfileValidator.KeyPEM) (empty .ProfileValidator.KeyPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc .ProfileValidator.KeyPEM) (empty .ProfileValidator.KeyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
