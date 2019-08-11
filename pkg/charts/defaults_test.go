@@ -69,7 +69,7 @@ func TestReadDefaults(t *testing.T) {
 		expected.ControllerMemoryRequest = "50Mi"
 		expected.ControllerReplicas = 3
 		expected.GrafanaCPULimit = expected.ControllerCPULimit
-		expected.GrafanaCPURequest = expected.ControllerMemoryLimit
+		expected.GrafanaCPURequest = expected.ControllerCPURequest
 		expected.GrafanaMemoryLimit = "1024Mi"
 		expected.GrafanaMemoryRequest = "50Mi"
 		expected.IdentityCPULimit = expected.ControllerCPULimit

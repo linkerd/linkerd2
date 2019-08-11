@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -256,22 +257,32 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.Identity = identity
 
-	// if exist, re-use the proxy injector and profile validator TLS secrets
+	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
+	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
 	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
+		}
+		proxyInjectorTLS = &charts.TLS{}
 	}
 	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
 
 	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
+		}
+		profileValidatorTLS = &charts.TLS{}
 	}
 	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
 
 	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
+		}
+		tapTLS = &charts.TLS{}
 	}
 	values.Tap = &tapValues{tapTLS}
 
