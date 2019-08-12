@@ -316,8 +316,6 @@ func repairInstall(generateUUID func() string, install *pb.Install) {
 }
 
 func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-	var value *charts.TLS
-
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -325,7 +323,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 		return nil, err
 	}
 
-	value = &charts.TLS{
+	value := &charts.TLS{
 		KeyPEM: string(secret.Data["key.pem"]),
 		CrtPEM: string(secret.Data["crt.pem"]),
 	}

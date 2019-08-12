@@ -192,11 +192,6 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 			return nil, err
 		}
 
-		defaultValues.ControllerCPULimit = controllerResourcesCPU["Limit"].(string)
-		defaultValues.ControllerCPURequest = controllerResourcesCPU["Request"].(string)
-		defaultValues.ControllerMemoryLimit = controllerResourcesMemory["Limit"].(string)
-		defaultValues.ControllerMemoryRequest = controllerResourcesMemory["Request"].(string)
-
 		grafanaResourcesCPU, err := defaults.Table("GrafanaResources.CPU")
 		if err != nil {
 			return nil, err
@@ -206,11 +201,6 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		defaultValues.GrafanaCPULimit = grafanaResourcesCPU["Limit"].(string)
-		defaultValues.GrafanaCPURequest = grafanaResourcesCPU["Request"].(string)
-		defaultValues.GrafanaMemoryLimit = grafanaResourcesMemory["Limit"].(string)
-		defaultValues.GrafanaMemoryRequest = grafanaResourcesMemory["Request"].(string)
 
 		identityResourcesCPU, err := defaults.Table("IdentityResources.CPU")
 		if err != nil {
@@ -222,11 +212,6 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 			return nil, err
 		}
 
-		defaultValues.IdentityCPULimit = identityResourcesCPU["Limit"].(string)
-		defaultValues.IdentityCPURequest = identityResourcesCPU["Request"].(string)
-		defaultValues.IdentityMemoryLimit = identityResourcesMemory["Limit"].(string)
-		defaultValues.IdentityMemoryRequest = identityResourcesMemory["Request"].(string)
-
 		prometheusResourcesCPU, err := defaults.Table("PrometheusResources.CPU")
 		if err != nil {
 			return nil, err
@@ -237,6 +222,18 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 			return nil, err
 		}
 
+		defaultValues.ControllerCPULimit = controllerResourcesCPU["Limit"].(string)
+		defaultValues.ControllerCPURequest = controllerResourcesCPU["Request"].(string)
+		defaultValues.ControllerMemoryLimit = controllerResourcesMemory["Limit"].(string)
+		defaultValues.ControllerMemoryRequest = controllerResourcesMemory["Request"].(string)
+		defaultValues.GrafanaCPULimit = grafanaResourcesCPU["Limit"].(string)
+		defaultValues.GrafanaCPURequest = grafanaResourcesCPU["Request"].(string)
+		defaultValues.GrafanaMemoryLimit = grafanaResourcesMemory["Limit"].(string)
+		defaultValues.GrafanaMemoryRequest = grafanaResourcesMemory["Request"].(string)
+		defaultValues.IdentityCPULimit = identityResourcesCPU["Limit"].(string)
+		defaultValues.IdentityCPURequest = identityResourcesCPU["Request"].(string)
+		defaultValues.IdentityMemoryLimit = identityResourcesMemory["Limit"].(string)
+		defaultValues.IdentityMemoryRequest = identityResourcesMemory["Request"].(string)
 		defaultValues.PrometheusCPULimit = prometheusResourcesCPU["Limit"].(string)
 		defaultValues.PrometheusCPURequest = prometheusResourcesCPU["Request"].(string)
 		defaultValues.PrometheusMemoryLimit = prometheusResourcesMemory["Limit"].(string)

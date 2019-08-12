@@ -712,7 +712,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		Tap:              &tapValues{&charts.TLS{}},
 
 		Proxy: &proxyValues{
-			Component:              "deployment", // only Deployment workloads are injected
+			Component:              k8s.Deployment, // only Deployment workloads are injected
 			EnableExternalProfiles: options.enableExternalProfiles,
 			Image: &charts.Image{
 				Name:       registryOverride(options.proxyImage, options.dockerRegistry),
@@ -759,15 +759,17 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		},
 	}
 
+	inboundPortStrs := []string{}
 	for _, port := range options.ignoreInboundPorts {
-		values.ProxyInit.IgnoreInboundPorts += strconv.FormatUint(uint64(port), 10) + ","
+		inboundPortStrs = append(inboundPortStrs, strconv.FormatUint(uint64(port), 10))
 	}
-	values.ProxyInit.IgnoreInboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreInboundPorts, ",")
+	values.ProxyInit.IgnoreInboundPorts = strings.Join(inboundPortStrs, ",")
 
+	outboundPortStrs := []string{}
 	for _, port := range options.ignoreOutboundPorts {
-		values.ProxyInit.IgnoreOutboundPorts += strconv.FormatUint(uint64(port), 10) + ","
+		outboundPortStrs = append(outboundPortStrs, strconv.FormatUint(uint64(port), 10))
 	}
-	values.ProxyInit.IgnoreOutboundPorts = strings.TrimSuffix(values.ProxyInit.IgnoreOutboundPorts, ",")
+	values.ProxyInit.IgnoreOutboundPorts = strings.Join(outboundPortStrs, ",")
 
 	return values, nil
 }
