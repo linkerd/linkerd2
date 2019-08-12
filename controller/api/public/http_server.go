@@ -9,7 +9,6 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -21,17 +20,16 @@ import (
 )
 
 var (
-	statSummaryPath   = fullURLPathFor("StatSummary")
-	topRoutesPath     = fullURLPathFor("TopRoutes")
-	versionPath       = fullURLPathFor("Version")
-	listPodsPath      = fullURLPathFor("ListPods")
-	listServicesPath  = fullURLPathFor("ListServices")
-	tapByResourcePath = fullURLPathFor("TapByResource")
-	selfCheckPath     = fullURLPathFor("SelfCheck")
-	endpointsPath     = fullURLPathFor("Endpoints")
-	edgesPath         = fullURLPathFor("Edges")
-	destGetPath       = fullURLPathFor("DestinationGet")
-	configPath        = fullURLPathFor("Config")
+	statSummaryPath  = fullURLPathFor("StatSummary")
+	topRoutesPath    = fullURLPathFor("TopRoutes")
+	versionPath      = fullURLPathFor("Version")
+	listPodsPath     = fullURLPathFor("ListPods")
+	listServicesPath = fullURLPathFor("ListServices")
+	selfCheckPath    = fullURLPathFor("SelfCheck")
+	endpointsPath    = fullURLPathFor("Endpoints")
+	edgesPath        = fullURLPathFor("Edges")
+	destGetPath      = fullURLPathFor("DestinationGet")
+	configPath       = fullURLPathFor("Config")
 )
 
 type handler struct {
@@ -60,8 +58,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleListPods(w, req)
 	case listServicesPath:
 		h.handleListServices(w, req)
-	case tapByResourcePath:
-		h.handleTapByResource(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
 	case endpointsPath:
@@ -226,28 +222,6 @@ func (h *handler) handleListServices(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) handleTapByResource(w http.ResponseWriter, req *http.Request) {
-	flushableWriter, err := protohttp.NewStreamingWriter(w)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	var protoRequest pb.TapByResourceRequest
-	err = protohttp.HTTPRequestToProto(req, &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	server := tapServer{streamServer{w: flushableWriter, req: req}}
-	err = h.grpcServer.TapByResource(&protoRequest, server)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-}
-
 func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
 	flushableWriter, err := protohttp.NewStreamingWriter(w)
 	if err != nil {
@@ -315,14 +289,6 @@ func (s streamServer) Send(msg proto.Message) error {
 	return nil
 }
 
-type tapServer struct {
-	streamServer
-}
-
-func (s tapServer) Send(msg *pb.TapEvent) error {
-	return s.streamServer.Send(msg)
-}
-
 type destinationServer struct {
 	streamServer
 }
@@ -352,7 +318,6 @@ func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
-	tapClient tapPb.TapClient,
 	discoveryClient discoveryPb.DiscoveryClient,
 	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
@@ -362,7 +327,6 @@ func NewServer(
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
-			tapClient,
 			discoveryClient,
 			destinationClient,
 			k8sAPI,

@@ -451,8 +451,8 @@ service Api {
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
 
-  // Executes tapping over Kubernetes resources.
-  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) {}
+  // Superceded by tap APIServer.
+  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
 
   rpc Version(Empty) returns (VersionInfo) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}
