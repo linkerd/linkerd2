@@ -490,16 +490,16 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			values = append(values, stats[key].status)
 		}
 
-		if resourceType != k8s.TrafficSplit {
-			values = append(values, []interface{}{
-				stats[key].meshed,
-			}...)
-		} else {
+		if resourceType == k8s.TrafficSplit {
 			values = append(values,
 				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
 				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
 				stats[key].tsStats.weight,
 			)
+		} else {
+			values = append(values, []interface{}{
+				stats[key].meshed,
+			}...)
 		}
 
 		if stats[key].rowStats != nil {
@@ -538,22 +538,22 @@ func namespaceName(resourceType string, key string) (string, string) {
 
 // Using pointers where the value is NA and the corresponding json is null
 type jsonStats struct {
-	Namespace      string       `json:"namespace"`
-	Kind           string       `json:"kind"`
-	Name           string       `json:"name"`
-	Meshed         string       `json:"meshed"`
-	Success        *float64     `json:"success"`
-	Rps            *float64     `json:"rps"`
-	LatencyMSp50   *uint64      `json:"latency_ms_p50"`
-	LatencyMSp95   *uint64      `json:"latency_ms_p95"`
-	LatencyMSp99   *uint64      `json:"latency_ms_p99"`
-	TCPConnections *uint64      `json:"tcp_open_connections"`
-	TCPReadBytes   *float64     `json:"tcp_read_bytes_rate"`
-	TCPWriteBytes  *float64     `json:"tcp_write_bytes_rate"`
-	TsStats        *jsonTsStats `json:"ts_stats"`
+	Namespace      string   `json:"namespace"`
+	Kind           string   `json:"kind"`
+	Name           string   `json:"name"`
+	Meshed         string   `json:"meshed"`
+	Success        *float64 `json:"success"`
+	Rps            *float64 `json:"rps"`
+	LatencyMSp50   *uint64  `json:"latency_ms_p50"`
+	LatencyMSp95   *uint64  `json:"latency_ms_p95"`
+	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
+	TCPConnections *uint64  `json:"tcp_open_connections"`
+	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
+	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
+	TrafficSplit   *jsonTs  `json:"traffic_split"`
 }
 
-type jsonTsStats struct {
+type jsonTs struct {
 	Apex     string `json:"apex"`
 	LeafName string `json:"leaf_name"`
 	Weight   string `json:"weight"`
@@ -587,7 +587,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					}
 				}
 				if stats[key].tsStats != nil {
-					entry.TsStats = &jsonTsStats{
+					entry.TrafficSplit = &jsonTs{
 						Apex:     stats[key].apex,
 						LeafName: stats[key].leaf,
 						Weight:   stats[key].weight}
