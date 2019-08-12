@@ -1,7 +1,6 @@
 package charts
 
 import (
-	"fmt"
 	"time"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -79,32 +78,15 @@ func ReadDefaults(chartDir string, ha bool) (*DefaultValues, error) {
 		return nil, err
 	}
 
-	// if ha, merge values.yaml and values-ha.yaml
-	if ha {
-		values := chartutil.Values{}
-		for _, valuesFile := range valuesFiles {
-			v, err := chartutil.ReadValues(valuesFile.Data)
-			if err != nil {
-				return nil, err
-			}
-			values.MergeInto(v)
-		}
-
-		return setDefaults(values, ha)
-	}
-
-	// for non-HA, only interested in values.yaml
+	values := chartutil.Values{}
 	for _, valuesFile := range valuesFiles {
-		if valuesFile.Name == helmDefaultValuesFile {
-			values, err := chartutil.ReadValues(valuesFile.Data)
-			if err != nil {
-				return nil, err
-			}
-			return setDefaults(values, ha)
+		v, err := chartutil.ReadValues(valuesFile.Data)
+		if err != nil {
+			return nil, err
 		}
+		values.MergeInto(v)
 	}
-
-	return nil, fmt.Errorf("Can't find default Helm values file at %s", chartDir)
+	return setDefaults(values, ha)
 }
 
 func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
