@@ -80,7 +80,7 @@ function run_helm_test() {
         kubectl --context=$k8s_context create ns $tiller_namespace
         kubectl --context=$k8s_context create clusterrolebinding ${tiller_namespace}:tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
-        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $rootdir/charts/linkerd2
+        $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $helm_chart
     )
     exit_on_err "error setting up Helm"
     run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
@@ -136,8 +136,8 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 # 3. if failed, exit script to avoid leaving behind stale resources which will
 # fail subsequent tests. `cleanup` is not called if this test failed so that
 # there is a chance to debug the problem
-#run_upgrade_test "$linkerd_namespace"-upgrade
-#exit_on_err "can't upgrade to version $linkerd_version"
+run_upgrade_test "$linkerd_namespace"-upgrade
+exit_on_err "can't upgrade to version $linkerd_version"
 cleanup
 
 run_helm_test
