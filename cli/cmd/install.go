@@ -77,21 +77,16 @@ type (
 		WebResources *charts.Resources
 
 		Identity         *installIdentityValues
-		ProxyInjector    *proxyInjectorValues
-		ProfileValidator *profileValidatorValues
-		Tap              *tapValues
-		Proxy            *proxyValues
-		ProxyInit        *proxyInitValues
+		ProxyInjector    *charts.ProxyInjector
+		ProfileValidator *charts.ProfileValidator
+		Tap              *charts.Tap
+		Proxy            *charts.Proxy
+		ProxyInit        *charts.ProxyInit
 	}
 
 	configJSONs struct{ Global, Proxy, Install string }
 
-	installIdentityValues  charts.Identity
-	proxyInjectorValues    charts.ProxyInjector
-	profileValidatorValues charts.ProfileValidator
-	tapValues              charts.Tap
-	proxyValues            charts.Proxy
-	proxyInitValues        charts.ProxyInit
+	installIdentityValues charts.Identity
 
 	// installOptions holds values for command line flags that apply to the install
 	// command. All fields in this struct should have corresponding flags added in
@@ -707,11 +702,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		TapResources:           controllerResources,
 		WebResources:           controllerResources,
 
-		ProxyInjector:    &proxyInjectorValues{&charts.TLS{}},
-		ProfileValidator: &profileValidatorValues{&charts.TLS{}},
-		Tap:              &tapValues{&charts.TLS{}},
+		ProxyInjector:    &charts.ProxyInjector{TLS: &charts.TLS{}},
+		ProfileValidator: &charts.ProfileValidator{TLS: &charts.TLS{}},
+		Tap:              &charts.Tap{TLS: &charts.TLS{}},
 
-		Proxy: &proxyValues{
+		Proxy: &charts.Proxy{
 			Component:              k8s.Deployment, // only Deployment workloads are injected
 			EnableExternalProfiles: options.enableExternalProfiles,
 			Image: &charts.Image{
@@ -739,7 +734,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 			UID: options.proxyUID,
 		},
 
-		ProxyInit: &proxyInitValues{
+		ProxyInit: &charts.ProxyInit{
 			Image: &charts.Image{
 				Name:       registryOverride(options.initImage, options.dockerRegistry),
 				PullPolicy: options.imagePullPolicy,

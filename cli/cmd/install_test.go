@@ -85,7 +85,7 @@ func TestRender(t *testing.T) {
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
-		Proxy: &proxyValues{
+		Proxy: &charts.Proxy{
 			Image: &charts.Image{
 				Name:       "ProxyImageName",
 				PullPolicy: "ImagePullPolicy",
@@ -100,7 +100,7 @@ func TestRender(t *testing.T) {
 			},
 			UID: 2102,
 		},
-		ProxyInit: &proxyInitValues{
+		ProxyInit: &charts.ProxyInit{
 			Image: &charts.Image{
 				Name:       "ProxyInitImageName",
 				PullPolicy: "ImagePullPolicy",

@@ -266,7 +266,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		proxyInjectorTLS = &charts.TLS{}
 	}
-	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
+	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
 
 	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
@@ -275,7 +275,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		profileValidatorTLS = &charts.TLS{}
 	}
-	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
 
 	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
@@ -284,7 +284,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		tapTLS = &charts.TLS{}
 	}
-	values.Tap = &tapValues{tapTLS}
+	values.Tap = &charts.Tap{TLS: tapTLS}
 
 	values.stage = stage
 
