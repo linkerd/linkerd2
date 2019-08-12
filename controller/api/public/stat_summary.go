@@ -451,20 +451,43 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	default:
 		labelNames = promGroupByLabelNames(req.Selector.Resource)
+
 		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-
-		if req.Selector.Resource.Type == k8s.TrafficSplit {
-			labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-			labels = labels.Merge(promDirectionLabels("outbound"))
-		} else {
-			labels = labels.Merge(promDirectionLabels("inbound"))
-		}
+		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
-	if req.Selector.Resource.Type == k8s.TrafficSplit {
-		labelNames[1] = model.LabelName("dst_service") // replacing "trafficsplit" with "dst_service"
+	return
+}
+
+func buildTrafficSplitRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
+	// labelNames: the group by in the prometheus query
+	// labels: the labels for the resource we want to query for
+
+	switch out := req.Outbound.(type) {
+	case *pb.StatSummaryRequest_ToResource:
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
+
+		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
+
+	case *pb.StatSummaryRequest_FromResource:
+		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
+
+		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
+
+	default:
+		labelNames = promGroupByLabelNames(req.Selector.Resource)
+
+		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(promDirectionLabels("outbound"))
 	}
-	return labels, labelNames
+
+	labelNames[1] = model.LabelName("dst_service") // replacing "trafficsplit" with "dst_service"
+
+	return
 }
 
 func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
@@ -497,7 +520,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	tsBasicStats := make(map[tsKey]*pb.BasicStats)
 
-	reqLabels, groupBy := buildRequestLabels(req)
+	reqLabels, groupBy := buildTrafficSplitRequestLabels(req)
 
 	apex := tsStats.apex
 	stringifiedReqLabels := generateLabelStringWithRegex(reqLabels, "authority", apex)
