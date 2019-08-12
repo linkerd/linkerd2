@@ -236,7 +236,7 @@ var (
 	weightHeader    = "WEIGHT"
 )
 
-var leafName, apexName, weight string
+var leaf, apex, weight string
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
@@ -265,12 +265,8 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		namespace := r.Resource.Namespace
 		key := fmt.Sprintf("%s/%s", namespace, name)
-		resourceType := r.Resource.Type
-		if resourceType == k8s.TrafficSplit {
-			leafName = r.TsStats.Leaf
-			apexName = r.TsStats.Apex
-			weight = r.TsStats.Weight
-			key = fmt.Sprintf("%s/%s/%s", namespace, name, leafName)
+		if r.Resource.Type == k8s.TrafficSplit {
+			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
 
 		resourceKey := r.Resource.Type
@@ -287,22 +283,11 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			maxNamespaceLength = len(namespace)
 		}
 
-		if len(leafName) > maxLeafLength {
-			maxLeafLength = len(leafName)
-		}
-
-		if len(apexName) > maxApexLength {
-			maxApexLength = len(apexName)
-		}
-
-		if len(weight) > maxWeightLength {
-			maxWeightLength = len(weight)
-		}
-
 		meshedCount := fmt.Sprintf("%d/%d", r.MeshedPodCount, r.RunningPodCount)
 		if resourceKey == k8s.Authority {
 			meshedCount = "-"
 		}
+
 		statTables[resourceKey][key] = &row{
 			meshed: meshedCount,
 			status: r.Status,
@@ -321,9 +306,25 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			}
 		}
 		if r.TsStats != nil {
+			leaf = r.TsStats.Leaf
+			apex = r.TsStats.Apex
+			weight = r.TsStats.Weight
+
+			if len(leaf) > maxLeafLength {
+				maxLeafLength = len(leaf)
+			}
+
+			if len(apex) > maxApexLength {
+				maxApexLength = len(apex)
+			}
+
+			if len(weight) > maxWeightLength {
+				maxWeightLength = len(weight)
+			}
+
 			statTables[resourceKey][key].tsStats = &tsStats{
-				apex:   apexName,
-				leaf:   leafName,
+				apex:   apex,
+				leaf:   leaf,
 				weight: weight,
 			}
 		}
@@ -364,11 +365,11 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 }
 
 func showTCPBytes(options *statOptions, resourceType string) bool {
-	if resourceType != k8s.TrafficSplit {
-		return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
-			showTCPConns(resourceType)
+	if resourceType == k8s.TrafficSplit {
+		return false
 	}
-	return false
+	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
+		showTCPConns(resourceType)
 }
 
 func showTCPConns(resourceType string) bool {
@@ -541,22 +542,22 @@ type jsonStats struct {
 	Namespace      string   `json:"namespace"`
 	Kind           string   `json:"kind"`
 	Name           string   `json:"name"`
-	Meshed         string   `json:"meshed"`
+	Meshed         string   `json:"meshed,omitempty"`
 	Success        *float64 `json:"success"`
 	Rps            *float64 `json:"rps"`
 	LatencyMSp50   *uint64  `json:"latency_ms_p50"`
 	LatencyMSp95   *uint64  `json:"latency_ms_p95"`
 	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
-	TCPConnections *uint64  `json:"tcp_open_connections"`
-	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
-	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
-	TrafficSplit   *jsonTs  `json:"traffic_split"`
+	TCPConnections *uint64  `json:"tcp_open_connections,omitempty"`
+	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate,omitempty"`
+	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate,omitempty"`
+	TrafficSplit   *jsonTs  `json:"traffic_split,omitempty"`
 }
 
 type jsonTs struct {
-	Apex     string `json:"apex"`
-	LeafName string `json:"leaf_name"`
-	Weight   string `json:"weight"`
+	Apex   string `json:"apex"`
+	Leaf   string `json:"leaf"`
+	Weight string `json:"weight"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -571,7 +572,9 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					Namespace: namespace,
 					Kind:      resourceType,
 					Name:      name,
-					Meshed:    stats[key].meshed,
+				}
+				if stats[key].meshed != "0/0" { // skip if no meshed statistics available
+					entry.Meshed = stats[key].meshed
 				}
 				if stats[key].rowStats != nil {
 					entry.Success = &stats[key].successRate
@@ -588,9 +591,9 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 				}
 				if stats[key].tsStats != nil {
 					entry.TrafficSplit = &jsonTs{
-						Apex:     stats[key].apex,
-						LeafName: stats[key].leaf,
-						Weight:   stats[key].weight}
+						Apex:   stats[key].apex,
+						Leaf:   stats[key].leaf,
+						Weight: stats[key].weight}
 				}
 				entries = append(entries, entry)
 			}

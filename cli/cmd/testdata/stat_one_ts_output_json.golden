@@ -3,18 +3,14 @@
     "namespace": "default",
     "kind": "trafficsplit",
     "name": "foo-split",
-    "meshed": "0/0",
     "success": 1,
     "rps": 2.05,
     "latency_ms_p50": 123,
     "latency_ms_p95": 123,
     "latency_ms_p99": 123,
-    "tcp_open_connections": null,
-    "tcp_read_bytes_rate": null,
-    "tcp_write_bytes_rate": null,
-    "ts_stats": {
+    "traffic_split": {
       "apex": "apex_name",
-      "leaf_name": "service-1",
+      "leaf": "service-1",
       "weight": "900m"
     }
   },
@@ -22,18 +18,14 @@
     "namespace": "default",
     "kind": "trafficsplit",
     "name": "foo-split",
-    "meshed": "0/0",
     "success": 1,
     "rps": 2.05,
     "latency_ms_p50": 123,
     "latency_ms_p95": 123,
     "latency_ms_p99": 123,
-    "tcp_open_connections": null,
-    "tcp_read_bytes_rate": null,
-    "tcp_write_bytes_rate": null,
-    "ts_stats": {
+    "traffic_split": {
       "apex": "apex_name",
-      "leaf_name": "service-2",
+      "leaf": "service-2",
       "weight": "100m"
     }
   }

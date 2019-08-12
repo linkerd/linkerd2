@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -70,8 +71,8 @@ type trafficSplitStats struct {
 }
 
 type leaf struct {
-	leafName   string
-	leafWeight string
+	leaf   string
+	weight string
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -139,7 +140,6 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 			},
 		},
 	}
-
 	return &rsp, nil
 }
 
@@ -183,8 +183,7 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 			Type:      requestedResource.GetType(),
 		}
 
-		var podStats *podStats
-		podStats, err = s.getPodStats(object)
+		podStats, err := s.getPodStats(object)
 
 		if err != nil {
 			return nil, err
@@ -278,8 +277,9 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	for _, object := range objects {
 		ts, ok := object.(*v1alpha1.TrafficSplit)
 		if !ok {
-			return resourceResult{res: nil, err: err}
+			return resourceResult{res: nil, err: errors.New("Could not cast to trafficsplit")}
 		}
+
 		tsName := ts.ObjectMeta.Name
 		apex := ts.Spec.Service
 		backends := ts.Spec.Backends
@@ -288,28 +288,21 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 		tsStats.namespace = ts.ObjectMeta.Namespace
 
 		for _, returnedLeaf := range backends {
-			leafName := fmt.Sprint(returnedLeaf.Service)
+			name := fmt.Sprint(returnedLeaf.Service)
 			weight := fmt.Sprint(returnedLeaf.Weight.String())
 
 			tsStats.leaves = append(tsStats.leaves, leaf{
-				leafName:   leafName,
-				leafWeight: weight})
-		}
-
-		if err != nil {
-			return resourceResult{res: nil, err: err}
+				leaf:   name,
+				weight: weight})
 		}
 
 		if !req.SkipStats {
 			tsBasicStats, err := s.getTrafficSplitMetrics(ctx, req, tsStats, req.TimeWindow)
-			for key, stats := range tsBasicStats {
-				if _, ok := tsMetrics[key]; !ok {
-					tsMetrics[key] = stats
-				}
-			}
-
 			if err != nil {
 				return resourceResult{res: nil, err: err}
+			}
+			for key, stats := range tsBasicStats {
+				tsMetrics[key] = stats
 			}
 		}
 		tsK8sInfo = append(tsK8sInfo, tsStats)
@@ -319,33 +312,28 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 	for _, split := range tsK8sInfo {
 		for _, leaf := range split.leaves {
-			var basicStats *pb.BasicStats
 
 			currentLeaf := tsKey{
 				Namespace: split.namespace,
 				Type:      k8s.TrafficSplit,
 				Name:      split.name,
 				Apex:      split.apex,
-				Leaf:      leaf.leafName,
-			}
-			if stats, ok := tsMetrics[currentLeaf]; ok {
-				basicStats = stats
+				Leaf:      leaf.leaf,
 			}
 			tsStats := &pb.TrafficSplitStats{
 				Apex:   split.apex,
-				Leaf:   leaf.leafName,
-				Weight: leaf.leafWeight,
+				Leaf:   leaf.leaf,
+				Weight: leaf.weight,
 			}
 
-			k8sResource := requestedResource
 			row := pb.StatTable_PodGroup_Row{
 				Resource: &pb.Resource{
 					Name:      split.name,
-					Namespace: k8sResource.GetNamespace(),
+					Namespace: split.namespace,
 					Type:      req.GetSelector().GetResource().GetType(),
 				},
 				TimeWindow: req.TimeWindow,
-				Stats:      basicStats,
+				Stats:      tsMetrics[currentLeaf],
 				TsStats:    tsStats,
 			}
 			rows = append(rows, &row)
@@ -460,34 +448,31 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 }
 
 func buildTrafficSplitRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
-	// labelNames: the group by in the prometheus query
-	// labels: the labels for the resource we want to query for
+	// trafficsplit labels are always direction="outbound" with an optional namespace="value" if the -A flag is not used.
+	// if the --from or --to flags were used, we merge an additional ToResource or FromResource label.
+	// trafficsplit metrics results are always grouped by dst_service.
+	labels = model.LabelSet{
+		"direction": model.LabelValue("outbound"),
+	}
+
+	if req.Selector.Resource.Namespace != "" {
+		labels["namespace"] = model.LabelValue(req.Selector.Resource.Namespace)
+	}
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
-
 		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
-
 		labels = labels.Merge(promQueryLabels(out.FromResource))
-		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
-		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
-
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
-		labels = labels.Merge(promDirectionLabels("outbound"))
+		// no extra labels needed
 	}
 
-	labelNames[1] = model.LabelName("dst_service") // replacing "trafficsplit" with "dst_service"
+	groupBy := model.LabelNames{model.LabelName("dst_service")}
 
-	return
+	return labels, groupBy
 }
 
 func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequest, timeWindow string) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats, error) {
@@ -512,18 +497,14 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	return basicStats, tcpStats, nil
 }
 
-// when querying Prometheus in getTrafficSplitMetrics, processPrometheusMetrics returns a map[rKey]*pb.BasicStats.
-// however, the rKey.Name returned is the leaf service name due to the need to query Prometheus for dst_service,
-// whereas the the rKey.Name in the k8sObject data is the trafficsplit name. in order to match the k8sObjects
-// to the Prometheus metrics, we return a new map[tsKey]*pb.BasicStats which includes apex and leaf information.
 func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSummaryRequest, tsStats *trafficSplitStats, timeWindow string) (map[tsKey]*pb.BasicStats, error) {
 
 	tsBasicStats := make(map[tsKey]*pb.BasicStats)
-
-	reqLabels, groupBy := buildTrafficSplitRequestLabels(req)
+	labels, groupBy := buildTrafficSplitRequestLabels(req)
 
 	apex := tsStats.apex
-	stringifiedReqLabels := generateLabelStringWithRegex(reqLabels, "authority", apex)
+
+	stringifiedReqLabels := generateLabelStringWithRegex(labels, "authority", apex)
 
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
@@ -539,7 +520,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
-			Namespace: req.Selector.Resource.Namespace,
+			Namespace: tsStats.namespace,
 			Name:      tsStats.name,
 			Type:      req.Selector.Resource.Type,
 			Apex:      apex,

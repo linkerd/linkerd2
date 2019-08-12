@@ -389,7 +389,6 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 			},
 		},
 	}
-
 	return resp
 }
 
