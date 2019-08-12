@@ -2045,8 +2045,6 @@ spec:
   selector:
     matchLabels:
       ControllerComponentLabel: proxy-injector
-      ControllerNamespaceLabel: Namespace
-      linkerd.io/proxy-deployment: linkerd-proxy-injector
   template:
     metadata:
       annotations:
@@ -2275,8 +2273,6 @@ spec:
   selector:
     matchLabels:
       ControllerComponentLabel: sp-validator
-      ControllerNamespaceLabel: Namespace
-      linkerd.io/proxy-deployment: linkerd-sp-validator
   template:
     metadata:
       annotations:

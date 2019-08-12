@@ -41,8 +41,6 @@ spec:
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: sp-validator
-      {{.ControllerNamespaceLabel}}: {{.Namespace}}
-      {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
     metadata:
       annotations:

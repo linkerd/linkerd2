@@ -2169,8 +2169,6 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
-      linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-proxy-injector
   template:
     metadata:
       annotations:
@@ -2433,8 +2431,6 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
-      linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-sp-validator
   template:
     metadata:
       annotations:

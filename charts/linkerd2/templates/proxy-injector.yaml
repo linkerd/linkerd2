@@ -22,8 +22,6 @@ spec:
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: proxy-injector
-      {{.ControllerNamespaceLabel}}: {{.Namespace}}
-      {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
     metadata:
       annotations:
