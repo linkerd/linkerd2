@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -91,7 +92,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
-	service, port, hostname, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
+	// The host must be fully-qualified or be an IP address.
+	host, port, err := getHostAndPort(dest.GetPath())
+	if err != nil {
+		log.Debugf("Invalid service %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		// TODO handle lookup by IP address
+		log.Debug("Lookup of IP addresses is not yet supported")
+		return status.Errorf(codes.InvalidArgument, "Cannot resolve IP addresses")
+	}
+
+	service, instanceID, err := parseK8sServiceName(host, s.clusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
@@ -106,7 +120,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log,
 	)
 
-	err = s.endpoints.Subscribe(service, port, hostname, translator)
+	err = s.endpoints.Subscribe(service, port, instanceID, translator)
 	if err != nil {
 		if _, ok := err.(watcher.InvalidService); ok {
 			log.Debugf("Invalid service %s", dest.GetPath())
@@ -115,7 +129,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
 		return err
 	}
-	defer s.endpoints.Unsubscribe(service, port, hostname, translator)
+	defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 
 	select {
 	case <-s.shutdown:
@@ -139,10 +153,23 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// and pushes them onto the gRPC stream.
 	translator := newProfileTranslator(stream, log)
 
-	service, port, _, err := parseServiceAuthority(dest.GetPath(), s.clusterDomain)
+	// The host must be fully-qualified or be an IP address.
+	host, port, err := getHostAndPort(dest.GetPath())
+	if err != nil {
+		log.Debugf("Invalid authority %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		// TODO handle lookup by IP address
+		log.Debug("Lookup of IP addresses is not supported for profiles")
+		return status.Errorf(codes.InvalidArgument, "cannot discover profiles for IP addresses")
+	}
+
+	service, _, err := parseK8sServiceName(host, s.clusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", dest.GetPath())
-		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
 	}
 
 	// The adaptor merges profile updates with traffic split updates and
@@ -170,7 +197,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", dest.GetPath())
-			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
 		err = s.profiles.Subscribe(profile, primary)
@@ -184,7 +211,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", dest.GetPath())
-		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
 	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
@@ -222,9 +249,13 @@ func nsFromToken(token string) string {
 }
 
 func profileID(authority string, contextToken string, clusterDomain string) (watcher.ProfileID, error) {
-	service, _, _, err := parseServiceAuthority(authority, clusterDomain)
+	host, _, err := getHostAndPort(authority)
 	if err != nil {
-		return watcher.ProfileID{}, err
+		return watcher.ProfileID{}, fmt.Errorf("invalid authority: %s", err)
+	}
+	service, _, err := parseK8sServiceName(host, clusterDomain)
+	if err != nil {
+		return watcher.ProfileID{}, fmt.Errorf("invalid k8s service name: %s", err)
 	}
 	id := watcher.ProfileID{
 		Name:      fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, clusterDomain),
@@ -253,48 +284,53 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 	return host, watcher.Port(port), nil
 }
 
-// parseServiceAuthority is a utility function that destructures an authority
-// into a service, port, and optionally a pod hostname.  If the authority does
-// not represent a Kubernetes service, an error is returned.  If no port is
+type InstanceID = string
+
+// parseK8sServiceName is a utility that destructures a Kubernetes serviec hostname into its constituent components.
+//
+// If the authority does not represent a Kubernetes service, an error is returned.
+//
+// If no port is
 // specified in the authority, the HTTP default (80) is returned as the port
-// number.  If the authority is a pod DNS name then the pod hostname is returned
-// as the 3rd return value.  See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
-func parseServiceAuthority(authority string, clusterDomain string) (watcher.ServiceID, watcher.Port, string, error) {
-	host, port, err := getHostAndPort(authority)
-	if err != nil {
-		return watcher.ServiceID{}, 0, "", err
-	}
-	domains := strings.Split(host, ".")
+// number.
+//
+// If the hostname is a pod DNS name, then the pod name is returned
+// as well. See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
+func parseK8sServiceName(fqdn, clusterDomain string) (watcher.ServiceID, InstanceID, error) {
+	labels := strings.Split(fqdn, ".")
 	suffix := append([]string{"svc"}, strings.Split(clusterDomain, ".")...)
-	n := len(domains)
-	// S.N.{suffix}
-	if n < 2+len(suffix) {
-		return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
-	}
-	if !hasSuffix(domains, suffix) {
-		return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+
+	if !hasSuffix(labels, suffix) {
+		return watcher.ServiceID{}, "", fmt.Errorf("name %s does not match cluster domain %s", fqdn, clusterDomain)
 	}
 
+	n := len(labels)
 	if n == 2+len(suffix) {
 		// <service>.<namespace>.<suffix>
 		service := watcher.ServiceID{
-			Name:      domains[0],
-			Namespace: domains[1],
+			Name:      labels[0],
+			Namespace: labels[1],
 		}
-		return service, port, "", nil
+		return service, "", nil
 	}
+
 	if n == 3+len(suffix) {
-		// <hostname>.<service>.<namespace>.<suffix>
+		// <instance-id>.<service>.<namespace>.<suffix>
+		instanceID := labels[0]
 		service := watcher.ServiceID{
-			Name:      domains[1],
-			Namespace: domains[2],
+			Name:      labels[1],
+			Namespace: labels[2],
 		}
-		return service, port, domains[0], nil
+		return service, instanceID, nil
 	}
-	return watcher.ServiceID{}, 0, "", fmt.Errorf("Invalid k8s service %s", host)
+
+	return watcher.ServiceID{}, "", fmt.Errorf("invalid k8s service %s", fqdn)
 }
 
 func hasSuffix(slice []string, suffix []string) bool {
+	if len(slice) < len(suffix) {
+		return false
+	}
 	for i, s := range slice[len(slice)-len(suffix):] {
 		if s != suffix[i] {
 			return false
