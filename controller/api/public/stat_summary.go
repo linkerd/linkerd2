@@ -133,6 +133,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 			},
 		},
 	}
+
 	return &rsp, nil
 }
 

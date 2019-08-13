@@ -266,7 +266,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		if r.Resource.Type == k8s.TrafficSplit {
 			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
 		}
-
 		resourceKey := r.Resource.Type
 
 		if _, ok := statTables[resourceKey]; !ok {
@@ -285,7 +284,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		if resourceKey == k8s.Authority {
 			meshedCount = "-"
 		}
-
 		statTables[resourceKey][key] = &row{
 			meshed: meshedCount,
 			status: r.Status,
@@ -484,7 +482,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		}
 
 		values = append(values, name+strings.Repeat(" ", padding))
-
 		if resourceType == k8s.Pod {
 			values = append(values, stats[key].status)
 		}
@@ -520,6 +517,7 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 					stats[key].tcpWriteBytes,
 				}...)
 			}
+
 			fmt.Fprintf(w, templateString, values...)
 		} else {
 			fmt.Fprintf(w, templateStringEmpty, values...)
@@ -587,6 +585,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 						entry.TCPWriteBytes = &stats[key].tcpWriteBytes
 					}
 				}
+
 				if stats[key].tsStats != nil {
 					entry.TrafficSplit = &jsonTs{
 						Apex:   stats[key].apex,
