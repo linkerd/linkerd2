@@ -341,7 +341,14 @@ hard-coded SHA's:
 - [`go.mod`](go.mod)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 
-`bin/update-go-deps-shas` must be run when Go dependencies change.
+
+When Go dependencies change, run the following:
+
+```bash
+go mod tidy
+bin/build-cli-bin # adds back dependencies specific to `go generate` commands
+bin/update-go-deps-shas
+```
 
 ### Updating ServiceProfile generated code
 
