@@ -10,6 +10,7 @@ metadata:
   name: linkerd-other-cni
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -32,6 +33,7 @@ metadata:
   namespace: other
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -40,6 +42,7 @@ metadata:
   namespace: other
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -54,6 +57,7 @@ metadata:
   namespace: other
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -71,6 +75,7 @@ metadata:
   name: linkerd-cni
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -82,6 +87,7 @@ metadata:
   name: linkerd-cni
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -99,6 +105,7 @@ metadata:
   namespace: other
   labels:
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
 data:
   incoming_proxy_port: "5143"
   outgoing_proxy_port: "5140"
@@ -147,6 +154,7 @@ metadata:
   labels:
     k8s-app: linkerd-cni
     linkerd.io/control-plane-ns: other
+    linkerd.io/cni-resource: "true"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:

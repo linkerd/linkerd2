@@ -109,6 +109,12 @@ const (
 	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
+
+	// linkerdCniResourceLabel is the label key that is used to identify
+	// whether a Kubernetes resource is related to the install-cni command
+	// The value is expected to be "true", "false" or "", where "false" and
+	// "" are equal, making "false" the default
+	linkerdCniResourceLabel = "linkerd.io/cni-resource"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -228,6 +234,7 @@ type Options struct {
 	APIAddr               string
 	VersionOverride       string
 	RetryDeadline         time.Time
+	NoInitContainer       bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -1020,7 +1027,16 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	}
 
 	objects := []runtime.Object{}
+
 	for _, item := range crList.Items {
+
+		if hc.Options.NoInitContainer {
+			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
+			if label == "true" {
+				continue
+			}
+		}
+
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1038,7 +1054,15 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	}
 
 	objects := []runtime.Object{}
+
 	for _, item := range crbList.Items {
+		if hc.Options.NoInitContainer {
+			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
+			if label == "true" {
+				continue
+			}
+		}
+
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1129,6 +1153,14 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 
 	objects := []runtime.Object{}
 	for _, item := range psp.Items {
+
+		if hc.Options.NoInitContainer {
+			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
+			if label == "true" {
+				continue
+			}
+		}
+
 		item := item // pin
 		objects = append(objects, &item)
 	}

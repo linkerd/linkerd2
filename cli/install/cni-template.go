@@ -32,6 +32,7 @@ metadata:
   name: linkerd-{{.Namespace}}-cni
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -54,6 +55,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -62,6 +64,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -76,6 +79,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -93,6 +97,7 @@ metadata:
   name: linkerd-cni
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -104,6 +109,7 @@ metadata:
   name: linkerd-cni
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -121,6 +127,7 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
 data:
   incoming_proxy_port: "{{.InboundPort}}"
   outgoing_proxy_port: "{{.OutboundPort}}"
@@ -169,6 +176,7 @@ metadata:
   labels:
     k8s-app: linkerd-cni
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    linkerd.io/cni-resource: "true"
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
