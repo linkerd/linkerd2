@@ -98,16 +98,17 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 		t.Fatalf("failed to read inject test file: %s", err)
 	}
 
-	injectNS := "inject-test"
-	deployName := "inject-test-namespace-override"
-	nsAnnotations := map[string]string{}
-	nsAnnotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
-
-	// Namespace level proxy configuration override
+	injectNS := "inject-namespace-override-test"
+	deployName := "inject-namespace-override-test-terminus"
 	nsInitImage := "test_init_image"
 	nsProxyImage := "test_proxy_image"
-	nsAnnotations[k8s.ProxyInitImageAnnotation] = nsInitImage
-	nsAnnotations[k8s.ProxyImageAnnotation] = nsProxyImage
+
+	// Namespace level proxy configuration override
+	nsAnnotations := map[string]string{
+		k8s.ProxyInjectAnnotation:    k8s.ProxyInjectEnabled,
+		k8s.ProxyInitImageAnnotation: nsInitImage,
+		k8s.ProxyImageAnnotation:     nsProxyImage,
+	}
 
 	ns := TestHelper.GetTestNamespace(injectNS)
 	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
@@ -116,11 +117,11 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	// patch injectYAML with unique name and pod annotations
-	podAnnotations := map[string]string{}
-
 	// Pod Level proxy configuration override
 	podInitImage := "proxy_test_init_image"
-	podAnnotations[k8s.ProxyInitImageAnnotation] = podInitImage
+	podAnnotations := map[string]string{
+		k8s.ProxyInitImageAnnotation: podInitImage,
+	}
 
 	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
 	if err != nil {
