@@ -177,7 +177,6 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 		}
 
 		podStats, err := s.getPodStats(object)
-
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +465,6 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		promQueries[promTCPReadBytes] = tcpReadBytesQuery
 		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
 	}
-
 	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
 
 	if err != nil {
