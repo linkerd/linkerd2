@@ -284,7 +284,7 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 	return host, watcher.Port(port), nil
 }
 
-type InstanceID = string
+type instanceID = string
 
 // parseK8sServiceName is a utility that destructures a Kubernetes serviec hostname into its constituent components.
 //
@@ -296,7 +296,7 @@ type InstanceID = string
 //
 // If the hostname is a pod DNS name, then the pod name is returned
 // as well. See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
-func parseK8sServiceName(fqdn, clusterDomain string) (watcher.ServiceID, InstanceID, error) {
+func parseK8sServiceName(fqdn, clusterDomain string) (watcher.ServiceID, instanceID, error) {
 	labels := strings.Split(fqdn, ".")
 	suffix := append([]string{"svc"}, strings.Split(clusterDomain, ".")...)
 
