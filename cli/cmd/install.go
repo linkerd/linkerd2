@@ -210,7 +210,11 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		},
 
 		heartbeatSchedule: func() string {
-			t := time.Now().Add(5 * time.Minute).UTC()
+			// Some of the heartbeat Prometheus queries rely on 5m resolution, which
+			// means at least 5 minutes of data available. Start the first CronJob 10
+			// minutes after `linkerd install` is run, to give the user 5 minutes to
+			// install.
+			t := time.Now().Add(10 * time.Minute).UTC()
 			return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
 		},
 	}, nil

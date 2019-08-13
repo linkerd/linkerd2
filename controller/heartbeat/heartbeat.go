@@ -47,7 +47,7 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 	jobProxyLabels := model.LabelSet{"job": "linkerd-proxy"}
 
 	// total-rps
-	query := fmt.Sprintf("sum(irate(request_total%s[30s]))", jobProxyLabels.Merge(model.LabelSet{"direction": "inbound"}))
+	query := fmt.Sprintf("sum(rate(request_total%s[30s]))", jobProxyLabels.Merge(model.LabelSet{"direction": "inbound"}))
 	value, err := promQuery(promAPI, query, 0)
 	if err != nil {
 		log.Errorf("Prometheus query failed: %s", err)
@@ -62,6 +62,15 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 		log.Errorf("Prometheus query failed: %s", err)
 	} else {
 		v.Set("meshed-pods", value)
+	}
+
+	// p95-handle-us
+	query = fmt.Sprintf("histogram_quantile(0.99, sum(rate(request_handle_us_bucket%s[24h])) by (le))", jobProxyLabels)
+	value, err = promQuery(promAPI, query, 0)
+	if err != nil {
+		log.Errorf("Prometheus query failed: %s", err)
+	} else {
+		v.Set("p99-handle-us", value)
 	}
 
 	// container metrics
