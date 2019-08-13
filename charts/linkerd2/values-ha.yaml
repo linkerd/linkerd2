@@ -17,15 +17,18 @@ DestinationResources: *controller_resources
 PublicAPIResources: *controller_resources
 
 # identity configuration
-Identity:
-  Resources:
-    CPU: *controller_resources_cpu
-    Memory:
-      Limit: 250Mi
-      Request: 10Mi
+IdentityResources:
+  CPU: *controller_resources_cpu
+  Memory:
+    Limit: 250Mi
+    Request: 10Mi
 
 # grafana configuration
-GrafanaResources: *controller_resources
+GrafanaResources:
+  CPU: *controller_resources_cpu
+  Memory:
+    Limit: 1024Mi
+    Request: 50Mi
 
 # heartbeat configuration
 HeartbeatResources: *controller_resources

@@ -40,4 +40,4 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: prometheus
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end -}}
+{{- end }}

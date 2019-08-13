@@ -101,12 +101,12 @@ metadata:
     {{.ControllerComponentLabel}}: tap
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
-    {{ .CreatedByAnnotation }}: {{ .CliVersion }}
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 type: Opaque
 data:
   {{ $ca := genCA (printf "linkerd-tap.%s.svc" .Namespace) 365 -}}
-  crt.pem: {{ b64enc $ca.Cert }}
-  key.pem: {{ b64enc $ca.Key }}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc .Tap.CrtPEM) (empty .Tap.CrtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc .Tap.KeyPEM) (empty .Tap.KeyPEM) }}
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -123,5 +123,5 @@ spec:
   service:
     name: linkerd-tap
     namespace: {{.Namespace}}
-  caBundle: {{ b64enc $ca.Cert }}
+  caBundle: {{ ternary (b64enc $ca.Cert) (b64enc .Tap.CrtPEM) (empty .Tap.CrtPEM) }}
 {{end -}}

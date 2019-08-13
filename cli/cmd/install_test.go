@@ -8,20 +8,26 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/charts"
 )
 
 func TestRender(t *testing.T) {
-	defaultOptions := testInstallOptions()
+	defaultOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
 	defaultValues, defaultConfig, err := defaultOptions.validateAndBuild("", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
+	addFakeTLSSecrets(defaultValues)
 
 	configValues, configConfig, err := defaultOptions.validateAndBuild(configStage, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
+	addFakeTLSSecrets(configValues)
 
 	controlPlaneValues, controlPlaneConfig, err := defaultOptions.validateAndBuild(controlPlaneStage, nil)
 	if err != nil {
@@ -30,13 +36,24 @@ func TestRender(t *testing.T) {
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
-	metaOptions := testInstallOptions()
-	metaConfig := metaOptions.configs(nil)
+	metaOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
+	identityContext := (&installIdentityValues{
+		Issuer: &charts.Issuer{
+			ClockSkewAllowance: "20s",
+			IssuanceLifetime:   "86400s",
+		},
+	}).toIdentityContext()
+	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &installValues{
 		Namespace:                   "Namespace",
 		ClusterDomain:               "cluster.local",
 		ControllerImage:             "ControllerImage",
+		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		PrometheusImage:             "PrometheusImage",
 		GrafanaImage:                "GrafanaImage",
@@ -54,7 +71,6 @@ func TestRender(t *testing.T) {
 		LinkerdNamespaceLabel:       "LinkerdNamespaceLabel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
-		HighAvailability:            false,
 		NoInitContainer:             false,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
 		OmitWebhookSideEffects:      false,
@@ -66,32 +82,58 @@ func TestRender(t *testing.T) {
 		},
 		ControllerReplicas: 1,
 		Identity:           defaultValues.Identity,
-		ProxyInjector: &proxyInjectorValues{
-			&tlsValues{
-				KeyPEM: "proxy injector key",
-				CrtPEM: "proxy injector crt",
+		ProxyInjector:      defaultValues.ProxyInjector,
+		ProfileValidator:   defaultValues.ProfileValidator,
+		Tap:                defaultValues.Tap,
+		Proxy: &charts.Proxy{
+			Image: &charts.Image{
+				Name:       "ProxyImageName",
+				PullPolicy: "ImagePullPolicy",
+				Version:    "ProxyVersion",
 			},
-		},
-		ProfileValidator: &profileValidatorValues{
-			&tlsValues{
-				KeyPEM: "profile validator key",
-				CrtPEM: "profile validator crt",
+			LogLevel: "warn,linkerd2_proxy=info",
+			Ports: &charts.Ports{
+				Admin:    4191,
+				Control:  4190,
+				Inbound:  4143,
+				Outbound: 4140,
 			},
+			UID: 2102,
 		},
-		Tap: &tapValues{
-			&tlsValues{
-				KeyPEM: "tap key",
-				CrtPEM: "tap crt",
+		ProxyInit: &charts.ProxyInit{
+			Image: &charts.Image{
+				Name:       "ProxyInitImageName",
+				PullPolicy: "ImagePullPolicy",
+				Version:    "ProxyInitVersion",
+			},
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   "100m",
+					Request: "10m",
+				},
+				Memory: charts.Constraints{
+					Limit:   "50Mi",
+					Request: "10Mi",
+				},
 			},
 		},
 	}
 
-	haOptions := testInstallOptions()
+	haOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
 	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
 	haValues, haConfig, _ := haOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(haValues)
 
-	haWithOverridesOptions := testInstallOptions()
+	haWithOverridesOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
 	haWithOverridesOptions.recordedFlags = []*config.Install_Flag{
 		{Name: "ha", Value: "true"},
 		{Name: "controller-replicas", Value: "2"},
@@ -103,11 +145,17 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(haWithOverridesValues)
 
-	noInitContainerOptions := testInstallOptions()
+	noInitContainerOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
 	noInitContainerOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	noInitContainerOptions.noInitContainer = true
 	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(noInitContainerValues)
 
 	testCases := []struct {
 		values         *installValues
@@ -137,35 +185,47 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func testInstallOptions() *installOptions {
-	o := newInstallOptionsWithDefaults()
+func testInstallOptions() (*installOptions, error) {
+	o, err := newInstallOptionsWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	o.ignoreCluster = true
 	o.proxyVersion = "install-proxy-version"
 	o.controlPlaneVersion = "install-control-plane-version"
 	o.generateUUID = func() string {
 		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	}
-	o.generateWebhookTLS = fakeGenerateWebhookTLS
 	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
-	return o
+	return o, nil
 }
 
 func TestValidate(t *testing.T) {
 	t.Run("Accepts the default options as valid", func(t *testing.T) {
-		if err := testInstallOptions().validate(); err != nil {
+		opts, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
+		if err := opts.validate(); err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 	})
 
 	t.Run("Rejects invalid controller log level", func(t *testing.T) {
-		options := testInstallOptions()
+		options, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
 		options.controllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
-		err := options.validate()
+		err = options.validate()
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -175,7 +235,11 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
-		underTest := testInstallOptions()
+		underTest, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
 		underTest.controllerLogLevel = "DEBUG"
 		expected := "debug"
 
@@ -212,7 +276,11 @@ func TestValidate(t *testing.T) {
 			{"warn,linkerd2_proxy=foobar", false},
 		}
 
-		options := testInstallOptions()
+		options, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
 		for _, tc := range testCases {
 			options.proxyLogLevel = tc.input
 			err := options.validate()
@@ -233,28 +301,15 @@ func TestValidate(t *testing.T) {
 	})
 }
 
-func fakeGenerateWebhookTLS(webhook string) (*tlsValues, error) {
-	switch webhook {
-	case k8s.ProxyInjectorWebhookServiceName:
-		return &tlsValues{
-			KeyPEM: "proxy injector key",
-			CrtPEM: "proxy injector crt",
-		}, nil
-	case k8s.SPValidatorWebhookServiceName:
-		return &tlsValues{
-			KeyPEM: "profile validator key",
-			CrtPEM: "profile validator crt",
-		}, nil
-	case k8s.TapServiceName:
-		return &tlsValues{
-			KeyPEM: "tap key",
-			CrtPEM: "tap crt",
-		}, nil
-	}
-
-	return nil, nil
-}
-
 func fakeHeartbeatSchedule() string {
 	return "1 2 3 4 5"
+}
+
+func addFakeTLSSecrets(values *installValues) {
+	values.ProxyInjector.CrtPEM = "proxy injector crt"
+	values.ProxyInjector.KeyPEM = "proxy injector key"
+	values.ProfileValidator.CrtPEM = "proxy injector crt"
+	values.ProfileValidator.KeyPEM = "proxy injector key"
+	values.Tap.CrtPEM = "tap crt"
+	values.Tap.KeyPEM = "tap key"
 }

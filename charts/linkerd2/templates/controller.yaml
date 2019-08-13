@@ -142,12 +142,14 @@ spec:
         - mountPath: /var/run/linkerd/config
           name: config
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .NoInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       serviceAccountName: linkerd-controller
       volumes:
       - configMap:
           name: linkerd-config
         name: config
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
-{{end -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+{{ end -}}

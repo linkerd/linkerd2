@@ -41,4 +41,4 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: heartbeat
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end -}}
+{{- end }}

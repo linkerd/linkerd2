@@ -41,5 +41,5 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: identity
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end -}}
-{{- end -}}
+{{ end -}}
+{{ end -}}

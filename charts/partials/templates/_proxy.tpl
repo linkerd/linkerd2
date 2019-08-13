@@ -14,7 +14,7 @@ env:
   value: 0.0.0.0:{{.Proxy.Ports.Inbound}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
   {{- $internalProfileSuffix := printf "svc.%s." .ClusterDomain }}
-  value: {{ternary "." $internalProfileSuffix .Proxy.EnableExternalProfile}}
+  value: {{ternary "." $internalProfileSuffix .Proxy.EnableExternalProfiles}}
 - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
@@ -103,6 +103,7 @@ volumeMounts:
 {{- if .Proxy.SAMountPath }}
 - mountPath: {{.Proxy.SAMountPath.MountPath}}
   name: {{.Proxy.SAMountPath.Name}}
+  readOnly: {{.Proxy.SAMountPath.ReadOnly}}
 {{- end -}}
 {{- end -}}
 {{- end }}

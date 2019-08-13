@@ -65,7 +65,7 @@
   "logLevel":{
     "level": "{{.Proxy.LogLevel}}"
   },
-  "disableExternalProfiles": {{not .Proxy.EnableExternalProfile}},
+  "disableExternalProfiles": {{not .Proxy.EnableExternalProfiles}},
   "proxyVersion": "{{.Proxy.Image.Version}}",
   "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}"
 }

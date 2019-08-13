@@ -12,4 +12,4 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: grafana
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end -}}
+{{- end }}

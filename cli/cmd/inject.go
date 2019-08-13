@@ -290,7 +290,11 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
 		}
 
-		install := newInstallOptionsWithDefaults()
+		install, err := newInstallOptionsWithDefaults()
+		if err != nil {
+			return nil, err
+		}
+
 		return install.configs(nil), nil
 	}
 

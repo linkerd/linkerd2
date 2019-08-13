@@ -117,7 +117,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.GrafanaImage}}:{{default .LinkerdVersion .GrafanaImageVersion}}
+        image: {{.GrafanaImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -144,8 +144,10 @@ spec:
           name: grafana-config
           readOnly: true
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .NoInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
@@ -160,5 +162,5 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}

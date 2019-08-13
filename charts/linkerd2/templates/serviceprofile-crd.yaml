@@ -28,4 +28,4 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
-{{- end -}}
+{{ end -}}
