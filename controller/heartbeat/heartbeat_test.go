@@ -74,23 +74,32 @@ data:
 
 func TestPromValues(t *testing.T) {
 	testCases := []struct {
-		promRes  model.Value
-		expected url.Values
+		namespace string
+		promRes   model.Value
+		expected  url.Values
 	}{
 		{
+			"linkerd",
 			model.Vector{
 				&model.Sample{
 					Metric:    model.Metric{"pod": "emojivoto-meshed"},
-					Value:     100.01,
+					Value:     100.1234,
 					Timestamp: 456,
 				},
 			},
 			url.Values{
-				"total-rps":   []string{"100"},
-				"meshed-pods": []string{"100"},
+				"total-rps":             []string{"100"},
+				"meshed-pods":           []string{"100"},
+				"max-mem-linkerd-proxy": []string{"100"},
+				"max-mem-destination":   []string{"100"},
+				"max-mem-prometheus":    []string{"100"},
+				"p95-cpu-linkerd-proxy": []string{"100.123"},
+				"p95-cpu-destination":   []string{"100.123"},
+				"p95-cpu-prometheus":    []string{"100.123"},
 			},
 		},
 		{
+			"bad-ns",
 			model.Vector{},
 			url.Values{},
 		},
@@ -99,7 +108,7 @@ func TestPromValues(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			v := PromValues(&public.MockProm{Res: tc.promRes})
+			v := PromValues(&public.MockProm{Res: tc.promRes}, tc.namespace)
 			if !reflect.DeepEqual(v, tc.expected) {
 				t.Fatalf("PromValues returned: %+v, expected: %+v", v, tc.expected)
 			}

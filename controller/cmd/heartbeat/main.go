@@ -47,7 +47,7 @@ func main() {
 		log.Errorf("Failed to initialize Prometheus client: %s", err)
 	} else {
 		promAPI := promv1.NewAPI(prometheusClient)
-		promV := heartbeat.PromValues(promAPI)
+		promV := heartbeat.PromValues(promAPI, *controllerNamespace)
 		v = heartbeat.MergeValues(v, promV)
 	}
 
