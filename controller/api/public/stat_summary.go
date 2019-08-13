@@ -503,6 +503,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	apex := tsStats.apex
 	namespace := tsStats.namespace
+	// TODO: add cluster domain to stringToMatch
 	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
 
 	stringifiedReqLabels := generateLabelStringWithRegex(labels, "authority", stringToMatch)
@@ -521,7 +522,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
-			Namespace: tsStats.namespace,
+			Namespace: namespace,
 			Name:      tsStats.name,
 			Type:      req.Selector.Resource.Type,
 			Apex:      apex,

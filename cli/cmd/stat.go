@@ -236,8 +236,6 @@ var (
 	weightHeader    = "WEIGHT"
 )
 
-var leaf, apex, weight string
-
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
@@ -306,9 +304,9 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			}
 		}
 		if r.TsStats != nil {
-			leaf = r.TsStats.Leaf
-			apex = r.TsStats.Apex
-			weight = r.TsStats.Weight
+			leaf := r.TsStats.Leaf
+			apex := r.TsStats.Apex
+			weight := r.TsStats.Weight
 
 			if len(leaf) > maxLeafLength {
 				maxLeafLength = len(leaf)
@@ -573,7 +571,7 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					Kind:      resourceType,
 					Name:      name,
 				}
-				if stats[key].meshed != "0/0" { // skip if no meshed statistics available
+				if resourceType != k8s.TrafficSplit {
 					entry.Meshed = stats[key].meshed
 				}
 				if stats[key].rowStats != nil {
