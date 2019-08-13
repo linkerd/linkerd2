@@ -290,11 +290,7 @@ type instanceID = string
 //
 // If the authority does not represent a Kubernetes service, an error is returned.
 //
-// If no port is
-// specified in the authority, the HTTP default (80) is returned as the port
-// number.
-//
-// If the hostname is a pod DNS name, then the pod name is returned
+// If the hostname is a pod DNS name, then the pod's name (instanceID) is returned
 // as well. See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/.
 func parseK8sServiceName(fqdn, clusterDomain string) (watcher.ServiceID, instanceID, error) {
 	labels := strings.Split(fqdn, ".")
