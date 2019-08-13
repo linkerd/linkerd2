@@ -66,12 +66,6 @@ type trafficSplitStats struct {
 	namespace string
 	name      string
 	apex      string
-	leaves    []leaf
-}
-
-type leaf struct {
-	leaf   string
-	weight string
 }
 
 func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest) (*pb.StatSummaryResponse, error) {
@@ -270,8 +264,8 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 		return resourceResult{res: nil, err: err}
 	}
 
-	var tsK8sInfo []*trafficSplitStats
-	tsMetrics := make(map[tsKey]*pb.BasicStats)
+	tsBasicStats := make(map[tsKey]*pb.BasicStats)
+	rows := make([]*pb.StatTable_PodGroup_Row, 0)
 
 	for _, object := range objects {
 		ts, ok := object.(*v1alpha1.TrafficSplit)
@@ -279,61 +273,48 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 			return resourceResult{res: nil, err: errors.New("Could not cast to trafficsplit")}
 		}
 
-		tsName := ts.ObjectMeta.Name
-		apex := ts.Spec.Service
 		backends := ts.Spec.Backends
-		tsStats := &trafficSplitStats{apex: apex, leaves: []leaf{}}
-		tsStats.name = tsName
-		tsStats.namespace = ts.ObjectMeta.Namespace
 
-		for _, returnedLeaf := range backends {
-			name := fmt.Sprint(returnedLeaf.Service)
-			weight := fmt.Sprint(returnedLeaf.Weight.String())
-
-			tsStats.leaves = append(tsStats.leaves, leaf{
-				leaf:   name,
-				weight: weight})
+		tsStats := &trafficSplitStats{
+			namespace: ts.ObjectMeta.Namespace,
+			name:      ts.ObjectMeta.Name,
+			apex:      ts.Spec.Service,
 		}
 
 		if !req.SkipStats {
-			tsBasicStats, err := s.getTrafficSplitMetrics(ctx, req, tsStats, req.TimeWindow)
+			tsBasicStats, err = s.getTrafficSplitMetrics(ctx, req, tsStats, req.TimeWindow)
 			if err != nil {
 				return resourceResult{res: nil, err: err}
 			}
-			for key, stats := range tsBasicStats {
-				tsMetrics[key] = stats
-			}
 		}
-		tsK8sInfo = append(tsK8sInfo, tsStats)
-	}
 
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-
-	for _, split := range tsK8sInfo {
-		for _, leaf := range split.leaves {
+		for _, backend := range backends {
+			name := fmt.Sprint(backend.Service)
+			weight := fmt.Sprint(backend.Weight.String())
 
 			currentLeaf := tsKey{
-				Namespace: split.namespace,
+				Namespace: tsStats.namespace,
 				Type:      k8s.TrafficSplit,
-				Name:      split.name,
-				Apex:      split.apex,
-				Leaf:      leaf.leaf,
+				Name:      tsStats.name,
+				Apex:      tsStats.apex,
+				Leaf:      name,
 			}
-			tsStats := &pb.TrafficSplitStats{
-				Apex:   split.apex,
-				Leaf:   leaf.leaf,
-				Weight: leaf.weight,
+
+			trafficSplitStats := &pb.TrafficSplitStats{
+				Apex:   tsStats.apex,
+				Leaf:   name,
+				Weight: weight,
 			}
 
 			row := pb.StatTable_PodGroup_Row{
 				Resource: &pb.Resource{
-					Name:      split.name,
-					Namespace: split.namespace,
+					Name:      tsStats.name,
+					Namespace: tsStats.namespace,
 					Type:      req.GetSelector().GetResource().GetType(),
 				},
 				TimeWindow: req.TimeWindow,
-				Stats:      tsMetrics[currentLeaf],
-				TsStats:    tsStats,
+				Stats:      tsBasicStats[currentLeaf],
+				TsStats:    trafficSplitStats,
 			}
 			rows = append(rows, &row)
 		}
