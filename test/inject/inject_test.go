@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -99,15 +100,15 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	injectNS := "inject-namespace-override-test"
-	deployName := "inject-namespace-override-test-terminus"
-	nsInitImage := "test_init_image"
-	nsProxyImage := "test_proxy_image"
+	deployName := "inject-test-terminus"
+	nsProxyMemReq := "50Mi"
+	nsProxyCPUReq := "200m"
 
 	// Namespace level proxy configuration override
 	nsAnnotations := map[string]string{
-		k8s.ProxyInjectAnnotation:    k8s.ProxyInjectEnabled,
-		k8s.ProxyInitImageAnnotation: nsInitImage,
-		k8s.ProxyImageAnnotation:     nsProxyImage,
+		k8s.ProxyInjectAnnotation:        k8s.ProxyInjectEnabled,
+		k8s.ProxyCPURequestAnnotation:    nsProxyCPUReq,
+		k8s.ProxyMemoryRequestAnnotation: nsProxyMemReq,
 	}
 
 	ns := TestHelper.GetTestNamespace(injectNS)
@@ -118,9 +119,9 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 
 	// patch injectYAML with unique name and pod annotations
 	// Pod Level proxy configuration override
-	podInitImage := "proxy_test_init_image"
+	podProxyCPUReq := "600m"
 	podAnnotations := map[string]string{
-		k8s.ProxyInitImageAnnotation: podInitImage,
+		k8s.ProxyCPURequestAnnotation: podProxyCPUReq,
 	}
 
 	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
@@ -133,23 +134,27 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 		t.Fatalf("failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
 	}
 
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=30s", "deploy/"+deployName)
+	if err != nil {
+		t.Fatalf("failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", deployName, ns, err, o)
+	}
+
 	pods, err := TestHelper.GetPodsForDeployment(ns, deployName)
 	if err != nil {
 		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
 	}
 
 	containers := pods[0].Spec.Containers
-	initContainers := pods[0].Spec.InitContainers
 	proxyContainer := getProxyContainer(containers)
 
 	// Match the pod configuration with the namespace level overrides
-	if strings.Split(proxyContainer.Image, ":")[0] != nsProxyImage {
-		t.Fatalf("proxy image name falied to match with namespace level override")
+	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
+		t.Fatalf("proxy memory resource request falied to match with namespace level override")
 	}
 
 	// Match with proxy level override
-	if strings.Split(initContainers[0].Image, ":")[0] != podInitImage {
-		t.Fatalf("init container image name falied to match with pod level override")
+	if proxyContainer.Resources.Requests["cpu"] != resource.MustParse(podProxyCPUReq) {
+		t.Fatalf("proxy cpu resource request falied to match with pod level override")
 	}
 }
 
