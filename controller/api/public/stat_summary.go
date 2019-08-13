@@ -26,7 +26,6 @@ type resourceResult struct {
 type k8sStat struct {
 	object   metav1.Object
 	podStats *podStats
-	tsStats  *trafficSplitStats
 }
 
 type rKey struct {
