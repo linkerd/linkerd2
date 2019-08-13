@@ -503,8 +503,10 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	labels, groupBy := buildTrafficSplitRequestLabels(req)
 
 	apex := tsStats.apex
+	namespace := tsStats.namespace
+	stringToMatch := fmt.Sprintf("%s.%s.svc", apex, namespace)
 
-	stringifiedReqLabels := generateLabelStringWithRegex(labels, "authority", apex)
+	stringifiedReqLabels := generateLabelStringWithRegex(labels, "authority", stringToMatch)
 
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
