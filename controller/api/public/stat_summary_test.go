@@ -1303,7 +1303,6 @@ status:
 				&MockProm{Res: exp.mockPromResponse},
 				nil,
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -1327,7 +1326,6 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{Res: model.Vector{}},
-			nil,
 			nil,
 			nil,
 			k8sAPI,

@@ -100,30 +100,6 @@ func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.Call
 	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
-// MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
-type MockAPITapByResourceClient struct {
-	TapEventsToReturn []pb.TapEvent
-	ErrorsToReturn    []error
-	grpc.ClientStream
-}
-
-// Recv satisfies the TapByResourceClient.Recv() gRPC method.
-func (a *MockAPITapByResourceClient) Recv() (*pb.TapEvent, error) {
-	var eventPopped pb.TapEvent
-	var errorPopped error
-	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
-		return nil, io.EOF
-	}
-	if len(a.TapEventsToReturn) != 0 {
-		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
-	}
-	if len(a.ErrorsToReturn) != 0 {
-		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
-	}
-
-	return &eventPopped, errorPopped
-}
-
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
 type MockDestinationGetClient struct {
 	UpdatesToReturn []destinationPb.Update
@@ -495,7 +471,6 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	mockProm := &MockProm{Res: exp.mockPromResponse}
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
-		nil,
 		nil,
 		nil,
 		k8sAPI,
