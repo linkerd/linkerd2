@@ -97,22 +97,11 @@ func (c *grpcOverHTTPClient) ListServices(ctx context.Context, req *pb.ListServi
 }
 
 func (c *grpcOverHTTPClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
+	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	url := c.endpointNameToPublicAPIURL("TapByResource")
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := getStreamClient(ctx, httpRsp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &tapClient{client}, nil
+	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
@@ -187,16 +176,6 @@ func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.M
 
 func (c *grpcOverHTTPClient) endpointNameToPublicAPIURL(endpoint string) *url.URL {
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
-}
-
-type tapClient struct {
-	streamClient
-}
-
-func (c tapClient) Recv() (*pb.TapEvent, error) {
-	var msg pb.TapEvent
-	err := protohttp.FromByteStreamToProtocolBuffers(c.reader, &msg)
-	return &msg, err
 }
 
 type destinationClient struct {

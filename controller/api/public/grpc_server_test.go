@@ -400,7 +400,6 @@ status:
 				&mProm,
 				nil,
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -503,7 +502,6 @@ metadata:
 				&MockProm{},
 				nil,
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				[]string{},
@@ -532,7 +530,6 @@ func TestConfig(t *testing.T) {
 
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{},
-			nil,
 			nil,
 			nil,
 			k8sAPI,
