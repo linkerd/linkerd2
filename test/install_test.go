@@ -231,8 +231,8 @@ func TestInstallHelm(t *testing.T) {
 		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
 		"--set", "Identity.TrustDomain=cluster.local",
 		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
