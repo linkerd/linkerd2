@@ -132,6 +132,19 @@ func generateLabelStringWithExclusion(l model.LabelSet, labelName string) string
 	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
 }
 
+// insert a regex-match check into a LabelSet for labels that match the provided
+// string. this is modeled on generateLabelStringWithExclusion().
+func generateLabelStringWithRegex(l model.LabelSet, labelName string, stringToMatch string) string {
+	lstrs := make([]string, 0, len(l))
+	for l, v := range l {
+		lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
+	}
+	lstrs = append(lstrs, fmt.Sprintf(`%s=~"^%s.+"`, labelName, stringToMatch))
+
+	sort.Strings(lstrs)
+	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
+}
+
 // determine if we should add "namespace=<namespace>" to a named query
 func shouldAddNamespaceLabel(resource *pb.Resource) bool {
 	return resource.Type != k8s.Namespace && resource.Namespace != ""
