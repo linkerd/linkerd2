@@ -805,6 +805,8 @@ func (*TapRequest) XXX_OneofWrappers() []interface{} {
 }
 
 // A tap request over kubernetes resources.
+//
+// This is used only by the tap APIServer.
 type TapByResourceRequest struct {
 	// Describes the kubernetes pods that should be tapped.
 	Target *ResourceSelection `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
@@ -1551,6 +1553,7 @@ func (*Eos) XXX_OneofWrappers() []interface{} {
 	}
 }
 
+// This is used only by the tap APIServer.
 type TapEvent struct {
 	Source          *TcpAddress             `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
 	SourceMeta      *TapEvent_EndpointMeta  `protobuf:"bytes,5,opt,name=source_meta,json=sourceMeta,proto3" json:"source_meta,omitempty"`

@@ -79,6 +79,8 @@ message TapRequest {
 }
 
 // A tap request over kubernetes resources.
+//
+// This is used only by the tap APIServer.
 message TapByResourceRequest {
   // Describes the kubernetes pods that should be tapped.
   ResourceSelection target = 1;
@@ -177,6 +179,7 @@ message Eos {
   }
 }
 
+// This is used only by the tap APIServer.
 message TapEvent {
   TcpAddress source = 1;
   EndpointMeta source_meta = 5;
