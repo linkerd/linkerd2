@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,8 +15,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const tapAddr = "127.0.0.1:8088"
+
 func main() {
-	addr := flag.String("addr", ":8088", "address to serve on")
 	apiServerAddr := flag.String("apiserver-addr", ":8089", "address to serve the apiserver on")
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
@@ -48,19 +48,14 @@ func main() {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	server, lis, err := tap.NewServer(*addr, *tapPort, *controllerNamespace, k8sAPI)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	_, port, err := net.SplitHostPort(lis.Addr().String())
+	server, lis, err := tap.NewServer(tapAddr, *tapPort, *controllerNamespace, k8sAPI)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	// TODO: remove the network hop in favor of APIServer calling TapByResource
 	// directly.
-	tapClient, cc, err := tap.NewClient("127.0.0.1:" + port)
+	tapClient, cc, err := tap.NewClient(tapAddr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -80,7 +75,7 @@ func main() {
 	k8sAPI.Sync() // blocks until caches are synced
 
 	go func() {
-		log.Infof("starting gRPC server on %s", *addr)
+		log.Infof("starting gRPC server on %s", tapAddr)
 		server.Serve(lis)
 	}()
 
@@ -93,6 +88,6 @@ func main() {
 
 	<-stop
 
-	log.Infof("shutting down gRPC server on %s", *addr)
+	log.Infof("shutting down gRPC server on %s", tapAddr)
 	server.GracefulStop()
 }
