@@ -144,9 +144,9 @@ cleanup
 
 run_helm_test
 exit_on_err "error testing Helm"
-cleanup
 helm_cleanup
 exit_on_err "error cleaning up Helm"
+cleanup
 
 run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace
 exit_on_err "error during install"
