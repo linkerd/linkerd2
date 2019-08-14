@@ -8,11 +8,9 @@
     "latency_ms_p50": 123,
     "latency_ms_p95": 123,
     "latency_ms_p99": 123,
-    "traffic_split": {
-      "apex": "apex_name",
-      "leaf": "service-1",
-      "weight": "900m"
-    }
+    "apex": "apex_name",
+    "leaf": "service-1",
+    "weight": "900m"
   },
   {
     "namespace": "default",
@@ -23,10 +21,8 @@
     "latency_ms_p50": 123,
     "latency_ms_p95": 123,
     "latency_ms_p99": 123,
-    "traffic_split": {
-      "apex": "apex_name",
-      "leaf": "service-2",
-      "weight": "100m"
-    }
+    "apex": "apex_name",
+    "leaf": "service-2",
+    "weight": "100m"
   }
 ]

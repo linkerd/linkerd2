@@ -68,6 +68,7 @@ func newCmdStat() *cobra.Command {
   * po mypod1 mypod2
   * rc/my-replication-controller
   * sts/my-statefulset
+  * ts/my-split
   * authority
   * au/my-authority
   * all
@@ -80,6 +81,7 @@ func newCmdStat() *cobra.Command {
   * pods
   * replicationcontrollers
   * statefulsets
+  * trafficsplits
   * authorities (not supported in --from)
   * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
@@ -112,6 +114,15 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
   linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces
+
+  # Get all trafficsplits and their leaf services.
+  linkerd stat ts
+
+  # Get the hello-split trafficsplit and its leaf services.
+  linkerd stat ts/hello-split
+
+  # Get all trafficsplits and their leaf services, and metrics for any traffic coming to the leaf services from the hello1 deployment.
+  linkerd stat ts --from deploy/hello1
 
   # Get all namespaces that receive traffic from the default namespace.
   linkerd stat namespaces --from ns/default
@@ -361,9 +372,6 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 }
 
 func showTCPBytes(options *statOptions, resourceType string) bool {
-	if resourceType == k8s.TrafficSplit {
-		return false
-	}
 	return (options.outputFormat == wideOutput || options.outputFormat == jsonOutput) &&
 		showTCPConns(resourceType)
 }
@@ -547,13 +555,9 @@ type jsonStats struct {
 	TCPConnections *uint64  `json:"tcp_open_connections,omitempty"`
 	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate,omitempty"`
 	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate,omitempty"`
-	TrafficSplit   *jsonTs  `json:"traffic_split,omitempty"`
-}
-
-type jsonTs struct {
-	Apex   string `json:"apex"`
-	Leaf   string `json:"leaf"`
-	Weight string `json:"weight"`
+	Apex           string   `json:"apex,omitempty"`
+	Leaf           string   `json:"leaf,omitempty"`
+	Weight         string   `json:"weight,omitempty"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -587,10 +591,9 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 				}
 
 				if stats[key].tsStats != nil {
-					entry.TrafficSplit = &jsonTs{
-						Apex:   stats[key].apex,
-						Leaf:   stats[key].leaf,
-						Weight: stats[key].weight}
+					entry.Apex = stats[key].apex
+					entry.Leaf = stats[key].leaf
+					entry.Weight = stats[key].weight
 				}
 				entries = append(entries, entry)
 			}
