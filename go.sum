@@ -146,6 +146,7 @@ github.com/linkerd/linkerd2-proxy-api v0.1.9 h1:QIFoVxJEjzPrAhWj2ZwRjUlCjL2VJAtO
 github.com/linkerd/linkerd2-proxy-api v0.1.9/go.mod h1:2WJHEYXoww5ALM6c1QspRFiROGZg08tGxCO1js0tTVA=
 github.com/linkerd/linkerd2-proxy-init v1.0.0 h1:FKpZtN1ZUojvps+ZQXDAuebA+78lf7Mt0ekqwYginRA=
 github.com/linkerd/linkerd2-proxy-init v1.0.0/go.mod h1:JNuEmZkYNFgBrd/89LMDRG4vDq3qEeU4qYm33M+UulU=
+github.com/linkerd/linkerd2-proxy-init v1.1.0 h1:CbUNLPcZYBq5NFBDQNhG6R3mCMtMch9Rc4bL4ZHP4tQ=
 github.com/linkerd/linkerd2-proxy-init v1.1.0/go.mod h1:JNuEmZkYNFgBrd/89LMDRG4vDq3qEeU4qYm33M+UulU=
 github.com/mailru/easyjson v0.0.0-20160728113105-d5b7844b561a/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 h1:2gxZ0XQIU/5z3Z3bUBu+FXuk2pFbkN6tcwi/pjyaDic=

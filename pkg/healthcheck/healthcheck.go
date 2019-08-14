@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1030,13 +1031,9 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 
 	for _, item := range crList.Items {
 
-		if hc.Options.NoInitContainer {
-			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
-			if label == "true" {
-				continue
-			}
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
 		}
-
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1056,11 +1053,8 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	objects := []runtime.Object{}
 
 	for _, item := range crbList.Items {
-		if hc.Options.NoInitContainer {
-			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
-			if label == "true" {
-				continue
-			}
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
 		}
 
 		item := item // pin
@@ -1154,11 +1148,8 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	objects := []runtime.Object{}
 	for _, item := range psp.Items {
 
-		if hc.Options.NoInitContainer {
-			label := item.ObjectMeta.Labels[linkerdCniResourceLabel]
-			if label == "true" {
-				continue
-			}
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
 		}
 
 		item := item // pin
@@ -1528,4 +1519,18 @@ func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 	}
 
 	return nil
+}
+
+func (hc *HealthChecker) skipNoInitContainerResources(labelMap map[string]string) bool {
+
+	if hc.Options.NoInitContainer {
+		skip, err := strconv.ParseBool(labelMap[linkerdCniResourceLabel])
+		if err != nil {
+			log.Errorf("Error parsing %v, %v",
+				linkerdCniResourceLabel, err)
+		}
+		return skip
+	}
+
+	return false
 }
