@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	proto "github.com/golang/protobuf/proto"
@@ -332,6 +333,9 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 		}
 	}
 
+	// sort rows before returning in order to have a consistent order for tests
+	rows = sortTrafficSplitRows(rows)
+
 	rsp := pb.StatTable{
 		Table: &pb.StatTable_PodGroup_{
 			PodGroup: &pb.StatTable_PodGroup{
@@ -341,6 +345,15 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 	}
 
 	return resourceResult{res: &rsp, err: nil}
+}
+
+func sortTrafficSplitRows(rows []*pb.StatTable_PodGroup_Row) []*pb.StatTable_PodGroup_Row {
+	sort.Slice(rows, func(i, j int) bool {
+		key1 := rows[i].TsStats.Apex + rows[i].TsStats.Leaf
+		key2 := rows[j].TsStats.Apex + rows[j].TsStats.Leaf
+		return key1 < key2
+	})
+	return rows
 }
 
 func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
