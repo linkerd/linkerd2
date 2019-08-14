@@ -13,12 +13,3 @@ $bindir/helm lint $rootdir/charts/partials
 $bindir/helm dep up $rootdir/charts/linkerd2
 $bindir/helm dep up $rootdir/charts/patch
 $bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
-
-# bump the Linkerd version in the chart
-. $bindir/_tag.sh
-old_version=$(grep -i LinkerdVersion $rootdir/charts/linkerd2/values.yaml | awk '{print $3}')
-tag="$(head_root_tag)"
-for file in Chart.yaml values.yaml; do
-  sed -i.bak "s/$old_version/$tag/g" $rootdir/charts/linkerd2/$file
-  rm charts/linkerd2/$file.bak
-done
