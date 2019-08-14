@@ -30,19 +30,7 @@ const (
 	proxyInitResourceLimitMemory   = "50Mi"
 )
 
-var (
-	injectableKinds = []string{
-		k8s.DaemonSet,
-		k8s.Deployment,
-		k8s.Job,
-		k8s.Pod,
-		k8s.ReplicaSet,
-		k8s.ReplicationController,
-		k8s.StatefulSet,
-	}
-
-	rTrail = regexp.MustCompile(`\},\s*\]`)
-)
+var rTrail = regexp.MustCompile(`\},\s*\]`)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -218,17 +206,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
-// KindInjectable returns true if the resource in conf can be injected with a proxy
-func (conf *ResourceConfig) KindInjectable() bool {
-	for _, kind := range injectableKinds {
-		if strings.ToLower(conf.workload.metaType.Kind) == kind {
-			return true
-		}
-	}
-	return false
-}
-
-// Note this switch must be kept in sync with injectableKinds (declared above)
+// Note this switch also defines what kinds are injectable
 func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 	switch strings.ToLower(conf.workload.metaType.Kind) {
 	case k8s.Deployment:
