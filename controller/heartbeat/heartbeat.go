@@ -41,27 +41,90 @@ func K8sValues(kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Val
 }
 
 // PromValues gathers relevant heartbeat information from Prometheus
-func PromValues(promAPI promv1.API) url.Values {
+func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	value, err := promQuery(promAPI, "sum(irate(request_total{direction=\"inbound\"}[30s]))")
+	jobProxyLabels := model.LabelSet{"job": "linkerd-proxy"}
+
+	// total-rps
+	query := fmt.Sprintf("sum(rate(request_total%s[30s]))", jobProxyLabels.Merge(model.LabelSet{"direction": "inbound"}))
+	value, err := promQuery(promAPI, query, 0)
 	if err != nil {
 		log.Errorf("Prometheus query failed: %s", err)
 	} else {
 		v.Set("total-rps", value)
 	}
 
-	value, err = promQuery(promAPI, "count(count by (pod) (request_total))")
+	// meshed-pods
+	query = fmt.Sprintf("count(count by (pod) (request_total%s))", jobProxyLabels)
+	value, err = promQuery(promAPI, query, 0)
 	if err != nil {
 		log.Errorf("Prometheus query failed: %s", err)
 	} else {
 		v.Set("meshed-pods", value)
 	}
 
+	// p95-handle-us
+	query = fmt.Sprintf("histogram_quantile(0.99, sum(rate(request_handle_us_bucket%s[24h])) by (le))", jobProxyLabels)
+	value, err = promQuery(promAPI, query, 0)
+	if err != nil {
+		log.Errorf("Prometheus query failed: %s", err)
+	} else {
+		v.Set("p99-handle-us", value)
+	}
+
+	// container metrics
+	for _, container := range []struct {
+		name model.LabelValue
+		ns   model.LabelValue
+	}{
+		{
+			name: "linkerd-proxy",
+		},
+		{
+			name: "destination",
+			ns:   "linkerd",
+		},
+		{
+			name: "prometheus",
+			ns:   "linkerd",
+		},
+	} {
+		containerLabels := model.LabelSet{
+			"job":            "kubernetes-nodes-cadvisor",
+			"container_name": container.name,
+		}
+		if container.ns != "" {
+			containerLabels["namespace"] = container.ns
+		}
+
+		// max-mem
+		query = fmt.Sprintf("max(container_memory_working_set_bytes%s)", containerLabels)
+		value, err = promQuery(promAPI, query, 0)
+		if err != nil {
+			log.Errorf("Prometheus query failed: %s", err)
+		} else {
+			param := fmt.Sprintf("max-mem-%s", container.name)
+			v.Set(param, value)
+		}
+
+		// p95-cpu
+		query = fmt.Sprintf("max(quantile_over_time(0.95,rate(container_cpu_usage_seconds_total%s[5m])[24h:5m]))", containerLabels)
+		value, err = promQuery(promAPI, query, 3)
+		if err != nil {
+			log.Errorf("Prometheus query failed: %s", err)
+		} else {
+			param := fmt.Sprintf("p95-cpu-%s", container.name)
+			v.Set(param, value)
+		}
+	}
+
 	return v
 }
 
-func promQuery(promAPI promv1.API, query string) (string, error) {
+func promQuery(promAPI promv1.API, query string, precision int) (string, error) {
+	log.Debugf("Prometheus query: %s", query)
+
 	res, err := promAPI.Query(context.Background(), query, time.Time{})
 	if err != nil {
 		return "", err
@@ -77,8 +140,7 @@ func promQuery(promAPI promv1.API, query string) (string, error) {
 			return "", fmt.Errorf("unexpected sample value: %v", result[0].Value)
 		}
 
-		value := int64(math.Round(f))
-		return strconv.FormatInt(value, 10), nil
+		return strconv.FormatFloat(f, 'f', precision, 64), nil
 	}
 
 	return "", fmt.Errorf("unexpected query result type (expected Vector): %s", res.Type())
