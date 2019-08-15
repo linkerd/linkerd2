@@ -1,3 +1,14 @@
+## edge-19.8.4
+
+This edge release is a release candidate for `stable-2.5`.
+
+* CLI
+  * Introduced `--use-wait-flag` to the `linkerd install-cni` command, to
+    configure the CNI plugin to use the `-w` flag for `iptables` commands
+* Controller
+  * Disabled the tap gRPC server listener. All tap requests now require RBAC
+    authentication and authorization
+
 ## edge-19.8.3
 
 This edge release introduces a new `linkerd stat trafficsplits` subcommand, to
@@ -10,6 +21,7 @@ Grafana dashboard.
     annotations
   * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
 * Controller
+  * Added support for namespace-level proxy override annotations
   * Removed unauthenticated tap from the Public API
 * Proxy
   * Added `request_handle_us` histogram to measure proxy overhead
