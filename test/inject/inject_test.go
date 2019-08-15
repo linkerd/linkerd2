@@ -99,7 +99,7 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 		t.Fatalf("failed to read inject test file: %s", err)
 	}
 
-	injectNS := "inject-namespace-override-test"
+	injectNS := "inj-ns-override-test"
 	deployName := "inject-test-terminus"
 	nsProxyMemReq := "50Mi"
 	nsProxyCPUReq := "200m"
