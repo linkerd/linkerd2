@@ -1,3 +1,39 @@
+## edge-19.8.3
+
+This edge release introduces a new `linkerd stat ts` subcommand, enabling
+retrieval of TrafficSplit metrics. It also introduces a
+`Kubernetes cluster monitoring` Grafana dashboard.
+
+* CLI
+  * Added TrafficSplit metrics via `linkerd stat ts` subcommand
+  * Fixed `linkerd uninject` not removing `linkerd.io/inject: enabled`
+    annotations
+  * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
+* Proxy
+  * Added `request_handle_us` histogram to measure proxy overhead
+  * Updated Tap server to require identity
+  * Formatted log records consistently
+  * Fixed tap response streams never ending
+  * Fixed Destination service resource leak by hanging up destination
+    resolutions when dropped
+  * Authority label reflects logical dst
+  * Replaced futures_watch with tokio::sync::watch
+  * Adopted Rust 2018
+  * Adopted std::convert::TryFrom
+  * Removed futures-mpsc-lossy
+* Web UI
+  * Added `Kubernetes cluster monitoring` Grafana dashboard with cluster and
+    containers metrics
+* Internal
+  * Updated `linkerd install` and `linkerd upgrade` to use Helm charts for
+    templating
+  * Pinned Helm tooling to `v2.14.3`
+  * Added Helm integration tests
+  * Added container CPU and memory usage to `linkerd-heartbeat` requests
+  * Removed Tap from the Public API, now only available via authenticated TAP
+    APIServer
+  * Removed unused inject code (thanks @alenkacz!)
+
 ## edge-19.8.2
 
 This edge release introduces the new Linkerd control plane Helm chart, named
@@ -136,7 +172,7 @@ the `linkerd inject` command only adds annotations and defers injection to the
 always-installed proxy injector component.
 
 Finally, there have been many performance and usability improvements to the
-proxy and UI, as well as production-ready features including: 
+proxy and UI, as well as production-ready features including:
 * A new `linkerd edges` command that provides fine-grained observability into
   the TLS-based identity system
 * A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
@@ -153,7 +189,7 @@ mTLS secrets are retained. For more details, please see the [upgrade
 instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) for more details.
 
 **Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr
-@matej-g, @Pothulapati, @zaharidichev, 
+@matej-g, @Pothulapati, @zaharidichev,
 
 **Full release notes**:
 
