@@ -537,7 +537,10 @@ func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
 }
 
 func (conf *ResourceConfig) getOverride(annotation string) string {
-	return conf.pod.meta.Annotations[annotation]
+	if override := conf.pod.meta.Annotations[annotation]; override != "" {
+		return override
+	}
+	return conf.nsAnnotations[annotation]
 }
 
 func (conf *ResourceConfig) proxyImage() string {

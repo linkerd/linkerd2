@@ -75,9 +75,10 @@ func TestConfigAccessors(t *testing.T) {
 	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
 
 	var testCases = []struct {
-		id       string
-		spec     appsv1.DeploymentSpec
-		expected expectedProxyConfigs
+		id            string
+		nsAnnotations map[string]string
+		spec          appsv1.DeploymentSpec
+		expected      expectedProxyConfigs
 	}{
 		{id: "use overrides",
 			spec: appsv1.DeploymentSpec{
@@ -168,6 +169,58 @@ func TestConfigAccessors(t *testing.T) {
 				outboundSkipPorts:   "9079",
 			},
 		},
+		{id: "use namespace overrides",
+			nsAnnotations: map[string]string{
+				k8s.ProxyDisableIdentityAnnotation:        "true",
+				k8s.ProxyImageAnnotation:                  "gcr.io/linkerd-io/proxy",
+				k8s.ProxyImagePullPolicyAnnotation:        "Always",
+				k8s.ProxyInitImageAnnotation:              "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyControlPortAnnotation:            "4000",
+				k8s.ProxyInboundPortAnnotation:            "5000",
+				k8s.ProxyAdminPortAnnotation:              "5001",
+				k8s.ProxyOutboundPortAnnotation:           "5002",
+				k8s.ProxyIgnoreInboundPortsAnnotation:     "4222,6222",
+				k8s.ProxyIgnoreOutboundPortsAnnotation:    "8079,8080",
+				k8s.ProxyCPURequestAnnotation:             "0.15",
+				k8s.ProxyMemoryRequestAnnotation:          "120",
+				k8s.ProxyCPULimitAnnotation:               "1.5",
+				k8s.ProxyMemoryLimitAnnotation:            "256",
+				k8s.ProxyUIDAnnotation:                    "8500",
+				k8s.ProxyLogLevelAnnotation:               "debug,linkerd2_proxy=debug",
+				k8s.ProxyEnableExternalProfilesAnnotation: "false",
+				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{},
+				},
+			},
+			expected: expectedProxyConfigs{
+				image:           "gcr.io/linkerd-io/proxy",
+				imagePullPolicy: "Always",
+				proxyVersion:    proxyVersionOverride,
+				controlPort:     int32(4000),
+				inboundPort:     int32(5000),
+				adminPort:       int32(5001),
+				outboundPort:    int32(5002),
+				logLevel:        "debug,linkerd2_proxy=debug",
+				resourceRequirements: &charts.Resources{
+					CPU: charts.Constraints{
+						Limit:   "1500m",
+						Request: "150m",
+					},
+					Memory: charts.Constraints{
+						Limit:   "256",
+						Request: "120",
+					},
+				},
+				proxyUID:            int64(8500),
+				initImage:           "gcr.io/linkerd-io/proxy-init",
+				initImagePullPolicy: "Always",
+				initVersion:         version.ProxyInitVersion,
+				inboundSkipPorts:    "4222,6222",
+				outboundSkipPorts:   "8079,8080",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -178,7 +231,7 @@ func TestConfigAccessors(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig := NewResourceConfig(configs, OriginUnknown).WithKind("Deployment")
+			resourceConfig := NewResourceConfig(configs, OriginUnknown).WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}
