@@ -47,7 +47,7 @@ require (
 	github.com/julienschmidt/httprouter v1.1.0
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/linkerd/linkerd2-proxy-api v0.1.9
-	github.com/linkerd/linkerd2-proxy-init v1.0.0
+	github.com/linkerd/linkerd2-proxy-init v1.1.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.7
 	github.com/mattn/go-runewidth v0.0.2

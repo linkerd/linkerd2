@@ -175,6 +175,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		APIAddr:               apiAddr,
 		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),
+		NoInitContainer:       options.cniEnabled,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)
