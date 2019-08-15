@@ -1,28 +1,26 @@
 ## edge-19.8.3
 
-This edge release introduces a new `linkerd stat ts` subcommand, enabling
-retrieval of TrafficSplit metrics. It also introduces a
-`Kubernetes cluster monitoring` Grafana dashboard.
+This edge release introduces a new `linkerd stat trafficsplits` subcommand, to
+show traffic split metrics. It also introduces a "Kubernetes cluster monitoring"
+Grafana dashboard.
 
 * CLI
-  * Added TrafficSplit metrics via `linkerd stat ts` subcommand
+  * Added traffic split metrics via `linkerd stat trafficsplits` subcommand
   * Fixed `linkerd uninject` not removing `linkerd.io/inject: enabled`
     annotations
   * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
+* Controller
+  * Removed Tap from the Public API, now only available via authenticated TAP
+    APIServer
 * Proxy
   * Added `request_handle_us` histogram to measure proxy overhead
-  * Updated Tap server to require identity
-  * Formatted log records consistently
-  * Fixed tap response streams never ending
-  * Fixed Destination service resource leak by hanging up destination
-    resolutions when dropped
-  * Authority label reflects logical dst
-  * Replaced futures_watch with tokio::sync::watch
-  * Adopted Rust 2018
-  * Adopted std::convert::TryFrom
-  * Removed futures-mpsc-lossy
+  * Updated the Tap server to only admit requests from the control plane's Tap
+    controller
+  * Fixed a bug where tap would stop streaming after a short amount of time
+  * Fixed a bug that could cause the proxy to leak service discovery resolutions
+    to the Destination controller
 * Web UI
-  * Added `Kubernetes cluster monitoring` Grafana dashboard with cluster and
+  * Added "Kubernetes cluster monitoring" Grafana dashboard with cluster and
     containers metrics
 * Internal
   * Updated `linkerd install` and `linkerd upgrade` to use Helm charts for
@@ -30,8 +28,6 @@ retrieval of TrafficSplit metrics. It also introduces a
   * Pinned Helm tooling to `v2.14.3`
   * Added Helm integration tests
   * Added container CPU and memory usage to `linkerd-heartbeat` requests
-  * Removed Tap from the Public API, now only available via authenticated TAP
-    APIServer
   * Removed unused inject code (thanks @alenkacz!)
 
 ## edge-19.8.2
