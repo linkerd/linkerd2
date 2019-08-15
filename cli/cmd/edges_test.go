@@ -169,7 +169,7 @@ func TestEdges(t *testing.T) {
 
 func testEdgesCall(exp edgesParamsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-	response := public.GenEdgesResponse(exp.resourceType, exp.resSrc, exp.resDst, exp.resSrcNamespace, exp.resDstNamespace, exp.resClient, exp.resServer, exp.resMsg)
+	response := public.GenEdgesResponse(exp.resourceType, "all")
 
 	mockClient.EdgesResponseToReturn = &response
 

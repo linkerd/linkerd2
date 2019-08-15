@@ -371,28 +371,99 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 	return resp
 }
 
+type mockEdgeRow struct {
+	resourceType string
+	src          string
+	dst          string
+	srcNamespace string
+	dstNamespace string
+	clientID     string
+	serverID     string
+	msg          string
+}
+
+// a slice of edge rows to generate mock results
+var emojivotoEdgeRows = []*mockEdgeRow{
+	&mockEdgeRow{
+		resourceType: "deployment",
+		src:          "web",
+		dst:          "voting",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+	&mockEdgeRow{
+		resourceType: "deployment",
+		src:          "vote-bot",
+		dst:          "web",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "default.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+	&mockEdgeRow{
+		resourceType: "deployment",
+		src:          "web",
+		dst:          "emoji",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+}
+
+// a slice of edge rows to generate mock results
+var linkerdEdgeRows = []*mockEdgeRow{
+	&mockEdgeRow{
+		resourceType: "deployment",
+		src:          "linkerd-controller",
+		dst:          "linkerd-prometheus",
+		srcNamespace: "linkerd",
+		dstNamespace: "linkerd",
+		clientID:     "linkerd-controller.linkerd.identity.linkerd.cluster.local",
+		serverID:     "linkerd-prometheus.linkerd.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+}
+
 // GenEdgesResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenEdgesResponse(resourceType string, resSrc, resDst, resSrcNamespace, resDstNamespace, resClient, resServer, msg []string) pb.EdgesResponse {
+func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResponse {
+	edgeRows := emojivotoEdgeRows
+
+	if edgeRowNamespace == "linkerd" {
+		edgeRows = linkerdEdgeRows
+	} else if edgeRowNamespace == "all" {
+		// combine emojivotoEdgeRows and linkerdEdgeRows
+		edgeRows = append(edgeRows, linkerdEdgeRows...)
+	}
+
 	edges := []*pb.Edge{}
-	for i := range resSrc {
+	for _, i := range edgeRows {
 		edge := &pb.Edge{
 			Src: &pb.Resource{
-				Name:      resSrc[i],
-				Namespace: resSrcNamespace[i],
-				Type:      resourceType,
+				Name:      i.src,
+				Namespace: i.srcNamespace,
+				Type:      i.resourceType,
 			},
 			Dst: &pb.Resource{
-				Name:      resDst[i],
-				Namespace: resDstNamespace[i],
-				Type:      resourceType,
+				Name:      i.dst,
+				Namespace: i.dstNamespace,
+				Type:      i.resourceType,
 			},
-			ClientId:      resClient[i],
-			ServerId:      resServer[i],
-			NoIdentityMsg: msg[i],
+			ClientId:      i.clientID,
+			ServerId:      i.serverID,
+			NoIdentityMsg: i.msg,
 		}
 		edges = append(edges, edge)
 	}
+
+	// sorting to retain consistent order for tests
+	edges = sortEdgeRows(edges)
 
 	resp := pb.EdgesResponse{
 		Response: &pb.EdgesResponse_Ok_{
