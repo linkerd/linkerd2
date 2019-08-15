@@ -367,15 +367,23 @@ bin/update-codegen.sh
 
 ## Helm chart
 
-The main Linkerd2 chart is located under [`charts/linkerd2`](charts/linkerd2).
-It depends on the chart under [`charts/partials`](charts/partials). The chart
-under [`charts/patch`](charts/patch) is only used internally for the sidecar
-proxy injection.
+The Linkerd control plane chart is located in the
+[`charts/linkerd2`](charts/linkerd2) folder. The [`charts/patch`](charts/patch)
+chart consists of the Linkerd proxy specification, which is used by the proxy
+injector to inject the proxy container. Both charts depend on the partials
+subchart which can be found in the [`charts/partials`](charts/partials) folder.
 
-The charts are installed and managed with the Helm CLI, but we encourage you to
-use [`bin/helm`](bin/helm) which is a wrapper around it; it will download and
-use a specific version of the CLI with which the official chart has already been
-tested. For general instructions on how to install the chart check out the
+During development, please use the [`bin/helm`](bin/helm) wrapper script to
+invoke the Helm commands. For example,
+
+```bash
+bin/helm install charts/linkerd2
+```
+
+This ensures that you use the same Helm version as that of the Linkerd CI
+system.
+
+For general instructions on how to install the chart check out the
 [docs](https://linkerd.io/2/tasks/install-helm/). You also need to supply or
 generate your own certificates to use the chart, as explained
 [here](https://linkerd.io/2/tasks/generate-certificates/).
