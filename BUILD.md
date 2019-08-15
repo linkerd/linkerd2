@@ -20,6 +20,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating Docker dependencies](#updating-docker-dependencies)
   - [Updating ServiceProfile generated code](#updating-serviceprofile-generated-code)
+- [Helm Chart](#helm-chart)
 - [Build Architecture](#build-architecture)
 - [Generating CLI docs](#generating-cli-docs)
 
@@ -363,6 +364,29 @@ go get -u github.com/linkerd/linkerd2
 cd $GOPATH/src/github.com/linkerd/linkerd2
 bin/update-codegen.sh
 ```
+
+## Helm chart
+
+The main Linkerd2 chart is located under [`charts/linkerd2`](charts/linkerd2).
+It depends on the chart under [`charts/partials`](charts/partials). The chart
+under [`charts/patch`](charts/patch) is only used internally for the sidecar
+proxy injection.
+
+The charts are installed and managed with the Helm CLI, but we encourage you to
+use [`bin/helm`](bin/helm) which is a wrapper around it; it will download and
+use a specific version of the CLI with which the official chart has already been
+tested. For general instructions on how to install the chart check out the
+[docs](https://linkerd.io/2/tasks/install-helm/). You also need to supply or
+generate your own certificates to use the chart, as explained
+[here](https://linkerd.io/2/tasks/generate-certificates/).
+
+### Making changes to the chart templates
+
+Whenever you make changes to the files under
+[`charts/linkerd2/templates`](charts/linkerd2/templates) or its dependency
+[`charts/partials`](charts/partials), make sure to run
+[`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
+the templates.
 
 ## Build Architecture
 
