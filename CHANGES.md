@@ -1,3 +1,34 @@
+## edge-19.8.3
+
+This edge release introduces a new `linkerd stat trafficsplits` subcommand, to
+show traffic split metrics. It also introduces a "Kubernetes cluster monitoring"
+Grafana dashboard.
+
+* CLI
+  * Added traffic split metrics via `linkerd stat trafficsplits` subcommand
+  * Fixed `linkerd uninject` not removing `linkerd.io/inject: enabled`
+    annotations
+  * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
+* Controller
+  * Removed unauthenticated tap from the Public API
+* Proxy
+  * Added `request_handle_us` histogram to measure proxy overhead
+  * Updated the tap server to only admit requests from the control plane's tap
+    controller
+  * Fixed a bug where tap would stop streaming after a short amount of time
+  * Fixed a bug that could cause the proxy to leak service discovery resolutions
+    to the Destination controller
+* Web UI
+  * Added "Kubernetes cluster monitoring" Grafana dashboard with cluster and
+    containers metrics
+* Internal
+  * Updated `linkerd install` and `linkerd upgrade` to use Helm charts for
+    templating
+  * Pinned Helm tooling to `v2.14.3`
+  * Added Helm integration tests
+  * Added container CPU and memory usage to `linkerd-heartbeat` requests
+  * Removed unused inject code (thanks @alenkacz!)
+
 ## edge-19.8.2
 
 This edge release introduces the new Linkerd control plane Helm chart, named
@@ -136,7 +167,7 @@ the `linkerd inject` command only adds annotations and defers injection to the
 always-installed proxy injector component.
 
 Finally, there have been many performance and usability improvements to the
-proxy and UI, as well as production-ready features including: 
+proxy and UI, as well as production-ready features including:
 * A new `linkerd edges` command that provides fine-grained observability into
   the TLS-based identity system
 * A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
@@ -153,7 +184,7 @@ mTLS secrets are retained. For more details, please see the [upgrade
 instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) for more details.
 
 **Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr
-@matej-g, @Pothulapati, @zaharidichev, 
+@matej-g, @Pothulapati, @zaharidichev,
 
 **Full release notes**:
 
