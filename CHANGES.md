@@ -10,11 +10,10 @@ Grafana dashboard.
     annotations
   * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
 * Controller
-  * Removed Tap from the Public API, now only available via authenticated TAP
-    APIServer
+  * Removed unauthenticated tap from the Public API
 * Proxy
   * Added `request_handle_us` histogram to measure proxy overhead
-  * Updated the Tap server to only admit requests from the control plane's Tap
+  * Updated the tap server to only admit requests from the control plane's tap
     controller
   * Fixed a bug where tap would stop streaming after a short amount of time
   * Fixed a bug that could cause the proxy to leak service discovery resolutions
