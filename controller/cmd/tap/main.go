@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
@@ -69,4 +70,7 @@ func main() {
 	go admin.StartServer(*metricsAddr)
 
 	<-stop
+
+	log.Infof("shutting down APIServer on %s", *apiServerAddr)
+	apiServer.Shutdown(context.Background())
 }

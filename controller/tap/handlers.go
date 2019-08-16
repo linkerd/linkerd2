@@ -168,7 +168,7 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	tapServer := tapByResourceServer{serverStream{w: flushableWriter, req: req}}
+	tapServer := tapByResourceServer{serverStream{w: flushableWriter, req: req, log: h.log}}
 	err = h.grpcTapServer.TapByResource(&tapReq, &tapServer)
 	if err != nil {
 		h.log.Error(err)
@@ -344,6 +344,13 @@ func renderJSONError(w http.ResponseWriter, err error, status int) {
 	w.Write(rsp)
 }
 
+// serverStream and tapByResourceServer provide functionality that satisfy the
+// tap.Tap_TapByResourceServer. This allows the tap APIServer to call
+// GRPCTapServer.TapByResource() directly, rather than make the request to an
+// actual gRPC over the network.
+//
+// TODO: Share this code with streamServer and destinationServer in
+// http_server.go.
 type serverStream struct {
 	w   protohttp.FlushableResponseWriter
 	req *http.Request

@@ -29,7 +29,7 @@ const requireIDHeader = "l5d-require-id"
 const podIPIndex = "ip"
 const defaultMaxRps = 100.0
 
-// GRPCTapServer describes the gRPC server implementing tap.Tap_TapByResourceServer
+// GRPCTapServer describes the gRPC server implementing pb.TapServer
 type GRPCTapServer struct {
 	tapPort             uint
 	k8sAPI              *k8s.API
@@ -462,16 +462,14 @@ func NewGrpcTapServer(
 ) *GRPCTapServer {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
 
-	_, srv := newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
-
-	return srv
+	return newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
 }
 
 func newGRPCTapServer(
 	tapPort uint,
 	controllerNamespace string,
 	k8sAPI *k8s.API,
-) (*grpc.Server, *GRPCTapServer) {
+) *GRPCTapServer {
 	srv := &GRPCTapServer{
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
@@ -481,7 +479,7 @@ func newGRPCTapServer(
 	s := prometheus.NewGrpcServer()
 	pb.RegisterTapServer(s, srv)
 
-	return s, srv
+	return srv
 }
 
 func indexPodByIP(obj interface{}) ([]string, error) {
