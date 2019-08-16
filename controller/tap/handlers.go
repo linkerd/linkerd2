@@ -345,7 +345,7 @@ func renderJSONError(w http.ResponseWriter, err error, status int) {
 	w.Write(rsp)
 }
 
-// serverStream and tapByResourceServer provide functionality that satisfy the
+// serverStream provides functionality that satisfies the
 // tap.Tap_TapByResourceServer. This allows the tap APIServer to call
 // GRPCTapServer.TapByResource() directly, rather than make the request to an
 // actual gRPC over the network.
