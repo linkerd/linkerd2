@@ -1,6 +1,7 @@
 package tap
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/julienschmidt/httprouter"
-	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tap"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/metadata"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
@@ -25,7 +26,7 @@ type handler struct {
 	k8sAPI         *k8s.API
 	usernameHeader string
 	groupHeader    string
-	tapClient      pb.TapClient
+	tapServer      server
 	log            *logrus.Entry
 }
 
@@ -99,6 +100,39 @@ func initRouter(h *handler) *httprouter.Router {
 	return router
 }
 
+type serverStream struct {
+	w   protohttp.FlushableResponseWriter
+	req *http.Request
+}
+
+// Satisfy the grpc.ServerStream interface
+func (s serverStream) SetHeader(metadata.MD) error  { return nil }
+func (s serverStream) SendHeader(metadata.MD) error { return nil }
+func (s serverStream) SetTrailer(metadata.MD)       {}
+func (s serverStream) Context() context.Context     { return s.req.Context() }
+func (s serverStream) SendMsg(interface{}) error    { return nil }
+func (s serverStream) RecvMsg(interface{}) error    { return nil }
+
+func (s serverStream) Send(msg *public.TapEvent) error {
+	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
+	if err != nil {
+		protohttp.WriteErrorToHTTPResponse(s.w, err)
+		return err
+	}
+
+	s.w.Flush()
+	return nil
+}
+
+type tapServer struct {
+	serverStream
+}
+
+// Satisfy the tap.Tap_TapByResourceServer interface
+func (x *tapServer) Send(m *public.TapEvent) error {
+	return x.serverStream.Send(m)
+}
+
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/tap
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/:name/tap
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
@@ -167,34 +201,38 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	client, err := h.tapClient.TapByResource(req.Context(), &tapReq)
+	server := tapServer{serverStream{w: flushableWriter, req: req}}
+	err = h.tapServer.TapByResource(&tapReq, &server)
 	if err != nil {
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
 		return
 	}
 
-	for {
-		select {
-		case <-req.Context().Done():
-			h.log.Debug("Received Done context in Tap Stream")
-			return
-		default:
-			event, err := client.Recv()
-			if err != nil {
-				h.log.Errorf("Error receiving from tap client: %s", err)
-				protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
-				return
-			}
-			err = protohttp.WriteProtoToHTTPResponse(flushableWriter, event)
-			if err != nil {
-				h.log.Errorf("Error writing proto to HTTP Response: %s", err)
-				protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
-				return
-			}
-			flushableWriter.Flush()
-		}
-	}
+	// for {
+	// 	select {
+	// 	case <-req.Context().Done():
+	// 		h.log.Debug("Received Done context in Tap Stream")
+	// 		return
+	// 	default:
+	// 		event, err := client.Recv()
+	// 		if err != nil {
+	// 			h.log.Errorf("Error receiving from tap client: %s", err)
+	// 			protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
+	// 			return
+	// 		}
+
+	// 		// PREV: Send functionality was not inlined
+	// 		// err = protohttp.WriteProtoToHTTPResponse(flushableWriter, event)
+	// 		// if err != nil {
+	// 		// 	h.log.Errorf("Error writing proto to HTTP Response: %s", err)
+	// 		// 	protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
+	// 		// 	return
+	// 		// }
+	// 		// flushableWriter.Flush()
+	// 		server.Send(event)
+	// 	}
+	// }
 }
 
 // GET (not found)

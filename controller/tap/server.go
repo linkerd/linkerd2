@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"time"
 
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
@@ -456,21 +455,15 @@ func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 
 // NewServer creates a new gRPC Tap server
 func NewServer(
-	addr string,
 	tapPort uint,
 	controllerNamespace string,
 	k8sAPI *k8s.API,
-) (*grpc.Server, net.Listener, error) {
+) *server {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
 
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, nil, err
-	}
+	_, srv := newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
 
-	s, _ := newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
-
-	return s, lis, nil
+	return srv
 }
 
 func newGRPCTapServer(
