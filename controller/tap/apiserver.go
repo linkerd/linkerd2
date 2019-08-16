@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func NewAPIServer(
 	addr string,
 	cert tls.Certificate,
 	k8sAPI *k8s.API,
-	grpcTapServer *GRPCTapServer,
+	grpcTapServer tap.TapServer,
 	disableCommonNames bool,
 ) (*http.Server, net.Listener, error) {
 	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(k8sAPI)
@@ -48,7 +49,7 @@ func NewAPIServer(
 		k8sAPI:         k8sAPI,
 		usernameHeader: usernameHeader,
 		groupHeader:    groupHeader,
-		grpcTapServer:  *grpcTapServer,
+		grpcTapServer:  grpcTapServer,
 		log:            log,
 	}
 

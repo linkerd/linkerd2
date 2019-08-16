@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/julienschmidt/httprouter"
+	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -26,7 +27,7 @@ type handler struct {
 	k8sAPI         *k8s.API
 	usernameHeader string
 	groupHeader    string
-	grpcTapServer  GRPCTapServer
+	grpcTapServer  pb.TapServer
 	log            *logrus.Entry
 }
 
