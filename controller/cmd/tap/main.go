@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	grpcTapServer := tap.NewServer(*tapPort, *controllerNamespace, k8sAPI)
+	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, k8sAPI)
 
 	// TODO: make this configurable for local development
 	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)

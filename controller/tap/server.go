@@ -454,8 +454,8 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	return ev
 }
 
-// NewServer creates a new gRPC Tap server
-func NewServer(
+// NewGrpcTapServer creates a new gRPC Tap server
+func NewGrpcTapServer(
 	tapPort uint,
 	controllerNamespace string,
 	k8sAPI *k8s.API,
