@@ -17,6 +17,8 @@
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": [],
         "outbound-ports-to-ignore": [],
-        "simulate": false
+        "simulate": false,
+        "use-wait-flag": false
     }
 }
+
