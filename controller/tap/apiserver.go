@@ -22,8 +22,13 @@ type apiServer struct {
 }
 
 // NewAPIServer creates a new server that implements the Tap APIService.
-// func NewAPIServer(addr string, cert tls.Certificate, k8sAPI *k8s.API, client pb.TapClient, disableCommonNames bool) (*http.Server, net.Listener, error) {
-func NewAPIServer(addr string, cert tls.Certificate, k8sAPI *k8s.API, tapServer *server, disableCommonNames bool) (*http.Server, net.Listener, error) {
+func NewAPIServer(
+	addr string,
+	cert tls.Certificate,
+	k8sAPI *k8s.API,
+	grpcTapServer *GRPCTapServer,
+	disableCommonNames bool,
+) (*http.Server, net.Listener, error) {
 	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(k8sAPI)
 	if err != nil {
 		return nil, nil, err
@@ -43,7 +48,7 @@ func NewAPIServer(addr string, cert tls.Certificate, k8sAPI *k8s.API, tapServer 
 		k8sAPI:         k8sAPI,
 		usernameHeader: usernameHeader,
 		groupHeader:    groupHeader,
-		tapServer:      *tapServer,
+		grpcTapServer:  *grpcTapServer,
 		log:            log,
 	}
 

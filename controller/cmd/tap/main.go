@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	// addr := flag.String("addr", ":8088", "address to serve on")
 	apiServerAddr := flag.String("apiserver-addr", ":8089", "address to serve the apiserver on")
 	metricsAddr := flag.String("metrics-addr", ":9998", "address to serve scrapable metrics on")
 	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
@@ -47,24 +46,7 @@ func main() {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	// server, lis, err := tap.NewServer(*addr, *tapPort, *controllerNamespace, k8sAPI)
-	tapServer := tap.NewServer(*tapPort, *controllerNamespace, k8sAPI)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	// _, port, err := net.SplitHostPort(lis.Addr().String())
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-
-	// TODO: remove the network hop in favor of APIServer calling TapByResource
-	// directly.
-	// tapClient, cc, err := tap.NewClient("127.0.0.1:" + port)
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-	// defer cc.Close()
+	grpcTapServer := tap.NewServer(*tapPort, *controllerNamespace, k8sAPI)
 
 	// TODO: make this configurable for local development
 	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)
@@ -72,18 +54,12 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	// apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, tapClient, *disableCommonNames)
-	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, tapServer, *disableCommonNames)
+	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	k8sAPI.Sync() // blocks until caches are synced
-
-	// go func() {
-	// 	log.Infof("starting gRPC server on %s", *addr)
-	// 	server.Serve(lis)
-	// }()
 
 	go func() {
 		log.Infof("starting APIServer on %s", *apiServerAddr)
@@ -93,7 +69,4 @@ func main() {
 	go admin.StartServer(*metricsAddr)
 
 	<-stop
-
-	// log.Infof("shutting down gRPC server on %s", *addr)
-	// server.GracefulStop()
 }

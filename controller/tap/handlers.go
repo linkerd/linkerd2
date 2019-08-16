@@ -26,7 +26,7 @@ type handler struct {
 	k8sAPI         *k8s.API
 	usernameHeader string
 	groupHeader    string
-	tapServer      server
+	grpcTapServer  GRPCTapServer
 	log            *logrus.Entry
 }
 
@@ -100,39 +100,6 @@ func initRouter(h *handler) *httprouter.Router {
 	return router
 }
 
-type serverStream struct {
-	w   protohttp.FlushableResponseWriter
-	req *http.Request
-}
-
-// Satisfy the grpc.ServerStream interface
-func (s serverStream) SetHeader(metadata.MD) error  { return nil }
-func (s serverStream) SendHeader(metadata.MD) error { return nil }
-func (s serverStream) SetTrailer(metadata.MD)       {}
-func (s serverStream) Context() context.Context     { return s.req.Context() }
-func (s serverStream) SendMsg(interface{}) error    { return nil }
-func (s serverStream) RecvMsg(interface{}) error    { return nil }
-
-func (s serverStream) Send(msg *public.TapEvent) error {
-	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(s.w, err)
-		return err
-	}
-
-	s.w.Flush()
-	return nil
-}
-
-type tapServer struct {
-	serverStream
-}
-
-// Satisfy the tap.Tap_TapByResourceServer interface
-func (x *tapServer) Send(m *public.TapEvent) error {
-	return x.serverStream.Send(m)
-}
-
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/tap
 // POST /apis/tap.linkerd.io/v1alpha1/watch/namespaces/:namespace/:resource/:name/tap
 func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
@@ -201,38 +168,13 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	server := tapServer{serverStream{w: flushableWriter, req: req}}
-	err = h.tapServer.TapByResource(&tapReq, &server)
+	tapServer := tapByResourceServer{serverStream{w: flushableWriter, req: req}}
+	err = h.grpcTapServer.TapByResource(&tapReq, &tapServer)
 	if err != nil {
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
 		return
 	}
-
-	// for {
-	// 	select {
-	// 	case <-req.Context().Done():
-	// 		h.log.Debug("Received Done context in Tap Stream")
-	// 		return
-	// 	default:
-	// 		event, err := client.Recv()
-	// 		if err != nil {
-	// 			h.log.Errorf("Error receiving from tap client: %s", err)
-	// 			protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
-	// 			return
-	// 		}
-
-	// 		// PREV: Send functionality was not inlined
-	// 		// err = protohttp.WriteProtoToHTTPResponse(flushableWriter, event)
-	// 		// if err != nil {
-	// 		// 	h.log.Errorf("Error writing proto to HTTP Response: %s", err)
-	// 		// 	protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
-	// 		// 	return
-	// 		// }
-	// 		// flushableWriter.Flush()
-	// 		server.Send(event)
-	// 	}
-	// }
 }
 
 // GET (not found)
@@ -400,4 +342,39 @@ func renderJSONError(w http.ResponseWriter, err error, status int) {
 	rsp, _ := json.Marshal(jsonError{Error: err.Error()})
 	w.WriteHeader(status)
 	w.Write(rsp)
+}
+
+type serverStream struct {
+	w   protohttp.FlushableResponseWriter
+	req *http.Request
+	log *logrus.Entry
+}
+
+// Satisfy the grpc.ServerStream interface
+func (s serverStream) SetHeader(metadata.MD) error  { return nil }
+func (s serverStream) SendHeader(metadata.MD) error { return nil }
+func (s serverStream) SetTrailer(metadata.MD)       {}
+func (s serverStream) Context() context.Context     { return s.req.Context() }
+func (s serverStream) SendMsg(interface{}) error    { return nil }
+func (s serverStream) RecvMsg(interface{}) error    { return nil }
+
+func (s serverStream) Send(msg *public.TapEvent) error {
+	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
+	if err != nil {
+		s.log.Errorf("Error writing proto to HTTP Response: %s", err)
+		protohttp.WriteErrorToHTTPResponse(s.w, err)
+		return err
+	}
+
+	s.w.Flush()
+	return nil
+}
+
+type tapByResourceServer struct {
+	serverStream
+}
+
+// Satisfy the tap.Tap_TapByResourceServer interface
+func (x *tapByResourceServer) Send(m *public.TapEvent) error {
+	return x.serverStream.Send(m)
 }

@@ -29,23 +29,24 @@ const requireIDHeader = "l5d-require-id"
 const podIPIndex = "ip"
 const defaultMaxRps = 100.0
 
-type (
-	server struct {
-		tapPort             uint
-		k8sAPI              *k8s.API
-		controllerNamespace string
-	}
-)
+// GRPCTapServer TODO
+type GRPCTapServer struct {
+	tapPort             uint
+	k8sAPI              *k8s.API
+	controllerNamespace string
+}
 
 var (
 	tapInterval = 1 * time.Second
 )
 
-func (s *server) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
+// Tap is deprecated, use TapByResource
+func (s *GRPCTapServer) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
-func (s *server) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
+// TapByResource TODO
+func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
 	if req == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
 	}
@@ -246,7 +247,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
+func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
@@ -297,7 +298,7 @@ func (s *server) tapProxy(ctx context.Context, maxRps float32, match *proxy.Obse
 	}
 }
 
-func (s *server) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
+func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
 		switch orig {
 		case proxy.TapEvent_INBOUND:
@@ -458,7 +459,7 @@ func NewServer(
 	tapPort uint,
 	controllerNamespace string,
 	k8sAPI *k8s.API,
-) *server {
+) *GRPCTapServer {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
 
 	_, srv := newGRPCTapServer(tapPort, controllerNamespace, k8sAPI)
@@ -470,8 +471,8 @@ func newGRPCTapServer(
 	tapPort uint,
 	controllerNamespace string,
 	k8sAPI *k8s.API,
-) (*grpc.Server, *server) {
-	srv := &server{
+) (*grpc.Server, *GRPCTapServer) {
+	srv := &GRPCTapServer{
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
@@ -496,7 +497,7 @@ func indexPodByIP(obj interface{}) ([]string, error) {
 //
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
-func (s *server) hydrateEventLabels(ev *public.TapEvent) {
+func (s *GRPCTapServer) hydrateEventLabels(ev *public.TapEvent) {
 	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
@@ -516,7 +517,7 @@ func (s *server) hydrateEventLabels(ev *public.TapEvent) {
 
 // hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
-func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string) error {
+func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]string) error {
 	pod, err := s.podForIP(ip)
 	switch {
 	case err != nil:
@@ -545,7 +546,7 @@ func (s *server) hydrateIPLabels(ip *public.IPAddress, labels map[string]string)
 //
 // If no pods were found for the provided IP address, it returns nil. Errors are
 // returned only in the event of an error indexing the pods list.
-func (s *server) podForIP(ip *public.IPAddress) (*corev1.Pod, error) {
+func (s *GRPCTapServer) podForIP(ip *public.IPAddress) (*corev1.Pod, error) {
 	ipStr := addr.PublicIPToString(ip)
 	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
 
