@@ -5,22 +5,20 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	helmDefaultChartName = "linkerd2"
-	helmDefaultChartDir  = "linkerd2"
-)
+const helmDefaultChartDir = "linkerd2"
 
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		Stage                       string
-		Namespace                   string `yaml:"Namespace"`
-		ClusterDomain               string `yaml:"ClusterDomain"`
+		Namespace                   string
+		ClusterDomain               string
 		ControllerImage             string
 		ControllerImageVersion      string
 		WebImage                    string
@@ -183,9 +181,9 @@ type (
 )
 
 // NewValues returns a new instance of the Values type.
-func NewValues() (*Values, error) {
+func NewValues(ha bool) (*Values, error) {
 	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
-	v, err := readDefaults(chartDir, false)
+	v, err := readDefaults(chartDir, ha)
 	if err != nil {
 		return nil, err
 	}
@@ -214,18 +212,45 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		{Name: helmDefaultValuesFile},
 	}
 
+	if ha {
+		valuesFiles = append(valuesFiles, &chartutil.BufferedFile{
+			Name: helmDefaultHAValuesFile,
+		})
+	}
+
 	if err := filesReader(chartDir, valuesFiles); err != nil {
 		return nil, err
 	}
 
-	var values Values
+	values := Values{}
 	for _, valuesFile := range valuesFiles {
-		if valuesFile.Name == chartutil.ValuesfileName {
-			if err := yaml.Unmarshal(valuesFile.Data, &values); err != nil {
-				return nil, err
-			}
-			break
+		var v Values
+		if err := yaml.Unmarshal(valuesFile.Data, &v); err != nil {
+			return nil, err
 		}
+
+		merged, err := values.merge(v)
+		if err != nil {
+			return nil, err
+		}
+
+		values = *merged
 	}
+
 	return &values, nil
+}
+
+// merge merges the non-empty properties of src into v.
+// A new Values instance is returned. Neither src nor v are mutated after
+// calling merge.
+func (v Values) merge(src Values) (*Values, error) {
+	// By default, mergo.Merge doesn't overwrite any existing non-empty values
+	// in src. So in HA mode, we are merging values.yaml into values-ha.yaml
+	// so that all the HA values take precedence.
+	if err := mergo.Merge(&src, v); err != nil {
+		return nil, err
+	}
+
+	newValue := src
+	return &newValue, nil
 }

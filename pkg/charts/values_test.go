@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewValues(t *testing.T) {
-	actual, err := NewValues()
+	actual, err := NewValues(false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -119,4 +119,80 @@ func TestNewValues(t *testing.T) {
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected.Identity.Issuer, actual.Identity.Issuer)
 	}
+
+	t.Run("HA", func(t *testing.T) {
+		actual, err := NewValues(true)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
+		expected.ControllerReplicas = 3
+		expected.WebhookFailurePolicy = "Fail"
+
+		controllerResources := &Resources{
+			CPU: Constraints{
+				Limit:   "1",
+				Request: "100m",
+			},
+			Memory: Constraints{
+				Limit:   "250Mi",
+				Request: "50Mi",
+			},
+		}
+		expected.DestinationResources = controllerResources
+		expected.PublicAPIResources = controllerResources
+		expected.ProxyInjectorResources = controllerResources
+		expected.SPValidatorResources = controllerResources
+		expected.TapResources = controllerResources
+		expected.WebResources = controllerResources
+		expected.HeartbeatResources = controllerResources
+
+		expected.GrafanaResources = &Resources{
+			CPU: Constraints{
+				Limit:   controllerResources.CPU.Limit,
+				Request: controllerResources.CPU.Request,
+			},
+			Memory: Constraints{
+				Limit:   "1024Mi",
+				Request: "50Mi",
+			},
+		}
+
+		expected.IdentityResources = &Resources{
+			CPU: Constraints{
+				Limit:   controllerResources.CPU.Limit,
+				Request: controllerResources.CPU.Request,
+			},
+			Memory: Constraints{
+				Limit:   controllerResources.Memory.Limit,
+				Request: "10Mi",
+			},
+		}
+
+		expected.PrometheusResources = &Resources{
+			CPU: Constraints{
+				Limit:   "4",
+				Request: "300m",
+			},
+			Memory: Constraints{
+				Limit:   "8192Mi",
+				Request: "300Mi",
+			},
+		}
+
+		expected.Proxy.Resources = &Resources{
+			CPU: Constraints{
+				Limit:   controllerResources.CPU.Limit,
+				Request: controllerResources.CPU.Request,
+			},
+			Memory: Constraints{
+				Limit:   controllerResources.Memory.Limit,
+				Request: "20Mi",
+			},
+		}
+
+		if !reflect.DeepEqual(expected.Proxy, actual.Proxy) {
+			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected.Proxy, actual.Proxy)
+		}
+	})
 }
