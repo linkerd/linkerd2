@@ -13,7 +13,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
@@ -56,6 +58,13 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	clusterDomain := globalConfig.GetClusterDomain()
+	if err != nil || clusterDomain == "" {
+		clusterDomain = "cluster.local"
+		log.Fatalf("Failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	}
+
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
@@ -63,6 +72,7 @@ func main() {
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
+		clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
