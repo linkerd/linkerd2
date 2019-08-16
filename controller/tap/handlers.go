@@ -169,8 +169,8 @@ func (h *handler) handleTap(w http.ResponseWriter, req *http.Request, p httprout
 		return
 	}
 
-	tapServer := tapByResourceServer{serverStream{w: flushableWriter, req: req, log: h.log}}
-	err = h.grpcTapServer.TapByResource(&tapReq, &tapServer)
+	serverStream := serverStream{w: flushableWriter, req: req, log: h.log}
+	err = h.grpcTapServer.TapByResource(&tapReq, &serverStream)
 	if err != nil {
 		h.log.Error(err)
 		protohttp.WriteErrorToHTTPResponse(flushableWriter, err)
@@ -366,8 +366,9 @@ func (s serverStream) Context() context.Context     { return s.req.Context() }
 func (s serverStream) SendMsg(interface{}) error    { return nil }
 func (s serverStream) RecvMsg(interface{}) error    { return nil }
 
-func (s serverStream) Send(msg *public.TapEvent) error {
-	err := protohttp.WriteProtoToHTTPResponse(s.w, msg)
+// Satisfy the tap.Tap_TapByResourceServer interface
+func (s *serverStream) Send(m *public.TapEvent) error {
+	err := protohttp.WriteProtoToHTTPResponse(s.w, m)
 	if err != nil {
 		s.log.Errorf("Error writing proto to HTTP Response: %s", err)
 		protohttp.WriteErrorToHTTPResponse(s.w, err)
@@ -376,13 +377,4 @@ func (s serverStream) Send(msg *public.TapEvent) error {
 
 	s.w.Flush()
 	return nil
-}
-
-type tapByResourceServer struct {
-	serverStream
-}
-
-// Satisfy the tap.Tap_TapByResourceServer interface
-func (x *tapByResourceServer) Send(m *public.TapEvent) error {
-	return x.serverStream.Send(m)
 }
