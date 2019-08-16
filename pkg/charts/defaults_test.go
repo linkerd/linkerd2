@@ -7,6 +7,7 @@ import (
 )
 
 func TestReadDefaults(t *testing.T) {
+	t.Skip()
 	actual, err := ReadDefaults("linkerd2/", false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)

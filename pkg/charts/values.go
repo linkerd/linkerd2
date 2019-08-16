@@ -1,18 +1,76 @@
 package charts
 
-import "time"
+import (
+	"fmt"
+	"path/filepath"
+	"time"
+
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"k8s.io/helm/pkg/chartutil"
+	"sigs.k8s.io/yaml"
+)
+
+const (
+	helmDefaultChartName = "linkerd2"
+	helmDefaultChartDir  = "linkerd2"
+)
 
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		Namespace        string
-		ClusterDomain    string
-		HighAvailability bool
-		Identity         *Identity
+		Stage                       string
+		Namespace                   string `yaml:"Namespace"`
+		ClusterDomain               string `yaml:"ClusterDomain"`
+		ControllerImage             string
+		ControllerImageVersion      string
+		WebImage                    string
+		PrometheusImage             string
+		GrafanaImage                string
+		ImagePullPolicy             string
+		UUID                        string
+		CliVersion                  string
+		ControllerReplicas          uint
+		ControllerLogLevel          string
+		PrometheusLogLevel          string
+		ControllerComponentLabel    string
+		ControllerNamespaceLabel    string
+		CreatedByAnnotation         string
+		ProxyContainerName          string
+		ProxyInjectAnnotation       string
+		ProxyInjectDisabled         string
+		LinkerdNamespaceLabel       string
+		ControllerUID               int64
+		EnableH2Upgrade             bool
+		EnablePodAntiAffinity       bool
+		HighAvailability            bool
+		NoInitContainer             bool
+		WebhookFailurePolicy        string
+		OmitWebhookSideEffects      bool
+		RestrictDashboardPrivileges bool
+		HeartbeatSchedule           string
 
-		Proxy     *Proxy
-		ProxyInit *ProxyInit
+		Configs configJSONs
+
+		DestinationResources,
+		GrafanaResources,
+		HeartbeatResources,
+		IdentityResources,
+		PrometheusResources,
+		ProxyInjectorResources,
+		PublicAPIResources,
+		SPValidatorResources,
+		TapResources,
+		WebResources *Resources
+
+		Identity         *Identity
+		ProxyInjector    *ProxyInjector
+		ProfileValidator *ProfileValidator
+		Tap              *Tap
+		Proxy            *Proxy
+		ProxyInit        *ProxyInit
 	}
+
+	configJSONs struct{ Global, Proxy, Install string }
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
@@ -123,3 +181,51 @@ type (
 		KeyPEM, CrtPEM string
 	}
 )
+
+// NewValues returns a new instance of the Values type.
+func NewValues() (*Values, error) {
+	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	v, err := readDefaults(chartDir, false)
+	if err != nil {
+		return nil, err
+	}
+
+	v.CliVersion = k8s.CreatedByAnnotationValue()
+	v.ProxyContainerName = k8s.ProxyContainerName
+	v.DestinationResources = &Resources{}
+	v.GrafanaResources = &Resources{}
+	v.HeartbeatResources = &Resources{}
+	v.IdentityResources = &Resources{}
+	v.PrometheusResources = &Resources{}
+	v.ProxyInjectorResources = &Resources{}
+	v.PublicAPIResources = &Resources{}
+	v.SPValidatorResources = &Resources{}
+	v.TapResources = &Resources{}
+	v.WebResources = &Resources{}
+	v.Proxy.Component = k8s.Deployment // only Deployment workloads are injected
+
+	return v, nil
+}
+
+// readDefaults read all the default variables from the values.yaml file.
+// chartDir is the root directory of the Helm chart where values.yaml is.
+func readDefaults(chartDir string, ha bool) (*Values, error) {
+	valuesFiles := []*chartutil.BufferedFile{
+		{Name: helmDefaultValuesFile},
+	}
+
+	if err := filesReader(chartDir, valuesFiles); err != nil {
+		return nil, err
+	}
+
+	var values Values
+	for _, valuesFile := range valuesFiles {
+		if valuesFile.Name == chartutil.ValuesfileName {
+			if err := yaml.Unmarshal(valuesFile.Data, &values); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+	return &values, nil
+}

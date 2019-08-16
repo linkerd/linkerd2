@@ -14,19 +14,23 @@ const (
 // DefaultValues contain all the default variables defined in the values.yaml
 // and values-ha.yaml.
 type DefaultValues struct {
-	ControllerReplicas               uint
+	ClusterDomain                    string
+	ControllerImage                  string
 	ControllerLogLevel               string
 	ControllerCPULimit               string
 	ControllerCPURequest             string
 	ControllerMemoryLimit            string
 	ControllerMemoryRequest          string
+	ControllerReplicas               uint
 	ControllerUID                    int64
 	EnableExternalProfiles           bool
 	EnableH2Upgrade                  bool
 	GrafanaCPULimit                  string
 	GrafanaCPURequest                string
+	GrafanaImage                     string
 	GrafanaMemoryLimit               string
 	GrafanaMemoryRequest             string
+	HeartbeatSchedule                string
 	ImagePullPolicy                  string
 	IdentityCPULimit                 string
 	IdentityCPURequest               string
@@ -35,10 +39,12 @@ type DefaultValues struct {
 	IdentityTrustDomain              string
 	IdentityIssuerClockSkewAllowance time.Duration
 	IdentityIssuerIssuanceLifetime   time.Duration
+	Namespace                        string
 	OmitWebhookSideEffects           bool
 	PrometheusCPULimit               string
 	PrometheusCPURequest             string
 	PrometheusImage                  string
+	PrometheusLogLevel               string
 	PrometheusMemoryLimit            string
 	PrometheusMemoryRequest          string
 	ProxyAdminPort                   uint
@@ -52,12 +58,16 @@ type DefaultValues struct {
 	ProxyInitCPURequest              string
 	ProxyInitMemoryLimit             string
 	ProxyInitMemoryRequest           string
+	ProxyInitImageVersion            string
 	ProxyLogLevel                    string
 	ProxyMemoryLimit                 string
 	ProxyMemoryRequest               string
 	ProxyOutboundPort                uint
 	ProxyUID                         int64
+	ProxyVersion                     string
+	RestrictDashboardPrivileges      bool
 	WebhookFailurePolicy             string
+	WebImage                         string
 }
 
 // ReadDefaults read all the default variables from the values.yaml file.
@@ -152,26 +162,33 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 	}
 
 	defaultValues := &DefaultValues{
+		ClusterDomain:                    defaults["ClusterDomain"].(string),
+		ControllerImage:                  defaults["ControllerImage"].(string),
 		ControllerReplicas:               uint(defaults["ControllerReplicas"].(float64)),
 		ControllerLogLevel:               defaults["ControllerLogLevel"].(string),
 		ControllerUID:                    int64(defaults["ControllerUID"].(float64)),
 		EnableExternalProfiles:           proxy["EnableExternalProfiles"].(bool),
 		EnableH2Upgrade:                  defaults["EnableH2Upgrade"].(bool),
+		GrafanaImage:                     defaults["GrafanaImage"].(string),
+		HeartbeatSchedule:                defaults["HeartbeatSchedule"].(string),
 		ImagePullPolicy:                  defaults["ImagePullPolicy"].(string),
 		IdentityTrustDomain:              identity["TrustDomain"].(string),
 		IdentityIssuerClockSkewAllowance: identityClockSkewAllowance,
 		IdentityIssuerIssuanceLifetime:   identityIssuanceLifetime,
+		Namespace:                        defaults["Namespace"].(string),
 		OmitWebhookSideEffects:           defaults["OmitWebhookSideEffects"].(bool),
 		PrometheusImage:                  defaults["PrometheusImage"].(string),
+		PrometheusLogLevel:               defaults["PrometheusLogLevel"].(string),
 		ProxyAdminPort:                   uint(proxyPorts["Admin"].(float64)),
 		ProxyControlPort:                 uint(proxyPorts["Control"].(float64)),
 		ProxyCPULimit:                    proxyResourcesCPU["Limit"].(string),
 		ProxyCPURequest:                  proxyResourcesCPU["Request"].(string),
 		ProxyImageName:                   proxyImage["Name"].(string),
 		ProxyInboundPort:                 uint(proxyPorts["Inbound"].(float64)),
-		ProxyInitImageName:               proxyInitImage["Name"].(string),
 		ProxyInitCPULimit:                proxyInitResourcesCPU["Limit"].(string),
 		ProxyInitCPURequest:              proxyInitResourcesCPU["Request"].(string),
+		ProxyInitImageName:               proxyInitImage["Name"].(string),
+		ProxyInitImageVersion:            proxyInitImage["Version"].(string),
 		ProxyInitMemoryLimit:             proxyInitResourcesMemory["Limit"].(string),
 		ProxyInitMemoryRequest:           proxyInitResourcesMemory["Request"].(string),
 		ProxyLogLevel:                    proxy["LogLevel"].(string),
@@ -179,7 +196,9 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 		ProxyMemoryRequest:               proxyResourcesMemory["Request"].(string),
 		ProxyOutboundPort:                uint(proxyPorts["Outbound"].(float64)),
 		ProxyUID:                         int64(proxy["UID"].(float64)),
+		ProxyVersion:                     proxyImage["Version"].(string),
 		WebhookFailurePolicy:             defaults["WebhookFailurePolicy"].(string),
+		WebImage:                         defaults["WebImage"].(string),
 	}
 
 	if ha {
