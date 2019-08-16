@@ -744,7 +744,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
-		ClusterDomain:          defaultClusterDomain,
+		ClusterDomain:          clusterDomain,
 	}
 }
 
