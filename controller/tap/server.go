@@ -29,7 +29,7 @@ const requireIDHeader = "l5d-require-id"
 const podIPIndex = "ip"
 const defaultMaxRps = 100.0
 
-// GRPCTapServer TODO
+// GRPCTapServer describes the gRPC server implementing tap.Tap_TapByResourceServer
 type GRPCTapServer struct {
 	tapPort             uint
 	k8sAPI              *k8s.API
@@ -40,12 +40,12 @@ var (
 	tapInterval = 1 * time.Second
 )
 
-// Tap is deprecated, use TapByResource
+// Tap is deprecated, use TapByResource.
 func (s *GRPCTapServer) Tap(req *public.TapRequest, stream pb.Tap_TapServer) error {
 	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
 }
 
-// TapByResource TODO
+// TapByResource taps all resources matched by the request object.
 func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream pb.Tap_TapByResourceServer) error {
 	if req == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil TapByResourceRequest")
