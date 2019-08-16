@@ -13,11 +13,14 @@ func TestNewValues(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
+	testVersion := "linkerd-dev"
+
 	expected := &Values{
 		Stage:                       "",
 		Namespace:                   "linkerd",
 		ClusterDomain:               "cluster.local",
 		ControllerImage:             "gcr.io/linkerd-io/controller",
+		ControllerImageVersion:      testVersion,
 		WebImage:                    "gcr.io/linkerd-io/web",
 		PrometheusImage:             "prom/prometheus:v2.11.1",
 		GrafanaImage:                "gcr.io/linkerd-io/grafana",
@@ -44,17 +47,6 @@ func TestNewValues(t *testing.T) {
 		RestrictDashboardPrivileges: false,
 		HeartbeatSchedule:           "0 0 * * *",
 
-		DestinationResources:   &Resources{},
-		GrafanaResources:       &Resources{},
-		HeartbeatResources:     &Resources{},
-		IdentityResources:      &Resources{},
-		PrometheusResources:    &Resources{},
-		ProxyInjectorResources: &Resources{},
-		PublicAPIResources:     &Resources{},
-		SPValidatorResources:   &Resources{},
-		TapResources:           &Resources{},
-		WebResources:           &Resources{},
-
 		Identity: &Identity{
 			TrustDomain: "cluster.local",
 			Issuer: &Issuer{
@@ -75,7 +67,7 @@ func TestNewValues(t *testing.T) {
 			Image: &Image{
 				Name:       "gcr.io/linkerd-io/proxy",
 				PullPolicy: "IfNotPresent",
-				Version:    "edge-19.8.3",
+				Version:    testVersion,
 			},
 			LogLevel: "warn,linkerd2_proxy=info",
 			Ports: &Ports{
@@ -101,7 +93,7 @@ func TestNewValues(t *testing.T) {
 			Image: &Image{
 				Name:       "gcr.io/linkerd-io/proxy-init",
 				PullPolicy: "IfNotPresent",
-				Version:    "v1.0.0",
+				Version:    testVersion,
 			},
 			Resources: &Resources{
 				CPU: Constraints{
@@ -116,8 +108,15 @@ func TestNewValues(t *testing.T) {
 		},
 	}
 
+	// pin the versions to ensure consistent test result.
+	// in non-test environment, the default versions are read from the
+	// values.yaml.
+	actual.ControllerImageVersion = testVersion
+	actual.Proxy.Image.Version = testVersion
+	actual.ProxyInit.Image.Version = testVersion
+
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected.Identity.Issuer, actual.Identity.Issuer)
+		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
 	}
 
 	t.Run("HA", func(t *testing.T) {
@@ -127,6 +126,7 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.ControllerReplicas = 3
+		expected.EnablePodAntiAffinity = true
 		expected.WebhookFailurePolicy = "Fail"
 
 		controllerResources := &Resources{
@@ -191,8 +191,15 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		if !reflect.DeepEqual(expected.Proxy, actual.Proxy) {
-			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected.Proxy, actual.Proxy)
+		// pin the versions to ensure consistent test result.
+		// in non-test environment, the default versions are read from the
+		// values.yaml.
+		actual.ControllerImageVersion = testVersion
+		actual.Proxy.Image.Version = testVersion
+		actual.ProxyInit.Image.Version = testVersion
+
+		if !reflect.DeepEqual(expected, actual) {
+			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
 		}
 	})
 }

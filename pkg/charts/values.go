@@ -11,7 +11,10 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const helmDefaultChartDir = "linkerd2"
+const (
+	helmDefaultChartDir     = "linkerd2"
+	helmDefaultHAValuesFile = "values-ha.yaml"
+)
 
 type (
 	// Values contains the top-level elements in the Helm charts
@@ -46,8 +49,13 @@ type (
 		OmitWebhookSideEffects      bool
 		RestrictDashboardPrivileges bool
 		HeartbeatSchedule           string
-
-		Configs configJSONs
+		Configs                     ConfigJSONs
+		Identity                    *Identity
+		ProxyInjector               *ProxyInjector
+		ProfileValidator            *ProfileValidator
+		Tap                         *Tap
+		Proxy                       *Proxy
+		ProxyInit                   *ProxyInit
 
 		DestinationResources,
 		GrafanaResources,
@@ -59,16 +67,10 @@ type (
 		SPValidatorResources,
 		TapResources,
 		WebResources *Resources
-
-		Identity         *Identity
-		ProxyInjector    *ProxyInjector
-		ProfileValidator *ProfileValidator
-		Tap              *Tap
-		Proxy            *Proxy
-		ProxyInit        *ProxyInit
 	}
 
-	configJSONs struct{ Global, Proxy, Install string }
+	// ConfigJSONs is the JSON encoding of the Linkerd configuration
+	ConfigJSONs struct{ Global, Proxy, Install string }
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
@@ -189,18 +191,11 @@ func NewValues(ha bool) (*Values, error) {
 	}
 
 	v.CliVersion = k8s.CreatedByAnnotationValue()
-	v.ProxyContainerName = k8s.ProxyContainerName
-	v.DestinationResources = &Resources{}
-	v.GrafanaResources = &Resources{}
-	v.HeartbeatResources = &Resources{}
-	v.IdentityResources = &Resources{}
-	v.PrometheusResources = &Resources{}
-	v.ProxyInjectorResources = &Resources{}
-	v.PublicAPIResources = &Resources{}
-	v.SPValidatorResources = &Resources{}
-	v.TapResources = &Resources{}
-	v.WebResources = &Resources{}
+	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
 	v.Proxy.Component = k8s.Deployment // only Deployment workloads are injected
+	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
+	v.ProxyContainerName = k8s.ProxyContainerName
+	v.Tap = &Tap{TLS: &TLS{}}
 
 	return v, nil
 }
@@ -209,7 +204,7 @@ func NewValues(ha bool) (*Values, error) {
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string, ha bool) (*Values, error) {
 	valuesFiles := []*chartutil.BufferedFile{
-		{Name: helmDefaultValuesFile},
+		{Name: chartutil.ValuesfileName},
 	}
 
 	if ha {

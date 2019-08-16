@@ -30,63 +30,6 @@ import (
 )
 
 type (
-	installValues struct {
-		stage                       string
-		Namespace                   string
-		ClusterDomain               string
-		ControllerImage             string
-		ControllerImageVersion      string
-		WebImage                    string
-		PrometheusImage             string
-		GrafanaImage                string
-		ImagePullPolicy             string
-		UUID                        string
-		CliVersion                  string
-		ControllerReplicas          uint
-		ControllerLogLevel          string
-		PrometheusLogLevel          string
-		ControllerComponentLabel    string
-		ControllerNamespaceLabel    string
-		CreatedByAnnotation         string
-		ProxyContainerName          string
-		ProxyInjectAnnotation       string
-		ProxyInjectDisabled         string
-		LinkerdNamespaceLabel       string
-		ControllerUID               int64
-		EnableH2Upgrade             bool
-		EnablePodAntiAffinity       bool
-		HighAvailability            bool
-		NoInitContainer             bool
-		WebhookFailurePolicy        string
-		OmitWebhookSideEffects      bool
-		RestrictDashboardPrivileges bool
-		HeartbeatSchedule           string
-
-		Configs configJSONs
-
-		DestinationResources,
-		GrafanaResources,
-		HeartbeatResources,
-		IdentityResources,
-		PrometheusResources,
-		ProxyInjectorResources,
-		PublicAPIResources,
-		SPValidatorResources,
-		TapResources,
-		WebResources *charts.Resources
-
-		Identity         *installIdentityValues
-		ProxyInjector    *charts.ProxyInjector
-		ProfileValidator *charts.ProfileValidator
-		Tap              *charts.Tap
-		Proxy            *charts.Proxy
-		ProxyInit        *charts.ProxyInit
-	}
-
-	configJSONs struct{ Global, Proxy, Install string }
-
-	installIdentityValues charts.Identity
-
 	// installOptions holds values for command line flags that apply to the install
 	// command. All fields in this struct should have corresponding flags added in
 	// the newCmdInstall func later in this file. It also embeds proxyConfigOptions
@@ -150,14 +93,24 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
-// control plane and proxy options.
+// control plane and proxy options. These defaults are read from the Helm
+// values.yaml and values-ha.yaml files.
 //
 // These options may be overridden on the CLI at install-time and will be
 // persisted in Linkerd's control plane configuration to be used at
 // injection-time.
 func newInstallOptionsWithDefaults() (*installOptions, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
-	defaults, err := charts.ReadDefaults(chartDir, false)
+	defaults, err := charts.NewValues(false)
+	if err != nil {
+		return nil, err
+	}
+
+	issuanceLifetime, err := time.ParseDuration(defaults.Identity.Issuer.IssuanceLifetime)
+	if err != nil {
+		return nil, err
+	}
+
+	clockSkewAllowance, err := time.ParseDuration(defaults.Identity.Issuer.ClockSkewAllowance)
 	if err != nil {
 		return nil, err
 	}
@@ -166,38 +119,38 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
-		highAvailability:            false,
+		highAvailability:            defaults.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
-		noInitContainer:             false,
+		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
-		restrictDashboardPrivileges: false,
+		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
-			proxyImage:             defaults.ProxyImageName,
-			initImage:              defaults.ProxyInitImageName,
+			proxyImage:             defaults.Proxy.Image.Name,
+			initImage:              defaults.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
 			dockerRegistry:         defaultDockerRegistry,
 			imagePullPolicy:        defaults.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
 			ignoreOutboundPorts:    nil,
-			proxyUID:               defaults.ProxyUID,
-			proxyLogLevel:          defaults.ProxyLogLevel,
-			proxyControlPort:       defaults.ProxyControlPort,
-			proxyAdminPort:         defaults.ProxyAdminPort,
-			proxyInboundPort:       defaults.ProxyInboundPort,
-			proxyOutboundPort:      defaults.ProxyOutboundPort,
-			proxyCPURequest:        defaults.ProxyCPURequest,
-			proxyMemoryRequest:     defaults.ProxyMemoryRequest,
-			proxyCPULimit:          defaults.ProxyCPULimit,
-			proxyMemoryLimit:       defaults.ProxyMemoryLimit,
-			enableExternalProfiles: defaults.EnableExternalProfiles,
+			proxyUID:               defaults.Proxy.UID,
+			proxyLogLevel:          defaults.Proxy.LogLevel,
+			proxyControlPort:       uint(defaults.Proxy.Ports.Control),
+			proxyAdminPort:         uint(defaults.Proxy.Ports.Admin),
+			proxyInboundPort:       uint(defaults.Proxy.Ports.Inbound),
+			proxyOutboundPort:      uint(defaults.Proxy.Ports.Outbound),
+			proxyCPURequest:        defaults.Proxy.Resources.CPU.Request,
+			proxyMemoryRequest:     defaults.Proxy.Resources.Memory.Request,
+			proxyCPULimit:          defaults.Proxy.Resources.CPU.Limit,
+			proxyMemoryLimit:       defaults.Proxy.Resources.Memory.Limit,
+			enableExternalProfiles: defaults.Proxy.EnableExternalProfiles,
 		},
 		identityOptions: &installIdentityOptions{
-			trustDomain:        defaults.IdentityTrustDomain,
-			issuanceLifetime:   defaults.IdentityIssuerIssuanceLifetime,
-			clockSkewAllowance: defaults.IdentityIssuerClockSkewAllowance,
+			trustDomain:        defaults.Identity.TrustDomain,
+			issuanceLifetime:   issuanceLifetime,
+			clockSkewAllowance: clockSkewAllowance,
 		},
 
 		generateUUID: func() string {
@@ -368,10 +321,10 @@ func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) er
 		return err
 	}
 
-	return values.render(os.Stdout, configs)
+	return render(os.Stdout, values, configs)
 }
 
-func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -382,16 +335,14 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err != nil {
 		return nil, nil, err
 	}
-
-	configs := options.configs(identityValues.toIdentityContext())
+	configs := options.configs(toIdentityContext(identityValues))
 
 	values, err := options.buildValuesWithoutIdentity(configs)
 	if err != nil {
 		return nil, nil, err
 	}
 	values.Identity = identityValues
-
-	values.stage = stage
+	values.Stage = stage
 
 	return values, configs, nil
 }
@@ -545,49 +496,42 @@ func (options *installOptions) validate() error {
 	return nil
 }
 
-func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
-	// install values that can't be overridden by CLI options will be assigned
-	// defaults from the values.yaml and values-ha.yaml files
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
-	defaults, err := charts.ReadDefaults(chartDir, options.highAvailability)
+// buildValuesWithoutIdentity builds the values that will be used to render
+// the Helm templates. It overrides the defaults values with CLI options.
+func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*charts.Values, error) {
+	installValues, err := charts.NewValues(options.highAvailability)
 	if err != nil {
 		return nil, err
 	}
 
-	controllerResources := &charts.Resources{}
-	identityResources := &charts.Resources{}
-	grafanaResources := &charts.Resources{}
-	prometheusResources := &charts.Resources{}
-
-	// if HA mode, use HA defaults from values-ha.yaml
 	if options.highAvailability {
-		// should have at least more than 1 replicas
+		// use the HA defaults if CLI options aren't provided
 		if options.controllerReplicas == 1 {
-			options.controllerReplicas = defaults.ControllerReplicas
+			options.controllerReplicas = installValues.ControllerReplicas
 		}
 
 		if options.proxyCPURequest == "" {
-			options.proxyCPURequest = defaults.ProxyCPURequest
+			options.proxyCPURequest = installValues.Proxy.Resources.CPU.Request
 		}
 
 		if options.proxyMemoryRequest == "" {
-			options.proxyMemoryRequest = defaults.ProxyMemoryRequest
+			options.proxyMemoryRequest = installValues.Proxy.Resources.Memory.Request
 		}
 
 		if options.proxyCPULimit == "" {
-			options.proxyCPULimit = defaults.ProxyCPULimit
+			options.proxyCPULimit = installValues.Proxy.Resources.CPU.Limit
 		}
 
 		if options.proxyMemoryLimit == "" {
-			options.proxyMemoryLimit = defaults.ProxyMemoryLimit
-		}
-
-		if configs.Proxy.Resource.RequestCpu == "" {
-			configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+			options.proxyMemoryLimit = installValues.Proxy.Resources.Memory.Limit
 		}
 
 		// `configs` was built before the HA option is evaluated, so we need
 		// to make sure the HA proxy resources are added here.
+		if configs.Proxy.Resource.RequestCpu == "" {
+			configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+		}
+
 		if configs.Proxy.Resource.RequestMemory == "" {
 			configs.Proxy.Resource.RequestMemory = options.proxyMemoryRequest
 		}
@@ -601,50 +545,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		}
 
 		options.identityOptions.replicas = options.controllerReplicas
-
-		controllerResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Request: defaults.ControllerCPURequest,
-				Limit:   defaults.ControllerCPULimit,
-			},
-			Memory: charts.Constraints{
-				Request: defaults.ControllerMemoryRequest,
-				Limit:   defaults.ControllerMemoryLimit,
-			},
-		}
-
-		grafanaResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.GrafanaCPULimit,
-				Request: defaults.GrafanaCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.GrafanaMemoryLimit,
-				Request: defaults.GrafanaMemoryRequest,
-			},
-		}
-
-		identityResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.IdentityCPULimit,
-				Request: defaults.IdentityCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.IdentityMemoryLimit,
-				Request: defaults.IdentityMemoryRequest,
-			},
-		}
-
-		prometheusResources = &charts.Resources{
-			CPU: charts.Constraints{
-				Limit:   defaults.PrometheusCPULimit,
-				Request: defaults.PrometheusCPURequest,
-			},
-			Memory: charts.Constraints{
-				Limit:   defaults.PrometheusMemoryLimit,
-				Request: defaults.PrometheusMemoryRequest,
-			},
-		}
 	}
 
 	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
@@ -652,124 +552,73 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*ins
 		return nil, err
 	}
 
-	values := &installValues{
-		// Container images:
-		ControllerImage:        fmt.Sprintf("%s/controller", options.dockerRegistry),
-		ControllerImageVersion: configs.GetGlobal().GetVersion(),
-		WebImage:               fmt.Sprintf("%s/web", options.dockerRegistry),
-		GrafanaImage:           fmt.Sprintf("%s/grafana", options.dockerRegistry),
-		PrometheusImage:        defaults.PrometheusImage,
-		ImagePullPolicy:        options.imagePullPolicy,
+	// override Helm values with CLI options
+	installValues.ClusterDomain = configs.GetGlobal().GetClusterDomain()
+	installValues.Configs.Global = globalJSON
+	installValues.Configs.Proxy = proxyJSON
+	installValues.Configs.Install = installJSON
+	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
+	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	installValues.ControllerLogLevel = options.controllerLogLevel
+	installValues.ControllerReplicas = options.controllerReplicas
+	installValues.ControllerUID = options.controllerUID
+	installValues.EnableH2Upgrade = !options.disableH2Upgrade
+	installValues.EnablePodAntiAffinity = options.highAvailability
+	installValues.HighAvailability = options.highAvailability
+	installValues.ImagePullPolicy = options.imagePullPolicy
+	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Namespace = controlPlaneNamespace
+	installValues.NoInitContainer = options.noInitContainer
+	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
+	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
+	installValues.HeartbeatSchedule = options.heartbeatSchedule()
+	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
+	installValues.UUID = configs.GetInstall().GetUuid()
+	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 
-		// Kubernetes labels/annotations/resources:
-		CreatedByAnnotation:      k8s.CreatedByAnnotation,
-		CliVersion:               k8s.CreatedByAnnotationValue(),
-		ControllerComponentLabel: k8s.ControllerComponentLabel,
-		ControllerNamespaceLabel: k8s.ControllerNSLabel,
-		ProxyContainerName:       k8s.ProxyContainerName,
-		ProxyInjectAnnotation:    k8s.ProxyInjectAnnotation,
-		ProxyInjectDisabled:      k8s.ProxyInjectDisabled,
-		LinkerdNamespaceLabel:    k8s.LinkerdNamespaceLabel,
-
-		// Controller configuration:
-		Namespace:                   controlPlaneNamespace,
-		ClusterDomain:               configs.GetGlobal().GetClusterDomain(),
-		UUID:                        configs.GetInstall().GetUuid(),
-		ControllerReplicas:          options.controllerReplicas,
-		ControllerLogLevel:          options.controllerLogLevel,
-		ControllerUID:               options.controllerUID,
-		HighAvailability:            options.highAvailability,
-		EnablePodAntiAffinity:       options.highAvailability,
-		EnableH2Upgrade:             !options.disableH2Upgrade,
-		NoInitContainer:             options.noInitContainer,
-		WebhookFailurePolicy:        defaults.WebhookFailurePolicy,
-		OmitWebhookSideEffects:      options.omitWebhookSideEffects,
-		RestrictDashboardPrivileges: options.restrictDashboardPrivileges,
-		PrometheusLogLevel:          toPromLogLevel(strings.ToLower(options.controllerLogLevel)),
-		HeartbeatSchedule:           options.heartbeatSchedule(),
-
-		Configs: configJSONs{
-			Global:  globalJSON,
-			Proxy:   proxyJSON,
-			Install: installJSON,
+	installValues.Proxy = &charts.Proxy{
+		EnableExternalProfiles: options.enableExternalProfiles,
+		Image: &charts.Image{
+			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+			Version:    options.proxyVersion,
 		},
-
-		DestinationResources:   controllerResources,
-		GrafanaResources:       grafanaResources,
-		HeartbeatResources:     controllerResources,
-		IdentityResources:      identityResources,
-		PrometheusResources:    prometheusResources,
-		ProxyInjectorResources: controllerResources,
-		PublicAPIResources:     controllerResources,
-		SPValidatorResources:   controllerResources,
-		TapResources:           controllerResources,
-		WebResources:           controllerResources,
-
-		ProxyInjector:    &charts.ProxyInjector{TLS: &charts.TLS{}},
-		ProfileValidator: &charts.ProfileValidator{TLS: &charts.TLS{}},
-		Tap:              &charts.Tap{TLS: &charts.TLS{}},
-
-		Proxy: &charts.Proxy{
-			Component:              k8s.Deployment, // only Deployment workloads are injected
-			EnableExternalProfiles: options.enableExternalProfiles,
-			Image: &charts.Image{
-				Name:       registryOverride(options.proxyImage, options.dockerRegistry),
-				PullPolicy: options.imagePullPolicy,
-				Version:    options.proxyVersion,
-			},
-			LogLevel: options.proxyLogLevel,
-			Ports: &charts.Ports{
-				Admin:    int32(options.proxyAdminPort),
-				Control:  int32(options.proxyControlPort),
-				Inbound:  int32(options.proxyInboundPort),
-				Outbound: int32(options.proxyOutboundPort),
-			},
-			Resources: &charts.Resources{
-				CPU: charts.Constraints{
-					Limit:   options.proxyCPULimit,
-					Request: options.proxyCPURequest,
-				},
-				Memory: charts.Constraints{
-					Limit:   options.proxyMemoryLimit,
-					Request: options.proxyMemoryRequest,
-				},
-			},
-			UID: options.proxyUID,
+		LogLevel: options.proxyLogLevel,
+		Ports: &charts.Ports{
+			Admin:    int32(options.proxyAdminPort),
+			Control:  int32(options.proxyControlPort),
+			Inbound:  int32(options.proxyInboundPort),
+			Outbound: int32(options.proxyOutboundPort),
 		},
-
-		ProxyInit: &charts.ProxyInit{
-			Image: &charts.Image{
-				Name:       registryOverride(options.initImage, options.dockerRegistry),
-				PullPolicy: options.imagePullPolicy,
-				Version:    options.initImageVersion,
+		Resources: &charts.Resources{
+			CPU: charts.Constraints{
+				Limit:   options.proxyCPULimit,
+				Request: options.proxyCPURequest,
 			},
-
-			Resources: &charts.Resources{
-				CPU: charts.Constraints{
-					Limit:   defaults.ProxyInitCPULimit,
-					Request: defaults.ProxyInitCPURequest,
-				},
-				Memory: charts.Constraints{
-					Limit:   defaults.ProxyInitMemoryLimit,
-					Request: defaults.ProxyInitMemoryRequest,
-				},
+			Memory: charts.Constraints{
+				Limit:   options.proxyMemoryLimit,
+				Request: options.proxyMemoryRequest,
 			},
 		},
+		UID: options.proxyUID,
 	}
 
 	inboundPortStrs := []string{}
 	for _, port := range options.ignoreInboundPorts {
 		inboundPortStrs = append(inboundPortStrs, strconv.FormatUint(uint64(port), 10))
 	}
-	values.ProxyInit.IgnoreInboundPorts = strings.Join(inboundPortStrs, ",")
-
 	outboundPortStrs := []string{}
 	for _, port := range options.ignoreOutboundPorts {
 		outboundPortStrs = append(outboundPortStrs, strconv.FormatUint(uint64(port), 10))
 	}
-	values.ProxyInit.IgnoreOutboundPorts = strings.Join(outboundPortStrs, ",")
 
-	return values, nil
+	installValues.ProxyInit.Image.Name = registryOverride(options.initImage, options.dockerRegistry)
+	installValues.ProxyInit.Image.PullPolicy = options.imagePullPolicy
+	installValues.ProxyInit.Image.Version = options.initImageVersion
+	installValues.ProxyInit.IgnoreInboundPorts = strings.Join(inboundPortStrs, ",")
+	installValues.ProxyInit.IgnoreOutboundPorts = strings.Join(outboundPortStrs, ",")
+
+	return installValues, nil
 }
 
 func toPromLogLevel(level string) string {
@@ -782,7 +631,7 @@ func toPromLogLevel(level string) string {
 }
 
 // TODO: are `installValues.Configs` and `configs` redundant?
-func (values *installValues) render(w io.Writer, configs *pb.All) error {
+func render(w io.Writer, values *charts.Values, configs *pb.All) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -793,7 +642,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		{Name: chartutil.ChartfileName},
 	}
 
-	if values.stage == "" || values.stage == configStage {
+	if values.Stage == "" || values.Stage == configStage {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/namespace.yaml"},
 			{Name: "templates/identity-rbac.yaml"},
@@ -811,7 +660,7 @@ func (values *installValues) render(w io.Writer, configs *pb.All) error {
 		}...)
 	}
 
-	if values.stage == "" || values.stage == controlPlaneStage {
+	if values.Stage == "" || values.Stage == controlPlaneStage {
 		files = append(files, []*chartutil.BufferedFile{
 			{Name: "templates/_validate.tpl"},
 			{Name: "templates/_affinity.tpl"},
@@ -1023,7 +872,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*installIdentityValues, error) {
+func (idopts *installIdentityOptions) validateAndBuild() (*charts.Identity, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -1043,13 +892,13 @@ func (idopts *installIdentityOptions) issuerName() string {
 	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
 }
 
-func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error) {
+func (idopts *installIdentityOptions) genValues() (*charts.Identity, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
-	return &installIdentityValues{
+	return &charts.Identity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 		Issuer: &charts.Issuer{
@@ -1069,7 +918,7 @@ func (idopts *installIdentityOptions) genValues() (*installIdentityValues, error
 // to produce an `installIdentityValues`.
 //
 // The identity options must have already been validated.
-func (idopts *installIdentityOptions) readValues() (*installIdentityValues, error) {
+func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
 	creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
 	if err != nil {
 		return nil, err
@@ -1089,7 +938,7 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 		return nil, fmt.Errorf("invalid credentials: %s", err)
 	}
 
-	return &installIdentityValues{
+	return &charts.Identity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: trustAnchorsPEM,
 		Issuer: &charts.Issuer{
@@ -1105,7 +954,7 @@ func (idopts *installIdentityOptions) readValues() (*installIdentityValues, erro
 	}, nil
 }
 
-func (idvals *installIdentityValues) toIdentityContext() *pb.IdentityContext {
+func toIdentityContext(idvals *charts.Identity) *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}

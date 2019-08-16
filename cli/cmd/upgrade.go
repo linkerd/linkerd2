@@ -177,7 +177,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = values.render(&buf, configs); err != nil {
+	if err = render(&buf, values, configs); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 
@@ -192,7 +192,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*installValues, *pb.All, error) {
+func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -222,7 +222,10 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	options.recordFlags(flags)
 
 	// Update the configs from the synthesized options.
+	// The overrideConfigs() is used to override proxy configs only.
 	options.overrideConfigs(configs, map[string]string{})
+
+	// Override configs with upgrade CLI options.
 	if options.controlPlaneVersion != "" {
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
@@ -232,7 +235,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
 	}
 
-	var identity *installIdentityValues
+	var identity *charts.Identity
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
@@ -241,7 +244,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
 		}
-		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
 		identity, err = fetchIdentityValues(k, idctx)
 		if err != nil {
@@ -286,7 +289,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.Tap = &charts.Tap{TLS: tapTLS}
 
-	values.stage = stage
+	values.Stage = stage
 
 	return values, configs, nil
 }
@@ -340,7 +343,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*installIdentityValues, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -350,7 +353,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*in
 		return nil, err
 	}
 
-	return &installIdentityValues{
+	return &charts.Identity{
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
