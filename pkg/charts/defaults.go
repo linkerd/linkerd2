@@ -63,6 +63,7 @@ type DefaultValues struct {
 // ReadDefaults read all the default variables from the values.yaml file.
 // If ha is true, values-ha.yaml will be merged into values.yaml.
 // chartDir is the root directory of the Helm chart where values.yaml is.
+// chartDir should use `/` as a dir separator regardless of the OS.
 func ReadDefaults(chartDir string, ha bool) (*DefaultValues, error) {
 	valuesFiles := []*chartutil.BufferedFile{
 		{Name: helmDefaultValuesFile},
