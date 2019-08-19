@@ -350,6 +350,9 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 		}
 	}
 
+	// sort rows before returning in order to have a consistent order for tests
+	rows = sortTrafficSplitRows(rows)
+
 	resp := pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
