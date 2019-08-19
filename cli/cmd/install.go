@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -157,7 +156,7 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // persisted in Linkerd's control plane configuration to be used at
 // injection-time.
 func newInstallOptionsWithDefaults() (*installOptions, error) {
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
 	defaults, err := charts.ReadDefaults(chartDir, false)
 	if err != nil {
 		return nil, err
@@ -549,7 +548,7 @@ func (options *installOptions) validate() error {
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
 	// install values that can't be overridden by CLI options will be assigned
 	// defaults from the values.yaml and values-ha.yaml files
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
 	defaults, err := charts.ReadDefaults(chartDir, options.highAvailability)
 	if err != nil {
 		return nil, err
