@@ -552,7 +552,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 		return nil, err
 	}
 
-	// override Helm values with CLI options
+	// override default values with CLI options
 	installValues.ClusterDomain = configs.GetGlobal().GetClusterDomain()
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
