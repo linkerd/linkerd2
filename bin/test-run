@@ -31,7 +31,7 @@ function remove_l5d_if_exists() {
     cleanup
     printf "[ok]\\n"
   fi
-  
+
   # Cleanup Helm, in case it's there (if not, we ignore the error)
   helm_cleanup &> /dev/null || true
 }
@@ -78,7 +78,9 @@ function run_helm_test() {
     (
         set -e
         kubectl --context=$k8s_context create ns $tiller_namespace
+        kubectl --context=$k8s_context label ns $tiller_namespace linkerd.io/is-test-helm=true
         kubectl --context=$k8s_context create clusterrolebinding ${tiller_namespace}:tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
+        kubectl --context=$k8s_context label clusterrolebinding ${tiller_namespace}:tiller-cluster-admin linkerd.io/is-test-helm=true
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $helm_chart
     )
@@ -90,7 +92,14 @@ function run_helm_test() {
 function helm_cleanup() {
     (
         set -e
+        # `helm delete` deletes $linkerd_namespace-helm
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
+        # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
+        # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
+        # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
+        # We don't have that problem with global resources, so no need to wait for them to be gone.
+        kubectl wait --for=delete ns/$linkerd_namespace-helm --timeout=40s
+        # `helm reset` deletes the tiller pod in $tiller_namespace
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
         kubectl --context=$k8s_context delete clusterrolebinding ${tiller_namespace}:tiller-cluster-admin
         echo $tiller_namespace
@@ -142,9 +151,10 @@ cleanup
 
 run_helm_test
 exit_on_err "error testing Helm"
-cleanup
 helm_cleanup
 exit_on_err "error cleaning up Helm"
+# clean the data plane test resources
+cleanup
 
 run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace
 exit_on_err "error during install"

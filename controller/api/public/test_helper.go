@@ -100,30 +100,6 @@ func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.Call
 	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
-// MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
-type MockAPITapByResourceClient struct {
-	TapEventsToReturn []pb.TapEvent
-	ErrorsToReturn    []error
-	grpc.ClientStream
-}
-
-// Recv satisfies the TapByResourceClient.Recv() gRPC method.
-func (a *MockAPITapByResourceClient) Recv() (*pb.TapEvent, error) {
-	var eventPopped pb.TapEvent
-	var errorPopped error
-	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
-		return nil, io.EOF
-	}
-	if len(a.TapEventsToReturn) != 0 {
-		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
-	}
-	if len(a.ErrorsToReturn) != 0 {
-		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
-	}
-
-	return &eventPopped, errorPopped
-}
-
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
 type MockDestinationGetClient struct {
 	UpdatesToReturn []destinationPb.Update
@@ -331,6 +307,70 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 	return resp
 }
 
+// GenStatTsResponse generates a mock Public API StatSummaryResponse
+// object in response to a request for trafficsplit stats.
+func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) pb.StatSummaryResponse {
+	leaves := map[string]string{
+		"service-1": "900m",
+		"service-2": "100m",
+	}
+	apex := "apex_name"
+
+	rows := []*pb.StatTable_PodGroup_Row{}
+	for _, ns := range resNs {
+		for name, weight := range leaves {
+			statTableRow := &pb.StatTable_PodGroup_Row{
+				Resource: &pb.Resource{
+					Namespace: ns,
+					Type:      resType,
+					Name:      resName,
+				},
+				TimeWindow: "1m",
+			}
+
+			if basicStats {
+				statTableRow.Stats = &pb.BasicStats{
+					SuccessCount: 123,
+					FailureCount: 0,
+					LatencyMsP50: 123,
+					LatencyMsP95: 123,
+					LatencyMsP99: 123,
+				}
+			}
+
+			if tsStats {
+				statTableRow.TsStats = &pb.TrafficSplitStats{
+					Apex:   apex,
+					Leaf:   name,
+					Weight: weight,
+				}
+			}
+			rows = append(rows, statTableRow)
+
+		}
+	}
+
+	// sort rows before returning in order to have a consistent order for tests
+	rows = sortTrafficSplitRows(rows)
+
+	resp := pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: []*pb.StatTable{
+					{
+						Table: &pb.StatTable_PodGroup_{
+							PodGroup: &pb.StatTable_PodGroup{
+								Rows: rows,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return resp
+}
+
 // GenEdgesResponse generates a mock Public API StatSummaryResponse
 // object.
 func GenEdgesResponse(resourceType string, resSrc, resDst, resSrcNamespace, resDstNamespace, resClient, resServer, msg []string) pb.EdgesResponse {
@@ -434,7 +474,6 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	mockProm := &MockProm{Res: exp.mockPromResponse}
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
-		nil,
 		nil,
 		nil,
 		k8sAPI,

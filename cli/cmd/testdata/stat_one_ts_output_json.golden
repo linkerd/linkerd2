@@ -1,0 +1,28 @@
+[
+  {
+    "namespace": "default",
+    "kind": "trafficsplit",
+    "name": "foo-split",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "apex": "apex_name",
+    "leaf": "service-1",
+    "weight": "900m"
+  },
+  {
+    "namespace": "default",
+    "kind": "trafficsplit",
+    "name": "foo-split",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "apex": "apex_name",
+    "leaf": "service-2",
+    "weight": "100m"
+  }
+]

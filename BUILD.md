@@ -20,6 +20,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating Docker dependencies](#updating-docker-dependencies)
   - [Updating ServiceProfile generated code](#updating-serviceprofile-generated-code)
+- [Helm Chart](#helm-chart)
 - [Build Architecture](#build-architecture)
 - [Generating CLI docs](#generating-cli-docs)
 
@@ -341,7 +342,14 @@ hard-coded SHA's:
 - [`go.mod`](go.mod)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
 
-`bin/update-go-deps-shas` must be run when Go dependencies change.
+
+When Go dependencies change, run the following:
+
+```bash
+go mod tidy
+bin/build-cli-bin # adds back dependencies specific to `go generate` commands
+bin/update-go-deps-shas
+```
 
 ### Updating ServiceProfile generated code
 
@@ -356,6 +364,37 @@ go get -u github.com/linkerd/linkerd2
 cd $GOPATH/src/github.com/linkerd/linkerd2
 bin/update-codegen.sh
 ```
+
+## Helm chart
+
+The Linkerd control plane chart is located in the
+[`charts/linkerd2`](charts/linkerd2) folder. The [`charts/patch`](charts/patch)
+chart consists of the Linkerd proxy specification, which is used by the proxy
+injector to inject the proxy container. Both charts depend on the partials
+subchart which can be found in the [`charts/partials`](charts/partials) folder.
+
+During development, please use the [`bin/helm`](bin/helm) wrapper script to
+invoke the Helm commands. For example,
+
+```bash
+bin/helm install charts/linkerd2
+```
+
+This ensures that you use the same Helm version as that of the Linkerd CI
+system.
+
+For general instructions on how to install the chart check out the
+[docs](https://linkerd.io/2/tasks/install-helm/). You also need to supply or
+generate your own certificates to use the chart, as explained
+[here](https://linkerd.io/2/tasks/generate-certificates/).
+
+### Making changes to the chart templates
+
+Whenever you make changes to the files under
+[`charts/linkerd2/templates`](charts/linkerd2/templates) or its dependency
+[`charts/partials`](charts/partials), make sure to run
+[`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
+the templates.
 
 ## Build Architecture
 

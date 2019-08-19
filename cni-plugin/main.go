@@ -45,6 +45,7 @@ type ProxyInit struct {
 	InboundPortsToIgnore  []int `json:"inbound-ports-to-ignore"`
 	OutboundPortsToIgnore []int `json:"outbound-ports-to-ignore"`
 	Simulate              bool  `json:"simulate"`
+	UseWaitFlag           bool  `json:"use-wait-flag"`
 }
 
 // Kubernetes a K8s specific struct to hold config
@@ -201,6 +202,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
 				SimulateOnly:          conf.ProxyInit.Simulate,
 				NetNs:                 args.Netns,
+				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
 			}
 			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
 			if err != nil {

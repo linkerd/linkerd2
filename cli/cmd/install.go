@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -157,7 +156,7 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 // persisted in Linkerd's control plane configuration to be used at
 // injection-time.
 func newInstallOptionsWithDefaults() (*installOptions, error) {
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
 	defaults, err := charts.ReadDefaults(chartDir, false)
 	if err != nil {
 		return nil, err
@@ -210,7 +209,11 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		},
 
 		heartbeatSchedule: func() string {
-			t := time.Now().Add(5 * time.Minute).UTC()
+			// Some of the heartbeat Prometheus queries rely on 5m resolution, which
+			// means at least 5 minutes of data available. Start the first CronJob 10
+			// minutes after `linkerd install` is run, to give the user 5 minutes to
+			// install.
+			t := time.Now().Add(10 * time.Minute).UTC()
 			return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
 		},
 	}, nil
@@ -246,7 +249,7 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
@@ -283,7 +286,7 @@ control plane. It should be run after "linkerd install config".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// check if global resources exist to determine if the `install config`
 			// stage succeeded
-			if err := errIfGlobalResourcesExist(); err == nil && !options.skipChecks {
+			if err := errIfGlobalResourcesExist(options); err == nil && !options.skipChecks {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
 				os.Exit(1)
 			}
@@ -338,7 +341,7 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(); err != nil && !options.ignoreCluster {
+			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
@@ -545,7 +548,7 @@ func (options *installOptions) validate() error {
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*installValues, error) {
 	// install values that can't be overridden by CLI options will be assigned
 	// defaults from the values.yaml and values-ha.yaml files
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
 	defaults, err := charts.ReadDefaults(chartDir, options.highAvailability)
 	if err != nil {
 		return nil, err
@@ -927,7 +930,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-func errIfGlobalResourcesExist() error {
+func errIfGlobalResourcesExist(options *installOptions) error {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
@@ -937,6 +940,7 @@ func errIfGlobalResourcesExist() error {
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
+		NoInitContainer:       options.noInitContainer,
 	})
 
 	errMsgs := []string{}

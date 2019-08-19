@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
-	pb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
+	"github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,13 @@ type apiServer struct {
 }
 
 // NewAPIServer creates a new server that implements the Tap APIService.
-func NewAPIServer(addr string, cert tls.Certificate, k8sAPI *k8s.API, client pb.TapClient, disableCommonNames bool) (*http.Server, net.Listener, error) {
+func NewAPIServer(
+	addr string,
+	cert tls.Certificate,
+	k8sAPI *k8s.API,
+	grpcTapServer tap.TapServer,
+	disableCommonNames bool,
+) (*http.Server, net.Listener, error) {
 	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(k8sAPI)
 	if err != nil {
 		return nil, nil, err
@@ -43,7 +49,7 @@ func NewAPIServer(addr string, cert tls.Certificate, k8sAPI *k8s.API, client pb.
 		k8sAPI:         k8sAPI,
 		usernameHeader: usernameHeader,
 		groupHeader:    groupHeader,
-		tapClient:      client,
+		grpcTapServer:  grpcTapServer,
 		log:            log,
 	}
 

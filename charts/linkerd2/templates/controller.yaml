@@ -80,7 +80,6 @@ spec:
       - args:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
-        - -tap-addr=linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}:8088
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
