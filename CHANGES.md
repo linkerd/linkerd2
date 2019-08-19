@@ -1,3 +1,13 @@
+## edge-19.8.5
+
+This edge release is a release candidate for `stable-2.5`.
+
+* CLI
+  * Fixed CLI filepath issue on Windows
+* Proxy
+  * Fixed gRPC client cancellations getting recorded as failures rather than
+    as successful
+
 ## edge-19.8.4
 
 This edge release is a release candidate for `stable-2.5`.
