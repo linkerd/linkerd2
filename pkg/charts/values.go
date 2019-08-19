@@ -2,7 +2,6 @@ package charts
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -184,7 +183,7 @@ type (
 
 // NewValues returns a new instance of the Values type.
 func NewValues(ha bool) (*Values, error) {
-	chartDir := fmt.Sprintf("%s%s", helmDefaultChartDir, string(filepath.Separator))
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
 	v, err := readDefaults(chartDir, ha)
 	if err != nil {
 		return nil, err
