@@ -160,7 +160,6 @@ func chartControlPlane(t *testing.T, ha bool) *pb.Chart {
 	}
 
 	for _, template := range chart.Templates {
-		template := template
 		filepath := filepath.Join(chart.Metadata.Sources[0], template.Name)
 		template.Data = []byte(readTestdata(t, filepath))
 	}

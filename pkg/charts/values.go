@@ -191,7 +191,6 @@ func NewValues(ha bool) (*Values, error) {
 
 	v.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
-	v.Proxy.Component = k8s.Deployment // only Deployment workloads are injected
 	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
 	v.ProxyContainerName = k8s.ProxyContainerName
 	v.Tap = &Tap{TLS: &TLS{}}
@@ -223,12 +222,11 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 			return nil, err
 		}
 
-		merged, err := values.merge(v)
+		var err error
+		values, err = values.merge(v)
 		if err != nil {
 			return nil, err
 		}
-
-		values = *merged
 	}
 
 	return &values, nil
@@ -237,14 +235,14 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 // merge merges the non-empty properties of src into v.
 // A new Values instance is returned. Neither src nor v are mutated after
 // calling merge.
-func (v Values) merge(src Values) (*Values, error) {
+func (v Values) merge(src Values) (Values, error) {
 	// By default, mergo.Merge doesn't overwrite any existing non-empty values
-	// in src. So in HA mode, we are merging values.yaml into values-ha.yaml
-	// so that all the HA values take precedence.
+	// in its first argument. So in HA mode, we are merging values.yaml into
+	// values-ha.yaml, instead of the other way round (like Helm). This ensures
+	// that all the HA values take precedence.
 	if err := mergo.Merge(&src, v); err != nil {
-		return nil, err
+		return Values{}, err
 	}
 
-	newValue := src
-	return &newValue, nil
+	return src, nil
 }

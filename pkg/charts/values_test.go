@@ -3,8 +3,6 @@ package charts
 import (
 	"reflect"
 	"testing"
-
-	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestNewValues(t *testing.T) {
@@ -62,7 +60,6 @@ func TestNewValues(t *testing.T) {
 		Tap:              &Tap{TLS: &TLS{}},
 
 		Proxy: &Proxy{
-			Component:              k8s.Deployment,
 			EnableExternalProfiles: false,
 			Image: &Image{
 				Name:       "gcr.io/linkerd-io/proxy",

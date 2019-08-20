@@ -92,6 +92,41 @@ Otherwise, you can use the --ignore-cluster flag to overwrite the existing globa
 	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
 )
 
+var (
+	templatesConfigStage = []string{
+		"templates/namespace.yaml",
+		"templates/identity-rbac.yaml",
+		"templates/controller-rbac.yaml",
+		"templates/heartbeat-rbac.yaml",
+		"templates/web-rbac.yaml",
+		"templates/serviceprofile-crd.yaml",
+		"templates/trafficsplit-crd.yaml",
+		"templates/prometheus-rbac.yaml",
+		"templates/grafana-rbac.yaml",
+		"templates/proxy-injector-rbac.yaml",
+		"templates/sp-validator-rbac.yaml",
+		"templates/tap-rbac.yaml",
+		"templates/psp.yaml",
+	}
+
+	templatesControlPlaneStage = []string{
+		"templates/_validate.tpl",
+		"templates/_affinity.tpl",
+		"templates/_config.tpl",
+		"templates/_helpers.tpl",
+		"templates/config.yaml",
+		"templates/identity.yaml",
+		"templates/controller.yaml",
+		"templates/heartbeat.yaml",
+		"templates/web.yaml",
+		"templates/prometheus.yaml",
+		"templates/grafana.yaml",
+		"templates/proxy-injector.yaml",
+		"templates/sp-validator.yaml",
+		"templates/tap.yaml",
+	}
+)
+
 // newInstallOptionsWithDefaults initializes install options with default
 // control plane and proxy options. These defaults are read from the Helm
 // values.yaml and values-ha.yaml files.
@@ -643,40 +678,19 @@ func render(w io.Writer, values *charts.Values, configs *pb.All) error {
 	}
 
 	if values.Stage == "" || values.Stage == configStage {
-		files = append(files, []*chartutil.BufferedFile{
-			{Name: "templates/namespace.yaml"},
-			{Name: "templates/identity-rbac.yaml"},
-			{Name: "templates/controller-rbac.yaml"},
-			{Name: "templates/heartbeat-rbac.yaml"},
-			{Name: "templates/web-rbac.yaml"},
-			{Name: "templates/serviceprofile-crd.yaml"},
-			{Name: "templates/trafficsplit-crd.yaml"},
-			{Name: "templates/prometheus-rbac.yaml"},
-			{Name: "templates/grafana-rbac.yaml"},
-			{Name: "templates/proxy-injector-rbac.yaml"},
-			{Name: "templates/sp-validator-rbac.yaml"},
-			{Name: "templates/tap-rbac.yaml"},
-			{Name: "templates/psp.yaml"},
-		}...)
+		for _, template := range templatesConfigStage {
+			files = append(files, &chartutil.BufferedFile{
+				Name: template,
+			})
+		}
 	}
 
 	if values.Stage == "" || values.Stage == controlPlaneStage {
-		files = append(files, []*chartutil.BufferedFile{
-			{Name: "templates/_validate.tpl"},
-			{Name: "templates/_affinity.tpl"},
-			{Name: "templates/_config.tpl"},
-			{Name: "templates/_helpers.tpl"},
-			{Name: "templates/config.yaml"},
-			{Name: "templates/identity.yaml"},
-			{Name: "templates/controller.yaml"},
-			{Name: "templates/heartbeat.yaml"},
-			{Name: "templates/web.yaml"},
-			{Name: "templates/prometheus.yaml"},
-			{Name: "templates/grafana.yaml"},
-			{Name: "templates/proxy-injector.yaml"},
-			{Name: "templates/sp-validator.yaml"},
-			{Name: "templates/tap.yaml"},
-		}...)
+		for _, template := range templatesControlPlaneStage {
+			files = append(files, &chartutil.BufferedFile{
+				Name: template,
+			})
+		}
 	}
 
 	chart := &charts.Chart{
