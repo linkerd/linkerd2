@@ -60,9 +60,10 @@ and @Pothulapati!
     is established over TLS
   * Introduced a new RoleBinding in the `kube-system` namespace to provide
     [access to tap](https://linkerd.io/tap-rbac)
-  * Added support for namespace-level proxy override annotations
   * Added HTTP security headers on all dashboard responses
-  * Added resource limits when HA is enabled
+  * Added support for namespace-level proxy override annotations (thanks
+    @Pothulapati!)
+  * Added resource limits when HA is enabled (thanks @Pothulapati!)
   * Added pod anti-affinity rules to the control plane pods when HA is enabled
     (thanks @Pothulapati!)
   * Fixed a crash in the destination service when an endpoint does not have a
