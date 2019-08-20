@@ -11,5 +11,5 @@ sources:
 version: 0.1.0
 maintainers:
   - name: Linkerd authors
-    email: cncf-linkerd-maintainers@lists.cncf.io
+    email: cncf-linkerd-dev@lists.cncf.io
     url: https://linkerd.io/
