@@ -21,6 +21,8 @@ to Helm by the user (unlike when using the `linkerd install` CLI which can
 generate these automatically). You can provide your own, or follow [these
 instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new ones.
 
+Note that the provided certificates must be ECDSA certficates.
+
 ## Installing the chart
 
 You must provide the certificates and keys described in the preceding section,
@@ -76,9 +78,9 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`Identity.Issuer.CrtExpiry`           | Expiration timestamp for the issuer certificate. It must be provided during install  ||
 |`Identity.Issuer.CrtExpiryAnnotation` | Annotation used to identity the issuer certificate expiration timestamp              |`linkerd.io/identity-issuer-expiry`|
 |`Identity.Issuer.IssuanceLifeTime`    | Amount of time for which the Identity issuer should certify identity                 |`86400s`|
-|`Identity.Issuer.TLS.CrtPEM`          | Issuer certificate. It must be provided during install                               ||
-|`Identity.Issuer.TLS.KeyPEM`          | Key for the issuer certificate. It must be provided during install                   ||
-|`Identity.TrustAnchorsPEM`            | Trust root certificate. It must be provided during install                           ||
+|`Identity.Issuer.TLS.CrtPEM`          | Issuer certificate (ECDSA). It must be provided during install.                      ||
+|`Identity.Issuer.TLS.KeyPEM`          | Key for the issuer certificate (ECDSA). It must be provided during install.          ||
+|`Identity.TrustAnchorsPEM`            | Trust root certificate (ECDSA). It must be provided during install.                  ||
 |`Identity.TrustDomain`                | Trust domain used for identity                                                       |`cluster.local`|
 |`GrafanaImage`                        | Docker image for the Grafana container                                               |`gcr.io/linkerd-io/grafana`|
 |`HeartbeatSchedule`                   | Config for the heartbeat cronjob                                                     |`0 0 * * *`|
@@ -95,8 +97,8 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`Proxy.Ports.Outbound`                | Outbound port for the proxy container                                                |`4140`|
 |`Proxy.Resources.CPU.Limit`           | Maximum amount of CPU units that the proxy can use                                   ||
 |`Proxy.Resources.CPU.Request`         | Amount of CPU units that the proxy requests                                          ||
-|`Proxy.Resources.Memory.Limit`        | Maximum amount of Memory that the proxy can use                                      ||
-|`Proxy.Resources.Memory.Request`      | Amount of Memory that the proxy requests                                             ||
+|`Proxy.Resources.Memory.Limit`        | Maximum amount of memory that the proxy can use                                      ||
+|`Proxy.Resources.Memory.Request`      | Amount of memory that the proxy requests                                             ||
 |`Proxy.UID`                           | User id under which the proxy runs                                                   |`2102`|
 |`ProxyInit.IgnoreInboundPorts`        | Inbound ports the proxy should ignore                                                ||
 |`ProxyInit.IgnoreOutboundPorts`       | Outbound ports the proxy should ignore                                               ||
@@ -105,8 +107,8 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`ProxyInit.Image.Version`             | Tag for the proxy-init container Docker image                                        |`v1.1.0`|
 |`ProxyInit.Resources.CPU.Limit`       | Maximum amount of CPU units that the proxy-init container can use                    |`100m`|
 |`ProxyInit.Resources.CPU.Request`     | Amount of CPU units that the proxy-init container requests                           |`10m`|
-|`ProxyInit.Resources.Memory.Limit`    | Maximum amount of Memory that the proxy-init container can use                       |`50Mi`|
-|`ProxyInit.Resources.Memory.Request`  | Amount of Memory that the proxy-init container requests                              |`10Mi`|
+|`ProxyInit.Resources.Memory.Limit`    | Maximum amount of memory that the proxy-init container can use                       |`50Mi`|
+|`ProxyInit.Resources.Memory.Request`  | Amount of memory that the proxy-init container requests                              |`10Mi`|
 |`ProxyInjector.CrtPEM`                | Certificate for the proxy injector. If not provided then Helm will generate one.     ||
 |`ProxyInjector.KeyPEM`                | Certificate key for the proxy injector. If not provided then Helm will generate one. ||
 |`Tap.CrtPEM`                          | Certificate for the Tap component. If not provided then Helm will generate one.      ||
