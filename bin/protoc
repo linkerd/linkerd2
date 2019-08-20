@@ -9,13 +9,15 @@ else
 fi
 arch=$(uname -m)
 
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+targetbin="$( cd $bindir/.. && pwd )"/target/bin
 protocversion=3.6.0
-protocbin=target/protoc-${protocversion}
+protocbin=${targetbin}/protoc-${protocversion}
 protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
 
 if [ ! -f "$protocbin" ]; then
   tmp=$(mktemp -d -t protoc.XXX)
-  mkdir -p target
+  mkdir -p "$targetbin"
   (
     cd "$tmp"
     curl -L --silent --fail -o "./protoc.zip" "$protocurl"
@@ -26,4 +28,4 @@ if [ ! -f "$protocbin" ]; then
   rm -rf "$tmp"
 fi
 
-./$protocbin "$@"
+$protocbin "$@"

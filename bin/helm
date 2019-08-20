@@ -4,8 +4,8 @@ set -eu
 
 helmversion=v2.14.3
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
-helmbin=$rootdir/target/helm-$helmversion
+targetbin="$( cd $bindir/.. && pwd )"/target/bin
+helmbin=$targetbin/helm-$helmversion
 
 if [ ! -f $helmbin ]; then
     if [ "$(uname -s)" = "Darwin" ]; then
@@ -21,7 +21,7 @@ if [ ! -f $helmbin ]; then
     helmcurl="https://get.helm.sh/helm-${helmversion}-${os}-${arch}.tar.gz"
     targetdir="${os}-${arch}"
     tmp=$(mktemp -d -t helm.XXX)
-    mkdir -p target
+    mkdir -p "$targetbin"
     (
         cd "$tmp"
         curl -Lsf -o "./helm.tar.gz" "$helmcurl"
