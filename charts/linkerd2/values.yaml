@@ -82,7 +82,7 @@ ProxyInit:
   Image:
     Name: gcr.io/linkerd-io/proxy-init
     PullPolicy: *image_pull_policy
-    Version: v1.0.0
+    Version: v1.1.0
   Resources:
     CPU:
       Limit: 100m

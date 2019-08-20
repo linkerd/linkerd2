@@ -1,14 +1,11 @@
-Linkerd was successfully installed 🎉
+The Linkerd control plane was successfully installed 🎉
 
-Add the linkerd CLI to your path with:
+To help you manage your Linkerd service mesh you can install the Linkerd CLI by running:
 
-  export PATH=\$PATH:\$HOME/.linkerd2/bin
+  curl -sL https://run.linkerd.io/install | sh
 
-Now run:
+Alternatively, you can download the CLI directly via the Linkerd releases page:
 
-  linkerd check --pre                     # validate that Linkerd can be installed
-  linkerd install | kubectl apply -f -    # install the control plane into the 'linkerd' namespace
-  linkerd check                           # validate everything worked!
-  linkerd dashboard                       # launch the dashboard
+  https://github.com/linkerd/linkerd2/releases/
 
-Looking for more? Visit https://linkerd.io/2/next-steps
+Looking for more? Visit https://linkerd.io/2/getting-started/

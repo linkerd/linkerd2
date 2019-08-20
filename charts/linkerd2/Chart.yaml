@@ -9,3 +9,10 @@ name: "linkerd2"
 sources:
 - https://github.com/linkerd/linkerd2/
 version: 0.1.0
+maintainers:
+  - name: grampelberg
+    email: thomas@buoyant.io
+  - name: alpeb
+    email: alejandro@buoyant.io
+  - name: ihcsim
+    email: ivan@buoyant.io
