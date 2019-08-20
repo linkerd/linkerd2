@@ -25,57 +25,24 @@ func TestRenderHelm(t *testing.T) {
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
 		chartControlPlane := chartControlPlane(t, ha)
-
-		overrideJSON := `{
-  "CliVersion":"",
-  "LinkerdVersion":"linkerd-version",
-  "Identity":{
-    "TrustAnchorsPEM":"test-trust-anchor",
-    "TrustDomain":"test.trust.domain",
-    "Issuer":{
-      "CrtExpiry":"Jul 30 17:21:14 2020",
-      "CrtExpiryAnnotation":"%s",
-      "TLS":{
-        "KeyPEM":"test-key-pem",
-        "CrtPEM":"test-crt-pem"
-      }
-    }
-  },
-  "Configs": null,
-  "Proxy":{
-    "Image":{
-      "Version":"test-proxy-version"
-    }
-  },
-  "ProxyInit":{
-    "Image":{
-      "Version":"test-proxy-init-version"
-    }
-  },
-  "ProxyInjector":{
-    "KeyPEM":"test-proxy-injector-key-pem",
-    "CrtPEM":"test-proxy-injector-crt-pem"
-  },
-  "ProfileValidator":{
-    "KeyPEM":"test-profile-validator-key-pem",
-    "CrtPEM":"test-profile-validator-crt-pem"
-  },
-  "Tap":{
-    "KeyPEM":"test-tap-key-pem",
-    "CrtPEM":"test-tap-crt-pem"
-  }
-}`
-		overrideConfig := &pb.Config{
-			Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
-		}
-		testRenderHelm(t, chartControlPlane, overrideConfig, "install_helm_output.golden")
+		testRenderHelm(t, chartControlPlane, "install_helm_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		ha := true
 		chartControlPlane := chartControlPlane(t, ha)
+		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
+	})
+}
 
-		overrideJSON := `{
+func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
+	var (
+		chartName = "linkerd2"
+		namespace = "linkerd-dev"
+	)
+
+	// pin values that are changed by Helm functions on each test run
+	overrideJSON := `{
   "CliVersion":"",
   "LinkerdVersion":"linkerd-version",
   "Identity":{
@@ -114,18 +81,9 @@ func TestRenderHelm(t *testing.T) {
     "CrtPEM":"test-tap-crt-pem"
   }
 }`
-		overrideConfig := &pb.Config{
-			Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
-		}
-		testRenderHelm(t, chartControlPlane, overrideConfig, "install_helm_output_ha.golden")
-	})
-}
-
-func testRenderHelm(t *testing.T, chart *pb.Chart, overrideConfig *pb.Config, goldenFileName string) {
-	var (
-		chartName = "linkerd2"
-		namespace = "linkerd-dev"
-	)
+	overrideConfig := &pb.Config{
+		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
+	}
 
 	releaseOptions := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
