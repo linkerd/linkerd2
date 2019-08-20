@@ -12,12 +12,21 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+)
+
+const (
+	eventTypeSkipped  = "InjectionSkipped"
+	eventTypeInjected = "Injected"
 )
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
 // to the pod (proxy sidecar and eventually the init container to set it up)
 func Inject(api *k8s.API,
 	request *admissionv1beta1.AdmissionRequest,
+	recorder record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
@@ -53,8 +62,23 @@ func Inject(api *k8s.API,
 		Allowed: true,
 	}
 
-	if !report.Injectable() {
-		log.Infof("skipped %s", report.ResName())
+	var parent *runtime.Object
+	if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
+		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		if len(objs) == 0 {
+			return nil, fmt.Errorf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+		}
+		parent = &objs[0]
+	}
+
+	if injectable, reason := report.Injectable(); !injectable {
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", reason)
+		}
+		log.Infof("skipped %s: %s", report.ResName(), reason)
 		return admissionResponse, nil
 	}
 
@@ -70,6 +94,9 @@ func Inject(api *k8s.API,
 		return admissionResponse, nil
 	}
 
+	if parent != nil {
+		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
 
@@ -81,7 +108,7 @@ func Inject(api *k8s.API,
 }
 
 func ownerRetriever(api *k8s.API, ns string) inject.OwnerRetrieverFunc {
-	return func(p *v1.Pod) (string, string) {
+	return func(p *v1.Pod) *metav1.OwnerReference {
 		p.SetNamespace(ns)
 		return api.GetOwnerKindAndName(p, true)
 	}

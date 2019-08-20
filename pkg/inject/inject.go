@@ -51,8 +51,7 @@ const (
 )
 
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
-// kind and name
-type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
+type OwnerRetrieverFunc func(*corev1.Pod) *metav1.OwnerReference
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
@@ -68,6 +67,8 @@ type ResourceConfig struct {
 		// Meta is the workload's metadata. It's exported so that metadata of
 		// non-workload resources can be unmarshalled by the YAML parser
 		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+		ownerRef *metav1.OwnerReference
 	}
 
 	pod struct {
@@ -121,6 +122,11 @@ func (conf *ResourceConfig) WithNsAnnotations(m map[string]string) *ResourceConf
 func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
 	conf.ownerRetriever = f
 	return conf
+}
+
+// GetOwnerRef returns a reference to the the resource's owner resource, if any
+func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
+	return conf.workload.ownerRef
 }
 
 // AppendPodAnnotations appends the given annotations to the pod spec in conf
@@ -342,8 +348,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.pod.meta = &v.ObjectMeta
 
 		if conf.ownerRetriever != nil {
-			kind, name := conf.ownerRetriever(v)
-			switch kind {
+			conf.workload.ownerRef = conf.ownerRetriever(v)
+			name := conf.workload.ownerRef.Name
+			switch strings.ToLower(conf.workload.ownerRef.Kind) {
 			case k8s.Deployment:
 				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
 			case k8s.ReplicationController:

@@ -10,5 +10,6 @@ func main() {
 		nil,
 		9997,
 		validator.AdmitSP,
+		"linkerd-sp-validator",
 	)
 }

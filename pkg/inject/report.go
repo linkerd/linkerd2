@@ -12,13 +12,14 @@ import (
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
-	Kind                string
-	Name                string
-	HostNetwork         bool
-	Sidecar             bool
-	UDP                 bool // true if any port in any container has `protocol: UDP`
-	UnsupportedResource bool
-	InjectDisabled      bool
+	Kind                 string
+	Name                 string
+	HostNetwork          bool
+	Sidecar              bool
+	UDP                  bool // true if any port in any container has `protocol: UDP`
+	UnsupportedResource  bool
+	InjectDisabled       bool
+	InjectDisabledReason string
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -50,7 +51,7 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.InjectDisabled = report.disableByAnnotation(conf)
+		report.InjectDisabled, report.InjectDisabledReason = report.disableByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
@@ -67,9 +68,27 @@ func (r *Report) ResName() string {
 }
 
 // Injectable returns false if the report flags indicate that the workload is on a host network
-// or there is already a sidecar or the resource is not supported or inject is explicitly disabled
-func (r *Report) Injectable() bool {
-	return !r.HostNetwork && !r.Sidecar && !r.UnsupportedResource && !r.InjectDisabled
+// or there is already a sidecar or the resource is not supported or inject is explicitly disabled.
+// If false, the second returned value describes the reason.
+func (r *Report) Injectable() (bool, string) {
+	reasons := []string{}
+	if r.HostNetwork {
+		reasons = append(reasons, "hostNetwork is enabled")
+	}
+	if r.Sidecar {
+		reasons = append(reasons, "pod has a sidecar injected already")
+	}
+	if r.UnsupportedResource {
+		reasons = append(reasons, "this resource kind is unsupported")
+	}
+	if r.InjectDisabled {
+		reasons = append(reasons, r.InjectDisabledReason)
+	}
+
+	if len(reasons) > 0 {
+		return false, strings.Join(reasons, ", ")
+	}
+	return true, ""
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
@@ -84,7 +103,7 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
+func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
 	// truth table of the effects of the inject annotation:
 	//
 	// origin  | namespace | pod      | inject?  | return
@@ -106,12 +125,19 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) bool {
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 
 	if conf.origin == OriginCLI {
-		return podAnnotation == k8s.ProxyInjectDisabled
+		return podAnnotation == k8s.ProxyInjectDisabled, ""
 	}
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
-		return podAnnotation == k8s.ProxyInjectDisabled
+		if podAnnotation == k8s.ProxyInjectDisabled {
+			return true, fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled)
+		}
+		return false, ""
 	}
 
-	return podAnnotation != k8s.ProxyInjectEnabled
+	if podAnnotation != k8s.ProxyInjectEnabled {
+		return true, fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+	}
+
+	return false, ""
 }

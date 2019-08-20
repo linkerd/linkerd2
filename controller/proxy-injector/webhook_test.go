@@ -161,8 +161,8 @@ func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	}
 }
 
-func ownerRetrieverFake(p *v1.Pod) (string, string) {
-	return pkgK8s.Deployment, "owner-deployment"
+func ownerRetrieverFake(p *v1.Pod) *metav1.OwnerReference {
+	return &metav1.OwnerReference{Kind: pkgK8s.Deployment, Name: "owner-deployment"}
 }
 
 func unmarshalPatch(patchJSON []byte) (unmarshalledPatch, error) {

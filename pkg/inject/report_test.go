@@ -16,6 +16,7 @@ func TestInjectable(t *testing.T) {
 		nsAnnotations       map[string]string
 		unsupportedResource bool
 		injectable          bool
+		reason              string
 	}{
 		{
 			podSpec: &corev1.PodSpec{HostNetwork: false},
@@ -34,6 +35,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
+			reason:     "hostNetwork is enabled",
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -50,6 +52,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
+			reason:     "pod has a sidecar injected already",
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -66,6 +69,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
+			reason:     "pod has a sidecar injected already",
 		},
 		{
 			unsupportedResource: true,
@@ -76,6 +80,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
+			reason:     "this resource kind is unsupported",
 		},
 	}
 
@@ -90,8 +95,12 @@ func TestInjectable(t *testing.T) {
 			report := newReport(resourceConfig)
 			report.UnsupportedResource = testCase.unsupportedResource
 
-			if actual := report.Injectable(); testCase.injectable != actual {
+			actual, reason := report.Injectable()
+			if testCase.injectable != actual {
 				t.Errorf("Expected %t. Actual %t", testCase.injectable, actual)
+			}
+			if testCase.reason != reason {
+				t.Errorf("Expected reason '%s'. Actual reason '%s'", testCase.reason, reason)
 			}
 		})
 	}
@@ -194,7 +203,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.meta = testCase.podMeta
 
 				report := newReport(resourceConfig)
-				if actual := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})
@@ -235,7 +244,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.meta = testCase.podMeta
 
 				report := newReport(resourceConfig)
-				if actual := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})

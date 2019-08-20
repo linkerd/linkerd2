@@ -322,13 +322,19 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["namespaces"]
+  resources: ["events"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["list"]
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
