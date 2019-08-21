@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1566417010898,
+  "iteration": 1566417010901,
   "links": [],
   "panels": [
     {
@@ -99,7 +99,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\"}[30s])) / sum(irate(response_total{namespace=~\"$namespace\"}[30s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", deployment=~\"$deployment\"}[30s])) / sum(irate(response_total{namespace=~\"$namespace\", deployment=~\"$deployment\"}[30s]))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -182,7 +182,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\"}[30s]))",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", deployment=~\"$deployment\"}[30s]))",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -265,7 +265,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(count(request_total{namespace=~\"$namespace\"}) by (namespace, deployment))",
+          "expr": "count(count(request_total{namespace=~\"$namespace\", deployment=~\"$deployment\"}) by (namespace, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -340,7 +340,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", direction=\"inbound\"}[30s])) by (deployment) / sum(irate(response_total{namespace=~\"$namespace\", direction=\"inbound\"}[30s])) by (deployment)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\"}[30s])) by (deployment) / sum(irate(response_total{namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "deploy/{{deployment}}",
@@ -426,14 +426,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", tls=\"true\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\", tls=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒deploy/{{deployment}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=~\"$namespace\", direction=\"inbound\", tls!=\"true\"}[30s])) by (deployment)",
+          "expr": "sum(irate(request_total{namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\", tls!=\"true\"}[30s])) by (deployment)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "deploy/{{deployment}}",
@@ -519,7 +519,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", direction=\"inbound\"}[30s])) by (le, deployment))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", direction=\"inbound\"}[30s])) by (le, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p95 deploy/{{deployment}}",
@@ -970,5 +970,5 @@
   "timezone": "",
   "title": "Linkerd Namespace",
   "uid": "linkerd-namespace",
-  "version": 14
+  "version": 15
 }
