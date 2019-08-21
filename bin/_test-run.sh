@@ -57,12 +57,16 @@ function helm_integration_tests() {
 }
 
 function deep_integration_tests() {
-    run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace
     exit_on_err "error during install"
 
-    for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
-        run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
-    done
+    run_test "$(go list $test_directory/.../...)" --linkerd-namespace=$linkerd_namespace || exit_code=$?
+    exit_on_err "error during deep tests"
+
+    # for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
+    #     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
+    #     exit_on_err "error during $test"
+    # done
 }
 
 #
@@ -114,8 +118,8 @@ function run_test(){
     filename="$1"
     shift
 
-    printf "Test script: [%s] Params: [%s]\n" "$(basename $filename)" "$*"
-    GO111MODULE=on go test --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
+    printf "Test script: [%s] Params: [%s]\n" "$(basename $filename 2>/dev/null || echo $filename )" "$*"
+    GO111MODULE=on go test --failfast --mod=readonly $filename --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
 }
 
 # Install the latest stable release.
@@ -140,7 +144,7 @@ function run_upgrade_test() {
     local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
 
     install_stable $stable_namespace
-    run_test "$test_directory/install_test.go" -failfast --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
+    run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
 function run_helm_test() {
@@ -154,7 +158,7 @@ function run_helm_test() {
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update $helm_chart
     )
     exit_on_err "error setting up Helm"
-    run_test "$test_directory/install_test.go" -failfast --linkerd-namespace=$linkerd_namespace-helm \
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
         --helm-path=$helm_path --helm-chart=$helm_chart --helm-release=$helm_release_name --tiller-ns=$tiller_namespace
 }
 
