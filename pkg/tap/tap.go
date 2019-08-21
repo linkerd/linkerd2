@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TapRbacURL is the link users should visit to remedy issues when attemping
+// TapRbacURL is the link users should visit to remedy issues when attempting
 // to tap resources with missing authorizations
 const TapRbacURL = "https://linkerd.io/tap-rbac"
 
