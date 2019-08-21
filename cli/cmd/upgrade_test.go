@@ -315,7 +315,7 @@ type: Opaque`,
 				}
 
 				var buf bytes.Buffer
-				if err = values.render(&buf, configs); err != nil {
+				if err = render(&buf, values, configs); err != nil {
 					t.Fatalf("could not render upgrade configuration: %s", err)
 				}
 				diffTestdata(t, tc.outputfile, buf.String())

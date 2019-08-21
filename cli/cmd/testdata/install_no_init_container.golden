@@ -783,7 +783,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -983,7 +982,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1013,7 +1011,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1151,7 +1148,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             - "-controller-namespace=linkerd"
             - "-log-level=info"
-            resources:
             securityContext:
               runAsUser: 2103
 ---
@@ -1233,7 +1229,6 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1518,7 +1513,6 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources:
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -1756,7 +1750,6 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -1921,7 +1914,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2118,7 +2110,6 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2299,7 +2290,6 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
