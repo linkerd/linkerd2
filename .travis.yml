@@ -174,8 +174,10 @@ jobs:
           bin/docker cp "$id:/out/linkerd-linux" "./target/cli/linux/linkerd"
         - |
           ssh -T $USER@$REMOTE_DOCKER &> /dev/null << EOF
+            # TODO: This is using the kind binary on the remote host.
+            kind load docker-image gcr.io/linkerd-io/proxy-init:v1.1.0 --name=$KIND_CLUSTER
+            kind load docker-image prom/prometheus:v2.11.1--name=$KIND_CLUSTER
             for IMG in controller grafana proxy web ; do
-              # TODO: This is using the kind binary on the remote host.
               kind load docker-image gcr.io/linkerd-io/\$IMG:$version --name=$KIND_CLUSTER
             done
           EOF
