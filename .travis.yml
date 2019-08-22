@@ -79,7 +79,6 @@ jobs:
       script:
         # kind shells out to docker so we need bin/docker in PATH.
         - export PATH="`pwd`/bin:$PATH"
-         # TODO: Unique per job.
         - export KIND_CLUSTER=travis-$TRAVIS_BUILD_ID-$INTEGRATION_TEST
         - bin/kind create cluster --name=$KIND_CLUSTER
         # Save kubeconfig to remote docker host for kind integration test stages.
@@ -187,7 +186,7 @@ jobs:
           mkdir -p ./target/cli/linux
           bin/docker cp "$id:/out/linkerd-linux" "./target/cli/linux/linkerd"
         - |
-          ssh -T $USER@$REMOTE_DOCKER << EOF
+          ssh -T $USER@$REMOTE_DOCKER &> /dev/null << EOF
             for IMG in controller grafana proxy web ; do
               # TODO: This is using the kind binary on the remote host.
               kind load docker-image gcr.io/linkerd-io/\$IMG:$version --name=$KIND_CLUSTER
