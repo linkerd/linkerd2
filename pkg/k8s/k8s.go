@@ -23,7 +23,7 @@ const (
 	StatefulSet           = "statefulset"
 	TrafficSplit          = "trafficsplit"
 
-	ServiceProfileAPIVersion = "linkerd.io/v1alpha1"
+	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
 
 	// special case k8s job label, to not conflict with Prometheus' job label
@@ -43,6 +43,7 @@ var AllResources = []string{
 	Service,
 	ServiceProfile,
 	StatefulSet,
+	TrafficSplit,
 }
 
 // StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
@@ -55,6 +56,7 @@ var StatAllResourceTypes = []string{
 	ReplicationController,
 	Pod,
 	Service,
+	TrafficSplit,
 	Authority,
 }
 
@@ -100,6 +102,8 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 		return ServiceProfile, nil
 	case "sts", "statefulset", "statefulsets":
 		return StatefulSet, nil
+	case "ts", "trafficsplit", "trafficsplits":
+		return TrafficSplit, nil
 	case "all":
 		return All, nil
 	}
@@ -133,6 +137,8 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 		return "sp"
 	case StatefulSet:
 		return "sts"
+	case TrafficSplit:
+		return "ts"
 	default:
 		return ""
 	}

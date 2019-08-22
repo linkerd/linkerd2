@@ -394,11 +394,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			mProm := mockProm{Res: exp.promRes}
+			mProm := MockProm{Res: exp.promRes}
 
 			fakeGrpcServer := newGrpcServer(
 				&mProm,
-				nil,
 				nil,
 				nil,
 				k8sAPI,
@@ -428,7 +427,7 @@ status:
 }
 
 // TODO: consider refactoring with expectedStatRPC.verifyPromQueries
-func verifyPromQueries(mProm *mockProm, namespace string) error {
+func verifyPromQueries(mProm *MockProm, namespace string) error {
 	namespaceSelector := fmt.Sprintf("namespace=\"%s\"", namespace)
 	for _, element := range mProm.QueriesExecuted {
 		if strings.Contains(element, namespaceSelector) {
@@ -500,8 +499,7 @@ metadata:
 			}
 
 			fakeGrpcServer := newGrpcServer(
-				&mockProm{},
-				nil,
+				&MockProm{},
 				nil,
 				nil,
 				k8sAPI,
@@ -531,8 +529,7 @@ func TestConfig(t *testing.T) {
 		}
 
 		fakeGrpcServer := newGrpcServer(
-			&mockProm{},
-			nil,
+			&MockProm{},
 			nil,
 			nil,
 			k8sAPI,

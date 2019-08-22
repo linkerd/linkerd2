@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	promApi "github.com/prometheus/client_golang/api"
@@ -25,19 +24,12 @@ func main() {
 	prometheusURL := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
 	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	destinationAPIAddr := flag.String("destination-addr", "127.0.0.1:8086", "address of destination service")
-	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
 	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	flags.ConfigureAndParse()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	tapClient, tapConn, err := tap.NewClient(*tapAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer tapConn.Close()
 
 	discoveryClient, discoveryConn, err := discovery.NewClient(*destinationAPIAddr)
 	if err != nil {
@@ -67,7 +59,6 @@ func main() {
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
-		tapClient,
 		discoveryClient,
 		destinationClient,
 		k8sAPI,

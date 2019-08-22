@@ -18,14 +18,12 @@ import (
 type mockServer struct {
 	LastRequestReceived        proto.Message
 	ResponseToReturn           proto.Message
-	TapStreamsToReturn         []*pb.TapEvent
 	DestinationStreamsToReturn []*destinationPb.Update
 	ErrorToReturn              error
 }
 
 type mockGrpcServer struct {
 	mockServer
-	TapStreamsToReturn         []*pb.TapEvent
 	DestinationStreamsToReturn []*destinationPb.Update
 }
 
@@ -71,10 +69,9 @@ func (m *mockGrpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.A
 
 func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) error {
 	m.LastRequestReceived = req
-	if m.ErrorToReturn == nil {
-		for _, msg := range m.TapStreamsToReturn {
-			tapServer.Send(msg)
-		}
+	if m.ErrorToReturn != nil {
+		// Not implemented in public API. Instead, use tap APIServer.
+		return errors.New("Not implemented")
 	}
 
 	return m.ErrorToReturn
@@ -82,10 +79,9 @@ func (m *mockGrpcServer) Tap(req *pb.TapRequest, tapServer pb.Api_TapServer) err
 
 func (m *mockGrpcServer) TapByResource(req *pb.TapByResourceRequest, tapServer pb.Api_TapByResourceServer) error {
 	m.LastRequestReceived = req
-	if m.ErrorToReturn == nil {
-		for _, msg := range m.TapStreamsToReturn {
-			tapServer.Send(msg)
-		}
+	if m.ErrorToReturn != nil {
+		// Not implemented in public API. Instead, use tap APIServer.
+		return errors.New("Not implemented")
 	}
 
 	return m.ErrorToReturn
@@ -164,46 +160,6 @@ func TestServer(t *testing.T) {
 		}
 	})
 
-	t.Run("Delegates all streaming tap RPC messages to the underlying grpc server", func(t *testing.T) {
-		mockGrpcServer, client := getServerClient(t)
-
-		expectedTapResponses := []*pb.TapEvent{
-			{
-				Destination: &pb.TcpAddress{
-					Port: 9999,
-				},
-				Source: &pb.TcpAddress{
-					Port: 6666,
-				},
-			}, {
-				Destination: &pb.TcpAddress{
-					Port: 2102,
-				},
-				Source: &pb.TcpAddress{
-					Port: 1983,
-				},
-			},
-		}
-		mockGrpcServer.TapStreamsToReturn = expectedTapResponses
-		mockGrpcServer.ErrorToReturn = nil
-
-		tapClient, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		for _, expectedTapEvent := range expectedTapResponses {
-			actualTapEvent, err := tapClient.Recv()
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if !proto.Equal(actualTapEvent, expectedTapEvent) {
-				t.Fatalf("Expecting tap event to be [%v], but was [%v]", expectedTapEvent, actualTapEvent)
-			}
-		}
-	})
-
 	t.Run("Delegates all streaming Destination RPC messages to the underlying grpc server", func(t *testing.T) {
 		mockGrpcServer, client := getServerClient(t)
 
@@ -263,7 +219,7 @@ func TestServer(t *testing.T) {
 		}
 	})
 
-	t.Run("Handles errors before opening keep-alive response", func(t *testing.T) {
+	t.Run("Handles Tap route errors before opening keep-alive response", func(t *testing.T) {
 		mockGrpcServer, client := getServerClient(t)
 
 		mockGrpcServer.ErrorToReturn = errors.New("expected error")
@@ -273,6 +229,18 @@ func TestServer(t *testing.T) {
 			t.Fatalf("Expecting error, got nothing")
 		}
 	})
+
+	t.Run("Handles TapByResource route errors before opening keep-alive response", func(t *testing.T) {
+		mockGrpcServer, client := getServerClient(t)
+
+		mockGrpcServer.ErrorToReturn = errors.New("expected error")
+
+		_, err := client.TapByResource(context.TODO(), &pb.TapByResourceRequest{})
+		if err == nil {
+			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
 }
 
 func getServerClient(t *testing.T) (*mockGrpcServer, APIClient) {

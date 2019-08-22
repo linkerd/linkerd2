@@ -96,7 +96,7 @@ func main() {
 
 	ca := tls.NewCA(*creds, validity)
 
-	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
+	k8s, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}

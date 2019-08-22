@@ -17,7 +17,8 @@ type Channels struct {
 }
 
 const (
-	versionCheckURL = "https://versioncheck.linkerd.io/version.json?version=%s&uuid=%s&source=%s"
+	// CheckURL provides an online endpoint for Linkerd's version checks
+	CheckURL = "https://versioncheck.linkerd.io/version.json"
 )
 
 // NewChannels is used primarily for testing, it returns a Channels struct that
@@ -59,7 +60,7 @@ func (c Channels) Match(actualVersion string) error {
 // GetLatestVersions performs an online request to check for the latest Linkerd
 // release channels.
 func GetLatestVersions(ctx context.Context, uuid string, source string) (Channels, error) {
-	url := fmt.Sprintf(versionCheckURL, Version, uuid, source)
+	url := fmt.Sprintf("%s?version=%s&uuid=%s&source=%s", CheckURL, Version, uuid, source)
 	return getLatestVersions(ctx, http.DefaultClient, url)
 }
 

@@ -684,6 +684,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -860,6 +869,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1053,6 +1071,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1255,6 +1282,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1474,6 +1510,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -1678,7 +1723,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-grafana-5b7d796646-hh46d\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1994,7 +2039,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.0.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.1.0"}
   install: |
     {"uuid":"deaab91a-f4ab-448a-b7d1-c832a2fa0a60","cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2040,7 +2085,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.0.0",
+					ProxyInitImageVersion:   "v1.1.0",
 				}, Install: &configPb.Install{
 					Uuid:       "deaab91a-f4ab-448a-b7d1-c832a2fa0a60",
 					CliVersion: "dev-undefined",
@@ -2093,7 +2138,7 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}

@@ -43,17 +43,19 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
+	global, err := config.Global(consts.MountPathGlobalConfig)
+	if err != nil {
+		log.Fatalf("Failed to load global config: %s", err)
+	}
+
 	trustDomain := ""
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
-		global, err := config.Global(consts.MountPathGlobalConfig)
-		if err != nil {
-			log.Fatalf("Failed to load global config: %s", err)
-		}
-
 		trustDomain = global.GetIdentityContext().GetTrustDomain()
 	}
+
+	clusterDomain := global.GetClusterDomain()
 
 	server := destination.NewServer(
 		*addr,
@@ -61,6 +63,7 @@ func main() {
 		trustDomain,
 		*enableH2Upgrade,
 		k8sAPI,
+		clusterDomain,
 		done,
 	)
 

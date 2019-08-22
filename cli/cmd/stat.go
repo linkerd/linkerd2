@@ -68,6 +68,7 @@ func newCmdStat() *cobra.Command {
   * po mypod1 mypod2
   * rc/my-replication-controller
   * sts/my-statefulset
+  * ts/my-split
   * authority
   * au/my-authority
   * all
@@ -80,6 +81,7 @@ func newCmdStat() *cobra.Command {
   * pods
   * replicationcontrollers
   * statefulsets
+  * trafficsplits
   * authorities (not supported in --from)
   * services (only supported if a --from is also specified, or as a --to)
   * all (all resource types, not supported in --from or --to)
@@ -98,20 +100,29 @@ If no resource name is specified, displays stats about all resources of the spec
   # Get all inbound stats to the web deployment.
   linkerd stat deploy/web
 
-  # Getl all inbound stats to the pod1 and pod2 pods
+  # Get all inbound stats to the pod1 and pod2 pods
   linkerd stat po pod1 pod2
 
-  # Getl all inbound stats to the pod1 pod and the web deployment
+  # Get all inbound stats to the pod1 pod and the web deployment
   linkerd stat po/pod1 deploy/web
 
-  # Get all pods in all namespaces that call the hello1 deployment in the test namesapce.
+  # Get all pods in all namespaces that call the hello1 deployment in the test namespace.
   linkerd stat pods --to deploy/hello1 --to-namespace test --all-namespaces
 
-  # Get all pods in all namespaces that call the hello1 service in the test namesapce.
+  # Get all pods in all namespaces that call the hello1 service in the test namespace.
   linkerd stat pods --to svc/hello1 --to-namespace test --all-namespaces
 
   # Get all services in all namespaces that receive calls from hello1 deployment in the test namespace.
   linkerd stat services --from deploy/hello1 --from-namespace test --all-namespaces
+
+  # Get all trafficsplits and their leaf services.
+  linkerd stat ts
+
+  # Get the hello-split trafficsplit and its leaf services.
+  linkerd stat ts/hello-split
+
+  # Get all trafficsplits and their leaf services, and metrics for any traffic coming to the leaf services from the hello1 deployment.
+  linkerd stat ts --from deploy/hello1
 
   # Get all namespaces that receive traffic from the default namespace.
   linkerd stat namespaces --from ns/default
@@ -163,7 +174,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
-	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
+	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
 
 	return cmd
@@ -219,16 +230,30 @@ type row struct {
 	meshed string
 	status string
 	*rowStats
+	*tsStats
+}
+
+type tsStats struct {
+	apex   string
+	leaf   string
+	weight string
 }
 
 var (
 	nameHeader      = "NAME"
 	namespaceHeader = "NAMESPACE"
+	apexHeader      = "APEX"
+	leafHeader      = "LEAF"
+	weightHeader    = "WEIGHT"
 )
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
+	maxApexLength := len(apexHeader)
+	maxLeafLength := len(leafHeader)
+	maxWeightLength := len(weightHeader)
+
 	statTables := make(map[string]map[string]*row)
 
 	prefixTypes := make(map[string]bool)
@@ -249,6 +274,9 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 
 		namespace := r.Resource.Namespace
 		key := fmt.Sprintf("%s/%s", namespace, name)
+		if r.Resource.Type == k8s.TrafficSplit {
+			key = fmt.Sprintf("%s/%s/%s", namespace, name, r.TsStats.Leaf)
+		}
 		resourceKey := r.Resource.Type
 
 		if _, ok := statTables[resourceKey]; !ok {
@@ -284,6 +312,29 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 				tcpWriteBytes:      getByteRate(r.GetTcpStats().GetWriteBytesTotal(), r.TimeWindow),
 			}
 		}
+		if r.TsStats != nil {
+			leaf := r.TsStats.Leaf
+			apex := r.TsStats.Apex
+			weight := r.TsStats.Weight
+
+			if len(leaf) > maxLeafLength {
+				maxLeafLength = len(leaf)
+			}
+
+			if len(apex) > maxApexLength {
+				maxApexLength = len(apex)
+			}
+
+			if len(weight) > maxWeightLength {
+				maxWeightLength = len(weight)
+			}
+
+			statTables[resourceKey][key].tsStats = &tsStats{
+				apex:   apex,
+				leaf:   leaf,
+				weight: weight,
+			}
+		}
 	}
 
 	switch options.outputFormat {
@@ -292,13 +343,13 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			fmt.Fprintln(os.Stderr, "No traffic found.")
 			os.Exit(0)
 		}
-		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, options)
+		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
 	case jsonOutput:
 		printStatJSON(statTables, w)
 	}
 }
 
-func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
 	usePrefix := false
 	if len(statTables) > 1 {
 		usePrefix = true
@@ -315,7 +366,7 @@ func printStatTables(statTables map[string]map[string]*row, w *tabwriter.Writer,
 			if !usePrefix {
 				resourceTypeLabel = ""
 			}
-			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, options)
+			printSingleStatTable(stats, resourceTypeLabel, resourceType, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
 		}
 	}
 }
@@ -326,31 +377,49 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority
+	return resourceType != k8s.Authority && resourceType != k8s.TrafficSplit
 }
 
-func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength int, maxNamespaceLength int, options *statOptions) {
+func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength int, options *statOptions) {
 	headers := make([]string, 0)
+	nameTemplate := fmt.Sprintf("%%-%ds", maxNameLength)
+	namespaceTemplate := fmt.Sprintf("%%-%ds", maxNamespaceLength)
+	apexTemplate := fmt.Sprintf("%%-%ds", maxApexLength)
+	leafTemplate := fmt.Sprintf("%%-%ds", maxLeafLength)
+	weightTemplate := fmt.Sprintf("%%-%ds", maxWeightLength)
+
 	if options.allNamespaces {
 		headers = append(headers,
-			namespaceHeader+strings.Repeat(" ", maxNamespaceLength-len(namespaceHeader)))
+			fmt.Sprintf(namespaceTemplate, namespaceHeader))
 	}
 
-	headers = append(headers, nameHeader+strings.Repeat(" ", maxNameLength-len(nameHeader)))
+	headers = append(headers,
+		fmt.Sprintf(nameTemplate, nameHeader))
 
 	if resourceType == k8s.Pod {
 		headers = append(headers, "STATUS")
 	}
 
+	if resourceType == k8s.TrafficSplit {
+		headers = append(headers,
+			fmt.Sprintf(apexTemplate, apexHeader),
+			fmt.Sprintf(leafTemplate, leafHeader),
+			fmt.Sprintf(weightTemplate, weightHeader))
+	} else {
+		headers = append(headers, "MESHED")
+	}
+
 	headers = append(headers, []string{
-		"MESHED",
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
 		"LATENCY_P95",
 		"LATENCY_P99",
-		"TCP_CONN",
 	}...)
+
+	if resourceType != k8s.TrafficSplit {
+		headers = append(headers, "TCP_CONN")
+	}
 
 	if showTCPBytes(options, resourceType) {
 		headers = append(headers, []string{
@@ -374,9 +443,16 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			templateStringEmpty = "%s\t" + templateStringEmpty
 		}
 
+		if resourceType == k8s.TrafficSplit {
+			templateString = "%s\t%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
+			templateStringEmpty = "%s\t%s\t%s\t%s\t-\t-\t-\t-\t-\t"
+		}
+
 		if !showTCPConns(resourceType) {
-			// always show TCP Connections as - for Authorities
-			templateString = templateString + "-\t"
+			if resourceType == k8s.Authority {
+				// always show TCP Connections as - for Authorities
+				templateString = templateString + "-\t"
+			}
 		} else {
 			templateString = templateString + "%d\t"
 		}
@@ -401,14 +477,34 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			padding = maxNameLength - len(name)
 		}
 
+		apexPadding := 0
+		leafPadding := 0
+
+		if stats[key].tsStats != nil {
+			if maxApexLength > len(stats[key].tsStats.apex) {
+				apexPadding = maxApexLength - len(stats[key].tsStats.apex)
+			}
+			if maxLeafLength > len(stats[key].tsStats.leaf) {
+				leafPadding = maxLeafLength - len(stats[key].tsStats.leaf)
+			}
+		}
+
 		values = append(values, name+strings.Repeat(" ", padding))
 		if resourceType == k8s.Pod {
 			values = append(values, stats[key].status)
 		}
 
-		values = append(values, []interface{}{
-			stats[key].meshed,
-		}...)
+		if resourceType == k8s.TrafficSplit {
+			values = append(values,
+				stats[key].tsStats.apex+strings.Repeat(" ", apexPadding),
+				stats[key].tsStats.leaf+strings.Repeat(" ", leafPadding),
+				stats[key].tsStats.weight,
+			)
+		} else {
+			values = append(values, []interface{}{
+				stats[key].meshed,
+			}...)
+		}
 
 		if stats[key].rowStats != nil {
 			values = append(values, []interface{}{
@@ -450,15 +546,18 @@ type jsonStats struct {
 	Namespace      string   `json:"namespace"`
 	Kind           string   `json:"kind"`
 	Name           string   `json:"name"`
-	Meshed         string   `json:"meshed"`
+	Meshed         string   `json:"meshed,omitempty"`
 	Success        *float64 `json:"success"`
 	Rps            *float64 `json:"rps"`
 	LatencyMSp50   *uint64  `json:"latency_ms_p50"`
 	LatencyMSp95   *uint64  `json:"latency_ms_p95"`
 	LatencyMSp99   *uint64  `json:"latency_ms_p99"`
-	TCPConnections *uint64  `json:"tcp_open_connections"`
-	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate"`
-	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate"`
+	TCPConnections *uint64  `json:"tcp_open_connections,omitempty"`
+	TCPReadBytes   *float64 `json:"tcp_read_bytes_rate,omitempty"`
+	TCPWriteBytes  *float64 `json:"tcp_write_bytes_rate,omitempty"`
+	Apex           string   `json:"apex,omitempty"`
+	Leaf           string   `json:"leaf,omitempty"`
+	Weight         string   `json:"weight,omitempty"`
 }
 
 func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
@@ -473,7 +572,9 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					Namespace: namespace,
 					Kind:      resourceType,
 					Name:      name,
-					Meshed:    stats[key].meshed,
+				}
+				if resourceType != k8s.TrafficSplit {
+					entry.Meshed = stats[key].meshed
 				}
 				if stats[key].rowStats != nil {
 					entry.Success = &stats[key].successRate
@@ -489,6 +590,11 @@ func printStatJSON(statTables map[string]map[string]*row, w *tabwriter.Writer) {
 					}
 				}
 
+				if stats[key].tsStats != nil {
+					entry.Apex = stats[key].apex
+					entry.Leaf = stats[key].leaf
+					entry.Weight = stats[key].weight
+				}
 				entries = append(entries, entry)
 			}
 		}

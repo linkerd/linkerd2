@@ -22,23 +22,22 @@ jobs:
     - language: go
       # Quote the version number to avoid parsing issues like
       # https://github.com/travis-ci/gimme/issues/132.
-      go: "1.11.5"
+      go: "1.12.9"
       go_import_path: github.com/linkerd/linkerd2
+      env:
+        - GO111MODULE=on
       cache:
         directories:
-          - target
-          - vendor
+          - target/bin
+          - "$GOPATH/pkg/mod"
           - "$HOME/.cache"
       before_install:
         - echo $GITCOOKIE_SH | base64 -d | bash
-      install:
-        - ./bin/dep ensure -vendor-only -v
-        - ./bin/dep status -v
       script:
         # TODO decide whether protoc should be committed or not. If so, we shouldn't do
         # this or we should error if it dirties the repo.
         - ./bin/protoc-go.sh
-        - go test -cover -race -v ./...
+        - go test -cover -race -v -mod=readonly ./...
         - ./bin/lint --verbose
 
     - language: node_js
@@ -119,14 +118,16 @@ jobs:
     - stage: integration-test
 
       language: go
-      go: "1.11.5"
+      go: "1.12.9"
       go_import_path: github.com/linkerd/linkerd2
+      env:
+        - GO111MODULE=on
       services:
         - docker
 
       cache:
         directories:
-          - vendor
+          - "$GOPATH/pkg/mod"
           - "$HOME/google-cloud-sdk/"
           - "$HOME/.cache"
 
@@ -134,9 +135,6 @@ jobs:
         - echo $GITCOOKIE_SH | base64 -d | bash
 
       install:
-        - ./bin/dep ensure -vendor-only -v
-        - ./bin/dep status -v
-
         - |
           # Install gcloud and kubectl.
           dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
@@ -163,16 +161,14 @@ jobs:
         - |
           # Run integration tests.
           version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup linkerd-$version
           ./bin/test-run `pwd`/linkerd linkerd-$version
         - |
           # Run linkerd-cni integration tests.
-          TAG="$(./linkerd version --client --short)" go test -cover -race -v ./cni-plugin/test -integration-tests
+          TAG="$(./linkerd version --client --short)" go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
       after_script:
         - |
           # Cleanup after integration test run.
-          version="$(./linkerd version --client --short | tr -cd '[:alnum:]-')"
-          ./bin/test-cleanup linkerd-$version
+          ./bin/test-cleanup
 
 notifications:
   email:

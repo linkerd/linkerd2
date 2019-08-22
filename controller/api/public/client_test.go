@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 )
 
 type mockTransport struct {
@@ -71,7 +72,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		var protobufMessageToBeFilledWithData pb.VersionInfo
 		reader := bufferedReader(t, &versionInfo)
 
-		err := fromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
+		err := protohttp.FromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -114,7 +115,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		reader := bufferedReader(t, &msg)
 
 		protobufMessageToBeFilledWithData := &pb.StatSummaryResponse{}
-		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
+		err := protohttp.FromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -125,7 +126,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 
 		var protobufMessageToBeFilledWithData pb.ApiError
 		reader := bufferedReader(t, &apiError)
-		err := fromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
+		err := protohttp.FromByteStreamToProtocolBuffers(reader, &protobufMessageToBeFilledWithData)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -147,7 +148,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		reader := bufferedReader(t, versionInfo)
 
 		protobufMessageToBeFilledWithData := &pb.StatSummaryResponse{}
-		err := fromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
+		err := protohttp.FromByteStreamToProtocolBuffers(reader, protobufMessageToBeFilledWithData)
 		if err == nil {
 			t.Fatal("Expecting error, got nothing")
 		}
@@ -190,7 +191,7 @@ func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	payload := serializeAsPayload(msgBytes)
+	payload := protohttp.SerializeAsPayload(msgBytes)
 
 	return bufio.NewReader(bytes.NewReader(payload))
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	logging "github.com/sirupsen/logrus"
 )
 

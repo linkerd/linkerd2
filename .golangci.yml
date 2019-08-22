@@ -1,7 +1,7 @@
 # This file specifies which linters golangci-lint should run.
 #
 # For descriptions of all available linters, run:
-# ./.golangci-lint-1.15.0 linters
+# ./.golangci-lint-1.17.1 linters
 # or browse to:
 # https://github.com/golangci/golangci-lint#supported-linters
 
@@ -11,6 +11,7 @@ issues:
   exclude-use-default: false
 linters:
   enable:
+  - bodyclose
   - deadcode
   - depguard
   - goconst

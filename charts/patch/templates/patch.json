@@ -1,0 +1,83 @@
+{{ with .Values -}}
+{{ $prefix := .PathPrefix -}}
+[    
+  {{- if .AddRootAnnotations }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/annotations",
+    "value": {}
+  },
+  {{- end }}
+  {{- range $label, $value := .Annotations }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/annotations/{{$label | replace "/" "~1"}}",
+    "value": "{{$value}}"
+  },
+  {{- end }}
+  {{- if .AddRootLabels }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/labels",
+    "value": {}
+  },
+  {{- end }}
+  {{- range $label, $value := .Labels }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}",
+    "value": "{{$value}}"
+  },
+  {{- end }}
+  {{- if .ProxyInit }}
+  {{- if .AddRootInitContainers }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers",
+    "value": []
+  },
+  {{- end }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers/-",
+    "value":
+      {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+  {{- with .DebugContainer }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/containers/-",
+    "value":
+      {{- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+  {{- if .Proxy }}
+  {{- if .AddRootVolumes }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes",
+    "value": []
+  },
+  {{- end }}
+  {{- if not .Proxy.DisableIdentity -}}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+      "name": "linkerd-identity-end-entity",
+      "emptyDir": {
+        "medium": "Memory"
+      }
+    }
+  },
+  {{- end }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/containers/-",
+    "value":
+      {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- end }}
+]
+{{- end -}}

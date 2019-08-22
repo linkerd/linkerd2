@@ -19,6 +19,7 @@ pre-kubernetes-setup
 √ can create ServiceAccounts
 √ can create Services
 √ can create Deployments
+√ can create CronJobs
 √ can create ConfigMaps
 √ no clock skew detected
 

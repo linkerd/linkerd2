@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -43,6 +44,9 @@ type (
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	s.router.ServeHTTP(w, req)
 }
 
@@ -56,8 +60,10 @@ func NewServer(
 	staticDir string,
 	uuid string,
 	controllerNamespace string,
+	clusterDomain string,
 	reload bool,
 	apiClient public.APIClient,
+	k8sAPI *k8s.KubernetesAPI,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
@@ -73,9 +79,11 @@ func NewServer(
 	wrappedServer := prometheus.WithTelemetry(server)
 	handler := &handler{
 		apiClient:           apiClient,
+		k8sAPI:              k8sAPI,
 		render:              server.RenderTemplate,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
+		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 

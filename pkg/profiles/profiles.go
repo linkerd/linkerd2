@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"time"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1" // TODO: pkg/profiles should not depend on controller/gen
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2" // TODO: pkg/profiles should not depend on controller/gen
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -19,7 +19,7 @@ import (
 type profileTemplateConfig struct {
 	ServiceNamespace string
 	ServiceName      string
-	ClusterZone      string
+	ClusterDomain    string
 }
 
 var (
@@ -31,8 +31,6 @@ var (
 
 	minStatus uint32 = 100
 	maxStatus uint32 = 599
-
-	clusterZoneSuffix = "svc.cluster.local"
 
 	errRequestMatchField  = errors.New("A request match must have a field set")
 	errResponseMatchField = errors.New("A response match must have a field set")
@@ -202,18 +200,18 @@ func ValidateResponseMatch(rspMatch *sp.ResponseMatch) error {
 	return nil
 }
 
-func buildConfig(namespace, service string) *profileTemplateConfig {
+func buildConfig(namespace, service, clusterDomain string) *profileTemplateConfig {
 	return &profileTemplateConfig{
 		ServiceNamespace: namespace,
 		ServiceName:      service,
-		ClusterZone:      clusterZoneSuffix,
+		ClusterDomain:    clusterDomain,
 	}
 }
 
 // RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
 // namespace, service, and control plane namespace.
-func RenderProfileTemplate(namespace, service string, w io.Writer) error {
-	config := buildConfig(namespace, service)
+func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer) error {
+	config := buildConfig(namespace, service, clusterDomain)
 	template, err := template.New("profile").Parse(Template)
 	if err != nil {
 		return err

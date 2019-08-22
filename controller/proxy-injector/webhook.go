@@ -61,19 +61,15 @@ func Inject(api *k8s.API,
 	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	p, err := resourceConfig.GetPatch(request.Object.Raw, true)
+	patchJSON, err := resourceConfig.GetPatch(true)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.IsEmpty() {
+	if len(patchJSON) == 0 {
 		return admissionResponse, nil
 	}
 
-	patchJSON, err := p.Marshal()
-	if err != nil {
-		return nil, err
-	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
 

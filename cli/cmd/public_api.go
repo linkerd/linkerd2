@@ -21,7 +21,7 @@ func rawPublicAPIClient() (pb.ApiClient, error) {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +61,7 @@ func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) 
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
+		Impersonate:           impersonate,
 		APIAddr:               apiAddr,
 		RetryDeadline:         retryDeadline,
 	})

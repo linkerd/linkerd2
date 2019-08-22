@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -eu
+
+kindversion=v0.4.0
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+targetbin="$( cd $bindir/.. && pwd )"/target/bin
+kindbin="${targetbin}/.kind-${kindversion}"
+
+if [ ! -f "$kindbin" ]; then
+  if [ "$(uname -s)" = "Darwin" ]; then
+    os=darwin
+    arch=amd64
+  elif [ "$(uname -o)" = "Msys" ]; then
+    os=windows
+    arch=amd64
+  else
+    os=linux
+    case $(uname -m) in
+      x86_64) arch="amd64" ;;
+      arm) arch="arm64" ;;
+    esac
+  fi
+
+  mkdir -p "$targetbin"
+  curl -sfL -o "$kindbin" https://github.com/kubernetes-sigs/kind/releases/download/$kindversion/kind-$os-$arch
+  chmod +x "$kindbin"
+fi
+
+$kindbin "$@"

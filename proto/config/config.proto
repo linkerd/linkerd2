@@ -25,6 +25,9 @@ message Global {
   AutoInjectContext auto_inject_context = 6 [deprecated=true];
 
   bool omitWebhookSideEffects = 7;
+
+  // Override default `cluster.local`
+  string cluster_domain = 8;
 }
 
 message Proxy {

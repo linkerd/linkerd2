@@ -40,6 +40,10 @@ func TestEgressHttp(t *testing.T) {
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
+	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, nil)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
+	}
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v output:\n%s", err, out)

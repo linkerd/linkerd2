@@ -16,18 +16,20 @@ import (
 )
 
 type installCNIPluginConfig struct {
-	Namespace           string
-	CNIPluginImage      string
-	LogLevel            string
-	InboundPort         uint
-	OutboundPort        uint
-	IgnoreInboundPorts  string
-	IgnoreOutboundPorts string
-	ProxyUID            int64
-	DestCNINetDir       string
-	DestCNIBinDir       string
-	CreatedByAnnotation string
-	CliVersion          string
+	Namespace                string
+	ControllerNamespaceLabel string
+	CNIPluginImage           string
+	LogLevel                 string
+	InboundPort              uint
+	OutboundPort             uint
+	IgnoreInboundPorts       string
+	IgnoreOutboundPorts      string
+	ProxyUID                 int64
+	DestCNINetDir            string
+	DestCNIBinDir            string
+	CreatedByAnnotation      string
+	CliVersion               string
+	UseWaitFlag              bool
 }
 
 type cniPluginOptions struct {
@@ -44,6 +46,7 @@ type cniPluginOptions struct {
 	logLevel            string
 	destCNINetDir       string
 	destCNIBinDir       string
+	useWaitFlag         bool
 }
 
 func newCNIPluginOptions() *cniPluginOptions {
@@ -61,6 +64,7 @@ func newCNIPluginOptions() *cniPluginOptions {
 		logLevel:            "info",
 		destCNINetDir:       "/etc/cni/net.d",
 		destCNIBinDir:       "/opt/cni/bin",
+		useWaitFlag:         false,
 	}
 }
 
@@ -116,10 +120,15 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().UintVar(&options.proxyAdminPort, "admin-port", options.proxyAdminPort, "Proxy port to serve metrics on")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
 	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
-	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin.")
-	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin.")
-	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed.")
-	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside.")
+	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin")
+	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
+	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
+	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside")
+	cmd.PersistentFlags().BoolVar(
+		&options.useWaitFlag,
+		"use-wait-flag",
+		options.useWaitFlag,
+		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
 
 	return cmd
 }
@@ -142,18 +151,20 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 	}
 
 	return &installCNIPluginConfig{
-		Namespace:           controlPlaneNamespace,
-		CNIPluginImage:      options.taggedCNIPluginImage(),
-		LogLevel:            options.logLevel,
-		InboundPort:         options.inboundPort,
-		OutboundPort:        options.outboundPort,
-		IgnoreInboundPorts:  strings.Join(ignoreInboundPorts, ","),
-		IgnoreOutboundPorts: strings.Join(ignoreOutboundPorts, ","),
-		ProxyUID:            options.proxyUID,
-		DestCNINetDir:       options.destCNINetDir,
-		DestCNIBinDir:       options.destCNIBinDir,
-		CreatedByAnnotation: k8s.CreatedByAnnotation,
-		CliVersion:          k8s.CreatedByAnnotationValue(),
+		Namespace:                controlPlaneNamespace,
+		ControllerNamespaceLabel: k8s.ControllerNSLabel,
+		CNIPluginImage:           options.taggedCNIPluginImage(),
+		LogLevel:                 options.logLevel,
+		InboundPort:              options.inboundPort,
+		OutboundPort:             options.outboundPort,
+		IgnoreInboundPorts:       strings.Join(ignoreInboundPorts, ","),
+		IgnoreOutboundPorts:      strings.Join(ignoreOutboundPorts, ","),
+		ProxyUID:                 options.proxyUID,
+		DestCNINetDir:            options.destCNINetDir,
+		DestCNIBinDir:            options.destCNIBinDir,
+		CreatedByAnnotation:      k8s.CreatedByAnnotation,
+		CliVersion:               k8s.CreatedByAnnotationValue(),
+		UseWaitFlag:              options.useWaitFlag,
 	}, nil
 }
 

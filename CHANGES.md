@@ -1,3 +1,275 @@
+## stable-2.5.0
+
+This release adds [Helm support](https://linkerd.io/2/tasks/install-helm/),
+[tap authentication and authorization via RBAC](https://linkerd.io/tap-rbac),
+traffic split stats, dynamic logging levels, a new cluster monitoring dashboard,
+and countless performance enhancements and bug fixes.
+
+For more details, see the announcement blog post:
+https://linkerd.io/2019/08/20/announcing-linkerd-2.5/
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: Use the `linkerd upgrade` command to upgrade the control
+plane. This command ensures that all existing control plane's configuration and
+mTLS secrets are retained. For more details, please see the [upgrade
+instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-5-0).
+
+**Special thanks to**: @alenkacz, @codeman9, @ethan-daocloud, @jonathanbeber,
+and @Pothulapati!
+
+**Full release notes**:
+
+* CLI
+  * **New** Updated `linkerd tap`, `linkerd top` and `linkerd profile --tap` to
+    require `tap.linkerd.io` RBAC privileges. See https://linkerd.io/tap-rbac
+    for more info
+  * **New** Added traffic split metrics via `linkerd stat trafficsplits`
+    subcommand
+  * Made the `linkerd routes` command traffic split aware
+  * Introduced the `linkerd --as` flag which allows users to impersonate another
+    user for Kubernetes operations
+  * Introduced the `--all-namespaces` (`-A`) option to the `linkerd get`,
+    `linkerd edges` and `linkerd stat` commands to retrieve resources across
+    all namespaces
+  * Improved the installation report produced by the `linkerd check` command
+    to include the control plane pods' live status
+  * Fixed bug in the `linkerd upgrade config` command that was causing it to
+    crash
+  * Introduced `--use-wait-flag` to the `linkerd install-cni` command, to
+    configure the CNI plugin to use the `-w` flag for `iptables` commands
+  * Introduced `--restrict-dashboard-privileges` flag to `linkerd install`
+    command, to disallow tap in the dashboard
+  * Fixed `linkerd uninject` not removing `linkerd.io/inject: enabled`
+    annotations
+  * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
+  * Fixed incorrect "meshed" count in `linkerd stat` when resources share the
+    same label selector for pods (thanks @jonathanbeber!)
+  * Added pod status to the output of the `linkerd stat` command (thanks
+    @jonathanbeber!)
+  * Added namespace information to the `linkerd edges` command output and a new
+    `-o wide` flag that shows the identity of the client and server if known
+  * Added a check to the `linkerd check` command to validate the user has
+    privileges necessary to create CronJobs
+  * Added a new check to the `linkerd check --pre` command validating that if
+    PSP is enabled, the NET_RAW capability is available
+* Controller
+  * **New** Disabled all unauthenticated tap endpoints. Tap requests now require
+    [RBAC authentication and authorization](https://linkerd.io/tap-rbac)
+  * The `l5d-require-id` header is now set on tap requests so that a connection
+    is established over TLS
+  * Introduced a new RoleBinding in the `kube-system` namespace to provide
+    [access to tap](https://linkerd.io/tap-rbac)
+  * Added HTTP security headers on all dashboard responses
+  * Added support for namespace-level proxy override annotations (thanks
+    @Pothulapati!)
+  * Added resource limits when HA is enabled (thanks @Pothulapati!)
+  * Added pod anti-affinity rules to the control plane pods when HA is enabled
+    (thanks @Pothulapati!)
+  * Fixed a crash in the destination service when an endpoint does not have a
+    `TargetRef`
+  * Updated the destination service to return `InvalidArgument` for external
+    name services so that the proxy does not immediately fail the request
+  * Fixed an issue with discovering StatefulSet pods via their unique hostname
+  * Fixed an issue with traffic split where outbound proxy stats are missing
+  * Upgraded the service profile CRD to v1alpha2. No changes required for users
+    currently using v1alpha1
+  * Updated the control plane's pod security policy to restrict workloads from
+    running as `root` in the CNI mode (thanks @codeman9!)
+  * Introduced optional cluster heartbeat cron job
+  * Bumped Prometheus to 2.11.1
+  * Bumped Grafana to 6.2.5
+* Proxy
+  * **New** Added a new `/proxy-log-level` endpoint to update the log level at
+    runtime
+  * **New** Updated the tap server to only admit requests from the control
+    plane's tap controller
+  * Added `request_handle_us` histogram to measure proxy overhead
+  * Fixed gRPC client cancellations getting recorded as failures rather than
+    as successful
+  * Fixed a bug where tap would stop streaming after a short amount of time
+  * Fixed a bug that could cause the proxy to leak service discovery resolutions
+    to the Destination controller
+* Web UI
+  * **New** Added "Kubernetes cluster monitoring" Grafana dashboard with cluster
+    and containers metrics
+  * Updated the web server to use the new tap APIService. If the `linkerd-web`
+    service account is not authorized to tap resources, users will see a link to
+    documentation to remedy the error
+
+## edge-19.8.5
+
+This edge release is a release candidate for `stable-2.5`.
+
+* CLI
+  * Fixed CLI filepath issue on Windows
+* Proxy
+  * Fixed gRPC client cancellations getting recorded as failures rather than
+    as successful
+
+## edge-19.8.4
+
+This edge release is a release candidate for `stable-2.5`.
+
+* CLI
+  * Introduced `--use-wait-flag` to the `linkerd install-cni` command, to
+    configure the CNI plugin to use the `-w` flag for `iptables` commands
+* Controller
+  * Disabled the tap gRPC server listener. All tap requests now require RBAC
+    authentication and authorization
+
+## edge-19.8.3
+
+This edge release introduces a new `linkerd stat trafficsplits` subcommand, to
+show traffic split metrics. It also introduces a "Kubernetes cluster monitoring"
+Grafana dashboard.
+
+* CLI
+  * Added traffic split metrics via `linkerd stat trafficsplits` subcommand
+  * Fixed `linkerd uninject` not removing `linkerd.io/inject: enabled`
+    annotations
+  * Fixed `linkerd stat -h` example commands (thanks @ethan-daocloud!)
+* Controller
+  * Added support for namespace-level proxy override annotations
+  * Removed unauthenticated tap from the Public API
+* Proxy
+  * Added `request_handle_us` histogram to measure proxy overhead
+  * Updated the tap server to only admit requests from the control plane's tap
+    controller
+  * Fixed a bug where tap would stop streaming after a short amount of time
+  * Fixed a bug that could cause the proxy to leak service discovery resolutions
+    to the Destination controller
+* Web UI
+  * Added "Kubernetes cluster monitoring" Grafana dashboard with cluster and
+    containers metrics
+* Internal
+  * Updated `linkerd install` and `linkerd upgrade` to use Helm charts for
+    templating
+  * Pinned Helm tooling to `v2.14.3`
+  * Added Helm integration tests
+  * Added container CPU and memory usage to `linkerd-heartbeat` requests
+  * Removed unused inject code (thanks @alenkacz!)
+
+## edge-19.8.2
+
+This edge release introduces the new Linkerd control plane Helm chart, named
+`linkerd2`. Helm users can now install and remove the Linkerd control plane by
+using the `helm install` and `helm delete` commands. Proxy injection also now
+uses Helm charts.
+
+No changes were made to the existing `linkerd install` behavior.
+
+For detailed installation steps using Helm, see the notes for [PR
+#3146](https://github.com/linkerd/linkerd2/pull/3146).
+
+* CLI
+  * Updated `linkerd top` and `linkerd profile --tap` to require
+    `tap.linkerd.io` RBAC privileges, see https://linkerd.io/tap-rbac for more
+    info
+  * Modified `tap.linkerd.io` APIService to enable usage in `kubectl auth can-i`
+    commands
+  * Introduced `--restrict-dashboard-privileges` flag to `linkerd install`
+    command, to restrict the dashboard's default privileges to disallow tap
+* Controller
+  * Introduced a new ClusterRole, `linkerd-linkerd-tap-admin`, which gives
+    cluster-wide tap privileges. Also introduced a new ClusterRoleBinding,
+    `linkerd-linkerd-web-admin`, which binds the `linkerd-web` service account
+    to the new tap ClusterRole
+  * Removed successfully completed `linkerd-heartbeat` jobs from pod listing in
+    the linkerd control plane to streamline `get po` output (thanks
+    @Pothulapati!)
+* Web UI
+  * Updated the web server to use the new tap APIService. If the `linkerd-web`
+    service account is not authorized to tap resources, users will see a link to
+    documentation to remedy the error
+
+## edge-19.8.1
+
+**Significant Update**
+
+This edge release introduces a new tap APIService. The Kubernetes apiserver
+authenticates the requesting tap user and then forwards tap requests to the new
+tap APIServer. The `linkerd tap` command now makes requests against the
+APIService.
+
+With this release, users must be authorized via RBAC to use the `linkerd tap`
+command. Specifically `linkerd tap` requires the `watch` verb on all resources
+in the `tap.linkerd.io/v1alpha1` APIGroup. More granular access is also
+available via sub-resources such as `deployments/tap` and `pods/tap`.
+
+* CLI
+  * Added a check to the `linkerd check` command to validate the user has
+    privileges necessary to create CronJobs
+  * Introduced the `linkerd --as` flag which allows users to impersonate another
+    user for Kubernetes operations
+  * The `linkerd tap` command now makes requests against the tap APIService
+* Controller
+  * Added HTTP security headers on all dashboard responses
+  * Fixed nil pointer dereference in the destination service when an endpoint
+    does not have a `TargetRef`
+  * Added resource limits when HA is enabled
+  * Added RSA support to TLS libraries
+  * Updated the destination service to return `InvalidArgument` for external
+    name services so that the proxy does not immediately fail the request
+  * The `l5d-require-id` header is now set on tap requests so that a connection
+    is established over TLS
+  * Introduced the `APIService/v1alpha1.tap.linkerd.io` global resource
+  * Introduced the `ClusterRoleBinding/linkerd-linkerd-tap-auth-delegator`
+    global resource
+  * Introduced the `Secret/linkerd-tap-tls` resource into the `linkerd`
+    namespace
+  * Introduced the `RoleBinding/linkerd-linkerd-tap-auth-reader` resource into
+    the `kube-system` namespace
+* Proxy
+  * Added the `LINKERD2_PROXY_TAP_SVC_NAME` environment variable so that the tap
+    server attempts to authorize client identities
+* Internal
+  * Replaced `dep` with Go modules for dependency management
+
+## edge-19.7.5
+
+* CLI
+  * Improved the installation report produced by the `linkerd check` command
+    to include the control plane pods' live status
+  * Added the `--all-namespaces` (`-A`) option to the `linkerd get`,
+    `linkerd edges` and `linkerd stat` commands to retrieve resources across
+    all namespaces
+* Controller
+  * Fixed an issue with discovering StatefulSet pods via their unique hostname
+  * Fixed an issue with traffic split where outbound proxy stats are missing
+  * Bumped Prometheus to 2.11.1
+  * Bumped Grafana to 6.2.5
+  * Upgraded the service profile CRD to v1alpha2 where the openAPIV3Schema
+    validation is replaced by a validating admission webhook. No changes
+    required for users currently using v1alpha1
+  * Updated the control plane's pod security policy to restrict workloads from
+    running as `root` in the CNI mode (thanks @codeman9!)
+  * Introduced cluster heartbeat cron job
+* Proxy
+  * Introduced the `l5d-require-id` header to enforce TLS outbound
+    communication from the Tap server
+
+## edge-19.7.4
+
+* CLI
+  * Made the `linkerd routes` command traffic-split aware
+  * Fixed bug in the `linkerd upgrade config` command that was causing it to
+    crash
+  * Added pod status to the output of the `linkerd stat`command (thanks
+    @jonathanbeber!)
+  * Fixed incorrect "meshed" count in `linkerd stat` when resources share the
+    same label selector for pods (thanks @jonathanbeber!)
+  * Added namespace information to the `linkerd edges` command output and a new
+    `-o wide` flag that shows the identity of the client and server if known
+  * Added a new check to the `linkerd check --pre` command validating that if
+    PSP is enabled, the NET_RAW capability is available
+* Controller
+  * Added pod anti-affinity rules to the control plane pods when HA is enabled
+    (thanks @Pothulapati!)
+* Proxy
+  * Improved performance by using a constant-time load balancer
+  * Added a new `/proxy-log-level` endpoint to update the log level at runtime
+
 ## stable-2.4.0
 
 This release adds traffic splitting functionality, support for the Kubernetes
@@ -17,7 +289,7 @@ the `linkerd inject` command only adds annotations and defers injection to the
 always-installed proxy injector component.
 
 Finally, there have been many performance and usability improvements to the
-proxy and UI, as well as production-ready features including: 
+proxy and UI, as well as production-ready features including:
 * A new `linkerd edges` command that provides fine-grained observability into
   the TLS-based identity system
 * A `--enable-debug-sidecar` flag for the `linkerd inject` command that improves
@@ -31,10 +303,11 @@ To install this release, run: `curl https://run.linkerd.io/install | sh`
 **Upgrade notes**: Use the `linkerd upgrade` command to upgrade the control
 plane. This command ensures that all existing control plane's configuration and
 mTLS secrets are retained. For more details, please see the [upgrade
-instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0) for more details.
+instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-4-0)
+for more details.
 
-**Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr
-@matej-g, @Pothulapati, @zaharidichev, 
+**Special thanks to**: @alenkacz, @codeman9, @dwj300, @jackprice, @liquidslr,
+@matej-g, @Pothulapati, @zaharidichev
 
 **Full release notes**:
 

@@ -46,6 +46,22 @@ func genPromSample(resName string, resType string, resNs string, isDst bool) *mo
 	}
 }
 
+func genTrafficSplitPromSample(resName, resNs string) *model.Sample {
+	labelName := model.LabelName("dst_service")
+	namespaceLabel := model.LabelName("namespace")
+
+	return &model.Sample{
+		Metric: model.Metric{
+			labelName:        model.LabelValue(resName),
+			namespaceLabel:   model.LabelValue(resNs),
+			"classification": model.LabelValue("success"),
+			"tls":            model.LabelValue("false"),
+		},
+		Value:     123,
+		Timestamp: 456,
+	}
+}
+
 func genEmptyResponse() pb.StatSummaryResponse {
 	return pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
@@ -628,6 +644,78 @@ status:
 		testStatSummary(t, expectations)
 	})
 
+	t.Run("Successfully performs a query based on resource type TrafficSplit", func(t *testing.T) {
+		expectations := []statSumExpected{
+			{
+				expectedStatRPC: expectedStatRPC{
+					err: nil,
+					k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-1
+  namespace: default
+  labels:
+    app: authors
+    project: booksapp
+spec:
+  selector:
+    app: authors
+  clusterIP: None
+  ports:
+  - name: service
+    port: 7001
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-2
+  namespace: default
+  labels:
+    app: authors-clone
+    project: booksapp
+spec:
+  selector:
+    app: authors-clone
+  clusterIP: None
+  ports:
+  - name: service
+    port: 7009
+`, `
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: authors-split
+  namespace: default
+spec:
+  service: apex_name
+  backends:
+  - service: service-1
+    weight: 900m
+  - service: service-2
+    weight: 100m
+`,
+					},
+					mockPromResponse: model.Vector{
+						genTrafficSplitPromSample("service-1", "default"),
+						genTrafficSplitPromSample("service-2", "default"),
+					},
+				},
+				req: pb.StatSummaryRequest{
+					Selector: &pb.ResourceSelection{
+						Resource: &pb.Resource{
+							Namespace: "default",
+							Type:      pkgK8s.TrafficSplit,
+						},
+					},
+					TimeWindow: "1m",
+				},
+				expectedResponse: GenStatTsResponse("authors-split", pkgK8s.TrafficSplit, []string{"default"}, true, true),
+			},
+		}
+		testStatSummary(t, expectations)
+	})
+
 	t.Run("Queries prometheus for TCP stats when requested", func(t *testing.T) {
 
 		expectations := []statSumExpected{
@@ -1155,6 +1243,13 @@ status:
 								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
 												{
 													Resource: &pb.Resource{
@@ -1293,8 +1388,7 @@ status:
 
 		for _, exp := range expectations {
 			fakeGrpcServer := newGrpcServer(
-				&mockProm{Res: exp.mockPromResponse},
-				nil,
+				&MockProm{Res: exp.mockPromResponse},
 				nil,
 				nil,
 				k8sAPI,
@@ -1319,8 +1413,7 @@ status:
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
 		fakeGrpcServer := newGrpcServer(
-			&mockProm{Res: model.Vector{}},
-			nil,
+			&MockProm{Res: model.Vector{}},
 			nil,
 			nil,
 			k8sAPI,

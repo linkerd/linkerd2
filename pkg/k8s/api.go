@@ -34,7 +34,7 @@ type KubernetesAPI struct {
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
 // configured cluster.
-func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesAPI, error) {
+func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Duration) (*KubernetesAPI, error) {
 	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -46,6 +46,12 @@ func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesA
 	config.Timeout = timeout
 	wt := config.WrapTransport
 	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
+
+	if impersonate != "" {
+		config.Impersonate = rest.ImpersonationConfig{
+			UserName: impersonate,
+		}
+	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -133,7 +139,7 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(namespace string) ([]appsv1.Replica
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
 // https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640
-func GetPodStatus(pod *corev1.Pod) string {
+func GetPodStatus(pod corev1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason

@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/emicklei/proto"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestProtoToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
+	clusterDomain := "mycluster.local"
 
 	protobuf := `syntax = "proto3";
 
@@ -34,7 +35,7 @@ service VotingService {
 	expectedServiceProfile := sp.ServiceProfile{
 		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "." + namespace + ".svc.cluster.local",
+			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
@@ -50,7 +51,7 @@ service VotingService {
 		},
 	}
 
-	actualServiceProfile, err := protoToServiceProfile(parser, namespace, name)
+	actualServiceProfile, err := protoToServiceProfile(parser, namespace, name, clusterDomain)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}
