@@ -57,7 +57,6 @@ jobs:
       name: "Kind cluster setup (deep)"
       language: generic
       env:
-        - INTEGRATION_TEST=deep
         # REMOTE_DOCKER=x.x.x.x
         - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
         # DOCKER_HOST=ssh://x.x.x.x
@@ -75,6 +74,8 @@ jobs:
         - eval "$(ssh-agent -s)"
         - chmod 600 /tmp/.travis.rsa
         - ssh-add /tmp/.travis.rsa
+      before_script:
+        - export INTEGRATION_TEST=deep
       script:
         # kind shells out to docker so we need bin/docker in PATH.
         - export PATH="`pwd`/bin:$PATH"
@@ -87,20 +88,12 @@ jobs:
         - bin/kind delete cluster --name=$KIND_CLUSTER
     - <<: *kind-setup
       name: "Kind cluster setup (upgrade)"
-      env:
-        - INTEGRATION_TEST=upgrade
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      before_script:
+        - export INTEGRATION_TEST=upgrade
     - <<: *kind-setup
       name: "Kind cluster setup (helm)"
-      env:
-        - INTEGRATION_TEST=helm
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      before_script:
+        - export INTEGRATION_TEST=helm
 
     - stage: test
       name: "Go unit tests"
@@ -143,7 +136,6 @@ jobs:
       name: "Kind integration tests (deep)"
       language: generic
       env:
-        - INTEGRATION_TEST=deep
         - GO111MODULE=on
         # REMOTE_DOCKER=x.x.x.x
         - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
@@ -170,6 +162,8 @@ jobs:
         - rm -rf $GOROOT
         - sudo rm -rf /usr/local/go
         - sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+      before_script:
+        - export INTEGRATION_TEST=deep
       script:
         - export GOROOT=/usr/local/go
         - export PATH=/usr/local/go/bin:$PATH
@@ -209,22 +203,12 @@ jobs:
         - bin/kind delete cluster --name=$KIND_CLUSTER
     - <<: *kind-test
       name: "Kind integration tests (upgrade)"
-      env:
-        - INTEGRATION_TEST=upgrade
-        - GO111MODULE=on
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      before_script:
+        - export INTEGRATION_TEST=upgrade
     - <<: *kind-test
       name: "Kind integration tests (helm)"
-      env:
-        - INTEGRATION_TEST=helm
-        - GO111MODULE=on
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      before_script:
+        - export INTEGRATION_TEST=helm
 
     # Push container images to Google Container Registry.
     - stage: docker-deploy

@@ -62,11 +62,6 @@ function deep_integration_tests() {
 
     run_test "$(go list $test_directory/.../...)" --linkerd-namespace=$linkerd_namespace || exit_code=$?
     exit_on_err "error during deep tests"
-
-    # for test in $(find "$test_directory" -mindepth 2 -name '*_test.go'); do
-    #     run_test "$test" --linkerd-namespace=$linkerd_namespace || exit_code=$?
-    #     exit_on_err "error during $test"
-    # done
 }
 
 #
