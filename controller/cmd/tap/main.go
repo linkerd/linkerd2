@@ -49,11 +49,14 @@ func main() {
 	}
 
 	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	clusterDomain := globalConfig.GetClusterDomain()
-	if err != nil || clusterDomain == "" {
-		clusterDomain = "cluster.local"
-		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	if err != nil {
+		log.Fatal(err)
 	}
+	clusterDomain := globalConfig.GetClusterDomain()
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
+	}
+	log.Info("Using cluster domain: ", clusterDomain)
 
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
