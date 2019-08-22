@@ -68,10 +68,10 @@ jobs:
         directories:
           - target/bin
       addons:
-        # << : *addons_ssh_known_hosts
-        ssh_known_hosts:
-          # Same value as $REMOTE_DOCKER.
-          secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
+        << : *addons_ssh_known_hosts
+        # ssh_known_hosts:
+        #   # Same value as $REMOTE_DOCKER.
+        #   secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
       before_install:
         # Set up remote docker host ssh.
         - openssl aes-256-cbc -K $encrypted_833c0dff2c1b_key -iv $encrypted_833c0dff2c1b_iv -in .travis.rsa.enc -out /tmp/.travis.rsa -d
@@ -150,10 +150,10 @@ jobs:
           - "$GOPATH/pkg/mod"
           - "$HOME/.cache"
       addons:
-        # << : *addons_ssh_known_hosts
-        ssh_known_hosts:
-          # Same value as $REMOTE_DOCKER.
-          secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
+        << : *addons_ssh_known_hosts
+        # ssh_known_hosts:
+        #   # Same value as $REMOTE_DOCKER.
+        #   secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
       before_install:
         # Set up remote docker host ssh.
         - openssl aes-256-cbc -K $encrypted_833c0dff2c1b_key -iv $encrypted_833c0dff2c1b_iv -in .travis.rsa.enc -out /tmp/.travis.rsa -d
