@@ -13,6 +13,7 @@ import (
 const (
 	clientIDLabel = model.LabelName("client_id")
 	serverIDLabel = model.LabelName("server_id")
+	resourceLabel = model.LabelName("deployment")
 )
 
 type edgesExpected struct {
@@ -21,9 +22,7 @@ type edgesExpected struct {
 	expectedResponse pb.EdgesResponse // the edges response we expect
 }
 
-func genInboundPromSample(resourceType, resourceNamespace, resourceName, clientID string) *model.Sample {
-	resourceLabel := model.LabelName(resourceType)
-
+func genInboundPromSample(resourceNamespace, resourceName, clientID string) *model.Sample {
 	return &model.Sample{
 		Metric: model.Metric{
 			resourceLabel:  model.LabelValue(resourceName),
@@ -35,8 +34,7 @@ func genInboundPromSample(resourceType, resourceNamespace, resourceName, clientI
 	}
 }
 
-func genOutboundPromSample(resourceType, resourceNamespace, resourceName, resourceNameDst, resourceNamespaceDst, serverID string) *model.Sample {
-	resourceLabel := model.LabelName(resourceType)
+func genOutboundPromSample(resourceNamespace, resourceName, resourceNameDst, resourceNamespaceDst, serverID string) *model.Sample {
 	dstResourceLabel := "dst_" + resourceLabel
 
 	return &model.Sample{
@@ -96,15 +94,15 @@ func testEdges(t *testing.T, expectations []edgesExpected) {
 
 func TestEdges(t *testing.T) {
 	mockPromResponse := model.Vector{
-		genInboundPromSample("deployment", "emojivoto", "emoji", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genInboundPromSample("deployment", "emojivoto", "voting", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genInboundPromSample("deployment", "emojivoto", "web", "default.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genInboundPromSample("deployment", "linkerd", "linkerd-prometheus", "linkerd-controller.linkerd.identity.linkerd.cluster.local"),
+		genInboundPromSample("emojivoto", "emoji", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genInboundPromSample("emojivoto", "voting", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genInboundPromSample("emojivoto", "web", "default.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genInboundPromSample("linkerd", "linkerd-prometheus", "linkerd-controller.linkerd.identity.linkerd.cluster.local"),
 
-		genOutboundPromSample("deployment", "emojivoto", "web", "emoji", "emojivoto", "emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genOutboundPromSample("deployment", "emojivoto", "web", "voting", "emojivoto", "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genOutboundPromSample("deployment", "emojivoto", "vote-bot", "web", "emojivoto", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
-		genOutboundPromSample("deployment", "linkerd", "linkerd-controller", "linkerd-prometheus", "linkerd", "linkerd-prometheus.linkerd.identity.linkerd.cluster.local"),
+		genOutboundPromSample("emojivoto", "web", "emoji", "emojivoto", "emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genOutboundPromSample("emojivoto", "web", "voting", "emojivoto", "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genOutboundPromSample("emojivoto", "vote-bot", "web", "emojivoto", "web.emojivoto.serviceaccount.identity.linkerd.cluster.local"),
+		genOutboundPromSample("linkerd", "linkerd-controller", "linkerd-prometheus", "linkerd", "linkerd-prometheus.linkerd.identity.linkerd.cluster.local"),
 	}
 
 	t.Run("Successfully returns edges for resource type Deployment and namespace emojivoto", func(t *testing.T) {

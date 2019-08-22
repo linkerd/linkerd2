@@ -384,7 +384,7 @@ type mockEdgeRow struct {
 
 // a slice of edge rows to generate mock results
 var emojivotoEdgeRows = []*mockEdgeRow{
-	&mockEdgeRow{
+	{
 		resourceType: "deployment",
 		src:          "web",
 		dst:          "voting",
@@ -394,7 +394,7 @@ var emojivotoEdgeRows = []*mockEdgeRow{
 		serverID:     "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
 		msg:          "",
 	},
-	&mockEdgeRow{
+	{
 		resourceType: "deployment",
 		src:          "vote-bot",
 		dst:          "web",
@@ -404,7 +404,7 @@ var emojivotoEdgeRows = []*mockEdgeRow{
 		serverID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
 		msg:          "",
 	},
-	&mockEdgeRow{
+	{
 		resourceType: "deployment",
 		src:          "web",
 		dst:          "emoji",
@@ -418,7 +418,7 @@ var emojivotoEdgeRows = []*mockEdgeRow{
 
 // a slice of edge rows to generate mock results
 var linkerdEdgeRows = []*mockEdgeRow{
-	&mockEdgeRow{
+	{
 		resourceType: "deployment",
 		src:          "linkerd-controller",
 		dst:          "linkerd-prometheus",
