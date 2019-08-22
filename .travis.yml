@@ -55,6 +55,16 @@ jobs:
         - PATH="`pwd`/bin:$PATH" DOCKER_TRACE=1 bin/docker-build
 
     # TODO: If any of these fail, clean up all the kind clusters
+    - name: "Docker puller"
+      language: generic
+      addons: *addons_ssh_known_hosts
+      env: *env_remote_docker
+      before_install: *remote_docker_ssh
+      script:
+        - bin/docker pull gcr.io/linkerd-io/proxy-init:v1.1.0
+        - bin/docker pull prom/prometheus:v2.11.1
+
+    # TODO: If any of these fail, clean up all the kind clusters
     - &kind-setup
       name: "Kind cluster setup (deep)"
       language: generic
@@ -64,11 +74,6 @@ jobs:
       addons: *addons_ssh_known_hosts
       env: *env_remote_docker
       before_install: *remote_docker_ssh
-        # # Set up remote docker host ssh.
-        # - openssl aes-256-cbc -K $encrypted_833c0dff2c1b_key -iv $encrypted_833c0dff2c1b_iv -in .travis.rsa.enc -out /tmp/.travis.rsa -d
-        # - eval "$(ssh-agent -s)"
-        # - chmod 600 /tmp/.travis.rsa
-        # - ssh-add /tmp/.travis.rsa
       before_script:
         - export INTEGRATION_TEST=deep
       script:
@@ -137,11 +142,6 @@ jobs:
       addons: *addons_ssh_known_hosts
       env: *env_remote_docker
       before_install: *remote_docker_ssh
-        # # Set up remote docker host ssh.
-        # - openssl aes-256-cbc -K $encrypted_833c0dff2c1b_key -iv $encrypted_833c0dff2c1b_iv -in .travis.rsa.enc -out /tmp/.travis.rsa -d
-        # - eval "$(ssh-agent -s)"
-        # - chmod 600 /tmp/.travis.rsa
-        # - ssh-add /tmp/.travis.rsa
       before_script:
         - export INTEGRATION_TEST=deep
       script:
