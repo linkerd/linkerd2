@@ -28,7 +28,7 @@ jobs:
         - GO111MODULE=on
       cache:
         directories:
-          - target
+          - target/bin
           - "$GOPATH/pkg/mod"
           - "$HOME/.cache"
       before_install:
