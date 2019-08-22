@@ -7,107 +7,38 @@ import (
 )
 
 type edgesParamsExp struct {
-	options         *edgesOptions
-	resSrc          []string
-	resSrcNamespace []string
-	resDst          []string
-	resDstNamespace []string
-	resClient       []string
-	resServer       []string
-	resMsg          []string
-	resourceType    string
-	file            string
+	options      *edgesOptions
+	resourceType string
+	file         string
 }
 
 func TestEdges(t *testing.T) {
-	// response content for SRC, DST, SRC_NS, DST_NS, CLIENT_ID, SERVER_ID and MSG
-	var (
-		resSrc = []string{
-			"web",
-			"vote-bot",
-			"web",
-			"linkerd-controller",
-		}
-		resDst = []string{
-			"voting",
-			"web",
-			"emoji",
-			"linkerd-prometheus",
-		}
-		resSrcNamespace = []string{
-			"emojivoto",
-			"emojivoto",
-			"emojivoto",
-			"linkerd",
-		}
-		resDstNamespace = []string{
-			"emojivoto",
-			"emojivoto",
-			"emojivoto",
-			"linkerd",
-		}
-		resClient = []string{
-			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"default.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"linkerd-controller.linkerd.identity.linkerd.cluster.local",
-		}
-		resServer = []string{
-			"voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local",
-			"linkerd-prometheus.linkerd.identity.linkerd.cluster.local",
-		}
-		resMsg = []string{"", "", "", ""}
-	)
-
 	options := newEdgesOptions()
 	options.outputFormat = tableOutput
 	options.allNamespaces = true
 	t.Run("Returns edges", func(t *testing.T) {
 		testEdgesCall(edgesParamsExp{
-			options:         options,
-			resourceType:    "deployment",
-			resSrc:          resSrc,
-			resSrcNamespace: resSrcNamespace,
-			resDst:          resDst,
-			resDstNamespace: resDstNamespace,
-			resClient:       resClient,
-			resServer:       resServer,
-			resMsg:          resMsg,
-			file:            "edges_one_output.golden",
+			options:      options,
+			resourceType: "deployment",
+			file:         "edges_one_output.golden",
 		}, t)
 	})
 
 	options.outputFormat = jsonOutput
 	t.Run("Returns edges (json)", func(t *testing.T) {
 		testEdgesCall(edgesParamsExp{
-			options:         options,
-			resourceType:    "deployment",
-			resSrc:          resSrc,
-			resSrcNamespace: resSrcNamespace,
-			resDst:          resDst,
-			resDstNamespace: resDstNamespace,
-			resClient:       resClient,
-			resServer:       resServer,
-			resMsg:          resMsg,
-			file:            "edges_one_output_json.golden",
+			options:      options,
+			resourceType: "deployment",
+			file:         "edges_one_output_json.golden",
 		}, t)
 	})
 
 	t.Run("Returns edges (wide)", func(t *testing.T) {
 		options.outputFormat = wideOutput
 		testEdgesCall(edgesParamsExp{
-			options:         options,
-			resourceType:    "deployment",
-			resSrc:          resSrc,
-			resSrcNamespace: resSrcNamespace,
-			resDst:          resDst,
-			resDstNamespace: resDstNamespace,
-			resClient:       resClient,
-			resServer:       resServer,
-			resMsg:          resMsg,
-			file:            "edges_wide_output.golden",
+			options:      options,
+			resourceType: "deployment",
+			file:         "edges_wide_output.golden",
 		}, t)
 	})
 
