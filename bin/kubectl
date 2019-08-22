@@ -2,13 +2,13 @@
 
 set -eu
 
-kindversion=v0.5.1
+kubectlversion=v1.15.3
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 targetbin="$( cd $bindir/.. && pwd )"/target/bin
-kindbin="${targetbin}/.kind-${kindversion}"
+kubectlbin="${targetbin}/.kubectl-${kubectlversion}"
 
-if [ ! -f "$kindbin" ]; then
+if [ ! -f "$kubectlbin" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then
     os=darwin
     arch=amd64
@@ -19,13 +19,13 @@ if [ ! -f "$kindbin" ]; then
     os=linux
     case $(uname -m) in
       x86_64) arch="amd64" ;;
-      arm) arch="arm64" ;;
+      arm) dpkg --print-architecture | grep -q "arm64" && arch="arm64" || arch="arm" ;;
     esac
   fi
 
   mkdir -p "$targetbin"
-  curl -sfL -o "$kindbin" https://github.com/kubernetes-sigs/kind/releases/download/$kindversion/kind-$os-$arch
-  chmod +x "$kindbin"
+  curl -sfL -o "$kubectlbin" https://storage.googleapis.com/kubernetes-release/release/$kubectlversion/bin/$os/$arch/kubectl
+  chmod +x "$kubectlbin"
 fi
 
-$kindbin "$@"
+$kubectlbin "$@"
