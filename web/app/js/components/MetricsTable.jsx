@@ -76,8 +76,36 @@ const httpStatColumns = [
 
 ];
 
+const trafficSplitDetailColumns = [
+  {
+    title: "Apex",
+    dataIndex: "apex",
+    isNumeric: false,
+    filter: d => d.tsStats.apex,
+    render: d => d.tsStats.apex,
+    sorter: d => d.tsStats.apex
+  },
+  {
+    title: "Leaf",
+    dataIndex: "leaf",
+    isNumeric: false,
+    filter: d => d.tsStats.leaf,
+    render: d => d.tsStats.leaf,
+    sorter: d => d.tsStats.leaf
+  },
+  {
+    title: "Weight",
+    dataIndex: "weight",
+    isNumeric: true,
+    filter: d => d.tsStats.weight,
+    render: d => d.tsStats.weight,
+    sorter: d => parseInt(d.tsStats.weight) ? parseInt(d.tsStats.weight) : d.tsStats.weight
+  },
+];
+
 const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
   let isAuthorityTable = resource === "authority";
+  let isTrafficSplitTable = resource === "trafficsplit";
   let isMultiResourceTable = resource === "multi_resource";
   let getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
 
@@ -128,7 +156,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
       let nameContents;
       if (resource === "namespace") {
         nameContents = <PrefixedLink to={"/namespaces/" + d.name}>{d.name}</PrefixedLink>;
-      } else if (!d.added || isAuthorityTable) {
+      } else if (!d.added && (!isTrafficSplitTable || isAuthorityTable)) {
         nameContents = getResourceDisplayName(d);
       } else {
         nameContents = (
@@ -149,17 +177,21 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
   };
 
   let columns = [nameColumn];
+  if (isTrafficSplitTable) {
+    columns = columns.concat(trafficSplitDetailColumns);
+  }
   if (isTcpTable) {
     columns = columns.concat(tcpStatColumns);
   } else {
     columns = columns.concat(httpStatColumns);
   }
-  columns = columns.concat(grafanaColumn);
 
-
-  // don't add the meshed column on a Authority MetricsTable
-  if (!isAuthorityTable) {
+  if (!isAuthorityTable && !isTrafficSplitTable) {
     columns.splice(1, 0, meshedColumn);
+  }
+
+  if (!isTrafficSplitTable) {
+    columns = columns.concat(grafanaColumn);
   }
 
   if (!showNamespaceColumn) {

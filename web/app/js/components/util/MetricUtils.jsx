@@ -112,8 +112,12 @@ const processStatTable = table => {
   let rows = _compact(table.podGroup.rows.map(row => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
+    let rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`;
+    if (row.resource.type === "trafficsplit") {
+      rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}-${row.tsStats.leaf}`;
+    }
     return {
-      key: `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`,
+      key: rowKey,
       name: row.resource.name,
       namespace: row.resource.namespace,
       type: row.resource.type,
@@ -122,6 +126,7 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tcp: getTcpStats(row),
+      tsStats: row.tsStats,
       added: runningPodCount > 0 && meshedPodCount > 0,
       pods: {
         totalPods: row.runningPodCount,
@@ -149,8 +154,8 @@ export const processTopRoutesResults = rows => {
   ));
 };
 
-export const processSingleResourceRollup = rawMetrics => {
-  let result = processMultiResourceRollup(rawMetrics);
+export const processSingleResourceRollup = (rawMetrics, resourceType) => {
+  let result = processMultiResourceRollup(rawMetrics, resourceType);
   if (_size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
   }
@@ -160,7 +165,7 @@ export const processSingleResourceRollup = rawMetrics => {
   return _values(result)[0];
 };
 
-export const processMultiResourceRollup = rawMetrics => {
+export const processMultiResourceRollup = (rawMetrics, resourceType) => {
   if (_isEmpty(rawMetrics.ok) || _isEmpty(rawMetrics.ok.statTables)) {
     return {};
   }
@@ -168,6 +173,14 @@ export const processMultiResourceRollup = rawMetrics => {
   let metricsByResource = {};
   _each(rawMetrics.ok.statTables, table => {
     if (_isEmpty(table.podGroup.rows)) {
+      return;
+    }
+
+    // the Stat API returns trafficsplit data if queried with resource_type=all.
+    // trafficsplit leaves cannot be "upstream" or "downstream" of other
+    // resources, so we do not process trafficsplit data if the requested
+    // resourceType is not "trafficsplit" or "all".
+    if (resourceType !== "all" && resourceType !== "trafficsplit" && table.podGroup.rows[0].tsStats) {
       return;
     }
 

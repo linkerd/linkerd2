@@ -29,7 +29,7 @@ const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopu
 
 const styles = () => ({
   graphContainer: {
-    overflowX: "scroll",
+    overflowX: "auto",
     padding: "16px 0"
   },
   graph: {
@@ -93,7 +93,8 @@ class Octopus extends React.Component {
   }
 
   linkedResourceTitle = (resource, display) => {
-    return _isNil(resource.namespace) ? display :
+    // trafficsplit leaf resources cannot be linked
+    return _isNil(resource.namespace) || (resource.type === "trafficsplit") ? display :
     <this.props.api.ResourceLink
       resource={resource}
       linkText={display} />;
@@ -107,7 +108,9 @@ class Octopus extends React.Component {
 
     // if the resource only has TCP stats, display those instead
     let showTcp = false;
-    if (_isNil(resource.successRate) && _isNil(resource.requestRate)) {
+    // trafficsplit leaf with zero traffic should still show HTTP stats
+    if (_isNil(resource.successRate) && _isNil(resource.requestRate) &&
+      resource.type !== "trafficsplit") {
       showTcp = true;
     }
 

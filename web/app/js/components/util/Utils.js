@@ -127,6 +127,8 @@ export const friendlyTitle = singularOrPluralResource => {
     titleCase = _startCase("daemon set");
   } else if (resource === "statefulset") {
     titleCase = _startCase("stateful set");
+  } else if (resource === "trafficsplit") {
+    titleCase = _startCase("traffic split");
   }
 
   let titles = { singular: titleCase };
@@ -155,6 +157,7 @@ const camelCaseLookUp = {
   "replicaset": "replicaSet",
   "replicationcontroller": "replicationController",
   "statefulset": "statefulSet",
+  "trafficsplit": "trafficSplit",
   "daemonset": "daemonSet"
 };
 
@@ -172,6 +175,7 @@ export const shortNameLookup = {
   "replicaset": "rs",
   "service": "svc",
   "statefulset": "sts",
+  "trafficsplit": "ts",
   "job": "job",
   "authority": "au"
 };
