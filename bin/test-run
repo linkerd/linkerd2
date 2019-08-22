@@ -7,7 +7,7 @@
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-. $bindir/test-run.sh
+. $bindir/_test-run.sh
 
 init_test_run "$@"
 
