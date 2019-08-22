@@ -23,6 +23,7 @@ if [ ! -f "$kubectlbin" ]; then
     esac
   fi
 
+  mkdir -p "$targetbin"
   curl -sfL -o "$kubectlbin" https://storage.googleapis.com/kubernetes-release/release/$kubectlversion/bin/$os/$arch/kubectl
   chmod +x "$kubectlbin"
 fi
