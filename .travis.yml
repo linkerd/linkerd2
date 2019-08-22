@@ -58,17 +58,17 @@ jobs:
     - &kind-setup
       name: "Kind cluster setup (deep)"
       language: generic
-      env:
-        # << : *env_remote_docker
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      env: *env_remote_docker
+        # # << : *env_remote_docker
+        # # REMOTE_DOCKER=x.x.x.x
+        # - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
+        # # DOCKER_HOST=ssh://x.x.x.x
+        # - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
       cache:
         directories:
           - target/bin
-      addons:
-        << : *addons_ssh_known_hosts
+      addons: *addons_ssh_known_hosts
+        # << : *addons_ssh_known_hosts
         # ssh_known_hosts:
         #   # Same value as $REMOTE_DOCKER.
         #   secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
@@ -138,19 +138,19 @@ jobs:
     - &kind-test
       name: "Kind integration tests (deep)"
       language: generic
-      env:
-        # << : *env_remote_docker
-        # REMOTE_DOCKER=x.x.x.x
-        - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
-        # DOCKER_HOST=ssh://x.x.x.x
-        - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
+      env: *env_remote_docker
+        # # << : *env_remote_docker
+        # # REMOTE_DOCKER=x.x.x.x
+        # - secure: YAFyiPcsdmM/GhkDiNTmj6pHAWxsqOfHC7NCQixRN+936FSuIbmnmgFy9AWsVva8u7QGcqHNzxoiHZt7T9bokUSRFBWPGWqsA1vEWiihX2vcl/d2nuoZ/fPYfcudobJasjCaQeKCefW/mt6SCRX/2K8FahYHjhK5iyynVKkLFDrmKW4ax3TggQmsOBIKXNB/gUjYugz06o9b5Xgm4zdBa37j7wcXCUVkWTyWvhhPBKOjLMqXKumzCSLDVLoPKbVgFPVKtfC+ftin3W9wFpU4dI0tng0i/6Mysy8K3eU238+WSNizTf+fXwjeunDFJwWl5X8xRpBk/vvvt0CMERQrs5Y+cEq8ME7F265EfoKKkTexRgdI3Id7WrgV7bMJZBwfmMyMF71XAx3nxkbj2JXXwjj3HneZihSf1OmQyQ/nuvlm2jdqKiTOzSruO/2hp3/bJCHZhmD98I1GMXKcuw9dA/pccoNVQvXhDZRgqI35nk5dnviF4UYSqV/wSWhEyCEhR7/G3HZGoOy3WBrL01Em3KAC7CcI54dYsZXO0XvaGqu7HMfgi9uch2n6wbFP9KufKtnHvCWyspPHrenfZMy1c2pAdguyP/fugXZR5JGQl+Tu2y3iOMxlDFJcrXMcEx9N57yVnvlBotUCyL3Jjbx9BXwb4ypLOEtMhdJaOPvKWcg=
+        # # DOCKER_HOST=ssh://x.x.x.x
+        # - secure: AP6owqkStO9n0+ZNj4hoIkAmY8tYoG96IrsNjsDAbq5tbh0QaVknLmNXVei0Jk8bRdulXR2DFsHNhV+pkh6BT2/77t2fvvBcBX0IYYB34hlHqafusffXfQRvQ4DIh68Sk0XqMd7OKnb9rNVYQQPdwDO5lHt4borLsOAN20J/pv06V5y+IHiS9QRhRYxNsN7KKgqQKooY5EZbsEjCJaFDsrvn4KwBJEEpxFSivSL8aehrNk0olQygsmbZ7WBwWnuhqvD6PntkOL1kqzgxFcwh7rcZCB50DD5/dItQXI7jomT82MyFGb8diIkxiggHrJVSy7xWWyup51xWOHv+W4CX+m0u0m+sgd7smtOpyl+mlhkdAY6alkBzpoVN8gFubpiZltS4yBnZmubmTo4erQSa8M7d2Cagi6AqxUqYrwBQ5R7jarr6hneVWC5Sy7sPt2EcqrEW8Qy5LwSm1dnprKKHVpxn8naZLTVvQN8l1EBWqX8lhzdkqpqKvdIS37/ql0ZBAema1RluS4AcpnSA+uyobAojScdK3s+LWmn+MEwts2QM7iikOIP8p0DiWPY3aQ4zu3iR7BueWGuuts/zcqkLzQJY4/+RtjKlGLR3BdTVMk9m5RfP/+MdrqVyFz2X6AJeCyO+57kCBJd0T1deXrL4ZrJXVAso9WiRxATpQPMJNb4=
       cache:
         directories:
           - target/bin
           - "$GOPATH/pkg/mod"
           - "$HOME/.cache"
-      addons:
-        << : *addons_ssh_known_hosts
+      addons: *addons_ssh_known_hosts
+        # << : *addons_ssh_known_hosts
         # ssh_known_hosts:
         #   # Same value as $REMOTE_DOCKER.
         #   secure: "H44Np1YIvtnGc1PGE72AVS65inamSEimxNGZej3l0au8FbM/z6v1nkEVRQ2N72MXK9cdkjvNdjyYw21KA8vR74uDUpDiTh1duDNZq3sQCwcf4/v6sDDSjA9ZgN7YfrydGbBagCEdL9p1Y22X4lFggXHSi2yYeuK3m2HE+vtaHCcNQb+z1liccD5KkScaMAd8zorwf/dRqSjuJmbnBkNyw6IhSGVYluybPbH0meB8a6CPGRkluNGSu0S4N8QDkJZqhXk3ELYr1u9gfmsJxZ2omB2RBkhhIPEmwZroAcGTfmnqiak6IO7oONJQwAxY3WYmNHZmka8tlFORjhLtm6AGe+k41x3g/sEz8gDN/16AGJqi3MzlLNUrJQuPxIkXrPXEn08nyMDrhz6LuDVikBKeFunflRp07d7hwCoRz7RiFqiJP946XdrV/ozP1054RrZU5RhlcWK17sFUmY9HYgNAYuMpCjfTOWxqKX09aKU5IM9XDV4xXPZIFVBGi9Egk8XRCCf+WHr9eNDBpBHL5eILPH5xrTw9OP86HdkVIKn//AJZ+JxU7hb0bujQbnDJVTXTzG4XkxNfUTba3CivA7gRl0ThtbpVz6/FilR2/IEoTmpjhmRjVW0XGkXsuRw04U53AIL8DIW6P9ramY/+yMEWWm7ppHA5F4lJIofPEMAEDpA="
