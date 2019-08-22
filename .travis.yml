@@ -32,6 +32,7 @@ jobs:
           )
 
     - name: "Remote docker build"
+      if: fork = false
       language: generic
       cache:
         directories:
@@ -56,6 +57,7 @@ jobs:
 
     # TODO: If any of these fail, clean up all the kind clusters
     - &kind-setup
+      if: fork = false
       name: "Kind cluster setup (deep)"
       language: generic
       cache:
@@ -122,6 +124,7 @@ jobs:
         - ./bin/web test --reporters=jest-dot-reporter
 
     - &kind-test
+      if: fork = false
       name: "Kind integration tests (deep)"
       language: generic
       cache:
