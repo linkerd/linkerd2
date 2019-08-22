@@ -430,7 +430,7 @@ var linkerdEdgeRows = []*mockEdgeRow{
 	},
 }
 
-// GenEdgesResponse generates a mock Public API StatSummaryResponse
+// GenEdgesResponse generates a mock Public API EdgesResponse
 // object.
 func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResponse {
 	edgeRows := emojivotoEdgeRows
