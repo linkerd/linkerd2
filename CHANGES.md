@@ -1,3 +1,32 @@
+## edge-19.8.6
+
+* CLI
+  * Fixed missing `clusterDomain` in render RenderTapOutputProfile
+  * Added LINKERD2_PROXY_DESTINATION_GET_SUFFIXES env variable (thanks @arminbuerkle!)
+  * Merged the CLI 'installValues' type with Helm 'Values' type 
+    * Renamed template-values.go
+    * Defined new constructor of charts.Values type
+    * Moved all Helm values related code to the pkg/charts package
+    * Bumped dependency
+    * Used '/' in filepath to remain compatible with VFS requirement
+    * Added unit test to verify Helm YAML output
+    * Added unit test for Helm YAML validation (HA)
+* Controller 
+  * Added requirement for go 1.12.9 for controller builds
+  * Reorganized authority-parsing code so that the is-this-a-kubernete-service-name decision is decoupled from parsing
+    of authorities into their consituent parts
+* Web UI
+  * Added a "Linkerd Namespace" Grafana dashboard  
+* Internal
+  * Added a unit test for the `edges` API endpoint. To maintain a consistent order for testing, the returned rows in 
+    api/public/edges.go are now sorted
+  * Moved most of the logic from `bin/test-run` to a supporting library, `bin/test-run.sh`, which will provide the 
+    ability to execute integration tests individually. `bin/test-run`'s behavior is unchanged, it continues to run 
+    upgrade, helm, and deep integration tests in series
+  * Standardized helm, kind, lint, and protoc to all download into `./target/bin`, and modify travis to strictly cache 
+    that subdirectory.
+  * Fixed broken unit and integration tests
+
 ## stable-2.5.0
 
 This release adds [Helm support](https://linkerd.io/2/tasks/install-helm/),
