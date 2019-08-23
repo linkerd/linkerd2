@@ -1,15 +1,16 @@
 ## edge-19.8.6
 
 * CLI
-  * Fixed missing `clusterDomain` in render RenderTapOutputProfile
-  * Added `LINKERD2_PROXY_DESTINATION_GET_SUFFIXES` env variable (thanks @arminbuerkle!)
-  * Merged the CLI 'installValues' type with Helm 'Values' type 
-* Controller 
-  * Added requirement for Go `1.12.9` for controller builds to include security fixes
+  * Fixed custom cluster domain support for tap profiles 
+    (thanks @arminbuerkle!) 
 * Web UI
   * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
-    historical data for a given namespace, similar to CLI output for `linkerd stat deploy -n myNs` (thanks @bourquep!)
-
+    historical data for a given namespace, similar to CLI output for 
+    `linkerd stat deploy -n myNs` (thanks @bourquep!)
+* Internal
+  * Added requirement for Go `1.12.9` for controller builds to include 
+    security fixes
+    
 ## stable-2.5.0
 
 This release adds [Helm support](https://linkerd.io/2/tasks/install-helm/),
