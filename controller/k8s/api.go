@@ -377,10 +377,10 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) *metav1.Own
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
-		return &metav1.OwnerReference{Kind: "pod", Name: pod.Name}
+		return &metav1.OwnerReference{Kind: k8s.Pod, Name: pod.Name}
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return &metav1.OwnerReference{Kind: "pod", Name: pod.Name}
+		return &metav1.OwnerReference{Kind: k8s.Pod, Name: pod.Name}
 	}
 
 	parent := &ownerRefs[0]

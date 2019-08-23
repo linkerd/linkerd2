@@ -69,9 +69,10 @@ func Inject(api *k8s.API,
 			return nil, err
 		}
 		if len(objs) == 0 {
-			return nil, fmt.Errorf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+			log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+		} else {
+			parent = &objs[0]
 		}
-		parent = &objs[0]
 	}
 
 	if injectable, reason := report.Injectable(); !injectable {
