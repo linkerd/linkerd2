@@ -227,6 +227,7 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	args := []string{
+		"--set", "ControllerLogLevel=debug",
 		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
 		"--set", "Identity.TrustDomain=cluster.local",
