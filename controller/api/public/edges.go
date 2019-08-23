@@ -198,8 +198,8 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 
 func sortEdgeRows(rows []*pb.Edge) []*pb.Edge {
 	sort.Slice(rows, func(i, j int) bool {
-		keyI := rows[i].Src.Namespace + rows[i].Dst.Namespace + rows[i].Src.Name + rows[i].Dst.Name
-		keyJ := rows[j].Src.Namespace + rows[j].Dst.Namespace + rows[j].Src.Name + rows[j].Dst.Name
+		keyI := rows[i].GetSrc().GetNamespace() + rows[i].GetDst().GetNamespace() + rows[i].GetSrc().GetName() + rows[i].GetDst().GetName()
+		keyJ := rows[j].GetSrc().GetNamespace() + rows[j].GetDst().GetNamespace() + rows[j].GetSrc().GetName() + rows[j].GetDst().GetName()
 		return keyI < keyJ
 	})
 	return rows

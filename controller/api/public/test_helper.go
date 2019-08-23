@@ -443,21 +443,21 @@ func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResp
 	}
 
 	edges := []*pb.Edge{}
-	for _, i := range edgeRows {
+	for _, row := range edgeRows {
 		edge := &pb.Edge{
 			Src: &pb.Resource{
-				Name:      i.src,
-				Namespace: i.srcNamespace,
-				Type:      i.resourceType,
+				Name:      row.src,
+				Namespace: row.srcNamespace,
+				Type:      row.resourceType,
 			},
 			Dst: &pb.Resource{
-				Name:      i.dst,
-				Namespace: i.dstNamespace,
-				Type:      i.resourceType,
+				Name:      row.dst,
+				Namespace: row.dstNamespace,
+				Type:      row.resourceType,
 			},
-			ClientId:      i.clientID,
-			ServerId:      i.serverID,
-			NoIdentityMsg: i.msg,
+			ClientId:      row.clientID,
+			ServerId:      row.serverID,
+			NoIdentityMsg: row.msg,
 		}
 		edges = append(edges, edge)
 	}
