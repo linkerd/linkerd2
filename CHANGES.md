@@ -1,4 +1,8 @@
 ## edge-19.8.6
+
+A new Grafana dashboard has been added which shows historical data for a 
+selected namespace. The build process for controller components now requires 
+`Go 1.12.9`. 
  
 * Web UI
   * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
