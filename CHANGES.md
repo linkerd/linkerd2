@@ -1,8 +1,5 @@
 ## edge-19.8.6
-
-* CLI
-  * Fixed custom cluster domain support for tap profiles 
-    (thanks @arminbuerkle!) 
+ 
 * Web UI
   * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
     historical data for a given namespace, similar to CLI output for 
