@@ -3,8 +3,8 @@
 A new Grafana dashboard has been added which shows historical data for a
 selected namespace. The build process for controller components now requires
 `Go 1.12.9`. Additional contributions were made towards support for custom
-cluster domains.  
- 
+cluster domains.
+
 * Web UI
   * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
     historical data for a given namespace, similar to CLI output for
