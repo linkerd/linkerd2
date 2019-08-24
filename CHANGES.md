@@ -11,6 +11,8 @@ selected namespace. The build process for controller components now requires
 * Internal
   * Added requirement for Go `1.12.9` for controller builds to include 
     security fixes
+  * Set `LINKERD2_PROXY_DESTINATION_GET_SUFFIXES` proxy environment variable, 
+    in preparation for custom cluster domain support (thanks @arminbuerkle!) 
     
 ## stable-2.5.0
 
