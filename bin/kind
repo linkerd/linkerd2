@@ -2,7 +2,7 @@
 
 set -eu
 
-kindversion=v0.4.0
+kindversion=v0.5.1
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 targetbin="$( cd $bindir/.. && pwd )"/target/bin
