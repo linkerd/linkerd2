@@ -1,0 +1,107 @@
+{{with .Values -}}
+{{if .Identity -}}
+---
+###
+### Identity Controller Service
+###
+{{- if eq .Identity.Issuer.IssuerType "linkerd"}}
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: identity
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{- if and .LinkerdIdentityIssuer .LinkerdIdentityIssuer.CrtExpiryAnnotation}}
+    {{.LinkerdIdentityIssuer.CrtExpiryAnnotation}}: {{.LinkerdIdentityIssuer.CrtExpiry}}
+    {{- end}}
+data:
+  crt.pem: {{b64enc .LinkerdIdentityIssuer.CrtPEM}}
+  key.pem: {{b64enc .LinkerdIdentityIssuer.KeyPEM}}
+{{- end}}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-identity
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: identity
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: identity
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: linkerd-identity
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: identity
+  annotations:
+    {{.CreatedByAnnotation}}: {{.CliVersion}}
+spec:
+  replicas: {{.Identity.Replicas}}
+  template:
+    metadata:
+      labels:
+        {{.ControllerComponentLabel}}: identity
+      annotations:
+        {{.CreatedByAnnotation}}: {{.CliVersion}}
+    spec:
+      serviceAccountName: linkerd-identity
+      containers:
+      - name: identity
+        ports:
+        - name: grpc
+          containerPort: 8080
+        - name: admin-http
+          containerPort: 9990
+        image: {{.ControllerImage}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        args:
+        - "identity"
+        - "-log-level={{.ControllerLogLevel}}"
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
+        {{- if eq .Identity.Issuer.IssuerType "linkerd"}}
+        - mountPath: /var/run/linkerd/identity/issuer
+          name: identity-issuer
+        {{- end}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9990
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9990
+          failureThreshold: 7
+        {{ with .IdentityResources -}}
+        {{- template "resources" . }}
+        {{ end -}}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
+      {{- if eq .Identity.Issuer.IssuerType "linkerd"}}
+      - name: identity-issuer
+        secret:
+          secretName: linkerd-identity-issuer
+      {{- end}}
+{{end -}}
+{{end -}}

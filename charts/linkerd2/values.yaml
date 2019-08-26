@@ -22,26 +22,33 @@ ControllerUID: 2103
 # identity configuration
 Identity:
   Issuer:
-    ClockSkewAllowance: 20s
-
-    # must match the expiry date in CrtPEM
-    CrtExpiry:
-
-    # control plane annotation - do not edit
-    CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
-
+    IssuerType: linkerd
     IssuanceLifeTime: 86400s
-
-    TLS:
-      # PEM-encoded certificate
-      CrtPEM: |
-
-      # PEM-encoded ECDSA private key
-      KeyPEM: |
 
   TrustAnchorsPEM: |
 
   TrustDomain: *cluster_domain
+
+LinkerdIdentityIssuer:
+  ClockSkewAllowance: 20s
+
+  # must match the expiry date in CrtPEM
+  CrtExpiry:
+
+  # control plane annotation - do not edit
+  CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+
+  TLS:
+    # PEM-encoded certificate
+    CrtPEM: |
+
+    # PEM-encoded ECDSA private key
+    KeyPEM: |
+
+AwsAcmPcaIdentityIssuer:
+  CaArn: 
+
+  CaRegion: 
 
 # grafana configuration
 GrafanaImage: gcr.io/linkerd-io/grafana

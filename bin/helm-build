@@ -12,4 +12,4 @@ $bindir/helm lint $rootdir/charts/partials
 
 $bindir/helm dep up $rootdir/charts/linkerd2
 $bindir/helm dep up $rootdir/charts/patch
-$bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
+$bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.IssuerType="linkerd" --set LinkerdIdentityIssuer.TLS.CrtPEM="fake-cert" --set LinkerdIdentityIssuer.TLS.KeyPEM="fake-key" --set LinkerdIdentityIssuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2

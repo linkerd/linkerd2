@@ -2037,7 +2037,7 @@ metadata:
   namespace: linkerd
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","awsacmpcaIdentityIssuer":null,"linkerdIdentityIssuer":{"clockSkewAllowance":"20s"},"issuer":{"issuanceLifetime":"86400s","issuerType":"linkerd"}}}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.1.0"}
   install: |
@@ -2050,11 +2050,16 @@ data:
 					IdentityContext: &configPb.IdentityContext{
 						TrustDomain:     "cluster.local",
 						TrustAnchorsPem: "fake-trust-anchors-pem",
-						IssuanceLifetime: &duration.Duration{
-							Seconds: 86400,
+						Issuer: &configPb.IdentityContext_Issuer{
+							IssuanceLifetime: &duration.Duration{
+								Seconds: 86400,
+							},
+							IssuerType: "linkerd",
 						},
-						ClockSkewAllowance: &duration.Duration{
-							Seconds: 20,
+						LinkerdIdentityIssuer: &configPb.IdentityContext_LinkerdIdentityIssuer{
+							ClockSkewAllowance: &duration.Duration{
+								Seconds: 20,
+							},
 						},
 					},
 				}, Proxy: &configPb.Proxy{

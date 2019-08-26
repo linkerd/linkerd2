@@ -35,6 +35,7 @@ type DefaultValues struct {
 	IdentityTrustDomain              string
 	IdentityIssuerClockSkewAllowance time.Duration
 	IdentityIssuerIssuanceLifetime   time.Duration
+	IdentityIssuerType               string
 	OmitWebhookSideEffects           bool
 	PrometheusCPULimit               string
 	PrometheusCPURequest             string
@@ -106,10 +107,7 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 		return nil, err
 	}
 
-	identityClockSkewAllowance, err := time.ParseDuration(identityIssuer["ClockSkewAllowance"].(string))
-	if err != nil {
-		return nil, err
-	}
+	identityIssuerType := identityIssuer["IssuerType"].(string)
 
 	proxy, err := defaults.Table("Proxy")
 	if err != nil {
@@ -152,34 +150,48 @@ func setDefaults(defaults chartutil.Values, ha bool) (*DefaultValues, error) {
 	}
 
 	defaultValues := &DefaultValues{
-		ControllerReplicas:               uint(defaults["ControllerReplicas"].(float64)),
-		ControllerLogLevel:               defaults["ControllerLogLevel"].(string),
-		ControllerUID:                    int64(defaults["ControllerUID"].(float64)),
-		EnableExternalProfiles:           proxy["EnableExternalProfiles"].(bool),
-		EnableH2Upgrade:                  defaults["EnableH2Upgrade"].(bool),
-		ImagePullPolicy:                  defaults["ImagePullPolicy"].(string),
-		IdentityTrustDomain:              identity["TrustDomain"].(string),
-		IdentityIssuerClockSkewAllowance: identityClockSkewAllowance,
-		IdentityIssuerIssuanceLifetime:   identityIssuanceLifetime,
-		OmitWebhookSideEffects:           defaults["OmitWebhookSideEffects"].(bool),
-		PrometheusImage:                  defaults["PrometheusImage"].(string),
-		ProxyAdminPort:                   uint(proxyPorts["Admin"].(float64)),
-		ProxyControlPort:                 uint(proxyPorts["Control"].(float64)),
-		ProxyCPULimit:                    proxyResourcesCPU["Limit"].(string),
-		ProxyCPURequest:                  proxyResourcesCPU["Request"].(string),
-		ProxyImageName:                   proxyImage["Name"].(string),
-		ProxyInboundPort:                 uint(proxyPorts["Inbound"].(float64)),
-		ProxyInitImageName:               proxyInitImage["Name"].(string),
-		ProxyInitCPULimit:                proxyInitResourcesCPU["Limit"].(string),
-		ProxyInitCPURequest:              proxyInitResourcesCPU["Request"].(string),
-		ProxyInitMemoryLimit:             proxyInitResourcesMemory["Limit"].(string),
-		ProxyInitMemoryRequest:           proxyInitResourcesMemory["Request"].(string),
-		ProxyLogLevel:                    proxy["LogLevel"].(string),
-		ProxyMemoryLimit:                 proxyResourcesMemory["Limit"].(string),
-		ProxyMemoryRequest:               proxyResourcesMemory["Request"].(string),
-		ProxyOutboundPort:                uint(proxyPorts["Outbound"].(float64)),
-		ProxyUID:                         int64(proxy["UID"].(float64)),
-		WebhookFailurePolicy:             defaults["WebhookFailurePolicy"].(string),
+		ControllerReplicas:             uint(defaults["ControllerReplicas"].(float64)),
+		ControllerLogLevel:             defaults["ControllerLogLevel"].(string),
+		ControllerUID:                  int64(defaults["ControllerUID"].(float64)),
+		EnableExternalProfiles:         proxy["EnableExternalProfiles"].(bool),
+		EnableH2Upgrade:                defaults["EnableH2Upgrade"].(bool),
+		ImagePullPolicy:                defaults["ImagePullPolicy"].(string),
+		IdentityTrustDomain:            identity["TrustDomain"].(string),
+		IdentityIssuerIssuanceLifetime: identityIssuanceLifetime,
+		IdentityIssuerType:             identityIssuerType,
+		OmitWebhookSideEffects:         defaults["OmitWebhookSideEffects"].(bool),
+		PrometheusImage:                defaults["PrometheusImage"].(string),
+		ProxyAdminPort:                 uint(proxyPorts["Admin"].(float64)),
+		ProxyControlPort:               uint(proxyPorts["Control"].(float64)),
+		ProxyCPULimit:                  proxyResourcesCPU["Limit"].(string),
+		ProxyCPURequest:                proxyResourcesCPU["Request"].(string),
+		ProxyImageName:                 proxyImage["Name"].(string),
+		ProxyInboundPort:               uint(proxyPorts["Inbound"].(float64)),
+		ProxyInitImageName:             proxyInitImage["Name"].(string),
+		ProxyInitCPULimit:              proxyInitResourcesCPU["Limit"].(string),
+		ProxyInitCPURequest:            proxyInitResourcesCPU["Request"].(string),
+		ProxyInitMemoryLimit:           proxyInitResourcesMemory["Limit"].(string),
+		ProxyInitMemoryRequest:         proxyInitResourcesMemory["Request"].(string),
+		ProxyLogLevel:                  proxy["LogLevel"].(string),
+		ProxyMemoryLimit:               proxyResourcesMemory["Limit"].(string),
+		ProxyMemoryRequest:             proxyResourcesMemory["Request"].(string),
+		ProxyOutboundPort:              uint(proxyPorts["Outbound"].(float64)),
+		ProxyUID:                       int64(proxy["UID"].(float64)),
+		WebhookFailurePolicy:           defaults["WebhookFailurePolicy"].(string),
+	}
+
+	if defaultValues.IdentityIssuerType == LinkerdIdentityIssuerType {
+		linkerdIdentityIssuer, err := defaults.Table("LinkerdIdentityIssuer")
+		if err != nil {
+			return nil, err
+		}
+
+		identityClockSkewAllowance, err := time.ParseDuration(linkerdIdentityIssuer["ClockSkewAllowance"].(string))
+		if err != nil {
+			return nil, err
+		}
+
+		defaultValues.IdentityIssuerClockSkewAllowance = identityClockSkewAllowance
 	}
 
 	if ha {

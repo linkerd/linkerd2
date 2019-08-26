@@ -233,17 +233,19 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 
 	var identity *installIdentityValues
+	var linkerdIdentityIssuer *installLinkerdIdentityIssuerValues
+	var awsAcmPcaIdentityIssuer *installAwsAcmPcaIdentityIssuerValues
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
 		// must be upgrading from a version that didn't support identity, so generate it anew...
-		identity, err = options.identityOptions.genValues()
+		identity, linkerdIdentityIssuer, err = options.identityOptions.genValues()
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
 		}
-		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+		configs.GetGlobal().IdentityContext = identityContextFrom(identity, linkerdIdentityIssuer, awsAcmPcaIdentityIssuer)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx)
+		identity, linkerdIdentityIssuer, awsAcmPcaIdentityIssuer, err = fetchIdentityValues(k, idctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -256,6 +258,8 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+	values.LinkerdIdentityIssuer = linkerdIdentityIssuer
+	values.AwsAcmPcaIdentityIssuer = awsAcmPcaIdentityIssuer
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
@@ -340,30 +344,47 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*installIdentityValues, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*installIdentityValues, *installLinkerdIdentityIssuerValues, *installAwsAcmPcaIdentityIssuerValues, error) {
 	if idctx == nil {
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 
 	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	return &installIdentityValues{
+	identityValues := &installIdentityValues{
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
-			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
-			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
+			IssuanceLifetime: idctx.GetIssuer().GetIssuanceLifetime().String(),
+			IssuerType:       idctx.GetIssuer().GetIssuerType(),
+		},
+	}
+
+	var linkerdIdentityIssuerValues *installLinkerdIdentityIssuerValues
+	if identityValues.Issuer.IssuerType == charts.LinkerdIdentityIssuerType {
+		linkerdIdentityIssuerValues = &installLinkerdIdentityIssuerValues{
+			ClockSkewAllowance:  idctx.GetLinkerdIdentityIssuer().GetClockSkewAllowance().String(),
 			CrtExpiry:           expiry,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 			TLS: &charts.TLS{
 				KeyPEM: keyPEM,
 				CrtPEM: crtPEM,
 			},
-		},
-	}, nil
+		}
+	}
+
+	var awsAcmPcaIdentityIssuerValues *installAwsAcmPcaIdentityIssuerValues
+	if identityValues.Issuer.IssuerType == charts.AwsAcmPcaIdentityIssuerType {
+		awsAcmPcaIdentityIssuerValues = &installAwsAcmPcaIdentityIssuerValues{
+			CaArn:    idctx.GetAwsacmpcaIdentityIssuer().GetCaArn(),
+			CaRegion: idctx.GetAwsacmpcaIdentityIssuer().GetCaRegion(),
+		}
+	}
+
+	return identityValues, linkerdIdentityIssuerValues, awsAcmPcaIdentityIssuerValues, nil
 }
 
 func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, error) {

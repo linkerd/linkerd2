@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
 	github.com/aokoli/goutils v1.1.0 // indirect
+	github.com/aws/aws-sdk-go v1.23.6
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
 	github.com/containernetworking/cni v0.6.0

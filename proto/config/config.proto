@@ -74,8 +74,24 @@ message IdentityContext {
   string trust_domain = 1;
   string trust_anchors_pem = 2;
 
-  google.protobuf.Duration issuance_lifetime = 3;
-  google.protobuf.Duration clock_skew_allowance = 4;
+  reserved 3, 4, 5;
+
+  AwsAcmPcaIdentityIssuer awsacmpca_identity_issuer = 6;
+  message AwsAcmPcaIdentityIssuer {
+    string ca_arn = 7;
+    string ca_region = 8;
+  }
+
+  LinkerdIdentityIssuer linkerd_identity_issuer = 9;
+  message LinkerdIdentityIssuer {
+    google.protobuf.Duration clock_skew_allowance = 10;
+  }
+
+  Issuer issuer = 11;
+  message Issuer {
+    google.protobuf.Duration issuance_lifetime = 12;
+    string issuer_type = 13;
+  }
 }
 
 message LogLevel {

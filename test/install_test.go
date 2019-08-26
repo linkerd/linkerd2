@@ -231,9 +231,9 @@ func TestInstallHelm(t *testing.T) {
 		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
 		"--set", "Identity.TrustDomain=cluster.local",
 		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "LinkerdIdentityIssuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "LinkerdIdentityIssuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "LinkerdIdentityIssuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
 		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)

@@ -32,6 +32,7 @@ func TestReadDefaults(t *testing.T) {
 		IdentityTrustDomain:              "cluster.local",
 		IdentityIssuerClockSkewAllowance: clockSkewAllowance,
 		IdentityIssuerIssuanceLifetime:   issuanceLifetime,
+		IdentityIssuerType:               "linkerd",
 		OmitWebhookSideEffects:           false,
 		PrometheusImage:                  "prom/prometheus:v2.11.1",
 		ProxyAdminPort:                   4191,
