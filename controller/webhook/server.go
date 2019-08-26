@@ -50,6 +50,8 @@ func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		// In order to send events to all namespaces, we need to use an empty string here
+		// re: client-go's event_expansion.go CreateWithEventNamespace()
 		Interface: api.Client.CoreV1().Events(""),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
