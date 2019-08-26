@@ -227,6 +227,7 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	args := []string{
+		"--set", "ControllerLogLevel=debug",
 		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
 		"--set", "Identity.TrustDomain=cluster.local",
@@ -489,6 +490,8 @@ func TestCheckProxy(t *testing.T) {
 func TestLogs(t *testing.T) {
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
 	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
+	clientGoRegex := regexp.MustCompile("client-go@")
+	hasClientGoLogs := false
 
 	for deploy, spec := range linkerdDeployReplicas {
 		deploy := strings.TrimPrefix(deploy, "linkerd-")
@@ -537,9 +540,15 @@ func TestLogs(t *testing.T) {
 							}
 						}
 					}
+					if clientGoRegex.MatchString((line)) {
+						hasClientGoLogs = true
+					}
 				}
 			})
 		}
+	}
+	if !hasClientGoLogs {
+		t.Errorf("Didn't find any client-go entries")
 	}
 }
 

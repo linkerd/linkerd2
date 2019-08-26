@@ -44,6 +44,8 @@ func setLogLevel(logLevel string) {
 		flag.Set("stderrthreshold", "INFO")
 		flag.Set("logtostderr", "true")
 		flag.Set("v", "6") // At 7 and higher, authorization tokens get logged.
+		// pipe klog entries to logrus
+		klog.SetOutput(log.StandardLogger().Writer())
 	}
 }
 
