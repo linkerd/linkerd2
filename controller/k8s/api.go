@@ -345,7 +345,7 @@ func (api *API) TS() tsinformers.TrafficSplitInformer {
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
 func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
-	switch restype {
+	switch strings.ToLower(restype) {
 	case k8s.Namespace:
 		return api.getNamespaces(name)
 	case k8s.DaemonSet:
@@ -373,17 +373,17 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 // singular resource type (e.g. deployment, daemonset, job, etc.).
 // If skipCache is false we use the shared informer cache; otherwise we hit the
 // Kubernetes API directly.
-func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, string) {
+func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) *metav1.OwnerReference {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
-		return "pod", pod.Name
+		return &metav1.OwnerReference{Kind: k8s.Pod, Name: pod.Name}
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return "pod", pod.Name
+		return &metav1.OwnerReference{Kind: k8s.Pod, Name: pod.Name}
 	}
 
-	parent := ownerRefs[0]
+	parent := &ownerRefs[0]
 	if parent.Kind == "ReplicaSet" {
 		var rs *appsv1beta2.ReplicaSet
 		var err error
@@ -400,13 +400,13 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, st
 		}
 
 		if err != nil || len(rs.GetOwnerReferences()) != 1 {
-			return strings.ToLower(parent.Kind), parent.Name
+			return parent
 		}
 		rsParent := rs.GetOwnerReferences()[0]
-		return strings.ToLower(rsParent.Kind), rsParent.Name
+		return &rsParent
 	}
 
-	return strings.ToLower(parent.Kind), parent.Name
+	return parent
 }
 
 // GetPodsFor returns all running and pending Pods associated with a given

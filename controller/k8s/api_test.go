@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -986,14 +987,14 @@ metadata:
 				}
 
 				pod := objs[0].(*corev1.Pod)
-				ownerKind, ownerName := api.GetOwnerKindAndName(pod, !enableInformers)
+				owner := api.GetOwnerKindAndName(pod, !enableInformers)
 
-				if ownerKind != tt.expectedOwnerKind {
-					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
+				if strings.ToLower(owner.Kind) != tt.expectedOwnerKind {
+					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, owner.Kind)
 				}
 
-				if ownerName != tt.expectedOwnerName {
-					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
+				if owner.Name != tt.expectedOwnerName {
+					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, owner.Name)
 				}
 			})
 		}
