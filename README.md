@@ -25,7 +25,7 @@ The complete list of Linkerd repos is:
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.9+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.12+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
