@@ -18,10 +18,10 @@ func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
 	conf.uninjectPodSpec(report)
 
 	if conf.workload.Meta != nil {
-		uninjectObjectMeta(conf.workload.Meta)
+		uninjectObjectMeta(conf.workload.Meta, report)
 	}
 
-	uninjectObjectMeta(conf.pod.meta)
+	uninjectObjectMeta(conf.pod.meta, report)
 	return conf.YamlMarshalObj()
 }
 
@@ -58,12 +58,16 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	t.Volumes = volumes
 }
 
-func uninjectObjectMeta(t *metav1.ObjectMeta) {
+func uninjectObjectMeta(t *metav1.ObjectMeta, report *Report) {
 	newAnnotations := make(map[string]string)
 	for key, val := range t.Annotations {
-		if !strings.HasPrefix(key, k8s.Prefix) || key == k8s.ProxyInjectAnnotation {
+		if !strings.HasPrefix(key, k8s.Prefix) ||
+			(key == k8s.ProxyInjectAnnotation && val == k8s.ProxyInjectDisabled) {
 			newAnnotations[key] = val
+		} else {
+			report.Uninjected.Proxy = true
 		}
+
 	}
 	t.Annotations = newAnnotations
 

@@ -26,7 +26,29 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
+	})
+
+	t.Run("Returns pod stats", func(t *testing.T) {
+		testStatCall(paramsExp{
+			counts: &public.PodCounts{
+				Status:      "Running",
+				MeshedPods:  1,
+				RunningPods: 1,
+				FailedPods:  0,
+			},
+			options: options,
+			resNs:   []string{"emojivoto1"},
+			file:    "stat_one_pod_output.golden",
+		}, k8s.Pod, t)
+	})
+
+	t.Run("Returns trafficsplit stats", func(t *testing.T) {
+		testStatCall(paramsExp{
+			options: options,
+			resNs:   []string{"default"},
+			file:    "stat_one_ts_output.golden",
+		}, k8s.TrafficSplit, t)
 	})
 
 	options.outputFormat = jsonOutput
@@ -40,7 +62,15 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_output_json.golden",
-		}, t)
+		}, k8s.Namespace, t)
+	})
+
+	t.Run("Returns trafficsplit stats (json)", func(t *testing.T) {
+		testStatCall(paramsExp{
+			options: options,
+			resNs:   []string{"default"},
+			file:    "stat_one_ts_output_json.golden",
+		}, k8s.TrafficSplit, t)
 	})
 
 	options = newStatOptions()
@@ -55,7 +85,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1", "emojivoto2"},
 			file:    "stat_all_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	options.outputFormat = jsonOutput
@@ -69,7 +99,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1", "emojivoto2"},
 			file:    "stat_all_output_json.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	options = newStatOptions()
@@ -84,7 +114,7 @@ func TestStat(t *testing.T) {
 			options: options,
 			resNs:   []string{"emojivoto1"},
 			file:    "stat_one_tcp_output.golden",
-		}, t)
+		}, k8s.Namespace, t)
 	})
 
 	t.Run("Returns an error for named resource queries with the --all-namespaces flag", func(t *testing.T) {
@@ -150,13 +180,19 @@ func TestStat(t *testing.T) {
 	})
 }
 
-func testStatCall(exp paramsExp, t *testing.T) {
+func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
-	response := public.GenStatSummaryResponse("emoji", k8s.Namespace, exp.resNs, exp.counts, true, true)
+	response := public.GenStatSummaryResponse("emoji", resourceType, exp.resNs, exp.counts, true, true)
+	if resourceType == k8s.TrafficSplit {
+		response = public.GenStatTsResponse("foo-split", resourceType, exp.resNs, true, true)
+	}
 
 	mockClient.StatSummaryResponseToReturn = &response
 
 	args := []string{"ns"}
+	if resourceType == k8s.TrafficSplit {
+		args = []string{"trafficsplit"}
+	}
 	reqs, err := buildStatSummaryRequests(args, exp.options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)

@@ -71,7 +71,7 @@ func (options *checkOptions) validate() error {
 	return nil
 }
 
-// newCmdInstallConfig is a subcommand for `linkerd check config`
+// newCmdCheckConfig is a subcommand for `linkerd check config`
 func newCmdCheckConfig(options *checkOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [flags]",
@@ -171,9 +171,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		DataPlaneNamespace:    options.namespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
+		Impersonate:           impersonate,
 		APIAddr:               apiAddr,
 		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),
+		NoInitContainer:       options.cniEnabled,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)
@@ -212,7 +214,7 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 		spin.Stop()
 		if result.Retry {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" %s -- %s", result.Description, result.Err)
+				spin.Suffix = fmt.Sprintf(" %s", result.Err)
 				spin.Color("bold") // this calls spin.Restart()
 			}
 			return

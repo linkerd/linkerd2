@@ -52,7 +52,7 @@ func (a ACMPCARetry) ShouldRetry(r *request.Request) bool {
 	// TODO check the specific 400 error code and don't retry if the CA is in a bad state.
 	result := 400 == r.HTTPResponse.StatusCode || a.DefaultRetryer.ShouldRetry(r)
 	if !result {
-		log.Errorf("There was an request error with status code %v with status %v\n and we will not retry", r.HTTPResponse.StatusCode, r.HTTPResponse.Status)
+		log.Errorf("There was a request error with status code %v with status %v\n and we will not retry", r.HTTPResponse.StatusCode, r.HTTPResponse.Status)
 	}
 
 	return result

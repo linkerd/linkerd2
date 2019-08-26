@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // NewFakeAPI provides a mock Kubernetes API for testing.
@@ -31,3 +32,15 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		TS,
 	), nil
 }
+
+type byPod []*corev1.Pod
+
+func (bp byPod) Len() int           { return len(bp) }
+func (bp byPod) Swap(i, j int)      { bp[i], bp[j] = bp[j], bp[i] }
+func (bp byPod) Less(i, j int) bool { return bp[i].Name <= bp[j].Name }
+
+type byService []*corev1.Service
+
+func (bs byService) Len() int           { return len(bs) }
+func (bs byService) Swap(i, j int)      { bs[i], bs[j] = bs[j], bs[i] }
+func (bs byService) Less(i, j int) bool { return bs[i].Name <= bs[j].Name }

@@ -1,19 +1,23 @@
 package profiles
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestTapToServiceProfile(t *testing.T) {
 	name := "service-name"
 	namespace := "service-namespace"
+	clusterDomain := "service-cluster.local"
 	tapDuration := 5 * time.Second
 	routeLimit := 20
 
@@ -71,15 +75,28 @@ func TestTapToServiceProfile(t *testing.T) {
 		pb.TapEvent_INBOUND,
 	)
 
-	mockAPIClient := &public.MockAPIClient{}
-	mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-		TapEventsToReturn: []pb.TapEvent{event1, event2},
+	kubeAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
+	ts := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			for _, event := range []pb.TapEvent{event1, event2} {
+				event := event // pin
+				err = protohttp.WriteProtoToHTTPResponse(w, &event)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			}
+		}),
+	)
+	defer ts.Close()
+	kubeAPI.Config.Host = ts.URL
 
 	expectedServiceProfile := sp.ServiceProfile{
 		TypeMeta: serviceProfileMeta,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "." + namespace + ".svc.cluster.local",
+			Name:      name + "." + namespace + ".svc." + clusterDomain,
 			Namespace: namespace,
 		},
 		Spec: sp.ServiceProfileSpec{
@@ -102,7 +119,7 @@ func TestTapToServiceProfile(t *testing.T) {
 		},
 	}
 
-	actualServiceProfile, err := tapToServiceProfile(mockAPIClient, tapReq, namespace, name, tapDuration, routeLimit)
+	actualServiceProfile, err := tapToServiceProfile(kubeAPI, tapReq, namespace, name, clusterDomain, tapDuration, routeLimit)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceProfile: %v", err)
 	}

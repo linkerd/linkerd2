@@ -7,6 +7,7 @@ import (
 	"time"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -29,15 +30,20 @@ type upgradeOptions struct {
 	manifests string
 	*installOptions
 
-	verifyTLS func(tls *tlsValues, service string) error
+	verifyTLS func(tls *charts.TLS, service string) error
 }
 
-func newUpgradeOptionsWithDefaults() *upgradeOptions {
+func newUpgradeOptionsWithDefaults() (*upgradeOptions, error) {
+	installOptions, err := newInstallOptionsWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	return &upgradeOptions{
 		manifests:      "",
-		installOptions: newInstallOptionsWithDefaults(),
+		installOptions: installOptions,
 		verifyTLS:      verifyWebhookTLS,
-	}
+	}, nil
 }
 
 // upgradeOnlyFlagSet includes flags that are only accessible at upgrade-time
@@ -66,9 +72,11 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, configStage, nil)
+			return upgradeRunE(options, configStage, options.recordableFlagSet())
 		},
 	}
+
+	cmd.Flags().AddFlagSet(options.allStageFlagSet())
 
 	return cmd
 }
@@ -99,7 +107,11 @@ install command. It should be run after "linkerd upgrade config".`,
 }
 
 func newCmdUpgrade() *cobra.Command {
-	options := newUpgradeOptionsWithDefaults()
+	options, err := newUpgradeOptionsWithDefaults()
+	if err != nil {
+		upgradeErrorf(err.Error())
+	}
+
 	flags := options.recordableFlagSet()
 	upgradeOnlyFlags := options.upgradeOnlyFlagSet()
 
@@ -151,7 +163,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 			upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
 		}
 	} else {
-		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 		if err != nil {
 			upgradeErrorf("Failed to create a kubernetes client: %s", err)
 		}
@@ -189,7 +201,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	// to upgrade/reinstall the control plane when the API is not available; and
 	// this also serves as a passive check that we have privileges to access this
 	// control plane.
-	configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
+	_, configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
@@ -205,9 +217,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	// from the control-plane, and not from the defaults specified in the FlagSet.
 	setFlagsFromInstall(flags, configs.GetInstall().GetFlags())
 
-	// After retrieving options set during Install, so we can properly determine if HA is set
-	options.handleHA()
-
 	// Save off the updated set of flags into the installOptions so it gets
 	// persisted with the upgraded config.
 	options.recordFlags(flags)
@@ -219,19 +228,24 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	configs.GetInstall().Flags = options.recordedFlags
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
+	if configs.GetGlobal().GetClusterDomain() == "" {
+		configs.GetGlobal().ClusterDomain = defaultClusterDomain
+	}
 
 	var identity *installIdentityValues
+	var linkerdIdentityIssuer *installLinkerdIdentityIssuerValues
+	var awsAcmPcaIdentityIssuer *installAwsAcmPcaIdentityIssuerValues
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
 		// must be upgrading from a version that didn't support identity, so generate it anew...
-		identity, err = options.identityOptions.genValues()
+		identity, linkerdIdentityIssuer, err = options.identityOptions.genValues()
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
 		}
-		configs.GetGlobal().IdentityContext = identity.toIdentityContext()
+		configs.GetGlobal().IdentityContext = identityContextFrom(identity, linkerdIdentityIssuer, awsAcmPcaIdentityIssuer)
 	} else {
-		identity, err = fetchIdentityValues(k, options.controllerReplicas, idctx)
+		identity, linkerdIdentityIssuer, awsAcmPcaIdentityIssuer, err = fetchIdentityValues(k, idctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -244,20 +258,37 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+	values.LinkerdIdentityIssuer = linkerdIdentityIssuer
+	values.AwsAcmPcaIdentityIssuer = awsAcmPcaIdentityIssuer
 
-	// if exist, re-use the proxy injector and profile validator TLS secrets,
-	// otherwise, generate new ones.
-	proxyInjectorTLS, err := fetchWebhookTLS(k, k8s.ProxyInjectorWebhookServiceName, options)
+	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
+	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
+	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
+		}
+		proxyInjectorTLS = &charts.TLS{}
 	}
-	values.ProxyInjector = &proxyInjectorValues{proxyInjectorTLS}
+	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
 
-	profileValidatorTLS, err := fetchWebhookTLS(k, k8s.SPValidatorWebhookServiceName, options)
+	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
+		}
+		profileValidatorTLS = &charts.TLS{}
 	}
-	values.ProfileValidator = &profileValidatorValues{profileValidatorTLS}
+	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
+
+	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
+		}
+		tapTLS = &charts.TLS{}
+	}
+	values.Tap = &charts.Tap{TLS: tapTLS}
 
 	values.stage = stage
 
@@ -288,27 +319,17 @@ func repairInstall(generateUUID func() string, install *pb.Install) {
 	// Install flags are updated separately.
 }
 
-func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOptions) (*tlsValues, error) {
-
-	var value *tlsValues
-
+func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
 	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return nil, err
-		}
+		return nil, err
+	}
 
-		value, err = options.generateWebhookTLS(webhook)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		value = &tlsValues{
-			KeyPEM: string(secret.Data["key.pem"]),
-			CrtPEM: string(secret.Data["crt.pem"]),
-		}
+	value := &charts.TLS{
+		KeyPEM: string(secret.Data["key.pem"]),
+		CrtPEM: string(secret.Data["crt.pem"]),
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {
@@ -323,30 +344,47 @@ func fetchWebhookTLS(k kubernetes.Interface, webhook string, options *upgradeOpt
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, replicas uint, idctx *pb.IdentityContext) (*installIdentityValues, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*installIdentityValues, *installLinkerdIdentityIssuerValues, *installAwsAcmPcaIdentityIssuerValues, error) {
 	if idctx == nil {
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 
 	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	return &installIdentityValues{
-		Replicas:         replicas,
-		TrustDomain:      idctx.GetTrustDomain(),
-		TrustAnchorsPEM:  idctx.GetTrustAnchorsPem(),
-		IssuanceLifetime: idctx.GetIssuanceLifetime().String(),
-		LinkerdIdentityIssuer: &linkerdIdentityIssuerValues{
-			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-
-			KeyPEM:    keyPEM,
-			CrtPEM:    crtPEM,
-			CrtExpiry: expiry,
+	identityValues := &installIdentityValues{
+		TrustDomain:     idctx.GetTrustDomain(),
+		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
+		Issuer: &charts.Issuer{
+			IssuanceLifetime: idctx.GetIssuer().GetIssuanceLifetime().String(),
+			IssuerType:       idctx.GetIssuer().GetIssuerType(),
 		},
-	}, nil
+	}
+
+	var linkerdIdentityIssuerValues *installLinkerdIdentityIssuerValues
+	if identityValues.Issuer.IssuerType == charts.LinkerdIdentityIssuerType {
+		linkerdIdentityIssuerValues = &installLinkerdIdentityIssuerValues{
+			ClockSkewAllowance:  idctx.GetLinkerdIdentityIssuer().GetClockSkewAllowance().String(),
+			CrtExpiry:           expiry,
+			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+			TLS: &charts.TLS{
+				KeyPEM: keyPEM,
+				CrtPEM: crtPEM,
+			},
+		}
+	}
+
+	var awsAcmPcaIdentityIssuerValues *installAwsAcmPcaIdentityIssuerValues
+	if identityValues.Issuer.IssuerType == charts.AwsAcmPcaIdentityIssuerType {
+		awsAcmPcaIdentityIssuerValues = &installAwsAcmPcaIdentityIssuerValues{
+			CaArn:    idctx.GetAwsacmpcaIdentityIssuer().GetCaArn(),
+			CaRegion: idctx.GetAwsacmpcaIdentityIssuer().GetCaRegion(),
+		}
+	}
+
+	return identityValues, linkerdIdentityIssuerValues, awsAcmPcaIdentityIssuerValues, nil
 }
 
 func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, error) {
@@ -387,4 +425,25 @@ func upgradeErrorf(format string, a ...interface{}) {
 	template := fmt.Sprintf("%s %s\n%s\n", failStatus, format, failMessage)
 	fmt.Fprintf(os.Stderr, template, a...)
 	os.Exit(1)
+}
+
+func webhookCommonName(webhook string) string {
+	return fmt.Sprintf("%s.%s.svc", webhook, controlPlaneNamespace)
+}
+
+func webhookSecretName(webhook string) string {
+	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func verifyWebhookTLS(value *charts.TLS, webhook string) error {
+	crt, err := tls.DecodePEMCrt(value.CrtPEM)
+	if err != nil {
+		return err
+	}
+	roots := crt.CertPool()
+	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
+		return err
+	}
+
+	return nil
 }

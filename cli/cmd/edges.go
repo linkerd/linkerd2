@@ -65,7 +65,7 @@ func newCmdEdges() *cobra.Command {
 
   # Get all edges between pods that either originate from or terminate in the default namespace.
   linkerd edges po
-		
+
   # Get all edges between pods in all namespaces.
   linkerd edges po --all-namespaces`,
 		Args:      cobra.ExactArgs(1),
@@ -108,8 +108,8 @@ func newCmdEdges() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\"")
-	cmd.PersistentFlags().BoolVar(&options.allNamespaces, "all-namespaces", options.allNamespaces, "If present, returns edges across all namespaces, ignoring the \"--namespace\" flag")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
+	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns edges across all namespaces, ignoring the \"--namespace\" flag")
 	return cmd
 }
 
@@ -127,10 +127,10 @@ func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) er
 	}
 
 	switch options.outputFormat {
-	case tableOutput, jsonOutput:
+	case tableOutput, jsonOutput, wideOutput:
 		return nil
 	default:
-		return fmt.Errorf("--output currently only supports %s and %s", tableOutput, jsonOutput)
+		return fmt.Errorf("--output supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
 	}
 }
 
@@ -191,24 +191,30 @@ func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 }
 
 type edgeRow struct {
-	src    string
-	dst    string
-	client string
-	server string
-	msg    string
+	src          string
+	srcNamespace string
+	dst          string
+	dstNamespace string
+	client       string
+	server       string
+	msg          string
 }
 
 const (
-	srcHeader    = "SRC"
-	dstHeader    = "DST"
-	clientHeader = "CLIENT"
-	serverHeader = "SERVER"
-	msgHeader    = "MSG"
+	srcHeader          = "SRC"
+	dstHeader          = "DST"
+	srcNamespaceHeader = "SRC_NS"
+	dstNamespaceHeader = "DST_NS"
+	clientHeader       = "CLIENT_ID"
+	serverHeader       = "SERVER_ID"
+	msgHeader          = "SECURED"
 )
 
 func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOptions) {
 	maxSrcLength := len(srcHeader)
 	maxDstLength := len(dstHeader)
+	maxSrcNamespaceLength := len(srcNamespaceHeader)
+	maxDstNamespaceLength := len(dstNamespaceHeader)
 	maxClientLength := len(clientHeader)
 	maxServerLength := len(serverHeader)
 	maxMsgLength := len(msgHeader)
@@ -219,9 +225,8 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			clientID := r.ClientId
 			serverID := r.ServerId
 			msg := r.NoIdentityMsg
-
-			if len(msg) == 0 {
-				msg = "-"
+			if len(msg) == 0 && options.outputFormat != jsonOutput {
+				msg = okStatus
 			}
 			if len(clientID) > 0 {
 				parts := strings.Split(clientID, ".")
@@ -233,11 +238,13 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			}
 
 			row := edgeRow{
-				client: clientID,
-				server: serverID,
-				msg:    msg,
-				src:    r.Src.Name,
-				dst:    r.Dst.Name,
+				client:       clientID,
+				server:       serverID,
+				msg:          msg,
+				src:          r.Src.Name,
+				srcNamespace: r.Src.Namespace,
+				dst:          r.Dst.Name,
+				dstNamespace: r.Dst.Namespace,
 			}
 
 			edgeRows = append(edgeRows, row)
@@ -245,8 +252,14 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 			if len(r.Src.Name) > maxSrcLength {
 				maxSrcLength = len(r.Src.Name)
 			}
+			if len(r.Src.Namespace) > maxSrcNamespaceLength {
+				maxSrcNamespaceLength = len(r.Src.Namespace)
+			}
 			if len(r.Dst.Name) > maxDstLength {
 				maxDstLength = len(r.Dst.Name)
+			}
+			if len(r.Dst.Namespace) > maxDstNamespaceLength {
+				maxDstNamespaceLength = len(r.Dst.Namespace)
 			}
 			if len(clientID) > maxClientLength {
 				maxClientLength = len(clientID)
@@ -260,58 +273,67 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 		}
 	}
 
-	// sorting edgeRows by key for alphabetical listing
+	// ordering the rows first by SRC/DST namespace, then by SRC/DST resource
 	sort.Slice(edgeRows, func(i, j int) bool {
-		keyI := edgeRows[i].src + edgeRows[i].dst
-		keyJ := edgeRows[j].src + edgeRows[j].dst
+		keyI := edgeRows[i].srcNamespace + edgeRows[i].dstNamespace + edgeRows[i].src + edgeRows[i].dst
+		keyJ := edgeRows[j].srcNamespace + edgeRows[j].dstNamespace + edgeRows[j].src + edgeRows[j].dst
 		return keyI < keyJ
 	})
 
 	switch options.outputFormat {
-	case tableOutput:
+	case tableOutput, wideOutput:
 		if len(edgeRows) == 0 {
 			fmt.Fprintln(os.Stderr, "No edges found.")
 			os.Exit(0)
 		}
-		printEdgeTable(edgeRows, w, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength)
+		printEdgeTable(edgeRows, w, maxSrcLength, maxSrcNamespaceLength, maxDstLength, maxDstNamespaceLength, maxClientLength, maxServerLength, maxMsgLength, options.outputFormat)
 	case jsonOutput:
 		printEdgesJSON(edgeRows, w)
 	}
 }
 
-func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxDstLength, maxClientLength, maxServerLength, maxMsgLength int) {
+func printEdgeTable(edgeRows []edgeRow, w *tabwriter.Writer, maxSrcLength, maxSrcNamespaceLength, maxDstLength, maxDstNamespaceLength, maxClientLength, maxServerLength, maxMsgLength int, outputFormat string) {
 	srcTemplate := fmt.Sprintf("%%-%ds", maxSrcLength)
 	dstTemplate := fmt.Sprintf("%%-%ds", maxDstLength)
+	srcNamespaceTemplate := fmt.Sprintf("%%-%ds", maxSrcNamespaceLength)
+	dstNamespaceTemplate := fmt.Sprintf("%%-%ds", maxDstNamespaceLength)
+	msgTemplate := fmt.Sprintf("%%-%ds", maxMsgLength)
 	clientTemplate := fmt.Sprintf("%%-%ds", maxClientLength)
 	serverTemplate := fmt.Sprintf("%%-%ds", maxServerLength)
-	msgTemplate := fmt.Sprintf("%%-%ds", maxMsgLength)
 
 	headers := []string{
 		fmt.Sprintf(srcTemplate, srcHeader),
 		fmt.Sprintf(dstTemplate, dstHeader),
-		fmt.Sprintf(clientTemplate, clientHeader),
-		fmt.Sprintf(serverTemplate, serverHeader),
-		fmt.Sprintf(msgTemplate, msgHeader),
+		fmt.Sprintf(srcNamespaceTemplate, srcNamespaceHeader),
+		fmt.Sprintf(dstNamespaceTemplate, dstNamespaceHeader),
 	}
 
-	headers[len(headers)-1] = headers[len(headers)-1] + "\t" // trailing \t is required to format last column
+	if outputFormat == wideOutput {
+		headers = append(headers, fmt.Sprintf(clientTemplate, clientHeader), fmt.Sprintf(serverTemplate, serverHeader))
+	}
+
+	headers = append(headers, fmt.Sprintf(msgTemplate, msgHeader)+"\t")
 
 	fmt.Fprintln(w, strings.Join(headers, "\t"))
 
 	for _, row := range edgeRows {
-		values := make([]interface{}, 0)
-		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t\n", srcTemplate, dstTemplate, clientTemplate, serverTemplate, msgTemplate)
-
-		values = append(values, []interface{}{
+		values := []interface{}{
 			row.src,
 			row.dst,
-			row.client,
-			row.server,
-			row.msg,
-		}...)
+			row.srcNamespace,
+			row.dstNamespace,
+		}
+		templateString := fmt.Sprintf("%s\t%s\t%s\t%s\t", srcTemplate, dstTemplate, srcNamespaceTemplate, dstNamespaceTemplate)
+
+		if outputFormat == wideOutput {
+			templateString += fmt.Sprintf("%s\t%s\t", clientTemplate, serverTemplate)
+			values = append(values, row.client, row.server)
+		}
+
+		templateString += fmt.Sprintf("%s\t\n", msgTemplate)
+		values = append(values, row.msg)
 
 		fmt.Fprintf(w, templateString, values...)
-
 	}
 }
 
@@ -330,11 +352,13 @@ func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 }
 
 type edgesJSONStats struct {
-	Src    string `json:"src"`
-	Dst    string `json:"dst"`
-	Client string `json:"client_id"`
-	Server string `json:"server_id"`
-	Msg    string `json:"no_tls_reason"`
+	Src          string `json:"src"`
+	SrcNamespace string `json:"src_namespace"`
+	Dst          string `json:"dst"`
+	DstNamespace string `json:"dst_namespace"`
+	Client       string `json:"client_id"`
+	Server       string `json:"server_id"`
+	Msg          string `json:"no_tls_reason"`
 }
 
 func printEdgesJSON(edgeRows []edgeRow, w *tabwriter.Writer) {
@@ -343,11 +367,13 @@ func printEdgesJSON(edgeRows []edgeRow, w *tabwriter.Writer) {
 
 	for _, row := range edgeRows {
 		entry := &edgesJSONStats{
-			Src:    row.src,
-			Dst:    row.dst,
-			Client: row.client,
-			Server: row.server,
-			Msg:    row.msg}
+			Src:          row.src,
+			SrcNamespace: row.srcNamespace,
+			Dst:          row.dst,
+			DstNamespace: row.dstNamespace,
+			Client:       row.client,
+			Server:       row.server,
+			Msg:          row.msg}
 		entries = append(entries, entry)
 	}
 

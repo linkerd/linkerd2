@@ -1,28 +1,29 @@
 ## compile binaries
-FROM gcr.io/linkerd-io/go-deps:96d55671 as golang
-WORKDIR /go/src/github.com/linkerd/linkerd2
+FROM gcr.io/linkerd-io/go-deps:6e29c597 as golang
+WORKDIR /linkerd-build
 COPY cli cli
-COPY chart chart
+COPY charts charts
+
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
 COPY controller/gen controller/gen
-COPY controller/identity controller/identity
 COPY pkg pkg
 RUN mkdir -p /out
 
 # Generate static templates
-RUN go generate ./cli
+# TODO: `go generate` does not honor -mod=readonly
+RUN go generate -mod=readonly ./pkg/charts/static
 
 # Cache builds without version info
-RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -ldflags "-s -w" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -mod=readonly -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -mod=readonly -ldflags "-s -w" ./cli
+RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "-s -w" ./cli
 
 ARG LINKERD_VERSION
 ENV GO_LDFLAGS="-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=${LINKERD_VERSION}"
-RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -ldflags "${GO_LDFLAGS}" ./cli
-RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=darwin  go build -o /out/linkerd-darwin  -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=linux   go build -o /out/linkerd-linux   -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
+RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd-windows -tags prod -mod=readonly -ldflags "${GO_LDFLAGS}" ./cli
 
 ## export without sources & dependencies
 FROM scratch

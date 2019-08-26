@@ -8,5 +8,5 @@ option go_package = "github.com/linkerd/linkerd2/controller/gen/controller/tap";
 
 service Tap {
   rpc Tap(public.TapRequest) returns (stream public.TapEvent) { option deprecated = true; }
-  rpc TapByResource(public.TapByResourceRequest) returns (stream public.TapEvent) {}
+  rpc TapByResource(public.TapByResourceRequest) returns (stream public.TapEvent) { option deprecated = true; }
 }

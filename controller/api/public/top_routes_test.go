@@ -13,11 +13,12 @@ import (
 )
 
 // deployment/books
-var booksDeployConfig = `kind: Deployment
+var booksDeployConfig = []string{`kind: Deployment
 apiVersion: apps/v1beta2
 metadata:
   name: books
   namespace: default
+  uid: a1b2c3
 spec:
   replicas: 1
   selector:
@@ -30,7 +31,24 @@ spec:
     spec:
       dnsPolicy: ClusterFirst
       containers:
-      - image: buoyantio/booksapp:v0.0.2`
+      - image: buoyantio/booksapp:v0.0.2
+`, `
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: a1b2c3d4
+  name: books
+  namespace: default
+  labels:
+    app: books
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3
+spec:
+  selector:
+    matchLabels:
+      app: books`,
+}
 
 // daemonset/books
 var booksDaemonsetConfig = `kind: DaemonSet
@@ -117,6 +135,9 @@ kind: Pod
 metadata:
   labels:
     app: books
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: a1b2c3d4
   name: books-64c68d6d46-jrmmx
   namespace: default
 spec:
@@ -126,7 +147,7 @@ status:
   phase: Running`,
 
 	// serviceprofile/books.default.svc.cluster.local
-	`apiVersion: linkerd.io/v1alpha1
+	`apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.default.svc.cluster.local
@@ -140,7 +161,7 @@ spec:
 `,
 }
 
-var booksConfig = append(booksServiceConfig, booksDeployConfig)
+var booksConfig = append(booksServiceConfig, booksDeployConfig...)
 var booksDSConfig = append(booksServiceConfig, booksDaemonsetConfig)
 var booksSSConfig = append(booksServiceConfig, booksStatefulsetConfig)
 var booksJConfig = append(booksServiceConfig, booksJobConfig)

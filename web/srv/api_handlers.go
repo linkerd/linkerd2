@@ -3,6 +3,7 @@ package srv
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,8 +16,14 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
 )
+
+// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
+// reserved for the status code when formatting the message.
+const maxControlFrameMsgSize = 123
 
 type (
 	jsonError struct {
@@ -168,10 +175,30 @@ func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p
 	renderJSONPb(w, result)
 }
 
-func websocketError(ws *websocket.Conn, wsError int, msg string) {
-	ws.WriteControl(websocket.CloseMessage,
+// Control frame payload size must be no longer than `maxControlFrameMsgSize`
+// bytes. In the case of an unexpected HTTP status code or unexpected error,
+// truncate the message after `maxControlFrameMsgSize` bytes so that the web
+// socket message is properly written.
+func validateControlFrameMsg(err error) string {
+	log.Debugf("tap error: %s", err.Error())
+
+	msg := err.Error()
+	if len(msg) > maxControlFrameMsgSize {
+		return msg[:maxControlFrameMsgSize]
+	}
+
+	return msg
+}
+
+func websocketError(ws *websocket.Conn, wsError int, err error) {
+	msg := validateControlFrameMsg(err)
+
+	err = ws.WriteControl(websocket.CloseMessage,
 		websocket.FormatCloseMessage(wsError, msg),
 		time.Time{})
+	if err != nil {
+		log.Errorf("Unexpected websocket error: %s", err)
+	}
 }
 
 func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
@@ -184,50 +211,62 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 
 	messageType, message, err := ws.ReadMessage()
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	if messageType != websocket.TextMessage {
-		websocketError(ws, websocket.CloseUnsupportedData, "MessageType not supported")
+		websocketError(ws, websocket.CloseUnsupportedData, errors.New("messageType not supported"))
 		return
 	}
 
 	var requestParams util.TapRequestParams
 	err = json.Unmarshal(message, &requestParams)
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	tapReq, err := util.BuildTapByResourceRequest(requestParams)
 	if err != nil {
-		websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+		websocketError(ws, websocket.CloseInternalServerErr, err)
 		return
 	}
 
 	go func() {
-		tapClient, err := h.apiClient.TapByResource(req.Context(), tapReq)
+		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
 		if err != nil {
-			websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+			// If there was a [403] error when initiating a tap, close the
+			// socket with `ClosePolicyViolation` status code so that the error
+			// renders without the error prefix in the banner
+			if httpErr, ok := err.(protohttp.HTTPError); ok && httpErr.Code == http.StatusForbidden {
+				err := fmt.Errorf("missing authorization, visit %s to remedy", tap.TapRbacURL)
+				websocketError(ws, websocket.ClosePolicyViolation, err)
+				return
+			}
+
+			// All other errors from initiating a tap should close with
+			// `CloseInternalServerErr` status code
+			websocketError(ws, websocket.CloseInternalServerErr, err)
 			return
 		}
-		defer tapClient.CloseSend()
+		defer body.Close()
 
 		for {
-			rsp, err := tapClient.Recv()
+			event := pb.TapEvent{}
+			err := protohttp.FromByteStreamToProtocolBuffers(reader, &event)
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+				websocketError(ws, websocket.CloseInternalServerErr, err)
 				break
 			}
 
 			buf := new(bytes.Buffer)
-			err = pbMarshaler.Marshal(buf, rsp)
+			err = pbMarshaler.Marshal(buf, &event)
 			if err != nil {
-				websocketError(ws, websocket.CloseInternalServerErr, err.Error())
+				websocketError(ws, websocket.CloseInternalServerErr, err)
 				break
 			}
 

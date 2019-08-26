@@ -5,13 +5,14 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	logging "github.com/sirupsen/logrus"
 )
 
 type mockDestinationGetServer struct {
-	mockServerStream
+	util.MockServerStream
 	updatesReceived []*pb.Update
 }
 
@@ -21,7 +22,7 @@ func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 }
 
 type mockDestinationGetProfileServer struct {
-	mockServerStream
+	util.MockServerStream
 	profilesReceived []*pb.DestinationProfile
 }
 
@@ -69,10 +70,10 @@ metadata:
     phase: Running
     podIP: 172.17.0.12`,
 		`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: name1.ns.svc.cluster.local
+  name: name1.ns.svc.mycluster.local
   namespace: ns
 spec:
   routes:
@@ -81,10 +82,10 @@ spec:
     condition:
       pathRegex: "/a/b/c"`,
 		`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: name1.ns.svc.cluster.local
+  name: name1.ns.svc.mycluster.local
   namespace: client-ns
 spec:
   routes:
@@ -111,6 +112,7 @@ spec:
 		false,
 		"linkerd",
 		"trust.domain",
+		"mycluster.local",
 		log,
 		make(<-chan struct{}),
 	}
@@ -118,7 +120,7 @@ spec:
 
 type bufferingGetStream struct {
 	updates []*pb.Update
-	mockServerStream
+	util.MockServerStream
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
@@ -128,7 +130,7 @@ func (bgs *bufferingGetStream) Send(update *pb.Update) error {
 
 type bufferingGetProfileStream struct {
 	updates []*pb.DestinationProfile
-	mockServerStream
+	util.MockServerStream
 }
 
 func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) error {
@@ -142,7 +144,7 @@ func TestGet(t *testing.T) {
 
 		stream := &bufferingGetStream{
 			updates:          []*pb.Update{},
-			mockServerStream: newMockServerStream(),
+			MockServerStream: util.NewMockServerStream(),
 		}
 
 		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
@@ -156,7 +158,7 @@ func TestGet(t *testing.T) {
 
 		stream := &bufferingGetStream{
 			updates:          []*pb.Update{},
-			mockServerStream: newMockServerStream(),
+			MockServerStream: util.NewMockServerStream(),
 		}
 
 		// We cancel the stream before even sending the request so that we don't
@@ -164,9 +166,9 @@ func TestGet(t *testing.T) {
 		// cancelling, the behavior of Get becomes effectively synchronous and
 		// we will get only the initial update, which is what we want for this
 		// test.
-		stream.cancel()
+		stream.Cancel()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.cluster.local:8989"}, stream)
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.mycluster.local:8989"}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -188,7 +190,7 @@ func TestGetProfiles(t *testing.T) {
 
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
-			mockServerStream: newMockServerStream(),
+			MockServerStream: util.NewMockServerStream(),
 		}
 
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
@@ -202,13 +204,13 @@ func TestGetProfiles(t *testing.T) {
 
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
-			mockServerStream: newMockServerStream(),
+			MockServerStream: util.NewMockServerStream(),
 		}
 
-		stream.cancel() // See note above on pre-emptive cancellation.
+		stream.Cancel() // See note above on pre-emptive cancellation.
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.cluster.local:8989",
+			Path:         "name1.ns.svc.mycluster.local:8989",
 			ContextToken: "ns:other",
 		}, stream)
 		if err != nil {
@@ -240,14 +242,14 @@ func TestGetProfiles(t *testing.T) {
 
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
-			mockServerStream: newMockServerStream(),
+			MockServerStream: util.NewMockServerStream(),
 		}
 
 		// See note above on pre-emptive cancellation.
-		stream.cancel()
+		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.cluster.local:8989",
+			Path:         "name1.ns.svc.mycluster.local:8989",
 			ContextToken: "ns:client-ns",
 		}, stream)
 		if err != nil {

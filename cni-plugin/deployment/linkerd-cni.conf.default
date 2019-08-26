@@ -17,6 +17,7 @@
         "ports-to-redirect": [__PORTS_TO_REDIRECT__],
         "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
         "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
-        "simulate": __SIMULATE__
+        "simulate": __SIMULATE__,
+        "use-wait-flag": __USE_WAIT_FLAG__
     }
 }

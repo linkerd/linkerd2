@@ -19,11 +19,13 @@ import (
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 )
 
@@ -35,6 +37,7 @@ func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 	}
 
 	return &KubernetesAPI{
+		Config:        &rest.Config{},
 		Interface:     client,
 		Apiextensions: apiextClient,
 	}, nil
@@ -151,4 +154,15 @@ func ToRuntimeObject(config string) (runtime.Object, error) {
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err
+}
+
+// ObjectKinds wraps client-go's scheme.Scheme.ObjectKinds()
+// It returns all possible group,version,kind of the go object, true if the
+// object is considered unversioned, or an error if it's not a pointer or is
+// unregistered.
+func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	spscheme.AddToScheme(scheme.Scheme)
+	tsscheme.AddToScheme(scheme.Scheme)
+	return scheme.Scheme.ObjectKinds(obj)
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -148,7 +149,11 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-func TestInstallOrUpgrade(t *testing.T) {
+func TestInstallOrUpgradeCli(t *testing.T) {
+	if TestHelper.GetHelmReleaseName() != "" {
+		return
+	}
+
 	var (
 		cmd  = "install"
 		args = []string{
@@ -168,7 +173,7 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 
 		// apply stage 1
-		out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+		out, err = TestHelper.KubectlApply(out, "")
 		if err != nil {
 			t.Fatalf("kubectl apply command failed\n%s", out)
 		}
@@ -204,13 +209,40 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 	}
 
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
+}
 
+func TestInstallHelm(t *testing.T) {
+	if TestHelper.GetHelmReleaseName() == "" {
+		return
+	}
+
+	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
+	root, err := tls.GenerateRootCAWithDefaults(cn)
+	if err != nil {
+		t.Fatalf("failed to generate root certificate for identity: %s", err)
+	}
+
+	args := []string{
+		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
+		"--set", "Identity.TrustDomain=cluster.local",
+		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "LinkerdIdentityIssuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "LinkerdIdentityIssuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "LinkerdIdentityIssuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+	}
+	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
+		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)
+	}
+}
+
+func TestResourcesPostInstall(t *testing.T) {
 	// Tests Namespace
-	err = TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
@@ -434,7 +466,7 @@ func TestCheckProxy(t *testing.T) {
 			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
 			golden := "check.proxy.golden"
 
-			err := TestHelper.RetryFor(time.Minute*5, func() error {
+			err := TestHelper.RetryFor(time.Minute, func() error {
 				out, _, err := TestHelper.LinkerdRun(cmd...)
 				if err != nil {
 					return fmt.Errorf("Check command failed\n%s", out)

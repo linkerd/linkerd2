@@ -100,30 +100,6 @@ func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.Call
 	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
-// MockAPITapByResourceClient satisfies the TapByResourceClient gRPC interface.
-type MockAPITapByResourceClient struct {
-	TapEventsToReturn []pb.TapEvent
-	ErrorsToReturn    []error
-	grpc.ClientStream
-}
-
-// Recv satisfies the TapByResourceClient.Recv() gRPC method.
-func (a *MockAPITapByResourceClient) Recv() (*pb.TapEvent, error) {
-	var eventPopped pb.TapEvent
-	var errorPopped error
-	if len(a.TapEventsToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
-		return nil, io.EOF
-	}
-	if len(a.TapEventsToReturn) != 0 {
-		eventPopped, a.TapEventsToReturn = a.TapEventsToReturn[0], a.TapEventsToReturn[1:]
-	}
-	if len(a.ErrorsToReturn) != 0 {
-		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
-	}
-
-	return &eventPopped, errorPopped
-}
-
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
 type MockDestinationGetClient struct {
 	UpdatesToReturn []destinationPb.Update
@@ -185,7 +161,9 @@ func BuildAddrSet(endpoint AuthorityEndpoints) *destinationPb.WeightedAddrSet {
 // Prometheus client
 //
 
-type mockProm struct {
+// MockProm satisfies the promv1.API interface for testing.
+// TODO: move this into something shared under /controller, or into /pkg
+type MockProm struct {
 	Res             model.Value
 	QueriesExecuted []string // expose the queries our Mock Prometheus receives, to test query generation
 	rwLock          sync.Mutex
@@ -194,49 +172,76 @@ type mockProm struct {
 // PodCounts is a test helper struct that is used for representing data in a
 // StatTable.PodGroup.Row.
 type PodCounts struct {
+	Status      string
 	MeshedPods  uint64
 	RunningPods uint64
 	FailedPods  uint64
+	Errors      map[string]*pb.PodErrors
 }
 
-func (m *mockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
-	m.rwLock.Lock()
-	defer m.rwLock.Unlock()
-	m.QueriesExecuted = append(m.QueriesExecuted, query)
-	return m.Res, nil
-}
-func (m *mockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
+// Query performs a query for the given time.
+func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
 	return m.Res, nil
 }
 
-func (m *mockProm) AlertManagers(ctx context.Context) (promv1.AlertManagersResult, error) {
+// QueryRange performs a query for the given range.
+func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
+	m.rwLock.Lock()
+	defer m.rwLock.Unlock()
+	m.QueriesExecuted = append(m.QueriesExecuted, query)
+	return m.Res, nil
+}
+
+// AlertManagers returns an overview of the current state of the Prometheus alert
+// manager discovery.
+func (m *MockProm) AlertManagers(ctx context.Context) (promv1.AlertManagersResult, error) {
 	return promv1.AlertManagersResult{}, nil
 }
-func (m *mockProm) CleanTombstones(ctx context.Context) error {
+
+// CleanTombstones removes the deleted data from disk and cleans up the existing
+// tombstones.
+func (m *MockProm) CleanTombstones(ctx context.Context) error {
 	return nil
 }
-func (m *mockProm) Config(ctx context.Context) (promv1.ConfigResult, error) {
+
+// Config returns the current Prometheus configuration.
+func (m *MockProm) Config(ctx context.Context) (promv1.ConfigResult, error) {
 	return promv1.ConfigResult{}, nil
 }
-func (m *mockProm) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
+
+// DeleteSeries deletes data for a selection of series in a time range.
+func (m *MockProm) DeleteSeries(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) error {
 	return nil
 }
-func (m *mockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
+
+// Flags returns the flag values that Prometheus was launched with.
+func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
 	return promv1.FlagsResult{}, nil
 }
-func (m *mockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
+
+// LabelValues performs a query for the values of the given label.
+func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
 	return nil, nil
 }
-func (m *mockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
+
+// Series finds series by label matchers.
+func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
 	return nil, nil
 }
-func (m *mockProm) Snapshot(ctx context.Context, skipHead bool) (promv1.SnapshotResult, error) {
+
+// Snapshot creates a snapshot of all current data into
+// snapshots/<datetime>-<rand> under the TSDB's data directory and returns the
+// directory as response.
+func (m *MockProm) Snapshot(ctx context.Context, skipHead bool) (promv1.SnapshotResult, error) {
 	return promv1.SnapshotResult{}, nil
 }
-func (m *mockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
+
+// Targets returns an overview of the current state of the Prometheus target
+// discovery.
+func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 	return promv1.TargetsResult{}, nil
 }
 
@@ -276,6 +281,8 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 			statTableRow.MeshedPodCount = counts.MeshedPods
 			statTableRow.RunningPodCount = counts.RunningPods
 			statTableRow.FailedPodCount = counts.FailedPods
+			statTableRow.Status = counts.Status
+			statTableRow.ErrorsByPod = counts.Errors
 		}
 
 		rows = append(rows, statTableRow)
@@ -300,19 +307,85 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 	return resp
 }
 
+// GenStatTsResponse generates a mock Public API StatSummaryResponse
+// object in response to a request for trafficsplit stats.
+func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) pb.StatSummaryResponse {
+	leaves := map[string]string{
+		"service-1": "900m",
+		"service-2": "100m",
+	}
+	apex := "apex_name"
+
+	rows := []*pb.StatTable_PodGroup_Row{}
+	for _, ns := range resNs {
+		for name, weight := range leaves {
+			statTableRow := &pb.StatTable_PodGroup_Row{
+				Resource: &pb.Resource{
+					Namespace: ns,
+					Type:      resType,
+					Name:      resName,
+				},
+				TimeWindow: "1m",
+			}
+
+			if basicStats {
+				statTableRow.Stats = &pb.BasicStats{
+					SuccessCount: 123,
+					FailureCount: 0,
+					LatencyMsP50: 123,
+					LatencyMsP95: 123,
+					LatencyMsP99: 123,
+				}
+			}
+
+			if tsStats {
+				statTableRow.TsStats = &pb.TrafficSplitStats{
+					Apex:   apex,
+					Leaf:   name,
+					Weight: weight,
+				}
+			}
+			rows = append(rows, statTableRow)
+
+		}
+	}
+
+	// sort rows before returning in order to have a consistent order for tests
+	rows = sortTrafficSplitRows(rows)
+
+	resp := pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: []*pb.StatTable{
+					{
+						Table: &pb.StatTable_PodGroup_{
+							PodGroup: &pb.StatTable_PodGroup{
+								Rows: rows,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return resp
+}
+
 // GenEdgesResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenEdgesResponse(resourceType string, resSrc, resDst, resClient, resServer, msg []string) pb.EdgesResponse {
+func GenEdgesResponse(resourceType string, resSrc, resDst, resSrcNamespace, resDstNamespace, resClient, resServer, msg []string) pb.EdgesResponse {
 	edges := []*pb.Edge{}
 	for i := range resSrc {
 		edge := &pb.Edge{
 			Src: &pb.Resource{
-				Name: resSrc[i],
-				Type: resourceType,
+				Name:      resSrc[i],
+				Namespace: resSrcNamespace[i],
+				Type:      resourceType,
 			},
 			Dst: &pb.Resource{
-				Name: resDst[i],
-				Type: resourceType,
+				Name:      resDst[i],
+				Namespace: resDstNamespace[i],
+				Type:      resourceType,
 			},
 			ClientId:      resClient[i],
 			ServerId:      resServer[i],
@@ -392,16 +465,15 @@ type expectedStatRPC struct {
 	expectedPrometheusQueries []string    // queries we expect public-api to issue to prometheus
 }
 
-func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
+func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	k8sAPI, err := k8s.NewFakeAPI(exp.k8sConfigs...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mockProm := &mockProm{Res: exp.mockPromResponse}
+	mockProm := &MockProm{Res: exp.mockPromResponse}
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
-		nil,
 		nil,
 		nil,
 		k8sAPI,
@@ -414,7 +486,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*mockProm, *grpcServer, error) {
 	return mockProm, fakeGrpcServer, nil
 }
 
-func (exp expectedStatRPC) verifyPromQueries(mockProm *mockProm) error {
+func (exp expectedStatRPC) verifyPromQueries(mockProm *MockProm) error {
 	// if exp.expectedPrometheusQueries is an empty slice we still wanna check no queries were executed.
 	if exp.expectedPrometheusQueries != nil {
 		sort.Strings(exp.expectedPrometheusQueries)

@@ -24,6 +24,7 @@ func TestMain(m *testing.M) {
 
 type rowStat struct {
 	name               string
+	status             string
 	meshed             string
 	success            string
 	rps                string
@@ -68,6 +69,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	for _, tt := range []struct {
 		args         []string
 		expectedRows map[string]string
+		status       string
 	}{
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
@@ -87,6 +89,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
+			status: "Running",
 		},
 		{
 			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
@@ -117,6 +120,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
+			status: "Running",
 		},
 		{
 			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod)},
@@ -128,19 +132,26 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		tt := tt // pin
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
 			err := TestHelper.RetryFor(20*time.Second, func() error {
+				// Use a short time window so that transient errors at startup
+				// fall out of the window.
+				tt.args = append(tt.args, "-t", "30s")
 				out, stderr, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					t.Fatalf("Unexpected stat error: %s\n%s", err, out)
 				}
 				fmt.Println(stderr)
 
-				rowStats, err := parseRows(out, len(tt.expectedRows))
+				expectedColumnCount := 8
+				if tt.status != "" {
+					expectedColumnCount++
+				}
+				rowStats, err := parseRows(out, len(tt.expectedRows), expectedColumnCount)
 				if err != nil {
 					return err
 				}
 
 				for name, meshed := range tt.expectedRows {
-					if err := validateRowStats(name, meshed, rowStats); err != nil {
+					if err := validateRowStats(name, meshed, tt.status, rowStats); err != nil {
 						return err
 					}
 				}
@@ -174,7 +185,7 @@ func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 	return rows, nil
 }
 
-func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
+func parseRows(out string, expectedRowCount, expectedColumnCount int) (map[string]*rowStat, error) {
 	rows, err := checkRowCount(out, expectedRowCount)
 	if err != nil {
 		return nil, err
@@ -184,7 +195,9 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 	for _, row := range rows {
 		fields := strings.Fields(row)
 
-		expectedColumnCount := 8
+		if expectedColumnCount == 0 {
+			expectedColumnCount = 8
+		}
 		if len(fields) != expectedColumnCount {
 			return nil, fmt.Errorf(
 				"Expected [%d] columns in stat output, got [%d]; full output:\n%s",
@@ -192,24 +205,35 @@ func parseRows(out string, expectedRowCount int) (map[string]*rowStat, error) {
 		}
 
 		rowStats[fields[0]] = &rowStat{
-			name:               fields[0],
-			meshed:             fields[1],
-			success:            fields[2],
-			rps:                fields[3],
-			p50Latency:         fields[4],
-			p95Latency:         fields[5],
-			p99Latency:         fields[6],
-			tcpOpenConnections: fields[7],
+			name: fields[0],
 		}
+
+		i := 0
+		if expectedColumnCount == 9 {
+			rowStats[fields[0]].status = fields[1]
+			i = 1
+		}
+		rowStats[fields[0]].meshed = fields[1+i]
+		rowStats[fields[0]].success = fields[2+i]
+		rowStats[fields[0]].rps = fields[3+i]
+		rowStats[fields[0]].p50Latency = fields[4+i]
+		rowStats[fields[0]].p95Latency = fields[5+i]
+		rowStats[fields[0]].p99Latency = fields[6+i]
+		rowStats[fields[0]].tcpOpenConnections = fields[7+i]
 	}
 
 	return rowStats, nil
 }
 
-func validateRowStats(name, expectedMeshCount string, rowStats map[string]*rowStat) error {
+func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*rowStat) error {
 	stat, ok := rowStats[name]
 	if !ok {
 		return fmt.Errorf("No stats found for [%s]", name)
+	}
+
+	if stat.status != expectedStatus {
+		return fmt.Errorf("Expected status '%s' for '%s', got '%s'",
+			expectedStatus, name, stat.status)
 	}
 
 	if stat.meshed != expectedMeshCount {

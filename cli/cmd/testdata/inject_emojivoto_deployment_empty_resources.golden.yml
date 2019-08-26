@@ -95,6 +95,8 @@ spec:
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
           value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - name: LINKERD2_PROXY_TAP_SVC_NAME
+          value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: gcr.io/linkerd-io/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -132,7 +134,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.0.0
+        image: gcr.io/linkerd-io/proxy-init:v1.1.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

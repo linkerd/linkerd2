@@ -227,6 +227,9 @@ const (
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
 
+	// TapServiceName is the name of the tap APIService
+	TapServiceName = "linkerd-tap"
+
 	/*
 	 * Mount paths
 	 */

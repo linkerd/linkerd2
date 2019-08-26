@@ -391,7 +391,7 @@ status:
 
 }
 
-func TestCheckNetAdmin(t *testing.T) {
+func TestChecCapability(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
 		err        error
@@ -409,13 +409,13 @@ spec:
   requiredDropCapabilities:
     - ALL`,
 			},
-			fmt.Errorf("found 1 PodSecurityPolicies, but none provide NET_ADMIN, proxy injection will fail if the PSP admission controller is running"),
+			fmt.Errorf("found 1 PodSecurityPolicies, but none provide TEST_CAP, proxy injection will fail if the PSP admission controller is running"),
 		},
 	}
 
 	for i, test := range tests {
 		test := test // pin
-		t.Run(fmt.Sprintf("%d: returns expected NET_ADMIN result", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d: returns expected capability result", i), func(t *testing.T) {
 			hc := NewHealthChecker(
 				[]CategoryID{},
 				&Options{},
@@ -427,7 +427,7 @@ spec:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkNetAdmin()
+			err = hc.checkCapability("TEST_CAP")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -684,6 +684,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -860,6 +869,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1053,6 +1071,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1255,6 +1282,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-grafana
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-heartbeat
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1474,6 +1510,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-heartbeat
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-web
   namespace: test-ns
   labels:
@@ -1678,7 +1723,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-grafana-5b7d796646-hh46d\" pod's \"grafana\" container is not ready" {
+		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1992,9 +2037,9 @@ metadata:
   namespace: linkerd
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","awsacmpcaIdentityIssuer":null,"linkerdIdentityIssuer":{"clockSkewAllowance":"20s"},"issuer":{"issuanceLifetime":"86400s","issuerType":"linkerd"}}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.0.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.1.0"}
   install: |
     {"uuid":"deaab91a-f4ab-448a-b7d1-c832a2fa0a60","cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2005,11 +2050,16 @@ data:
 					IdentityContext: &configPb.IdentityContext{
 						TrustDomain:     "cluster.local",
 						TrustAnchorsPem: "fake-trust-anchors-pem",
-						IssuanceLifetime: &duration.Duration{
-							Seconds: 86400,
+						Issuer: &configPb.IdentityContext_Issuer{
+							IssuanceLifetime: &duration.Duration{
+								Seconds: 86400,
+							},
+							IssuerType: "linkerd",
 						},
-						ClockSkewAllowance: &duration.Duration{
-							Seconds: 20,
+						LinkerdIdentityIssuer: &configPb.IdentityContext_LinkerdIdentityIssuer{
+							ClockSkewAllowance: &duration.Duration{
+								Seconds: 20,
+							},
 						},
 					},
 				}, Proxy: &configPb.Proxy{
@@ -2040,7 +2090,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.0.0",
+					ProxyInitImageVersion:   "v1.1.0",
 				}, Install: &configPb.Install{
 					Uuid:       "deaab91a-f4ab-448a-b7d1-c832a2fa0a60",
 					CliVersion: "dev-undefined",
@@ -2093,7 +2143,7 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}

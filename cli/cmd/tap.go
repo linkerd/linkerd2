@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"context"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +12,8 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -112,7 +114,12 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, checkPublicAPIClientOrExit(), req, wide)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+			if err != nil {
+				return err
+			}
+
+			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, wide)
 		},
 	}
 
@@ -138,22 +145,24 @@ func newCmdTap() *cobra.Command {
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, client pb.ApiClient, req *pb.TapByResourceRequest, wide bool) error {
+func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, wide bool) error {
 	var resource string
 	if wide {
-		resource = req.Target.Resource.GetType()
+		resource = req.GetTarget().GetResource().GetType()
 	}
 
-	rsp, err := client.TapByResource(context.Background(), req)
+	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}
-	return renderTap(w, rsp, resource)
+	defer body.Close()
+
+	return renderTap(w, reader, resource)
 }
 
-func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource string) error {
+func renderTap(w io.Writer, tapByteStream *bufio.Reader, resource string) error {
 	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapClient, tableWriter, resource)
+	err := writeTapEventsToBuffer(tapByteStream, tableWriter, resource)
 	if err != nil {
 		return err
 	}
@@ -162,10 +171,11 @@ func renderTap(w io.Writer, tapClient pb.Api_TapByResourceClient, resource strin
 	return nil
 }
 
-func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.Writer, resource string) error {
+func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
-		event, err := tapClient.Recv()
+		event := pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err == io.EOF {
 			break
 		}
@@ -173,7 +183,7 @@ func writeTapEventsToBuffer(tapClient pb.Api_TapByResourceClient, w *tabwriter.W
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, renderTapEvent(event, resource))
+		_, err = fmt.Fprintln(w, renderTapEvent(&event, resource))
 		if err != nil {
 			return err
 		}

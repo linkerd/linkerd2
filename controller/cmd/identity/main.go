@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/identity"
@@ -57,7 +58,7 @@ func main() {
 	}
 
 	issuanceLifetime := identity.DefaultIssuanceLifetime
-	if pbd := idctx.GetIssuanceLifetime(); pbd != nil {
+	if pbd := idctx.GetIssuer().GetIssuanceLifetime(); pbd != nil {
 		il, err := ptypes.Duration(pbd)
 		if err != nil {
 			log.Warnf("Invalid issuance lifetime: %s, defaulting to 24h", err)
@@ -66,9 +67,11 @@ func main() {
 		}
 	}
 
+	log.Debugf("Using issuer type: %s", idctx.GetIssuer().GetIssuerType())
+
 	var ca tls.Issuer
-	switch int(idctx.GetCaType()) {
-	case idctl.LinkerdIdentityIssuer:
+	switch idctx.GetIssuer().GetIssuerType() {
+	case charts.LinkerdIdentityIssuerType:
 		trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
 		if err != nil {
 			log.Fatalf("Failed to read trust anchors: %s", err)
@@ -91,7 +94,7 @@ func main() {
 			ClockSkewAllowance: tls.DefaultClockSkewAllowance,
 			Lifetime:           issuanceLifetime,
 		}
-		if pbd := idctx.GetClockSkewAllowance(); pbd != nil {
+		if pbd := idctx.GetLinkerdIdentityIssuer().GetClockSkewAllowance(); pbd != nil {
 			csa, err := ptypes.Duration(pbd)
 			if err != nil {
 				log.Warnf("Invalid clock skew allowance: %s", err)
@@ -100,9 +103,11 @@ func main() {
 			}
 		}
 		ca = tls.NewCA(*creds, validity)
-	case idctl.AwsAcmPcaIssuer:
-		region := idctx.GetAwsacmpca().GetCaRegion()
-		arn := idctx.GetAwsacmpca().GetCaArn()
+	case charts.AwsAcmPcaIdentityIssuerType:
+		region := idctx.GetAwsacmpcaIdentityIssuer().GetCaRegion()
+		log.Debugf("awsacmpca configured region: %s", region)
+		arn := idctx.GetAwsacmpcaIdentityIssuer().GetCaArn()
+		log.Debugf("awsacmpca configured arn: %s", arn)
 		requestRetryer, retryerErr := pcadelegate.NewACMPCARetry(5)
 		if retryerErr != nil {
 			log.Fatalf("Failed to create the ACMPCA request retryer: %v\n", retryerErr)
@@ -120,7 +125,7 @@ func main() {
 		}
 	}
 
-	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
+	k8s, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}

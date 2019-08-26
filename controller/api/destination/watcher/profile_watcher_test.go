@@ -3,7 +3,7 @@ package watcher
 import (
 	"testing"
 
-	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha1"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
@@ -12,14 +12,13 @@ func TestProfileWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		name             string
 		k8sConfigs       []string
-		authority        string
-		contextToken     string
+		id               ProfileID
 		expectedProfiles []*sp.ServiceProfileSpec
 	}{
 		{
 			name: "service profile",
 			k8sConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: foobar.ns.svc.cluster.local
@@ -34,8 +33,7 @@ spec:
           min: 500
       isFailure: true`,
 			},
-			authority:    "foobar.ns.svc.cluster.local",
-			contextToken: "ns:linkerd",
+			id: ProfileID{Name: "foobar.ns.svc.cluster.local", Namespace: "linkerd"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
 				{
 					Routes: []*sp.RouteSpec{
@@ -61,7 +59,7 @@ spec:
 		{
 			name:       "service without profile",
 			k8sConfigs: []string{},
-			authority:  "foobar.ns.svc.cluster.local",
+			id:         ProfileID{Name: "foobar.ns.svc.cluster.local", Namespace: "ns"},
 			expectedProfiles: []*sp.ServiceProfileSpec{
 				nil,
 			},
@@ -80,7 +78,7 @@ spec:
 
 			listener := NewBufferingProfileListener()
 
-			watcher.Subscribe(tt.authority, tt.contextToken, listener)
+			watcher.Subscribe(tt.id, listener)
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
 

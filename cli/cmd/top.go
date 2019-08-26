@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"context"
+	"bufio"
 	"fmt"
 	"io"
 	"sort"
@@ -14,6 +14,9 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
+	"github.com/linkerd/linkerd2/pkg/tap"
 	runewidth "github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 	log "github.com/sirupsen/logrus"
@@ -337,7 +340,12 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(checkPublicAPIClientOrExit(), req, table)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+			if err != nil {
+				return err
+			}
+
+			return getTrafficByResourceFromAPI(k8sAPI, req, table)
 		},
 	}
 
@@ -363,11 +371,12 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(client pb.ApiClient, req *pb.TapByResourceRequest, table *topTable) error {
-	rsp, err := client.TapByResource(context.Background(), req)
+func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
+	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}
+	defer body.Close()
 
 	err = termbox.Init()
 	if err != nil {
@@ -375,70 +384,105 @@ func getTrafficByResourceFromAPI(client pb.ApiClient, req *pb.TapByResourceReque
 	}
 	defer termbox.Close()
 
+	// for event processing:
+	// reader ->
+	//   recvEvents() ->
+	//     eventCh ->
+	//       processEvents() ->
+	//         requestCh ->
+	//           renderTable()
+	eventCh := make(chan pb.TapEvent)
 	requestCh := make(chan topRequest, 100)
+
+	// for closing:
+	// recvEvents() || pollInput() ->
+	//   closing ->
+	//     done ->
+	//       processEvents() && renderTable()
+	closing := make(chan struct{}, 1)
 	done := make(chan struct{})
 
-	go recvEvents(rsp, requestCh, done)
-	go pollInput(done)
+	go pollInput(closing)
+	go recvEvents(reader, eventCh, closing)
+	go processEvents(eventCh, requestCh, done)
+
+	go func() {
+		<-closing
+		close(done)
+	}()
 
 	renderTable(table, requestCh, done)
 
 	return nil
 }
 
-func recvEvents(tapClient pb.Api_TapByResourceClient, requestCh chan<- topRequest, done chan<- struct{}) {
-	outstandingRequests := make(map[topRequestID]topRequest)
+func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- pb.TapEvent, closing chan<- struct{}) {
 	for {
-		event, err := tapClient.Recv()
-		if err == io.EOF {
-			fmt.Println("Tap stream terminated")
-			close(done)
-			return
-		}
+		event := pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err != nil {
-			fmt.Println(err.Error())
-			close(done)
+			if err == io.EOF {
+				fmt.Println("Tap stream terminated")
+			} else if !strings.HasSuffix(err.Error(), "http2: response body closed") {
+				fmt.Println(err.Error())
+			}
+
+			closing <- struct{}{}
 			return
 		}
-		id := topRequestID{
-			src: addr.PublicAddressToString(event.GetSource()),
-			dst: addr.PublicAddressToString(event.GetDestination()),
-		}
-		switch ev := event.GetHttp().GetEvent().(type) {
-		case *pb.TapEvent_Http_RequestInit_:
-			id.stream = ev.RequestInit.GetId().Stream
-			outstandingRequests[id] = topRequest{
-				event:   event,
-				reqInit: ev.RequestInit,
-			}
 
-		case *pb.TapEvent_Http_ResponseInit_:
-			id.stream = ev.ResponseInit.GetId().Stream
-			if req, ok := outstandingRequests[id]; ok {
-				req.rspInit = ev.ResponseInit
-				outstandingRequests[id] = req
-			} else {
-				log.Warnf("Got ResponseInit for unknown stream: %s", id)
-			}
+		eventCh <- event
+	}
+}
 
-		case *pb.TapEvent_Http_ResponseEnd_:
-			id.stream = ev.ResponseEnd.GetId().Stream
-			if req, ok := outstandingRequests[id]; ok {
-				req.rspEnd = ev.ResponseEnd
-				requestCh <- req
-			} else {
-				log.Warnf("Got ResponseEnd for unknown stream: %s", id)
+func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
+	outstandingRequests := make(map[topRequestID]topRequest)
+
+	for {
+		select {
+		case <-done:
+			return
+		case event := <-eventCh:
+			id := topRequestID{
+				src: addr.PublicAddressToString(event.GetSource()),
+				dst: addr.PublicAddressToString(event.GetDestination()),
+			}
+			switch ev := event.GetHttp().GetEvent().(type) {
+			case *pb.TapEvent_Http_RequestInit_:
+				id.stream = ev.RequestInit.GetId().Stream
+				outstandingRequests[id] = topRequest{
+					event:   &event,
+					reqInit: ev.RequestInit,
+				}
+
+			case *pb.TapEvent_Http_ResponseInit_:
+				id.stream = ev.ResponseInit.GetId().Stream
+				if req, ok := outstandingRequests[id]; ok {
+					req.rspInit = ev.ResponseInit
+					outstandingRequests[id] = req
+				} else {
+					log.Warnf("Got ResponseInit for unknown stream: %s", id)
+				}
+
+			case *pb.TapEvent_Http_ResponseEnd_:
+				id.stream = ev.ResponseEnd.GetId().Stream
+				if req, ok := outstandingRequests[id]; ok {
+					req.rspEnd = ev.ResponseEnd
+					requestCh <- req
+				} else {
+					log.Warnf("Got ResponseEnd for unknown stream: %s", id)
+				}
 			}
 		}
 	}
 }
 
-func pollInput(done chan<- struct{}) {
+func pollInput(closing chan<- struct{}) {
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			if ev.Ch == 'q' || ev.Key == termbox.KeyCtrlC {
-				close(done)
+				closing <- struct{}{}
 				return
 			}
 		}

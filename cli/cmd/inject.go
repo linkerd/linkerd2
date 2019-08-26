@@ -31,11 +31,10 @@ const (
 )
 
 type resourceTransformerInject struct {
-	injectProxy           bool
-	configs               *cfg.All
-	overrideAnnotations   map[string]string
-	proxyOutboundCapacity map[string]uint
-	enableDebugSidecar    bool
+	injectProxy         bool
+	configs             *cfg.All
+	overrideAnnotations map[string]string
+	enableDebugSidecar  bool
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
@@ -131,9 +130,6 @@ func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, trans
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
 	conf := inject.NewResourceConfig(rt.configs, inject.OriginCLI)
-	if len(rt.proxyOutboundCapacity) > 0 {
-		conf = conf.WithProxyOutboundCapacity(rt.proxyOutboundCapacity)
-	}
 
 	if rt.enableDebugSidecar {
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
@@ -160,19 +156,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	p, err := conf.GetPatch(bytes, rt.injectProxy)
+	patchJSON, err := conf.GetPatch(rt.injectProxy)
 	if err != nil {
 		return nil, nil, err
 	}
-	if p.IsEmpty() {
-		return bytes, reports, nil
-	}
-
-	patchJSON, err := p.Marshal()
-	if err != nil {
-		return nil, nil, err
-	}
-	if patchJSON == nil {
+	if len(patchJSON) == 0 {
 		return bytes, reports, nil
 	}
 	log.Infof("patch generated for: %s", report.ResName())
@@ -302,7 +290,11 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
 		}
 
-		install := newInstallOptionsWithDefaults()
+		install, err := newInstallOptionsWithDefaults()
+		if err != nil {
+			return nil, err
+		}
+
 		return install.configs(nil), nil
 	}
 

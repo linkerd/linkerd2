@@ -16,6 +16,7 @@ import (
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -96,22 +97,11 @@ func (c *grpcOverHTTPClient) ListServices(ctx context.Context, req *pb.ListServi
 }
 
 func (c *grpcOverHTTPClient) Tap(ctx context.Context, req *pb.TapRequest, _ ...grpc.CallOption) (pb.Api_TapClient, error) {
-	return nil, status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
+	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) TapByResource(ctx context.Context, req *pb.TapByResourceRequest, _ ...grpc.CallOption) (pb.Api_TapByResourceClient, error) {
-	url := c.endpointNameToPublicAPIURL("TapByResource")
-	httpRsp, err := c.post(ctx, url, req)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := getStreamClient(ctx, httpRsp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &tapClient{client}, nil
+	return nil, status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 func (c *grpcOverHTTPClient) Get(ctx context.Context, req *destinationPb.GetDestination, _ ...grpc.CallOption) (destinationPb.Destination_GetClient, error) {
@@ -151,12 +141,12 @@ func (c *grpcOverHTTPClient) apiRequest(ctx context.Context, endpoint string, re
 	defer httpRsp.Body.Close()
 	log.Debugf("gRPC-over-HTTP call returned status [%s] and content length [%d]", httpRsp.Status, httpRsp.ContentLength)
 
-	if err := checkIfResponseHasError(httpRsp); err != nil {
+	if err := protohttp.CheckIfResponseHasError(httpRsp); err != nil {
 		return err
 	}
 
 	reader := bufio.NewReader(httpRsp.Body)
-	return fromByteStreamToProtocolBuffers(reader, protoResponse)
+	return protohttp.FromByteStreamToProtocolBuffers(reader, protoResponse)
 }
 
 func (c *grpcOverHTTPClient) post(ctx context.Context, url *url.URL, req proto.Message) (*http.Response, error) {
@@ -188,38 +178,14 @@ func (c *grpcOverHTTPClient) endpointNameToPublicAPIURL(endpoint string) *url.UR
 	return c.serverURL.ResolveReference(&url.URL{Path: endpoint})
 }
 
-type tapClient struct {
-	streamClient
-}
-
-func (c tapClient) Recv() (*pb.TapEvent, error) {
-	var msg pb.TapEvent
-	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
-	return &msg, err
-}
-
 type destinationClient struct {
 	streamClient
 }
 
 func (c destinationClient) Recv() (*destinationPb.Update, error) {
 	var msg destinationPb.Update
-	err := fromByteStreamToProtocolBuffers(c.reader, &msg)
+	err := protohttp.FromByteStreamToProtocolBuffers(c.reader, &msg)
 	return &msg, err
-}
-
-func fromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
-	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
-	if err != nil {
-		return fmt.Errorf("error reading byte stream header: %v", err)
-	}
-
-	err = proto.Unmarshal(messageAsBytes, out)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %v", len(messageAsBytes), err)
-	}
-
-	return nil
 }
 
 func newClient(apiURL *url.URL, httpClientToUse *http.Client, controlPlaneNamespace string) (APIClient, error) {

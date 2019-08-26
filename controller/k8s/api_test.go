@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -411,6 +412,8 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
 status:
   phase: Finished`,
 				},
@@ -424,6 +427,7 @@ kind: Service
 metadata:
   name: emoji-svc
   namespace: emojivoto
+  uid: serviceUIDdoesntMatter
 spec:
   type: ClusterIP
   selector:
@@ -436,6 +440,8 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
 status:
   phase: Running`,
 				},
@@ -466,6 +472,7 @@ status:
   phase: Running`,
 				},
 			},
+			// Daemonset
 			{
 				err: nil,
 				k8sResInput: `
@@ -474,6 +481,7 @@ kind: DaemonSet
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: daemonset
 spec:
   selector:
     matchLabels:
@@ -486,11 +494,15 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: daemonset
 status:
   phase: Running`,
 				},
 				k8sResMisc: []string{},
 			},
+			// replicaset
 			{
 				err: nil,
 				k8sResInput: `
@@ -499,6 +511,7 @@ kind: ReplicaSet
 metadata:
   name: emoji
   namespace: emojivoto
+  uid: replicaset
 spec:
   selector:
     matchLabels:
@@ -511,6 +524,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: replicaset
 status:
   phase: Running`,
 				},
@@ -522,10 +538,14 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: replicaset
 status:
   phase: Finished`,
 				},
 			},
+			// single pod
 			{
 				err: nil,
 				k8sResInput: `
@@ -536,6 +556,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: singlePod
 status:
   phase: Running`,
 				k8sResResults: []string{`
@@ -546,6 +569,9 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: singlePod
 status:
   phase: Running`,
 				},
@@ -557,6 +583,275 @@ metadata:
   namespace: emojivoto
   labels:
     app: emoji-svc
+status:
+  phase: Running`,
+				},
+			},
+			// deployment
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deploymentRS
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPod
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: deploymentRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPod
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: deploymentPod`,
+					`apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: deploymentRSOld
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  name: emojivoto-meshed_1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: deploymentPodOld
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: deploymentPodOld`,
+				},
+			},
+			// deployment without RS
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deploymentWithoutRS
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: AnotherRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: doesntMatter
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: doesntMatch
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: doesntMatter`,
+				},
+			},
+			// Deployment with 2 replicasets
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment2RS
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-pod1
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: RS1
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod1
+status:
+  phase: Running`,
+					`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-pod2
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: RS2
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod2
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: RS1
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod1
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2RS
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: pod1`,
+					`apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: RS2
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  name: emojivoto-meshed_1
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: pod2
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2RS
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: pod2`,
+				},
+			},
+			// Deployment 2 Pods just one valid
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed
+  namespace: emojivoto
+  uid: deployment2Pods
+  labels:
+    app: emoji-svc
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
+				k8sResResults: []string{`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-with-RS
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: validRS
+  labels:
+    app: emoji-svc
+    pod-template-hash: podWithRS
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: apps/v1beta2
+kind: ReplicaSet
+metadata:
+  uid: validRS
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  name: emojivoto-meshed_2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    pod-template-hash: podWithRS
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: deployment2Pods
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc
+      pod-template-hash: podWithRS`,
+					`apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-without-RS
+  namespace: emojivoto
+  ownerReferences:
+  - apiVersion: apps/v1
+    uid: notHere
+  labels:
+    app: emoji-svc
+    pod-template-hash: invalidPod
 status:
   phase: Running`,
 				},
@@ -584,6 +879,8 @@ status:
 				t.Fatalf("api.GetPodsFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
 			}
 
+			sort.Sort(byPod(pods))
+			sort.Sort(byPod(k8sResultPods))
 			if !reflect.DeepEqual(pods, k8sResultPods) {
 				t.Fatalf("Expected: %+v, Got: %+v", k8sResultPods, pods)
 			}
@@ -717,7 +1014,7 @@ func TestGetServiceProfileFor(t *testing.T) {
 		{
 			expectedRouteNames: []string{},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -733,7 +1030,7 @@ spec:
 		{
 			expectedRouteNames: []string{"server"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -749,7 +1046,7 @@ spec:
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -765,7 +1062,7 @@ spec:
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -776,7 +1073,7 @@ spec:
       pathRegex: /server
     name: server`,
 				`
-apiVersion: linkerd.io/v1alpha1
+apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: books.server.svc.cluster.local
@@ -813,4 +1110,137 @@ spec:
 			}
 		}
 	}
+}
+
+func TestGetServicesFor(t *testing.T) {
+
+	type getServicesForExpected struct {
+		err error
+
+		// all 3 of these are used to seed the k8s client
+		k8sResInput   string   // object used as input to GetServicesFor()
+		k8sResResults []string // expected results from GetServicesFor
+		k8sResMisc    []string // additional k8s objects for seeding the k8s client
+	}
+
+	t.Run("GetServicesFor", func(t *testing.T) {
+		expectations := []getServicesForExpected{
+			// If a service contains a pod, GetPodsFor should return the service.
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: emojivoto
+  labels:
+    app: my-pod
+status:
+  phase: Running`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-svc
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: my-pod`,
+				},
+				k8sResMisc: []string{},
+			},
+			// If a service is the apex of a traffic split, GetPodsFor should
+			// return the pods of the backends.
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: leaf-1-pod
+  namespace: emojivoto
+  labels:
+    app: leaf-1
+status:
+  phase: Running`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: apex
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: apex`,
+					`
+apiVersion: v1
+kind: Service
+metadata:
+  name: leaf-1
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: leaf-1`,
+				},
+				k8sResMisc: []string{`
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: leaf-2
+  namespace: emojivoto
+spec:
+  type: ClusterIP
+  selector:
+    app: leaf-2`,
+					`
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: banana-split
+  namespace: emojivoto
+spec:
+  service: apex
+  backends:
+  - service: leaf-1
+    weight: 500m
+  - service: leaf-2
+    weight: 500m`,
+				},
+			},
+		}
+
+		for _, exp := range expectations {
+			k8sInputObj, err := k8s.ToRuntimeObject(exp.k8sResInput)
+			if err != nil {
+				t.Fatalf("could not decode yml: %s", err)
+			}
+
+			api, k8sResults, err := newAPI(true, exp.k8sResResults, append(exp.k8sResMisc, exp.k8sResInput)...)
+			if err != nil {
+				t.Fatalf("newAPI error: %s", err)
+			}
+
+			k8sResultServices := []*corev1.Service{}
+			for _, obj := range k8sResults {
+				k8sResultServices = append(k8sResultServices, obj.(*corev1.Service))
+			}
+
+			services, err := api.GetServicesFor(k8sInputObj, false)
+			if err != exp.err {
+				t.Fatalf("api.GetServicesFor() unexpected error, expected [%s] got: [%s]", exp.err, err)
+			}
+
+			sort.Sort(byService(k8sResultServices))
+			sort.Sort(byService(services))
+			if !reflect.DeepEqual(services, k8sResultServices) {
+				t.Fatalf("Expected: %+v, Got: %+v", k8sResultServices, services)
+			}
+		}
+
+	})
 }

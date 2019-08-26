@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{- if .Identity.LinkerdIdentityIssuer}}
+{{- if eq .Identity.Issuer.IssuerType "linkerd"}}
 ---
 kind: Secret
 apiVersion: v1
@@ -13,15 +13,14 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: identity
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
-    {{- if .Identity.LinkerdIdentityIssuer.CrtExpiryAnnotation}}
-    {{.Identity.LinkerdIdentityIssuer.CrtExpiryAnnotation}}: {{.Identity.LinkerdIdentityIssuer.CrtExpiry}}
+    {{- if and .LinkerdIdentityIssuer .LinkerdIdentityIssuer.CrtExpiryAnnotation}}
+    {{.LinkerdIdentityIssuer.CrtExpiryAnnotation}}: {{.LinkerdIdentityIssuer.CrtExpiry}}
     {{- end}}
 data:
-  crt.pem: {{b64enc .Identity.LinkerdIdentityIssuer.CrtPEM}}
-  key.pem: {{b64enc .Identity.LinkerdIdentityIssuer.KeyPEM}}
+  crt.pem: {{b64enc .LinkerdIdentityIssuer.CrtPEM}}
+  key.pem: {{b64enc .LinkerdIdentityIssuer.KeyPEM}}
 {{- end}}
 ---
 kind: Service
@@ -31,7 +30,6 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: identity
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -50,7 +48,6 @@ metadata:
   namespace: {{.Namespace}}
   labels:
     {{.ControllerComponentLabel}}: identity
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{.CliVersion}}
 spec:
@@ -78,7 +75,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-        {{- if .Identity.LinkerdIdentityIssuer}}
+        {{- if eq .Identity.Issuer.IssuerType "linkerd"}}
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
         {{- end}}
@@ -101,7 +98,7 @@ spec:
       - name: config
         configMap:
           name: linkerd-config
-      {{- if .Identity.LinkerdIdentityIssuer}}
+      {{- if eq .Identity.Issuer.IssuerType "linkerd"}}
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
