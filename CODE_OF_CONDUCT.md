@@ -35,7 +35,7 @@ of itself a bannable offense.
 ### Moderation
 
 If you feel that a channel needs moderation, please message one of the
-following moderators directly: @alex, @siggy, @olix0r, @kl.
+[`maintainers`](MAINTAINERS.md) directly.
 
 Moderators will issue a warning to users who don't follow the code of conduct.
 A second offense results in a temporary ban, a third warrants a permanent ban.
