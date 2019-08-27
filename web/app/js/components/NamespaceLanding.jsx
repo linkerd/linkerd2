@@ -38,6 +38,7 @@ class NamespaceLanding extends React.Component {
       getCurrentPromises: PropTypes.func.isRequired,
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResource: PropTypes.func.isRequired,
+      urlsForResourceNoStats: PropTypes.func.isRequired,
     }).isRequired,
     classes: PropTypes.shape({}).isRequired,
     controllerNamespace: PropTypes.string.isRequired
@@ -87,7 +88,7 @@ class NamespaceLanding extends React.Component {
 
     // TODO: make this one request
     let apiRequests = [
-      this.api.fetchMetrics(this.api.urlsForResource("namespace"))
+      this.api.fetchMetrics(this.api.urlsForResourceNoStats("namespace"))
     ];
     if (!_isEmpty(this.state.selectedNs)) {
       apiRequests = apiRequests.concat([

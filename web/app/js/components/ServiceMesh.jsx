@@ -69,7 +69,7 @@ class ServiceMesh extends React.Component {
       fetchMetrics: PropTypes.func.isRequired,
       getCurrentPromises: PropTypes.func.isRequired,
       setCurrentRequests: PropTypes.func.isRequired,
-      urlsForResource: PropTypes.func.isRequired,
+      urlsForResourceNoStats: PropTypes.func.isRequired,
     }).isRequired,
     controllerNamespace: PropTypes.string.isRequired,
     productName: PropTypes.string,
@@ -161,7 +161,7 @@ class ServiceMesh extends React.Component {
 
     this.api.setCurrentRequests([
       this.api.fetchPods(this.props.controllerNamespace),
-      this.api.fetchMetrics(this.api.urlsForResource("namespace"))
+      this.api.fetchMetrics(this.api.urlsForResourceNoStats("namespace"))
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
