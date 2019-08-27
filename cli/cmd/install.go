@@ -87,6 +87,9 @@ If you are sure you'd like to have a fresh install, remove these resources with:
 
 Otherwise, you can use the --ignore-cluster flag to overwrite the existing global resources.
 `
+	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
+
+%s`
 
 	errMsgLinkerdConfigConfigMapNotFound = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nIf this is expected, use the --ignore-cluster flag to continue the installation.\n"
 	errMsgGlobalResourcesMissing         = "Can't install the Linkerd control plane in the '%s' namespace. The required Linkerd global resources are missing.\nIf this is expected, use the --skip-checks flag to continue the installation.\n"
@@ -237,7 +240,15 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+			}); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				os.Exit(1)
+			}
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err != nil && !options.ignoreCluster {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
@@ -274,7 +285,15 @@ control plane. It should be run after "linkerd install config".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// check if global resources exist to determine if the `install config`
 			// stage succeeded
-			if err := errIfGlobalResourcesExist(options); err == nil && !options.skipChecks {
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+			}); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				os.Exit(1)
+			}
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err == nil && !options.skipChecks {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
 				os.Exit(1)
 			}
@@ -329,7 +348,15 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+			}); err != nil && !options.ignoreCluster {
+				fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				os.Exit(1)
+			}
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err != nil && !options.ignoreCluster {
 				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
 				os.Exit(1)
 			}
@@ -793,13 +820,8 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-func errIfGlobalResourcesExist(options *installOptions) error {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
-	}
-
-	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+func errAfterRunningChecks(options *installOptions, checkCategories []healthcheck.CategoryID) error {
+	hc := healthcheck.NewHealthChecker(checkCategories, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
