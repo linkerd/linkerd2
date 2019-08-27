@@ -205,7 +205,16 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		if out != upgradeFromManifests {
-			t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			// retry in case it's just a discrepancy in the heartbeat cron schedule
+			exec := append([]string{cmd}, args...)
+			out, _, err := TestHelper.LinkerdRun(exec...)
+			if err != nil {
+				t.Fatalf("command failed: %v\n%s", exec, out)
+			}
+
+			if out != upgradeFromManifests {
+				t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			}
 		}
 	}
 
