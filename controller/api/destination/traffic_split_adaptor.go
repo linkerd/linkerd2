@@ -17,18 +17,20 @@ import (
 // a source of profile updates (such as a ProfileWatcher) and a source of
 // traffic split updates (such as a TrafficSplitWatcher).
 type trafficSplitAdaptor struct {
-	listener watcher.ProfileUpdateListener
-	id       watcher.ServiceID
-	port     watcher.Port
-	profile  *sp.ServiceProfile
-	split    *ts.TrafficSplit
+	listener      watcher.ProfileUpdateListener
+	id            watcher.ServiceID
+	port          watcher.Port
+	profile       *sp.ServiceProfile
+	split         *ts.TrafficSplit
+	clusterDomain string
 }
 
-func newTrafficSplitAdaptor(listener watcher.ProfileUpdateListener, id watcher.ServiceID, port watcher.Port) *trafficSplitAdaptor {
+func newTrafficSplitAdaptor(listener watcher.ProfileUpdateListener, id watcher.ServiceID, port watcher.Port, clusterDomain string) *trafficSplitAdaptor {
 	return &trafficSplitAdaptor{
-		listener: listener,
-		id:       id,
-		port:     port,
+		listener:      listener,
+		id:            id,
+		port:          port,
+		clusterDomain: clusterDomain,
 	}
 }
 
@@ -56,7 +58,7 @@ func (tsa *trafficSplitAdaptor) publish() {
 			dst := &sp.WeightedDst{
 				// The proxy expects authorities to be absolute and have the
 				// host part end with a trailing dot.
-				Authority: fmt.Sprintf("%s.%s.svc.cluster.local.:%d", backend.Service, tsa.id.Namespace, tsa.port),
+				Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", backend.Service, tsa.id.Namespace, tsa.clusterDomain, tsa.port),
 				Weight:    backend.Weight,
 			}
 			overrides = append(overrides, dst)

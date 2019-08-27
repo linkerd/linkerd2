@@ -2543,6 +2543,8 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/linkerd/config
+          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -2665,6 +2667,9 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
