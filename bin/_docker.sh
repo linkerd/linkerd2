@@ -4,7 +4,7 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 . $bindir/_log.sh
 
-# TODO this should be set to the canonical public docker regsitry; we can override this
+# TODO this should be set to the canonical public docker registry; we can override this
 # docker regsistry in, for instance, CI.
 export DOCKER_REGISTRY="${DOCKER_REGISTRY:-gcr.io/linkerd-io}"
 
