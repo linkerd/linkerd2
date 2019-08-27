@@ -174,7 +174,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The adaptor merges profile updates with traffic split updates and
 	// publishes the result to the translator.
-	tsAdaptor := newTrafficSplitAdaptor(translator, service, port)
+	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
 
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)

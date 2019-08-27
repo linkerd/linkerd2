@@ -371,7 +371,7 @@ status:
 				t.Fatalf("Invalid port: %s", port)
 			}
 
-			fakeGrpcServer := newGRPCTapServer(uint(tapPort), "controller-ns", k8sAPI)
+			fakeGrpcServer := newGRPCTapServer(uint(tapPort), "controller-ns", "cluster.local", k8sAPI)
 
 			k8sAPI.Sync()
 
