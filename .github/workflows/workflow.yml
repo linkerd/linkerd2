@@ -15,8 +15,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v1
-    - name: ENV
-      run: env | sort
     - name: Validate go deps
       run: |
         . bin/_tag.sh
