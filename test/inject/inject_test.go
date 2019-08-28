@@ -290,7 +290,7 @@ func TestInjectAutoPod(t *testing.T) {
 	}
 
 	injectNS := "inject-pod-test"
-	podName := "inject-test-terminus"
+	podName := "inject-pod-test-terminus"
 	nsAnnotations := map[string]string{
 		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 	}
@@ -311,7 +311,7 @@ func TestInjectAutoPod(t *testing.T) {
 		t.Fatalf("failed to wait for condition=initialized for pod/%s in namespace %s: %s: %s", podName, ns, err, o)
 	}
 
-	pods, err := TestHelper.GetPods(ns, map[string]string{"app": "inject-test-terminus"})
+	pods, err := TestHelper.GetPods(ns, map[string]string{"app": podName})
 	if err != nil {
 		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
 	}

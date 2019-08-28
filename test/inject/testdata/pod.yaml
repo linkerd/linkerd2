@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: inject-test-terminus
+  name: inject-pod-test-terminus
   labels:
-    app: inject-test-terminus
+    app: inject-pod-test-terminus
 spec:
   containers:
   - name: bb-terminus
