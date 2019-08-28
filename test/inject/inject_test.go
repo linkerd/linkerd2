@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
-func TestInject(t *testing.T) {
+func TestInjectManual(t *testing.T) {
 	cmd := []string{"inject",
 		"--manual",
 		"--linkerd-namespace=fake-ns",
@@ -53,7 +53,7 @@ func TestInject(t *testing.T) {
 	}
 }
 
-func TestInjectParams(t *testing.T) {
+func TestInjectManualParams(t *testing.T) {
 	// TODO: test config.linkerd.io/proxy-version
 	cmd := []string{"inject",
 		"--manual",
@@ -92,7 +92,7 @@ func TestInjectParams(t *testing.T) {
 	}
 }
 
-func TestNamespaceOverrideAnnotations(t *testing.T) {
+func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 	// Check for Namespace level override of proxy Configurations
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
@@ -158,7 +158,7 @@ func TestNamespaceOverrideAnnotations(t *testing.T) {
 	}
 }
 
-func TestAnnotationPermutations(t *testing.T) {
+func TestInjectAutoAnnotationPermutations(t *testing.T) {
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
 		t.Fatalf("failed to read inject test file: %s", err)
@@ -280,6 +280,48 @@ func TestAnnotationPermutations(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestInjectAutoPod(t *testing.T) {
+	podYAML, err := testutil.ReadFile("testdata/pod.yaml")
+	if err != nil {
+		t.Fatalf("failed to read inject test file: %s", err)
+	}
+
+	injectNS := "inject-pod-test"
+	podName := "inject-test-terminus"
+	nsAnnotations := map[string]string{
+		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+	}
+
+	ns := TestHelper.GetTestNamespace(injectNS)
+	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", ns, err)
+	}
+
+	o, err := TestHelper.Kubectl(podYAML, "--namespace", ns, "create", "-f", "-")
+	if err != nil {
+		t.Fatalf("failed to create pod/%s in namespace %s for %s: %s", podName, ns, err, o)
+	}
+
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=initialized", "--timeout=30s", "pod/"+podName)
+	if err != nil {
+		t.Fatalf("failed to wait for condition=initialized for pod/%s in namespace %s: %s: %s", podName, ns, err, o)
+	}
+
+	pods, err := TestHelper.GetPods(ns, map[string]string{"app": "inject-test-terminus"})
+	if err != nil {
+		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
+	}
+	if len(pods) != 1 {
+		t.Fatalf("wrong number of pods returned for namespace %s: %d", ns, len(pods))
+	}
+
+	containers := pods[0].Spec.Containers
+	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
+		t.Fatalf("pod in namespaces %s wasn't injected", ns)
 	}
 }
 
