@@ -78,7 +78,7 @@ const httpStatColumns = [
 
 const trafficSplitDetailColumns = [
   {
-    title: "Apex",
+    title: "Apex Service",
     dataIndex: "apex",
     isNumeric: false,
     filter: d => !d.tsStats ? null : d.tsStats.apex,
@@ -86,7 +86,7 @@ const trafficSplitDetailColumns = [
     sorter: d => !d.tsStats ? null : d.tsStats.apex
   },
   {
-    title: "Leaf",
+    title: "Leaf Service",
     dataIndex: "leaf",
     isNumeric: false,
     filter: d => !d.tsStats ? null : d.tsStats.leaf,

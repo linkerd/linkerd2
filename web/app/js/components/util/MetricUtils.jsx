@@ -113,7 +113,7 @@ const processStatTable = table => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     let rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`;
-    if (row.resource.type === "trafficsplit" && row.tsStats) {
+    if (row.tsStats) {
       rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}-${row.tsStats.leaf}`;
     }
     return {
@@ -176,11 +176,15 @@ export const processMultiResourceRollup = (rawMetrics, resourceType) => {
       return;
     }
 
-    // the Stat API returns trafficsplit data if queried with resource_type=all.
-    // trafficsplit leaves cannot be "upstream" or "downstream" of other
-    // resources, so we do not process trafficsplit data if the requested
-    // resourceType is not "trafficsplit" or "all".
-    if (resourceType !== "all" && resourceType !== "trafficsplit" && table.podGroup.rows[0].tsStats) {
+    // Because trafficsplit metrics are now being returned from the Stat API
+    // endpoint, `processMultiResourceRollup` can erroneously
+    // return trafficsplit leaf services as "upstream" or "downstream" of a
+    // selected resource in the Octopus graph.
+
+    // The below line checks if the statTable contains trafficsplit data and
+    // returns early if the selected resource is not "all" or "trafficsplit",
+    // since any other resource should not include trafficsplit metrics.
+    if (table.podGroup.rows[0].tsStats && resourceType !== "all" && resourceType !== "trafficsplit") {
       return;
     }
 
