@@ -9,10 +9,10 @@ import _isNil from 'lodash/isNil';
 import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 
 // aggregates metrics across all leaves
-const generateApexResource = (resourceMetrics, resourceName) => {
+const generateApexResource = resourceMetrics => {
   let leafNum = resourceMetrics.length;
   let apexMetrics = {
-    name: resourceName,
+    name: "",
     type: "trafficsplit",
     latency: {P99: null},
     requestRate: null,
@@ -22,6 +22,7 @@ const generateApexResource = (resourceMetrics, resourceName) => {
     if (!_isNil(leafRow.latency.P99)) {apexMetrics.latency.P99+= leafRow.latency.P99/leafNum;}
     if (!_isNil(leafRow.successRate)) {apexMetrics.successRate+= leafRow.successRate/leafNum;}
     if (!_isNil(leafRow.requestRate)) {apexMetrics.requestRate+= leafRow.requestRate/leafNum;}
+    if (!_isNil(leafRow.tsStats.apex)) {apexMetrics.name = leafRow.tsStats.apex;}
   });
   return apexMetrics;
 };
