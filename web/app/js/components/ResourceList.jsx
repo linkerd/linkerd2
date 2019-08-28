@@ -75,7 +75,7 @@ export class ResourceListBase extends React.Component {
 
 export default withREST(
   ResourceListBase,
-  ({ api, resource }) => [api.fetchMetrics(api.urlsForResourceNoStats(resource, true))],
+  ({ api, resource }) => [api.fetchMetrics(api.urlsForResource(resource, '', true))],
   {
     resetProps: ['resource'],
   },

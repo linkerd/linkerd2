@@ -139,12 +139,14 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return resourceUrl;
   };
 
-  const urlsForResourceNoStats = (type, includeTcp) => {
+  const urlsForResourceNoStats = (type, namespace) => {
     // Traffic Performance Summary. This retrieves (non-Prometheus) stats for the given resource.
-    let resourceUrl = '/api/tps-reports?skip_stats=true&all_namespaces=true&resource_type=' + type;
+    let resourceUrl = '/api/tps-reports?skip_stats=true&resource_type=' + type;
 
-    if (includeTcp) {
-      resourceUrl += '&tcp_stats=true';
+    if (_isEmpty(namespace)) {
+      resourceUrl += '&all_namespaces=true';
+    } else {
+      resourceUrl += '&namespace=' + namespace;
     }
 
     return resourceUrl;
