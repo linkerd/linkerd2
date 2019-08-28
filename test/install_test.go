@@ -85,7 +85,7 @@ var (
 		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
-		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled \(Client\.Timeout exceeded while awaiting headers\)`,
+		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
 	}, "|"))
 
