@@ -113,7 +113,7 @@ const processStatTable = table => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
     let rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`;
-    if (row.resource.type === "trafficsplit") {
+    if (row.resource.type === "trafficsplit" && row.tsStats) {
       rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}-${row.tsStats.leaf}`;
     }
     return {

@@ -81,25 +81,32 @@ const trafficSplitDetailColumns = [
     title: "Apex",
     dataIndex: "apex",
     isNumeric: false,
-    filter: d => d.tsStats.apex,
-    render: d => d.tsStats.apex,
-    sorter: d => d.tsStats.apex
+    filter: d => !d.tsStats ? null : d.tsStats.apex,
+    render: d => !d.tsStats ? null : d.tsStats.apex,
+    sorter: d => !d.tsStats ? null : d.tsStats.apex
   },
   {
     title: "Leaf",
     dataIndex: "leaf",
     isNumeric: false,
-    filter: d => d.tsStats.leaf,
-    render: d => d.tsStats.leaf,
-    sorter: d => d.tsStats.leaf
+    filter: d => !d.tsStats ? null : d.tsStats.leaf,
+    render: d => !d.tsStats ? null : d.tsStats.leaf,
+    sorter: d => !d.tsStats ? null : d.tsStats.leaf
   },
   {
     title: "Weight",
     dataIndex: "weight",
     isNumeric: true,
-    filter: d => d.tsStats.weight,
-    render: d => d.tsStats.weight,
-    sorter: d => parseInt(d.tsStats.weight) ? parseInt(d.tsStats.weight) : d.tsStats.weight
+    filter: d => !d.tsStats ? null : d.tsStats.weight,
+    render: d => !d.tsStats ? null : d.tsStats.weight,
+    sorter: d => {
+      if (!d.tsStats) {return;}
+      if (parseInt(d.tsStats.weight)) {
+        return parseInt(d.tsStats.weight);
+      } else {
+        return d.tsStats.weight;
+      }
+    }
   },
 ];
 
