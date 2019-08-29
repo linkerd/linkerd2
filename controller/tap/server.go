@@ -528,8 +528,8 @@ func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]
 		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
 		return nil
 	default:
-		owner := s.k8sAPI.GetOwnerKindAndName(pod, false)
-		podLabels := pkgK8s.GetPodLabels(owner.Kind, owner.Name, pod)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
+		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
 		for key, value := range podLabels {
 			labels[key] = value
 		}

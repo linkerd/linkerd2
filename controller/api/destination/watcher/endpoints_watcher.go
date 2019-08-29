@@ -3,7 +3,6 @@ package watcher
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -434,13 +433,13 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 					pp.log.Errorf("Unable to fetch pod %v: %s", id, err)
 					continue
 				}
-				owner := pp.k8sAPI.GetOwnerKindAndName(pod, false)
+				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
 				pods[id] = Address{
 					IP:        endpoint.IP,
 					Port:      resolvedPort,
 					Pod:       pod,
-					OwnerName: owner.Name,
-					OwnerKind: strings.ToLower(owner.Kind),
+					OwnerName: ownerName,
+					OwnerKind: ownerKind,
 				}
 			}
 		}

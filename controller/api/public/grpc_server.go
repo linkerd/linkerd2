@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -159,21 +158,21 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			continue
 		}
 
-		owner := s.k8sAPI.GetOwnerKindAndName(pod, false)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
 		// filter out pods without matching owner
 		if targetOwner.GetNamespace() != "" && targetOwner.GetNamespace() != pod.GetNamespace() {
 			continue
 		}
-		if targetOwner.GetType() != "" && targetOwner.GetType() != strings.ToLower(owner.Kind) {
+		if targetOwner.GetType() != "" && targetOwner.GetType() != ownerKind {
 			continue
 		}
-		if targetOwner.GetName() != "" && targetOwner.GetName() != owner.Name {
+		if targetOwner.GetName() != "" && targetOwner.GetName() != ownerName {
 			continue
 		}
 
 		updated, added := reports[pod.Name]
 
-		item := util.K8sPodToPublicPod(*pod, strings.ToLower(owner.Kind), owner.Name)
+		item := util.K8sPodToPublicPod(*pod, ownerKind, ownerName)
 		item.Added = added
 
 		if added {
