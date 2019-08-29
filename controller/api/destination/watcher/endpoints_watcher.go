@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -439,7 +440,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 					Port:      resolvedPort,
 					Pod:       pod,
 					OwnerName: owner.Name,
-					OwnerKind: owner.Kind,
+					OwnerKind: strings.ToLower(owner.Kind),
 				}
 			}
 		}

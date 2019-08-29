@@ -139,6 +139,19 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return resourceUrl;
   };
 
+  const urlsForResourceNoStats = (type, namespace) => {
+    // Traffic Performance Summary. This retrieves (non-Prometheus) stats for the given resource.
+    let resourceUrl = '/api/tps-reports?skip_stats=true&resource_type=' + type;
+
+    if (_isEmpty(namespace)) {
+      resourceUrl += '&all_namespaces=true';
+    } else {
+      resourceUrl += '&namespace=' + namespace;
+    }
+
+    return resourceUrl;
+  };
+
   // maintain a list of a component's requests,
   // convenient for providing a cancel() functionality
   let currentRequests = [];
@@ -222,6 +235,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getValidMetricsWindows: () => Object.keys(validMetricsWindows),
     getMetricsWindowDisplayText,
     urlsForResource,
+    urlsForResourceNoStats,
     PrefixedLink,
     prefixLink,
     ResourceLink,
