@@ -520,7 +520,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 // present. If the service is present and it has a port spec matching the
 // specified port and a target port configured, it returns the name of the
 // service's port (not the name of the target pod port), so that it can be
-// looked up in the the endpoints API response, which uses service port names.
+// looked up inendpoints API response, which uses service port names.
 func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// Use the specified port as the target port by default
 	targetPort := intstr.FromInt(int(port))
