@@ -1,3 +1,16 @@
+## edge-19.8.7
+
+* Web UI
+  * Increased dashboard speed by consolidating existing Prometheus queries
+* Control Plane
+  * Added Kubernetes events (and log lines) when the proxy injector injects a
+    deployment, and when injection is skipped
+  * Additional preparation for configuring the cluster base domain (thanks
+    @arminbuerkle!)
+* Proxy
+  * Changed the proxy to require the `LINKERD2_PROXY_DESTINATION_SVC_ADDR`
+    environment variable when starting up
+
 ## edge-19.8.6
 
 A new Grafana dashboard has been added which shows historical data for a
