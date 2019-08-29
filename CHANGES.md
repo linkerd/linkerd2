@@ -1,3 +1,19 @@
+## edge-19.8.7
+
+* CLI
+  * Added a global `--cluster-domain` flag to `linkerd install` to allow
+    installing Linkerd into a Kubernetes cluster that uses a base domain other
+    than `cluster.local.` (thanks @arminbuerkle!)
+* Web UI
+  * Fixed an issue that caused unnecessary Prometheus queries, reducing load on
+    Prometheus
+* Control Plane
+  * Added Kubernetes events (and log lines) when the proxt injector injects a
+    deployment, and when injection is skipped
+* Proxy
+  * Changed the proxy to require the `LINKERD2_PROXY_DESTINATION_SVC_ADDR`
+    environment variable when starting up
+
 ## edge-19.8.6
 
 A new Grafana dashboard has been added which shows historical data for a
