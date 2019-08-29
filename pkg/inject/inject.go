@@ -51,7 +51,8 @@ const (
 )
 
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
-type OwnerRetrieverFunc func(*corev1.Pod) *metav1.OwnerReference
+// kind and name
+type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
@@ -348,9 +349,9 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.pod.meta = &v.ObjectMeta
 
 		if conf.ownerRetriever != nil {
-			conf.workload.ownerRef = conf.ownerRetriever(v)
-			name := conf.workload.ownerRef.Name
-			switch strings.ToLower(conf.workload.ownerRef.Kind) {
+			kind, name := conf.ownerRetriever(v)
+			conf.workload.ownerRef = &metav1.OwnerReference{Kind: kind, Name: name}
+			switch kind {
 			case k8s.Deployment:
 				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
 			case k8s.ReplicationController:
