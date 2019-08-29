@@ -119,7 +119,7 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        bin/kind create cluster --name=$KIND_CLUSTER
+        bin/kind create cluster --name=$KIND_CLUSTER --wait=1m
         scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) github@$DOCKER_ADDRESS:/tmp
 
   kind_integration:
