@@ -73,13 +73,13 @@ func (r *Report) ResName() string {
 func (r *Report) Injectable() (bool, string) {
 	reasons := []string{}
 	if r.HostNetwork {
-		reasons = append(reasons, "hostNetwork is enabled")
+		reasons = append(reasons, "host_network_enabled")
 	}
 	if r.Sidecar {
-		reasons = append(reasons, "pod has a sidecar injected already")
+		reasons = append(reasons, "sidecar_already_exists")
 	}
 	if r.UnsupportedResource {
-		reasons = append(reasons, "this resource kind is unsupported")
+		reasons = append(reasons, "unsupported_resource")
 	}
 	if r.InjectDisabled {
 		reasons = append(reasons, r.InjectDisabledReason)
@@ -130,13 +130,13 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
-			return true, fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled)
+			return true, "injection_disable_annotation_present"
 		}
 		return false, ""
 	}
 
 	if podAnnotation != k8s.ProxyInjectEnabled {
-		return true, fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+		return true, "injection_enable_annotation_absent"
 	}
 
 	return false, ""
