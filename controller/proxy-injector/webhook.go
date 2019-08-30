@@ -2,6 +2,7 @@ package injector
 
 import (
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -71,38 +72,40 @@ func Inject(api *k8s.API,
 		} else {
 			parent = &objs[0]
 		}
-	}
+		proxyInjectionAdmissionRequests.With(admissionRequestLabels(strings.ToLower(ownerRef.Kind), request.Namespace)).Inc()
 
-	if injectable, reason := report.Injectable(); !injectable {
-		if parent != nil {
-			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", reason)
+		if injectable, reason := report.Injectable(); !injectable {
+			if parent != nil {
+				recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", reason)
+			}
+			log.Infof("skipped %s: %s", report.ResName(), reason)
+			proxyInjectionAdmissionResponses.With(admissionResponseLabels(strings.ToLower(ownerRef.Kind), request.Namespace, "true", reason)).Inc()
+			return admissionResponse, nil
 		}
-		log.Infof("skipped %s: %s", report.ResName(), reason)
-		return admissionResponse, nil
+
+		resourceConfig.AppendPodAnnotations(map[string]string{
+			pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
+		})
+		patchJSON, err := resourceConfig.GetPatch(true)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(patchJSON) == 0 {
+			return admissionResponse, nil
+		}
+
+		if parent != nil {
+			recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+		}
+		log.Infof("patch generated for: %s", report.ResName())
+		log.Debugf("patch: %s", patchJSON)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(strings.ToLower(ownerRef.Kind), request.Namespace, "false", "")).Inc()
+
+		patchType := admissionv1beta1.PatchTypeJSONPatch
+		admissionResponse.Patch = patchJSON
+		admissionResponse.PatchType = &patchType
 	}
-
-	resourceConfig.AppendPodAnnotations(map[string]string{
-		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
-	})
-	patchJSON, err := resourceConfig.GetPatch(true)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(patchJSON) == 0 {
-		return admissionResponse, nil
-	}
-
-	if parent != nil {
-		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
-	}
-	log.Infof("patch generated for: %s", report.ResName())
-	log.Debugf("patch: %s", patchJSON)
-
-	patchType := admissionv1beta1.PatchTypeJSONPatch
-	admissionResponse.Patch = patchJSON
-	admissionResponse.PatchType = &patchType
-
 	return admissionResponse, nil
 }
 
