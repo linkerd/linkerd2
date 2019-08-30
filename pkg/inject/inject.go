@@ -125,7 +125,7 @@ func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceCo
 	return conf
 }
 
-// GetOwnerRef returns a reference to the the resource's owner resource, if any
+// GetOwnerRef returns a reference to the resource's owner resource, if any
 func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef
 }

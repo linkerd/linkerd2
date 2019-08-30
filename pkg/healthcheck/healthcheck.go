@@ -92,7 +92,7 @@ const (
 	LinkerdAPIChecks CategoryID = "linkerd-api"
 
 	// LinkerdVersionChecks adds a series of checks to query for the latest
-	// version, and validate the the CLI is up to date.
+	// version, and validate the CLI is up to date.
 	LinkerdVersionChecks CategoryID = "linkerd-version"
 
 	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
@@ -104,7 +104,7 @@ const (
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
 	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
-	// plane namespace exists, and that the the proxy containers are in a ready
+	// plane namespace exists, and that the proxy containers are in a ready
 	// state and running the latest available version.
 	// These checks are dependent on the output of KubernetesAPIChecks,
 	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
