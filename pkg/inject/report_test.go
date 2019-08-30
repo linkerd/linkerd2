@@ -35,7 +35,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     "hostNetwork is enabled",
+			reason:     hostNetworkEnabled,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -52,7 +52,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     "pod has a sidecar injected already",
+			reason:     sidecarExists,
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -69,7 +69,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     "pod has a sidecar injected already",
+			reason:     sidecarExists,
 		},
 		{
 			unsupportedResource: true,
@@ -80,7 +80,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     "this resource kind is unsupported",
+			reason:     unsupportedResource,
 		},
 	}
 

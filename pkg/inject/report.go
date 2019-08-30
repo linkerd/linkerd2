@@ -9,6 +9,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const (
+	hostNetworkEnabled             = "host_network_enabled"
+	sidecarExists                  = "sidecar_already_exists"
+	unsupportedResource            = "unsupported_resource"
+	injectEnableAnnotationAbsent   = "injection_enable_annotation_absent"
+	injectDisableAnnotationPresent = "injection_disable_annotation_present"
+)
+
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
@@ -73,13 +81,13 @@ func (r *Report) ResName() string {
 func (r *Report) Injectable() (bool, string) {
 	reasons := []string{}
 	if r.HostNetwork {
-		reasons = append(reasons, "host_network_enabled")
+		reasons = append(reasons, hostNetworkEnabled)
 	}
 	if r.Sidecar {
-		reasons = append(reasons, "sidecar_already_exists")
+		reasons = append(reasons, sidecarExists)
 	}
 	if r.UnsupportedResource {
-		reasons = append(reasons, "unsupported_resource")
+		reasons = append(reasons, unsupportedResource)
 	}
 	if r.InjectDisabled {
 		reasons = append(reasons, r.InjectDisabledReason)
@@ -130,13 +138,13 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
-			return true, "injection_disable_annotation_present"
+			return true, injectDisableAnnotationPresent
 		}
 		return false, ""
 	}
 
 	if podAnnotation != k8s.ProxyInjectEnabled {
-		return true, "injection_enable_annotation_absent"
+		return true, injectEnableAnnotationAbsent
 	}
 
 	return false, ""
