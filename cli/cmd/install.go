@@ -77,6 +77,12 @@ const (
 	helmDefaultChartName = "linkerd2"
 	helmDefaultChartDir  = "linkerd2"
 
+	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
+
+%s
+
+You can use the --ignore-cluster flag if you just want to generate the installation config.`
+
 	errMsgGlobalResourcesExist = `Unable to install the Linkerd control plane. It appears that there is an existing installation:
 
 %s
@@ -237,8 +243,15 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err != nil && !options.ignoreCluster {
+				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				} else {
+					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+				}
 				os.Exit(1)
 			}
 
@@ -274,8 +287,15 @@ control plane. It should be run after "linkerd install config".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// check if global resources exist to determine if the `install config`
 			// stage succeeded
-			if err := errIfGlobalResourcesExist(options); err == nil && !options.skipChecks {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err == nil && !options.skipChecks {
+				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				} else {
+					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+				}
 				os.Exit(1)
 			}
 
@@ -329,8 +349,15 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errIfGlobalResourcesExist(options); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+			if err := errAfterRunningChecks(options, []healthcheck.CategoryID{
+				healthcheck.KubernetesAPIChecks,
+				healthcheck.LinkerdPreInstallGlobalResourcesChecks,
+			}); err != nil && !options.ignoreCluster {
+				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+				} else {
+					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+				}
 				os.Exit(1)
 			}
 
@@ -793,12 +820,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 	}
 }
 
-func errIfGlobalResourcesExist(options *installOptions) error {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-		healthcheck.LinkerdPreInstallGlobalResourcesChecks,
-	}
-
+func errAfterRunningChecks(options *installOptions, checks []healthcheck.CategoryID) error {
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
@@ -806,26 +828,30 @@ func errIfGlobalResourcesExist(options *installOptions) error {
 		NoInitContainer:       options.noInitContainer,
 	})
 
-	errMsgs := []string{}
+	var outputError error = nil
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
-			if re, ok := result.Err.(*healthcheck.ResourceError); ok {
-				// resource error, print in kind.group/name format
-				for _, res := range re.Resources {
-					errMsgs = append(errMsgs, res.String())
+			if ce, ok := result.Err.(*healthcheck.CategoryError); ok {
+				if re, ok := ce.Err.(*healthcheck.ResourceError); ok {
+					// resource error, print in kind.group/name format
+					errMsgs := []string{}
+					for _, res := range re.Resources {
+						errMsgs = append(errMsgs, res.String())
+					}
+					outputError = &healthcheck.CategoryError{Category: ce.Category, Err: errors.New(strings.Join(errMsgs, "\n"))}
+				} else {
+					// unknown error, just print it
+					outputError = ce
 				}
 			} else {
 				// unknown error, just print it
-				errMsgs = append(errMsgs, result.Err.Error())
+				outputError = result.Err
+
 			}
 		}
 	})
 
-	if len(errMsgs) > 0 {
-		return errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	return nil
+	return outputError
 }
 
 func errIfLinkerdConfigConfigMapExists() error {
