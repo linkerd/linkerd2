@@ -181,9 +181,9 @@ func (e *CategoryError) Error() string {
 }
 
 // IsCategoryError returns true if passed in error is of type CategoryError
-func IsCategoryError(err error, categoryId CategoryID) bool {
+func IsCategoryError(err error, categoryID CategoryID) bool {
 	if ce, ok := err.(*CategoryError); ok {
-		return ce.Category == categoryId
+		return ce.Category == categoryID
 	}
 	return false
 }
