@@ -180,7 +180,7 @@ func (e *CategoryError) Error() string {
 	return e.Err.Error()
 }
 
-// IsCategoryError returns true if passed in error is of type CategoryError
+// IsCategoryError returns true if passed in error is of type CategoryError and belong to the given category
 func IsCategoryError(err error, categoryID CategoryID) bool {
 	if ce, ok := err.(*CategoryError); ok {
 		return ce.Category == categoryID
