@@ -828,7 +828,7 @@ func errAfterRunningChecks(options *installOptions, checks []healthcheck.Categor
 		NoInitContainer:       options.noInitContainer,
 	})
 
-	var outputError error = nil
+	var outputError error
 	hc.RunChecks(func(result *healthcheck.CheckResult) {
 		if result.Err != nil {
 			if ce, ok := result.Err.(*healthcheck.CategoryError); ok {

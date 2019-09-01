@@ -172,7 +172,7 @@ func (e *ResourceError) Error() string {
 // useful when needed to distinguish between errors from multiple categories
 type CategoryError struct {
 	Category CategoryID
-	Err error
+	Err      error
 }
 
 // Error satisfies the error interface for CategoryError.
@@ -180,6 +180,7 @@ func (e *CategoryError) Error() string {
 	return e.Err.Error()
 }
 
+// IsCategoryError returns true if passed in error is of type CategoryError
 func IsCategoryError(err error, categoryId CategoryID) bool {
 	if ce, ok := err.(*CategoryError); ok {
 		return ce.Category == categoryId
@@ -901,7 +902,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		defer cancel()
 		err := c.check(ctx)
 		if err != nil {
-			err = &CategoryError{ categoryID, err }
+			err = &CategoryError{categoryID, err}
 		}
 		checkResult := &CheckResult{
 			Category:    categoryID,
@@ -933,7 +934,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
 	if err != nil {
-		err = &CategoryError{ categoryID, err }
+		err = &CategoryError{categoryID, err}
 	}
 	observer(&CheckResult{
 		Category:    categoryID,
@@ -952,7 +953,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 			err = fmt.Errorf(check.FriendlyMessageToUser)
 		}
 		if err != nil {
-			err = &CategoryError{ categoryID, err }
+			err = &CategoryError{categoryID, err}
 		}
 		observer(&CheckResult{
 			Category:    categoryID,
