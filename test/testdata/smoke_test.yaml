@@ -1,5 +1,5 @@
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: smoke-test-terminus
@@ -32,7 +32,7 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: smoke-test-gateway

@@ -20,7 +20,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: cr-test
 rules:
-- apiGroups: ["extensions", "apps"]
+- apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["list"]`,
 				`
@@ -37,7 +37,7 @@ subjects:
   name: system:unauthenticated
   apiGroup: rbac.authorization.k8s.io`,
 			},
-			errors.New("not authorized to access deployments.extensions"),
+			errors.New("not authorized to access deployments.apps"),
 		},
 	}
 
@@ -48,7 +48,7 @@ subjects:
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
-			err = ResourceAuthz(k8sClient, "", "list", "extensions", "v1beta1", "deployments", "")
+			err = ResourceAuthz(k8sClient, "", "list", "apps", "v1", "deployments", "")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

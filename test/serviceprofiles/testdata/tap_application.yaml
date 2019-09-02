@@ -5,7 +5,7 @@
 
 ### t1 terminates gRPC requests
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: t1
@@ -43,7 +43,7 @@ spec:
 
 ### t2 terminates gRPC requests and always fails
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: t2
@@ -82,7 +82,7 @@ spec:
 
 # t3 terminates HTTP/1.1 requests
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: t3
@@ -121,7 +121,7 @@ spec:
 
 ### gateway broadcasts requests to t1, t2, and t3
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway

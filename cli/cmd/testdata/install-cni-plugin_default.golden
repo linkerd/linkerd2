@@ -147,7 +147,7 @@ data:
 # This manifest installs the linkerd CNI plugins and network config on
 # each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 metadata:
   name: linkerd-cni
   namespace: linkerd

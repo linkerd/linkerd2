@@ -1,9 +1,10 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
   name: get-test-deploy-injected-1
 spec:
+  selector: null
   strategy: {}
   template:
     metadata:
@@ -165,12 +166,13 @@ spec:
         name: linkerd-identity-end-entity
 status: {}
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
   name: get-test-deploy-injected-2
 spec:
+  selector: null
   strategy: {}
   template:
     metadata:

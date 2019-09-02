@@ -16,7 +16,7 @@ func TestNewFakeAPI(t *testing.T) {
 
 	k8sConfigs := []string{
 		`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dep-name
@@ -44,13 +44,13 @@ spec:
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	deploy, err := api.AppsV1beta2().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	deploy, err := api.AppsV1().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
-		Version: "v1beta2",
+		Version: "v1",
 		Kind:    "Deployment",
 	}
 	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {
@@ -74,7 +74,7 @@ spec:
 func TestNewFakeAPIFromManifests(t *testing.T) {
 	k8sConfigs := []string{
 		`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dep-name
@@ -107,13 +107,13 @@ spec:
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	deploy, err := api.AppsV1beta2().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	deploy, err := api.AppsV1().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 	gvk := schema.GroupVersionKind{
 		Group:   "apps",
-		Version: "v1beta2",
+		Version: "v1",
 		Kind:    "Deployment",
 	}
 	if !reflect.DeepEqual(deploy.GroupVersionKind(), gvk) {

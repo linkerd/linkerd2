@@ -294,7 +294,7 @@ status:
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: emoji
@@ -310,7 +310,7 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: a1b2c3d4
@@ -1123,7 +1123,7 @@ status:
 				expectedStatRPC: expectedStatRPC{
 					err: nil,
 					k8sConfigs: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: emoji-deploy
@@ -1139,7 +1139,7 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: a1b2c3d4
@@ -1572,7 +1572,7 @@ status:
 					expectedStatRPC: expectedStatRPC{
 						err: nil,
 						k8sConfigs: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: emoji
@@ -1588,7 +1588,7 @@ spec:
       containers:
       - image: buoyantio/emojivoto-emoji-svc:v3
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: a1b2c3d4

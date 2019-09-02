@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -217,15 +216,15 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 	switch strings.ToLower(conf.workload.metaType.Kind) {
 	case k8s.Deployment:
-		return &v1beta1.Deployment{}
+		return &appsv1.Deployment{}
 	case k8s.ReplicationController:
 		return &corev1.ReplicationController{}
 	case k8s.ReplicaSet:
-		return &v1beta1.ReplicaSet{}
+		return &appsv1.ReplicaSet{}
 	case k8s.Job:
 		return &batchv1.Job{}
 	case k8s.DaemonSet:
-		return &v1beta1.DaemonSet{}
+		return &appsv1.DaemonSet{}
 	case k8s.StatefulSet:
 		return &appsv1.StatefulSet{}
 	case k8s.Pod:
@@ -279,7 +278,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
-	case *v1beta1.Deployment:
+	case *appsv1.Deployment:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -299,7 +298,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
 		conf.complete(v.Spec.Template)
 
-	case *v1beta1.ReplicaSet:
+	case *appsv1.ReplicaSet:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -319,7 +318,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
 		conf.complete(&v.Spec.Template)
 
-	case *v1beta1.DaemonSet:
+	case *appsv1.DaemonSet:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
