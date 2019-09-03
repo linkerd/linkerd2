@@ -25,7 +25,7 @@ export const getAggregatedTrafficSplitMetrics = resourceMetrics => {
   let sumSuccessRates = _reduce(successRates, (acc, n) => {
     return acc+= n;
   }, 0);
-  let aggregatedSuccessRate = sumSuccessRates/totalRPS;
+  let aggregatedSuccessRate = sumSuccessRates/totalRPS || 0;
   return {successRate: aggregatedSuccessRate,
     totalRPS: totalRPS};
 };
