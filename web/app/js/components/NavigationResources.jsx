@@ -58,10 +58,10 @@ class NavigationResourcesBase extends React.Component {
     let allMetrics = {};
     let nsMetrics = {};
     if (_has(data, '[0]')) {
-      allMetrics = processMultiResourceRollup(data[0]);
+      allMetrics = processMultiResourceRollup(data[0], "all");
 
       if (_has(data, '[1]')) {
-        nsMetrics = processMultiResourceRollup(data[1]);
+        nsMetrics = processMultiResourceRollup(data[1], "all");
       }
     }
 
@@ -74,6 +74,7 @@ class NavigationResourcesBase extends React.Component {
         <NavigationResource type="pods" metrics={allMetrics.pod} />
         <NavigationResource type="replicationcontrollers" metrics={allMetrics.replicationcontroller} />
         <NavigationResource type="statefulsets" metrics={allMetrics.statefulset} />
+        <NavigationResource type="trafficsplits" metrics={allMetrics.trafficsplit} />
       </MenuList>
     );
   }

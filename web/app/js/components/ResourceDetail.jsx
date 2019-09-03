@@ -12,6 +12,7 @@ import React from 'react';
 import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
+import TrafficSplitDetail from './TrafficSplitDetail.jsx';
 import Typography from '@material-ui/core/Typography';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
@@ -161,10 +162,10 @@ export class ResourceDetailBase extends React.Component {
 
     Promise.all(this.api.getCurrentPromises())
       .then(([resourceRsp, podListRsp, podMetricsRsp, upstreamRsp, downstreamRsp, edgesRsp]) => {
-        let resourceMetrics = processSingleResourceRollup(resourceRsp);
-        let podMetrics = processSingleResourceRollup(podMetricsRsp);
-        let upstreamMetrics = processMultiResourceRollup(upstreamRsp);
-        let downstreamMetrics = processMultiResourceRollup(downstreamRsp);
+        let resourceMetrics = processSingleResourceRollup(resourceRsp, resource.type);
+        let podMetrics = processSingleResourceRollup(podMetricsRsp, resource.type);
+        let upstreamMetrics = processMultiResourceRollup(upstreamRsp, resource.type);
+        let downstreamMetrics = processMultiResourceRollup(downstreamRsp, resource.type);
         let edges = processEdges(edgesRsp, this.state.resource.name);
 
         // INEFFICIENT: get metrics for all the pods belonging to this resource.
@@ -210,6 +211,7 @@ export class ResourceDetailBase extends React.Component {
         }
 
         let isTcpOnly = !hasHttp && hasTcp;
+        let isTrafficSplit = resource.type === "trafficsplit";
 
         // figure out when the last traffic this resource received was so we can show a no traffic message
         let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
@@ -220,12 +222,14 @@ export class ResourceDetailBase extends React.Component {
         this.setState({
           resourceMetrics,
           resourceIsMeshed,
+          resourceRsp,
           podMetrics: podMetricsForResource,
           upstreamMetrics,
           downstreamMetrics,
           edges,
           lastMetricReceivedTime,
           isTcpOnly,
+          isTrafficSplit,
           loaded: true,
           pendingRequests: false,
           error: null,
@@ -267,6 +271,7 @@ export class ResourceDetailBase extends React.Component {
     let {
       resourceName,
       resourceType,
+      resourceRsp,
       namespace,
       resourceMetrics,
       edges,
@@ -274,6 +279,7 @@ export class ResourceDetailBase extends React.Component {
       resourceIsMeshed,
       lastMetricReceivedTime,
       isTcpOnly,
+      isTrafficSplit,
     } = this.state;
 
     let query = {
@@ -298,6 +304,15 @@ export class ResourceDetailBase extends React.Component {
 
     let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
+    if (isTrafficSplit) {
+      return (
+        <TrafficSplitDetail
+          resourceType={resourceType}
+          resourceName={resourceName}
+          resourceMetrics={resourceMetrics}
+          resourceRsp={resourceRsp} />
+      );
+    }
     return (
       <div>
         <Grid container justify="space-between" alignItems="center">

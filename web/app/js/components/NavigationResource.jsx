@@ -9,9 +9,12 @@ import NavigateNextIcon from '@material-ui/icons/NavigateNext';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateDot from "./util/SuccessRateDot.jsx";
+import _each from 'lodash/each';
+import _includes from 'lodash/includes';
 import _merge from 'lodash/merge';
 import _orderBy from 'lodash/orderBy';
 import { friendlyTitle } from "./util/Utils.js";
+import { getAggregatedTrafficSplitMetrics } from './TrafficSplitDetail.jsx';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
@@ -31,6 +34,33 @@ const styles = () => ({
     textOverflow: "ellipsis",
   }
 });
+
+// the Stat API returns a row for each leaf within a trafficsplit. we should
+// list each trafficsplit only once in the sidebar, and calculate the aggregated
+// success rate so that the success rate dot is the correct color.
+const getTrafficSplitResourceList = metrics => {
+  let splitsByName = {},
+    splitListToDisplay = [];
+  _each(metrics, row => {
+    if (!_includes(splitsByName, row.name)) {
+      splitsByName[row.name] = [row];
+    } else {
+      splitsByName[row.name].push(row);
+    }
+  });
+  _each(splitsByName, split => {
+    let metrics = getAggregatedTrafficSplitMetrics(split);
+    let name = split[0].name;
+    let namespace = split[0].namespace;
+    splitListToDisplay.push({
+      name: name,
+      type: "trafficsplit",
+      successRate: metrics.successRate,
+      namespace: namespace,
+      menuName: `${namespace}/${name}`});
+  });
+  return _orderBy(splitListToDisplay, split => split.menuName);
+};
 
 class NavigationResource extends React.Component {
   static defaultProps = {
@@ -78,16 +108,20 @@ class NavigationResource extends React.Component {
   }
 
   subMenu() {
-    const { api, classes, metrics } = this.props;
+    const { api, classes, metrics, type } = this.props;
+    let resources;
 
-    const resources = _orderBy(metrics
-      .filter(m => m.pods.meshedPods !== "0")
-      .map(m =>
-        _merge(m, {
-          menuName: this.props.type === "namespaces" ? m.name : `${m.namespace}/${m.name}`
-        })
-      ), r => r.menuName);
-
+    if (type === "trafficsplits") {
+      resources = getTrafficSplitResourceList(metrics);
+    } else {
+      resources = _orderBy(metrics
+        .filter(m => m.pods.meshedPods !== "0")
+        .map(m =>
+          _merge(m, {
+            menuName: this.props.type === "namespaces" ? m.name : `${m.namespace}/${m.name}`
+          })
+        ), r => r.menuName);
+    }
 
     return (
       <MenuList dense component="div" disablePadding>
