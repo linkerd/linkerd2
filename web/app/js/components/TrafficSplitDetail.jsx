@@ -79,6 +79,7 @@ export default class TrafficSplitDetail extends React.Component {
         <MetricsTable
           resource="trafficsplit"
           metrics={resourceMetrics}
+          showName={false}
           showNamespaceColumn={false}
           title="Leaf Services" />
       </div>

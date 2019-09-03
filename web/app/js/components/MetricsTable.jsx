@@ -110,7 +110,7 @@ const trafficSplitDetailColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTable) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable) => {
   let isAuthorityTable = resource === "authority";
   let isTrafficSplitTable = resource === "trafficsplit";
   let isMultiResourceTable = resource === "multi_resource";
@@ -183,7 +183,10 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
     sorter: d => getResourceDisplayName(d) || -1
   };
 
-  let columns = [nameColumn];
+  let columns = [];
+  if (showNameColumn) {
+    columns = [nameColumn];
+  }
   if (isTrafficSplitTable) {
     columns = columns.concat(trafficSplitDetailColumns);
   }
@@ -229,23 +232,27 @@ class MetricsTable extends React.Component {
     isTcpTable: PropTypes.bool,
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
+    showName: PropTypes.bool,
     showNamespaceColumn: PropTypes.bool,
     title: PropTypes.string
   };
 
   static defaultProps = {
     showNamespaceColumn: true,
+    showName: true,
     title: "",
     isTcpTable: false,
     metrics: []
   };
 
   render() {
-    const { metrics, resource, showNamespaceColumn, title, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable } = this.props;
 
     let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
-
-    let columns = columnDefinitions(resource, showNsColumn, api.PrefixedLink, isTcpTable);
+    let showNameColumn = resource !== "trafficsplit" ? true : showName;
+    let orderBy = "name";
+    if (resource === "trafficsplit" && !showNameColumn) {orderBy = "leaf";}
+    let columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable);
     let rows = preprocessMetrics(metrics);
     return (
       <BaseTable
@@ -254,7 +261,7 @@ class MetricsTable extends React.Component {
         tableColumns={columns}
         tableClassName="metric-table"
         title={title}
-        defaultOrderBy="name"
+        defaultOrderBy={orderBy}
         padding="dense" />
     );
   }
