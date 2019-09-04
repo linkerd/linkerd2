@@ -137,7 +137,9 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        bin/kind create cluster --name=$KIND_CLUSTER --wait=1m
+        # retry cluster creation once in case of port conflict or kubeadm failure
+        bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
         scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) github@$DOCKER_ADDRESS:/tmp
 
   kind_integration:
