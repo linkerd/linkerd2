@@ -1,5 +1,5 @@
-{{with .Values -}}
-{{if .Heartbeat -}}
+{{ with .Values -}}
+{{ if not .DisableHeartBeat -}}
 ---
 ###
 ### Heartbeat

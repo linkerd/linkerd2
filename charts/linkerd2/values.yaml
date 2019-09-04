@@ -47,7 +47,7 @@ Identity:
 GrafanaImage: gcr.io/linkerd-io/grafana
 
 # heartbeat configuration
-Heartbeat: false
+DisableHeartBeat: false
 HeartbeatSchedule: "0 0 * * *"
 
 # prometheus configuration

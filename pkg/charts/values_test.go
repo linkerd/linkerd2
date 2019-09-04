@@ -43,6 +43,7 @@ func TestNewValues(t *testing.T) {
 		WebhookFailurePolicy:        "Ignore",
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
+		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 
 		Identity: &Identity{
