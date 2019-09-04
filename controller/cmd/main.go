@@ -34,8 +34,8 @@ func main() {
 		spvalidator.Main(os.Args[2:])
 	case "tap":
 		tap.Main(os.Args[2:])
+	default:
+		fmt.Printf("unknown subcommand: %s", os.Args[1])
+		os.Exit(1)
 	}
-
-	fmt.Printf("unknown subcommand: %s", os.Args[1])
-	os.Exit(1)
 }
