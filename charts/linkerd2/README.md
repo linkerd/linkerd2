@@ -31,6 +31,7 @@ and the same expiration date you used to generate the Issuer certificate.
 In this example we set the expiration date to one year ahead:
 
 ```bash
+helm repo add linkerd https://run.linkerd.io/charts
 helm install \
   --set-file Identity.TrustAnchorsPEM=ca.crt \
   --set-file Identity.Issuer.TLS.CrtPEM=issuer.crt \
@@ -48,6 +49,7 @@ Values such as higher number of replicas, higher memory/cpu limits and
 affinities are specified in that file.
 
 ```bash
+helm repo add linkerd https://run.linkerd.io/charts
 helm install \
   --set-file Identity.TrustAnchorsPEM=ca.crt \
   --set-file Identity.Issuer.TLS.CrtPEM=issuer.crt \
