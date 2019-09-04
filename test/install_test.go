@@ -87,6 +87,7 @@ var (
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
 		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
+		`FailedKillPod .* error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc = failed to destroy network for sandbox \\".*\\": could not teardown ipv4 dnat: running \[/usr/sbin/iptables -t nat -X CNI-DN-.* --wait\]: exit status 1: iptables: No chain/target/match by that name\.\\n"`,
 	}, "|"))
 
 	injectionCases = []struct {
