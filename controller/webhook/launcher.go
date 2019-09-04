@@ -18,8 +18,8 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component string, args []string) {
-	cmd := flag.NewFlagSet(component, flag.ExitOnError)
+func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component, subcommand string, args []string) {
+	cmd := flag.NewFlagSet(subcommand, flag.ExitOnError)
 
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := cmd.String("addr", ":8443", "address to serve on")

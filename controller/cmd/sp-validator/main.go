@@ -11,6 +11,7 @@ func Main(args []string) {
 		nil,
 		9997,
 		validator.AdmitSP,
+		"linkerd-sp-validator",
 		"sp-validator",
 		args,
 	)
