@@ -1,5 +1,4 @@
 import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
-
 import AppBar from '@material-ui/core/AppBar';
 import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
