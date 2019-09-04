@@ -533,7 +533,12 @@ func TestLogs(t *testing.T) {
 				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
 				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
 				if len(outputLines) == 0 {
-					t.Errorf("No logs found for %s", name)
+					// Retry one time for 30 more seconds, in case the cluster is slow to
+					// produce log lines.
+					outputLines, _ = outputStream.ReadUntil(10000, 30*time.Second)
+					if len(outputLines) == 0 {
+						t.Errorf("No logs found for %s", name)
+					}
 				}
 
 				for _, line := range outputLines {

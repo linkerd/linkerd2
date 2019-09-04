@@ -1,6 +1,7 @@
 ![Linkerd][logo]
 
 [![Build Status][ci-badge]][ci]
+[![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![Slack Status][slack-badge]][slack]
@@ -75,6 +76,8 @@ specific language governing permissions and limitations under the License.
 <!-- refs -->
 [ci]: https://travis-ci.org/linkerd/linkerd2
 [ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
+[github-actions]: https://github.com/linkerd/linkerd2/actions
+[github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/CI/badge.svg
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/

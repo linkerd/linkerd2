@@ -76,7 +76,9 @@ jobs:
         - |
           # create kind cluster
           export KIND_CLUSTER=travis-$TRAVIS_BUILD_ID-$INTEGRATION_TEST
-          bin/kind create cluster --name=$KIND_CLUSTER
+          # retry cluster creation once in case of port conflict or kubeadm failure
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
         - |
           # Save kubeconfig to remote docker host for kind integration test stages.
           scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) $USER@$REMOTE_DOCKER:/tmp
