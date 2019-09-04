@@ -90,8 +90,10 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -101,6 +103,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Docker build
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
@@ -114,8 +117,10 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -125,6 +130,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind cluster setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
@@ -143,8 +149,10 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -154,6 +162,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind load docker images
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
       run: |
@@ -166,6 +175,7 @@ jobs:
           done
         EOF
     - name: Install linkerd CLI
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
@@ -178,6 +188,7 @@ jobs:
         [[ "$TAG" == "$(bin/linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
     - name: Run integration tests
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
@@ -215,6 +226,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     # for debugging
     - name: Dump env
@@ -229,6 +241,7 @@ jobs:
         JOB_CONTEXT: ${{ toJson(job) }}
       run: echo "$JOB_CONTEXT"
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -238,6 +251,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind cluster cleanup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
