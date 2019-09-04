@@ -9,9 +9,7 @@ web/web
 web/app/node_modules
 web/app/dist
 web/app/yarn-error.log
-.protoc
 .gorun
-.golangci-lint*
 **/*.gogen*
 **/*.swp
 charts/*/charts/

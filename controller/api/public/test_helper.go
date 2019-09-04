@@ -371,28 +371,99 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 	return resp
 }
 
-// GenEdgesResponse generates a mock Public API StatSummaryResponse
+type mockEdgeRow struct {
+	resourceType string
+	src          string
+	dst          string
+	srcNamespace string
+	dstNamespace string
+	clientID     string
+	serverID     string
+	msg          string
+}
+
+// a slice of edge rows to generate mock results
+var emojivotoEdgeRows = []*mockEdgeRow{
+	{
+		resourceType: "deployment",
+		src:          "web",
+		dst:          "voting",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "voting.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+	{
+		resourceType: "deployment",
+		src:          "vote-bot",
+		dst:          "web",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "default.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+	{
+		resourceType: "deployment",
+		src:          "web",
+		dst:          "emoji",
+		srcNamespace: "emojivoto",
+		dstNamespace: "emojivoto",
+		clientID:     "web.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		serverID:     "emoji.emojivoto.serviceaccount.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+}
+
+// a slice of edge rows to generate mock results
+var linkerdEdgeRows = []*mockEdgeRow{
+	{
+		resourceType: "deployment",
+		src:          "linkerd-controller",
+		dst:          "linkerd-prometheus",
+		srcNamespace: "linkerd",
+		dstNamespace: "linkerd",
+		clientID:     "linkerd-controller.linkerd.identity.linkerd.cluster.local",
+		serverID:     "linkerd-prometheus.linkerd.identity.linkerd.cluster.local",
+		msg:          "",
+	},
+}
+
+// GenEdgesResponse generates a mock Public API EdgesResponse
 // object.
-func GenEdgesResponse(resourceType string, resSrc, resDst, resSrcNamespace, resDstNamespace, resClient, resServer, msg []string) pb.EdgesResponse {
+func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResponse {
+	edgeRows := emojivotoEdgeRows
+
+	if edgeRowNamespace == "linkerd" {
+		edgeRows = linkerdEdgeRows
+	} else if edgeRowNamespace == "all" {
+		// combine emojivotoEdgeRows and linkerdEdgeRows
+		edgeRows = append(edgeRows, linkerdEdgeRows...)
+	}
+
 	edges := []*pb.Edge{}
-	for i := range resSrc {
+	for _, row := range edgeRows {
 		edge := &pb.Edge{
 			Src: &pb.Resource{
-				Name:      resSrc[i],
-				Namespace: resSrcNamespace[i],
-				Type:      resourceType,
+				Name:      row.src,
+				Namespace: row.srcNamespace,
+				Type:      row.resourceType,
 			},
 			Dst: &pb.Resource{
-				Name:      resDst[i],
-				Namespace: resDstNamespace[i],
-				Type:      resourceType,
+				Name:      row.dst,
+				Namespace: row.dstNamespace,
+				Type:      row.resourceType,
 			},
-			ClientId:      resClient[i],
-			ServerId:      resServer[i],
-			NoIdentityMsg: msg[i],
+			ClientId:      row.clientID,
+			ServerId:      row.serverID,
+			NoIdentityMsg: row.msg,
 		}
 		edges = append(edges, edge)
 	}
+
+	// sorting to retain consistent order for tests
+	edges = sortEdgeRows(edges)
 
 	resp := pb.EdgesResponse{
 		Response: &pb.EdgesResponse_Ok_{
@@ -478,6 +549,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 		nil,
 		k8sAPI,
 		"linkerd",
+		"cluster.local",
 		[]string{},
 	)
 

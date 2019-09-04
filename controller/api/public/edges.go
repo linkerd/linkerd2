@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -189,5 +190,17 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 		}
 	}
 
+	// sort rows before returning in order to have a consistent order for tests
+	edges = sortEdgeRows(edges)
+
 	return edges
+}
+
+func sortEdgeRows(rows []*pb.Edge) []*pb.Edge {
+	sort.Slice(rows, func(i, j int) bool {
+		keyI := rows[i].GetSrc().GetNamespace() + rows[i].GetDst().GetNamespace() + rows[i].GetSrc().GetName() + rows[i].GetDst().GetName()
+		keyJ := rows[j].GetSrc().GetNamespace() + rows[j].GetDst().GetNamespace() + rows[j].GetSrc().GetName() + rows[j].GetDst().GetName()
+		return keyI < keyJ
+	})
+	return rows
 }

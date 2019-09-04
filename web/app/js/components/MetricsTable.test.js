@@ -98,4 +98,14 @@ describe('Tests for <MetricsTable>', () => {
     expect(table).toBeDefined();
     expect(table.props().tableColumns).toHaveLength(8);
   });
+
+  it('adds apex, leaf and weight columns, and omits meshed and grafana column, for a trafficsplit resource', () => {
+    let extraProps = _merge({}, defaultProps, { metrics: [], resource: "trafficsplit"});
+    const component = mount(routerWrap(MetricsTable, extraProps));
+
+    const table = component.find("BaseTable");
+
+    expect(table).toBeDefined();
+    expect(table.props().tableColumns).toHaveLength(10);
+  });
 });

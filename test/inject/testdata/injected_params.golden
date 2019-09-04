@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
@@ -64,6 +64,8 @@ spec:
           value: 127.0.0.1:890
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:678
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: .
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE

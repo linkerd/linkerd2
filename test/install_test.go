@@ -85,7 +85,7 @@ var (
 		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
-		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled \(Client\.Timeout exceeded while awaiting headers\)`,
+		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
 	}, "|"))
 
@@ -205,7 +205,16 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		if out != upgradeFromManifests {
-			t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			// retry in case it's just a discrepancy in the heartbeat cron schedule
+			exec := append([]string{cmd}, args...)
+			out, _, err := TestHelper.LinkerdRun(exec...)
+			if err != nil {
+				t.Fatalf("command failed: %v\n%s", exec, out)
+			}
+
+			if out != upgradeFromManifests {
+				t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			}
 		}
 	}
 
@@ -227,6 +236,7 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	args := []string{
+		"--set", "ControllerLogLevel=debug",
 		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
 		"--set", "Identity.TrustDomain=cluster.local",
@@ -489,6 +499,8 @@ func TestCheckProxy(t *testing.T) {
 func TestLogs(t *testing.T) {
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
 	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
+	clientGoRegex := regexp.MustCompile("client-go@")
+	hasClientGoLogs := false
 
 	for deploy, spec := range linkerdDeployReplicas {
 		deploy := strings.TrimPrefix(deploy, "linkerd-")
@@ -537,9 +549,15 @@ func TestLogs(t *testing.T) {
 							}
 						}
 					}
+					if clientGoRegex.MatchString((line)) {
+						hasClientGoLogs = true
+					}
 				}
 			})
 		}
+	}
+	if !hasClientGoLogs {
+		t.Errorf("Didn't find any client-go entries")
 	}
 }
 

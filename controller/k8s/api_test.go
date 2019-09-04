@@ -124,14 +124,14 @@ metadata:
 				resType:   k8s.Deployment,
 				name:      "",
 				k8sResResults: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-deploy
   namespace: my-ns`,
 				},
 				k8sResMisc: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-deploy
@@ -394,7 +394,7 @@ func TestGetPodsFor(t *testing.T) {
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: emoji
@@ -506,7 +506,7 @@ status:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   name: emoji
@@ -591,7 +591,7 @@ status:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -621,7 +621,7 @@ status:
   phase: Running`,
 				},
 				k8sResMisc: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: deploymentRS
@@ -640,7 +640,7 @@ spec:
     matchLabels:
       app: emoji-svc
       pod-template-hash: deploymentPod`,
-					`apiVersion: apps/v1beta2
+					`apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: deploymentRSOld
@@ -665,7 +665,7 @@ spec:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -681,7 +681,7 @@ spec:
       app: emoji-svc`,
 				k8sResResults: []string{},
 				k8sResMisc: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: AnotherRS
@@ -706,7 +706,7 @@ spec:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -749,7 +749,7 @@ status:
   phase: Running`,
 				},
 				k8sResMisc: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: RS1
@@ -768,7 +768,7 @@ spec:
     matchLabels:
       app: emoji-svc
       pod-template-hash: pod1`,
-					`apiVersion: apps/v1beta2
+					`apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: RS2
@@ -793,7 +793,7 @@ spec:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -822,7 +822,7 @@ status:
   phase: Running`,
 				},
 				k8sResMisc: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: validRS
@@ -905,17 +905,17 @@ metadata:
   name: t2-5f79f964bc-d5jvf
   namespace: default
   ownerReferences:
-  - apiVersion: apps/v1beta2
+  - apiVersion: apps/v1
     kind: ReplicaSet
     name: t2-5f79f964bc`,
 			extraConfigs: []string{`
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   name: t2-5f79f964bc
   namespace: default
   ownerReferences:
-  - apiVersion: apps/v1beta2
+  - apiVersion: apps/v1
     kind: Deployment
     name: t2`,
 			},
@@ -930,7 +930,7 @@ metadata:
   name: t1-b4f55d87f-98dbz
   namespace: default
   ownerReferences:
-  - apiVersion: apps/v1beta2
+  - apiVersion: apps/v1
     kind: ReplicaSet
     name: t1-b4f55d87f`,
 		},
@@ -1098,7 +1098,7 @@ spec:
 			},
 		}
 
-		sp := api.GetServiceProfileFor(&svc, "client")
+		sp := api.GetServiceProfileFor(&svc, "client", "cluster.local")
 
 		if len(sp.Spec.Routes) != len(tt.expectedRouteNames) {
 			t.Fatalf("Expected %d routes, got %d", len(tt.expectedRouteNames), len(sp.Spec.Routes))

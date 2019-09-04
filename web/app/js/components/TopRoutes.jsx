@@ -109,7 +109,7 @@ class TopRoutes extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let allMetricsUrl = this.api.urlsForResource("all");
+    let allMetricsUrl = this.api.urlsForResourceNoStats("all");
     this.api.setCurrentRequests([
       this.api.fetchServices(),
       this.api.fetchMetrics(allMetricsUrl)

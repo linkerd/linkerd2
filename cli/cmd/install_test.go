@@ -41,15 +41,15 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	identityContext := (&installIdentityValues{
+	identityContext := toIdentityContext(&charts.Identity{
 		Issuer: &charts.Issuer{
 			ClockSkewAllowance: "20s",
 			IssuanceLifetime:   "86400s",
 		},
-	}).toIdentityContext()
+	})
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
-	metaValues := &installValues{
+	metaValues := &charts.Values{
 		Namespace:                   "Namespace",
 		ClusterDomain:               "cluster.local",
 		ControllerImage:             "ControllerImage",
@@ -75,7 +75,7 @@ func TestRender(t *testing.T) {
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
-		Configs: configJSONs{
+		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
@@ -158,7 +158,7 @@ func TestRender(t *testing.T) {
 	addFakeTLSSecrets(noInitContainerValues)
 
 	testCases := []struct {
-		values         *installValues
+		values         *charts.Values
 		configs        *config.All
 		goldenFileName string
 	}{
@@ -177,7 +177,7 @@ func TestRender(t *testing.T) {
 			controlPlaneNamespace = tc.configs.GetGlobal().GetLinkerdNamespace()
 
 			var buf bytes.Buffer
-			if err := tc.values.render(&buf, tc.configs); err != nil {
+			if err := render(&buf, tc.values, tc.configs); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
@@ -305,7 +305,7 @@ func fakeHeartbeatSchedule() string {
 	return "1 2 3 4 5"
 }
 
-func addFakeTLSSecrets(values *installValues) {
+func addFakeTLSSecrets(values *charts.Values) {
 	values.ProxyInjector.CrtPEM = "proxy injector crt"
 	values.ProxyInjector.KeyPEM = "proxy injector key"
 	values.ProfileValidator.CrtPEM = "proxy injector crt"

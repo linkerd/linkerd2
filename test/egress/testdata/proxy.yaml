@@ -1,6 +1,6 @@
 #POST
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: egress-test-https-post
@@ -40,7 +40,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: egress-test-http-post
@@ -81,7 +81,7 @@ spec:
     targetPort: 8080
 #GET
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: egress-test-https-get
@@ -121,7 +121,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: egress-test-http-get
@@ -162,7 +162,7 @@ spec:
     targetPort: 8080
 ## Non www domains
 ---
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: egress-test-not-www-get

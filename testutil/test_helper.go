@@ -204,7 +204,7 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 	return nil
 }
 
-// CheckVersion validates the the output of the "linkerd version" command.
+// CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
 	out, _, err := h.LinkerdRun("version")
 	if err != nil {

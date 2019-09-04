@@ -141,7 +141,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 	reports := []inject.Report{*report}
 
-	if !report.Injectable() {
+	if b, _ := report.Injectable(); !b {
 		return bytes, reports, nil
 	}
 
@@ -193,7 +193,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	warningsPrinted := verbose
 
 	for _, r := range reports {
-		if r.Injectable() {
+		if b, _ := r.Injectable(); b {
 			injected = append(injected, r)
 		}
 
@@ -269,7 +269,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		if r.Injectable() {
+		if b, _ := r.Injectable(); b {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		} else {
 			if r.Kind != "" {

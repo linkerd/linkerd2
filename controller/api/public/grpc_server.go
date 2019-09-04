@@ -40,6 +40,7 @@ type grpcServer struct {
 	destinationClient     destinationPb.DestinationClient
 	k8sAPI                *k8s.API
 	controllerNamespace   string
+	clusterDomain         string
 	ignoredNamespaces     []string
 	mountPathGlobalConfig string
 	mountPathProxyConfig  string
@@ -64,6 +65,7 @@ func newGrpcServer(
 	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
+	clusterDomain string,
 	ignoredNamespaces []string,
 ) *grpcServer {
 
@@ -73,6 +75,7 @@ func newGrpcServer(
 		destinationClient:     destinationClient,
 		k8sAPI:                k8sAPI,
 		controllerNamespace:   controllerNamespace,
+		clusterDomain:         clusterDomain,
 		ignoredNamespaces:     ignoredNamespaces,
 		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
 		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,

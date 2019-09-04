@@ -1,16 +1,14 @@
 module github.com/linkerd/linkerd2
 
-go 1.12
+go 1.12.9
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.2.0 // indirect
+	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
 	github.com/Azure/go-autorest v11.3.2+incompatible // indirect
-	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
 	github.com/aokoli/goutils v1.1.0 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
-	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
 	github.com/containernetworking/cni v0.6.0
 	github.com/coreos/bbolt v1.3.3 // indirect
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
@@ -34,14 +32,14 @@ require (
 	github.com/go-openapi/swag v0.17.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0
 	github.com/gophercloud/gophercloud v0.0.0-20180206165554-104e2578924b // indirect
 	github.com/gorilla/websocket v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v0.0.0-20160910222444-6b7015e65d36
 	github.com/huandu/xstrings v1.2.0 // indirect
-	github.com/imdario/mergo v0.0.0-20180119215619-163f41321a19 // indirect
+	github.com/imdario/mergo v0.3.7
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/julienschmidt/httprouter v1.1.0
@@ -76,9 +74,8 @@ require (
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
-	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
-	google.golang.org/api v0.1.0 // indirect
-	google.golang.org/grpc v1.17.0
+	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
+	google.golang.org/grpc v1.22.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect

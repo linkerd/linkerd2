@@ -1,3 +1,33 @@
+## edge-19.8.7
+
+* Controller
+  * Added Kubernetes events (and log lines) when the proxy injector injects a
+    deployment, and when injection is skipped
+  * Additional preparation for configuring the cluster base domain (thanks
+    @arminbuerkle!)
+* Proxy
+  * Changed the proxy to require the `LINKERD2_PROXY_DESTINATION_SVC_ADDR`
+    environment variable when starting up
+* Web UI
+  * Increased dashboard speed by consolidating existing Prometheus queries
+
+## edge-19.8.6
+
+A new Grafana dashboard has been added which shows historical data for a
+selected namespace. The build process for controller components now requires
+`Go 1.12.9`. Additional contributions were made towards support for custom
+cluster domains.
+
+* Web UI
+  * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
+    historical data for a given namespace, similar to CLI output for
+    `linkerd stat deploy -n myNs` (thanks @bourquep!)
+* Internal
+  * Added requirement for Go `1.12.9` for controller builds to include
+    security fixes
+  * Set `LINKERD2_PROXY_DESTINATION_GET_SUFFIXES` proxy environment variable,
+    in preparation for custom cluster domain support (thanks @arminbuerkle!)
+
 ## stable-2.5.0
 
 This release adds [Helm support](https://linkerd.io/2/tasks/install-helm/),

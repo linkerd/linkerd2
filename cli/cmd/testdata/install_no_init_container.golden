@@ -302,13 +302,19 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["namespaces"]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["list"]
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -783,7 +789,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -804,6 +809,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -983,7 +990,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1013,7 +1019,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1032,6 +1037,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1151,7 +1158,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             - "-controller-namespace=linkerd"
             - "-log-level=info"
-            resources:
             securityContext:
               runAsUser: 2103
 ---
@@ -1233,7 +1239,6 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1252,6 +1257,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1518,7 +1525,6 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources:
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -1540,6 +1546,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1756,7 +1764,6 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -1778,6 +1785,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1921,7 +1930,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1943,6 +1951,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2118,7 +2128,6 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2138,6 +2147,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2299,13 +2310,14 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources:
         securityContext:
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/linkerd/config
+          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -2319,6 +2331,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2394,6 +2408,9 @@ spec:
           name: linkerd-identity-end-entity
       serviceAccountName: linkerd-tap
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

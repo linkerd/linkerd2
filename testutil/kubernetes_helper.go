@@ -102,7 +102,7 @@ func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) 
 // getDeployments gets all deployments with a count of their ready replicas in
 // the specified namespace.
 func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, error) {
-	deploys, err := h.clientset.AppsV1beta2().Deployments(namespace).List(metav1.ListOptions{})
+	deploys, err := h.clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -201,21 +201,25 @@ func (h *KubernetesHelper) CheckService(namespace string, serviceName string) er
 	})
 }
 
-// GetPodsForDeployment returns all pods for the given deployment
-func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]corev1.Pod, error) {
-	deploy, err := h.clientset.AppsV1beta2().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
+// GetPods returns all pods with the given labels
+func (h *KubernetesHelper) GetPods(namespace string, podLabels map[string]string) ([]corev1.Pod, error) {
 	podList, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
-		LabelSelector: labels.Set(deploy.Spec.Selector.MatchLabels).AsSelector().String(),
+		LabelSelector: labels.Set(podLabels).AsSelector().String(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return podList.Items, nil
+}
+
+// GetPodsForDeployment returns all pods for the given deployment
+func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]corev1.Pod, error) {
+	deploy, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return h.GetPods(namespace, deploy.Spec.Selector.MatchLabels)
 }
 
 // GetPodNamesForDeployment returns all pod names for the given deployment

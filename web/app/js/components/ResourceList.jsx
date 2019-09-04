@@ -41,7 +41,7 @@ export class ResourceListBase extends React.Component {
 
     let processedMetrics = [];
     if (data.length === 1) {
-      processedMetrics = processSingleResourceRollup(data[0]);
+      processedMetrics = processSingleResourceRollup(data[0], this.props.resource);
     }
 
     return (
@@ -51,11 +51,13 @@ export class ResourceListBase extends React.Component {
           metrics={processedMetrics}
           title="HTTP metrics" />
 
+        {this.props.resource !== "trafficsplit" &&
         <MetricsTable
           resource={this.props.resource}
           isTcpTable={true}
           metrics={processedMetrics}
           title="TCP metrics" />
+        }
       </React.Fragment>
     );
   }

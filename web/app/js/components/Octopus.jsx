@@ -29,7 +29,7 @@ const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopu
 
 const styles = () => ({
   graphContainer: {
-    overflowX: "scroll",
+    overflowX: "auto",
     padding: "16px 0"
   },
   graph: {
@@ -93,7 +93,8 @@ class Octopus extends React.Component {
   }
 
   linkedResourceTitle = (resource, display) => {
-    return _isNil(resource.namespace) ? display :
+    // trafficsplit leaf resources cannot be linked
+    return _isNil(resource.namespace) || resource.isLeafService ? display :
     <this.props.api.ResourceLink
       resource={resource}
       linkText={display} />;
@@ -107,7 +108,9 @@ class Octopus extends React.Component {
 
     // if the resource only has TCP stats, display those instead
     let showTcp = false;
-    if (_isNil(resource.successRate) && _isNil(resource.requestRate)) {
+    // trafficsplit leaf with zero traffic should still show HTTP stats
+    if (_isNil(resource.successRate) && _isNil(resource.requestRate) &&
+      resource.type !== "service") {
       showTcp = true;
     }
 
@@ -134,6 +137,12 @@ class Octopus extends React.Component {
   renderHttpStats(resource) {
     return (
       <TableBody>
+        {resource.isLeafService &&
+        <TableRow>
+          <TableCell><Typography>Weight</Typography></TableCell>
+          <TableCell numeric={true}><Typography>{resource.tsStats.weight}</Typography></TableCell>
+        </TableRow>
+        }
         <TableRow>
           <TableCell><Typography>SR</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
@@ -142,10 +151,12 @@ class Octopus extends React.Component {
           <TableCell><Typography>RPS</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
         </TableRow>
+        {!resource.isApexService &&
         <TableRow>
           <TableCell><Typography>P99</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
         </TableRow>
+        }
       </TableBody>
     );
   }

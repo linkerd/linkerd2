@@ -97,7 +97,7 @@ metadata:
   labels:
     pod-template-hash: hash-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: ReplicaSet
     name: rs-emojivoto-meshed
 status:
@@ -112,20 +112,20 @@ metadata:
   labels:
     pod-template-hash: hash-not-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: ReplicaSet
     name: rs-emojivoto-not-meshed
 status:
   phase: Pending
   podIP: 4.3.2.1
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   name: rs-emojivoto-meshed
   namespace: emojivoto
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: meshed-deployment
 spec:
@@ -133,13 +133,13 @@ spec:
     matchLabels:
       pod-template-hash: hash-meshed
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   name: rs-emojivoto-not-meshed
   namespace: emojivoto
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: not-meshed-deployment
 spec:
@@ -244,7 +244,7 @@ metadata:
   labels:
     pod-template-hash: hash-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: meshed-deployment
 status:
@@ -280,7 +280,7 @@ metadata:
   labels:
     pod-template-hash: hash-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: meshed-deployment
 status:
@@ -327,7 +327,7 @@ metadata:
   labels:
     pod-template-hash: hash-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: meshed-deployment
 status:
@@ -371,7 +371,7 @@ metadata:
   labels:
     pod-template-hash: hash-meshed
   ownerReferences:
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: Deployment
     name: meshed-deployment
 status:
@@ -402,6 +402,7 @@ status:
 				nil,
 				k8sAPI,
 				"linkerd",
+				"mycluster.local",
 				[]string{},
 			)
 
@@ -504,6 +505,7 @@ metadata:
 				nil,
 				k8sAPI,
 				"linkerd",
+				"mycluster.local",
 				[]string{},
 			)
 
@@ -534,6 +536,7 @@ func TestConfig(t *testing.T) {
 			nil,
 			k8sAPI,
 			"linkerd",
+			"mycluster.local",
 			[]string{},
 		)
 		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"

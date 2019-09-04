@@ -112,8 +112,12 @@ const processStatTable = table => {
   let rows = _compact(table.podGroup.rows.map(row => {
     let runningPodCount = parseInt(row.runningPodCount, 10);
     let meshedPodCount = parseInt(row.meshedPodCount, 10);
+    let rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`;
+    if (row.tsStats) {
+      rowKey = `${row.resource.namespace}-${row.resource.type}-${row.resource.name}-${row.tsStats.leaf}`;
+    }
     return {
-      key: `${row.resource.namespace}-${row.resource.type}-${row.resource.name}`,
+      key: rowKey,
       name: row.resource.name,
       namespace: row.resource.namespace,
       type: row.resource.type,
@@ -122,6 +126,7 @@ const processStatTable = table => {
       successRate: getSuccessRate(row),
       latency: getLatency(row),
       tcp: getTcpStats(row),
+      tsStats: row.tsStats,
       added: runningPodCount > 0 && meshedPodCount > 0,
       pods: {
         totalPods: row.runningPodCount,
@@ -149,8 +154,8 @@ export const processTopRoutesResults = rows => {
   ));
 };
 
-export const processSingleResourceRollup = rawMetrics => {
-  let result = processMultiResourceRollup(rawMetrics);
+export const processSingleResourceRollup = (rawMetrics, resourceType) => {
+  let result = processMultiResourceRollup(rawMetrics, resourceType);
   if (_size(result) > 1) {
     console.error("Multi metric returned; expected single metric.");
   }
@@ -160,7 +165,7 @@ export const processSingleResourceRollup = rawMetrics => {
   return _values(result)[0];
 };
 
-export const processMultiResourceRollup = rawMetrics => {
+export const processMultiResourceRollup = (rawMetrics, resourceType) => {
   if (_isEmpty(rawMetrics.ok) || _isEmpty(rawMetrics.ok.statTables)) {
     return {};
   }
@@ -168,6 +173,18 @@ export const processMultiResourceRollup = rawMetrics => {
   let metricsByResource = {};
   _each(rawMetrics.ok.statTables, table => {
     if (_isEmpty(table.podGroup.rows)) {
+      return;
+    }
+
+    // Because trafficsplit metrics are now being returned from the Stat API
+    // endpoint, `processMultiResourceRollup` can erroneously
+    // return trafficsplit leaf services as "upstream" or "downstream" of a
+    // selected resource in the Octopus graph.
+
+    // The below line checks if the statTable contains trafficsplit data and
+    // returns early if the selected resource is not "all" or "trafficsplit",
+    // since any other resource should not include trafficsplit metrics.
+    if (table.podGroup.rows[0].tsStats && resourceType !== "all" && resourceType !== "trafficsplit") {
       return;
     }
 
