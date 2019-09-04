@@ -23,9 +23,12 @@ const (
 )
 
 func main() {
-	name := flag.String("name", "", "identity name")
-	dir := flag.String("dir", "", "directory under which credentials are written")
-	flags.ConfigureAndParse()
+	cmd := flag.NewFlagSet("public-api", flag.ExitOnError)
+
+	name := cmd.String("name", "", "identity name")
+	dir := cmd.String("dir", "", "directory under which credentials are written")
+
+	flags.ConfigureAndParse(cmd, os.Args[1:])
 
 	if os.Getenv(envDisabled) != "" {
 		log.Debug("Identity disabled.")
