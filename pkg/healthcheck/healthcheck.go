@@ -393,7 +393,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can create Deployments",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "deployments")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apps", "v1", "deployments")
 					},
 				},
 				{

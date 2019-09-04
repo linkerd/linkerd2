@@ -322,7 +322,7 @@ func TestHealthChecker(t *testing.T) {
 }
 
 func TestCheckCanCreate(t *testing.T) {
-	exp := fmt.Errorf("not authorized to access deployments.extensions")
+	exp := fmt.Errorf("not authorized to access deployments.apps")
 
 	hc := NewHealthChecker(
 		[]CategoryID{},
@@ -333,7 +333,7 @@ func TestCheckCanCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	err = hc.checkCanCreate("", "extensions", "v1beta1", "deployments")
+	err = hc.checkCanCreate("", "apps", "v1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
 		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp, err)
