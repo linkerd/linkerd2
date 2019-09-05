@@ -10,12 +10,13 @@ variety of other improvements.
 * Controller
   * Fixed an issue where the proxy-injector has insufficient RBAC permissions
   * Added support for disabling the heartbeat cronjob (thanks @kevtaylor!)
+* Proxy
+  * Decreased proxy Docker image size by removing bundled debug tools
 * Web UI
   * Added trafficsplits as a resource to the dashboard, including a trafficsplit
     detail page
 * Internal
   * Added support for Kubernetes 1.16
-
 
 ## edge-19.8.7
 
