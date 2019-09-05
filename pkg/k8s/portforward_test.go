@@ -154,7 +154,7 @@ status:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = NewPortForward(&KubernetesAPI{Interface: k8sClient}, test.ns, test.deployName, 0, 0, false)
+			_, err = NewPortForward(&KubernetesAPI{Interface: k8sClient}, test.ns, test.deployName, "localhost", 0, 0, false)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

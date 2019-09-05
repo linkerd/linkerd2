@@ -222,6 +222,7 @@ func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI)
 		kubeAPI,
 		controlPlaneNamespace,
 		apiDeployment,
+		"localhost",
 		0,
 		apiPort,
 		false,
