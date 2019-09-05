@@ -168,6 +168,26 @@ func (e *ResourceError) Error() string {
 	return fmt.Sprintf("%s found but should not exist: %s", e.resourceName, strings.Join(names, " "))
 }
 
+// CategoryError provides a custom error type that also contains check category that emitted the error,
+// useful when needed to distinguish between errors from multiple categories
+type CategoryError struct {
+	Category CategoryID
+	Err      error
+}
+
+// Error satisfies the error interface for CategoryError.
+func (e *CategoryError) Error() string {
+	return e.Err.Error()
+}
+
+// IsCategoryError returns true if passed in error is of type CategoryError and belong to the given category
+func IsCategoryError(err error, categoryID CategoryID) bool {
+	if ce, ok := err.(*CategoryError); ok {
+		return ce.Category == categoryID
+	}
+	return false
+}
+
 type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
@@ -881,6 +901,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		err := c.check(ctx)
+		if err != nil {
+			err = &CategoryError{categoryID, err}
+		}
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
@@ -910,6 +933,9 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
+	if err != nil {
+		err = &CategoryError{categoryID, err}
+	}
 	observer(&CheckResult{
 		Category:    categoryID,
 		Description: c.description,
@@ -925,6 +951,9 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 		var err error
 		if check.Status != healthcheckPb.CheckStatus_OK {
 			err = fmt.Errorf(check.FriendlyMessageToUser)
+		}
+		if err != nil {
+			err = &CategoryError{categoryID, err}
 		}
 		observer(&CheckResult{
 			Category:    categoryID,
