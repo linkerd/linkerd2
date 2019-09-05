@@ -34,6 +34,7 @@ var (
 
 	linkerdPods = map[string]int{
 		"linkerd-controller":     1,
+		"linkerd-destination":    1,
 		"linkerd-grafana":        1,
 		"linkerd-identity":       1,
 		"linkerd-prometheus":     1,

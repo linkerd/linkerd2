@@ -1,0 +1,52 @@
+{{with .Values -}}
+---
+###
+### Destination Controller Service
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Namespace}}-destination
+  labels:
+    {{.ControllerComponentLabel}}: destination
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+rules:
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Namespace}}-destination
+  labels:
+    {{.ControllerComponentLabel}}: destination
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-{{.Namespace}}-destination
+subjects:
+- kind: ServiceAccount
+  name: linkerd-destination
+  namespace: {{.Namespace}}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-destination
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: destination
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+{{ end -}}
