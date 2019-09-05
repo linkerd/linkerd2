@@ -12,6 +12,8 @@ variety of other improvements.
   * Added support for disabling the heartbeat cronjob (thanks @kevtaylor!)
 * Proxy
   * Decreased proxy Docker image size by removing bundled debug tools
+  * Fixed an issue where the incorrect content-length could be set for GET
+    requests with bodies
 * Web UI
   * Added trafficsplits as a resource to the dashboard, including a trafficsplit
     detail page
