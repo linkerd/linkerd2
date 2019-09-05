@@ -346,7 +346,7 @@ func TestInstallSP(t *testing.T) {
 
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
-	dashboardURL := fmt.Sprintf("http://127.0.0.1:%d", dashboardPort)
+	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
 
 	outputStream, err := TestHelper.LinkerdRunStream("dashboard", "-p",
 		strconv.Itoa(dashboardPort), "--show", "url")
