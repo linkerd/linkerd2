@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
+	"text/template"
 	"time"
 
 	"github.com/fatih/color"
@@ -97,10 +99,36 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	if err != nil {
 		return nil, err
 	}
+
+	// Based on stern/cmd/cli.go
+	t := "{{color .PodColor .PodName}} {{color .ContainerColor .ContainerName}} {{.Message}}"
+	if o.noColor {
+		t = "{{.PodName}} {{.ContainerName}} {{.Message}}"
+	}
+	funs := map[string]interface{}{
+		"json": func(in interface{}) (string, error) {
+			b, err := json.Marshal(in)
+			if err != nil {
+				return "", err
+			}
+			return string(b), nil
+		},
+		"color": func(color color.Color, text string) string {
+			return color.SprintFunc()(text)
+		},
+	}
+	template, err := template.New("log").Funcs(funs).Parse(t)
+	if err != nil {
+		return nil, err
+	}
+
 	config.PodQuery = podFilterRgx
 	config.Since = o.sinceSeconds
 	config.Timestamps = o.timestamps
 	config.Namespace = controlPlaneNamespace
+	config.ContainerState = stern.RUNNING
+	config.ExcludeContainerQuery = nil
+	config.Template = template
 
 	return config, nil
 }
@@ -191,12 +219,26 @@ func runLogOutput(opts *logCmdConfig) error {
 
 	podInterface := opts.clientset.CoreV1().Pods(opts.Namespace)
 	tails := make(map[string]*stern.Tail)
+	logC := make(chan string, 1024)
+
+	go func() {
+		for {
+			select {
+			case str := <-logC:
+				fmt.Fprintf(os.Stdout, str)
+			case <-ctx.Done():
+				break
+			}
+		}
+	}()
 
 	added, _, err := stern.Watch(
 		ctx,
 		podInterface,
 		opts.PodQuery,
 		opts.ContainerQuery,
+		opts.ExcludeContainerQuery,
+		opts.ContainerState,
 		opts.LabelSelector,
 	)
 
@@ -210,14 +252,16 @@ func runLogOutput(opts *logCmdConfig) error {
 				SinceSeconds: int64(opts.Since.Seconds()),
 				Timestamps:   opts.Timestamps,
 				TailLines:    opts.TailLines,
+				Exclude:      opts.Exclude,
+				Include:      opts.Include,
 				Namespace:    true,
 			}
 
-			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, tailOpts)
+			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, opts.Template, tailOpts)
 			if _, ok := tails[a.GetID()]; !ok {
 				tails[a.GetID()] = newTail
 			}
-			newTail.Start(ctx, podInterface)
+			newTail.Start(ctx, podInterface, logC)
 		}
 	}()
 
