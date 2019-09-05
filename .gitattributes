@@ -1,3 +1,3 @@
-# By default, collapse for these files in in GitHub reviews.
+# By default, collapse for these files in GitHub reviews.
 go.sum linguist-generated=false
 controller/gen/**/*.pb.go linguist-generated=true
