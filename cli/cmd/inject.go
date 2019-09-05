@@ -105,7 +105,7 @@ sub-folders, or coming from stdin.`,
 
 	flags.BoolVar(
 		&options.disableTap, "disable-tap", options.disableTap,
-		"Disables resources from from being tapped",
+		"Disables resources from being tapped",
 	)
 
 	flags.BoolVar(
