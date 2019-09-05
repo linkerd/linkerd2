@@ -23,6 +23,19 @@ instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
 
 Note that the provided certificates must be ECDSA certficates.
 
+## Adding Linkerd's Helm repository
+
+```bash
+# To add the repo for Linkerd2 stable releases:
+helm repo add linkerd-stable https://run.linkerd.io/stable
+
+# To add the repo for Linkerd2 edge releases:
+helm repo add linkerd-edge https://run.linkerd.io/edge
+```
+
+The following instructions use the `linkerd-stable` repo. For installing an edge
+release, just replace with `linkerd-edge`.
+
 ## Installing the chart
 
 You must provide the certificates and keys described in the preceding section,
@@ -31,13 +44,12 @@ and the same expiration date you used to generate the Issuer certificate.
 In this example we set the expiration date to one year ahead:
 
 ```bash
-helm repo add linkerd https://run.linkerd.io/charts
 helm install \
   --set-file Identity.TrustAnchorsPEM=ca.crt \
   --set-file Identity.Issuer.TLS.CrtPEM=issuer.crt \
   --set-file Identity.Issuer.TLS.KeyPEM=issuer.key \
   --set Identity.Issuer.CrtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
-  charts/linkerd2
+  linkerd-stable/linkerd2
 ```
 
 ## Setting High-Availability
@@ -48,15 +60,22 @@ high-availability scenario, analogous to the `--ha` option in `linkerd install`.
 Values such as higher number of replicas, higher memory/cpu limits and
 affinities are specified in that file.
 
+You can get ahold of `values-ha.yaml` by fetching the chart files:
+
 ```bash
-helm repo add linkerd https://run.linkerd.io/charts
+helm fetch --untar linkerd-stable/linkerd2
+```
+
+Then use the `-f` flag to provide the override file, for example:
+
+```bash
 helm install \
   --set-file Identity.TrustAnchorsPEM=ca.crt \
   --set-file Identity.Issuer.TLS.CrtPEM=issuer.crt \
   --set-file Identity.Issuer.TLS.KeyPEM=issuer.key \
   --set Identity.Issuer.CrtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
-  -f charts/linkerd2/values-ha.yaml
-  charts/linkerd2
+  -f linkerd2/values-ha.yaml
+  linkerd-stable/linkerd2
 ```
 
 ## Configuration
