@@ -47,6 +47,7 @@ type (
 		WebhookFailurePolicy        string
 		OmitWebhookSideEffects      bool
 		RestrictDashboardPrivileges bool
+		DisableHeartBeat            bool
 		HeartbeatSchedule           string
 		Configs                     ConfigJSONs
 		Identity                    *Identity

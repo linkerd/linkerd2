@@ -91,9 +91,11 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-grafana
   namespace: {{.Namespace}}
+{{ if not .DisableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
   namespace: {{.Namespace}}
+{{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Namespace}}
