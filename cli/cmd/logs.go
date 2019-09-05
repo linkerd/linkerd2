@@ -219,6 +219,11 @@ func runLogOutput(opts *logCmdConfig) error {
 
 	podInterface := opts.clientset.CoreV1().Pods(opts.Namespace)
 	tails := make(map[string]*stern.Tail)
+
+	// This channel serializes all log output.
+	// It is intended to workaround https://github.com/wercker/stern/issues/96,
+	// and is based on
+	// https://github.com/oandrew/stern/commit/8723308e46b408e239ce369ced12706d01479532
 	logC := make(chan string, 1024)
 
 	go func() {
