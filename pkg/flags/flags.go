@@ -13,17 +13,17 @@ import (
 // ConfigureAndParse adds flags that are common to all go processes. This
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
-func ConfigureAndParse() {
+func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	klog.InitFlags(nil)
 	flag.Set("stderrthreshold", "FATAL")
 	flag.Set("logtostderr", "false")
 	flag.Set("log_file", "/dev/null")
 	flag.Set("v", "0")
-	logLevel := flag.String("log-level", log.InfoLevel.String(),
+	logLevel := cmd.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug")
-	printVersion := flag.Bool("version", false, "print version and exit")
+	printVersion := cmd.Bool("version", false, "print version and exit")
 
-	flag.Parse()
+	cmd.Parse(args)
 
 	// set log timestamps
 	formatter := &log.TextFormatter{FullTimestamp: true}

@@ -1,4 +1,4 @@
-package main
+package identity
 
 import (
 	"flag"
@@ -25,14 +25,19 @@ import (
 // TODO watch trustAnchorsPath for changes
 // TODO watch issuerPath for changes
 // TODO restrict servicetoken audiences (and lifetimes)
-func main() {
-	addr := flag.String("addr", ":8080", "address to serve on")
-	adminAddr := flag.String("admin-addr", ":9990", "address of HTTP admin server")
-	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	issuerPath := flag.String("issuer",
+
+// Main executes the identity subcommand
+func Main(args []string) {
+	cmd := flag.NewFlagSet("identity", flag.ExitOnError)
+
+	addr := cmd.String("addr", ":8080", "address to serve on")
+	adminAddr := cmd.String("admin-addr", ":9990", "address of HTTP admin server")
+	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
-	flags.ConfigureAndParse()
+
+	flags.ConfigureAndParse(cmd, args)
 
 	cfg, err := config.Global(consts.MountPathGlobalConfig)
 	if err != nil {
