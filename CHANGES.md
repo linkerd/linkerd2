@@ -1,3 +1,22 @@
+## edge-19.9.1
+
+This edge release adds traffic splits into the Linkerd dashboard as well as a
+variety of other improvements.
+
+* CLI
+  * Improved the error message when the CLI cannot connect to Kubernetes (thanks
+    @alenkacz!)
+  * Added `--address` flag to `linkerd dashboard` (thanks @bmcstdio!)
+* Controller
+  * Fixed an issue where the proxy-injector has insufficient RBAC permissions
+  * Added support for disabling the heartbeat cronjob (thanks @kevtaylor!)
+* Web UI
+  * Added trafficsplits as a resource to the dashboard, including a trafficsplit
+    detail page
+* Internal
+  * Added support for Kubernetes 1.16
+
+
 ## edge-19.8.7
 
 * Controller
