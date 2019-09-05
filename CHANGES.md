@@ -8,7 +8,7 @@ variety of other improvements.
     @alenkacz!)
   * Added `--address` flag to `linkerd dashboard` (thanks @bmcstdio!)
 * Controller
-  * Fixed an issue where the proxy-injector has insufficient RBAC permissions
+  * Fixed an issue where the proxy-injector had insufficient RBAC permissions
   * Added support for disabling the heartbeat cronjob (thanks @kevtaylor!)
 * Proxy
   * Decreased proxy Docker image size by removing bundled debug tools
