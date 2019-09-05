@@ -11,7 +11,7 @@ COPY charts/partials charts/partials
 # TODO: `go generate` does not honor -mod=readonly
 RUN go generate -mod=readonly ./pkg/charts/static
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/controller -tags prod -mod=readonly ./controller/cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/controller -tags prod -mod=readonly -ldflags "-s -w" ./controller/cmd
 
 ## package runtime
 FROM scratch
