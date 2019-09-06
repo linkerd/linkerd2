@@ -27,9 +27,11 @@ import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
+import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
 import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
+import grey from '@material-ui/core/colors/grey';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
@@ -128,6 +130,10 @@ const styles = theme => {
       fontSize: "18px",
       paddingLeft: "3px",
       paddingRight: "3px",
+    },
+    // color is consistent with Octopus Graph coloring
+    externalLinkIcon: {
+      color: grey[500],
     },
     badge: {
       backgroundColor: yellow[500],
@@ -300,6 +306,7 @@ class NavigationBase extends React.Component {
             <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
               <ListItemText primary="Documentation" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
             </MenuItem>
             { this.menuItem("/community", "Community",
               <Badge
@@ -311,17 +318,20 @@ class NavigationBase extends React.Component {
               ) }
             <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-              <ListItemText primary="Join the Mailing List" />
+              <ListItemText primary="Mailing List" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
             </MenuItem>
 
             <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon>{slackIcon}</ListItemIcon>
-              <ListItemText primary="Join us on Slack" />
+              <ListItemText primary="Slack" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
             </MenuItem>
 
             <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon>{githubIcon}</ListItemIcon>
               <ListItemText primary="File an Issue" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
             </MenuItem>
           </MenuList>
 
