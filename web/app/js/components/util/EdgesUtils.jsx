@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import _each from 'lodash/each';
 import _isEmpty from 'lodash/isEmpty';
-import _startsWith from 'lodash/startsWith';
 
 export const processEdges = (rawEdges, resourceName) => {
   let edges = [];
@@ -13,15 +12,15 @@ export const processEdges = (rawEdges, resourceName) => {
       return;
     }
     // check if any of the returned edges match the current resourceName
-    if (_startsWith(edge.src.name, resourceName)) {
+    if (edge.src.name === resourceName) {
       // current resource is SRC
       edge.direction = "OUTBOUND";
       edge.identity = edge.serverId;
       edge.name = edge.dst.name;
       edge.namespace = edge.dst.namespace;
-      edge.key = edge.dst.name + edge.src.name;
+      edge.key = edge.src.name + edge.dst.name;
       edges.push(edge);
-    } else if (_startsWith(edge.dst.name, resourceName)) {
+    } else if (edge.dst.name === resourceName) {
       // current resource is DST
       edge.direction = "INBOUND";
       edge.identity = edge.clientId;
