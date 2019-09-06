@@ -1,5 +1,5 @@
-.travis.yml
 .git
+.github
 **/.idea
 **/cmake-*
 **/CMakeLists.txt
