@@ -15,7 +15,6 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
-	github.com/cpuguy83/go-md2man v1.0.8 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
 	github.com/deislabs/smi-sdk-go v0.0.0-20190610232231-f281e2121a16
 	github.com/dgrijalva/jwt-go v3.1.0+incompatible // indirect
@@ -40,12 +39,11 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v0.0.0-20160910222444-6b7015e65d36
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.7
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/julienschmidt/httprouter v1.1.0
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/linkerd/linkerd2-proxy-api v0.1.9
-	github.com/linkerd/linkerd2-proxy-init v1.1.0
+	github.com/linkerd/linkerd2-proxy-init v1.2.0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.7
 	github.com/mattn/go-runewidth v0.0.2
@@ -58,15 +56,14 @@ require (
 	github.com/projectcalico/libcalico-go v1.7.3
 	github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
-	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sergi/go-diff v1.0.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd // indirect
 	github.com/sirupsen/logrus v1.0.4
 	github.com/soheilhy/cmux v0.1.4 // indirect
-	github.com/spf13/cobra v0.0.1
-	github.com/spf13/pflag v1.0.1
+	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.3
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/wercker/stern v0.0.0-20171214125149-b04b5491222d
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect

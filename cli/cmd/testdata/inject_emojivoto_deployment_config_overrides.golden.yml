@@ -153,7 +153,7 @@ spec:
         - 4190,9998,7777,8888
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:v1.1.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
