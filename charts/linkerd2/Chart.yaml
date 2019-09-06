@@ -8,4 +8,4 @@ kubeVersion: ">=1.12.0-0"
 name: "linkerd2"
 sources:
 - https://github.com/linkerd/linkerd2/
-version: 0.1.0
+version: 0.2.1

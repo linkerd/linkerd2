@@ -26,17 +26,17 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		return bytes.Buffer{}, err
 	}
 
-	// Keep this slice synced with the contents of /charts/partials
+	// Keep this slice synced with the contents of /charts/linkerd2-partials
 	partialsFiles := []*chartutil.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
+		{Name: "charts/linkerd2-partials/" + chartutil.ChartfileName},
+		{Name: "charts/linkerd2-partials/templates/_proxy.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_proxy-init.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_volumes.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_resources.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_metadata.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_helpers.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_debug.tpl"},
+		{Name: "charts/linkerd2-partials/templates/_capabilities.tpl"},
 	}
 	if err := filesReader("", partialsFiles); err != nil {
 		return bytes.Buffer{}, err

@@ -158,9 +158,9 @@ func chartControlPlane(t *testing.T, ha bool) *pb.Chart {
 func chartPartials(t *testing.T) *pb.Chart {
 	chart := &pb.Chart{
 		Metadata: &pb.Metadata{
-			Name: "partials",
+			Name: "linkerd2-partials",
 			Sources: []string{
-				filepath.Join("..", "..", "..", "charts", "partials"),
+				filepath.Join("..", "..", "..", "charts", "linkerd2-partials"),
 			},
 		},
 		Templates: []*pb.Template{

@@ -3,4 +3,4 @@ dependencies:
   repository: file://../linkerd2-partials
   version: 0.2.0
 digest: sha256:80ae9ce398c9f4003c1548af936bd4bdd4ad2d0486183657ca0c09c2d298b795
-generated: "2019-09-06T10:18:27.908871+03:00"
+generated: "2019-09-06T10:18:30.760137+03:00"

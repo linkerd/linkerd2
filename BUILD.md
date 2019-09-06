@@ -368,10 +368,12 @@ bin/update-codegen.sh
 ## Helm chart
 
 The Linkerd control plane chart is located in the
-[`charts/linkerd2`](charts/linkerd2) folder. The [`charts/patch`](charts/patch)
-chart consists of the Linkerd proxy specification, which is used by the proxy
-injector to inject the proxy container. Both charts depend on the partials
-subchart which can be found in the [`charts/partials`](charts/partials) folder.
+[`charts/linkerd2`](charts/linkerd2) folder. The
+[`charts/linkerd2-patch`](charts/linkerd2-patch) chart consists of the
+Linkerd proxy specification, which is used by the proxy injector to
+inject the proxy container. Both charts depend on the partials subchart
+which can be found in the
+[`charts/linkerd2-partials`](charts/linkerd2-partials) folder.
 
 During development, please use the [`bin/helm`](bin/helm) wrapper script to
 invoke the Helm commands. For example,
@@ -392,7 +394,7 @@ generate your own certificates to use the chart, as explained
 
 Whenever you make changes to the files under
 [`charts/linkerd2/templates`](charts/linkerd2/templates) or its dependency
-[`charts/partials`](charts/partials), make sure to run
+[`charts/linkerd2-partials`](charts/linkerd2-partials), make sure to run
 [`bin/helm-build`](bin/helm-build) which will refresh the dependencies and lint
 the templates.
 

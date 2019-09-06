@@ -195,8 +195,8 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 
 	chart := &charts.Chart{
-		Name:      "patch",
-		Dir:       "patch",
+		Name:      "linkerd2-patch",
+		Dir:       "linkerd2-patch",
 		Namespace: values.Namespace,
 		RawValues: rawValues,
 		Files:     files,

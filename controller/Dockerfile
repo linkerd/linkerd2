@@ -4,8 +4,8 @@ WORKDIR /linkerd-build
 COPY controller/gen controller/gen
 COPY pkg pkg
 COPY controller controller
-COPY charts/patch charts/patch
-COPY charts/partials charts/partials
+COPY charts/linkerd2-patch charts/linkerd2-patch
+COPY charts/linkerd2-partials charts/linkerd2-partials
 
 # Generate static templates
 # TODO: `go generate` does not honor -mod=readonly
