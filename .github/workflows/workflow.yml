@@ -20,6 +20,7 @@ on:
 
 # Docker build and integration tests for every master/tag push and linkerd org PR
 #
+# docker_pull
 # docker_build
 # kind_setup
 #   -> kind_integration
@@ -123,6 +124,31 @@ jobs:
   # - every PR from a linkerd org member
   #
 
+  docker_pull:
+    name: Docker pull
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      uses: actions/checkout@v1
+    - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+    - name: Docker pull
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+      run: |
+        bin/docker pull gcr.io/linkerd-io/proxy-init:v1.2.0
+        bin/docker pull prom/prometheus:v2.11.1
+
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
@@ -185,7 +211,7 @@ jobs:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm]
-    needs: [docker_build, kind_setup]
+    needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -210,8 +236,10 @@ jobs:
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
         ssh -T github@$DOCKER_ADDRESS &> /dev/null << EOF
+          # TODO: This is using the kind binary on the remote host.
+          kind load docker-image gcr.io/linkerd-io/proxy-init:v1.2.0 --name=$KIND_CLUSTER
+          kind load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
           for IMG in controller grafana proxy web ; do
-            # TODO: This is using the kind binary on the remote host.
             kind load docker-image gcr.io/linkerd-io/\$IMG:$TAG --name=$KIND_CLUSTER
           done
         EOF
