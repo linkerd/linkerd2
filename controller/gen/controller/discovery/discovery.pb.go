@@ -9,6 +9,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	public "github.com/linkerd/linkerd2/controller/gen/public"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -294,6 +296,14 @@ func (c *discoveryClient) Endpoints(ctx context.Context, in *EndpointsParams, op
 // DiscoveryServer is the server API for Discovery service.
 type DiscoveryServer interface {
 	Endpoints(context.Context, *EndpointsParams) (*EndpointsResponse, error)
+}
+
+// UnimplementedDiscoveryServer can be embedded to have forward compatible implementations.
+type UnimplementedDiscoveryServer struct {
+}
+
+func (*UnimplementedDiscoveryServer) Endpoints(ctx context.Context, req *EndpointsParams) (*EndpointsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Endpoints not implemented")
 }
 
 func RegisterDiscoveryServer(s *grpc.Server, srv DiscoveryServer) {
