@@ -1493,6 +1493,13 @@ data:
 
       kubernetes_sd_configs:
       - role: node
+      metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(container|machine)_(cpu|memory|network|fs)_(.+)'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'container_memory_failures_total' # unneeded large metric
+        action: drop
       relabel_configs:
       - action: labelmap
         regex: __meta_kubernetes_node_label_(.+)
