@@ -197,6 +197,8 @@ github.com/linkerd/linkerd2-proxy-init v1.1.0 h1:CbUNLPcZYBq5NFBDQNhG6R3mCMtMch9
 github.com/linkerd/linkerd2-proxy-init v1.1.0/go.mod h1:JNuEmZkYNFgBrd/89LMDRG4vDq3qEeU4qYm33M+UulU=
 github.com/linkerd/linkerd2-proxy-init v1.2.0 h1:cTuiVw2udZbcnuYgj9B/3Lqy2ZtiiXPf2w2QIzhsfOQ=
 github.com/linkerd/linkerd2-proxy-init v1.2.0/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
+github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c h1:v8RmXOGO65HHLqcDpVNGGe3krA8FptfxcYS3wSS8bJU=
+github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c/go.mod h1:aaP5eLMmFcyJUsZB6FwAO+0eILWeBKvupuHeeEuY0qQ=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mailru/easyjson v0.0.0-20160728113105-d5b7844b561a/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 h1:2gxZ0XQIU/5z3Z3bUBu+FXuk2pFbkN6tcwi/pjyaDic=
@@ -274,8 +276,6 @@ github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 h1:bUGsEnyNbVPw06B
 github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749/go.mod h1:ZY1cvUeJuFPAdZ/B6v7RHavJWZn2YPVFQ1OSXhCGOkg=
 github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd h1:ug7PpSOB5RBPK1Kg6qskGBoP3Vnj/aNYFTznWvlkGo0=
 github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd/go.mod h1:TrYk7fJVaAttu97ZZKrO9UbRa8izdowaMIZcxYMbVaw=
-github.com/siggy/stern v0.0.0-20190905052711-472ce9d16dab h1:nxmQc2FJ0ieAcLlJtsd8Wg/g4DwbKXYpsHc7tCAoOpU=
-github.com/siggy/stern v0.0.0-20190905052711-472ce9d16dab/go.mod h1:aaP5eLMmFcyJUsZB6FwAO+0eILWeBKvupuHeeEuY0qQ=
 github.com/sirupsen/logrus v1.0.4 h1:gzbtLsZC3Ic5PptoRG+kQj4L60qjK7H7XszrU163JNQ=
 github.com/sirupsen/logrus v1.0.4/go.mod h1:pMByvHTf9Beacp5x1UXfOR9xyW/9antXMhjMPG0dEzc=
 github.com/soheilhy/cmux v0.1.4 h1:0HKaf1o97UwFjHH9o5XsHUOF+tqmdA7KEzXLpiyaw0E=

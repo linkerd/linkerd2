@@ -85,4 +85,4 @@ require (
 	sigs.k8s.io/yaml v1.1.0
 )
 
-replace github.com/wercker/stern => github.com/siggy/stern v0.0.0-20190905052711-472ce9d16dab
+replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c
