@@ -15,7 +15,7 @@ var Version = undefinedVersion
 // ProxyInitVersion is the pinned version of the proxy-init, from
 // https://github.com/linkerd/linkerd2-proxy-init
 // This has to be kept in sync with the constraint version for
-// github.com/linkerd/linkerd2-proxy-init in /Gopkg.toml
+// github.com/linkerd/linkerd2-proxy-init in /go.mod
 var ProxyInitVersion = "v1.2.0"
 
 const (
