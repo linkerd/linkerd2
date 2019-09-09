@@ -1672,6 +1672,18 @@ metadata:
 	}
 }
 
+func TestDependencies(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{KubernetesVersionChecks},
+		&Options{},
+	)
+	for _, c := range hc.categories {
+		if c.id == KubernetesAPIChecks && !c.enabled {
+			t.Fatal("Expecting KubernetesAPIChecks to be executed when KubernetesVersionChecks is specified because of dependencies but it's not enabled")
+		}
+	}
+}
+
 func TestValidateControlPlanePods(t *testing.T) {
 	pod := func(name string, phase corev1.PodPhase, ready bool) corev1.Pod {
 		return corev1.Pod{

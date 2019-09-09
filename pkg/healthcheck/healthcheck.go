@@ -240,9 +240,10 @@ type CheckResult struct {
 type checkObserver func(*CheckResult)
 
 type category struct {
-	id       CategoryID
-	checkers []checker
-	enabled  bool
+	id           CategoryID
+	checkers     []checker
+	enabled      bool
+	dependencies []CategoryID
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -286,6 +287,17 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	for _, category := range categoryIDs {
 		checkMap[category] = struct{}{}
 	}
+
+	// add dependencies to the list of checks to be executed
+	for i := range hc.categories {
+		if _, ok := checkMap[hc.categories[i].id]; ok {
+			for _, dep := range hc.categories[i].dependencies {
+				checkMap[dep] = struct{}{}
+			}
+		}
+	}
+
+	// enable all selected checks
 	for i := range hc.categories {
 		if _, ok := checkMap[hc.categories[i].id]; ok {
 			hc.categories[i].enabled = true
@@ -330,6 +342,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{},
 		},
 		{
 			id: KubernetesVersionChecks,
@@ -349,6 +362,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdPreInstallChecks,
@@ -438,6 +452,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdPreInstallCapabilityChecks,
@@ -459,6 +474,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdPreInstallGlobalResourcesChecks,
@@ -506,6 +522,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdConfigChecks,
@@ -575,6 +592,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdControlPlaneExistenceChecks,
@@ -624,7 +642,9 @@ func (hc *HealthChecker) allCategories() []category {
 						// save this into hc.controlPlanePods, since this check only
 						// succeeds when all pods are up
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						if hc.controlPlanePods == nil {
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						}
 						if err != nil {
 							return err
 						}
@@ -656,6 +676,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks},
 		},
 		{
 			id: LinkerdAPIChecks,
@@ -668,7 +689,9 @@ func (hc *HealthChecker) allCategories() []category {
 					fatal:               true,
 					check: func(context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						if hc.controlPlanePods == nil {
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						}
 						if err != nil {
 							return err
 						}
@@ -693,6 +716,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks},
 		},
 		{
 			id: LinkerdVersionChecks,
@@ -723,6 +747,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{LinkerdControlPlaneExistenceChecks},
 		},
 		{
 			id: LinkerdControlPlaneVersionChecks,
@@ -747,6 +772,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{LinkerdControlPlaneExistenceChecks, LinkerdVersionChecks},
 		},
 		{
 			id: LinkerdDataPlaneChecks,
@@ -828,6 +854,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			dependencies: []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks, LinkerdVersionChecks},
 		},
 	}
 }
