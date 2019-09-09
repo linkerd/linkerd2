@@ -74,8 +74,8 @@ func Inject(api *k8s.API,
 			parent = &objs[0]
 		}
 		ownerKind = strings.ToLower(ownerRef.Kind)
-		proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace)).Inc()
 	}
+	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace)).Inc()
 
 	if injectable, reason := report.Injectable(); !injectable {
 		if parent != nil {
