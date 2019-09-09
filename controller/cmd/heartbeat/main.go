@@ -1,4 +1,4 @@
-package main
+package heartbeat
 
 import (
 	"flag"
@@ -13,11 +13,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
-	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	prometheusURL := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
-	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	flags.ConfigureAndParse()
+// Main executes the heartbeat subcommand
+func Main(args []string) {
+	cmd := flag.NewFlagSet("heartbeat", flag.ExitOnError)
+
+	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	prometheusURL := cmd.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
+	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+
+	flags.ConfigureAndParse(cmd, args)
 
 	// Gather the following fields:
 	// - version

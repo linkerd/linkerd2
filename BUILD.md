@@ -420,10 +420,7 @@ build_architecture
     "_tag.sh" -> "Dockerfile-go-deps";
 
     "build-cli-bin" -> "_tag.sh";
-    "build-cli-bin" -> "dep";
     "build-cli-bin" -> "root-tag";
-
-    "dep";
 
     "docker-build" -> "build-cli-bin";
     "docker-build" -> "docker-build-cli-bin";
@@ -501,17 +498,13 @@ build_architecture
 
     "test-run";
 
-    ".travis.yml" -> "_gcp.sh";
-    ".travis.yml" -> "_tag.sh";
-    ".travis.yml" -> "dep";
-    ".travis.yml" -> "docker-build";
-    ".travis.yml" -> "docker-pull";
-    ".travis.yml" -> "docker-pull-deps";
-    ".travis.yml" -> "docker-push";
-    ".travis.yml" -> "docker-push-deps";
-    ".travis.yml" -> "docker-retag-all";
-    ".travis.yml" -> "lint";
-    ".travis.yml" -> "protoc-go.sh";
+    "workflow.yml" -> "_gcp.sh";
+    "workflow.yml" -> "_tag.sh";
+    "workflow.yml" -> "docker-build";
+    "workflow.yml" -> "docker-push";
+    "workflow.yml" -> "docker-push-deps";
+    "workflow.yml" -> "docker-retag-all";
+    "workflow.yml" -> "lint";
 
     "update-go-deps-shas" -> "_tag.sh";
     "update-go-deps-shas" -> "cli/Dockerfile-bin";

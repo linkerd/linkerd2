@@ -18,11 +18,14 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component string) {
-	metricsAddr := flag.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
-	addr := flag.String("addr", ":8443", "address to serve on")
-	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig")
-	flags.ConfigureAndParse()
+func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component, subcommand string, args []string) {
+	cmd := flag.NewFlagSet(subcommand, flag.ExitOnError)
+
+	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
+	addr := cmd.String("addr", ":8443", "address to serve on")
+	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
+
+	flags.ConfigureAndParse(cmd, args)
 
 	stop := make(chan os.Signal, 1)
 	defer close(stop)

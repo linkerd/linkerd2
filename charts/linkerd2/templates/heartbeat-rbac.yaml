@@ -1,4 +1,5 @@
-{{with .Values -}}
+{{ with .Values -}}
+{{ if not .DisableHeartBeat -}}
 ---
 ###
 ### Heartbeat RBAC
@@ -41,4 +42,5 @@ metadata:
   labels:
     {{.ControllerComponentLabel}}: heartbeat
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
+{{- end }}
 {{- end }}

@@ -18,7 +18,6 @@ dockerfile="$rootdir/Dockerfile-proxy"
 validate_go_deps_tag "$dockerfile"
 
 (
-    $bindir/docker-build-base
     $bindir/docker-build-go-deps
 ) >/dev/null
 

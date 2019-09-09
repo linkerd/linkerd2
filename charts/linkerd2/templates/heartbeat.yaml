@@ -1,4 +1,5 @@
-{{with .Values -}}
+{{ with .Values -}}
+{{ if not .DisableHeartBeat -}}
 ---
 ###
 ### Heartbeat
@@ -42,4 +43,5 @@ spec:
             {{- end }}
             securityContext:
               runAsUser: {{.ControllerUID}}
+{{- end }}
 {{- end }}

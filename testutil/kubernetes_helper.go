@@ -258,7 +258,7 @@ func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) 
 		return "", err
 	}
 
-	pf, err := k8s.NewPortForward(k8sAPI, namespace, deployName, 0, remotePort, false)
+	pf, err := k8s.NewPortForward(k8sAPI, namespace, deployName, "localhost", 0, remotePort, false)
 	if err != nil {
 		return "", err
 	}

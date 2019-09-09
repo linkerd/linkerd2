@@ -5,10 +5,42 @@ on:
   push:
     branches:
     - master
-    - refs/tags/edge-[0-9]?.[0-9]?.[0-9]?
-    - refs/tags/stable-2.[0-9]?.[0-9]?
+    tags:
+    - "*"
+
+
+# Jobs by event type and dependencies:
+
+# Unit tests for every master/tag push and PR
+#
+# validate_go_deps
+# go_unit_tests
+# go_lint
+# js_unit_tests
+
+# Docker build and integration tests for every master/tag push and linkerd org PR
+#
+# docker_pull
+# docker_build
+# kind_setup
+#   -> kind_integration
+#     -> kind_cleanup
+
+# Docker deploy and cloud integration tests for every master/tag push
+#
+#       -> docker_deploy
+#         -> cloud_integration
+#           -> cloud_cleanup
 
 jobs:
+
+  #
+  # Unit tests run for:
+  # - every master push
+  # - every tag push
+  # - every PR
+  #
+
   validate_go_deps:
     name: Validate go deps
     runs-on: ubuntu-18.04
@@ -85,13 +117,47 @@ jobs:
         bin/web
         bin/web test --reporters=jest-dot-reporter
 
+  #
+  # Docker build and kind integration tests run for:
+  # - every master push
+  # - every tag push
+  # - every PR from a linkerd org member
+  #
+
+  docker_pull:
+    name: Docker pull
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      uses: actions/checkout@v1
+    - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+    - name: Docker pull
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+      run: |
+        bin/docker pull gcr.io/linkerd-io/proxy-init:v1.2.0
+        bin/docker pull prom/prometheus:v2.11.1
+
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -101,10 +167,12 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Docker build
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
-        PATH="`pwd`/bin:$PATH" DOCKER_TRACE=1 bin/docker-build
+        export PATH="`pwd`/bin:$PATH"
+        DOCKER_TRACE=1 bin/docker-build
 
   kind_setup:
     strategy:
@@ -114,8 +182,10 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -125,26 +195,31 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind cluster setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        bin/kind create cluster --name=$KIND_CLUSTER --wait=1m
+        # retry cluster creation once in case of port conflict or kubeadm failure
+        bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
         scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) github@$DOCKER_ADDRESS:/tmp
 
   kind_integration:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm]
-    needs: [docker_build, kind_setup]
+    needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -154,39 +229,44 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind load docker images
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
         ssh -T github@$DOCKER_ADDRESS &> /dev/null << EOF
+          # TODO: This is using the kind binary on the remote host.
+          kind load docker-image gcr.io/linkerd-io/proxy-init:v1.2.0 --name=$KIND_CLUSTER
+          kind load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
           for IMG in controller grafana proxy web ; do
-            # TODO: This is using the kind binary on the remote host.
             kind load docker-image gcr.io/linkerd-io/\$IMG:$TAG --name=$KIND_CLUSTER
           done
         EOF
     - name: Install linkerd CLI
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         image="gcr.io/linkerd-io/cli-bin:$TAG"
         id=$(bin/docker create $image)
-        mkdir -p ./target/cli/linux
-        bin/docker cp "$id:/out/linkerd-linux" "./target/cli/linux/linkerd"
+        bin/docker cp "$id:/out/linkerd-linux" "$HOME/.linkerd"
+        $HOME/.linkerd version --client
         # validate CLI version matches the repo
-        [[ "$TAG" == "$(bin/linkerd version --short --client)" ]]
+        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
     - name: Run integration tests
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
       run: |
+        export PATH="`pwd`/bin:$PATH"
         echo "$GITCOOKIE_SH" | bash
         # TODO: pin Go version
         go version
-        export PATH="`pwd`/bin:$PATH"
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
         # Restore kubeconfig from remote docker host.
@@ -200,7 +280,7 @@ jobs:
         bin/kubectl version --short # Test connection to kind cluster.
         (
           . bin/_test-run.sh
-          init_test_run `pwd`/bin/linkerd
+          init_test_run $HOME/.linkerd
           ${{ matrix.integration_test }}_integration_tests
         )
 
@@ -215,6 +295,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v1
     # for debugging
     - name: Dump env
@@ -229,6 +310,7 @@ jobs:
         JOB_CONTEXT: ${{ toJson(job) }}
       run: echo "$JOB_CONTEXT"
     - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -238,9 +320,163 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Kind cluster cleanup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
         bin/kind delete cluster --name=$KIND_CLUSTER
+
+  #
+  # Docker deploy and cloud integration tests run for:
+  # - every master push
+  # - every tag push
+  #
+
+  docker_deploy:
+    name: Docker deploy
+    runs-on: ubuntu-18.04
+    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration, kind_cleanup]
+    steps:
+    - name: Checkout code
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      uses: actions/checkout@v1
+    - name: Docker SSH setup
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+    - name: Configure gcloud
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        GCP_ZONE: ${{ secrets.GCP_ZONE }}
+        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+      run: |
+        # Install gcloud and kubectl.
+        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
+        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
+        (
+          . bin/_gcp.sh ;
+          install_gcloud_kubectl "$dir"
+          # Configure gcloud with a service account.
+          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+          # Get a kubernetes context.
+          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+        )
+        . "$dir/path.bash.inc"
+        gcloud auth configure-docker
+        bin/kubectl version --short
+    - name: Docker push
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+      run: |
+        export PATH="`pwd`/bin:$PATH"
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        bin/docker-push-deps
+        bin/docker-push $TAG
+        bin/docker-retag-all $TAG master
+        bin/docker-push master
+
+  cloud_integration:
+    name: Cloud integration tests
+    runs-on: ubuntu-18.04
+    needs: [docker_deploy]
+    steps:
+    - name: Checkout code
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      uses: actions/checkout@v1
+    - name: Configure gcloud
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        GCP_ZONE: ${{ secrets.GCP_ZONE }}
+        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+      run: |
+        # Install gcloud and kubectl.
+        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
+        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
+        (
+          . bin/_gcp.sh ;
+          install_gcloud_kubectl "$dir"
+          # Configure gcloud with a service account.
+          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+          # Get a kubernetes context.
+          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+        )
+        . "$dir/path.bash.inc"
+        gcloud auth configure-docker
+        bin/kubectl version --short
+    - name: Install linkerd CLI
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      run: |
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        image="gcr.io/linkerd-io/cli-bin:$TAG"
+        id=$(bin/docker create $image)
+        bin/docker cp "$id:/out/linkerd-linux" "$HOME/.linkerd"
+        $HOME/.linkerd version --client
+        # validate CLI version matches the repo
+        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
+        echo "Installed Linkerd CLI version: $TAG"
+    - name: Run integration tests
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: |
+        export PATH="`pwd`/bin:$PATH"
+        echo "$GITCOOKIE_SH" | bash
+        version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
+        bin/test-run $HOME/.linkerd linkerd-$version
+    - name: CNI tests
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      run: |
+        export TAG="$($HOME/.linkerd version --client --short)"
+        go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+
+  cloud_cleanup:
+    if: always()
+    name: Cloud cleanup
+    runs-on: ubuntu-18.04
+    needs: [cloud_integration]
+    steps:
+    - name: Checkout code
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      uses: actions/checkout@v1
+    - name: Configure gcloud
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      env:
+        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        GCP_ZONE: ${{ secrets.GCP_ZONE }}
+        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+      run: |
+        # Install gcloud and kubectl.
+        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
+        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
+        (. bin/_gcp.sh ;
+          install_gcloud_kubectl "$dir"
+          # Configure gcloud with a service account.
+          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+          # Get a kubernetes context.
+          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+        )
+        . "$dir/path.bash.inc"
+        gcloud auth configure-docker
+        bin/kubectl version --short
+    - name: Cleanup
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      run: |
+        export PATH="`pwd`/bin:$PATH"
+        bin/test-cleanup

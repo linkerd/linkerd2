@@ -24,6 +24,7 @@ import (
 type PortForward struct {
 	method     string
 	url        *url.URL
+	host       string
 	localPort  int
 	remotePort int
 	emitLogs   bool
@@ -66,7 +67,7 @@ func NewProxyMetricsForward(
 		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyAdminPortName, pod.GetName(), container.Name)
 	}
 
-	return newPortForward(k8sAPI, pod.GetNamespace(), pod.GetName(), 0, int(port.ContainerPort), emitLogs)
+	return newPortForward(k8sAPI, pod.GetNamespace(), pod.GetName(), "localhost", 0, int(port.ContainerPort), emitLogs)
 }
 
 // NewPortForward returns an instance of the PortForward struct that can be used
@@ -79,7 +80,7 @@ func NewProxyMetricsForward(
 func NewPortForward(
 	k8sAPI *KubernetesAPI,
 	namespace, deployName string,
-	localPort, remotePort int,
+	host string, localPort, remotePort int,
 	emitLogs bool,
 ) (*PortForward, error) {
 	timeoutSeconds := int64(30)
@@ -102,13 +103,13 @@ func NewPortForward(
 		return nil, fmt.Errorf("no running pods found for %s", deployName)
 	}
 
-	return newPortForward(k8sAPI, namespace, podName, localPort, remotePort, emitLogs)
+	return newPortForward(k8sAPI, namespace, podName, host, localPort, remotePort, emitLogs)
 }
 
 func newPortForward(
 	k8sAPI *KubernetesAPI,
 	namespace, podName string,
-	localPort, remotePort int,
+	host string, localPort, remotePort int,
 	emitLogs bool,
 ) (*PortForward, error) {
 
@@ -129,6 +130,7 @@ func newPortForward(
 	return &PortForward{
 		method:     "POST",
 		url:        req.URL(),
+		host:       host,
 		localPort:  localPort,
 		remotePort: remotePort,
 		emitLogs:   emitLogs,
@@ -156,7 +158,7 @@ func (pf *PortForward) run() error {
 	ports := []string{fmt.Sprintf("%d:%d", pf.localPort, pf.remotePort)}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, pf.method, pf.url)
 
-	fw, err := portforward.New(dialer, ports, pf.stopCh, pf.readyCh, out, errOut)
+	fw, err := portforward.NewOnAddresses(dialer, []string{pf.host}, ports, pf.stopCh, pf.readyCh, out, errOut)
 	if err != nil {
 		return err
 	}
@@ -213,7 +215,7 @@ func (pf *PortForward) GetStop() <-chan struct{} {
 
 // URLFor returns the URL for the port-forward connection.
 func (pf *PortForward) URLFor(path string) string {
-	return fmt.Sprintf("http://127.0.0.1:%d%s", pf.localPort, path)
+	return fmt.Sprintf("http://%s:%d%s", pf.host, pf.localPort, path)
 }
 
 // getEphemeralPort selects a port for the port-forwarding. It binds to a free
