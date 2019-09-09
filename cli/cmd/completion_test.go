@@ -22,7 +22,7 @@ func TestCompletion(t *testing.T) {
 			t.Fatalf("Unexpected bash output: %+v", bash)
 		}
 
-		if !strings.Contains(zsh, "#compdef linkerd") {
+		if !strings.Contains(zsh, "#compdef _linkerd linkerd") {
 			t.Fatalf("Unexpected zsh output: %+v", zsh)
 		}
 	})
