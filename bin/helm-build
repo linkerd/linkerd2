@@ -14,7 +14,7 @@ $bindir/helm dep up $rootdir/charts/linkerd2
 $bindir/helm dep up $rootdir/charts/patch
 $bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
 
-if [ "$1" == "deploy" ]; then
+if [ "$1" == "package" ]; then
     . $bindir/_tag.sh
     tag=$(named_tag)
     clean_head || { echo "There are uncommitted changes"; exit 1; }
