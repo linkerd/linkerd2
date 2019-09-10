@@ -503,6 +503,7 @@ jobs:
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
         GCP_ZONE: ${{ secrets.GCP_ZONE }}
+        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
       run: |
         # Install gcloud and gsutil.
         echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
@@ -512,7 +513,7 @@ jobs:
           install_gcloud "$dir"
           gcloud components install gsutil
           # Configure gcloud with a service account.
-          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE"
+          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
         )
         . "$dir/path.bash.inc"
     - name: Helm chart creation
