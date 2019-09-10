@@ -18,7 +18,6 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
 	github.com/deislabs/smi-sdk-go v0.0.0-20190610232231-f281e2121a16
 	github.com/dgrijalva/jwt-go v3.1.0+incompatible // indirect
-	github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96 // indirect
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.6.8
@@ -33,7 +32,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0
-	github.com/gophercloud/gophercloud v0.0.0-20180206165554-104e2578924b // indirect
 	github.com/gorilla/websocket v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v0.0.0-20160910222444-6b7015e65d36
@@ -44,8 +42,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/linkerd/linkerd2-proxy-api v0.1.9
 	github.com/linkerd/linkerd2-proxy-init v1.2.0
-	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.7
+	github.com/mattn/go-isatty v0.0.9
 	github.com/mattn/go-runewidth v0.0.2
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
@@ -65,24 +62,26 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
-	github.com/wercker/stern v0.0.0-20171214125149-b04b5491222d
+	github.com/wercker/stern v0.0.0-20190705090245-4fa46dd6987f
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
+	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297
 	google.golang.org/grpc v1.22.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 	gopkg.in/tchap/go-patricia.v2 v2.3.0 // indirect
-	k8s.io/api v0.0.0-20181213150558-05914d821849
+	k8s.io/api v0.0.0-20190620084959-7cf5895f2711
 	k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476
-	k8s.io/apimachinery v0.0.0-20181127105237-2b1284ed4c93
-	k8s.io/client-go v0.0.0-20181213151034-8d9ed539ba31
+	k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
+	k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 	k8s.io/helm v2.12.2+incompatible
 	k8s.io/klog v0.3.2
 	sigs.k8s.io/yaml v1.1.0
 )
+
+replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c
