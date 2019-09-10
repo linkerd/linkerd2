@@ -491,7 +491,7 @@ jobs:
   chart_deploy:
     name: Helm chart deploy
     runs-on: ubuntu-18.04
-    needs: [cloud_integration]
+    #needs: [cloud_integration]
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags')
