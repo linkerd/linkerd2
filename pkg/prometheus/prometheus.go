@@ -9,9 +9,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// WrapTransport provides a function for wrapping an http.RoundTripper
-type WrapTransport func(http.RoundTripper) http.RoundTripper
-
 var (
 	// RequestLatencyBucketsSeconds represents latency buckets to record (seconds)
 	RequestLatencyBucketsSeconds = append(append(append(append(
@@ -110,7 +107,7 @@ func WithTelemetry(handler http.Handler) http.HandlerFunc {
 }
 
 // ClientWithTelemetry instruments the HTTP client with prometheus
-func ClientWithTelemetry(name string, wt WrapTransport) WrapTransport {
+func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripper) func(http.RoundTripper) http.RoundTripper {
 	latency := clientLatency.MustCurryWith(prometheus.Labels{"client": name})
 	counter := clientCounter.MustCurryWith(prometheus.Labels{"client": name})
 	inFlight := clientInFlight.With(prometheus.Labels{"client": name})

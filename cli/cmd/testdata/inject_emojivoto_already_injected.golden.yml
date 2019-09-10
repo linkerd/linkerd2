@@ -136,7 +136,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.1.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -301,7 +301,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.1.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -466,7 +466,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.1.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -631,7 +631,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.1.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

@@ -1,5 +1,5 @@
 ## compile binaries
-FROM gcr.io/linkerd-io/go-deps:c921a98b as golang
+FROM gcr.io/linkerd-io/go-deps:1c1e51a3 as golang
 WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts

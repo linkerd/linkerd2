@@ -38,7 +38,6 @@ RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly \
     k8s.io/client-go/discovery \
     k8s.io/client-go/kubernetes \
     k8s.io/client-go/kubernetes/scheme \
-    k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1 \
     k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1 \
     k8s.io/client-go/kubernetes/typed/apps/v1 \
     k8s.io/client-go/kubernetes/typed/apps/v1beta1 \
@@ -79,9 +78,7 @@ RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly \
     k8s.io/client-go/tools/clientcmd \
     k8s.io/client-go/tools/pager \
     k8s.io/client-go/transport \
-    k8s.io/client-go/util/buffer \
     k8s.io/client-go/util/cert \
     k8s.io/client-go/util/flowcontrol \
     k8s.io/client-go/util/homedir \
-    k8s.io/client-go/util/integer \
     k8s.io/client-go/util/jsonpath
