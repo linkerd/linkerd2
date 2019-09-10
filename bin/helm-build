@@ -9,7 +9,7 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 
 $bindir/helm lint $rootdir/charts/partials
-
+$bindir/helm init --client-only
 $bindir/helm dep up $rootdir/charts/linkerd2
 $bindir/helm dep up $rootdir/charts/patch
 $bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
