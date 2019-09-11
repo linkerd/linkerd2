@@ -35,11 +35,11 @@ func busyTest(t *testing.T, output string) {
 
 	headers := &pb.Headers{
 		Headers: []*pb.Headers_Header{
-			&pb.Headers_Header{
+			{
 				Name:  "header1-name",
 				Value: "header1-value",
 			},
-			&pb.Headers_Header{
+			{
 				Name:     "header2-name",
 				ValueBin: []byte("header2-value"),
 			},
