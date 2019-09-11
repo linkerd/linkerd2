@@ -1,0 +1,94 @@
+{
+  "source": {
+    "ip": {
+      "ipv4": 1
+    },
+    "port": 0
+  },
+  "sourceMeta": null,
+  "destination": {
+    "ip": {
+      "ipv4": 9
+    },
+    "port": 0
+  },
+  "destinationMeta": {
+    "labels": {
+      "pod": "my-pod",
+      "tls": "true"
+    }
+  },
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "http": {
+    "requestInit": {
+      "id": {
+        "base": 1,
+        "stream": "0"
+      },
+      "method": null,
+      "scheme": null,
+      "authority": "localhost",
+      "path": "/some/path",
+      "headers": {
+        "headers": [
+          {
+            "name": "header1-name",
+            "valueStr": "header1-value"
+          },
+          {
+            "name": "header2-name",
+            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
+          }
+        ]
+      }
+    }
+  }
+}
+{
+  "source": {
+    "ip": {
+      "ipv4": 1
+    },
+    "port": 0
+  },
+  "sourceMeta": null,
+  "destination": {
+    "ip": {
+      "ipv4": 9
+    },
+    "port": 0
+  },
+  "destinationMeta": {
+    "labels": {
+    }
+  },
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "http": {
+    "responseEnd": {
+      "id": {
+        "base": 1,
+        "stream": "0"
+      },
+      "sinceRequestInit": "10s",
+      "sinceResponseInit": "100s",
+      "responseBytes": "1337",
+      "eos": {
+        "grpcStatusCode": 666
+      },
+      "trailers": {
+        "headers": [
+          {
+            "name": "header1-name",
+            "valueStr": "header1-value"
+          },
+          {
+            "name": "header2-name",
+            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
+          }
+        ]
+      }
+    }
+  }
+}
