@@ -1,0 +1,101 @@
+{
+  "source": {
+    "ip": {
+      "Ip": {
+        "Ipv4": 1
+      }
+    }
+  },
+  "destination": {
+    "ip": {
+      "Ip": {
+        "Ipv4": 9
+      }
+    }
+  },
+  "destination_meta": {
+    "labels": {
+      "pod": "my-pod",
+      "tls": "true"
+    }
+  },
+  "proxy_direction": 2,
+  "Event": {
+    "Http": {
+      "Event": {
+        "RequestInit": {
+          "id": {
+            "base": 1
+          },
+          "authority": "localhost",
+          "path": "/some/path",
+          "headers": {
+            "headers": [
+              {
+                "name": "header1-name",
+                "value": "header1-value"
+              },
+              {
+                "name": "header2-name",
+                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+{
+  "source": {
+    "ip": {
+      "Ip": {
+        "Ipv4": 1
+      }
+    }
+  },
+  "destination": {
+    "ip": {
+      "Ip": {
+        "Ipv4": 9
+      }
+    }
+  },
+  "destination_meta": {},
+  "proxy_direction": 2,
+  "Event": {
+    "Http": {
+      "Event": {
+        "ResponseEnd": {
+          "id": {
+            "base": 1
+          },
+          "since_request_init": {
+            "seconds": 10
+          },
+          "since_response_init": {
+            "seconds": 100
+          },
+          "response_bytes": 1337,
+          "eos": {
+            "End": {
+              "GrpcStatusCode": 666
+            }
+          },
+          "trailers": {
+            "headers": [
+              {
+                "name": "header1-name",
+                "value": "header1-value"
+              },
+              {
+                "name": "header2-name",
+                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

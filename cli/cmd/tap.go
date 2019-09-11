@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 )
+
+type renderTapEventFunc func(*pb.TapEvent, string) string
 
 type tapOptions struct {
 	namespace   string
@@ -43,6 +46,14 @@ func newTapOptions() *tapOptions {
 		path:        "",
 		output:      "",
 	}
+}
+
+func (o *tapOptions) validate() error {
+	if o.output == "" || o.output == wideOutput || o.output == jsonOutput {
+		return nil
+	}
+
+	return fmt.Errorf("output format \"%s\" not recognized", o.output)
 }
 
 func newCmdTap() *cobra.Command {
@@ -98,20 +109,14 @@ func newCmdTap() *cobra.Command {
 				Path:        options.path,
 			}
 
+			err := options.validate()
+			if err != nil {
+				return fmt.Errorf("Validation error when executing tap command: %v", err)
+			}
+
 			req, err := util.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
-			}
-
-			wide := false
-			switch options.output {
-			// TODO: support more output formats?
-			case "":
-				// default output format.
-			case wideOutput:
-				wide = true
-			default:
-				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
@@ -119,7 +124,7 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, wide)
+			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, options)
 		},
 	}
 
@@ -145,33 +150,38 @@ func newCmdTap() *cobra.Command {
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, wide bool) error {
-	var resource string
-	if wide {
-		resource = req.GetTarget().GetResource().GetType()
-	}
-
+func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, options *tapOptions) error {
 	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}
 	defer body.Close()
 
-	return renderTap(w, reader, resource)
+	return writeTapEventsToBuffer(w, reader, req, options)
 }
 
-func renderTap(w io.Writer, tapByteStream *bufio.Reader, resource string) error {
-	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapByteStream, tableWriter, resource)
+func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *pb.TapByResourceRequest, options *tapOptions) error {
+	writer := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
+
+	var err error
+	switch options.output {
+	case "":
+		err = renderTapEvents(tapByteStream, writer, renderTapEvent, "")
+	case wideOutput:
+		resource := req.GetTarget().GetResource().GetType()
+		err = renderTapEvents(tapByteStream, writer, renderTapEvent, resource)
+	case jsonOutput:
+		err = renderTapEvents(tapByteStream, writer, renderTapEventJSON, "")
+	}
 	if err != nil {
 		return err
 	}
-	tableWriter.Flush()
+	writer.Flush()
 
 	return nil
 }
 
-func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
+func renderTapEvents(tapByteStream *bufio.Reader, w *tabwriter.Writer, render renderTapEventFunc, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := pb.TapEvent{}
@@ -183,7 +193,7 @@ func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, re
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, renderTapEvent(&event, resource))
+		_, err = fmt.Fprintln(w, render(&event, resource))
 		if err != nil {
 			return err
 		}
@@ -290,6 +300,16 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 	default:
 		return fmt.Sprintf("unknown %s", flow)
 	}
+}
+
+// renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
+func renderTapEventJSON(event *pb.TapEvent, _ string) string {
+	e, err := json.MarshalIndent(event, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
+	}
+
+	return fmt.Sprintf("%s", e)
 }
 
 // src returns the source peer of a `TapEvent`.
