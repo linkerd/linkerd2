@@ -365,7 +365,8 @@ jobs:
         dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
         (
           . bin/_gcp.sh ;
-          install_gcloud_kubectl "$dir"
+          install_gcloud "$dir"
+          gcloud components install kubectl
           # Configure gcloud with a service account.
           set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
           # Get a kubernetes context.
@@ -408,7 +409,8 @@ jobs:
         dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
         (
           . bin/_gcp.sh ;
-          install_gcloud_kubectl "$dir"
+          install_gcloud "$dir"
+          gcloud components install kubectl
           # Configure gcloud with a service account.
           set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
           # Get a kubernetes context.
@@ -465,7 +467,8 @@ jobs:
         echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
         dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
         (. bin/_gcp.sh ;
-          install_gcloud_kubectl "$dir"
+          install_gcloud "$dir"
+          gcloud components install kubectl
           # Configure gcloud with a service account.
           set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
           # Get a kubernetes context.
@@ -479,3 +482,49 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/test-cleanup
+
+  #
+  # Helm chart artifact deploy run for:
+  # - every tag push
+  #
+
+  chart_deploy:
+    name: Helm chart deploy
+    runs-on: ubuntu-18.04
+    #needs: [cloud_integration]
+    steps:
+    - name: Checkout code
+      if: startsWith(github.ref, 'refs/tags')
+      uses: actions/checkout@v1
+    - name: Configure gsutils
+      if: startsWith(github.ref, 'refs/tags')
+      env:
+        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.LINKERD_SITE_TOKEN }}
+        GCP_PROJECT: ${{ secrets.LINKERD_SITE_PROJECT }}
+        GCP_ZONE: ${{ secrets.LINKERD_SITE_ZONE }}
+        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+      run: |
+        # Install gcloud and gsutil.
+        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
+        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
+        (
+          . bin/_gcp.sh ;
+          install_gcloud "$dir"
+          gcloud components install gsutil
+          # Configure gcloud with a service account.
+          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
+        )
+        . "$dir/path.bash.inc"
+    - name: Helm chart creation
+      if: startsWith(github.ref, 'refs/tags')
+      run: |
+        bin/helm-build package
+    - name: Edge Helm chart upload
+      if: startsWith(github.ref, 'refs/tags/edge')
+      run: |
+        gsutil rsync target/helm gs://helm.linkerd.io/edge
+    - name: Stable Helm chart upload
+      if: startsWith(github.ref, 'refs/tags/stable')
+      run: |
+        gsutil rsync target/helm gs://helm.linkerd.io/stable
