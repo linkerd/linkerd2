@@ -5,7 +5,7 @@
   "version": "{{.LinkerdVersion}}",
   "identityContext":{
     "trustDomain": "{{.Identity.TrustDomain}}",
-    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Identity.TrustAnchorsPEM | replace "\n" "\\n"}}",
+    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Identity.TrustAnchorsPEM | trim | replace "\n" "\\n"}}",
     "issuanceLifeTime": "{{.Identity.Issuer.IssuanceLifeTime}}",
     "clockSkewAllowance": "{{.Identity.Issuer.ClockSkewAllowance}}"
   },
