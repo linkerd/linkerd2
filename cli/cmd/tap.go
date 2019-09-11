@@ -145,7 +145,7 @@ func newCmdTap() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
-		"Output format. One of: wide")
+		fmt.Sprintf("Output format. One of: \"%s\", \"%s\"", wideOutput, jsonOutput))
 
 	return cmd
 }
