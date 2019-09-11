@@ -1341,7 +1341,15 @@ func (m *Headers) GetHeaders() []*Headers_Header {
 }
 
 type Headers_Header struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The name of a header in a request.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The value of a header in a request. If the value consists entirely of
+	// UTF-8 encodings, `value` will be set; otherwise a binary value is
+	// assumed and `value_bin` will be set.
+	//
+	// Type `oneof` was not used for this field because of nesting that occurs
+	// when rendering the headers (see IPAddress for example). It would not be
+	// incorrect for both to be set--just overly verbose.
 	Value                string   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	ValueBin             []byte   `protobuf:"bytes,3,opt,name=value_bin,json=valueBin,proto3" json:"value_bin,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
