@@ -8,6 +8,7 @@
 - [figo](https://www.figo.io/)
 - [Just Football](https://justfootball.io)
 - [Kairos](https://kairos.com)
+- [PlayStudios Asia](https://www.playstudios.asia)
 - [Studyo](https://studyo.co)
 - [In Loco](https://inloco.com.br/en/)
 - [LeadIQ](https://leadiq.com)
