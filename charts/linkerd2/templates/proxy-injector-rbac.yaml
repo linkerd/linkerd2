@@ -67,8 +67,8 @@ metadata:
 type: Opaque
 data:
   {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc .ProxyInjector.CrtPEM) (empty .ProxyInjector.CrtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc .ProxyInjector.KeyPEM) (empty .ProxyInjector.KeyPEM) }}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .ProxyInjector.CrtPEM)) (empty .ProxyInjector.CrtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .ProxyInjector.KeyPEM)) (empty .ProxyInjector.KeyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -88,7 +88,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: {{ .Namespace }}
       path: "/"
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc .ProxyInjector.CrtPEM) (empty .ProxyInjector.CrtPEM) }}
+    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .ProxyInjector.CrtPEM)) (empty .ProxyInjector.CrtPEM) }}
   failurePolicy: {{.WebhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" ]

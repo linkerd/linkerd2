@@ -20,8 +20,8 @@ metadata:
     {{.Identity.Issuer.CrtExpiryAnnotation}}: {{required "Please provide the identity issuer certificate expiry date" .Identity.Issuer.CrtExpiry}}
     {{- end}}
 data:
-  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Identity.Issuer.TLS.CrtPEM)}}
-  key.pem: {{b64enc (required "Please provide the identity issue private key" .Identity.Issuer.TLS.KeyPEM)}}
+  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Identity.Issuer.TLS.CrtPEM | trim)}}
+  key.pem: {{b64enc (required "Please provide the identity issue private key" .Identity.Issuer.TLS.KeyPEM | trim)}}
 {{- end}}
 ---
 kind: Service
