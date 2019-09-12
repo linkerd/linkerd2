@@ -33,11 +33,15 @@
             "headers": [
               {
                 "name": "header1-name",
-                "value": "header1-value"
+                "Value": {
+                  "ValueStr": "header1-value"
+                }
               },
               {
                 "name": "header2-name",
-                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
+                "Value": {
+                  "ValueBin": "aGVhZGVyMi12YWx1ZQ=="
+                }
               }
             ]
           }
@@ -86,11 +90,15 @@
             "headers": [
               {
                 "name": "header1-name",
-                "value": "header1-value"
+                "Value": {
+                  "ValueStr": "header1-value"
+                }
               },
               {
                 "name": "header2-name",
-                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
+                "Value": {
+                  "ValueBin": "aGVhZGVyMi12YWx1ZQ=="
+                }
               }
             ]
           }
