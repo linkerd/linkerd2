@@ -5,6 +5,7 @@ infrastructure, but this edge release lays the groundwork for some big
 new features to land in the coming releases!
 
 * Helm
+  * There's now a public Helm repo! This release can be installed with `helm repo add linkerd-edge https://helm.linkerd.io/edge && helm install linkerd-edge/linkerd2`
   * Improved TLS credential parsing by ingoring spurious newlines
 * Proxy
   * Decreased proxy-init Docker image size by removing bundled debug tools
