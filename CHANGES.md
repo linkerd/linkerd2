@@ -6,11 +6,11 @@ new features to land in the coming releases!
 
 * Helm
   * There's now a public Helm repo! This release can be installed with `helm repo add linkerd-edge https://helm.linkerd.io/edge && helm install linkerd-edge/linkerd2`
-  * Improved TLS credential parsing by ingoring spurious newlines
+  * Improved TLS credential parsing by ignoring spurious newlines
 * Proxy
   * Decreased proxy-init Docker image size by removing bundled debug tools
 * Web UI
-  * Fix an issue where the edges table could end up with duplicates
+  * Fixed an issue where the edges table could end up with duplicates
   * Added an icon to more clearly label external links
 * Internal
   * Upgraded client-go to v12.0.0
