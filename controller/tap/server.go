@@ -361,17 +361,15 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		headers := func(orig *httpPb.Headers) *public.Headers {
 			var headers []*public.Headers_Header
 			for _, header := range orig.GetHeaders() {
-				var v string
-				var vb []byte
-
+				n := header.GetName()
 				b := header.GetValue()
+
+				h := public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueBin{ValueBin: b}}
 				if utf8.Valid(b) {
-					v = string(b)
-				} else {
-					log.Debugf("header value '%v' contains invalid UTF-8 encodings", b)
-					vb = b
+					h = public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueStr{ValueStr: string(b)}}
 				}
-				headers = append(headers, &public.Headers_Header{Name: header.GetName(), Value: v, ValueBin: vb})
+
+				headers = append(headers, &h)
 			}
 
 			return &public.Headers{

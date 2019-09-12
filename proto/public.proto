@@ -162,12 +162,10 @@ message Headers {
     // The value of a header in a request. If the value consists entirely of
     // UTF-8 encodings, `value` will be set; otherwise a binary value is
     // assumed and `value_bin` will be set.
-    //
-    // Type `oneof` was not used for this field because of nesting that occurs
-    // when rendering the headers (see IPAddress for example). It would not be
-    // incorrect for both to be set--just overly verbose.
-    string value = 2;
-    bytes value_bin = 3;
+    oneof value {
+      string value_str = 2;
+      bytes value_bin = 3;
+    }
   }
 
   repeated Header headers = 1;
