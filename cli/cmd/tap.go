@@ -311,7 +311,7 @@ func renderTapEventJSON(event *pb.TapEvent, _ string) string {
 		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
 	}
 
-	return fmt.Sprintf("%s", e)
+	return e
 }
 
 // src returns the source peer of a `TapEvent`.
