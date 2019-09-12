@@ -1,51 +1,46 @@
 {
   "source": {
     "ip": {
-      "Ip": {
-        "Ipv4": 1
-      }
-    }
+      "ipv4": 1
+    },
+    "port": 0
   },
+  "sourceMeta": null,
   "destination": {
     "ip": {
-      "Ip": {
-        "Ipv4": 9
-      }
-    }
+      "ipv4": 9
+    },
+    "port": 0
   },
-  "destination_meta": {
+  "destinationMeta": {
     "labels": {
       "pod": "my-pod",
       "tls": "true"
     }
   },
-  "proxy_direction": 2,
-  "Event": {
-    "Http": {
-      "Event": {
-        "RequestInit": {
-          "id": {
-            "base": 1
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "http": {
+    "requestInit": {
+      "id": {
+        "base": 1,
+        "stream": "0"
+      },
+      "method": null,
+      "scheme": null,
+      "authority": "localhost",
+      "path": "/some/path",
+      "headers": {
+        "headers": [
+          {
+            "name": "header1-name",
+            "valueStr": "header1-value"
           },
-          "authority": "localhost",
-          "path": "/some/path",
-          "headers": {
-            "headers": [
-              {
-                "name": "header1-name",
-                "Value": {
-                  "ValueStr": "header1-value"
-                }
-              },
-              {
-                "name": "header2-name",
-                "Value": {
-                  "ValueBin": "aGVhZGVyMi12YWx1ZQ=="
-                }
-              }
-            ]
+          {
+            "name": "header2-name",
+            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
           }
-        }
+        ]
       }
     }
   }
@@ -53,56 +48,46 @@
 {
   "source": {
     "ip": {
-      "Ip": {
-        "Ipv4": 1
-      }
-    }
+      "ipv4": 1
+    },
+    "port": 0
   },
+  "sourceMeta": null,
   "destination": {
     "ip": {
-      "Ip": {
-        "Ipv4": 9
-      }
+      "ipv4": 9
+    },
+    "port": 0
+  },
+  "destinationMeta": {
+    "labels": {
     }
   },
-  "destination_meta": {},
-  "proxy_direction": 2,
-  "Event": {
-    "Http": {
-      "Event": {
-        "ResponseEnd": {
-          "id": {
-            "base": 1
+  "routeMeta": null,
+  "proxyDirection": "OUTBOUND",
+  "http": {
+    "responseEnd": {
+      "id": {
+        "base": 1,
+        "stream": "0"
+      },
+      "sinceRequestInit": "10s",
+      "sinceResponseInit": "100s",
+      "responseBytes": "1337",
+      "eos": {
+        "grpcStatusCode": 666
+      },
+      "trailers": {
+        "headers": [
+          {
+            "name": "header1-name",
+            "valueStr": "header1-value"
           },
-          "since_request_init": {
-            "seconds": 10
-          },
-          "since_response_init": {
-            "seconds": 100
-          },
-          "response_bytes": 1337,
-          "eos": {
-            "End": {
-              "GrpcStatusCode": 666
-            }
-          },
-          "trailers": {
-            "headers": [
-              {
-                "name": "header1-name",
-                "Value": {
-                  "ValueStr": "header1-value"
-                }
-              },
-              {
-                "name": "header2-name",
-                "Value": {
-                  "ValueBin": "aGVhZGVyMi12YWx1ZQ=="
-                }
-              }
-            ]
+          {
+            "name": "header2-name",
+            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
           }
-        }
+        ]
       }
     }
   }

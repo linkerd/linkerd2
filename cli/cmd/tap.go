@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -33,6 +33,8 @@ type tapOptions struct {
 	path        string
 	output      string
 }
+
+var pbMarshaler = jsonpb.Marshaler{EmitDefaults: true, Indent: "  "}
 
 func newTapOptions() *tapOptions {
 	return &tapOptions{
@@ -304,7 +306,7 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
 func renderTapEventJSON(event *pb.TapEvent, _ string) string {
-	e, err := json.MarshalIndent(event, "", "  ")
+	e, err := pbMarshaler.MarshalToString(event)
 	if err != nil {
 		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
 	}
