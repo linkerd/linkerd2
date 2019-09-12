@@ -1,3 +1,20 @@
+## edge-19.9.2
+
+Much of our effort has been focused on improving our build and test
+infrastructure, but this edge release lays the groundwork for some big
+new features to land in the coming releases!
+
+* Helm
+  * Improved TLS credential parsing by ingoring spurious newlines
+* Proxy
+  * Decreased proxy-init Docker image size by removing bundled debug tools
+* Web UI
+  * Fix an issue where the edges table could end up with duplicates
+  * Added an icon to more clearly label external links
+* Internal
+  * Upgraded client-go to v12.0.0
+  * Moved CI from Travis to GitHub Actions
+
 ## edge-19.9.1
 
 This edge release adds traffic splits into the Linkerd dashboard as well as a
