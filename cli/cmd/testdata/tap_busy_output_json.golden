@@ -29,19 +29,7 @@
       "method": null,
       "scheme": null,
       "authority": "localhost",
-      "path": "/some/path",
-      "headers": {
-        "headers": [
-          {
-            "name": "header1-name",
-            "valueStr": "header1-value"
-          },
-          {
-            "name": "header2-name",
-            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
-          }
-        ]
-      }
+      "path": "/some/path"
     }
   }
 }
@@ -76,18 +64,6 @@
       "responseBytes": "1337",
       "eos": {
         "grpcStatusCode": 666
-      },
-      "trailers": {
-        "headers": [
-          {
-            "name": "header1-name",
-            "valueStr": "header1-value"
-          },
-          {
-            "name": "header2-name",
-            "valueBin": "aGVhZGVyMi12YWx1ZQ=="
-          }
-        ]
       }
     }
   }

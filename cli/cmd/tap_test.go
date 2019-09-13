@@ -33,19 +33,6 @@ func busyTest(t *testing.T, output string) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	headers := &pb.Headers{
-		Headers: []*pb.Headers_Header{
-			{
-				Name:  "header1-name",
-				Value: &pb.Headers_Header_ValueStr{ValueStr: "header1-value"},
-			},
-			{
-				Name:  "header2-name",
-				Value: &pb.Headers_Header_ValueBin{ValueBin: []byte("header2-value")},
-			},
-		},
-	}
-
 	event1 := util.CreateTapEvent(
 		&pb.TapEvent_Http{
 			Event: &pb.TapEvent_Http_RequestInit_{
@@ -55,7 +42,6 @@ func busyTest(t *testing.T, output string) {
 					},
 					Authority: params.Authority,
 					Path:      params.Path,
-					Headers:   headers,
 				},
 			},
 		},
@@ -82,7 +68,6 @@ func busyTest(t *testing.T, output string) {
 						Seconds: 100,
 					},
 					ResponseBytes: 1337,
-					Trailers:      headers,
 				},
 			},
 		},
