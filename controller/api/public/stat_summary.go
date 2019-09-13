@@ -92,50 +92,49 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		}
 	}
 
-	statTables := make([]*pb.StatTable, 0)
-
-	var resourcesToQuery []string
-	if req.Selector.Resource.Type == k8s.All {
-		resourcesToQuery = k8s.StatAllResourceTypes
-	} else {
-		resourcesToQuery = []string{req.Selector.Resource.Type}
-	}
-
-	// request stats for the resourcesToQuery, in parallel
-	resultChan := make(chan resourceResult)
-
-	for _, resource := range resourcesToQuery {
-		statReq := proto.Clone(req).(*pb.StatSummaryRequest)
-		statReq.Selector.Resource.Type = resource
-
-		go func() {
-			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
-				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
-			} else if isTrafficSplitQuery(statReq.GetSelector().GetResource().GetType()) {
-				resultChan <- s.trafficSplitResourceQuery(ctx, statReq)
-			} else {
-				resultChan <- s.k8sResourceQuery(ctx, statReq)
-			}
-		}()
-	}
-
-	for i := 0; i < len(resourcesToQuery); i++ {
-		result := <-resultChan
+	if isNonK8sResourceQuery(req.GetSelector().GetResource().GetType()) {
+		result := s.nonK8sResourceQuery(ctx, req)
 		if result.err != nil {
 			return nil, util.GRPCError(result.err)
 		}
-		statTables = append(statTables, result.res)
+
+		return statSummaryResponse([]*pb.StatTable{result.res}), nil
 	}
 
-	rsp := pb.StatSummaryResponse{
-		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
-			Ok: &pb.StatSummaryResponse_Ok{
-				StatTables: statTables,
-			},
-		},
+	if isTrafficSplitQuery(req.GetSelector().GetResource().GetType()) {
+		result := s.trafficSplitResourceQuery(ctx, req)
+		if result.err != nil {
+			return nil, util.GRPCError(result.err)
+		}
+
+		return statSummaryResponse([]*pb.StatTable{result.res}), nil
 	}
 
-	return &rsp, nil
+	if req.Selector.Resource.Type != k8s.All {
+		statTables, err := s.k8sResourceQuery(ctx, req)
+		if err != nil {
+			return nil, util.GRPCError(err)
+		}
+
+		// if resource type has no metrics, add an empty row per unit test assertions
+		if len(statTables) == 0 {
+			statTables = append(statTables, &pb.StatTable{
+				Table: &pb.StatTable_PodGroup_{
+					PodGroup: &pb.StatTable_PodGroup{},
+				},
+			})
+		}
+
+		return statSummaryResponse(statTables), nil
+	}
+
+	// get object stats and metrics for all resources
+	statTables, err := s.getStatsForAllResources(ctx, req)
+	if err != nil {
+		return nil, util.GRPCError(err)
+	}
+
+	return statSummaryResponse(statTables), nil
 }
 
 func isInvalidServiceRequest(selector *pb.ResourceSelection, fromResource *pb.Resource) bool {
@@ -191,71 +190,86 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 	return objectMap, nil
 }
 
-func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
 	k8sObjects, err := s.getKubernetesObjectStats(req)
 	if err != nil {
-		return resourceResult{res: nil, err: err}
+		return nil, err
 	}
 
-	var requestMetrics map[rKey]*pb.BasicStats
-	var tcpMetrics map[rKey]*pb.TcpStats
+	var (
+		requestMetrics map[rKey]*pb.BasicStats
+		tcpMetrics     map[rKey]*pb.TcpStats
+	)
 	if !req.SkipStats {
 		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
 		if err != nil {
-			return resourceResult{res: nil, err: err}
+			return nil, err
 		}
 	}
 
-	rows := make([]*pb.StatTable_PodGroup_Row, 0)
-	keys := getResultKeys(req, k8sObjects, requestMetrics)
+	return buildMetricsStatTables(req, k8sObjects, requestMetrics, tcpMetrics), nil
+}
 
-	for _, key := range keys {
-		objInfo, ok := k8sObjects[key]
-		if !ok {
-			continue
+func (s *grpcServer) getStatsForAllResources(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
+	var statTables []*pb.StatTable
+
+	// authority stats
+	clone := proto.Clone(req).(*pb.StatSummaryRequest)
+	clone.Selector.Resource.Type = k8s.Authority
+	result := s.nonK8sResourceQuery(ctx, clone)
+	if result.err != nil {
+		return nil, result.err
+	}
+	statTables = append(statTables, result.res)
+
+	// traffic split stats
+	clone.Selector.Resource.Type = k8s.TrafficSplit
+	result = s.trafficSplitResourceQuery(ctx, req)
+	if result.err != nil {
+		return nil, result.err
+	}
+	statTables = append(statTables, result.res)
+
+	// object stats from the k8s api server
+	k8sObjects := map[rKey]k8sStat{}
+	for _, resource := range k8s.StatAllWorkloadResourceTypes {
+		clone := proto.Clone(req).(*pb.StatSummaryRequest)
+		clone.Selector.Resource.Type = resource
+		objStats, err := s.getKubernetesObjectStats(clone)
+		if err != nil {
+			return nil, util.GRPCError(err)
 		}
 
-		var tcpStats *pb.TcpStats
-		if req.TcpStats {
-			tcpStats = tcpMetrics[key]
+		// account for types that don't have object stats so that a row will be
+		// created for them too, per existing unit test assertions.
+		if len(objStats) == 0 {
+			k := rKey{
+				Type: clone.GetSelector().GetResource().GetType(),
+			}
+			k8sObjects[k] = k8sStat{}
 		}
 
-		var basicStats *pb.BasicStats
-		if !reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
-			basicStats = requestMetrics[key]
+		for k, v := range objStats {
+			k8sObjects[k] = v
 		}
-
-		k8sResource := objInfo.object
-		row := pb.StatTable_PodGroup_Row{
-			Resource: &pb.Resource{
-				Name:      k8sResource.GetName(),
-				Namespace: k8sResource.GetNamespace(),
-				Type:      req.GetSelector().GetResource().GetType(),
-			},
-			TimeWindow: req.TimeWindow,
-			Stats:      basicStats,
-			TcpStats:   tcpStats,
-		}
-
-		podStat := objInfo.podStats
-		row.Status = podStat.status
-		row.MeshedPodCount = podStat.inMesh
-		row.RunningPodCount = podStat.total
-		row.FailedPodCount = podStat.failed
-		row.ErrorsByPod = podStat.errors
-
-		rows = append(rows, &row)
 	}
 
-	rsp := pb.StatTable{
-		Table: &pb.StatTable_PodGroup_{
-			PodGroup: &pb.StatTable_PodGroup{
-				Rows: rows,
-			},
-		},
+	// metrics from prometheus
+	var (
+		requestMetrics map[rKey]*pb.BasicStats
+		tcpMetrics     map[rKey]*pb.TcpStats
+		err            error
+	)
+	if !req.SkipStats {
+		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return resourceResult{res: &rsp, err: nil}
+	metricsStatTables := buildMetricsStatTables(req, k8sObjects, requestMetrics, tcpMetrics)
+	statTables = append(statTables, metricsStatTables...)
+	return statTables, nil
 }
 
 func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha1.TrafficSplit, error) {
@@ -407,7 +421,6 @@ func getResultKeys(
 	metricResults map[rKey]*pb.BasicStats,
 ) []rKey {
 	var keys []rKey
-
 	if req.GetOutbound() == nil || req.GetNone() != nil {
 		// if the request doesn't have outbound filtering, return all rows
 		for key := range k8sObjects {
@@ -420,13 +433,13 @@ func getResultKeys(
 			keys = append(keys, key)
 		}
 	}
+
 	return keys
 }
 
 func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
 	// labelNames: the group by in the prometheus query
 	// labels: the labels for the resource we want to query for
-
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
 		labelNames = promGroupByLabelNames(req.Selector.Resource)
@@ -492,12 +505,28 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		promQueries[promTCPWriteBytes] = tcpWriteBytesQuery
 	}
 	results, err := s.getPrometheusMetrics(ctx, promQueries, latencyQuantileQuery, reqLabels.String(), timeWindow, groupBy.String())
-
 	if err != nil {
 		return nil, nil, err
 	}
 
-	basicStats, tcpStats := processPrometheusMetrics(req, results, groupBy)
+	basicStats := map[rKey]*pb.BasicStats{}
+	tcpStats := map[rKey]*pb.TcpStats{}
+	if req.GetSelector().GetResource().GetType() == k8s.All {
+		for _, t := range k8s.StatAllWorkloadResourceTypes {
+			clone := proto.Clone(req).(*pb.StatSummaryRequest)
+			clone.Selector.Resource.Type = t
+			resourceBasicStats, resourceTCPStats := processPrometheusMetrics(clone, results)
+			for resource, stat := range resourceBasicStats {
+				basicStats[resource] = stat
+			}
+			for resource, stat := range resourceTCPStats {
+				tcpStats[resource] = stat
+			}
+		}
+	} else {
+		basicStats, tcpStats = processPrometheusMetrics(req, results)
+	}
+
 	return basicStats, tcpStats, nil
 }
 
@@ -522,7 +551,7 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 		return nil, err
 	}
 
-	basicStats, _ := processPrometheusMetrics(req, results, groupBy) // we don't need tcpStat info for traffic split
+	basicStats, _ := processPrometheusMetrics(req, results) // we don't need tcpStat info for traffic split
 
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
@@ -536,13 +565,13 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	return tsBasicStats, nil
 }
 
-func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, groupBy model.LabelNames) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
+func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
 	basicStats := make(map[rKey]*pb.BasicStats)
 	tcpStats := make(map[rKey]*pb.TcpStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			resource := metricToKey(req, sample.Metric, groupBy)
+			resource := metricToKey(req, sample.Metric)
 
 			addBasicStats := func() {
 				if basicStats[resource] == nil {
@@ -585,24 +614,53 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				addTCPStats()
 				tcpStats[resource].WriteBytesTotal = value
 			}
-
 		}
 	}
 
 	return basicStats, tcpStats
 }
 
-func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.LabelNames) rKey {
-	// this key is used to match the metric stats we queried from prometheus
-	// with the k8s object stats we queried from k8s
-	// ASSUMPTION: this code assumes that groupBy is always ordered (..., namespace, name)
-	key := rKey{
-		Type: req.GetSelector().GetResource().GetType(),
-		Name: string(metric[groupBy[len(groupBy)-1]]),
+// metricToKey generates a key which is used to match the metric stats we
+// queried from prometheus with the k8s object stats we queried from k8s
+func metricToKey(req *pb.StatSummaryRequest, metric model.Metric) rKey {
+	resourceType := req.GetSelector().GetResource().GetType()
+
+	// prepend label with dst_ prefix if outbound --from is specified
+	var (
+		labelPrefix   model.LabelName
+		omitNamespace bool
+	)
+	if req.Outbound != nil {
+		if _, ok := req.Outbound.(*pb.StatSummaryRequest_FromResource); ok {
+			labelPrefix = "dst_"
+			if req.GetSelector().GetResource().GetType() == k8s.Authority {
+				omitNamespace = true
+			}
+		}
 	}
 
-	if len(groupBy) == 2 {
-		key.Namespace = string(metric[groupBy[0]])
+	var (
+		resourceTypeLabel = labelPrefix
+		namespaceLabel    = labelPrefix + "namespace"
+	)
+	switch resourceType {
+	case k8s.Job:
+		resourceTypeLabel += "k8s_job"
+	case k8s.TrafficSplit:
+		resourceTypeLabel += "dst_service"
+	case k8s.Authority:
+		resourceTypeLabel = "authority"
+	default:
+		resourceTypeLabel += model.LabelName(req.GetSelector().GetResource().GetType())
+	}
+
+	key := rKey{
+		Type: resourceType,
+		Name: string(metric[resourceTypeLabel]),
+	}
+
+	if !omitNamespace {
+		key.Namespace = string(metric[namespaceLabel])
 	}
 
 	return key
@@ -676,4 +734,87 @@ func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodE
 		}
 	}
 	return errors
+}
+
+func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, requestMetrics map[rKey]*pb.BasicStats, tcpMetrics map[rKey]*pb.TcpStats) []*pb.StatTable {
+	var statTables []*pb.StatTable
+
+	rowsByResourceType := map[string][]*pb.StatTable_PodGroup_Row{}
+	for _, key := range getResultKeys(req, k8sObjects, requestMetrics) {
+		objInfo, ok := k8sObjects[key]
+		if !ok {
+			continue
+		}
+
+		// return an empty row for resource types that don't have object stats
+		if objInfo.object == nil {
+			rsp := &pb.StatTable{
+				Table: &pb.StatTable_PodGroup_{
+					PodGroup: &pb.StatTable_PodGroup{},
+				},
+			}
+
+			statTables = append(statTables, rsp)
+			continue
+		}
+
+		var tcpStats *pb.TcpStats
+		if req.TcpStats {
+			tcpStats = tcpMetrics[key]
+		}
+
+		var basicStats *pb.BasicStats
+		if !reflect.DeepEqual(requestMetrics[key], &pb.BasicStats{}) {
+			basicStats = requestMetrics[key]
+		}
+
+		k8sResource := objInfo.object
+		row := &pb.StatTable_PodGroup_Row{
+			Resource: &pb.Resource{
+				Name:      k8sResource.GetName(),
+				Namespace: k8sResource.GetNamespace(),
+				Type:      key.Type,
+			},
+			TimeWindow: req.TimeWindow,
+			Stats:      basicStats,
+			TcpStats:   tcpStats,
+		}
+
+		podStat := objInfo.podStats
+		row.Status = podStat.status
+		row.MeshedPodCount = podStat.inMesh
+		row.RunningPodCount = podStat.total
+		row.FailedPodCount = podStat.failed
+		row.ErrorsByPod = podStat.errors
+
+		_, exists := rowsByResourceType[key.Type]
+		if !exists {
+			rowsByResourceType[key.Type] = []*pb.StatTable_PodGroup_Row{row}
+		} else {
+			rowsByResourceType[key.Type] = append(rowsByResourceType[key.Type], row)
+		}
+	}
+
+	for _, rows := range rowsByResourceType {
+		statTable := &pb.StatTable{
+			Table: &pb.StatTable_PodGroup_{
+				PodGroup: &pb.StatTable_PodGroup{
+					Rows: rows,
+				},
+			},
+		}
+		statTables = append(statTables, statTable)
+	}
+
+	return statTables
+}
+
+func statSummaryResponse(statTables []*pb.StatTable) *pb.StatSummaryResponse {
+	return &pb.StatSummaryResponse{
+		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
+			Ok: &pb.StatSummaryResponse_Ok{
+				StatTables: statTables,
+			},
+		},
+	}
 }

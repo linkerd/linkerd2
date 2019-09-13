@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -1872,4 +1873,204 @@ status:
 
 		testStatSummary(t, expectations)
 	})
+}
+
+func TestBuildRequestLabels(t *testing.T) {
+	var testCases = []struct {
+		title           string
+		request         *pb.StatSummaryRequest
+		expectedLabels  model.LabelSet
+		expectedGroupBy model.LabelNames
+	}{
+		{
+			title: "outbound resource - none",
+			request: &pb.StatSummaryRequest{
+				Outbound: &pb.StatSummaryRequest_None{},
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Deployment,
+						Name:      "emoji",
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			expectedLabels:  model.LabelSet{"deployment": "emoji", "direction": "inbound", "namespace": "emojivoto"},
+			expectedGroupBy: model.LabelNames{pkgK8s.Namespace, pkgK8s.Deployment},
+		},
+		{
+			title: "outbound resource - none (all types)",
+			request: &pb.StatSummaryRequest{
+				Outbound: &pb.StatSummaryRequest_None{},
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type: pkgK8s.All,
+					},
+				},
+			},
+			expectedLabels:  model.LabelSet{"direction": "inbound"},
+			expectedGroupBy: model.LabelNames{pkgK8s.Namespace, pkgK8s.DaemonSet, pkgK8s.StatefulSet, "k8s_" + pkgK8s.Job, pkgK8s.Deployment, pkgK8s.ReplicationController, pkgK8s.Pod, pkgK8s.Service},
+		},
+		{
+			title: "outbound resource - from",
+			request: &pb.StatSummaryRequest{
+				Outbound: &pb.StatSummaryRequest_FromResource{
+					FromResource: &pb.Resource{
+						Type:      pkgK8s.Pod,
+						Name:      "curl",
+						Namespace: "default",
+					},
+				},
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Deployment,
+						Name:      "emoji",
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			expectedLabels:  model.LabelSet{"direction": "outbound", "dst_deployment": "emoji", "dst_namespace": "emojivoto", "namespace": "default", "pod": "curl"},
+			expectedGroupBy: model.LabelNames{"dst_" + pkgK8s.Namespace, "dst_" + pkgK8s.Deployment},
+		},
+		{
+			title: "outbound resource - from (all types)",
+			request: &pb.StatSummaryRequest{
+				Outbound: &pb.StatSummaryRequest_FromResource{
+					FromResource: &pb.Resource{
+						Type:      pkgK8s.Pod,
+						Name:      "curl",
+						Namespace: "default",
+					},
+				},
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type: pkgK8s.All,
+					},
+				},
+			},
+			expectedLabels:  model.LabelSet{"direction": "outbound", "namespace": "default", "pod": "curl"},
+			expectedGroupBy: model.LabelNames{"dst_" + pkgK8s.Namespace, "dst_" + pkgK8s.DaemonSet, "dst_" + pkgK8s.StatefulSet, "dst_k8s_" + pkgK8s.Job, "dst_" + pkgK8s.Deployment, "dst_" + pkgK8s.ReplicationController, "dst_" + pkgK8s.Pod, "dst_" + pkgK8s.Service},
+		},
+		{
+			title: "outbound resource - to",
+			request: &pb.StatSummaryRequest{
+				Outbound: &pb.StatSummaryRequest_ToResource{
+					ToResource: &pb.Resource{
+						Type:      pkgK8s.Pod,
+						Name:      "voting",
+						Namespace: "emojivoto",
+					},
+				},
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Deployment,
+						Name:      "web",
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			expectedLabels:  model.LabelSet{"deployment": "web", "direction": "outbound", "dst_namespace": "emojivoto", "dst_pod": "voting", "namespace": "emojivoto"},
+			expectedGroupBy: model.LabelNames{pkgK8s.Namespace, pkgK8s.Deployment},
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.title, func(t *testing.T) {
+			actualLabels, actualGroupBy := buildRequestLabels(testCase.request)
+			if !reflect.DeepEqual(testCase.expectedLabels, actualLabels) {
+				t.Errorf("Labels mismatch\nExpected: %+v\nActual: %+v\n", testCase.expectedLabels, actualLabels)
+			}
+
+			if !reflect.DeepEqual(testCase.expectedGroupBy, actualGroupBy) {
+				t.Errorf("Group-by labels mismatch\nExpected: %+v\nActual: %+v\n", testCase.expectedGroupBy, actualGroupBy)
+			}
+		})
+	}
+}
+
+func TestMetricToKey(t *testing.T) {
+	var testCases = []struct {
+		title    string
+		request  *pb.StatSummaryRequest
+		metric   model.Metric
+		expected rKey
+	}{
+		{
+			title: "deployment",
+			request: &pb.StatSummaryRequest{
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Deployment,
+						Name:      "emoji",
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			metric: model.Metric{
+				"classification": "failure",
+				"deployment":     "web",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Namespace: "emojivoto",
+				Type:      pkgK8s.Deployment,
+				Name:      "web",
+			},
+		},
+		{
+			// our current query returns time series data of other types.
+			// it doesn't look like the Go client provides an interface to use other
+			// operators ( !=, =~ etc.) on the labels.
+			title: "deployment (empty metrics)",
+			request: &pb.StatSummaryRequest{
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Deployment,
+						Name:      "emoji",
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			metric: model.Metric{
+				"classification": "failure",
+				"namespace":      "emojivoto-sts",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Namespace: "emojivoto-sts",
+				Type:      pkgK8s.Deployment,
+			},
+		},
+		{
+			title: "namespace",
+			request: &pb.StatSummaryRequest{
+				Selector: &pb.ResourceSelection{
+					Resource: &pb.Resource{
+						Type:      pkgK8s.Namespace,
+						Namespace: "emojivoto",
+					},
+				},
+			},
+			metric: model.Metric{
+				"classification": "failure",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Type:      pkgK8s.Namespace,
+				Name:      "emojivoto",
+				Namespace: "emojivoto",
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.title, func(t *testing.T) {
+			if actual := metricToKey(testCase.request, testCase.metric); !reflect.DeepEqual(testCase.expected, actual) {
+				t.Errorf("Mismatch resource key.\nExpected: %+v\nActual: %+v\n", testCase.expected, actual)
+			}
+		})
+	}
 }

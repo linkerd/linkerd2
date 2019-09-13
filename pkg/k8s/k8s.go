@@ -60,6 +60,18 @@ var StatAllResourceTypes = []string{
 	Authority,
 }
 
+// StatAllWorkloadResourceTypes represents the workload resources to query in
+// StatSummary when Resource.Type is "all"
+var StatAllWorkloadResourceTypes = []string{
+	DaemonSet,
+	StatefulSet,
+	Job,
+	Deployment,
+	ReplicationController,
+	Pod,
+	Service,
+}
+
 // GetConfig returns kubernetes config based on the current environment.
 // If fpath is provided, loads configuration from that file. Otherwise,
 // GetConfig uses default strategy to load configuration from $KUBECONFIG,

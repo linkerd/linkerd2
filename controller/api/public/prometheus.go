@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	proto "github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
@@ -44,7 +45,7 @@ func extractSampleValue(sample *model.Sample) uint64 {
 }
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
-	log.Debugf("Query request:\n\t%+v", query)
+	log.Infof("Query request:\n\t%+v", query)
 
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
@@ -52,7 +53,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 		log.Errorf("Query(%+v) failed with: %+v", query, err)
 		return nil, err
 	}
-	log.Debugf("Query response:\n\t%+v", res)
+	log.Infof("Query response:\n\t%+v", res)
 
 	if res.Type() != model.ValVector {
 		err = fmt.Errorf("Unexpected query result type (expected Vector): %s", res.Type())
@@ -64,26 +65,51 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 }
 
 // add filtering by resource type
-// note that metricToKey assumes the label ordering (namespace, name)
 func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{namespaceLabel}
-
-	if resource.Type != k8s.Namespace {
-		names = append(names, promResourceType(resource))
+	if resource.Type == k8s.Namespace {
+		return names
 	}
+
+	if resource.Type == k8s.All {
+		for _, rt := range k8s.StatAllWorkloadResourceTypes {
+			clone := proto.Clone(resource).(*pb.Resource)
+			clone.Type = rt
+			names = append(names, promResourceType(clone))
+		}
+		return names
+	}
+
+	names = append(names, promResourceType(resource))
 	return names
 }
 
 // add filtering by resource type
-// note that metricToKey assumes the label ordering (namespace, name)
 func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{dstNamespaceLabel}
+	if resource.Type == k8s.Namespace {
+		return names
+	}
 
 	if isNonK8sResourceQuery(resource.GetType()) {
 		names = append(names, promResourceType(resource))
-	} else if resource.Type != k8s.Namespace {
-		names = append(names, "dst_"+promResourceType(resource))
+		return names
 	}
+
+	if resource.Type == k8s.All {
+		for _, rt := range k8s.StatAllWorkloadResourceTypes {
+			clone := proto.Clone(resource).(*pb.Resource)
+			clone.Type = rt
+			if isNonK8sResourceQuery(rt) {
+				names = append(names, promResourceType(clone))
+				continue
+			}
+			names = append(names, "dst_"+promResourceType(clone))
+		}
+		return names
+	}
+
+	names = append(names, "dst_"+promResourceType(resource))
 	return names
 }
 
