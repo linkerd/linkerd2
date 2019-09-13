@@ -16,7 +16,7 @@ func TestInjectable(t *testing.T) {
 		nsAnnotations       map[string]string
 		unsupportedResource bool
 		injectable          bool
-		reason              string
+		reasons             []string
 	}{
 		{
 			podSpec: &corev1.PodSpec{HostNetwork: false},
@@ -35,7 +35,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     hostNetworkEnabled,
+			reasons:    []string{hostNetworkEnabled},
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -52,7 +52,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     sidecarExists,
+			reasons:    []string{sidecarExists},
 		},
 		{
 			podSpec: &corev1.PodSpec{
@@ -69,7 +69,7 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     sidecarExists,
+			reasons:    []string{sidecarExists},
 		},
 		{
 			unsupportedResource: true,
@@ -80,7 +80,73 @@ func TestInjectable(t *testing.T) {
 				},
 			},
 			injectable: false,
-			reason:     unsupportedResource,
+			reasons:    []string{unsupportedResource},
+		},
+		{
+			unsupportedResource: true,
+			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+				},
+			},
+
+			injectable: false,
+			reasons:    []string{hostNetworkEnabled, unsupportedResource},
+		},
+		{
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			podSpec: &corev1.PodSpec{HostNetwork: true},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+			},
+
+			injectable: false,
+			reasons:    []string{hostNetworkEnabled, injectDisableAnnotationPresent},
+		},
+		{
+			nsAnnotations: map[string]string{
+				k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+			},
+			unsupportedResource: true,
+			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					k8s.ProxyInjectAnnotation: k8s.ProxyInjectDisabled,
+				},
+			},
+
+			injectable: false,
+			reasons:    []string{hostNetworkEnabled, unsupportedResource, injectDisableAnnotationPresent},
+		},
+		{
+			unsupportedResource: true,
+			podSpec:             &corev1.PodSpec{HostNetwork: true},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{},
+			},
+
+			injectable: false,
+			reasons:    []string{hostNetworkEnabled, unsupportedResource, injectEnableAnnotationAbsent},
+		},
+		{
+			podSpec: &corev1.PodSpec{HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						Name:  k8s.ProxyContainerName,
+						Image: "gcr.io/linkerd-io/proxy:",
+					},
+				}},
+			podMeta: &metav1.ObjectMeta{
+				Annotations: map[string]string{},
+			},
+
+			injectable: false,
+			reasons:    []string{hostNetworkEnabled, sidecarExists, injectEnableAnnotationAbsent},
 		},
 	}
 
@@ -90,18 +156,27 @@ func TestInjectable(t *testing.T) {
 			resourceConfig := &ResourceConfig{}
 			resourceConfig.WithNsAnnotations(testCase.nsAnnotations)
 			resourceConfig.pod.spec = testCase.podSpec
+			resourceConfig.origin = OriginWebhook
 			resourceConfig.pod.meta = testCase.podMeta
 
 			report := newReport(resourceConfig)
 			report.UnsupportedResource = testCase.unsupportedResource
 
-			actual, reason := report.Injectable()
+			actual, reasons := report.Injectable()
 			if testCase.injectable != actual {
 				t.Errorf("Expected %t. Actual %t", testCase.injectable, actual)
 			}
-			if testCase.reason != reason {
-				t.Errorf("Expected reason '%s'. Actual reason '%s'", testCase.reason, reason)
+
+			if len(reasons) != len(testCase.reasons) {
+				t.Errorf("Expected %d number of reasons. Actual %d", len(testCase.reasons), len(reasons))
 			}
+
+			for i, _ := range reasons {
+				if testCase.reasons[i] != reasons[i] {
+					t.Errorf("Expected reason '%s'. Actual reason '%s'", testCase.reasons[i], reasons[i])
+				}
+			}
+
 		})
 	}
 }

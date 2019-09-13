@@ -17,6 +17,16 @@ const (
 	injectDisableAnnotationPresent = "injection_disable_annotation_present"
 )
 
+var (
+	Reasons = map[string]string{
+		hostNetworkEnabled:             "hostNetwork is enabled",
+		sidecarExists:                  "pod has a sidecar injected already",
+		unsupportedResource:            "this resource kind is unsupported",
+		injectEnableAnnotationAbsent:   fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
+		injectDisableAnnotationPresent: fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+	}
+)
+
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
@@ -78,8 +88,8 @@ func (r *Report) ResName() string {
 // Injectable returns false if the report flags indicate that the workload is on a host network
 // or there is already a sidecar or the resource is not supported or inject is explicitly disabled.
 // If false, the second returned value describes the reason.
-func (r *Report) Injectable() (bool, string) {
-	reasons := []string{}
+func (r *Report) Injectable() (bool, []string) {
+	var reasons []string
 	if r.HostNetwork {
 		reasons = append(reasons, hostNetworkEnabled)
 	}
@@ -94,9 +104,9 @@ func (r *Report) Injectable() (bool, string) {
 	}
 
 	if len(reasons) > 0 {
-		return false, strings.Join(reasons, ", ")
+		return false, reasons
 	}
-	return true, ""
+	return true, nil
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {

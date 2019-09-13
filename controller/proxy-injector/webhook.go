@@ -77,12 +77,18 @@ func Inject(api *k8s.API,
 	}
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace)).Inc()
 
-	if injectable, reason := report.Injectable(); !injectable {
-		if parent != nil {
-			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", reason)
+	if injectable, reasons := report.Injectable(); !injectable {
+		var readableReasons, metricReasons string
+		metricReasons = strings.Join(reasons, ", ")
+		for _, reason := range reasons {
+			readableReasons = readableReasons + ", " + inject.Reasons[reason]
 		}
-		log.Infof("skipped %s: %s", report.ResName(), reason)
-		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", reason)).Inc()
+		readableReasons = readableReasons[2:]
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableReasons)
+		}
+		log.Infof("skipped %s: %s", report.ResName(), readableReasons)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", metricReasons)).Inc()
 		return admissionResponse, nil
 	}
 
