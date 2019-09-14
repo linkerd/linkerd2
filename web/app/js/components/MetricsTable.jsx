@@ -246,9 +246,9 @@ class MetricsTable extends React.Component {
   };
 
   render() {
-    const { metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, showName, title, api, nsMetrics, isTcpTable } = this.props;
 
-    let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
+    let showNsColumn = resource === "namespace" || nsMetrics !== "all" ? false : showNamespaceColumn;
     let showNameColumn = resource !== "trafficsplit" ? true : showName;
     let orderBy = "name";
     if (resource === "trafficsplit" && !showNameColumn) {orderBy = "leaf";}

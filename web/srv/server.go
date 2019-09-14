@@ -97,9 +97,24 @@ func NewServer(
 	// webapp routes
 	server.router.GET("/", handler.handleIndex)
 	server.router.GET("/overview", handler.handleIndex)
-	server.router.GET("/servicemesh", handler.handleIndex)
-	server.router.GET("/namespaces", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace", handler.handleIndex)
+	server.router.GET("/controlplane", handler.handleIndex)
+
+	server.router.GET("/namespaces", handler.handleIndex) // stays the same. is the default view.
+
+	server.router.GET("/namespaces/:namespace", handler.handleIndex) // don't support anymore (?)
+
+	// NEW - "all" page but by namespace, includes "all"...
+	///namespaces/:namespace/daemonsets
+	server.router.GET("/namespaces/:namespace/daemonsets", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/statefulsets", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/trafficsplits", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/jobs", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/deployments", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/replicationcontrollers", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/pods", handler.handleIndex)
+
+	// end new
+	// this should display the "all" page for "all namespaces?" so can be the same...
 	server.router.GET("/daemonsets", handler.handleIndex)
 	server.router.GET("/statefulsets", handler.handleIndex)
 	server.router.GET("/trafficsplits", handler.handleIndex)
@@ -107,7 +122,8 @@ func NewServer(
 	server.router.GET("/deployments", handler.handleIndex)
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)
-	server.router.GET("/authorities", handler.handleIndex)
+	server.router.GET("/authorities", handler.handleIndex) // leaving it here but we no longer link to this.
+
 	server.router.GET("/namespaces/:namespace/pods/:pod", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/daemonsets/:daemonset", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/statefulsets/:statefulset", handler.handleIndex)
@@ -115,6 +131,8 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/deployments/:deployment", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/jobs/:job", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
+
+	//same
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
 	server.router.GET("/community", handler.handleIndex)

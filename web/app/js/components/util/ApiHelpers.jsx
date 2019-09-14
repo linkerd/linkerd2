@@ -127,7 +127,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     // Traffic Performance Summary. This retrieves stats for the given resource.
     let resourceUrl = '/api/tps-reports?resource_type=' + type;
 
-    if (_isEmpty(namespace)) {
+    if (_isEmpty(namespace) || namespace === "all") {
       resourceUrl += '&all_namespaces=true';
     } else {
       resourceUrl += '&namespace=' + namespace;
@@ -194,6 +194,11 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   const prefixLink = to => `${pathPrefix}${to}`;
 
+  // only need to generate URLS like this: /namespaces/linkerd/deployments
+  // and that should show the "All" view but just for workloads within that namespace - we don't do that at present.
+  // so need to support a new path: /namespaces/linkerd/deployments
+  // or for all, just /deployments
+
   const generateResourceURL = r => {
     if (r.type === "namespace") {
       return "/namespaces/" + (r.namespace || r.name);
@@ -201,6 +206,12 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
     return "/namespaces/" + r.namespace + "/" + r.type + "s/" + r.name;
   };
+
+  const generateWorkloadURL = (namespace, type) => {
+    return "/namespaces/" + namespace + "/" + type + "s";
+  };
+
+
 
   // a prefixed link to a Resource Detail page
   const ResourceLink = ({ resource, linkText }) => {
@@ -242,6 +253,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     setCurrentRequests,
     getCurrentPromises,
     generateResourceURL,
+    generateWorkloadURL,
     cancelCurrentRequests,
     // DO NOT USE makeCancelable, use fetch, this is only exposed for testing
     makeCancelable

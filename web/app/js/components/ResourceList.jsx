@@ -1,6 +1,7 @@
 import 'whatwg-fetch';
 
 import { metricsPropType, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
@@ -9,7 +10,19 @@ import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import withREST from './util/withREST.jsx';
+import _mapValues from 'lodash/mapValues';
 
+const topRoutesQueryProps = {
+  resource_name: PropTypes.string,
+  resource_type: PropTypes.string,
+  namespace: PropTypes.string,
+  to_name: PropTypes.string,
+  to_type: PropTypes.string,
+  to_namespace: PropTypes.string,
+};
+const urlPropsQueryConfig = _mapValues(topRoutesQueryProps, () => {
+  return { type: UrlQueryParamTypes.string };
+});
 export class ResourceListBase extends React.Component {
   static defaultProps = {
     error: null
@@ -19,6 +32,7 @@ export class ResourceListBase extends React.Component {
     data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
     error: apiErrorPropType,
     loading: PropTypes.bool.isRequired,
+    nsMetrics: PropTypes.string,
     resource: PropTypes.string.isRequired,
   }
 
@@ -75,10 +89,10 @@ export class ResourceListBase extends React.Component {
   }
 }
 
-export default withREST(
+export default addUrlProps({ urlPropsQueryConfig })(withREST(
   ResourceListBase,
-  ({ api, resource }) => [api.fetchMetrics(api.urlsForResource(resource, '', true))],
+  ({ api, resource, nsMetrics }) => [api.fetchMetrics(api.urlsForResource(resource, nsMetrics, true))],
   {
-    resetProps: ['resource'],
+    resetProps: ['resource', 'nsMetrics'],
   },
-);
+));
