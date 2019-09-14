@@ -2,13 +2,16 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -34,7 +37,50 @@ type tapOptions struct {
 	output      string
 }
 
-var pbMarshaler = jsonpb.Marshaler{EmitDefaults: true, Indent: "  "}
+type endpoint struct {
+	IP       string            `json:"ip"`
+	Port     uint32            `json:"port"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+type streamID struct {
+	Base   uint32 `json:"base"`
+	Stream uint64 `json:"stream"`
+}
+
+type requestInitEvent struct {
+	ID        *streamID      `json:"id"`
+	Method    *pb.HttpMethod `json:"method"`
+	Scheme    *pb.Scheme     `json:"scheme"`
+	Authority string         `json:"authority"`
+	Path      string         `json:"path"`
+}
+
+type responseInitEvent struct {
+	ID               *streamID          `json:"id"`
+	SinceRequestInit *duration.Duration `json:"sinceRequestInit"`
+	HTTPStatus       uint32             `json:"httpStatus"`
+}
+
+type responseEndEvent struct {
+	ID                *streamID          `json:"id"`
+	SinceRequestInit  *duration.Duration `json:"sinceRequestInit"`
+	SinceResponseInit *duration.Duration `json:"sinceResponseInit"`
+	ResponseBytes     uint64             `json:"responseBytes"`
+	GrpcStatusCode    uint32             `json:"grpcStatusCode,omitempty"`
+	ResetErrorCode    uint32             `json:"resetErrorCode,omitempty"`
+}
+
+// Private type used for displaying JSON encoded tap events
+type tapEvent struct {
+	Source            *endpoint          `json:"source"`
+	Destination       *endpoint          `json:"destination"`
+	RouteMeta         map[string]string  `json:"routeMeta"`
+	ProxyDirection    string             `json:"proxyDirection"`
+	RequestInitEvent  *requestInitEvent  `json:"requestInitEvent,omitempty"`
+	ResponseInitEvent *responseInitEvent `json:"responseInitEvent,omitempty"`
+	ResponseEndEvent  *responseEndEvent  `json:"responseEndEvent,omitempty"`
+}
 
 func newTapOptions() *tapOptions {
 	return &tapOptions{
@@ -304,14 +350,49 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 	}
 }
 
+// Map public API `TapEvent`s to `displayTapEvent`s
+func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
+	// Map source endpoint
+	sip := getIPAddress(event.GetSource().GetIp())
+	sp := event.GetSource().GetPort()
+	s := &endpoint{
+		IP:       sip,
+		Port:     sp,
+		Metadata: event.GetSourceMeta().GetLabels(),
+	}
+
+	// Map destination endpoint
+	dip := getIPAddress(event.GetDestination().GetIp())
+	dp := event.GetDestination().GetPort()
+	d := &endpoint{
+		IP:       dip,
+		Port:     dp,
+		Metadata: event.GetDestinationMeta().GetLabels(),
+	}
+
+	// Map route metadata and proxy direction
+	rm := event.GetRouteMeta().GetLabels()
+	pdir := event.GetProxyDirection().String()
+
+	return &tapEvent{
+		Source:            s,
+		Destination:       d,
+		RouteMeta:         rm,
+		ProxyDirection:    pdir,
+		RequestInitEvent:  getRequestInitEvent(event.GetHttp()),
+		ResponseInitEvent: getResponseInitEvent(event.GetHttp()),
+		ResponseEndEvent:  getResponseEndEvent(event.GetHttp()),
+	}
+}
+
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
 func renderTapEventJSON(event *pb.TapEvent, _ string) string {
-	e, err := pbMarshaler.MarshalToString(event)
+	m := mapPublicToDisplayTapEvent(event)
+	e, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
 	}
-
-	return e
+	return fmt.Sprintf("%s", e)
 }
 
 // src returns the source peer of a `TapEvent`.
@@ -388,4 +469,73 @@ func routeLabels(event *pb.TapEvent) string {
 	}
 
 	return out
+}
+
+func getIPAddress(ip *pb.IPAddress) string {
+	var b []byte
+	if ip.GetIpv6() != nil {
+		b = make([]byte, 16)
+		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
+		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+	} else if ip.GetIpv4() != 0 {
+		b = make([]byte, 4)
+		binary.BigEndian.PutUint32(b, ip.GetIpv4())
+	}
+	return net.IP(b).String()
+}
+
+// Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
+func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
+	reqI := pubEv.GetRequestInit()
+	if reqI != nil {
+		sid := &streamID{
+			Base:   reqI.GetId().GetBase(),
+			Stream: reqI.GetId().GetStream(),
+		}
+		return &requestInitEvent{
+			ID:        sid,
+			Method:    reqI.GetMethod(),
+			Scheme:    reqI.GetScheme(),
+			Authority: reqI.GetAuthority(),
+			Path:      reqI.GetPath(),
+		}
+	}
+	return nil
+}
+
+// Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
+func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
+	resI := pubEv.GetResponseInit()
+	if resI != nil {
+		sid := &streamID{
+			Base:   resI.GetId().GetBase(),
+			Stream: resI.GetId().GetStream(),
+		}
+		return &responseInitEvent{
+			ID:               sid,
+			SinceRequestInit: resI.GetSinceRequestInit(),
+			HTTPStatus:       resI.GetHttpStatus(),
+		}
+	}
+	return nil
+}
+
+// Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
+func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
+	resE := pubEv.GetResponseEnd()
+	if resE != nil {
+		sid := &streamID{
+			Base:   resE.GetId().GetBase(),
+			Stream: resE.GetId().GetStream(),
+		}
+		return &responseEndEvent{
+			ID:                sid,
+			SinceRequestInit:  resE.GetSinceRequestInit(),
+			SinceResponseInit: resE.GetSinceResponseInit(),
+			ResponseBytes:     resE.GetResponseBytes(),
+			GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
+			ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
+		}
+	}
+	return nil
 }

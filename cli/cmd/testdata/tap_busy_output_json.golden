@@ -1,70 +1,55 @@
 {
   "source": {
-    "ip": {
-      "ipv4": 1
-    },
-    "port": 0
+    "ip": "0.0.0.1",
+    "port": 0,
+    "metadata": null
   },
-  "sourceMeta": null,
   "destination": {
-    "ip": {
-      "ipv4": 9
-    },
-    "port": 0
-  },
-  "destinationMeta": {
-    "labels": {
+    "ip": "0.0.0.9",
+    "port": 0,
+    "metadata": {
       "pod": "my-pod",
       "tls": "true"
     }
   },
   "routeMeta": null,
   "proxyDirection": "OUTBOUND",
-  "http": {
-    "requestInit": {
-      "id": {
-        "base": 1,
-        "stream": "0"
-      },
-      "method": null,
-      "scheme": null,
-      "authority": "localhost",
-      "path": "/some/path"
-    }
+  "requestInitEvent": {
+    "id": {
+      "base": 1,
+      "stream": 0
+    },
+    "method": null,
+    "scheme": null,
+    "authority": "localhost",
+    "path": "/some/path"
   }
 }
 {
   "source": {
-    "ip": {
-      "ipv4": 1
-    },
-    "port": 0
+    "ip": "0.0.0.1",
+    "port": 0,
+    "metadata": null
   },
-  "sourceMeta": null,
   "destination": {
-    "ip": {
-      "ipv4": 9
-    },
-    "port": 0
-  },
-  "destinationMeta": {
-    "labels": {
-    }
+    "ip": "0.0.0.9",
+    "port": 0,
+    "metadata": null
   },
   "routeMeta": null,
   "proxyDirection": "OUTBOUND",
-  "http": {
-    "responseEnd": {
-      "id": {
-        "base": 1,
-        "stream": "0"
-      },
-      "sinceRequestInit": "10s",
-      "sinceResponseInit": "100s",
-      "responseBytes": "1337",
-      "eos": {
-        "grpcStatusCode": 666
-      }
-    }
+  "responseEndEvent": {
+    "id": {
+      "base": 1,
+      "stream": 0
+    },
+    "sinceRequestInit": {
+      "seconds": 10
+    },
+    "sinceResponseInit": {
+      "seconds": 100
+    },
+    "responseBytes": 1337,
+    "grpcStatusCode": 666
   }
 }
