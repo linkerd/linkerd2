@@ -3,19 +3,32 @@
 set -eu
 
 if [ $# -ne 1 ]; then
-    echo "usage: $(basename $0) PROXY-REVISION" >&2
+    echo "usage: $(basename $0) v2.N.P" >&2
     exit 64
 fi
-new_proxy_revision="$1"
+new_proxy_version="$1"
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 
 old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
 if [ -z "$old_proxy_version" ]; then
-    echo "missing .proxy-version" >&2
+    echo "Missing .proxy-version" >&2
     exit 1
 fi
+
+# We temporarily have to handle aa SHA version.
+old_proxy_rev="$old_proxy_version"
+if echo "$old_proxy_version" | grep '^v2.'; then
+    old_proxy_rev="release/$old_proxy_version"
+fi
+
+# Ensure the proxy version actually exists...
+if ! bin/fetch-proxy "$new_proxy_version" >/dev/null; then
+    echo "Failed to fetch proxy version $new_proxy_version"
+    exit 1
+fi
+new_proxy_rev="release/$new_proxy_version"
 
 # Checkout the linkerd2-proxy repo to resolve the new proxy version to a SHA
 # and obtain the commit log since the prior version.
@@ -23,18 +36,15 @@ tmp=$(mktemp -d -t l2-proxy.XXX)
 git clone --depth=100 https://github.com/linkerd/linkerd2-proxy "$tmp"
 cd "$tmp"
 
-sha="$(git rev-parse --verify --quiet "${new_proxy_revision}")"
-new_proxy_version="${sha:0:7}"
-
-if ! git rev-parse --verify --quiet "${old_proxy_version}" ; then
+if ! git rev-parse --verify --quiet "${old_proxy_rev}" ; then
     echo "The old proxy-version ${old_proxy_version} does not exist in the last 100 proxy commits." >&2
     exit 2
 fi
 
-echo "proxy: Update proxy to ${new_proxy_revision}" >"$tmp/commit.template"
+echo "proxy: Update to ${new_proxy_version}" >"$tmp/commit.template"
 echo "" >>"$tmp/commit.template"
 
-git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_version}..${new_proxy_version}" | \
+git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_rev}..${new_proxy_rev}" | \
     sed -E -e 's,^[a-f0-9]{7} ,* ,' \
     -e 's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),' \
     >>"$tmp/commit.template"
