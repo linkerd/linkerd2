@@ -9,7 +9,6 @@ import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Namespace from './components/Namespace.jsx';
-import NamespaceLanding from './components/NamespaceLanding.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
 import React from 'react';
@@ -32,29 +31,62 @@ if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
-const context = {
-  ...appData,
-  api: ApiHelpers(pathPrefix),
-  pathPrefix: pathPrefix,
-  productName: "Linkerd"
-};
+let selectedNamespace = "default";
+let pathArray = window.location.pathname.split("/");
+if (pathArray[0] === "" && pathArray[1] === "namespaces" && pathArray[2]) {
+  selectedNamespace = pathArray[2];
+}
 
-const theme = createMuiTheme(dashboardTheme);
+class App extends React.Component {
+  constructor(props) {
+    super(props);
 
-let applicationHtml = (
-  <React.Fragment>
-    <CssBaseline />
-    <MuiThemeProvider theme={theme}>
-      <AppContext.Provider value={context}>
+    this.state = {
+      ...appData
+    };
+
+    this.state.api = ApiHelpers(pathPrefix);
+    this.state.pathPrefix = pathPrefix;
+    this.state.productName = "Linkerd";
+    this.state.selectedNamespace = selectedNamespace;
+
+    this.state.updateNamespaceInContext = name => {
+      this.setState({selectedNamespace:name});
+    };
+  }
+
+  render() {
+    return (
+      <AppContext.Provider value={this.state}>
+        <AppHTML />
+      </AppContext.Provider>
+    );
+  }
+}
+
+
+function AppHTML() {
+  const theme = createMuiTheme(dashboardTheme);
+
+  return (
+    <React.Fragment>
+      <CssBaseline />
+      <MuiThemeProvider theme={theme}>
         <BrowserRouter>
           <RouterToUrlQuery>
             <Switch>
-              <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/overview`} />
+              <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/trafficsplits`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/jobs`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/replicationcontrollers`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/pods`} to={`${pathPrefix}/namespaces`} />
+
               <Route
-                path={`${pathPrefix}/overview`}
-                render={props => <Navigation {...props} ChildComponent={NamespaceLanding} />} />
-              <Route
-                path={`${pathPrefix}/servicemesh`}
+                path={`${pathPrefix}/controlPlane`}
                 render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
               <Route
                 exact
@@ -64,23 +96,44 @@ let applicationHtml = (
                 path={`${pathPrefix}/namespaces/:namespace/pods/:pod`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/pods`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="pod" />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/daemonsets/:daemonset`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/daemonsets`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="daemonset" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/statefulsets/:statefulset`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/statefulsets`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/trafficsplits/:trafficsplit`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/trafficsplits`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="trafficsplit" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/jobs/:job`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/jobs`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="job" />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/deployments/:deployment`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/deployments`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
+              <Route
                 path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers/:replicationcontroller`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
               <Route
                 path={`${pathPrefix}/tap`}
                 render={props => <Navigation {...props} ChildComponent={Tap} />} />
@@ -94,39 +147,16 @@ let applicationHtml = (
                 path={`${pathPrefix}/namespaces`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="namespace" />} />
               <Route
-                path={`${pathPrefix}/trafficsplits`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="trafficsplit" />} />
-              <Route
-                path={`${pathPrefix}/deployments`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="deployment" />} />
-              <Route
-                path={`${pathPrefix}/daemonsets`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="daemonset" />} />
-              <Route
-                path={`${pathPrefix}/statefulsets`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
-              <Route
-                path={`${pathPrefix}/jobs`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="job" />} />
-              <Route
-                path={`${pathPrefix}/replicationcontrollers`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
-              <Route
-                path={`${pathPrefix}/pods`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="pod" />} />
-              <Route
-                path={`${pathPrefix}/authorities`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="authority" />} />
-              <Route
                 path={`${pathPrefix}/community`}
                 render={props => <Navigation {...props} ChildComponent={Community} />} />
               <Route component={NoMatch} />
             </Switch>
           </RouterToUrlQuery>
         </BrowserRouter>
-      </AppContext.Provider>
-    </MuiThemeProvider>
-  </React.Fragment>
-);
+      </MuiThemeProvider>
+    </React.Fragment>
+  );
+}
 
-ReactDOM.render(applicationHtml, appMain);
+
+ReactDOM.render(<App />, appMain);

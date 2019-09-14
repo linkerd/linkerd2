@@ -1,23 +1,23 @@
-import { githubIcon, linkerdWordLogo, slackIcon } from './util/SvgWrappers.jsx';
+import { daemonsetIcon, deploymentIcon, githubIcon, jobIcon, linkerdWordLogo, namespaceIcon, podIcon, replicaSetIcon, slackIcon, statefulSetIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
+import Button from '@material-ui/core/Button';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import CloudIcon from '@material-ui/icons/Cloud';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import HomeIcon from '@material-ui/icons/Home';
 import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
-import MenuIcon from '@material-ui/icons/Menu';
+import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
-import NavigationResources from './NavigationResources.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
@@ -27,11 +27,14 @@ import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
+import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
+import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
 import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
 import grey from '@material-ui/core/colors/grey';
+import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
@@ -41,7 +44,7 @@ const localStorageKey = "linkerd-updates-last-clicked";
 const minBrowserWidth = 960;
 
 const styles = theme => {
-  const drawerWidth = theme.spacing.unit * 31;
+  const drawerWidth = theme.spacing.unit * 36;
   const drawerWidthClosed = theme.spacing.unit * 9;
   const navLogoWidth = theme.spacing.unit * 22.5;
   const contentPadding = theme.spacing.unit * 3;
@@ -64,7 +67,6 @@ const styles = theme => {
     },
     appBar: {
       position: "absolute",
-      width: `calc(100% - ${drawerWidthClosed}px)`,
       color: 'white',
       transition: leaving,
     },
@@ -122,6 +124,10 @@ const styles = theme => {
       marginLeft: `-${navLogoWidth+theme.spacing.unit/2}px`,
       transition: leavingFn(['margin', 'opacity']),
     },
+    namespaceChangeButton: {
+      marginLeft: `${drawerWidth * .075}px`,
+      width: `${drawerWidth * .8}px`,
+    },
     navMenuItem: {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
@@ -135,6 +141,13 @@ const styles = theme => {
     externalLinkIcon: {
       color: grey[500],
     },
+    sidebarHeading: {
+      color: grey[500],
+      marginLeft: `${drawerWidth * .03}px`,
+    },
+    toggleDrawerButton: {
+      marginRight: `${contentPadding}px`,
+    },
     badge: {
       backgroundColor: yellow[500],
     }
@@ -147,6 +160,7 @@ class NavigationBase extends React.Component {
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
+    this.handleNamespaceMenuClick = this.handleNamespaceMenuClick.bind(this);
     this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
 
     this.state = this.getInitialState();
@@ -154,16 +168,18 @@ class NavigationBase extends React.Component {
 
   getInitialState() {
     return {
+      anchorEl: null,
       drawerOpen: true,
-      helpMenuOpen: false,
+      namespaceMenuOpen: false,
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
-      namespaceFilter: "all"
+      namespaces: []
     };
   }
 
   componentDidMount() {
+    this.loadFromServer();
     this.fetchVersion();
     this.fetchLatestCommunityUpdate();
     this.updateWindowDimensions();
@@ -172,6 +188,31 @@ class NavigationBase extends React.Component {
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.updateWindowDimensions);
+  }
+
+  // API returns namespaces for namespace select button. No metrics returned.
+  loadFromServer() {
+    if (this.state.pendingRequests) {
+      return;
+    }
+    this.setState({ pendingRequests: true });
+
+    let apiRequests = [
+      this.api.fetchMetrics(this.api.urlsForResourceNoStats("namespace"))
+    ];
+
+    this.api.setCurrentRequests(apiRequests);
+
+    Promise.all(this.api.getCurrentPromises())
+      .then(([allNs]) => {
+        let namespaces = processSingleResourceRollup(allNs);
+        this.setState({
+          namespaces,
+          pendingRequests: false,
+          error: null
+        });
+      })
+      .catch(this.handleApiError);
   }
 
   fetchVersion() {
@@ -228,8 +269,23 @@ class NavigationBase extends React.Component {
     this.setState(state => ({ drawerOpen: !state.drawerOpen }));
   };
 
-  handleHelpMenuClick = () => {
-    this.setState(state => ({ helpMenuOpen: !state.helpMenuOpen }));
+  handleNamespaceChange = namespace => {
+    let path = this.props.history.location.pathname;
+    // if we are viewing a ResourceList such as namespace/oldNamespace/pods,
+    // we should change the path to namespace/newNamespace/pods. however,
+    // if the path is a resource detail view such as
+    // namespace/linkerd/pods/podName we should leave the path intact.
+    if (path.split("/").length < 5) {
+      path = path.replace(this.props.selectedNamespace, namespace);
+      this.props.history.push(path);
+    }
+    this.props.updateNamespaceInContext(namespace);
+    this.setState({ namespaceMenuOpen: false });
+  }
+
+  handleNamespaceMenuClick = event => {
+    this.setState({ anchorEl: event.currentTarget });
+    this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
 
   menuItem(path, title, icon, onClick) {
@@ -260,7 +316,8 @@ class NavigationBase extends React.Component {
   }
 
   render() {
-    const { classes, ChildComponent, ...otherProps } = this.props;
+    const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
+    const { namespaces, anchorEl } = this.state;
 
     return (
       <div className={classes.root}>
@@ -268,6 +325,11 @@ class NavigationBase extends React.Component {
           className={classNames(classes.appBar, {[classes.appBarShift]: this.state.drawerOpen} )}>
           <Toolbar>
             <Typography variant="h6" color="inherit" noWrap>
+              { !this.state.drawerOpen &&
+              <IconButton className={classes.toggleDrawerButton}>
+                <FontAwesomeIcon icon={faBars} onClick={this.handleDrawerClick} />
+              </IconButton>
+              }
               <BreadcrumbHeader {...this.props} />
             </Typography>
           </Toolbar>
@@ -275,39 +337,119 @@ class NavigationBase extends React.Component {
 
         <Drawer
           className={classNames(classes.drawer, {[classes.drawerClose]: !this.state.drawerOpen} )}
-          variant="permanent"
+          variant="persistent"
           classes={{
             paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !this.state.drawerOpen} ),
           }}
           open={this.state.drawerOpen}>
           <div className={classNames(classes.navToolbar)}>
             <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !this.state.drawerOpen} )}>
-              <Link to="/overview">{linkerdWordLogo}</Link>
+              <Link to="/namespaces">{linkerdWordLogo}</Link>
             </div>
             <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClick}>
-              {this.state.drawerOpen ? <ChevronLeftIcon /> : <MenuIcon />}
+              <ChevronLeftIcon />
             </IconButton>
           </div>
 
           <Divider />
-
           <MenuList>
-            { this.menuItem("/overview", "Overview", <HomeIcon />) }
-            { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-            { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-            { this.menuItem("/routes", "Top Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
-            { this.menuItem("/servicemesh", "Service Mesh", <CloudQueueIcon className={classes.shrinkIcon} />) }
-            <NavigationResources />
+            <MenuItem>
+              <Typography variant="button" className={classes.sidebarHeading}>
+                Cluster
+              </Typography>
+            </MenuItem>
+
+            <MenuItem
+              component={Link}
+              to="/namespaces"
+              className={classes.navMenuItem}>
+              <ListItemIcon>{namespaceIcon}</ListItemIcon>
+              <ListItemText primary="Namespaces" />
+            </MenuItem>
+
+            { this.menuItem("/controlplane", "Control Plane", <CloudIcon className={classes.shrinkIcon} />) }
+
           </MenuList>
 
           <Divider />
 
           <MenuList>
-            <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-              <ListItemText primary="Documentation" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+            <Button
+              variant="contained"
+              className={classes.namespaceChangeButton}
+              size="large"
+              onClick={this.handleNamespaceMenuClick}>
+              {selectedNamespace}
+              <ArrowDropDownIcon />
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={this.state.namespaceMenuOpen}
+              keepMounted
+              onClose={this.handleNamespaceMenuClick}>
+              <MenuItem
+                value="all"
+                onClick={() => this.handleNamespaceChange("all")}>
+                  All Namespaces
+              </MenuItem>
+
+              <Divider />
+
+              {namespaces.map(ns => (
+                <MenuItem
+                  onClick={() => this.handleNamespaceChange(ns.name)}
+                  key={ns.name}>
+                  {ns.name}
+                </MenuItem>
+              ))}
+            </Menu>
+          </MenuList>
+
+          <MenuList>
+            <MenuItem>
+              <Typography variant="button" className={classes.sidebarHeading}>
+                Workloads
+              </Typography>
             </MenuItem>
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, "Deployments", deploymentIcon) }
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, "Jobs", jobIcon) }
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/pods`, "Pods", podIcon) }
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, "Replication Controllers", replicaSetIcon) }
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, "Stateful Sets", statefulSetIcon) }
+          </MenuList>
+
+          <MenuList>
+            <MenuItem>
+              <Typography variant="button" className={classes.sidebarHeading}>
+                Configuration
+              </Typography>
+            </MenuItem>
+
+            { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
+
+          </MenuList>
+          <Divider />
+          <MenuList >
+            <MenuItem>
+              <Typography variant="button" className={classes.sidebarHeading}>
+                Tools
+              </Typography>
+            </MenuItem>
+
+            { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
+            { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
+            { this.menuItem("/routes", "Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+
+          </MenuList>
+          <Divider />
+          <MenuList>
             { this.menuItem("/community", "Community",
               <Badge
                 classes={{ badge: classes.badge }}
@@ -316,6 +458,19 @@ class NavigationBase extends React.Component {
                 <SentimentVerySatisfiedIcon className={classes.shrinkIcon} />
               </Badge>, this.handleCommunityClick
               ) }
+
+            <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
+              <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
+              <ListItemText primary="Documentation" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+            </MenuItem>
+
+            <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
+              <ListItemIcon>{githubIcon}</ListItemIcon>
+              <ListItemText primary="GitHub" />
+              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+            </MenuItem>
+
             <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
               <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
               <ListItemText primary="Mailing List" />
@@ -328,11 +483,6 @@ class NavigationBase extends React.Component {
               <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
             </MenuItem>
 
-            <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon>{githubIcon}</ListItemIcon>
-              <ListItemText primary="File an Issue" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
-            </MenuItem>
           </MenuList>
 
           {

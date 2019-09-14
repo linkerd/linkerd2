@@ -232,6 +232,7 @@ class MetricsTable extends React.Component {
     isTcpTable: PropTypes.bool,
     metrics: PropTypes.arrayOf(processedMetricsPropType),
     resource: PropTypes.string.isRequired,
+    selectedNamespace: PropTypes.string.isRequired,
     showName: PropTypes.bool,
     showNamespaceColumn: PropTypes.bool,
     title: PropTypes.string
@@ -246,9 +247,9 @@ class MetricsTable extends React.Component {
   };
 
   render() {
-    const { metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable } = this.props;
+    const { metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace } = this.props;
 
-    let showNsColumn = resource === "namespace" ? false : showNamespaceColumn;
+    let showNsColumn = resource === "namespace" || selectedNamespace !== "all" ? false : showNamespaceColumn;
     let showNameColumn = resource !== "trafficsplit" ? true : showName;
     let orderBy = "name";
     if (resource === "trafficsplit" && !showNameColumn) {orderBy = "leaf";}

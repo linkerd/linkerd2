@@ -321,3 +321,635 @@ export const linkerdWordLogo = (
   </svg>
 )
 ;
+
+export const namespaceIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="24px"
+    viewBox="-1 0 24 24">
+    <g fillOpacity="1">
+      <g
+        stroke="none"
+        strokeDasharray="none"
+        strokeMiterlimit="4"
+        strokeWidth="0">
+        <path
+          fill="#757575"
+          strokeOpacity="1"
+          d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+          transform="matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+        <path
+          fill="#fff"
+          fillRule="nonzero"
+          d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+          baselineShift="baseline"
+          color="#000"
+          direction="ltr"
+          display="inline"
+          enableBackground="accumulate"
+          fontFamily="Sans"
+          fontSize="medium"
+          fontStretch="normal"
+          fontStyle="normal"
+          fontVariant="normal"
+          fontWeight="normal"
+          letterSpacing="normal"
+          overflow="visible"
+          textAnchor="start"
+          textDecoration="none"
+          transform="matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+          style={{
+              lineHeight: "normal",
+              InkscapeFontSpecification: "Sans",
+              WebkitTextIndent: "0",
+              textIndent: "0",
+              WebkitTextAlign: "start",
+              textAlign: "start",
+              WebkitTextDecorationLine: "none",
+              textDecorationLine: "none",
+              WebkitTextTransform: "none",
+              textTransform: "none",
+              marker: "none"
+            }}
+          visibility="visible"
+          wordSpacing="normal"
+          writingMode="lr-tb" />
+      </g>
+      <path
+        fill="none"
+        fillRule="nonzero"
+        stroke="#fff"
+        strokeDasharray="0.80000001, 0.4"
+        strokeDashoffset="3.44"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeOpacity="1"
+        strokeWidth="0.4"
+        d="M6.173 6.579H13.847000000000001V13.269H6.173z"
+        opacity="1" />
+    </g>
+  </svg>
+)
+;
+
+export const daemonsetIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g
+      fillOpacity="1"
+      stroke="none"
+      strokeDasharray="none"
+      strokeMiterlimit="4"
+      strokeWidth="0">
+      <path
+        fill="#757575"
+        strokeOpacity="1"
+        d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+      <path
+        fill="#fff"
+        fillRule="nonzero"
+        d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+        baselineShift="baseline"
+        color="#000"
+        direction="ltr"
+        display="inline"
+        enableBackground="accumulate"
+        fontFamily="Sans"
+        fontSize="medium"
+        fontStretch="normal"
+        fontStyle="normal"
+        fontVariant="normal"
+        fontWeight="normal"
+        letterSpacing="normal"
+        overflow="visible"
+        textAnchor="start"
+        textDecoration="none"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+        style={{
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
+        visibility="visible"
+        wordSpacing="normal"
+        writingMode="lr-tb" />
+    </g>
+    <g fillRule="evenodd">
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeDasharray="1.58743756, 1.58743756"
+        strokeDashoffset="3.667"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M7.708 5.283h6.525v4.583H7.708z"
+        transform="translate(-.993 -1.174) translate(.586 .457)" />
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeDasharray="none"
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit="4"
+        strokeOpacity="1"
+        strokeWidth="0.618"
+        d="M4.35 13.607h7.075"
+        transform="translate(-.993 -1.174) translate(.586 .457)" />
+      <path
+        fill="#757575"
+        fillOpacity="1"
+        stroke="#fff"
+        strokeDasharray="1.58743756, 1.58743756"
+        strokeDashoffset="3.879"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M6.17 6.694h6.525v4.583H6.17z"
+        transform="translate(-.993 -1.174) translate(.586 .457)" />
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M4.63 8.105h6.526v4.584H4.63z"
+        transform="translate(-.993 -1.174) translate(.586 .457)" />
+      <path
+        fill="#fff"
+        stroke="none"
+        strokeLinecap="square"
+        strokeMiterlimit="10"
+        strokeWidth="0.265"
+        d="M4.587 8.123h6.525v4.583H4.587z"
+        transform="translate(-.993 -1.174) translate(.586 .457)" />
+    </g>
+  </svg>
+);
+
+export const deploymentIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g stroke="none">
+      <g
+        fillOpacity="1"
+        strokeDasharray="none"
+        strokeMiterlimit="4"
+        strokeWidth="0">
+        <path
+          fill="#757575"
+          strokeOpacity="1"
+          d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+        <path
+          fill="#fff"
+          fillRule="nonzero"
+          d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+          baselineShift="baseline"
+          color="#000"
+          direction="ltr"
+          display="inline"
+          enableBackground="accumulate"
+          fontFamily="Sans"
+          fontSize="medium"
+          fontStretch="normal"
+          fontStyle="normal"
+          fontVariant="normal"
+          fontWeight="normal"
+          letterSpacing="normal"
+          overflow="visible"
+          textAnchor="start"
+          textDecoration="none"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+          style={{
+              lineHeight: "normal",
+              InkscapeFontSpecification: "Sans",
+              WebkitTextIndent: "0",
+              textIndent: "0",
+              WebkitTextAlign: "start",
+              textAlign: "start",
+              WebkitTextDecorationLine: "none",
+              textDecorationLine: "none",
+              WebkitTextTransform: "none",
+              textTransform: "none",
+              marker: "none"
+            }}
+          visibility="visible"
+          wordSpacing="normal"
+          writingMode="lr-tb" />
+      </g>
+      <g
+        fill="#fff"
+        fillRule="evenodd"
+        strokeLinecap="square"
+        strokeMiterlimit="10"
+        strokeWidth="0.265">
+        <path
+          d="M10.225 13.732a4.446 4.446 0 114.227-4.728l-1.757.113a2.685 2.685 0 10-2.553 2.856z"
+          transform="translate(-.993 -1.174) translate(-.654 .634)" />
+        <path
+          d="M11.136 9.009l1.397 3.42 3.226-3.42z"
+          transform="translate(-.993 -1.174) translate(-.654 .634)" />
+      </g>
+    </g>
+  </svg>
+);
+
+export const jobIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g fillOpacity="1" stroke="none">
+      <g strokeDasharray="none" strokeMiterlimit="4" strokeWidth="0">
+        <path
+          fill="#757575"
+          strokeOpacity="1"
+          d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+        <path
+          fill="#fff"
+          fillRule="nonzero"
+          d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+          baselineShift="baseline"
+          color="#000"
+          direction="ltr"
+          display="inline"
+          enableBackground="accumulate"
+          fontFamily="Sans"
+          fontSize="medium"
+          fontStretch="normal"
+          fontStyle="normal"
+          fontVariant="normal"
+          fontWeight="normal"
+          letterSpacing="normal"
+          overflow="visible"
+          textAnchor="start"
+          textDecoration="none"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+          style={{
+              lineHeight: "normal",
+              InkscapeFontSpecification: "Sans",
+              WebkitTextIndent: "0",
+              textIndent: "0",
+              WebkitTextAlign: "start",
+              textAlign: "start",
+              WebkitTextDecorationLine: "none",
+              textDecorationLine: "none",
+              WebkitTextTransform: "none",
+              textTransform: "none",
+              marker: "none"
+            }}
+          visibility="visible"
+          wordSpacing="normal"
+          writingMode="lr-tb" />
+      </g>
+      <g
+        fill="#fff"
+        fillRule="nonzero"
+        strokeDasharray="1.41800002, 1.41800002"
+        strokeDashoffset="23.045"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeMiterlimit="10"
+        strokeOpacity="1"
+        strokeWidth="0.709"
+        transform="translate(-.993 -1.174) translate(.304 1.092)">
+        <path d="M5.453 10.878H7.656000000000001V13.021H5.453z" opacity="1" />
+        <path d="M8.605 10.878H10.808V13.021H8.605z" opacity="1" />
+        <path
+          d="M11.757 10.878H13.959999999999999V13.021H11.757z"
+          opacity="1" />
+        <path
+          d="M11.757 7.728H13.959999999999999V9.870999999999999H11.757z"
+          opacity="1" />
+        <path d="M8.615 7.761H10.818V9.904H8.615z" opacity="1" />
+        <path d="M5.473 7.761H7.676V9.904H5.473z" opacity="1" />
+        <path
+          d="M11.757 4.644H13.959999999999999V6.787H11.757z"
+          opacity="1" />
+      </g>
+    </g>
+  </svg>
+);
+
+export const podIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g stroke="none">
+      <g
+        fillOpacity="1"
+        strokeDasharray="none"
+        strokeMiterlimit="4"
+        strokeWidth="0">
+        <path
+          fill="#757575"
+          strokeOpacity="1"
+          d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+        <path
+          fill="#fff"
+          fillRule="nonzero"
+          d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+          baselineShift="baseline"
+          color="#000"
+          direction="ltr"
+          display="inline"
+          enableBackground="accumulate"
+          fontFamily="Sans"
+          fontSize="medium"
+          fontStretch="normal"
+          fontStyle="normal"
+          fontVariant="normal"
+          fontWeight="normal"
+          letterSpacing="normal"
+          overflow="visible"
+          textAnchor="start"
+          textDecoration="none"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+          style={{
+              lineHeight: "normal",
+              InkscapeFontSpecification: "Sans",
+              WebkitTextIndent: "0",
+              textIndent: "0",
+              WebkitTextAlign: "start",
+              textAlign: "start",
+              WebkitTextDecorationLine: "none",
+              textDecorationLine: "none",
+              WebkitTextTransform: "none",
+              textTransform: "none",
+              marker: "none"
+            }}
+          visibility="visible"
+          wordSpacing="normal"
+          writingMode="lr-tb" />
+      </g>
+      <g
+        fill="#fff"
+        fillRule="evenodd"
+        strokeLinecap="square"
+        strokeMiterlimit="10"
+        strokeWidth="0.265">
+        <path
+          d="M6.262 7.036l3.62-1.05 3.621 1.05-3.62 1.05zM6.262 7.438v3.853l3.373 1.869.017-4.713zM13.503 7.438v3.853L10.13 13.16l-.017-4.713z"
+          transform="translate(-.993 -1.174) translate(.128 .351)" />
+      </g>
+    </g>
+  </svg>
+);
+
+export const replicaSetIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g
+      fillOpacity="1"
+      stroke="none"
+      strokeDasharray="none"
+      strokeMiterlimit="4"
+      strokeWidth="0">
+      <path
+        fill="#757575"
+        strokeOpacity="1"
+        d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+      <path
+        fill="#fff"
+        fillRule="nonzero"
+        d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+        baselineShift="baseline"
+        color="#000"
+        direction="ltr"
+        display="inline"
+        enableBackground="accumulate"
+        fontFamily="Sans"
+        fontSize="medium"
+        fontStretch="normal"
+        fontStyle="normal"
+        fontVariant="normal"
+        fontWeight="normal"
+        letterSpacing="normal"
+        overflow="visible"
+        textAnchor="start"
+        textDecoration="none"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+        style={{
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
+        visibility="visible"
+        wordSpacing="normal"
+        writingMode="lr-tb" />
+    </g>
+    <g fillRule="evenodd" strokeMiterlimit="10">
+      <path
+        fill="#757575"
+        fillOpacity="1"
+        stroke="#fff"
+        strokeDasharray="1.58700001, 1.58700001"
+        strokeDashoffset="3.666"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M8.124 5.552h6.525v4.584H8.124z"
+        transform="translate(-.993 -1.174) translate(.163 .669)" />
+      <path
+        fill="#757575"
+        fillOpacity="1"
+        stroke="#fff"
+        strokeDasharray="1.58743756, 1.58743756"
+        strokeDashoffset="3.879"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M6.585 6.964h6.525v4.583H6.585z"
+        transform="translate(-.993 -1.174) translate(.163 .669)" />
+      <path
+        fill="#fff"
+        stroke="none"
+        strokeLinecap="square"
+        strokeWidth="0.265"
+        d="M5.046 8.375h6.525v4.583H5.046z"
+        transform="translate(-.993 -1.174) translate(.163 .669)" />
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M5.046 8.375h6.525v4.583H5.046z"
+        transform="translate(-.993 -1.174) translate(.163 .669)" />
+    </g>
+  </svg>
+);
+
+export const statefulSetIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    version="1.1"
+    width="23px"
+    height="23px"
+    viewBox="-1 0 24 24">
+    <g
+      fillOpacity="1"
+      stroke="none"
+      strokeDasharray="none"
+      strokeMiterlimit="4"
+      strokeWidth="0">
+      <path
+        fill="#757575"
+        strokeOpacity="1"
+        d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.937 -2.699)" />
+      <path
+        fill="#fff"
+        fillRule="nonzero"
+        d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+        baselineShift="baseline"
+        color="#000"
+        direction="ltr"
+        display="inline"
+        enableBackground="accumulate"
+        fontFamily="Sans"
+        fontSize="medium"
+        fontStretch="normal"
+        fontStyle="normal"
+        fontVariant="normal"
+        fontWeight="normal"
+        letterSpacing="normal"
+        overflow="visible"
+        textAnchor="start"
+        textDecoration="none"
+        transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.937 -2.699)"
+        style={{
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
+        visibility="visible"
+        wordSpacing="normal"
+        writingMode="lr-tb" />
+    </g>
+    <g fillRule="evenodd" strokeMiterlimit="10">
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeDasharray="1.58743761, 1.58743761"
+        strokeDashoffset="3.667"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M8.053 5.13h6.525v4.582H8.053z"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="#757575"
+        fillOpacity="1"
+        stroke="#fff"
+        strokeDasharray="1.58743761, 1.58743761"
+        strokeDashoffset="3.879"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M6.514 6.54h6.525v4.584H6.514z"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="#fff"
+        stroke="none"
+        strokeLinecap="square"
+        strokeWidth="0.265"
+        d="M4.976 7.952H11.5v4.583H4.976z"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="none"
+        stroke="#fff"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M4.976 7.952H11.5v4.583H4.976z"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="#fff"
+        fillOpacity="1"
+        stroke="none"
+        strokeLinecap="square"
+        strokeWidth="0.265"
+        d="M5.509 9.226c0-.43 1.222-.777 2.729-.777 1.507 0 2.73.348 2.73.777 0 .43-1.223.778-2.73.778s-2.73-.349-2.73-.778z"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="#000"
+        fillOpacity="0"
+        stroke="none"
+        strokeLinecap="square"
+        strokeWidth="0.265"
+        d="M10.967 9.226c0 .43-1.222.778-2.73.778-1.506 0-2.728-.349-2.728-.778 0-.43 1.222-.777 2.729-.777 1.507 0 2.73.348 2.73.777v2.103c0 .43-1.223.778-2.73.778s-2.73-.348-2.73-.778V9.226"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+      <path
+        fill="none"
+        stroke="#757575"
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+        strokeOpacity="1"
+        strokeWidth="0.529"
+        d="M10.967 9.226h0c0 .43-1.222.778-2.73.778-1.506 0-2.728-.349-2.728-.778h0c0-.43 1.222-.777 2.729-.777 1.507 0 2.73.348 2.73.777v2.103c0 .43-1.223.778-2.73.778s-2.73-.348-2.73-.778V9.226"
+        transform="translate(-.993 -1.174) translate(.269 1.092)" />
+    </g>
+  </svg>
+);

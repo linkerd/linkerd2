@@ -75,10 +75,11 @@ export class ResourceListBase extends React.Component {
   }
 }
 
+// When constructing a ResourceList for type "namespace", we query the API for metrics for all namespaces. For all other resource types, we limit our API query to the selectedNamespace.
 export default withREST(
   ResourceListBase,
-  ({ api, resource }) => [api.fetchMetrics(api.urlsForResource(resource, '', true))],
+  ({ api, resource, selectedNamespace }) => [api.fetchMetrics(api.urlsForResource(resource, resource === "namespace" ? "all" : selectedNamespace, true))],
   {
-    resetProps: ['resource'],
+    resetProps: ['resource', 'selectedNamespace'],
   },
 );

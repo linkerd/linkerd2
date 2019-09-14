@@ -7,6 +7,7 @@ import { mount } from 'enzyme';
 describe('Tests for <MetricsTable>', () => {
   const defaultProps = {
     api: ApiHelpers(''),
+    selectedNamespace: "default",
   };
 
   it('renders the table with all columns', () => {
@@ -25,7 +26,7 @@ describe('Tests for <MetricsTable>', () => {
 
     expect(table).toBeDefined();
     expect(table.props().tableRows).toHaveLength(1);
-    expect(table.props().tableColumns).toHaveLength(9);
+    expect(table.props().tableColumns).toHaveLength(8);
   });
 
   it('if enableFilter is true, user can filter rows by search term', () => {
@@ -89,16 +90,6 @@ describe('Tests for <MetricsTable>', () => {
     expect(table.props().tableColumns).toHaveLength(8);
   });
 
-  it('omits meshed column for an authority resource', () => {
-    let extraProps = _merge({}, defaultProps, { metrics: [], resource: "authority"});
-    const component = mount(routerWrap(MetricsTable, extraProps));
-
-    const table = component.find("BaseTable");
-
-    expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(8);
-  });
-
   it('adds apex, leaf and weight columns, and omits meshed and grafana column, for a trafficsplit resource', () => {
     let extraProps = _merge({}, defaultProps, { metrics: [], resource: "trafficsplit"});
     const component = mount(routerWrap(MetricsTable, extraProps));
@@ -106,6 +97,6 @@ describe('Tests for <MetricsTable>', () => {
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(10);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 });
