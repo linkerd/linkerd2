@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -38,8 +36,7 @@ type tapOptions struct {
 }
 
 type endpoint struct {
-	IP       string            `json:"ip"`
-	Port     uint32            `json:"port"`
+	Address  string            `json:"address"`
 	Metadata map[string]string `json:"metadata"`
 }
 
@@ -353,20 +350,16 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 // Map public API `TapEvent`s to `displayTapEvent`s
 func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
 	// Map source endpoint
-	sip := getIPAddress(event.GetSource().GetIp())
-	sp := event.GetSource().GetPort()
+	sAddr := addr.PublicAddressToString(event.GetSource())
 	s := &endpoint{
-		IP:       sip,
-		Port:     sp,
+		Address:  sAddr,
 		Metadata: event.GetSourceMeta().GetLabels(),
 	}
 
 	// Map destination endpoint
-	dip := getIPAddress(event.GetDestination().GetIp())
-	dp := event.GetDestination().GetPort()
+	dAddr := addr.PublicAddressToString(event.GetDestination())
 	d := &endpoint{
-		IP:       dip,
-		Port:     dp,
+		Address:  dAddr,
 		Metadata: event.GetDestinationMeta().GetLabels(),
 	}
 
@@ -469,19 +462,6 @@ func routeLabels(event *pb.TapEvent) string {
 	}
 
 	return out
-}
-
-func getIPAddress(ip *pb.IPAddress) string {
-	var b []byte
-	if ip.GetIpv6() != nil {
-		b = make([]byte, 16)
-		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
-		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
-	} else if ip.GetIpv4() != 0 {
-		b = make([]byte, 4)
-		binary.BigEndian.PutUint32(b, ip.GetIpv4())
-	}
-	return net.IP(b).String()
 }
 
 // Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`

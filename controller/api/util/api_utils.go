@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -533,8 +534,12 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 		},
 		Destination: &pb.TcpAddress{
 			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
-					Ipv4: uint32(9),
+				Ip: &pb.IPAddress_Ipv6{
+					Ipv6: &pb.IPv6{
+						// All nodes address: https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml
+						First: binary.BigEndian.Uint64([]byte{0xff, 0x01, 0, 0, 0, 0, 0, 0}),
+						Last:  binary.BigEndian.Uint64([]byte{0, 0, 0, 0, 0, 0, 0, 0x01}),
+					},
 				},
 			},
 		},
