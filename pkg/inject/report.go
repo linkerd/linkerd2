@@ -18,6 +18,7 @@ const (
 )
 
 var (
+	// Reasons is a map of inject skip reasons with human readable sentences
 	Reasons = map[string]string{
 		hostNetworkEnabled:             "hostNetwork is enabled",
 		sidecarExists:                  "pod has a sidecar injected already",

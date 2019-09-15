@@ -171,7 +171,7 @@ func TestInjectable(t *testing.T) {
 				t.Errorf("Expected %d number of reasons. Actual %d", len(testCase.reasons), len(reasons))
 			}
 
-			for i, _ := range reasons {
+			for i := range reasons {
 				if testCase.reasons[i] != reasons[i] {
 					t.Errorf("Expected reason '%s'. Actual reason '%s'", testCase.reasons[i], reasons[i])
 				}
