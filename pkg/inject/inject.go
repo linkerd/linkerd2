@@ -29,7 +29,34 @@ const (
 	proxyInitResourceLimitMemory   = "50Mi"
 )
 
-var rTrail = regexp.MustCompile(`\},\s*\]`)
+var (
+	rTrail = regexp.MustCompile(`\},\s*\]`)
+
+	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace
+	ProxyAnnotations = []string{
+		k8s.ProxyAdminPortAnnotation,
+		k8s.ProxyControlPortAnnotation,
+		k8s.ProxyDisableIdentityAnnotation,
+		k8s.ProxyDisableTapAnnotation,
+		k8s.ProxyEnableDebugAnnotation,
+		k8s.ProxyEnableExternalProfilesAnnotation,
+		k8s.ProxyImagePullPolicyAnnotation,
+		k8s.ProxyInboundPortAnnotation,
+		k8s.ProxyInitImageAnnotation,
+		k8s.ProxyInitImageVersionAnnotation,
+		k8s.ProxyOutboundPortAnnotation,
+		k8s.ProxyCPULimitAnnotation,
+		k8s.ProxyCPURequestAnnotation,
+		k8s.ProxyImageAnnotation,
+		k8s.ProxyLogLevelAnnotation,
+		k8s.ProxyMemoryLimitAnnotation,
+		k8s.ProxyMemoryRequestAnnotation,
+		k8s.ProxyUIDAnnotation,
+		k8s.ProxyVersionAnnotation,
+		k8s.ProxyIgnoreInboundPortsAnnotation,
+		k8s.ProxyIgnoreOutboundPortsAnnotation,
+	}
+)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -781,6 +808,16 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		ports = append(ports, portStr)
 	}
 	return strings.Join(ports, ",")
+}
+
+// GetOverriddenConfiguration returns a map of the overridden proxy annotations
+func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
+	proxyOverrideConfig := map[string]string{}
+	for _, annotation := range ProxyAnnotations {
+		proxyOverrideConfig[annotation] = conf.getOverride(annotation)
+	}
+
+	return proxyOverrideConfig
 }
 
 func sortedKeys(m map[string]string) []string {
