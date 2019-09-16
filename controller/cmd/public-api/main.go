@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
@@ -72,6 +73,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
+	util.SetExporter("public")
 	server := public.NewServer(
 		*addr,
 		prometheusClient,

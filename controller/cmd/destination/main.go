@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/linkerd/linkerd2/pkg/util"
+
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -60,6 +62,8 @@ func Main(args []string) {
 	}
 
 	clusterDomain := global.GetClusterDomain()
+
+	util.SetExporter("destination")
 
 	server := destination.NewServer(
 		*addr,

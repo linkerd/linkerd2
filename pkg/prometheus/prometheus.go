@@ -3,6 +3,8 @@ package prometheus
 import (
 	"net/http"
 
+	"go.opencensus.io/plugin/ocgrpc"
+
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -92,6 +94,7 @@ func NewGrpcServer() *grpc.Server {
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 	)
 
 	grpc_prometheus.EnableHandlingTimeHistogram()

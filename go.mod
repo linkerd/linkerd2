@@ -3,7 +3,7 @@ module github.com/linkerd/linkerd2
 go 1.12.9
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
+	contrib.go.opencensus.io/exporter/ocagent v0.6.0
 	github.com/Azure/go-autorest v11.3.2+incompatible // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
@@ -65,6 +65,7 @@ require (
 	github.com/wercker/stern v0.0.0-20190705090245-4fa46dd6987f
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
+	go.opencensus.io v0.22.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opencensus.io/trace"
+
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
@@ -46,6 +48,11 @@ func extractSampleValue(sample *model.Sample) uint64 {
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request:\n\t%+v", query)
 
+	_, span := trace.StartSpan(ctx, "query.prometheus")
+	defer span.End()
+	span.Annotate([]trace.Attribute{
+		trace.StringAttribute("queryString", query),
+	}, "Prometheus Query Details")
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {

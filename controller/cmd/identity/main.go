@@ -9,6 +9,10 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/linkerd/linkerd2/pkg/util"
+
+	"go.opencensus.io/plugin/ocgrpc"
+
 	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -118,7 +122,8 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	srv := grpc.NewServer()
+	util.SetExporter("identity")
+	srv := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	identity.Register(srv, svc)
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -61,6 +62,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
+	util.SetExporter("tap")
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
 	// TODO: make this configurable for local development

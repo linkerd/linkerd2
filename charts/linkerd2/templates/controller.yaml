@@ -64,6 +64,9 @@ spec:
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
+        env:
+        - name: OC_AGENT_HOST
+          value: oc-collector.tracing:55678
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:

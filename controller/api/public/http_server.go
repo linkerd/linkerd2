@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"go.opencensus.io/plugin/ochttp"
+
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -341,6 +343,6 @@ func NewServer(
 
 	return &http.Server{
 		Addr:    addr,
-		Handler: instrumentedHandler,
+		Handler: &ochttp.Handler{Handler: instrumentedHandler},
 	}
 }
