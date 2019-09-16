@@ -70,7 +70,7 @@ func newCmdUpgradeConfig(options *upgradeOptions) *cobra.Command {
 
 Note that this command should be followed by "linkerd upgrade control-plane".`,
 		Example: `  # Default upgrade.
-  linkerd upgrade config | kubectl apply -f -`,
+  linkerd upgrade config | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return upgradeRunE(options, configStage, options.recordableFlagSet())
 		},
@@ -95,7 +95,7 @@ Note that the default flag values for this command come from the Linkerd control
 plane. The default values displayed in the Flags section below only apply to the
 install command. It should be run after "linkerd upgrade config".`,
 		Example: `  # Default upgrade.
-  linkerd upgrade control-plane | kubectl apply -f -`,
+  linkerd upgrade control-plane | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return upgradeRunE(options, controlPlaneStage, flags)
 		},
@@ -126,7 +126,7 @@ plane. The default values displayed in the Flags section below only apply to the
 install command.`,
 
 		Example: `  # Default upgrade.
-  linkerd upgrade | kubectl apply -f -
+  linkerd upgrade | kubectl apply --prune -l linkerd.io/control-plane-ns=linkerd -f -
 
   # Similar to install, upgrade may also be broken up into two stages, by user
   # privilege.`,

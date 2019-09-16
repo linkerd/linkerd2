@@ -539,7 +539,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(true)
+						return hc.checkServiceAccounts(false)
 					},
 				},
 				{
@@ -586,6 +586,14 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(context.Context) (err error) {
 						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
+					},
+				},
+				{
+					description: "control plane ServiceAccounts exist",
+					hintAnchor:  "l5d-existence-sa",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkServiceAccounts(true)
 					},
 				},
 				{
@@ -1033,11 +1041,13 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 	}
 }
 
-func expectedServiceAccountNames() []string {
+func expectedServiceAccountNames(onlyHeartbeat bool) []string {
+	if onlyHeartbeat {
+		return []string{"linkerd-heartbeat"}
+	}
 	return []string{
 		"linkerd-controller",
 		"linkerd-grafana",
-		"linkerd-heartbeat",
 		"linkerd-identity",
 		"linkerd-prometheus",
 		"linkerd-proxy-injector",
@@ -1093,7 +1103,7 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
+func (hc *HealthChecker) checkServiceAccounts(onlyHeartbeat bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
 	}
@@ -1108,7 +1118,20 @@ func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(), shouldExist)
+	if onlyHeartbeat {
+		heartbeatDisabled := false
+		for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
+			if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
+				heartbeatDisabled = true
+				break
+			}
+		}
+		if heartbeatDisabled {
+			return nil
+		}
+	}
+
+	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(onlyHeartbeat), true)
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
