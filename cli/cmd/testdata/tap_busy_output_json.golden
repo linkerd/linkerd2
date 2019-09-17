@@ -1,10 +1,12 @@
 {
   "source": {
-    "address": "0.0.0.1:0",
+    "ip": "0.0.0.1",
+    "port": 0,
     "metadata": null
   },
   "destination": {
-    "address": "[ff01::1]:0",
+    "ip": "ff01::1",
+    "port": 0,
     "metadata": {
       "pod": "my-pod",
       "tls": "true"
@@ -25,11 +27,13 @@
 }
 {
   "source": {
-    "address": "0.0.0.1:0",
+    "ip": "0.0.0.1",
+    "port": 0,
     "metadata": null
   },
   "destination": {
-    "address": "[ff01::1]:0",
+    "ip": "ff01::1",
+    "port": 0,
     "metadata": null
   },
   "routeMeta": null,

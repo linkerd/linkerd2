@@ -36,7 +36,8 @@ type tapOptions struct {
 }
 
 type endpoint struct {
-	Address  string            `json:"address"`
+	IP       string            `json:"ip"`
+	Port     uint32            `json:"port"`
 	Metadata map[string]string `json:"metadata"`
 }
 
@@ -350,16 +351,18 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 // Map public API `TapEvent`s to `displayTapEvent`s
 func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
 	// Map source endpoint
-	sAddr := addr.PublicAddressToString(event.GetSource())
+	sip := addr.PublicIPToString(event.GetSource().GetIp())
 	s := &endpoint{
-		Address:  sAddr,
+		IP:       sip,
+		Port:     event.GetSource().GetPort(),
 		Metadata: event.GetSourceMeta().GetLabels(),
 	}
 
 	// Map destination endpoint
-	dAddr := addr.PublicAddressToString(event.GetDestination())
+	dip := addr.PublicIPToString(event.GetDestination().GetIp())
 	d := &endpoint{
-		Address:  dAddr,
+		IP:       dip,
+		Port:     event.GetDestination().GetPort(),
 		Metadata: event.GetDestinationMeta().GetLabels(),
 	}
 

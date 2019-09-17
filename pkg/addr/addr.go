@@ -22,25 +22,26 @@ const DefaultWeight = 1
 // the port.
 func PublicAddressToString(addr *public.TcpAddress) string {
 	var s string
-	var b []byte
-	ip := addr.GetIp()
-	if ip.GetIpv6() != nil {
-		b = make([]byte, 16)
-		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
-		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+	if addr.GetIp().GetIpv6() != nil {
 		s = "[%s]:%d"
-	} else if ip.GetIpv4() != 0 {
-		b = make([]byte, 4)
-		binary.BigEndian.PutUint32(b, ip.GetIpv4())
+	} else {
 		s = "%s:%d"
 	}
-	return fmt.Sprintf(s, net.IP(b).String(), addr.GetPort())
+	return fmt.Sprintf(s, PublicIPToString(addr.GetIp()), addr.GetPort())
 }
 
 // PublicIPToString formats a Public API IPAddress as a string.
 func PublicIPToString(ip *public.IPAddress) string {
-	octets := decodeIPToOctets(ip.GetIpv4())
-	return fmt.Sprintf("%d.%d.%d.%d", octets[0], octets[1], octets[2], octets[3])
+	var b []byte
+	if ip.GetIpv6() != nil {
+		b = make([]byte, 16)
+		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
+		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+	} else if ip.GetIpv4() != 0 {
+		b = make([]byte, 4)
+		binary.BigEndian.PutUint32(b, ip.GetIpv4())
+	}
+	return net.IP(b).String()
 }
 
 // ProxyAddressToString formats a Proxy API TCPAddress as a string.
