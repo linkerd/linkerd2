@@ -42,7 +42,7 @@ func busyTest(t *testing.T, output string) {
 					},
 					Method: &pb.HttpMethod{
 						Type: &pb.HttpMethod_Registered_{
-							Registered: 0,
+							Registered: pb.HttpMethod_GET,
 						},
 					},
 					Scheme: &pb.Scheme{
