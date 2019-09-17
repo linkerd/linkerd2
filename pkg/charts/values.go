@@ -49,6 +49,7 @@ type (
 		RestrictDashboardPrivileges bool
 		DisableHeartBeat            bool
 		HeartbeatSchedule           string
+		InstallNamespace            bool
 		Configs                     ConfigJSONs
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector

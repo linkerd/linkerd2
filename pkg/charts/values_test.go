@@ -45,6 +45,7 @@ func TestNewValues(t *testing.T) {
 		RestrictDashboardPrivileges: false,
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
+		InstallNamespace:            true,
 
 		Identity: &Identity{
 			TrustDomain: "cluster.local",

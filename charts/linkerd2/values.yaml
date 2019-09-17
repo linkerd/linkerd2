@@ -125,3 +125,10 @@ ProxyInjectDisabled: disabled
 ControllerComponentLabel: linkerd.io/control-plane-component
 ControllerNamespaceLabel: linkerd.io/control-plane-ns
 LinkerdNamespaceLabel: linkerd.io/is-control-plane
+
+# If the namespace is controlled by an external tool or can't be installed with Helm
+# you can disable its installation. In this case:
+# - The namespace created by the external tool must match the Namespace value above
+# - The external tool needs to create the namespace with the label:
+#     linkerd.io/is-control-plane: "true"
+InstallNamespace: true

@@ -75,6 +75,7 @@ func TestRender(t *testing.T) {
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
+		InstallNamespace:            true,
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
