@@ -47,7 +47,7 @@ func busyTest(t *testing.T, output string) {
 					},
 					Scheme: &pb.Scheme{
 						Type: &pb.Scheme_Registered_{
-							Registered: 1,
+							Registered: pb.Scheme_HTTPS,
 						},
 					},
 					Authority: params.Authority,
