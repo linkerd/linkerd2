@@ -80,10 +80,11 @@ func Inject(api *k8s.API,
 
 	if injectable, reasons := report.Injectable(); !injectable {
 		var readableReasons, metricReasons string
-		metricReasons = strings.Join(reasons, ", ")
+		metricReasons = strings.Join(reasons, ",")
 		for _, reason := range reasons {
 			readableReasons = readableReasons + ", " + inject.Reasons[reason]
 		}
+		// removing the initial comma, space
 		readableReasons = readableReasons[2:]
 		if parent != nil {
 			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableReasons)
