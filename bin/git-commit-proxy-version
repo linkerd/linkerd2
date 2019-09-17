@@ -17,11 +17,7 @@ if [ -z "$old_proxy_version" ]; then
     exit 1
 fi
 
-# We temporarily have to handle aa SHA version.
-old_proxy_rev="$old_proxy_version"
-if echo "$old_proxy_version" | grep '^v2.'; then
-    old_proxy_rev="release/$old_proxy_version"
-fi
+old_proxy_rev="release/$old_proxy_version"
 
 # Ensure the proxy version actually exists...
 if ! bin/fetch-proxy "$new_proxy_version" >/dev/null; then
