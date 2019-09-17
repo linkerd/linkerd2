@@ -20,7 +20,7 @@
       "stream": 0
     },
     "method": "GET",
-    "scheme": null,
+    "scheme": "HTTPS",
     "authority": "localhost",
     "path": "/some/path"
   }

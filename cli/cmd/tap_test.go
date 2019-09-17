@@ -45,6 +45,11 @@ func busyTest(t *testing.T, output string) {
 							Registered: 0,
 						},
 					},
+					Scheme: &pb.Scheme{
+						Type: &pb.Scheme_Registered_{
+							Registered: 1,
+						},
+					},
 					Authority: params.Authority,
 					Path:      params.Path,
 				},
