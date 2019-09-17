@@ -208,7 +208,7 @@ class TopRoutes extends React.Component {
               <Button
                 color="primary"
                 variant="outlined"
-                disabled={this.state.requestInProgress}
+                disabled={this.state.requestInProgress || !this.state.query.namespace || !this.state.query.resource_type}
                 onClick={this.handleBtnClick(true)}>
               Start
               </Button>
