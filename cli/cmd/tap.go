@@ -47,11 +47,11 @@ type streamID struct {
 }
 
 type requestInitEvent struct {
-	ID        *streamID      `json:"id"`
-	Method    *pb.HttpMethod `json:"method"`
-	Scheme    *pb.Scheme     `json:"scheme"`
-	Authority string         `json:"authority"`
-	Path      string         `json:"path"`
+	ID        *streamID `json:"id"`
+	Method    string    `json:"method"`
+	Scheme    string    `json:"scheme"`
+	Authority string    `json:"authority"`
+	Path      string    `json:"path"`
 }
 
 type responseInitEvent struct {
@@ -65,7 +65,7 @@ type responseEndEvent struct {
 	SinceRequestInit  *duration.Duration `json:"sinceRequestInit"`
 	SinceResponseInit *duration.Duration `json:"sinceResponseInit"`
 	ResponseBytes     uint64             `json:"responseBytes"`
-	GrpcStatusCode    uint32             `json:"grpcStatusCode,omitempty"`
+	GrpcStatusCode    uint32             `json:"grpcStatusCode"`
 	ResetErrorCode    uint32             `json:"resetErrorCode,omitempty"`
 }
 
@@ -348,39 +348,6 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 	}
 }
 
-// Map public API `TapEvent`s to `displayTapEvent`s
-func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
-	// Map source endpoint
-	sip := addr.PublicIPToString(event.GetSource().GetIp())
-	s := &endpoint{
-		IP:       sip,
-		Port:     event.GetSource().GetPort(),
-		Metadata: event.GetSourceMeta().GetLabels(),
-	}
-
-	// Map destination endpoint
-	dip := addr.PublicIPToString(event.GetDestination().GetIp())
-	d := &endpoint{
-		IP:       dip,
-		Port:     event.GetDestination().GetPort(),
-		Metadata: event.GetDestinationMeta().GetLabels(),
-	}
-
-	// Map route metadata and proxy direction
-	rm := event.GetRouteMeta().GetLabels()
-	pdir := event.GetProxyDirection().String()
-
-	return &tapEvent{
-		Source:            s,
-		Destination:       d,
-		RouteMeta:         rm,
-		ProxyDirection:    pdir,
-		RequestInitEvent:  getRequestInitEvent(event.GetHttp()),
-		ResponseInitEvent: getResponseInitEvent(event.GetHttp()),
-		ResponseEndEvent:  getResponseEndEvent(event.GetHttp()),
-	}
-}
-
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
 func renderTapEventJSON(event *pb.TapEvent, _ string) string {
 	m := mapPublicToDisplayTapEvent(event)
@@ -389,6 +356,111 @@ func renderTapEventJSON(event *pb.TapEvent, _ string) string {
 		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
 	}
 	return fmt.Sprintf("%s", e)
+}
+
+// Map public API `TapEvent`s to `displayTapEvent`s
+func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
+	// Map source endpoint
+	sip := addr.PublicIPToString(event.GetSource().GetIp())
+	src := &endpoint{
+		IP:       sip,
+		Port:     event.GetSource().GetPort(),
+		Metadata: event.GetSourceMeta().GetLabels(),
+	}
+
+	// Map destination endpoint
+	dip := addr.PublicIPToString(event.GetDestination().GetIp())
+	dst := &endpoint{
+		IP:       dip,
+		Port:     event.GetDestination().GetPort(),
+		Metadata: event.GetDestinationMeta().GetLabels(),
+	}
+
+	return &tapEvent{
+		Source:            src,
+		Destination:       dst,
+		RouteMeta:         event.GetRouteMeta().GetLabels(),
+		ProxyDirection:    event.GetProxyDirection().String(),
+		RequestInitEvent:  getRequestInitEvent(event.GetHttp()),
+		ResponseInitEvent: getResponseInitEvent(event.GetHttp()),
+		ResponseEndEvent:  getResponseEndEvent(event.GetHttp()),
+	}
+}
+
+// Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
+func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
+	reqI := pubEv.GetRequestInit()
+	if reqI != nil {
+		sid := &streamID{
+			Base:   reqI.GetId().GetBase(),
+			Stream: reqI.GetId().GetStream(),
+		}
+		return &requestInitEvent{
+			ID:        sid,
+			Method:    formatMethod(reqI.GetMethod()),
+			Scheme:    formatScheme(reqI.GetScheme()),
+			Authority: reqI.GetAuthority(),
+			Path:      reqI.GetPath(),
+		}
+	}
+	return nil
+}
+
+func formatMethod(m *pb.HttpMethod) string {
+	if x, ok := m.GetType().(*pb.HttpMethod_Registered_); ok {
+		return x.Registered.String()
+	}
+	if s, ok := m.GetType().(*pb.HttpMethod_Unregistered); ok {
+		return s.Unregistered
+	}
+	return ""
+}
+
+func formatScheme(s *pb.Scheme) string {
+	if x, ok := s.GetType().(*pb.Scheme_Registered_); ok {
+		return x.Registered.String()
+	}
+	if str, ok := s.GetType().(*pb.Scheme_Unregistered); ok {
+		return str.Unregistered
+	}
+	return ""
+}
+
+// Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
+func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
+	resI := pubEv.GetResponseInit()
+	if resI != nil {
+		sid := &streamID{
+			Base:   resI.GetId().GetBase(),
+			Stream: resI.GetId().GetStream(),
+		}
+		return &responseInitEvent{
+			ID:               sid,
+			SinceRequestInit: resI.GetSinceRequestInit(),
+			HTTPStatus:       resI.GetHttpStatus(),
+		}
+	}
+	return nil
+}
+
+// Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
+func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
+	resE := pubEv.GetResponseEnd()
+	if resE != nil {
+		sid := &streamID{
+			Base:   resE.GetId().GetBase(),
+			Stream: resE.GetId().GetStream(),
+		}
+		return &responseEndEvent{
+			ID:                sid,
+			SinceRequestInit:  resE.GetSinceRequestInit(),
+			SinceResponseInit: resE.GetSinceResponseInit(),
+			ResponseBytes:     resE.GetResponseBytes(),
+			GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
+			ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
+		}
+	}
+	return nil
 }
 
 // src returns the source peer of a `TapEvent`.
@@ -465,60 +537,4 @@ func routeLabels(event *pb.TapEvent) string {
 	}
 
 	return out
-}
-
-// Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
-func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
-	reqI := pubEv.GetRequestInit()
-	if reqI != nil {
-		sid := &streamID{
-			Base:   reqI.GetId().GetBase(),
-			Stream: reqI.GetId().GetStream(),
-		}
-		return &requestInitEvent{
-			ID:        sid,
-			Method:    reqI.GetMethod(),
-			Scheme:    reqI.GetScheme(),
-			Authority: reqI.GetAuthority(),
-			Path:      reqI.GetPath(),
-		}
-	}
-	return nil
-}
-
-// Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
-func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
-	resI := pubEv.GetResponseInit()
-	if resI != nil {
-		sid := &streamID{
-			Base:   resI.GetId().GetBase(),
-			Stream: resI.GetId().GetStream(),
-		}
-		return &responseInitEvent{
-			ID:               sid,
-			SinceRequestInit: resI.GetSinceRequestInit(),
-			HTTPStatus:       resI.GetHttpStatus(),
-		}
-	}
-	return nil
-}
-
-// Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
-func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
-	resE := pubEv.GetResponseEnd()
-	if resE != nil {
-		sid := &streamID{
-			Base:   resE.GetId().GetBase(),
-			Stream: resE.GetId().GetStream(),
-		}
-		return &responseEndEvent{
-			ID:                sid,
-			SinceRequestInit:  resE.GetSinceRequestInit(),
-			SinceResponseInit: resE.GetSinceResponseInit(),
-			ResponseBytes:     resE.GetResponseBytes(),
-			GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
-			ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
-		}
-	}
-	return nil
 }

@@ -19,7 +19,7 @@
       "base": 1,
       "stream": 0
     },
-    "method": null,
+    "method": "GET",
     "scheme": null,
     "authority": "localhost",
     "path": "/some/path"

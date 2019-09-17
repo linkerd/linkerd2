@@ -40,6 +40,11 @@ func busyTest(t *testing.T, output string) {
 					Id: &pb.TapEvent_Http_StreamId{
 						Base: 1,
 					},
+					Method: &pb.HttpMethod{
+						Type: &pb.HttpMethod_Registered_{
+							Registered: 0,
+						},
+					},
 					Authority: params.Authority,
 					Path:      params.Path,
 				},
