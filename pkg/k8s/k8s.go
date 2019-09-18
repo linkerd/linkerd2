@@ -47,18 +47,11 @@ var AllResources = []string{
 }
 
 // StatAllResourceTypes represents the resources to query in StatSummary when Resource.Type is "all"
-var StatAllResourceTypes = []string{
-	// TODO: add Namespace here to decrease queries from the web process
-	DaemonSet,
-	StatefulSet,
-	Job,
-	Deployment,
-	ReplicationController,
-	Pod,
-	Service,
+// TODO: add Namespace here to decrease queries from the web process
+var StatAllResourceTypes = append(
+	StatAllWorkloadResourceTypes,
 	TrafficSplit,
-	Authority,
-}
+	Authority)
 
 // StatAllWorkloadResourceTypes represents the workload resources to query in
 // StatSummary when Resource.Type is "all"
@@ -165,4 +158,21 @@ func KindToL5DLabel(k8sKind string) string {
 		return l5dJob
 	}
 	return k8sKind
+}
+
+// KindToStatsLabel converts a Kubernetes `kind` to a Linkerd stats label.
+// It relies of KindToL5dLabel.
+func KindToStatsLabel(k8sKind string, outboundFrom bool) string {
+	var label string
+	switch k8sKind {
+	case TrafficSplit:
+		label = "dst_service"
+	default:
+		label = KindToL5DLabel(k8sKind)
+		if outboundFrom && k8sKind != Authority {
+			label = "dst_" + label
+		}
+	}
+
+	return label
 }

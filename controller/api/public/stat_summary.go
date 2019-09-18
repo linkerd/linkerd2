@@ -571,7 +571,12 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult) 
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			resource := metricToKey(req, sample.Metric)
+			kind := req.GetSelector().GetResource().GetType()
+			var outboundFrom bool
+			if req.Outbound != nil {
+				_, outboundFrom = req.Outbound.(*pb.StatSummaryRequest_FromResource)
+			}
+			resource := metricToKey(kind, outboundFrom, sample.Metric)
 
 			addBasicStats := func() {
 				if basicStats[resource] == nil {
@@ -622,44 +627,15 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult) 
 
 // metricToKey generates a key which is used to match the metric stats we
 // queried from prometheus with the k8s object stats we queried from k8s
-func metricToKey(req *pb.StatSummaryRequest, metric model.Metric) rKey {
-	resourceType := req.GetSelector().GetResource().GetType()
-
-	// prepend label with dst_ prefix if outbound --from is specified
-	var (
-		labelPrefix   model.LabelName
-		omitNamespace bool
-	)
-	if req.Outbound != nil {
-		if _, ok := req.Outbound.(*pb.StatSummaryRequest_FromResource); ok {
-			labelPrefix = "dst_"
-			if req.GetSelector().GetResource().GetType() == k8s.Authority {
-				omitNamespace = true
-			}
-		}
-	}
-
-	var (
-		resourceTypeLabel = labelPrefix
-		namespaceLabel    = labelPrefix + "namespace"
-	)
-	switch resourceType {
-	case k8s.Job:
-		resourceTypeLabel += "k8s_job"
-	case k8s.TrafficSplit:
-		resourceTypeLabel += "dst_service"
-	case k8s.Authority:
-		resourceTypeLabel = "authority"
-	default:
-		resourceTypeLabel += model.LabelName(req.GetSelector().GetResource().GetType())
-	}
+func metricToKey(kind string, outboundFrom bool, metric model.Metric) rKey {
+	kindLabel := model.LabelName(k8s.KindToStatsLabel(kind, outboundFrom))
+	namespaceLabel := model.LabelName(k8s.KindToStatsLabel(k8s.Namespace, outboundFrom))
 
 	key := rKey{
-		Type: resourceType,
-		Name: string(metric[resourceTypeLabel]),
+		Type: kind,
+		Name: string(metric[kindLabel]),
 	}
-
-	if !omitNamespace {
+	if !outboundFrom || (outboundFrom && !isNonK8sResourceQuery(kind)) {
 		key.Namespace = string(metric[namespaceLabel])
 	}
 

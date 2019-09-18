@@ -1990,22 +1990,15 @@ func TestBuildRequestLabels(t *testing.T) {
 
 func TestMetricToKey(t *testing.T) {
 	var testCases = []struct {
-		title    string
-		request  *pb.StatSummaryRequest
-		metric   model.Metric
-		expected rKey
+		title        string
+		kind         string
+		outboundFrom bool
+		metric       model.Metric
+		expected     rKey
 	}{
 		{
 			title: "deployment",
-			request: &pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type:      pkgK8s.Deployment,
-						Name:      "emoji",
-						Namespace: "emojivoto",
-					},
-				},
-			},
+			kind:  pkgK8s.Deployment,
 			metric: model.Metric{
 				"classification": "failure",
 				"deployment":     "web",
@@ -2019,19 +2012,24 @@ func TestMetricToKey(t *testing.T) {
 			},
 		},
 		{
-			// our current query returns time series data of other types.
-			// it doesn't look like the Go client provides an interface to use other
-			// operators ( !=, =~ etc.) on the labels.
-			title: "deployment (empty metrics)",
-			request: &pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type:      pkgK8s.Deployment,
-						Name:      "emoji",
-						Namespace: "emojivoto",
-					},
-				},
+			title:        "deployment (outbound from)",
+			kind:         pkgK8s.Deployment,
+			outboundFrom: true,
+			metric: model.Metric{
+				"classification": "failure",
+				"dst_deployment": "web",
+				"dst_namespace":  "emojivoto",
+				"tls":            "true",
 			},
+			expected: rKey{
+				Namespace: "emojivoto",
+				Type:      pkgK8s.Deployment,
+				Name:      "web",
+			},
+		},
+		{
+			title: "empty metrics",
+			kind:  pkgK8s.Deployment,
 			metric: model.Metric{
 				"classification": "failure",
 				"namespace":      "emojivoto-sts",
@@ -2044,14 +2042,7 @@ func TestMetricToKey(t *testing.T) {
 		},
 		{
 			title: "namespace",
-			request: &pb.StatSummaryRequest{
-				Selector: &pb.ResourceSelection{
-					Resource: &pb.Resource{
-						Type:      pkgK8s.Namespace,
-						Namespace: "emojivoto",
-					},
-				},
-			},
+			kind:  pkgK8s.Namespace,
 			metric: model.Metric{
 				"classification": "failure",
 				"namespace":      "emojivoto",
@@ -2063,12 +2054,72 @@ func TestMetricToKey(t *testing.T) {
 				Namespace: "emojivoto",
 			},
 		},
+		{
+			title: "job",
+			kind:  pkgK8s.Job,
+			metric: model.Metric{
+				"classification": "failure",
+				"k8s_job":        "vote-bot",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Type:      pkgK8s.Job,
+				Name:      "vote-bot",
+				Namespace: "emojivoto",
+			},
+		},
+		{
+			title: "authority",
+			kind:  pkgK8s.Authority,
+			metric: model.Metric{
+				"classification": "failure",
+				"authority":      "emoji.emojivoto.svc.cluster.local",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Type:      pkgK8s.Authority,
+				Name:      "emoji.emojivoto.svc.cluster.local",
+				Namespace: "emojivoto",
+			},
+		},
+		{
+			title:        "authority (outbound)",
+			kind:         pkgK8s.Authority,
+			outboundFrom: true,
+			metric: model.Metric{
+				"classification": "failure",
+				"authority":      "emoji.emojivoto.svc.cluster.local",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Type: pkgK8s.Authority,
+				Name: "emoji.emojivoto.svc.cluster.local",
+			},
+		},
+		{
+			title:        "traffic split",
+			kind:         pkgK8s.TrafficSplit,
+			outboundFrom: true,
+			metric: model.Metric{
+				"classification": "failure",
+				"dst_service":    "emoji.emojivoto.svc.cluster.local",
+				"namespace":      "emojivoto",
+				"tls":            "true",
+			},
+			expected: rKey{
+				Type: pkgK8s.TrafficSplit,
+				Name: "emoji.emojivoto.svc.cluster.local",
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.title, func(t *testing.T) {
-			if actual := metricToKey(testCase.request, testCase.metric); !reflect.DeepEqual(testCase.expected, actual) {
+			if actual := metricToKey(testCase.kind, testCase.outboundFrom, testCase.metric); !reflect.DeepEqual(testCase.expected, actual) {
 				t.Errorf("Mismatch resource key.\nExpected: %+v\nActual: %+v\n", testCase.expected, actual)
 			}
 		})
