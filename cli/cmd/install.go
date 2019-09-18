@@ -36,6 +36,7 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
+		clusterDomain               string
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
@@ -157,6 +158,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 	}
 
 	return &installOptions{
+		clusterDomain:               defaults.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
@@ -443,6 +445,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
 
+	flags.StringVarP(&options.clusterDomain, "cluster-domain", "", options.clusterDomain, "Set custom cluster domain")
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
@@ -744,7 +747,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
-		ClusterDomain:          clusterDomain,
+		ClusterDomain:          options.clusterDomain,
 	}
 }
 

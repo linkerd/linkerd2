@@ -12,7 +12,7 @@ func TestRenderSP(t *testing.T) {
 		clusterDomain         string
 		goldenFileName        string
 	}{
-		{controlPlaneNamespace, clusterDomain, "install-sp_default.golden"},
+		{controlPlaneNamespace, "cluster.local", "install-sp_default.golden"},
 		{"NAMESPACE", "CLUSTERDOMAIN", "install-sp_output.golden"},
 	}
 
