@@ -3,6 +3,8 @@ package injector
 import (
 	"strings"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
+
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -12,7 +14,7 @@ const (
 	labelOwnerKind = "owner_kind"
 	labelNamespace = "namespace"
 	labelSkip      = "skip"
-	labelReason    = "reason"
+	labelReason    = "skip_reason"
 )
 
 var (
@@ -65,5 +67,5 @@ func validLabelNames(labels []string) []string {
 }
 
 func validProxyConfigurationLabel(label string) string {
-	return strings.Replace(label[18:], "-", "_", -1)
+	return strings.Replace(label[len(k8s.ProxyConfigAnnotationsPrefix)+1:], "-", "_", -1)
 }

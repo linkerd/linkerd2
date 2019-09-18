@@ -52,7 +52,7 @@ var (
 		k8s.ProxyMemoryLimitAnnotation,
 		k8s.ProxyMemoryRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
-		k8s.ProxyVersionAnnotation,
+		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 	}
