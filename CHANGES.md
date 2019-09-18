@@ -1,3 +1,17 @@
+## edge-19.9.3
+
+* Helm
+  * Allow disabling namespace creation during install (thanks @KIVagant!)
+* Controller
+  * Fixed proxy injector timeout during a large number of concurrent injections
+  * Separated the destination controller into its own separate pod
+  * Updated Prometheus config to keep only needed cadvisor metrics
+* Web UI
+  * Fixed bad request in the top routes tab on empty fields (thanks @pierDipi!)
+* Proxy
+  * Fixes to the client's backoff logic
+  * Add 587 to the list of ports to disable protocol detection
+
 ## edge-19.9.2
 
 Much of our effort has been focused on improving our build and test
