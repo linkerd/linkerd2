@@ -2000,10 +2000,10 @@ func TestMetricToKey(t *testing.T) {
 			title: "deployment",
 			kind:  pkgK8s.Deployment,
 			metric: model.Metric{
-				"classification": "failure",
-				"deployment":     "web",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("deployment"):     model.LabelValue("web"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Namespace: "emojivoto",
@@ -2016,10 +2016,10 @@ func TestMetricToKey(t *testing.T) {
 			kind:         pkgK8s.Deployment,
 			outboundFrom: true,
 			metric: model.Metric{
-				"classification": "failure",
-				"dst_deployment": "web",
-				"dst_namespace":  "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("dst_deployment"): model.LabelValue("web"),
+				model.LabelName("dst_namespace"):  model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Namespace: "emojivoto",
@@ -2031,9 +2031,9 @@ func TestMetricToKey(t *testing.T) {
 			title: "empty metrics",
 			kind:  pkgK8s.Deployment,
 			metric: model.Metric{
-				"classification": "failure",
-				"namespace":      "emojivoto-sts",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto-sts"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Namespace: "emojivoto-sts",
@@ -2044,9 +2044,9 @@ func TestMetricToKey(t *testing.T) {
 			title: "namespace",
 			kind:  pkgK8s.Namespace,
 			metric: model.Metric{
-				"classification": "failure",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Type:      pkgK8s.Namespace,
@@ -2058,10 +2058,10 @@ func TestMetricToKey(t *testing.T) {
 			title: "job",
 			kind:  pkgK8s.Job,
 			metric: model.Metric{
-				"classification": "failure",
-				"k8s_job":        "vote-bot",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("k8s_job"):        model.LabelValue("vote-bot"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Type:      pkgK8s.Job,
@@ -2073,10 +2073,10 @@ func TestMetricToKey(t *testing.T) {
 			title: "authority",
 			kind:  pkgK8s.Authority,
 			metric: model.Metric{
-				"classification": "failure",
-				"authority":      "emoji.emojivoto.svc.cluster.local",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("authority"):      model.LabelValue("emoji.emojivoto.svc.cluster.local"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Type:      pkgK8s.Authority,
@@ -2089,10 +2089,10 @@ func TestMetricToKey(t *testing.T) {
 			kind:         pkgK8s.Authority,
 			outboundFrom: true,
 			metric: model.Metric{
-				"classification": "failure",
-				"authority":      "emoji.emojivoto.svc.cluster.local",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("authority"):      model.LabelValue("emoji.emojivoto.svc.cluster.local"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Type: pkgK8s.Authority,
@@ -2104,10 +2104,10 @@ func TestMetricToKey(t *testing.T) {
 			kind:         pkgK8s.TrafficSplit,
 			outboundFrom: true,
 			metric: model.Metric{
-				"classification": "failure",
-				"dst_service":    "emoji.emojivoto.svc.cluster.local",
-				"namespace":      "emojivoto",
-				"tls":            "true",
+				model.LabelName("classification"): model.LabelValue("failure"),
+				model.LabelName("dst_service"):    model.LabelValue("emoji.emojivoto.svc.cluster.local"),
+				model.LabelName("namespace"):      model.LabelValue("emojivoto"),
+				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
 				Type: pkgK8s.TrafficSplit,
