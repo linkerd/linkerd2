@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -157,7 +156,7 @@ func newCmdTap() *cobra.Command {
 
 			err := options.validate()
 			if err != nil {
-				return fmt.Errorf("Validation error when executing tap command: %v", err)
+				return fmt.Errorf("validation error when executing tap command: %v", err)
 			}
 
 			req, err := util.BuildTapByResourceRequest(requestParams)
@@ -207,27 +206,24 @@ func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb
 }
 
 func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *pb.TapByResourceRequest, options *tapOptions) error {
-	writer := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-
 	var err error
 	switch options.output {
 	case "":
-		err = renderTapEvents(tapByteStream, writer, renderTapEvent, "")
+		err = renderTapEvents(tapByteStream, w, renderTapEvent, "")
 	case wideOutput:
 		resource := req.GetTarget().GetResource().GetType()
-		err = renderTapEvents(tapByteStream, writer, renderTapEvent, resource)
+		err = renderTapEvents(tapByteStream, w, renderTapEvent, resource)
 	case jsonOutput:
-		err = renderTapEvents(tapByteStream, writer, renderTapEventJSON, "")
+		err = renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
 	}
 	if err != nil {
 		return err
 	}
-	writer.Flush()
 
 	return nil
 }
 
-func renderTapEvents(tapByteStream *bufio.Reader, w *tabwriter.Writer, render renderTapEventFunc, resource string) error {
+func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := pb.TapEvent{}
@@ -353,7 +349,7 @@ func renderTapEventJSON(event *pb.TapEvent, _ string) string {
 	m := mapPublicToDisplayTapEvent(event)
 	e, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
-		return fmt.Sprintf("Error marshalling JSON: %s\n", err)
+		return fmt.Sprintf("{\"error marshalling JSON\": \"%s\"}", err)
 	}
 	return fmt.Sprintf("%s", e)
 }
@@ -390,20 +386,20 @@ func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
 // Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
 func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
 	reqI := pubEv.GetRequestInit()
-	if reqI != nil {
-		sid := &streamID{
-			Base:   reqI.GetId().GetBase(),
-			Stream: reqI.GetId().GetStream(),
-		}
-		return &requestInitEvent{
-			ID:        sid,
-			Method:    formatMethod(reqI.GetMethod()),
-			Scheme:    formatScheme(reqI.GetScheme()),
-			Authority: reqI.GetAuthority(),
-			Path:      reqI.GetPath(),
-		}
+	if reqI == nil {
+		return nil
 	}
-	return nil
+	sid := &streamID{
+		Base:   reqI.GetId().GetBase(),
+		Stream: reqI.GetId().GetStream(),
+	}
+	return &requestInitEvent{
+		ID:        sid,
+		Method:    formatMethod(reqI.GetMethod()),
+		Scheme:    formatScheme(reqI.GetScheme()),
+		Authority: reqI.GetAuthority(),
+		Path:      reqI.GetPath(),
+	}
 }
 
 func formatMethod(m *pb.HttpMethod) string {
@@ -429,38 +425,38 @@ func formatScheme(s *pb.Scheme) string {
 // Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
 func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
 	resI := pubEv.GetResponseInit()
-	if resI != nil {
-		sid := &streamID{
-			Base:   resI.GetId().GetBase(),
-			Stream: resI.GetId().GetStream(),
-		}
-		return &responseInitEvent{
-			ID:               sid,
-			SinceRequestInit: resI.GetSinceRequestInit(),
-			HTTPStatus:       resI.GetHttpStatus(),
-		}
+	if resI == nil {
+		return nil
 	}
-	return nil
+	sid := &streamID{
+		Base:   resI.GetId().GetBase(),
+		Stream: resI.GetId().GetStream(),
+	}
+	return &responseInitEvent{
+		ID:               sid,
+		SinceRequestInit: resI.GetSinceRequestInit(),
+		HTTPStatus:       resI.GetHttpStatus(),
+	}
 }
 
 // Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
 func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
 	resE := pubEv.GetResponseEnd()
-	if resE != nil {
-		sid := &streamID{
-			Base:   resE.GetId().GetBase(),
-			Stream: resE.GetId().GetStream(),
-		}
-		return &responseEndEvent{
-			ID:                sid,
-			SinceRequestInit:  resE.GetSinceRequestInit(),
-			SinceResponseInit: resE.GetSinceResponseInit(),
-			ResponseBytes:     resE.GetResponseBytes(),
-			GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
-			ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
-		}
+	if resE == nil {
+		return nil
 	}
-	return nil
+	sid := &streamID{
+		Base:   resE.GetId().GetBase(),
+		Stream: resE.GetId().GetStream(),
+	}
+	return &responseEndEvent{
+		ID:                sid,
+		SinceRequestInit:  resE.GetSinceRequestInit(),
+		SinceResponseInit: resE.GetSinceResponseInit(),
+		ResponseBytes:     resE.GetResponseBytes(),
+		GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
+		ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
+	}
 }
 
 // src returns the source peer of a `TapEvent`.

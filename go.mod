@@ -29,7 +29,6 @@ require (
 	github.com/go-openapi/spec v0.17.2
 	github.com/go-openapi/swag v0.17.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/gogo/protobuf v1.3.0
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0
