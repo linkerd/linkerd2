@@ -1216,7 +1216,6 @@ spec:
     port: 8086
     targetPort: 8086
 ---
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
