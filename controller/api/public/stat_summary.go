@@ -509,22 +509,27 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 		return nil, nil, err
 	}
 
+	kind := req.GetSelector().GetResource().GetType()
+	var outboundFrom bool
+	if req.Outbound != nil {
+		_, outboundFrom = req.Outbound.(*pb.StatSummaryRequest_FromResource)
+	}
+
+	if kind != k8s.All {
+		basicStats, tcpStats := processPrometheusMetrics(kind, outboundFrom, results)
+		return basicStats, tcpStats, nil
+	}
+
 	basicStats := map[rKey]*pb.BasicStats{}
 	tcpStats := map[rKey]*pb.TcpStats{}
-	if req.GetSelector().GetResource().GetType() == k8s.All {
-		for _, t := range k8s.StatAllWorkloadResourceTypes {
-			clone := proto.Clone(req).(*pb.StatSummaryRequest)
-			clone.Selector.Resource.Type = t
-			resourceBasicStats, resourceTCPStats := processPrometheusMetrics(clone, results)
-			for resource, stat := range resourceBasicStats {
-				basicStats[resource] = stat
-			}
-			for resource, stat := range resourceTCPStats {
-				tcpStats[resource] = stat
-			}
+	for _, kind := range k8s.StatAllWorkloadResourceTypes {
+		basic, tcp := processPrometheusMetrics(kind, outboundFrom, results)
+		for resource, stat := range basic {
+			basicStats[resource] = stat
 		}
-	} else {
-		basicStats, tcpStats = processPrometheusMetrics(req, results)
+		for resource, stat := range tcp {
+			tcpStats[resource] = stat
+		}
 	}
 
 	return basicStats, tcpStats, nil
@@ -551,7 +556,11 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 		return nil, err
 	}
 
-	basicStats, _ := processPrometheusMetrics(req, results) // we don't need tcpStat info for traffic split
+	var outboundFrom bool
+	if req.Outbound != nil {
+		_, outboundFrom = req.Outbound.(*pb.StatSummaryRequest_FromResource)
+	}
+	basicStats, _ := processPrometheusMetrics(k8s.TrafficSplit, outboundFrom, results) // we don't need tcpStat info for traffic split
 
 	for rKey, basicStatsVal := range basicStats {
 		tsBasicStats[tsKey{
@@ -565,17 +574,12 @@ func (s *grpcServer) getTrafficSplitMetrics(ctx context.Context, req *pb.StatSum
 	return tsBasicStats, nil
 }
 
-func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
+func processPrometheusMetrics(kind string, outboundFrom bool, results []promResult) (map[rKey]*pb.BasicStats, map[rKey]*pb.TcpStats) {
 	basicStats := make(map[rKey]*pb.BasicStats)
 	tcpStats := make(map[rKey]*pb.TcpStats)
 
 	for _, result := range results {
 		for _, sample := range result.vec {
-			kind := req.GetSelector().GetResource().GetType()
-			var outboundFrom bool
-			if req.Outbound != nil {
-				_, outboundFrom = req.Outbound.(*pb.StatSummaryRequest_FromResource)
-			}
 			resource := metricToKey(kind, outboundFrom, sample.Metric)
 
 			addBasicStats := func() {
