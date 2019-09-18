@@ -23,7 +23,6 @@ spec:
     port: 8086
     targetPort: 8086
 ---
----
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-destination" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
