@@ -16,10 +16,10 @@ import (
 )
 
 // newAPI constructs a mock controller/k8s.API object for testing
-// enableInformers: forces informer indexing, enabling informer lookups
+// retry: forces informer indexing, enabling informer lookups
 // resourceConfigs: resources available via the API, and returned as runtime.Objects
 // extraConfigs:    resources returned as runtime.Objects
-func newAPI(enableInformers bool, resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
+func newAPI(retry bool, resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
 	k8sConfigs := []string{}
 	k8sResults := []runtime.Object{}
 
@@ -39,7 +39,7 @@ func newAPI(enableInformers bool, resourceConfigs []string, extraConfigs ...stri
 		return nil, nil, fmt.Errorf("NewFakeAPI returned an error: %s", err)
 	}
 
-	if enableInformers {
+	if retry {
 		api.Sync()
 	}
 
@@ -974,19 +974,19 @@ metadata:
 		},
 	} {
 		tt := tt // pin
-		for _, enableInformers := range []bool{
+		for _, retry := range []bool{
 			false,
 			true,
 		} {
-			enableInformers := enableInformers // pin
-			t.Run(fmt.Sprintf("%d/enableInformers:%t", i, enableInformers), func(t *testing.T) {
-				api, objs, err := newAPI(enableInformers, []string{tt.podConfig}, tt.extraConfigs...)
+			retry := retry // pin
+			t.Run(fmt.Sprintf("%d/retry:%t", i, retry), func(t *testing.T) {
+				api, objs, err := newAPI(retry, []string{tt.podConfig}, tt.extraConfigs...)
 				if err != nil {
 					t.Fatalf("newAPI error: %s", err)
 				}
 
 				pod := objs[0].(*corev1.Pod)
-				ownerKind, ownerName := api.GetOwnerKindAndName(pod, !enableInformers)
+				ownerKind, ownerName := api.GetOwnerKindAndName(pod, !retry)
 
 				if ownerKind != tt.expectedOwnerKind {
 					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
