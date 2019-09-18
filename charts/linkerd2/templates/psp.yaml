@@ -89,6 +89,9 @@ subjects:
   name: linkerd-controller
   namespace: {{.Namespace}}
 - kind: ServiceAccount
+  name: linkerd-destination
+  namespace: {{.Namespace}}
+- kind: ServiceAccount
   name: linkerd-grafana
   namespace: {{.Namespace}}
 {{ if not .DisableHeartBeat -}}

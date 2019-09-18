@@ -44,7 +44,8 @@ var (
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":     {1, []string{"destination", "public-api"}},
+		"linkerd-controller":     {1, []string{"public-api"}},
+		"linkerd-destination":    {1, []string{"destination"}},
 		"linkerd-tap":            {1, []string{"tap"}},
 		"linkerd-grafana":        {1, []string{}},
 		"linkerd-identity":       {1, []string{"identity"}},

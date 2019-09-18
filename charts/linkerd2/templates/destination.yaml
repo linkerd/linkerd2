@@ -1,30 +1,30 @@
 {{with .Values -}}
 ---
 ###
-### Controller
+### Destination Controller Service
 ###
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-controller-api
+  name: linkerd-destination
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: destination
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: destination
   ports:
-  - name: http
-    port: 8085
-    targetPort: 8085
+  - name: grpc
+    port: 8086
+    targetPort: 8086
 ---
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Proxy "Component" "linkerd-controller" -}}
+{{ $_ := set .Proxy "Component" "linkerd-destination" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -32,15 +32,15 @@ metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
   labels:
-    {{.ControllerComponentLabel}}: controller
+    {{.ControllerComponentLabel}}: destination
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  name: linkerd-controller
+  name: linkerd-destination
   namespace: {{.Namespace}}
 spec:
   replicas: {{.ControllerReplicas}}
   selector:
     matchLabels:
-      {{.ControllerComponentLabel}}: controller
+      {{.ControllerComponentLabel}}: destination
       {{.ControllerNamespaceLabel}}: {{.Namespace}}
       {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
@@ -49,40 +49,41 @@ spec:
         {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
         {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
-        {{.ControllerComponentLabel}}: controller
+        {{.ControllerComponentLabel}}: destination
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
       {{- if .EnablePodAntiAffinity -}}
-      {{- $local := dict "Component" "controller" "Label" .ControllerComponentLabel -}}
+      {{- $local := dict "Component" "destination" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
-        - public-api
-        - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
+        - destination
+        - -addr=:8086
         - -controller-namespace={{.Namespace}}
+        - -enable-h2-upgrade={{.EnableH2Upgrade}}
         - -log-level={{.ControllerLogLevel}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9995
+            port: 9996
           initialDelaySeconds: 10
-        name: public-api
+        name: destination
         ports:
-        - containerPort: 8085
-          name: http
-        - containerPort: 9995
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
           name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9995
-        {{- if .PublicAPIResources -}}
-        {{- include "partials.resources" .PublicAPIResources | nindent 8 }}
+            port: 9996
+        {{- if .DestinationResources -}}
+        {{- include "partials.resources" .DestinationResources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
@@ -94,7 +95,7 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      serviceAccountName: linkerd-controller
+      serviceAccountName: linkerd-destination
       volumes:
       - configMap:
           name: linkerd-config
