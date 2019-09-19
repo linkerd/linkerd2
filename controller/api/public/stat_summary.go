@@ -156,25 +156,23 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 	}
 }
 
-func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[rKey]k8sStat, error) {
-	requestedResource := req.GetSelector().GetResource()
-	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
+func (s *grpcServer) getKubernetesObjectStats(objKey rKey) (map[rKey]k8sStat, error) {
+	objects, err := s.k8sAPI.GetObjects(objKey.Namespace, objKey.Type, objKey.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	objectMap := map[rKey]k8sStat{}
-
 	for _, object := range objects {
 		metaObj, err := meta.Accessor(object)
 		if err != nil {
 			return nil, err
 		}
 
-		key := rKey{
-			Name:      metaObj.GetName(),
-			Namespace: metaObj.GetNamespace(),
-			Type:      requestedResource.GetType(),
+		// when resource name isn't provided in the request,
+		// use that returned by the api server.
+		if objKey.Name == "" {
+			objKey.Name = metaObj.GetName()
 		}
 
 		podStats, err := s.getPodStats(object)
@@ -182,7 +180,7 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 			return nil, err
 		}
 
-		objectMap[key] = k8sStat{
+		objectMap[objKey] = k8sStat{
 			object:   metaObj,
 			podStats: podStats,
 		}
@@ -191,7 +189,12 @@ func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[r
 }
 
 func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
-	k8sObjects, err := s.getKubernetesObjectStats(req)
+	objKey := rKey{
+		Name:      req.GetSelector().GetResource().GetName(),
+		Namespace: req.GetSelector().GetResource().GetNamespace(),
+		Type:      req.GetSelector().GetResource().GetType(),
+	}
+	k8sObjects, err := s.getKubernetesObjectStats(objKey)
 	if err != nil {
 		return nil, err
 	}
@@ -232,25 +235,26 @@ func (s *grpcServer) getStatsForAllResources(ctx context.Context, req *pb.StatSu
 
 	// object stats from the k8s api server
 	k8sObjects := map[rKey]k8sStat{}
-	for _, resource := range k8s.StatAllWorkloadResourceTypes {
-		clone := proto.Clone(req).(*pb.StatSummaryRequest)
-		clone.Selector.Resource.Type = resource
-		objStats, err := s.getKubernetesObjectStats(clone)
+	for _, kind := range k8s.StatAllWorkloadResourceTypes {
+		objKey := rKey{
+			Name:      req.GetSelector().GetResource().GetName(),
+			Namespace: req.GetSelector().GetResource().GetNamespace(),
+			Type:      kind,
+		}
+		objStats, err := s.getKubernetesObjectStats(objKey)
 		if err != nil {
 			return nil, util.GRPCError(err)
 		}
 
-		// account for types that don't have object stats so that a row will be
-		// created for them too, per existing unit test assertions.
+		// account for types that don't have object stats,
+		// so that a row will be created for them too.
 		if len(objStats) == 0 {
-			k := rKey{
-				Type: clone.GetSelector().GetResource().GetType(),
-			}
+			k := rKey{Type: kind}
 			k8sObjects[k] = k8sStat{}
 		}
 
-		for k, v := range objStats {
-			k8sObjects[k] = v
+		for key, stats := range objStats {
+			k8sObjects[key] = stats
 		}
 	}
 
