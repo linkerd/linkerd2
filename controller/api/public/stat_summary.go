@@ -12,6 +12,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -123,7 +124,6 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	// get stats for authority
 	if isNonK8sResourceQuery(kind) || kind == k8s.All {
 		clone := proto.Clone(req).(*pb.StatSummaryRequest)
-		clone.GetSelector().GetResource().Type = k8s.Authority
 		result := s.nonK8sResourceQuery(ctx, clone)
 		if result.err != nil {
 			return nil, util.GRPCError(result.err)
@@ -135,7 +135,6 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	// get stats for traffic split
 	if isTrafficSplitQuery(kind) || kind == k8s.All {
 		clone := proto.Clone(req).(*pb.StatSummaryRequest)
-		clone.GetSelector().GetResource().Type = k8s.TrafficSplit
 		result := s.trafficSplitResourceQuery(ctx, clone)
 		if result.err != nil {
 			return nil, util.GRPCError(result.err)
@@ -297,8 +296,11 @@ func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha1.TrafficSpli
 }
 
 func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	tss, err := s.getTrafficSplits(req.GetSelector().GetResource())
+	if req.GetSelector().GetResource().GetType() == k8s.All {
+		req.GetSelector().GetResource().Type = k8s.TrafficSplit
+	}
 
+	tss, err := s.getTrafficSplits(req.GetSelector().GetResource())
 	if err != nil {
 		return resourceResult{res: nil, err: err}
 	}
@@ -378,6 +380,10 @@ func sortTrafficSplitRows(rows []*pb.StatTable_PodGroup_Row) []*pb.StatTable_Pod
 }
 
 func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
+	if req.GetSelector().GetResource().GetType() == k8s.All {
+		req.GetSelector().GetResource().Type = k8s.Authority
+	}
+
 	var requestMetrics map[rKey]*pb.BasicStats
 	if !req.SkipStats {
 		var err error
@@ -523,6 +529,8 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
 	}
+	log.Infof("request parameters: resource=%+v, outbound=%+v\n", req.GetSelector().GetResource(), req.GetOutbound())
+	log.Infof("query parameters: labels=%s, groupBy=%+v\n", reqLabels, groupBy)
 
 	if req.TcpStats {
 		promQueries[promTCPConnections] = tcpConnectionsQuery
@@ -606,6 +614,7 @@ func processPrometheusMetrics(kind string, outboundFrom bool, results []promResu
 	for _, result := range results {
 		for _, sample := range result.vec {
 			resource := metricToKey(kind, outboundFrom, sample.Metric)
+			log.Debugf("metricToKey: metrics=%+v, computedKey=%+v\n", sample.Metric, resource)
 
 			addBasicStats := func() {
 				if basicStats[resource] == nil {
@@ -751,6 +760,7 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 
 		// include an empty row for kinds that don't have any object stats
 		if objInfo.object == nil {
+			log.Debugf("no object stats found for %+v\n", key)
 			rsp := &pb.StatTable{
 				Table: &pb.StatTable_PodGroup_{
 					PodGroup: &pb.StatTable_PodGroup{},
