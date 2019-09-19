@@ -175,8 +175,8 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 	}
 }
 
-func (s *grpcServer) getKubernetesObjectStats(objKey rKey) (map[rKey]k8sStat, error) {
-	objects, err := s.k8sAPI.GetObjects(objKey.Namespace, objKey.Type, objKey.Name)
+func (s *grpcServer) getKubernetesObjectStats(kind, namespace, resourceName string) (map[rKey]k8sStat, error) {
+	objects, err := s.k8sAPI.GetObjects(namespace, kind, resourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -188,10 +188,10 @@ func (s *grpcServer) getKubernetesObjectStats(objKey rKey) (map[rKey]k8sStat, er
 			return nil, err
 		}
 
-		// when resource name isn't provided in the request,
-		// use that returned by the api server.
-		if objKey.Name == "" {
-			objKey.Name = metaObj.GetName()
+		objKey := rKey{
+			Name:      metaObj.GetName(),
+			Namespace: metaObj.GetNamespace(),
+			Type:      kind,
 		}
 
 		podStats, err := s.getPodStats(object)
@@ -208,12 +208,12 @@ func (s *grpcServer) getKubernetesObjectStats(objKey rKey) (map[rKey]k8sStat, er
 }
 
 func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
-	objKey := rKey{
-		Name:      req.GetSelector().GetResource().GetName(),
-		Namespace: req.GetSelector().GetResource().GetNamespace(),
-		Type:      req.GetSelector().GetResource().GetType(),
-	}
-	k8sObjects, err := s.getKubernetesObjectStats(objKey)
+	var (
+		name      = req.GetSelector().GetResource().GetName()
+		namespace = req.GetSelector().GetResource().GetNamespace()
+		kind      = req.GetSelector().GetResource().GetType()
+	)
+	k8sObjects, err := s.getKubernetesObjectStats(kind, namespace, name)
 	if err != nil {
 		return nil, err
 	}
@@ -238,18 +238,17 @@ func (s *grpcServer) getStatsForAllKinds(ctx context.Context, req *pb.StatSummar
 	// get object stats from the k8s api server
 	k8sObjects := map[rKey]k8sStat{}
 	for _, kind := range k8s.StatAllWorkloadKinds {
-		objKey := rKey{
-			Name:      req.GetSelector().GetResource().GetName(),
-			Namespace: req.GetSelector().GetResource().GetNamespace(),
-			Type:      kind,
-		}
-		objStats, err := s.getKubernetesObjectStats(objKey)
+		var (
+			name      = req.GetSelector().GetResource().GetName()
+			namespace = req.GetSelector().GetResource().GetNamespace()
+		)
+		objStats, err := s.getKubernetesObjectStats(kind, namespace, name)
 		if err != nil {
 			return nil, util.GRPCError(err)
 		}
 
 		// account for types that don't have object stats,
-		// so that a row will be created for them too.
+		// so that empty rows will be rendered for them.
 		if len(objStats) == 0 {
 			k := rKey{Type: kind}
 			k8sObjects[k] = k8sStat{}
@@ -420,7 +419,7 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 }
 
 func isSupportedKind(kind string) bool {
-	for _, k := range k8s.StatAllKinds {
+	for _, k := range append(k8s.StatAllKinds, k8s.Namespace, k8s.All) {
 		if kind == k {
 			return true
 		}
@@ -429,7 +428,7 @@ func isSupportedKind(kind string) bool {
 }
 
 func isK8sWorkloadKind(kind string) bool {
-	for _, k := range k8s.StatAllWorkloadKinds {
+	for _, k := range append(k8s.StatAllWorkloadKinds, k8s.Namespace) {
 		if kind == k {
 			return true
 		}
@@ -529,8 +528,6 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 	promQueries := map[promType]string{
 		promRequests: reqQuery,
 	}
-	log.Infof("request parameters: resource=%+v, outbound=%+v\n", req.GetSelector().GetResource(), req.GetOutbound())
-	log.Infof("query parameters: labels=%s, groupBy=%+v\n", reqLabels, groupBy)
 
 	if req.TcpStats {
 		promQueries[promTCPConnections] = tcpConnectionsQuery
@@ -614,7 +611,6 @@ func processPrometheusMetrics(kind string, outboundFrom bool, results []promResu
 	for _, result := range results {
 		for _, sample := range result.vec {
 			resource := metricToKey(kind, outboundFrom, sample.Metric)
-			log.Debugf("metricToKey: metrics=%+v, computedKey=%+v\n", sample.Metric, resource)
 
 			addBasicStats := func() {
 				if basicStats[resource] == nil {
@@ -673,7 +669,7 @@ func metricToKey(kind string, outboundFrom bool, metric model.Metric) rKey {
 		Type: kind,
 		Name: string(metric[kindLabel]),
 	}
-	if !outboundFrom || (outboundFrom && !isNonK8sResourceQuery(kind)) {
+	if kind != k8s.Namespace || (outboundFrom && !isNonK8sResourceQuery(kind)) {
 		key.Namespace = string(metric[namespaceLabel])
 	}
 
@@ -760,7 +756,7 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 
 		// include an empty row for kinds that don't have any object stats
 		if objInfo.object == nil {
-			log.Debugf("no object stats found for %+v\n", key)
+			log.Debugf("no stats found for object kind %s/%s (%s)", key.Type, key.Name, key.Namespace)
 			rsp := &pb.StatTable{
 				Table: &pb.StatTable_PodGroup_{
 					PodGroup: &pb.StatTable_PodGroup{},
@@ -774,6 +770,10 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 		var tcpStats *pb.TcpStats
 		if req.TcpStats {
 			tcpStats = tcpMetrics[key]
+		}
+
+		if _, exists := requestMetrics[key]; !exists {
+			log.Debugf("no basic stats for object %s/%s (%s)", key.Type, key.Name, key.Namespace)
 		}
 
 		var basicStats *pb.BasicStats

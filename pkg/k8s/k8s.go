@@ -48,7 +48,7 @@ var AllResources = []string{
 
 // StatAllKinds represents the resources to query in StatSummary when Resource.Type is "all"
 // TODO: add Namespace here to decrease queries from the web process
-var StatAllKinds = append(StatAllWorkloadKinds, Authority, TrafficSplit, All)
+var StatAllKinds = append(StatAllWorkloadKinds, Authority, TrafficSplit)
 
 // StatAllWorkloadKinds represents the workload kinds to query in
 // StatSummary when Resource.Type is "all"

@@ -40,7 +40,7 @@ func TestPromGroupByLabelNames(t *testing.T) {
 				Type:      k8s.All,
 				Name:      "",
 			},
-			expected: model.LabelNames{"namespace", "daemonset", "statefulset", "k8s_job", "deployment", "replicationcontroller", "pod", "service"},
+			expected: model.LabelNames{"namespace", "daemonset", "statefulset", "k8s_job", "deployment", "replicationcontroller", "pod", "service", "authority", "trafficsplit"},
 		},
 	}
 
@@ -94,7 +94,7 @@ func TestPromDstGroupByLabelNames(t *testing.T) {
 				Type:      k8s.All,
 				Name:      "",
 			},
-			expected: model.LabelNames{"dst_namespace", "dst_daemonset", "dst_statefulset", "dst_k8s_job", "dst_deployment", "dst_replicationcontroller", "dst_pod", "dst_service"},
+			expected: model.LabelNames{"dst_namespace", "dst_daemonset", "dst_statefulset", "dst_k8s_job", "dst_deployment", "dst_replicationcontroller", "dst_pod", "dst_service", "authority", "dst_trafficsplit"},
 		},
 	}
 

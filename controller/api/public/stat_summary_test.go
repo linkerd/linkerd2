@@ -1908,7 +1908,7 @@ func TestBuildRequestLabels(t *testing.T) {
 				},
 			},
 			expectedLabels:  model.LabelSet{"direction": "inbound"},
-			expectedGroupBy: model.LabelNames{pkgK8s.Namespace, pkgK8s.DaemonSet, pkgK8s.StatefulSet, "k8s_" + pkgK8s.Job, pkgK8s.Deployment, pkgK8s.ReplicationController, pkgK8s.Pod, pkgK8s.Service},
+			expectedGroupBy: model.LabelNames{pkgK8s.Namespace, pkgK8s.DaemonSet, pkgK8s.StatefulSet, "k8s_" + pkgK8s.Job, pkgK8s.Deployment, pkgK8s.ReplicationController, pkgK8s.Pod, pkgK8s.Service, pkgK8s.Authority, pkgK8s.TrafficSplit},
 		},
 		{
 			title: "outbound resource - from",
@@ -1948,7 +1948,7 @@ func TestBuildRequestLabels(t *testing.T) {
 				},
 			},
 			expectedLabels:  model.LabelSet{"direction": "outbound", "namespace": "default", "pod": "curl"},
-			expectedGroupBy: model.LabelNames{"dst_" + pkgK8s.Namespace, "dst_" + pkgK8s.DaemonSet, "dst_" + pkgK8s.StatefulSet, "dst_k8s_" + pkgK8s.Job, "dst_" + pkgK8s.Deployment, "dst_" + pkgK8s.ReplicationController, "dst_" + pkgK8s.Pod, "dst_" + pkgK8s.Service},
+			expectedGroupBy: model.LabelNames{"dst_" + pkgK8s.Namespace, "dst_" + pkgK8s.DaemonSet, "dst_" + pkgK8s.StatefulSet, "dst_k8s_" + pkgK8s.Job, "dst_" + pkgK8s.Deployment, "dst_" + pkgK8s.ReplicationController, "dst_" + pkgK8s.Pod, "dst_" + pkgK8s.Service, pkgK8s.Authority, "dst_" + pkgK8s.TrafficSplit},
 		},
 		{
 			title: "outbound resource - to",
@@ -2049,9 +2049,8 @@ func TestMetricToKey(t *testing.T) {
 				model.LabelName("tls"):            model.LabelValue("true"),
 			},
 			expected: rKey{
-				Type:      pkgK8s.Namespace,
-				Name:      "emojivoto",
-				Namespace: "emojivoto",
+				Type: pkgK8s.Namespace,
+				Name: "emojivoto",
 			},
 		},
 		{
