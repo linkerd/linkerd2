@@ -2,15 +2,18 @@
 
 * Helm
   * Allow disabling namespace creation during install (thanks @KIVagant!)
+* CLI
+  * Added a new `json` output option to the `linkerd tap` command
 * Controller
   * Fixed proxy injector timeout during a large number of concurrent injections
   * Separated the destination controller into its own separate pod
-  * Updated Prometheus config to keep only needed cadvisor metrics
+  * Updated Prometheus config to keep only needed `cadvisor` metrics,
+    substantially reducing the number of time-series stored in most clusters
 * Web UI
   * Fixed bad request in the top routes tab on empty fields (thanks @pierDipi!)
 * Proxy
   * Fixes to the client's backoff logic
-  * Add 587 to the list of ports to disable protocol detection
+  * Added 587 to the list of ports to disable protocol detection (thanks @brianstorti!)
 
 ## edge-19.9.2
 
