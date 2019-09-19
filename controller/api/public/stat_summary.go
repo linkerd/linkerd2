@@ -12,6 +12,8 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,25 +94,13 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		}
 	}
 
-	if isNonK8sResourceQuery(req.GetSelector().GetResource().GetType()) {
-		result := s.nonK8sResourceQuery(ctx, req)
-		if result.err != nil {
-			return nil, util.GRPCError(result.err)
-		}
-
-		return statSummaryResponse([]*pb.StatTable{result.res}), nil
+	kind := req.GetSelector().GetResource().GetType()
+	if !isSupportedKind(kind) {
+		return nil, util.GRPCError(status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", kind))
 	}
 
-	if isTrafficSplitQuery(req.GetSelector().GetResource().GetType()) {
-		result := s.trafficSplitResourceQuery(ctx, req)
-		if result.err != nil {
-			return nil, util.GRPCError(result.err)
-		}
-
-		return statSummaryResponse([]*pb.StatTable{result.res}), nil
-	}
-
-	if req.Selector.Resource.Type != k8s.All {
+	// get stats for individual workload kind
+	if isK8sWorkloadKind(kind) {
 		statTables, err := s.k8sResourceQuery(ctx, req)
 		if err != nil {
 			return nil, util.GRPCError(err)
@@ -128,10 +118,40 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return statSummaryResponse(statTables), nil
 	}
 
-	// get object stats and metrics for all resources
-	statTables, err := s.getStatsForAllResources(ctx, req)
-	if err != nil {
-		return nil, util.GRPCError(err)
+	var statTables []*pb.StatTable
+
+	// get stats for authority
+	if isNonK8sResourceQuery(kind) || kind == k8s.All {
+		clone := proto.Clone(req).(*pb.StatSummaryRequest)
+		clone.GetSelector().GetResource().Type = k8s.Authority
+		result := s.nonK8sResourceQuery(ctx, clone)
+		if result.err != nil {
+			return nil, util.GRPCError(result.err)
+		}
+
+		statTables = append(statTables, result.res)
+	}
+
+	// get stats for traffic split
+	if isTrafficSplitQuery(kind) || kind == k8s.All {
+		clone := proto.Clone(req).(*pb.StatSummaryRequest)
+		clone.GetSelector().GetResource().Type = k8s.TrafficSplit
+		result := s.trafficSplitResourceQuery(ctx, clone)
+		if result.err != nil {
+			return nil, util.GRPCError(result.err)
+		}
+
+		statTables = append(statTables, result.res)
+	}
+
+	// get stats for all workload kinds
+	if kind == k8s.All {
+		st, err := s.getStatsForAllKinds(ctx, req)
+		if err != nil {
+			return nil, util.GRPCError(err)
+		}
+
+		statTables = append(statTables, st...)
 	}
 
 	return statSummaryResponse(statTables), nil
@@ -213,29 +233,12 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return buildMetricsStatTables(req, k8sObjects, requestMetrics, tcpMetrics), nil
 }
 
-func (s *grpcServer) getStatsForAllResources(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
+func (s *grpcServer) getStatsForAllKinds(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
 	var statTables []*pb.StatTable
 
-	// authority stats
-	clone := proto.Clone(req).(*pb.StatSummaryRequest)
-	clone.Selector.Resource.Type = k8s.Authority
-	result := s.nonK8sResourceQuery(ctx, clone)
-	if result.err != nil {
-		return nil, result.err
-	}
-	statTables = append(statTables, result.res)
-
-	// traffic split stats
-	clone.Selector.Resource.Type = k8s.TrafficSplit
-	result = s.trafficSplitResourceQuery(ctx, req)
-	if result.err != nil {
-		return nil, result.err
-	}
-	statTables = append(statTables, result.res)
-
-	// object stats from the k8s api server
+	// get object stats from the k8s api server
 	k8sObjects := map[rKey]k8sStat{}
-	for _, kind := range k8s.StatAllWorkloadResourceTypes {
+	for _, kind := range k8s.StatAllWorkloadKinds {
 		objKey := rKey{
 			Name:      req.GetSelector().GetResource().GetName(),
 			Namespace: req.GetSelector().GetResource().GetNamespace(),
@@ -258,7 +261,7 @@ func (s *grpcServer) getStatsForAllResources(ctx context.Context, req *pb.StatSu
 		}
 	}
 
-	// metrics from prometheus
+	// get metrics from prometheus
 	var (
 		requestMetrics map[rKey]*pb.BasicStats
 		tcpMetrics     map[rKey]*pb.TcpStats
@@ -410,6 +413,24 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 	return resourceResult{res: &rsp, err: nil}
 }
 
+func isSupportedKind(kind string) bool {
+	for _, k := range k8s.StatAllKinds {
+		if kind == k {
+			return true
+		}
+	}
+	return false
+}
+
+func isK8sWorkloadKind(kind string) bool {
+	for _, k := range k8s.StatAllWorkloadKinds {
+		if kind == k {
+			return true
+		}
+	}
+	return false
+}
+
 func isNonK8sResourceQuery(resourceType string) bool {
 	return resourceType == k8s.Authority
 }
@@ -526,7 +547,7 @@ func (s *grpcServer) getStatMetrics(ctx context.Context, req *pb.StatSummaryRequ
 
 	basicStats := map[rKey]*pb.BasicStats{}
 	tcpStats := map[rKey]*pb.TcpStats{}
-	for _, kind := range k8s.StatAllWorkloadResourceTypes {
+	for _, kind := range k8s.StatAllWorkloadKinds {
 		basic, tcp := processPrometheusMetrics(kind, outboundFrom, results)
 		for resource, stat := range basic {
 			basicStats[resource] = stat
@@ -723,14 +744,12 @@ func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodE
 func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, requestMetrics map[rKey]*pb.BasicStats, tcpMetrics map[rKey]*pb.TcpStats) []*pb.StatTable {
 	var statTables []*pb.StatTable
 
-	rowsByResourceType := map[string][]*pb.StatTable_PodGroup_Row{}
+	// rowsByKind is used to group stats rows by kinds
+	rowsByKind := map[string][]*pb.StatTable_PodGroup_Row{}
 	for _, key := range getResultKeys(req, k8sObjects, requestMetrics) {
-		objInfo, ok := k8sObjects[key]
-		if !ok {
-			continue
-		}
+		objInfo := k8sObjects[key]
 
-		// return an empty row for resource types that don't have object stats
+		// include an empty row for kinds that don't have any object stats
 		if objInfo.object == nil {
 			rsp := &pb.StatTable{
 				Table: &pb.StatTable_PodGroup_{
@@ -771,15 +790,15 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 		row.FailedPodCount = podStat.failed
 		row.ErrorsByPod = podStat.errors
 
-		_, exists := rowsByResourceType[key.Type]
+		_, exists := rowsByKind[key.Type]
 		if !exists {
-			rowsByResourceType[key.Type] = []*pb.StatTable_PodGroup_Row{row}
+			rowsByKind[key.Type] = []*pb.StatTable_PodGroup_Row{row}
 		} else {
-			rowsByResourceType[key.Type] = append(rowsByResourceType[key.Type], row)
+			rowsByKind[key.Type] = append(rowsByKind[key.Type], row)
 		}
 	}
 
-	for _, rows := range rowsByResourceType {
+	for _, rows := range rowsByKind {
 		statTable := &pb.StatTable{
 			Table: &pb.StatTable_PodGroup_{
 				PodGroup: &pb.StatTable_PodGroup{
@@ -787,6 +806,7 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 				},
 			},
 		}
+		statTable.GetPodGroup().GetRows()
 		statTables = append(statTables, statTable)
 	}
 

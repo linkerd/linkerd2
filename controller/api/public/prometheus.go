@@ -72,7 +72,7 @@ func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	}
 
 	if resource.Type == k8s.All {
-		for _, rt := range k8s.StatAllWorkloadResourceTypes {
+		for _, rt := range k8s.StatAllWorkloadKinds {
 			clone := proto.Clone(resource).(*pb.Resource)
 			clone.Type = rt
 			names = append(names, promResourceType(clone))
@@ -97,7 +97,7 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	}
 
 	if resource.Type == k8s.All {
-		for _, rt := range k8s.StatAllWorkloadResourceTypes {
+		for _, rt := range k8s.StatAllWorkloadKinds {
 			clone := proto.Clone(resource).(*pb.Resource)
 			clone.Type = rt
 			if isNonK8sResourceQuery(rt) {
