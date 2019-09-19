@@ -1,7 +1,7 @@
 ## edge-19.9.3
 
 * Helm
-  * Allow disabling namespace creation during install (thanks @KIVagant!)
+  * Allowed disabling namespace creation during install (thanks @KIVagant!)
 * CLI
   * Added a new `json` output option to the `linkerd tap` command
 * Controller
