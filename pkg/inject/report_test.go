@@ -278,7 +278,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.meta = testCase.podMeta
 
 				report := newReport(resourceConfig)
-				if actual, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})
@@ -319,7 +319,7 @@ func TestDisableByAnnotation(t *testing.T) {
 				resourceConfig.pod.meta = testCase.podMeta
 
 				report := newReport(resourceConfig)
-				if actual, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
+				if actual, _, _ := report.disableByAnnotation(resourceConfig); testCase.expected != actual {
 					t.Errorf("Expected %t. Actual %t", testCase.expected, actual)
 				}
 			})

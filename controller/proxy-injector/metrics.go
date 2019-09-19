@@ -11,15 +11,16 @@ import (
 )
 
 const (
-	labelOwnerKind = "owner_kind"
-	labelNamespace = "namespace"
-	labelSkip      = "skip"
-	labelReason    = "skip_reason"
+	labelOwnerKind    = "owner_kind"
+	labelNamespace    = "namespace"
+	labelSkip         = "skip"
+	labelAnnotationAt = "annotation_at"
+	labelReason       = "skip_reason"
 )
 
 var (
-	requestLabels  = []string{labelOwnerKind, labelNamespace}
-	responseLabels = []string{labelOwnerKind, labelNamespace, labelSkip, labelReason}
+	requestLabels  = []string{labelOwnerKind, labelNamespace, labelAnnotationAt}
+	responseLabels = []string{labelOwnerKind, labelNamespace, labelSkip, labelReason, labelAnnotationAt}
 
 	proxyInjectionAdmissionRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "proxy_inject_admission_requests_total",
@@ -32,17 +33,19 @@ var (
 	}, append(responseLabels, validLabelNames(inject.ProxyAnnotations)...))
 )
 
-func admissionRequestLabels(ownerKind, namespace string, configLabels prometheus.Labels) prometheus.Labels {
+func admissionRequestLabels(ownerKind, namespace, annotationAt string, configLabels prometheus.Labels) prometheus.Labels {
 	configLabels[labelOwnerKind] = ownerKind
 	configLabels[labelNamespace] = namespace
+	configLabels[labelAnnotationAt] = annotationAt
 	return configLabels
 }
 
-func admissionResponseLabels(owner, namespace, skip, reason string, configLabels prometheus.Labels) prometheus.Labels {
+func admissionResponseLabels(owner, namespace, skip, reason, annotationAt string, configLabels prometheus.Labels) prometheus.Labels {
 	configLabels[labelOwnerKind] = owner
 	configLabels[labelNamespace] = namespace
 	configLabels[labelSkip] = skip
 	configLabels[labelReason] = reason
+	configLabels[labelAnnotationAt] = annotationAt
 	return configLabels
 }
 

@@ -15,6 +15,8 @@ const (
 	unsupportedResource            = "unsupported_resource"
 	injectEnableAnnotationAbsent   = "injection_enable_annotation_absent"
 	injectDisableAnnotationPresent = "injection_disable_annotation_present"
+	annotationAtNamespace          = "namespace"
+	annotationAtWorkload           = "workload"
 )
 
 var (
@@ -39,6 +41,7 @@ type Report struct {
 	UnsupportedResource  bool
 	InjectDisabled       bool
 	InjectDisabledReason string
+	InjectAnnotationAt   string
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -70,7 +73,7 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.InjectDisabled, report.InjectDisabledReason = report.disableByAnnotation(conf)
+		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disableByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
@@ -122,7 +125,7 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
+func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string) {
 	// truth table of the effects of the inject annotation:
 	//
 	// origin  | namespace | pod      | inject?  | return
@@ -144,19 +147,19 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 
 	if conf.origin == OriginCLI {
-		return podAnnotation == k8s.ProxyInjectDisabled, ""
+		return podAnnotation == k8s.ProxyInjectDisabled, "", ""
 	}
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
-			return true, injectDisableAnnotationPresent
+			return true, injectDisableAnnotationPresent, annotationAtNamespace
 		}
-		return false, ""
+		return false, "", annotationAtNamespace
 	}
 
 	if podAnnotation != k8s.ProxyInjectEnabled {
-		return true, injectEnableAnnotationAbsent
+		return true, injectEnableAnnotationAbsent, ""
 	}
 
-	return false, ""
+	return false, "", annotationAtWorkload
 }
