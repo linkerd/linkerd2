@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
@@ -19,6 +20,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+type renderTapEventFunc func(*pb.TapEvent, string) string
+
 type tapOptions struct {
 	namespace   string
 	toResource  string
@@ -29,6 +32,51 @@ type tapOptions struct {
 	authority   string
 	path        string
 	output      string
+}
+
+type endpoint struct {
+	IP       string            `json:"ip"`
+	Port     uint32            `json:"port"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+type streamID struct {
+	Base   uint32 `json:"base"`
+	Stream uint64 `json:"stream"`
+}
+
+type requestInitEvent struct {
+	ID        *streamID `json:"id"`
+	Method    string    `json:"method"`
+	Scheme    string    `json:"scheme"`
+	Authority string    `json:"authority"`
+	Path      string    `json:"path"`
+}
+
+type responseInitEvent struct {
+	ID               *streamID          `json:"id"`
+	SinceRequestInit *duration.Duration `json:"sinceRequestInit"`
+	HTTPStatus       uint32             `json:"httpStatus"`
+}
+
+type responseEndEvent struct {
+	ID                *streamID          `json:"id"`
+	SinceRequestInit  *duration.Duration `json:"sinceRequestInit"`
+	SinceResponseInit *duration.Duration `json:"sinceResponseInit"`
+	ResponseBytes     uint64             `json:"responseBytes"`
+	GrpcStatusCode    uint32             `json:"grpcStatusCode"`
+	ResetErrorCode    uint32             `json:"resetErrorCode,omitempty"`
+}
+
+// Private type used for displaying JSON encoded tap events
+type tapEvent struct {
+	Source            *endpoint          `json:"source"`
+	Destination       *endpoint          `json:"destination"`
+	RouteMeta         map[string]string  `json:"routeMeta"`
+	ProxyDirection    string             `json:"proxyDirection"`
+	RequestInitEvent  *requestInitEvent  `json:"requestInitEvent,omitempty"`
+	ResponseInitEvent *responseInitEvent `json:"responseInitEvent,omitempty"`
+	ResponseEndEvent  *responseEndEvent  `json:"responseEndEvent,omitempty"`
 }
 
 func newTapOptions() *tapOptions {
@@ -43,6 +91,14 @@ func newTapOptions() *tapOptions {
 		path:        "",
 		output:      "",
 	}
+}
+
+func (o *tapOptions) validate() error {
+	if o.output == "" || o.output == wideOutput || o.output == jsonOutput {
+		return nil
+	}
+
+	return fmt.Errorf("output format \"%s\" not recognized", o.output)
 }
 
 func newCmdTap() *cobra.Command {
@@ -98,20 +154,14 @@ func newCmdTap() *cobra.Command {
 				Path:        options.path,
 			}
 
+			err := options.validate()
+			if err != nil {
+				return fmt.Errorf("validation error when executing tap command: %v", err)
+			}
+
 			req, err := util.BuildTapByResourceRequest(requestParams)
 			if err != nil {
 				return err
-			}
-
-			wide := false
-			switch options.output {
-			// TODO: support more output formats?
-			case "":
-				// default output format.
-			case wideOutput:
-				wide = true
-			default:
-				return fmt.Errorf("output format \"%s\" not recognized", options.output)
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
@@ -119,7 +169,7 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, wide)
+			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, options)
 		},
 	}
 
@@ -140,38 +190,40 @@ func newCmdTap() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
-		"Output format. One of: wide")
+		fmt.Sprintf("Output format. One of: \"%s\", \"%s\"", wideOutput, jsonOutput))
 
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, wide bool) error {
-	var resource string
-	if wide {
-		resource = req.GetTarget().GetResource().GetType()
-	}
-
+func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, options *tapOptions) error {
 	reader, body, err := tap.Reader(k8sAPI, req, 0)
 	if err != nil {
 		return err
 	}
 	defer body.Close()
 
-	return renderTap(w, reader, resource)
+	return writeTapEventsToBuffer(w, reader, req, options)
 }
 
-func renderTap(w io.Writer, tapByteStream *bufio.Reader, resource string) error {
-	tableWriter := tabwriter.NewWriter(w, 0, 0, 0, ' ', tabwriter.AlignRight)
-	err := writeTapEventsToBuffer(tapByteStream, tableWriter, resource)
+func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *pb.TapByResourceRequest, options *tapOptions) error {
+	var err error
+	switch options.output {
+	case "":
+		err = renderTapEvents(tapByteStream, w, renderTapEvent, "")
+	case wideOutput:
+		resource := req.GetTarget().GetResource().GetType()
+		err = renderTapEvents(tapByteStream, w, renderTapEvent, resource)
+	case jsonOutput:
+		err = renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+	}
 	if err != nil {
 		return err
 	}
-	tableWriter.Flush()
 
 	return nil
 }
 
-func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, resource string) error {
+func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := pb.TapEvent{}
@@ -183,7 +235,7 @@ func writeTapEventsToBuffer(tapByteStream *bufio.Reader, w *tabwriter.Writer, re
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, renderTapEvent(&event, resource))
+		_, err = fmt.Fprintln(w, render(&event, resource))
 		if err != nil {
 			return err
 		}
@@ -289,6 +341,121 @@ func renderTapEvent(event *pb.TapEvent, resource string) string {
 
 	default:
 		return fmt.Sprintf("unknown %s", flow)
+	}
+}
+
+// renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
+func renderTapEventJSON(event *pb.TapEvent, _ string) string {
+	m := mapPublicToDisplayTapEvent(event)
+	e, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("{\"error marshalling JSON\": \"%s\"}", err)
+	}
+	return fmt.Sprintf("%s", e)
+}
+
+// Map public API `TapEvent`s to `displayTapEvent`s
+func mapPublicToDisplayTapEvent(event *pb.TapEvent) *tapEvent {
+	// Map source endpoint
+	sip := addr.PublicIPToString(event.GetSource().GetIp())
+	src := &endpoint{
+		IP:       sip,
+		Port:     event.GetSource().GetPort(),
+		Metadata: event.GetSourceMeta().GetLabels(),
+	}
+
+	// Map destination endpoint
+	dip := addr.PublicIPToString(event.GetDestination().GetIp())
+	dst := &endpoint{
+		IP:       dip,
+		Port:     event.GetDestination().GetPort(),
+		Metadata: event.GetDestinationMeta().GetLabels(),
+	}
+
+	return &tapEvent{
+		Source:            src,
+		Destination:       dst,
+		RouteMeta:         event.GetRouteMeta().GetLabels(),
+		ProxyDirection:    event.GetProxyDirection().String(),
+		RequestInitEvent:  getRequestInitEvent(event.GetHttp()),
+		ResponseInitEvent: getResponseInitEvent(event.GetHttp()),
+		ResponseEndEvent:  getResponseEndEvent(event.GetHttp()),
+	}
+}
+
+// Attempt to map a `TapEvent_Http_RequestInit event to a `requestInitEvent`
+func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
+	reqI := pubEv.GetRequestInit()
+	if reqI == nil {
+		return nil
+	}
+	sid := &streamID{
+		Base:   reqI.GetId().GetBase(),
+		Stream: reqI.GetId().GetStream(),
+	}
+	return &requestInitEvent{
+		ID:        sid,
+		Method:    formatMethod(reqI.GetMethod()),
+		Scheme:    formatScheme(reqI.GetScheme()),
+		Authority: reqI.GetAuthority(),
+		Path:      reqI.GetPath(),
+	}
+}
+
+func formatMethod(m *pb.HttpMethod) string {
+	if x, ok := m.GetType().(*pb.HttpMethod_Registered_); ok {
+		return x.Registered.String()
+	}
+	if s, ok := m.GetType().(*pb.HttpMethod_Unregistered); ok {
+		return s.Unregistered
+	}
+	return ""
+}
+
+func formatScheme(s *pb.Scheme) string {
+	if x, ok := s.GetType().(*pb.Scheme_Registered_); ok {
+		return x.Registered.String()
+	}
+	if str, ok := s.GetType().(*pb.Scheme_Unregistered); ok {
+		return str.Unregistered
+	}
+	return ""
+}
+
+// Attempt to map a `TapEvent_Http_ResponseInit` event to a `responseInitEvent`
+func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
+	resI := pubEv.GetResponseInit()
+	if resI == nil {
+		return nil
+	}
+	sid := &streamID{
+		Base:   resI.GetId().GetBase(),
+		Stream: resI.GetId().GetStream(),
+	}
+	return &responseInitEvent{
+		ID:               sid,
+		SinceRequestInit: resI.GetSinceRequestInit(),
+		HTTPStatus:       resI.GetHttpStatus(),
+	}
+}
+
+// Attempt to map a `TapEvent_Http_ResponseEnd` event to a `responseEndEvent`
+func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
+	resE := pubEv.GetResponseEnd()
+	if resE == nil {
+		return nil
+	}
+	sid := &streamID{
+		Base:   resE.GetId().GetBase(),
+		Stream: resE.GetId().GetStream(),
+	}
+	return &responseEndEvent{
+		ID:                sid,
+		SinceRequestInit:  resE.GetSinceRequestInit(),
+		SinceResponseInit: resE.GetSinceResponseInit(),
+		ResponseBytes:     resE.GetResponseBytes(),
+		GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
+		ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
 	}
 }
 
