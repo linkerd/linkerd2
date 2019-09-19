@@ -753,8 +753,8 @@ func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodE
 func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sStat, requestMetrics map[rKey]*pb.BasicStats, tcpMetrics map[rKey]*pb.TcpStats) []*pb.StatTable {
 	var statTables []*pb.StatTable
 
-	// rowsByKind is used to group stats rows by kinds
-	rowsByKind := map[string][]*pb.StatTable_PodGroup_Row{}
+	// statTableByKind is used to group statTables by kinds
+	statTablesByKind := map[string]*pb.StatTable{}
 	for _, key := range getResultKeys(req, k8sObjects, requestMetrics) {
 		objInfo := k8sObjects[key]
 
@@ -800,23 +800,24 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 		row.FailedPodCount = podStat.failed
 		row.ErrorsByPod = podStat.errors
 
-		_, exists := rowsByKind[key.Type]
+		// group all the rows by workload kinds
+		_, exists := statTablesByKind[key.Type]
 		if !exists {
-			rowsByKind[key.Type] = []*pb.StatTable_PodGroup_Row{row}
+			statTable := &pb.StatTable{
+				Table: &pb.StatTable_PodGroup_{
+					PodGroup: &pb.StatTable_PodGroup{
+						Rows: []*pb.StatTable_PodGroup_Row{row},
+					},
+				},
+			}
+			statTablesByKind[key.Type] = statTable
 		} else {
-			rowsByKind[key.Type] = append(rowsByKind[key.Type], row)
+			statTablesByKind[key.Type].GetPodGroup().Rows = append(statTablesByKind[key.Type].GetPodGroup().Rows, row)
 		}
 	}
 
-	for _, rows := range rowsByKind {
-		statTable := &pb.StatTable{
-			Table: &pb.StatTable_PodGroup_{
-				PodGroup: &pb.StatTable_PodGroup{
-					Rows: rows,
-				},
-			},
-		}
-		statTable.GetPodGroup().GetRows()
+	// convert the map into a slice that the StatSummaryResponse can use
+	for _, statTable := range statTablesByKind {
 		statTables = append(statTables, statTable)
 	}
 
