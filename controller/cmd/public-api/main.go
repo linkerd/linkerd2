@@ -32,6 +32,8 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
+	probabilitySampling := cmd.Float64("sampling-probability", 1.0, "The probabilistic sampling rate")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -73,7 +75,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.SetExporter("public")
+	util.InitialiseTracing("public", *traceCollector, *probabilitySampling)
 	server := public.NewServer(
 		*addr,
 		prometheusClient,

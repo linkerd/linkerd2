@@ -28,6 +28,8 @@ func Main(args []string) {
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
+	probabilitySampling := cmd.Float64("sampling-probability", 1.0, "The probabilistic sampling rate")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -63,7 +65,7 @@ func Main(args []string) {
 
 	clusterDomain := global.GetClusterDomain()
 
-	util.SetExporter("destination")
+	util.InitialiseTracing("destination", *traceCollector, *probabilitySampling)
 
 	server := destination.NewServer(
 		*addr,

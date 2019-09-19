@@ -30,6 +30,8 @@ func Main(args []string) {
 	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
 	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
+	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
+	probabilitySampling := cmd.Float64("sampling-probability", 1.0, "The probabilistic sampling rate")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -62,7 +64,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.SetExporter("tap")
+	util.InitialiseTracing("tap", *traceCollector, *probabilitySampling)
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
 	// TODO: make this configurable for local development

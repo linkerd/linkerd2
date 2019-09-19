@@ -47,6 +47,8 @@ type (
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
+		TraceCollector              string
+		ProbabilisticSamplingRate   float64
 		identityOptions             *installIdentityOptions
 		*proxyConfigOptions
 
@@ -170,6 +172,8 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
+		TraceCollector:              defaults.Trace.TraceCollector,
+		ProbabilisticSamplingRate:   defaults.Trace.ProbabilisticSamplingRate,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,

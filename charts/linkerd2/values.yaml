@@ -54,6 +54,11 @@ HeartbeatSchedule: "0 0 * * *"
 PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
+# Trace configuration
+Trace:
+  TraceCollector: "oc-collector.tracing:55678"
+  ProbabilisticSamplingRate: 1.0
+
 # proxy configuration
 Proxy:
   EnableExternalProfiles: false

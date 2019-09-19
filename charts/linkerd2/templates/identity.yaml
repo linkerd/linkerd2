@@ -81,11 +81,10 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
+        - -trace-collector={{.Trace.TraceCollector}}
+        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
-        env:
-          - name: OC_AGENT_HOST
-            value: oc-collector.tracing:55678
         livenessProbe:
           httpGet:
             path: /ping

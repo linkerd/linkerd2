@@ -63,10 +63,9 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
+        - -trace-collector={{.Trace.TraceCollector}}
+        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
-        env:
-        - name: OC_AGENT_HOST
-          value: oc-collector.tracing:55678
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
