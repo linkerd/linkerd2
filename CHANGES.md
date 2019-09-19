@@ -6,14 +6,15 @@
   * Added a new `json` output option to the `linkerd tap` command
 * Controller
   * Fixed proxy injector timeout during a large number of concurrent injections
-  * Separated the destination controller into its own separate pod
+  * Separated the destination controller into its own separate deployment
   * Updated Prometheus config to keep only needed `cadvisor` metrics,
     substantially reducing the number of time-series stored in most clusters
 * Web UI
   * Fixed bad request in the top routes tab on empty fields (thanks @pierDipi!)
 * Proxy
   * Fixes to the client's backoff logic
-  * Added 587 to the list of ports to disable protocol detection (thanks @brianstorti!)
+  * Added 587 (SMTP) to the list of ports to ignore in protocol detection (bound
+    to server-speaks-first protocols) (thanks @brianstorti!)
 
 ## edge-19.9.2
 
