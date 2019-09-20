@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	proto "github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
@@ -72,15 +71,13 @@ func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	}
 
 	if resource.Type == k8s.All {
-		for _, kind := range k8s.StatAllKinds {
-			clone := proto.Clone(resource).(*pb.Resource)
-			clone.Type = kind
-			names = append(names, promResourceType(clone))
+		for _, kind := range k8s.StatAllWorkloadKinds {
+			names = append(names, promResourceType(kind))
 		}
 		return names
 	}
 
-	return append(names, promResourceType(resource))
+	return append(names, promResourceType(resource.Type))
 }
 
 // add filtering by resource type
@@ -91,23 +88,21 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	}
 
 	if isNonK8sResourceQuery(resource.GetType()) {
-		return append(names, promResourceType(resource))
+		return append(names, promResourceType(resource.Type))
 	}
 
 	if resource.Type == k8s.All {
-		for _, kind := range k8s.StatAllKinds {
-			clone := proto.Clone(resource).(*pb.Resource)
-			clone.Type = kind
+		for _, kind := range k8s.StatAllWorkloadKinds {
 			if isNonK8sResourceQuery(kind) {
-				names = append(names, promResourceType(clone))
+				names = append(names, promResourceType(kind))
 				continue
 			}
-			names = append(names, "dst_"+promResourceType(clone))
+			names = append(names, "dst_"+promResourceType(kind))
 		}
 		return names
 	}
 
-	return append(names, "dst_"+promResourceType(resource))
+	return append(names, "dst_"+promResourceType(resource.Type))
 }
 
 // query a named resource
@@ -115,7 +110,7 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource != nil {
 		if resource.Name != "" && resource.GetType() != k8s.Service {
-			set[promResourceType(resource)] = model.LabelValue(resource.Name)
+			set[promResourceType(resource.Type)] = model.LabelValue(resource.Name)
 		}
 		if shouldAddNamespaceLabel(resource) {
 			set[namespaceLabel] = model.LabelValue(resource.Namespace)
@@ -129,9 +124,9 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		if isNonK8sResourceQuery(resource.GetType()) {
-			set[promResourceType(resource)] = model.LabelValue(resource.Name)
+			set[promResourceType(resource.Type)] = model.LabelValue(resource.Name)
 		} else {
-			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+			set["dst_"+promResourceType(resource.Type)] = model.LabelValue(resource.Name)
 			if shouldAddNamespaceLabel(resource) {
 				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
 			}
@@ -180,8 +175,8 @@ func promDirectionLabels(direction string) model.LabelSet {
 	}
 }
 
-func promResourceType(resource *pb.Resource) model.LabelName {
-	l5dLabel := k8s.KindToL5DLabel(resource.Type)
+func promResourceType(kind string) model.LabelName {
+	l5dLabel := k8s.KindToL5DLabel(kind)
 	return model.LabelName(l5dLabel)
 }
 
