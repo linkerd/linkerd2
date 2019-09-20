@@ -100,25 +100,6 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		return nil, util.GRPCError(status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", kind))
 	}
 
-	// get stats for individual workload kind
-	if isK8sWorkloadKind(kind) {
-		statTables, err := s.k8sResourceQuery(ctx, req)
-		if err != nil {
-			return nil, util.GRPCError(err)
-		}
-
-		// if resource type has no metrics, add an empty row per unit test assertions
-		if len(statTables) == 0 {
-			statTables = append(statTables, &pb.StatTable{
-				Table: &pb.StatTable_PodGroup_{
-					PodGroup: &pb.StatTable_PodGroup{},
-				},
-			})
-		}
-
-		return statSummaryResponse(statTables), nil
-	}
-
 	var statTables []*pb.StatTable
 
 	// get stats for authority
@@ -143,9 +124,9 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statTables = append(statTables, result.res)
 	}
 
-	// get stats for all workload kinds
-	if kind == k8s.All {
-		st, err := s.getStatsForAllKinds(ctx, req)
+	// get stats for k8s workloads
+	if isK8sWorkloadKind(kind) {
+		st, err := s.getStatsForK8sKind(ctx, req)
 		if err != nil {
 			return nil, util.GRPCError(err)
 		}
@@ -207,37 +188,21 @@ func (s *grpcServer) getKubernetesObjectStats(kind, namespace, resourceName stri
 	return objectMap, nil
 }
 
-func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
+func (s *grpcServer) getStatsForK8sKind(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
 	var (
-		name      = req.GetSelector().GetResource().GetName()
-		namespace = req.GetSelector().GetResource().GetNamespace()
-		kind      = req.GetSelector().GetResource().GetType()
+		statTables []*pb.StatTable
+		kinds      []string
 	)
-	k8sObjects, err := s.getKubernetesObjectStats(kind, namespace, name)
-	if err != nil {
-		return nil, err
+
+	if kind := req.GetSelector().GetResource().GetType(); kind == k8s.All {
+		kinds = k8s.StatAllWorkloadKinds
+	} else {
+		kinds = append(kinds, kind)
 	}
-
-	var (
-		requestMetrics map[rKey]*pb.BasicStats
-		tcpMetrics     map[rKey]*pb.TcpStats
-	)
-	if !req.SkipStats {
-		requestMetrics, tcpMetrics, err = s.getStatMetrics(ctx, req, req.TimeWindow)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return buildMetricsStatTables(req, k8sObjects, requestMetrics, tcpMetrics), nil
-}
-
-func (s *grpcServer) getStatsForAllKinds(ctx context.Context, req *pb.StatSummaryRequest) ([]*pb.StatTable, error) {
-	var statTables []*pb.StatTable
 
 	// get object stats from the k8s api server
 	k8sObjects := map[rKey]k8sStat{}
-	for _, kind := range k8s.StatAllWorkloadKinds {
+	for _, kind := range kinds {
 		var (
 			name      = req.GetSelector().GetResource().GetName()
 			namespace = req.GetSelector().GetResource().GetNamespace()
@@ -428,7 +393,7 @@ func isSupportedKind(kind string) bool {
 }
 
 func isK8sWorkloadKind(kind string) bool {
-	for _, k := range append(k8s.StatAllWorkloadKinds, k8s.Namespace) {
+	for _, k := range append(k8s.StatAllWorkloadKinds, k8s.Namespace, k8s.All) {
 		if kind == k {
 			return true
 		}
