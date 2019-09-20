@@ -158,7 +158,7 @@ func KindToL5DLabel(k8sKind string) string {
 }
 
 // KindToStatsLabel converts a Kubernetes `kind` to a Linkerd stats label.
-// It relies of KindToL5dLabel.
+// It relies on KindToL5dLabel.
 func KindToStatsLabel(k8sKind string, outboundFrom bool) string {
 	var label string
 	switch k8sKind {

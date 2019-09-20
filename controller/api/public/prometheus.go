@@ -77,7 +77,7 @@ func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 		return names
 	}
 
-	return append(names, promResourceType(resource.Type))
+	return append(names, promResourceType(resource.GetType()))
 }
 
 // add filtering by resource type
@@ -102,7 +102,7 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 		return names
 	}
 
-	return append(names, "dst_"+promResourceType(resource.Type))
+	return append(names, "dst_"+promResourceType(resource.GetType()))
 }
 
 // query a named resource
@@ -110,7 +110,7 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource != nil {
 		if resource.Name != "" && resource.GetType() != k8s.Service {
-			set[promResourceType(resource.Type)] = model.LabelValue(resource.Name)
+			set[promResourceType(resource.GetType())] = model.LabelValue(resource.Name)
 		}
 		if shouldAddNamespaceLabel(resource) {
 			set[namespaceLabel] = model.LabelValue(resource.Namespace)
@@ -124,9 +124,9 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		if isNonK8sResourceQuery(resource.GetType()) {
-			set[promResourceType(resource.Type)] = model.LabelValue(resource.Name)
+			set[promResourceType(resource.GetType())] = model.LabelValue(resource.Name)
 		} else {
-			set["dst_"+promResourceType(resource.Type)] = model.LabelValue(resource.Name)
+			set["dst_"+promResourceType(resource.GetType())] = model.LabelValue(resource.Name)
 			if shouldAddNamespaceLabel(resource) {
 				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
 			}

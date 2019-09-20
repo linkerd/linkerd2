@@ -127,7 +127,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// get stats for k8s workloads
-	if isK8sWorkloadKind(kind) {
+	if isK8sWorkloadKind(kind) || kind == k8s.All {
 		st, err := s.getStatsForK8sKind(ctx, req)
 		if err != nil {
 			return nil, util.GRPCError(err)
@@ -216,6 +216,7 @@ func (s *grpcServer) getStatsForK8sKind(ctx context.Context, req *pb.StatSummary
 
 		// account for types that don't have object stats,
 		// so that empty rows will be rendered for them.
+		// only relevant for k8s.All.
 		if len(objStats) == 0 {
 			k := rKey{Type: kind}
 			k8sObjects[k] = k8sStat{}
@@ -395,7 +396,7 @@ func isSupportedKind(kind string) bool {
 }
 
 func isK8sWorkloadKind(kind string) bool {
-	for _, k := range append(k8s.StatAllWorkloadKinds, k8s.Namespace, k8s.All) {
+	for _, k := range append(k8s.StatAllWorkloadKinds, k8s.Namespace) {
 		if kind == k {
 			return true
 		}
@@ -430,7 +431,6 @@ func getResultKeys(
 			keys = append(keys, key)
 		}
 	}
-
 	return keys
 }
 
@@ -644,6 +644,9 @@ func metricToKey(kind string, outboundFrom bool, metric model.Metric) rKey {
 		Type: kind,
 		Name: string(metric[kindLabel]),
 	}
+
+	// don't add a namespace if the resource is a namespace kind OR
+	// the resource is an authority kind for outbound stats.
 	if kind != k8s.Namespace && !(outboundFrom && isNonK8sResourceQuery(kind)) {
 		key.Namespace = string(metric[namespaceLabel])
 	}
@@ -775,9 +778,8 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 		row.FailedPodCount = podStat.failed
 		row.ErrorsByPod = podStat.errors
 
-		// group all the rows by workload kinds
-		_, exists := statTablesByKind[key.Type]
-		if !exists {
+		// group all the stat tables by kinds
+		if _, exists := statTablesByKind[key.Type]; !exists {
 			statTable := &pb.StatTable{
 				Table: &pb.StatTable_PodGroup_{
 					PodGroup: &pb.StatTable_PodGroup{
