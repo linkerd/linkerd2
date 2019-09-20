@@ -721,7 +721,7 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 
 		// include an empty row for kinds that don't have any object stats
 		if objInfo.object == nil {
-			log.Debugf("no stats found for object kind %s/%s (%s)", key.Type, key.Name, key.Namespace)
+			log.Debugf("no object stats for %s", key.Type)
 			rsp := &pb.StatTable{
 				Table: &pb.StatTable_PodGroup_{
 					PodGroup: &pb.StatTable_PodGroup{},
@@ -738,7 +738,7 @@ func buildMetricsStatTables(req *pb.StatSummaryRequest, k8sObjects map[rKey]k8sS
 		}
 
 		if _, exists := requestMetrics[key]; !exists {
-			log.Debugf("no basic stats for object %s/%s (%s)", key.Type, key.Name, key.Namespace)
+			log.Debugf("no basic stats for -n %s %s/%s", key.Namespace, key.Type, key.Name)
 		}
 
 		var basicStats *pb.BasicStats
