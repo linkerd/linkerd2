@@ -363,15 +363,12 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 			for _, header := range orig.GetHeaders() {
 				n := header.GetName()
 				b := header.GetValue()
-
 				h := public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueBin{ValueBin: b}}
 				if utf8.Valid(b) {
 					h = public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueStr{ValueStr: string(b)}}
 				}
-
 				headers = append(headers, &h)
 			}
-
 			return &public.Headers{
 				Headers: headers,
 			}

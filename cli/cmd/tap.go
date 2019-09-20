@@ -46,17 +46,19 @@ type streamID struct {
 }
 
 type requestInitEvent struct {
-	ID        *streamID `json:"id"`
-	Method    string    `json:"method"`
-	Scheme    string    `json:"scheme"`
-	Authority string    `json:"authority"`
-	Path      string    `json:"path"`
+	ID        *streamID   `json:"id"`
+	Method    string      `json:"method"`
+	Scheme    string      `json:"scheme"`
+	Authority string      `json:"authority"`
+	Path      string      `json:"path"`
+	Headers   *pb.Headers `json:"headers"`
 }
 
 type responseInitEvent struct {
 	ID               *streamID          `json:"id"`
 	SinceRequestInit *duration.Duration `json:"sinceRequestInit"`
 	HTTPStatus       uint32             `json:"httpStatus"`
+	Headers          *pb.Headers        `json:"headers"`
 }
 
 type responseEndEvent struct {
@@ -64,6 +66,7 @@ type responseEndEvent struct {
 	SinceRequestInit  *duration.Duration `json:"sinceRequestInit"`
 	SinceResponseInit *duration.Duration `json:"sinceResponseInit"`
 	ResponseBytes     uint64             `json:"responseBytes"`
+	Trailers          *pb.Headers        `json:"trailers"`
 	GrpcStatusCode    uint32             `json:"grpcStatusCode"`
 	ResetErrorCode    uint32             `json:"resetErrorCode,omitempty"`
 }
@@ -399,6 +402,7 @@ func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
 		Scheme:    formatScheme(reqI.GetScheme()),
 		Authority: reqI.GetAuthority(),
 		Path:      reqI.GetPath(),
+		Headers:   reqI.GetHeaders(),
 	}
 }
 
@@ -436,6 +440,7 @@ func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
 		ID:               sid,
 		SinceRequestInit: resI.GetSinceRequestInit(),
 		HTTPStatus:       resI.GetHttpStatus(),
+		Headers:          resI.GetHeaders(),
 	}
 }
 
@@ -454,6 +459,7 @@ func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
 		SinceRequestInit:  resE.GetSinceRequestInit(),
 		SinceResponseInit: resE.GetSinceResponseInit(),
 		ResponseBytes:     resE.GetResponseBytes(),
+		Trailers:          resE.GetTrailers(),
 		GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
 		ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
 	}
