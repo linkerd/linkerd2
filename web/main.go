@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/util"
+
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -32,6 +34,8 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
+	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
@@ -42,6 +46,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
+
+	util.InitialiseTracing("web", *traceCollector, *probabilisticSamplingRate)
 
 	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
 	clusterDomain := globalConfig.GetClusterDomain()

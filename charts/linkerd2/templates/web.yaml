@@ -62,6 +62,8 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
+        - -trace-collector={{.Trace.TraceCollector}}
+        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
         image: {{.WebImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:

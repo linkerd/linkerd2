@@ -40,8 +40,8 @@ func Main(args []string) {
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
-	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
-	probabilitySampling := cmd.Float64("sampling-probability", 1.0, "The probabilistic sampling rate")
+
+	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -124,7 +124,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	util.InitialiseTracing("identity", *traceCollector, *probabilitySampling)
+	util.InitialiseTracing("identity", *traceCollector, *probabilisticSamplingRate)
 	srv := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	identity.Register(srv, svc)
 	go func() {
