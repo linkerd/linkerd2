@@ -125,6 +125,8 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
+// disabledByAnnotation checks annotations for both workload, namespace and returns
+// if disabled, Inject Disabled reason and the resource where that annotation was present
 func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string) {
 	// truth table of the effects of the inject annotation:
 	//
@@ -152,7 +154,7 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
-			return true, injectDisableAnnotationPresent, annotationAtNamespace
+			return true, injectDisableAnnotationPresent, annotationAtWorkload
 		}
 		return false, "", annotationAtNamespace
 	}
