@@ -27,10 +27,10 @@ Note that the provided certificates must be ECDSA certficates.
 
 ```bash
 # To add the repo for Linkerd2 stable releases:
-helm repo add linkerd https://run.linkerd.io/stable
+helm repo add linkerd https://helm.linkerd.io/stable
 
 # To add the repo for Linkerd2 edge releases:
-helm repo add linkerd-edge https://run.linkerd.io/edge
+helm repo add linkerd-edge https://helm.linkerd.io/edge
 ```
 
 The following instructions use the `linkerd` repo. For installing an edge
@@ -144,6 +144,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`ControllerComponentLabel`            | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
 |`ControllerNamespaceLabel`            | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
 |`LinkerdNamespaceLabel`               | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
+|`InstallNamespace`                    | Avoid creating the namespace if using an external tool for that                                 |`true`|
 
 ## Get involved
 
