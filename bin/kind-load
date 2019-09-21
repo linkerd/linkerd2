@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eu
+
+if [ $# -eq 1 ]; then
+    cluster="${1:-}"
+else
+    echo "usage: $(basename $0) cluster-name" >&2
+    exit 64
+fi
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_tag.sh
+
+tag="$(head_root_tag)"
+org_repo="gcr.io/linkerd-io"
+
+kind load docker-image $org_repo/proxy:$tag --name $cluster
+kind load docker-image $org_repo/controller:$tag --name $cluster
+kind load docker-image $org_repo/web:$tag --name $cluster
+kind load docker-image $org_repo/cni-plugin:$tag --name $cluster
+kind load docker-image $org_repo/debug:$tag --name $cluster
+kind load docker-image $org_repo/cli-bin:$tag --name $cluster
+kind load docker-image $org_repo/grafana:$tag --name $cluster
