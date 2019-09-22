@@ -47,9 +47,8 @@ type (
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
-		TraceCollector              string
-		ProbabilisticSamplingRate   float64
 		identityOptions             *installIdentityOptions
+		traceOptions                *installTraceOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -57,6 +56,11 @@ type (
 		// function pointers that can be overridden for tests
 		generateUUID      func() string
 		heartbeatSchedule func() string
+	}
+
+	installTraceOptions struct {
+		traceCollector            string
+		probabilisticSamplingRate float64
 	}
 
 	installIdentityOptions struct {
@@ -172,8 +176,10 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
-		TraceCollector:              defaults.Trace.TraceCollector,
-		ProbabilisticSamplingRate:   defaults.Trace.ProbabilisticSamplingRate,
+		traceOptions: &installTraceOptions{
+			traceCollector:            defaults.Trace.TraceCollector,
+			probabilisticSamplingRate: defaults.Trace.ProbabilisticSamplingRate,
+		},
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -452,6 +458,17 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 
 	flags.StringVarP(&options.clusterDomain, "cluster-domain", "", options.clusterDomain, "Set custom cluster domain")
+
+	flags.StringVar(
+		&options.traceOptions.traceCollector, "trace-collector", options.traceOptions.traceCollector,
+		"The endpoint where to send the trace data",
+	)
+
+	flags.Float64Var(
+		&options.traceOptions.probabilisticSamplingRate, "trace-probability", options.traceOptions.probabilisticSamplingRate,
+		"the sampling rate for the probablistic trace sampler",
+	)
+
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
@@ -663,6 +680,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 			},
 		},
 		UID: options.proxyUID,
+	}
+
+	installValues.Trace = &charts.Trace{
+		TraceCollector:            options.traceOptions.traceCollector,
+		ProbabilisticSamplingRate: options.traceOptions.probabilisticSamplingRate,
 	}
 
 	inboundPortStrs := []string{}
