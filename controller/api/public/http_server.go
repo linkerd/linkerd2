@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.opencensus.io/plugin/ochttp"
-
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -18,6 +16,7 @@ import (
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc/metadata"
 )
 

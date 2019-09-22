@@ -3,11 +3,10 @@ package prometheus
 import (
 	"net/http"
 
-	"go.opencensus.io/plugin/ocgrpc"
-
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 )
 

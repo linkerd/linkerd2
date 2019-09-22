@@ -9,10 +9,6 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/linkerd/linkerd2/pkg/util"
-
-	"go.opencensus.io/plugin/ocgrpc"
-
 	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -22,7 +18,9 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 )
 

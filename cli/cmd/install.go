@@ -466,7 +466,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 
 	flags.Float64Var(
 		&options.traceOptions.probabilisticSamplingRate, "trace-probability", options.traceOptions.probabilisticSamplingRate,
-		"the sampling rate for the probablistic trace sampler",
+		"the sampling rate for the probabilistic trace sampler",
 	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
