@@ -124,7 +124,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	util.InitialiseTracing("identity", *traceCollector, *probabilisticSamplingRate)
+	util.InitialiseTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate)
 	srv := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	identity.Register(srv, svc)
 	go func() {

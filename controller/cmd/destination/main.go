@@ -65,7 +65,7 @@ func Main(args []string) {
 
 	clusterDomain := global.GetClusterDomain()
 
-	util.InitialiseTracing("destination", *traceCollector, *probabilisticSamplingRate)
+	util.InitialiseTracing("linkerd-destination", *traceCollector, *probabilisticSamplingRate)
 
 	server := destination.NewServer(
 		*addr,
