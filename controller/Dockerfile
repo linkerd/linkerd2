@@ -1,4 +1,4 @@
-## compile controller services
+## compile controller service
 FROM gcr.io/linkerd-io/go-deps:a3fe37ac as golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen

@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.opencensus.io/plugin/ochttp"
-
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -16,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/plugin/ochttp"
 )
 
 const (

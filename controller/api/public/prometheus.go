@@ -8,12 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"go.opencensus.io/trace"
-
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/trace"
 )
 
 type promType string

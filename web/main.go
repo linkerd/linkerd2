@@ -9,14 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/util"
-
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
