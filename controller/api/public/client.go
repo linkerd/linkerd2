@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"go.opencensus.io/plugin/ochttp"
+
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -212,7 +214,7 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 		return nil, err
 	}
 
-	return newClient(apiURL, http.DefaultClient, controlPlaneNamespace)
+	return newClient(apiURL, &http.Client{Transport: &ochttp.Transport{}}, controlPlaneNamespace)
 }
 
 // NewExternalClient creates a new Public API client intended to run from
