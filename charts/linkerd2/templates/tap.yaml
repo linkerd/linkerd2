@@ -65,6 +65,8 @@ spec:
         - tap
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
+        - -trace-collector={{.Trace.TraceCollector}}
+        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
