@@ -2165,7 +2165,7 @@
       "type": "text"
     }
   ],
-  "refresh": "10s",
+  "refresh": "1m",
   "schemaVersion": 18,
   "style": "dark",
   "tags": [
