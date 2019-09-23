@@ -54,7 +54,7 @@ anyone else interested to connect in a synchronous fashion. These meetings take
 place the last Wednesday of the month at 9am Pacific / 4pm UTC.
 
 * [Zoom link](https://zoom.us/my/cncflinkerd)
-* [Google calendar](https://calendar.google.com/calendar/embed?src=buoyant.io_ko9bgtral72jnbrg3ljtvbprsc%40group.calendar.google.com)
+* [Google calendar](https://calendar.google.com/calendar?cid=YnVveWFudC5pb19qMjhpazcwdnJsMzQxOGY0b2xka2RpY2k3b0Bncm91cC5jYWxlbmRhci5nb29nbGUuY29t)
 * [Minutes from previous meetings](https://docs.google.com/document/d/1OvXYL5Q53klQFZPokQJas72YqkWXplkPQUguFbRW7Wo/edit)
 * [Recordings from previous meetings](https://www.youtube.com/playlist?list=PLI9FkLPXDscBHP91Ud3lyJScI4ZCjRG6F)
 
