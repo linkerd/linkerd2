@@ -7,14 +7,11 @@ cluster="${1:-$USER}"
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Ensure kind is installed
-$bindir/kind
-
 . $bindir/_tag.sh
 
 tag="$(head_root_tag)"
 org_repo="gcr.io/linkerd-io"
 
 for img in proxy controller web grafana ; do
-    kind load docker-image $org_repo/$img:$tag --name $cluster
+    $bindir/kind load docker-image $org_repo/$img:$tag --name $cluster
 done
