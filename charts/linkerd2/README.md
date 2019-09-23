@@ -144,7 +144,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`ControllerComponentLabel`            | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
 |`ControllerNamespaceLabel`            | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
 |`LinkerdNamespaceLabel`               | Control plane label. Do not edit                                                                |`linkerd.io/control-plane-component`|
-|`InstallNamespace`                    | Avoid creating the namespace if using an external tool for that                                 |`true`|
+|`InstallNamespace`                    | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helm/#customizing-the-namespace) for more information.|`true`|
 
 ## Get involved
 
