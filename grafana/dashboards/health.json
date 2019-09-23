@@ -2224,7 +2224,7 @@
       "type": "text"
     }
   ],
-  "refresh": "5s",
+  "refresh": "10s",
   "schemaVersion": 18,
   "style": "dark",
   "tags": [
