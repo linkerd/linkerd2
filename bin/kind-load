@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -eu
+
+# If cluster name is unset or null, default to $USER.
+cluster="${1:-$USER}"
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+. $bindir/_tag.sh
+
+tag="$(head_root_tag)"
+org_repo="gcr.io/linkerd-io"
+
+for img in proxy controller web grafana ; do
+    $bindir/kind load docker-image $org_repo/$img:$tag --name $cluster
+done
