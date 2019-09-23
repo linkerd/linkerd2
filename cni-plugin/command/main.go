@@ -21,6 +21,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/containernetworking/cni/pkg/version"
 	"github.com/linkerd/linkerd2-proxy-init/cmd"
 	"github.com/linkerd/linkerd2-proxy-init/iptables"
+	schedulerapi "github.com/linkerd/linkerd2/cni-plugin/proxyscheduler/client"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/projectcalico/libcalico-go/lib/logutils"
 	"github.com/sirupsen/logrus"
@@ -46,6 +48,7 @@ type ProxyInit struct {
 	OutboundPortsToIgnore []int `json:"outbound-ports-to-ignore"`
 	Simulate              bool  `json:"simulate"`
 	UseWaitFlag           bool  `json:"use-wait-flag"`
+	SchedulerPort         int   `json:"scheduler-port"`
 }
 
 // Kubernetes a K8s specific struct to hold config
@@ -58,8 +61,10 @@ type Kubernetes struct {
 // The field names need to match exact keys in kubelet args for unmarshalling
 type K8sArgs struct {
 	types.CommonArgs
-	K8sPodName      types.UnmarshallableString
-	K8sPodNamespace types.UnmarshallableString
+	Ip                     net.IP
+	K8sPodName             types.UnmarshallableString
+	K8sPodNamespace        types.UnmarshallableString
+	K8S_POD_INFRA_CONTAINER_ID types.UnmarshallableString
 }
 
 // PluginConf is whatever JSON is passed via stdin.
@@ -130,6 +135,9 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 
 // cmdAdd is called by the CNI runtime for ADD requests
 func cmdAdd(args *skel.CmdArgs) error {
+
+	logrus.Debugf("linkerd-cni: cmdAdd, args: %v", *args)
+
 	logrus.Debug("linkerd-cni: cmdAdd, parsing config")
 	conf, err := parseConfig(args.StdinData)
 	if err != nil {
@@ -158,6 +166,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	namespace := string(k8sArgs.K8sPodNamespace)
 	podName := string(k8sArgs.K8sPodName)
+	ip := conf.PrevResult.IPs[0].Address.IP.String()
+	sandboxID := string(k8sArgs.K8S_POD_INFRA_CONTAINER_ID)
+
 	logEntry := logrus.WithFields(logrus.Fields{
 		"ContainerID": args.ContainerID,
 		"Pod":         podName,
@@ -191,7 +202,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 
-		if containsLinkerdProxy && !containsInitContainer {
+		if (containsLinkerdProxy && !containsInitContainer) || namespace == "emojivoto" {
 			logEntry.Debug("linkerd-cni: setting up iptables firewall")
 			options := cmd.RootOptions{
 				IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
@@ -208,6 +219,18 @@ func cmdAdd(args *skel.CmdArgs) error {
 			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
 				return err
+			}
+
+			if (namespace == "emojivoto") {
+				if schedulerClient, err := schedulerapi.NewProxyAgentClient(conf.ProxyInit.SchedulerPort, logEntry); err != nil {
+					logEntry.Errorf("Creating proxy agent client failed: %v", err)
+				} else {
+					logEntry.Info("Starting Proxy")
+					if err := schedulerClient.StartProxy(podName, namespace, ip, sandboxID); err != nil {
+						logEntry.Errorf("Starting linkerd-proxy failed: %v", err)
+						return err
+					}
+				}
 			}
 			iptables.ConfigureFirewall(*firewallConfiguration)
 		} else {
