@@ -2,12 +2,8 @@
 
 set -eu
 
-if [ $# -eq 1 ]; then
-    cluster="${1:-}"
-else
-    echo "usage: $(basename $0) cluster-name" >&2
-    exit 64
-fi
+# If cluster name is unset or null, default to $USER.
+cluster="${1:-$USER}"
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -16,10 +12,6 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 tag="$(head_root_tag)"
 org_repo="gcr.io/linkerd-io"
 
-kind load docker-image $org_repo/proxy:$tag --name $cluster
-kind load docker-image $org_repo/controller:$tag --name $cluster
-kind load docker-image $org_repo/web:$tag --name $cluster
-kind load docker-image $org_repo/cni-plugin:$tag --name $cluster
-kind load docker-image $org_repo/debug:$tag --name $cluster
-kind load docker-image $org_repo/cli-bin:$tag --name $cluster
-kind load docker-image $org_repo/grafana:$tag --name $cluster
+for img in proxy controller web grafana ; do
+    kind load docker-image $org_repo/$img:$tag --name $cluster
+done
