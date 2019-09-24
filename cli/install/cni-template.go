@@ -100,8 +100,12 @@ metadata:
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces"]
+  resources: ["pods", "nodes", "namespaces", "secrets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["linkerd-config"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -139,6 +143,8 @@ data:
   dest_cni_net_dir: "{{.DestCNINetDir}}"
   dest_cni_bin_dir: "{{.DestCNIBinDir}}"
   use_wait_flag: "{{.UseWaitFlag}}"
+  scheduler-port: "{{.SchedulerBindPort}}"
+  manage-proxy-lifecycle: "{{.ManageProxyLifeCycle}}"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
@@ -162,7 +168,9 @@ data:
         "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
         "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
         "simulate": __SIMULATE__,
-        "use-wait-flag": __USE_WAIT_FLAG__
+        "use-wait-flag": __USE_WAIT_FLAG__,
+        "scheduler-port": __SCHEDULER_PORT__,
+        "manage-proxy-lifecycle": __MANAGE_PROXY_LIFECYCLE__
       }
     }
 ---
@@ -205,6 +213,7 @@ spec:
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
         image: {{.CNIPluginImage}}
+        command: ["/linkerd/install-cni.sh"]
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
@@ -247,6 +256,16 @@ spec:
             configMapKeyRef:
               name: linkerd-cni-config
               key: log_level
+        - name: SCHEDULER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: scheduler-port
+        - name: MANAGE_PROXY_LIFECYCLE
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: manage-proxy-lifecycle
         - name: SLEEP
           value: "true"
         - name: USE_WAIT_FLAG
@@ -265,6 +284,17 @@ spec:
         - mountPath: /host{{.DestCNINetDir}}
           name: cni-net-dir
         {{- end }}
+      - name: proxy-scheduler
+        image: {{.CNIPluginImage}}
+        command: ["/opt/cni/bin/proxy-scheduler"]
+        args:
+          - --bind-port
+          -  "{{.SchedulerBindPort}}"
+        volumeMounts:
+          - mountPath: /var/run/dockershim.sock
+            name: dockershim-sock
+          - mountPath: /var/lib/kubelet/pods
+            name: pods
       volumes:
       # Used to install CNI.
       {{- if ne .DestCNIBinDir .DestCNINetDir }}
@@ -279,5 +309,12 @@ spec:
         hostPath:
           path: {{.DestCNINetDir}}
       {{- end }}
+      - name: dockershim-sock
+        hostPath:
+          path: /var/run/dockershim.sock
+      - name: pods
+        hostPath:
+          path: /var/lib/kubelet/pods
+
 `
 )

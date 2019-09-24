@@ -49,6 +49,7 @@ type ProxyInit struct {
 	Simulate              bool  `json:"simulate"`
 	UseWaitFlag           bool  `json:"use-wait-flag"`
 	SchedulerPort         int   `json:"scheduler-port"`
+	ManageProxyLifeCycle  bool  `json:"manage-proxy-lifecycle"`
 }
 
 // Kubernetes a K8s specific struct to hold config
@@ -64,7 +65,7 @@ type K8sArgs struct {
 	Ip                     net.IP
 	K8sPodName             types.UnmarshallableString
 	K8sPodNamespace        types.UnmarshallableString
-	K8S_POD_INFRA_CONTAINER_ID types.UnmarshallableString
+	K8sPodInfraContainerId types.UnmarshallableString
 }
 
 // PluginConf is whatever JSON is passed via stdin.
@@ -133,6 +134,48 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 	return &conf, nil
 }
 
+
+func startProxy(logEntry *logrus.Entry, podName, namespace, ip, sandboxID string,  conf *PluginConf) error {
+	if schedulerClient, err := schedulerapi.NewProxyAgentClient(conf.ProxyInit.SchedulerPort, logEntry); err != nil {
+		logEntry.Errorf("Creating proxy agent client failed: %v", err)
+	} else {
+		logEntry.Info("Starting Proxy")
+		if err := schedulerClient.StartProxy(podName, namespace, ip, sandboxID); err != nil {
+			logEntry.Errorf("Starting linkerd-proxy failed: %v", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func setupFirewall(logEntry *logrus.Entry, conf *PluginConf, args *skel.CmdArgs) error {
+
+	logEntry.Debug("linkerd-cni: setting up iptables firewall")
+	options := cmd.RootOptions{
+		IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
+		OutgoingProxyPort:     conf.ProxyInit.OutgoingProxyPort,
+		ProxyUserID:           conf.ProxyInit.ProxyUID,
+		PortsToRedirect:       conf.ProxyInit.PortsToRedirect,
+		InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
+		OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
+		SimulateOnly:          conf.ProxyInit.Simulate,
+		NetNs:                 args.Netns,
+		UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
+	}
+
+	firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
+	if err != nil {
+		logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
+		return err
+	}
+
+	if err := iptables.ConfigureFirewall(*firewallConfiguration); err != nil {
+		logEntry.Errorf("linkerd-cni: Could not apply firewall configuration %v", options)
+		return err
+	}
+	return nil
+}
+
 // cmdAdd is called by the CNI runtime for ADD requests
 func cmdAdd(args *skel.CmdArgs) error {
 
@@ -160,6 +203,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	k8sArgs := K8sArgs{}
 	args.Args = strings.Replace(args.Args, "K8S_POD_NAMESPACE", "K8sPodNamespace", 1)
 	args.Args = strings.Replace(args.Args, "K8S_POD_NAME", "K8sPodName", 1)
+	args.Args = strings.Replace(args.Args, "K8S_POD_INFRA_CONTAINER_ID", "K8sPodInfraContainerId", 1)
 	if err := types.LoadArgs(args.Args, &k8sArgs); err != nil {
 		return err
 	}
@@ -167,7 +211,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	namespace := string(k8sArgs.K8sPodNamespace)
 	podName := string(k8sArgs.K8sPodName)
 	ip := conf.PrevResult.IPs[0].Address.IP.String()
-	sandboxID := string(k8sArgs.K8S_POD_INFRA_CONTAINER_ID)
+	sandboxID := string(k8sArgs.K8sPodInfraContainerId)
 
 	logEntry := logrus.WithFields(logrus.Fields{
 		"ContainerID": args.ContainerID,
@@ -202,42 +246,28 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 		}
 
-		if (containsLinkerdProxy && !containsInitContainer) || namespace == "emojivoto" {
-			logEntry.Debug("linkerd-cni: setting up iptables firewall")
-			options := cmd.RootOptions{
-				IncomingProxyPort:     conf.ProxyInit.IncomingProxyPort,
-				OutgoingProxyPort:     conf.ProxyInit.OutgoingProxyPort,
-				ProxyUserID:           conf.ProxyInit.ProxyUID,
-				PortsToRedirect:       conf.ProxyInit.PortsToRedirect,
-				InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
-				OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
-				SimulateOnly:          conf.ProxyInit.Simulate,
-				NetNs:                 args.Netns,
-				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
-			}
-			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
-			if err != nil {
-				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
-				return err
-			}
-
-			if (namespace == "emojivoto") {
-				if schedulerClient, err := schedulerapi.NewProxyAgentClient(conf.ProxyInit.SchedulerPort, logEntry); err != nil {
-					logEntry.Errorf("Creating proxy agent client failed: %v", err)
-				} else {
-					logEntry.Info("Starting Proxy")
-					if err := schedulerClient.StartProxy(podName, namespace, ip, sandboxID); err != nil {
-						logEntry.Errorf("Starting linkerd-proxy failed: %v", err)
-						return err
-					}
+		if conf.ProxyInit.ManageProxyLifeCycle {
+			if !containsInitContainer {
+				if err := setupFirewall(logEntry, conf, args); err != nil {
+					return err
 				}
 			}
-			iptables.ConfigureFirewall(*firewallConfiguration)
+			if !containsLinkerdProxy {
+				if err := startProxy(logEntry, podName, namespace, ip, sandboxID, conf); err != nil {
+					return err
+				}
+			}
 		} else {
-			if containsInitContainer {
-				logEntry.Debug("linkerd-cni: linkerd-init initContainer is present, skipping.")
+			if (containsLinkerdProxy && !containsInitContainer) {
+				if err := setupFirewall(logEntry, conf, args); err != nil {
+					return err
+				}
 			} else {
-				logEntry.Debug("linkerd-cni: linkerd-proxy is not present, skipping.")
+				if containsInitContainer {
+					logEntry.Debug("linkerd-cni: linkerd-init initContainer is present, skipping.")
+				} else {
+					logEntry.Debug("linkerd-cni: linkerd-proxy is not present, skipping.")
+				}
 			}
 		}
 	} else {

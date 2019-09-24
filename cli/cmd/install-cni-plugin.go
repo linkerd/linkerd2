@@ -30,6 +30,8 @@ type installCNIPluginConfig struct {
 	CreatedByAnnotation      string
 	CliVersion               string
 	UseWaitFlag              bool
+	SchedulerBindPort        uint
+	ManageProxyLifeCycle     bool
 }
 
 type cniPluginOptions struct {
@@ -47,6 +49,8 @@ type cniPluginOptions struct {
 	destCNINetDir       string
 	destCNIBinDir       string
 	useWaitFlag         bool
+	schedulerBindPort   uint
+	manageProxyLifeCycle   bool
 }
 
 func newCNIPluginOptions() *cniPluginOptions {
@@ -65,6 +69,8 @@ func newCNIPluginOptions() *cniPluginOptions {
 		destCNINetDir:       "/etc/cni/net.d",
 		destCNIBinDir:       "/opt/cni/bin",
 		useWaitFlag:         false,
+		schedulerBindPort:   8087,
+		manageProxyLifeCycle:   true,
 	}
 }
 
@@ -124,6 +130,8 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
 	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside")
+	cmd.PersistentFlags().UintVar(&options.schedulerBindPort, "scheduler-bind-port", options.schedulerBindPort, "Port to which the Proxy scheduler is bound")
+	cmd.PersistentFlags().BoolVar(&options.manageProxyLifeCycle, "manage-proxy-lifecycle", options.manageProxyLifeCycle, "Whether to manage the proxy lifecycle (default true)")
 	cmd.PersistentFlags().BoolVar(
 		&options.useWaitFlag,
 		"use-wait-flag",
@@ -165,6 +173,8 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 		CreatedByAnnotation:      k8s.CreatedByAnnotation,
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		UseWaitFlag:              options.useWaitFlag,
+		SchedulerBindPort:        options.schedulerBindPort,
+		ManageProxyLifeCycle:        options.manageProxyLifeCycle,
 	}, nil
 }
 
