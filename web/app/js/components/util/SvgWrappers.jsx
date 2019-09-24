@@ -326,9 +326,9 @@ export const namespaceIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
+    width="24px"
     height="24px"
-    viewBox="-1 0 24 24">
+    viewBox="0 0 18 18">
     <g fillOpacity="1">
       <g
         stroke="none"
@@ -399,9 +399,9 @@ export const daemonsetIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g
       fillOpacity="1"
       stroke="none"
@@ -513,9 +513,9 @@ export const deploymentIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g stroke="none">
       <g
         fillOpacity="1"
@@ -585,9 +585,9 @@ export const jobIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g fillOpacity="1" stroke="none">
       <g strokeDasharray="none" strokeMiterlimit="4" strokeWidth="0">
         <path
@@ -665,9 +665,9 @@ export const podIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g stroke="none">
       <g
         fillOpacity="1"
@@ -734,9 +734,9 @@ export const replicaSetIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g
       fillOpacity="1"
       stroke="none"
@@ -834,9 +834,9 @@ export const statefulSetIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
-    width="23px"
-    height="23px"
-    viewBox="-1 0 24 24">
+    width="24px"
+    height="24px"
+    viewBox="0 0 18 18">
     <g
       fillOpacity="1"
       stroke="none"

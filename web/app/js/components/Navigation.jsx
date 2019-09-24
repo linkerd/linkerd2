@@ -5,7 +5,6 @@ import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import Button from '@material-ui/core/Button';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import CloudIcon from '@material-ui/icons/Cloud';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
@@ -21,17 +20,18 @@ import MenuList from '@material-ui/core/MenuList';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
-import SentimentVerySatisfiedIcon from '@material-ui/icons/SentimentVerySatisfied';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import classNames from 'classnames';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
+import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
 import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
+import { faSmile } from '@fortawesome/free-regular-svg-icons/faSmile';
 import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
 import grey from '@material-ui/core/colors/grey';
 import { processSingleResourceRollup } from './util/MetricUtils.jsx';
@@ -133,9 +133,13 @@ const styles = theme => {
       paddingRight: `${contentPadding}px`,
     },
     shrinkIcon: {
-      fontSize: "18px",
+      fontSize: "19px",
       paddingLeft: "3px",
       paddingRight: "3px",
+    },
+    shrinkCloudIcon: {
+      fontSize: "18px",
+      paddingLeft: "1px",
     },
     // color is consistent with Octopus Graph coloring
     externalLinkIcon: {
@@ -361,7 +365,9 @@ class NavigationBase extends React.Component {
 
             { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
 
-            { this.menuItem("/controlplane", "Control Plane", <CloudIcon className={classes.shrinkIcon} />) }
+
+            { this.menuItem("/controlplane", "Control Plane",
+              <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
           </MenuList>
 
@@ -449,7 +455,7 @@ class NavigationBase extends React.Component {
                 classes={{ badge: classes.badge }}
                 invisible={this.state.hideUpdateBadge}
                 badgeContent="1">
-                <SentimentVerySatisfiedIcon className={classes.shrinkIcon} />
+                <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
               </Badge>, this.handleCommunityClick
               ) }
 
