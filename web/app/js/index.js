@@ -33,8 +33,15 @@ if (proxyPathMatch) {
 
 let selectedNamespace = "default";
 let pathArray = window.location.pathname.split("/");
+
+// if the current URL path specifies a namespace, this should become the
+// selectedNamespace
 if (pathArray[0] === "" && pathArray[1] === "namespaces" && pathArray[2]) {
   selectedNamespace = pathArray[2];
+// if the current URL path is a legacy path such as `/daemonsets`, the
+// selectedNamespace should be "_all", unless the path is `/namespaces`
+} else if (pathArray.length === 2 && pathArray[1] !== "namespaces") {
+  selectedNamespace = "_all";
 }
 
 class App extends React.Component {
@@ -77,13 +84,13 @@ function AppHTML() {
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/trafficsplits`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/jobs`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/replicationcontrollers`} to={`${pathPrefix}/namespaces`} />
-              <Redirect exact from={`${pathPrefix}/pods`} to={`${pathPrefix}/namespaces`} />
+              <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces/_all/deployments`} />
+              <Redirect exact from={`${pathPrefix}/trafficsplits`} to={`${pathPrefix}/namespaces/_all/trafficsplits`} />
+              <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces/_all/daemonsets`} />
+              <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces/_all/statefulsets`} />
+              <Redirect exact from={`${pathPrefix}/jobs`} to={`${pathPrefix}/namespaces/_all/jobs`} />
+              <Redirect exact from={`${pathPrefix}/replicationcontrollers`} to={`${pathPrefix}/namespaces/_all/replicationcontrollers`} />
+              <Redirect exact from={`${pathPrefix}/pods`} to={`${pathPrefix}/namespaces/_all/pods`} />
 
               <Route
                 path={`${pathPrefix}/controlplane`}

@@ -326,6 +326,10 @@ class NavigationBase extends React.Component {
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
     const { namespaces, anchorEl, drawerOpen } = this.state;
+    let formattedNamespaceName = selectedNamespace;
+    if (formattedNamespaceName === "_all") {
+      formattedNamespaceName = "All Namespaces";
+    }
 
     return (
       <div className={classes.root}>
@@ -381,7 +385,7 @@ class NavigationBase extends React.Component {
               className={classes.namespaceChangeButton}
               size="large"
               onClick={this.handleNamespaceMenuClick}>
-              {selectedNamespace}
+              { formattedNamespaceName }
               <ArrowDropDownIcon />
             </Button>
             <Menu
@@ -391,7 +395,7 @@ class NavigationBase extends React.Component {
               onClose={this.handleNamespaceMenuClick}>
               <MenuItem
                 value="all"
-                onClick={() => this.handleNamespaceChange("all")}>
+                onClick={() => this.handleNamespaceChange("_all")}>
                   All Namespaces
               </MenuItem>
 
