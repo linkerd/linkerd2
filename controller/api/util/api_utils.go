@@ -96,15 +96,16 @@ type TopRoutesRequestParams struct {
 // TapRequestParams contains parameters that are used to build a
 // TapByResourceRequest.
 type TapRequestParams struct {
-	Resource    string
-	Namespace   string
-	ToResource  string
-	ToNamespace string
-	MaxRps      float32
-	Scheme      string
-	Method      string
-	Authority   string
-	Path        string
+	Resource        string
+	Namespace       string
+	ToResource      string
+	ToNamespace     string
+	MaxRps          float32
+	Scheme          string
+	Method          string
+	Authority       string
+	Path            string
+	IncludeMetadata bool
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -434,7 +435,7 @@ func buildResource(namespace string, resType string, name string) (pb.Resource, 
 
 // BuildTapByResourceRequest builds a Public API TapByResourceRequest from a
 // TapRequestParams.
-func BuildTapByResourceRequest(params TapRequestParams, incMeta bool) (*pb.TapByResourceRequest, error) {
+func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceRequest, error) {
 	target, err := BuildResource(params.Namespace, params.Resource)
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
@@ -501,7 +502,7 @@ func BuildTapByResourceRequest(params TapRequestParams, incMeta bool) (*pb.TapBy
 				},
 			},
 		},
-		IncludeMetadata: incMeta,
+		IncludeMetadata: params.IncludeMetadata,
 	}, nil
 }
 
