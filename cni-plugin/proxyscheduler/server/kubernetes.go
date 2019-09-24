@@ -59,12 +59,19 @@ func (k *KubernetesClient) getPod(podName, podNamespace string) (pod *v1.Pod, er
 }
 
 func (k *KubernetesClient) getSecret(secretName, secretNamespace string) (data map[string][]byte, err error) {
-	// TODO: get secret from cache instead?
 	secret, err := k.client.CoreV1().Secrets(string(secretNamespace)).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return secret.Data, nil
+}
+
+func (k *KubernetesClient) getConfigMap(configMapName, configMapNamespace string) (data map[string]string, err error) {
+	configMap, err := k.client.CoreV1().ConfigMaps(string(configMapNamespace)).Get(configMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return configMap.Data, nil
 }
 
 

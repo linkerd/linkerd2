@@ -2,9 +2,10 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"k8s.io/api/core/v1"
@@ -19,16 +20,13 @@ import (
 	"time"
 )
 
-
 type CRIRuntime struct {
 	startedProxy bool
 	runtimeService cri.RuntimeService
 	imageService   cri.ImageManagerService
 	httpClient     http.Client
 	kubernetes *KubernetesClient
-
 }
-
 
 func NewCRIRuntime(kubernetes *KubernetesClient) (*CRIRuntime, error) {
 	runtimeService, err := remote.NewRemoteRuntimeService(getRemoteRuntimeEndpoint(), 2*time.Minute)
@@ -210,158 +208,239 @@ func createEmptyDirVolume(directory string) error {
 }
 
 
-func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
+func makeProfileSuffixes(linkerdCfg *pb.All) string {
+	if linkerdCfg.Proxy.DisableExternalProfiles {
+		return fmt.Sprintf("svc.%s.", linkerdCfg.Global.ClusterDomain)
+	} else {
+		return "."
+	}
+}
 
-	podDir := fmt.Sprintf("/var/lib/kubelet/pods/%s", pod.UID)
+func identityDisabled(linkerdCfg *pb.All) bool {
+	for _, v := range linkerdCfg.Install.Flags {
+		if  v.Name == "disable-identity" && v.Value == "true"{
+			return true
+		}
+	}
+	return false
+}
 
-	time.Sleep(20 * time.Second)
+func tapDisabled(linkerdCfg *pb.All) bool {
+	for _, v := range linkerdCfg.Install.Flags {
+		if  v.Name == "disable-tap" && v.Value == "true"{
+			return true
+		}
+	}
+	return false
+}
 
+func makeEnvVars(l5dCfg *pb.All, pod *v1.Pod) []*criapi.KeyValue {
+	const (
+		ProxyLog                   = "LINKERD2_PROXY_LOG"
+		DstSvcAddress              = "LINKERD2_PROXY_DESTINATION_SVC_ADDR"
+		ControlListenAddress       = "LINKERD2_PROXY_CONTROL_LISTEN_ADDR"
+		AdminListenAddress         = "LINKERD2_PROXY_ADMIN_LISTEN_ADDR"
+		OutboundListenAddress      = "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR"
+		InboundListenAddress       = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+		DestinationGetSuffixes     = "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES"
+		DestinationProfileSuffixes = "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES"
+		InboundAcceptKeepAlive     = "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE"
+		OutboundConnectKeepAlive   = "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE"
+		PodNs                      = "_pod_ns"
+		DestinationContext         = "LINKERD2_PROXY_DESTINATION_CONTEXT"
+		IdentityDisabled           = "LINKERD2_PROXY_IDENTITY_DISABLED"
+		IdentityDir                = "LINKERD2_PROXY_IDENTITY_DIR"
+		IdentityTrustAnchors       = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+		IdentityTokenFile          = "LINKERD2_PROXY_IDENTITY_TOKEN_FILE"
+		IdentitySvcAddress         = "LINKERD2_PROXY_IDENTITY_SVC_ADDR"
+		PodServiceAccount          = "_pod_sa"
+		LinkerdNs                  = "_l5d_ns"
+		LinkerdTrustDomain         = "_l5d_trustdomain"
+		IdentityLocalName          = "LINKERD2_PROXY_IDENTITY_LOCAL_NAME"
+		IdentitySvcName            = "LINKERD2_PROXY_IDENTITY_SVC_NAME"
+		DestinationSvcName         = "LINKERD2_PROXY_DESTINATION_SVC_NAME"
+		TapDisabled                = "LINKERD2_PROXY_TAP_DISABLED"
+		TapSvcName                 = "LINKERD2_PROXY_TAP_SVC_NAME"
+	)
 
+	tapIsDisabled := tapDisabled(l5dCfg)
+	identityIsDisabled := identityDisabled(l5dCfg)
+	clusterDomain := l5dCfg.Global.ClusterDomain
+	podNs := pod.Namespace
+	l5dNs := l5dCfg.Global.LinkerdNamespace
+	svcAccName := pod.Spec.ServiceAccountName
+	trustDomain := l5dCfg.Global.IdentityContext.TrustDomain
+
+	var envs []*criapi.KeyValue
+
+	envs = append(envs,
+		&criapi.KeyValue{
+			Key:   ProxyLog,
+			Value: l5dCfg.Proxy.LogLevel.Level,
+		},
+		&criapi.KeyValue{
+			Key:   DstSvcAddress,
+			Value: fmt.Sprintf("linkerd-destination.%s.svc.%s:8086", l5dNs, clusterDomain),
+		},
+		&criapi.KeyValue{
+			Key:   ControlListenAddress,
+			Value: fmt.Sprintf("0.0.0.0:%d", l5dCfg.Proxy.ControlPort.Port),
+		},
+		&criapi.KeyValue{
+			Key:   AdminListenAddress,
+			Value: fmt.Sprintf("0.0.0.0:%d", l5dCfg.Proxy.AdminPort.Port),
+		},
+		&criapi.KeyValue{
+			Key:   OutboundListenAddress,
+			Value: fmt.Sprintf("127.0.0.1:%d", l5dCfg.Proxy.OutboundPort.Port),
+		},
+		&criapi.KeyValue{
+			Key:   InboundListenAddress,
+			Value: fmt.Sprintf("0.0.0.0:%d", l5dCfg.Proxy.InboundPort.Port),
+		},
+		&criapi.KeyValue{
+			Key:   DestinationGetSuffixes,
+			Value: makeProfileSuffixes(l5dCfg),
+		},
+		&criapi.KeyValue{
+			Key:   DestinationProfileSuffixes,
+			Value: makeProfileSuffixes(l5dCfg),
+		},
+		&criapi.KeyValue{
+			Key:   InboundAcceptKeepAlive,
+			Value: "10000ms",
+		},
+		&criapi.KeyValue{
+			Key:   OutboundConnectKeepAlive,
+			Value: "10000ms",
+		},
+		&criapi.KeyValue{
+			Key:   PodNs,
+			Value: pod.Namespace,
+		},
+		&criapi.KeyValue{
+			Key:   DestinationContext,
+			Value: fmt.Sprintf("ns:%s", podNs),
+		})
+
+	if identityIsDisabled {
+		envs = append(envs, &criapi.KeyValue{
+			Key:   IdentityDisabled,
+			Value: "disabled",
+		})
+	} else {
+		envs = append(envs,
+			&criapi.KeyValue{
+				Key:   IdentityDir,
+				Value: "/var/run/linkerd/identity/end-entity",
+			},
+			&criapi.KeyValue{
+				Key:   IdentityTrustAnchors,
+				Value: l5dCfg.Global.IdentityContext.TrustAnchorsPem,
+			},
+			&criapi.KeyValue{
+				Key:   IdentityTokenFile,
+				Value: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+			},
+			&criapi.KeyValue{
+				Key:   IdentitySvcAddress,
+				Value: fmt.Sprintf("linkerd-identity.%s.svc.%s:8080", l5dNs, clusterDomain),
+			},
+			&criapi.KeyValue{
+				Key:   PodServiceAccount,
+				Value: pod.Spec.ServiceAccountName,
+			},
+			&criapi.KeyValue{
+				Key:   LinkerdNs,
+				Value: l5dCfg.Global.LinkerdNamespace,
+			},
+			&criapi.KeyValue{
+				Key:   LinkerdTrustDomain,
+				Value: l5dCfg.Global.IdentityContext.TrustDomain,
+			},
+			&criapi.KeyValue{
+				Key:   IdentityLocalName,
+				Value: fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", svcAccName, podNs, l5dNs, trustDomain),
+			},
+			&criapi.KeyValue{
+				Key:   IdentitySvcName,
+				Value: fmt.Sprintf("linkerd-identity.%s.serviceaccount.identity.%s.%s", l5dNs, l5dNs, trustDomain),
+			},
+			&criapi.KeyValue{
+				Key:   DestinationSvcName,
+				Value: fmt.Sprintf("linkerd-controller.%s.serviceaccount.identity.%s.%s", l5dNs, l5dNs, trustDomain),
+			})
+	}
+
+	if tapIsDisabled {
+		envs = append(envs, &criapi.KeyValue{
+			Key:   TapDisabled,
+			Value: "true",})
+	} else if !identityIsDisabled {
+		envs = append(envs, &criapi.KeyValue{
+			Key:   TapSvcName,
+			Value: fmt.Sprintf("linkerd-tap.%s.serviceaccount.identity.%s.%s", l5dNs, l5dNs, trustDomain)})
+	}
+	return envs
+}
+
+func makeMounts(k *KubernetesClient, pod *v1.Pod, podDir string) ([]*criapi.Mount ,error)  {
 	endIdMount, err := makeEndIdentityMount(podDir)
-	if (err != nil) {
+	if err != nil {
 		logrus.Error("Could not make end identity mount", err)
-		return err
+		return nil, err
 	}
 
 	hostsMount, err := makeHostsMount(podDir, pod.Spec.HostAliases, false)
-	if (err != nil) {
+	if err != nil {
 		logrus.Error("Could not make hosts mount", err)
-		return err
+		return nil, err
 	}
 
-	svcAccountMount, err :=  makeServiceAccountMount(p.kubernetes,pod, podDir)
-	if (err != nil) {
+	svcAccountMount, err :=  makeServiceAccountMount(k,pod, podDir)
+	if err != nil {
 		logrus.Error("Could not make svc account mount", err)
-		return err
+		return nil, err
 	}
 
-	mounts:= []*criapi.Mount{endIdMount, hostsMount, svcAccountMount,}
+	return []*criapi.Mount{endIdMount, hostsMount, svcAccountMount,}, nil
+
+}
+
+func getLinkerdConfig(k *KubernetesClient, mapName, mapNamespace string) (*pb.All, error) {
+	data, err := k.getConfigMap(mapName, mapNamespace)
+	if err != nil {
+		logrus.Error("Could not load linkerd config map", err)
+		return nil, err
+	}
+	l5dCfg, err := config.FromConfigMap(data)
+	if err != nil {
+		logrus.Error("Could not parse linkerd config map", err)
+		return nil, err
+	}
+	return l5dCfg, nil
+}
 
 
-	envs:= []*criapi.KeyValue{
+func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
+	podDir := fmt.Sprintf("/var/lib/kubelet/pods/%s", pod.UID)
 
-		{
-			Key:   "LINKERD2_PROXY_LOG",
-			Value: "info,linkerd2_proxy=info",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
-			Value: "linkerd-destination.linkerd.svc.cluster.local:8086",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
-			Value: "0.0.0.0:4190",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_ADMIN_LISTEN_ADDR",
-			Value: "0.0.0.0:4191",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR",
-			Value: "127.0.0.1:4140",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_INBOUND_LISTEN_ADDR",
-			Value: "0.0.0.0:4143",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES",
-			Value: "svc.cluster.local.",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
-			Value: "svc.cluster.local.",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
-			Value: "10000ms",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
-			Value: "10000ms",
-		},
-
-		{
-			Key:   "_pod_ns",
-			Value: "emojivoto",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_DESTINATION_CONTEXT",
-			Value: "ns:emojivoto",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_DIR",
-			Value: "/var/run/linkerd/identity/end-entity",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS",
-			Value: "-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n",},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_TOKEN_FILE",
-			Value: "/var/run/secrets/kubernetes.io/serviceaccount/token",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_SVC_ADDR",
-			Value: "linkerd-identity.linkerd.svc.cluster.local:8080",
-		},
-
-		{
-			Key:   "_pod_sa",
-			Value: pod.Spec.ServiceAccountName,
-		},
-
-		{
-			Key:   "_l5d_ns",
-			Value: "linkerd",
-		},
-
-		{
-			Key:   "_l5d_trustdomain",
-			Value: "cluster.local",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_LOCAL_NAME",
-			Value: fmt.Sprintf("%s.emojivoto.serviceaccount.identity.linkerd.cluster.local", pod.Spec.ServiceAccountName),
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_IDENTITY_SVC_NAME",
-			Value: "linkerd-identity.linkerd.serviceaccount.identity.linkerd.cluster.local",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_DESTINATION_SVC_NAME",
-			Value: "linkerd-controller.linkerd.serviceaccount.identity.linkerd.cluster.local",
-		},
-
-		{
-			Key:   "LINKERD2_PROXY_TAP_SVC_NAME",
-			Value: "linkerd-tap.linkerd.serviceaccount.identity.linkerd.cluster.local",
-		},
-
-		}
-
-	time.Sleep(20 * time.Second)
+	l5dCfg, err := getLinkerdConfig(p.kubernetes, "linkerd-config", "linkerd")
+	if err != nil {
+		return err
+	}
 
 	status, err := p.runtimeService.PodSandboxStatus(podSandboxID)
 	if err != nil {
 		return fmt.Errorf("Error getting pod sandbox status: %v", err)
 	}
+
+	mounts, err := makeMounts(p.kubernetes, pod, podDir)
+	if err != nil {
+		return err
+	}
+
+	envVars :=  makeEnvVars(l5dCfg, pod)
 
 	containerConfig := criapi.ContainerConfig{
 		LogPath: "/some-log",
@@ -370,18 +449,18 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 			Name: "linkerd-proxy",
 		},
 		Image: &criapi.ImageSpec{
-			Image: "gcr.io/linkerd-io/proxy:dev-a30882ef-zaharidichev",
+			Image:  fmt.Sprintf(  "%s:%s", l5dCfg.Proxy.ProxyImage.ImageName, l5dCfg.Proxy.ProxyVersion),
 		},
 
 		Linux: &criapi.LinuxContainerConfig{
 			SecurityContext: &criapi.LinuxContainerSecurityContext{
-				RunAsUser:          &criapi.Int64Value{2102},
-				SupplementalGroups: []int64{0}, // all containers get ROOT GID by default
+				RunAsUser:          &criapi.Int64Value{l5dCfg.Proxy.ProxyUid},
+				SupplementalGroups: []int64{0},
 				Privileged:         false,
 				ReadonlyRootfs:     true,
 			},
 		},
-		Envs:   envs,
+		Envs:   envVars,
 
 		Labels: map[string]string{
 			sidecarLabelKey:       sidecarLabelValue,
@@ -390,15 +469,10 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 			podNamespaceLabelKey:  pod.Namespace,
 			podUIDLabelKey:        string(pod.UID),
 		},
-
 	}
 
 	podSandboxConfig := criapi.PodSandboxConfig{
 		Metadata:     status.GetMetadata(),
-		Labels: map[string]string{
-			"somelabel":       "somevalue",
-		},
-
 	}
 
 	logrus.Debugf("Creating proxy sidecar container for pod %s", pod.Name)
@@ -408,9 +482,6 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 	}
 	logrus.Debugf("Created proxy sidecar container: %s", containerID)
 
-
-
-
 	err = p.runtimeService.StartContainer(containerID)
 	if err != nil {
 		return fmt.Errorf("Error starting sidecar container: %v", err)
@@ -418,12 +489,9 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 
 	time.Sleep(20 * time.Second)
 
-
 	logrus.Debugf("Started proxy sidecar container: %s", containerID)
 
-
 	time.Sleep(20 * time.Second)
-
 
 	st, err2 := p.runtimeService.ContainerStatus(containerID)
 
@@ -434,50 +502,4 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 	return nil
 }
 
-func toDebugJSON(obj interface{}) string {
-	b, err := toJSON(obj)
-	if err != nil {
-		b = "error marshalling to JSON: " + err.Error()
-	}
-	return b
-}
 
-func toJSON(obj interface{}) (string, error) {
-	bytes, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
-
-
-
-
-/*func (p *CRIRuntime) StartProxy {
-
-
-
-	cfg := criapi.ContainerConfig{
-		Metadata: &criapi.ContainerMetadata{
-			Name: "linkerd-proxy",
-		},
-
-		Image: &criapi.ImageSpec{
-			Image: "gcr.io/linkerd-io/proxy:dev-a30882ef-zaharidichev",
-		},
-
-		Linux: &criapi.LinuxContainerConfig{
-			SecurityContext: &criapi.LinuxContainerSecurityContext{
-				RunAsUser:          &criapi.Int64Value{2102},
-				SupplementalGroups: []int64{0},
-				Privileged:         false,
-				ReadonlyRootfs:     true,
-			},
-		},
-	}
-
-	print(cfg)
-ls -l
-}
-*/
