@@ -36,6 +36,8 @@ class Namespaces extends React.Component {
         namespace: PropTypes.string,
       }),
     }),
+    selectedNamespace: PropTypes.string.isRequired,
+    updateNamespaceInContext: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -61,6 +63,7 @@ class Namespaces extends React.Component {
 
   componentDidMount() {
     this.loadFromServer();
+    this.checkNamespaceMatch();
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
@@ -108,6 +111,12 @@ class Namespaces extends React.Component {
       pendingRequests: false,
       error: e
     });
+  }
+
+  checkNamespaceMatch = () => {
+    if (this.state.ns !== this.props.selectedNamespace) {
+      this.props.updateNamespaceInContext(this.state.ns);
+    }
   }
 
   renderResourceSection(resource, metrics) {
