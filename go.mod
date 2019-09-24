@@ -81,6 +81,7 @@ require (
 	k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
 	k8s.io/helm v2.12.2+incompatible
 	k8s.io/klog v0.3.2
+	k8s.io/kubernetes v0.0.0-20190311041124-ede55fd57298
 	sigs.k8s.io/yaml v1.1.0
 )
 

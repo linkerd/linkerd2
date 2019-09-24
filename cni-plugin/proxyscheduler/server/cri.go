@@ -82,7 +82,7 @@ func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*
 	}
 
 	//2. Create a directory on the host in the pods dir structure for this mount
-	secretDirectory:=fmt.Sprintf("%s/volumes/kubernetes.io~secret/%s", podDir, *secretName)
+	secretDirectory:=path.Join(podDir, k8sHostSecretsVolumePath, *secretName)
 	if err := createEmptyDirVolume(secretDirectory); err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*
 
 	//5. Return the mountpoint for the container
 	return &criapi.Mount{
-		ContainerPath:  "/var/run/secrets/kubernetes.io/serviceaccount",
+		ContainerPath:  IdentityServiceAccountPath,
 		HostPath:       secretDirectory,
 		Readonly:       true,
 		Propagation:    0,
@@ -111,14 +111,14 @@ func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*
 }
 
 func makeEndIdentityMount(podDir string) (*criapi.Mount, error) {
-	endIdentityDir := fmt.Sprintf("%s/volumes/kubernetes.io~empty-dir/linkerd-identity-end-entity",podDir)
+	endIdentityDir := path.Join(podDir, k8sEmptyDirVolumePath,  k8s.IdentityEndEntityVolumeName)
 	if err := createEmptyDirVolume(endIdentityDir); err != nil {
 		return nil, err
 	}
 
 	return &criapi.Mount{
 		HostPath:      endIdentityDir,
-		ContainerPath: "/var/run/linkerd/identity/end-entity",
+		ContainerPath: containerEndIdentityPath,
 		Readonly:      false,
 		Propagation:   0,
 	}, nil
@@ -132,7 +132,7 @@ func makeHostsMount(podDir string, hostAliases []v1.HostAlias, useHostNetwork bo
 		return nil, err
 	}
 
-	hostsFilePath := path.Join(podDir, "etc-hosts")
+	hostsFilePath := path.Join(podDir, k8sEtcHostsFileName)
 	if err := ensureHostsFile(hostsFilePath, hostAliases, useHostNetwork); err != nil {
 		return nil, err
 	}
@@ -154,7 +154,11 @@ const (
 	managedHostsHeader = "# Kubernetes-managed hosts file (host network + linkerd CNI).\n"
 	etcHostsPath = "/etc/hosts"
 	kubeletPodsPath = "/var/lib/kubelet/pods/"
-	endIdentityPath = "/var/run/linkerd/identity/end-entity"
+	containerEndIdentityPath = "/var/run/linkerd/identity/end-entity"
+	k8sHostSecretsVolumePath = "/volumes/kubernetes.io~secret/"
+	k8sEmptyDirVolumePath = "/volumes/kubernetes.io~empty-dir"
+	k8sEtcHostsFileName = "etc-hosts"
+	IdentityServiceAccountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
 )
 
 
@@ -332,7 +336,7 @@ func makeEnvVars(l5dCfg *pb.All, pod *v1.Pod) []*criapi.KeyValue {
 		envs = append(envs,
 			&criapi.KeyValue{
 				Key:   IdentityDir,
-				Value: endIdentityPath,
+				Value: containerEndIdentityPath,
 			},
 			&criapi.KeyValue{
 				Key:   IdentityTrustAnchors,
@@ -486,18 +490,17 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		return fmt.Errorf("Error starting sidecar container: %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
 
 	logrus.Debugf("Started proxy sidecar container: %s", containerID)
 
+	st, err := p.runtimeService.ContainerStatus(containerID)
+
 	time.Sleep(20 * time.Second)
 
-	st, err2 := p.runtimeService.ContainerStatus(containerID)
-
-	if err2 != nil {
-		return fmt.Errorf("Error getting status sidecar container: %v", err2)
+	if err != nil {
+		return fmt.Errorf("Error getting status sidecar container: %v", err)
 	}
-	logrus.Debugf("Status of container: %v", st)
+	logrus.Debugf("Status of container: %v", st.State)
 	return nil
 }
 
