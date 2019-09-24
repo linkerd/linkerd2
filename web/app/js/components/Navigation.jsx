@@ -359,13 +359,7 @@ class NavigationBase extends React.Component {
               </Typography>
             </MenuItem>
 
-            <MenuItem
-              component={Link}
-              to="/namespaces"
-              className={classes.navMenuItem}>
-              <ListItemIcon>{namespaceIcon}</ListItemIcon>
-              <ListItemText primary="Namespaces" />
-            </MenuItem>
+            { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
 
             { this.menuItem("/controlplane", "Control Plane", <CloudIcon className={classes.shrinkIcon} />) }
 
