@@ -126,14 +126,14 @@ func makeEndIdentityMount(podDir string) (*criapi.Mount, error) {
 
 
 
-func makeHostsMount(podDir string, hostAliases []v1.HostAlias, useHostNetwork bool) (*criapi.Mount, error) {
+func makeHostsMount(podDir string, hostAliases []v1.HostAlias) (*criapi.Mount, error) {
 
 	if err := createEmptyDirVolume(podDir); err != nil {
 		return nil, err
 	}
 
 	hostsFilePath := path.Join(podDir, k8sEtcHostsFileName)
-	if err := ensureHostsFile(hostsFilePath, hostAliases, useHostNetwork); err != nil {
+	if err := ensureHostsFile(hostsFilePath, hostAliases); err != nil {
 		return nil, err
 	}
 
@@ -162,7 +162,7 @@ const (
 )
 
 
-func ensureHostsFile(fileName string, hostAliases []v1.HostAlias, useHostNetwork bool) error {
+func ensureHostsFile(fileName string, hostAliases []v1.HostAlias,) error {
 
 	var buffer bytes.Buffer
 	buffer.WriteString(managedHostsHeader)
@@ -395,7 +395,7 @@ func makeMounts(k *KubernetesClient, pod *v1.Pod, podDir string) ([]*criapi.Moun
 		return nil, err
 	}
 
-	hostsMount, err := makeHostsMount(podDir, pod.Spec.HostAliases, false)
+	hostsMount, err := makeHostsMount(podDir, pod.Spec.HostAliases)
 	if err != nil {
 		logrus.Error("Could not make hosts mount", err)
 		return nil, err

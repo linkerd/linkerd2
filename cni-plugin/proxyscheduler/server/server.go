@@ -8,7 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/cni-plugin/proxyscheduler/api"
 	"github.com/sirupsen/logrus"
 	"net/http"
-	"sync"
 )
 
 type ProxySchedulerConfig struct {
@@ -20,7 +19,6 @@ type server struct {
 	config     *ProxySchedulerConfig
 	kubernetes *KubernetesClient
 	runtime    *CRIRuntime
-	mux        sync.Mutex
 }
 
 func NewProxyAgentScheduler(config ProxySchedulerConfig) (*server, error) {

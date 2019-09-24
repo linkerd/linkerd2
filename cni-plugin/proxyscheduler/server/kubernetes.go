@@ -1,15 +1,13 @@
 package server
 
 import (
-	"github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	clientv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"time"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 )
 
 const (
@@ -24,7 +22,6 @@ type KubernetesClient struct {
 }
 
 func NewKubernetesClient() (*KubernetesClient, error) {
-	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -47,10 +44,7 @@ func NewKubernetesClient() (*KubernetesClient, error) {
 }
 
 func (k *KubernetesClient) Start(stop <-chan struct{}) {
-	logrus.Info("Starting shared informers")
 	k.informerFactory.Start(stop)
-
-	logrus.Info("Waiting for caches to sync")
 	k.informerFactory.WaitForCacheSync(stop)
 }
 

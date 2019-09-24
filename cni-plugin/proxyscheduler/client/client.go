@@ -26,7 +26,7 @@ func NewProxyAgentClient(port int, log *logrus.Entry) (*ProxySchedulerClient, er
 
 func handleResponseError(rsp *http.Response) error {
 	if !(rsp.StatusCode >= 200 && rsp.StatusCode < 300) {
-		return fmt.Errorf("Proxy scheduler returned an error: %v", rsp.Status)
+		return fmt.Errorf("proxy scheduler returned an error: %v", rsp.Status)
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func (p *ProxySchedulerClient) dispatchCallToScheduler(method, path string, requ
 		decoder := json.NewDecoder(response.Body)
 		err := decoder.Decode(responseObj)
 		if err != nil {
-			return nil, fmt.Errorf("Could not decode response: %v", err)
+			return nil, fmt.Errorf("could not decode response: %v", err)
 		}
 	}
 

@@ -7,7 +7,6 @@ import (
 	"net/http"
 )
 
-
 type (
 	apiError struct {
 		Error error `json:"error,omitempty"`
@@ -15,7 +14,6 @@ type (
 		Status int  `json:"status"`
 	}
 )
-
 
 func handleApiError(handler func(w http.ResponseWriter, r *http.Request,  p httprouter.Params) *apiError) func(http.ResponseWriter, *http.Request,  httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request,  p httprouter.Params) {
@@ -33,16 +31,6 @@ func jsonErrorResponse(w http.ResponseWriter, err *apiError) {
 	w.WriteHeader(err.Status)
 	w.Write(rsp)
 }
-
-/*func jsonResponse(w http.ResponseWriter, resp interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	jsonResp, err := json.Marshal(resp)
-	if err != nil {
-		jsonErrorResponse(w, err, http.StatusInternalServerError)
-		return
-	}
-	w.Write(jsonResp)
-}*/
 
 func statusResponse(w http.ResponseWriter, status int) {
 	w.Header().Set("Content-Type", "application/json")
