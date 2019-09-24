@@ -91,6 +91,9 @@ message TapByResourceRequest {
   // Limits the number of events to be inspected.
   float maxRps = 3;
 
+  // Conditionally requests headers and trailers to be present in tap events.
+  bool includeMetadata = 4;
+
   message Match {
     oneof match {
       // If empty, matches all messages.

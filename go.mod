@@ -40,7 +40,7 @@ require (
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/julienschmidt/httprouter v1.1.0
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/linkerd/linkerd2-proxy-api v0.1.10-0.20190906220340-1419992e3216
+	github.com/linkerd/linkerd2-proxy-api v0.1.10-0.20190924195756-e013b942173b
 	github.com/linkerd/linkerd2-proxy-init v1.2.0
 	github.com/mattn/go-isatty v0.0.9
 	github.com/mattn/go-runewidth v0.0.2

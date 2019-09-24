@@ -180,7 +180,8 @@ func newCmdTap() *cobra.Command {
 				return fmt.Errorf("validation error when executing tap command: %v", err)
 			}
 
-			req, err := util.BuildTapByResourceRequest(requestParams)
+			incMeta := options.output == jsonOutput
+			req, err := util.BuildTapByResourceRequest(requestParams, incMeta)
 			if err != nil {
 				return err
 			}

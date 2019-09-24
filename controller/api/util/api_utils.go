@@ -434,7 +434,7 @@ func buildResource(namespace string, resType string, name string) (pb.Resource, 
 
 // BuildTapByResourceRequest builds a Public API TapByResourceRequest from a
 // TapRequestParams.
-func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceRequest, error) {
+func BuildTapByResourceRequest(params TapRequestParams, incMeta bool) (*pb.TapByResourceRequest, error) {
 	target, err := BuildResource(params.Namespace, params.Resource)
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
@@ -501,6 +501,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 				},
 			},
 		},
+		IncludeMetadata: incMeta,
 	}, nil
 }
 

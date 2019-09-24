@@ -126,7 +126,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		ctx = metadata.AppendToOutgoingContext(ctx, requireIDHeader, name)
 
 		// initiate a tap on the pod
-		go s.tapProxy(ctx, rpsPerPod, match, pod.Status.PodIP, events)
+		go s.tapProxy(ctx, rpsPerPod, match, req.GetIncludeMetadata(), pod.Status.PodIP, events)
 	}
 
 	// read events from the taps and send them back
@@ -249,7 +249,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
+func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, incMeta bool, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
@@ -261,8 +261,9 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
-		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
-		Match: match,
+		Limit:           uint32(maxRps * float32(tapInterval.Seconds())),
+		Match:           match,
+		IncludeMetadata: incMeta,
 	}
 
 	for { // Request loop
