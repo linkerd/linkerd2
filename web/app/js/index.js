@@ -86,7 +86,7 @@ function AppHTML() {
               <Redirect exact from={`${pathPrefix}/pods`} to={`${pathPrefix}/namespaces`} />
 
               <Route
-                path={`${pathPrefix}/controlPlane`}
+                path={`${pathPrefix}/controlplane`}
                 render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
               <Route
                 exact

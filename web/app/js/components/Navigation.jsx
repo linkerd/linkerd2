@@ -126,6 +126,7 @@ const styles = theme => {
     },
     namespaceChangeButton: {
       marginLeft: `${drawerWidth * .075}px`,
+      marginTop: "11px",
       width: `${drawerWidth * .8}px`,
     },
     navMenuItem: {
@@ -147,7 +148,10 @@ const styles = theme => {
     },
     sidebarHeading: {
       color: grey[500],
-      marginLeft: `${drawerWidth * .03}px`,
+      outline: "none",
+      paddingTop: "9px",
+      paddingBottom: "9px",
+      marginLeft: `${drawerWidth * .09}px`,
     },
     toggleDrawerButton: {
       marginRight: `${contentPadding}px`,
@@ -321,15 +325,15 @@ class NavigationBase extends React.Component {
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    const { namespaces, anchorEl } = this.state;
+    const { namespaces, anchorEl, drawerOpen } = this.state;
 
     return (
       <div className={classes.root}>
         <AppBar
-          className={classNames(classes.appBar, {[classes.appBarShift]: this.state.drawerOpen} )}>
+          className={classNames(classes.appBar, {[classes.appBarShift]: drawerOpen} )}>
           <Toolbar>
             <Typography variant="h6" color="inherit" noWrap>
-              { !this.state.drawerOpen &&
+              { !drawerOpen &&
               <IconButton className={classes.toggleDrawerButton}>
                 <FontAwesomeIcon icon={faBars} onClick={this.handleDrawerClick} />
               </IconButton>
@@ -340,14 +344,14 @@ class NavigationBase extends React.Component {
         </AppBar>
 
         <Drawer
-          className={classNames(classes.drawer, {[classes.drawerClose]: !this.state.drawerOpen} )}
+          className={classNames(classes.drawer, {[classes.drawerClose]: !drawerOpen} )}
           variant="persistent"
           classes={{
-            paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !this.state.drawerOpen} ),
+            paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !drawerOpen} ),
           }}
-          open={this.state.drawerOpen}>
+          open={drawerOpen}>
           <div className={classNames(classes.navToolbar)}>
-            <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !this.state.drawerOpen} )}>
+            <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !drawerOpen} )}>
               <Link to="/namespaces">{linkerdWordLogo}</Link>
             </div>
             <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClick}>
@@ -357,11 +361,9 @@ class NavigationBase extends React.Component {
 
           <Divider />
           <MenuList>
-            <MenuItem>
-              <Typography variant="button" className={classes.sidebarHeading}>
+            <Typography variant="button" className={classes.sidebarHeading}>
                 Cluster
-              </Typography>
-            </MenuItem>
+            </Typography>
 
             { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
 
@@ -406,11 +408,9 @@ class NavigationBase extends React.Component {
           </MenuList>
 
           <MenuList>
-            <MenuItem>
-              <Typography variant="button" className={classes.sidebarHeading}>
+            <Typography variant="button" className={classes.sidebarHeading}>
                 Workloads
-              </Typography>
-            </MenuItem>
+            </Typography>
 
             { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
 
@@ -426,22 +426,18 @@ class NavigationBase extends React.Component {
           </MenuList>
 
           <MenuList>
-            <MenuItem>
-              <Typography variant="button" className={classes.sidebarHeading}>
+            <Typography variant="button" className={classes.sidebarHeading}>
                 Configuration
-              </Typography>
-            </MenuItem>
+            </Typography>
 
             { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
 
           </MenuList>
           <Divider />
           <MenuList >
-            <MenuItem>
-              <Typography variant="button" className={classes.sidebarHeading}>
+            <Typography variant="button" className={classes.sidebarHeading}>
                 Tools
-              </Typography>
-            </MenuItem>
+            </Typography>
 
             { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
             { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
@@ -486,7 +482,7 @@ class NavigationBase extends React.Component {
           </MenuList>
 
           {
-            !this.state.drawerOpen ? null : <Version
+            !drawerOpen ? null : <Version
               isLatest={this.state.isLatest}
               latestVersion={this.state.latestVersion}
               releaseVersion={this.props.releaseVersion}
@@ -495,7 +491,7 @@ class NavigationBase extends React.Component {
           }
         </Drawer>
 
-        <main className={classNames(classes.content, {[classes.contentDrawerClose]: !this.state.drawerOpen})}>
+        <main className={classNames(classes.content, {[classes.contentDrawerClose]: !drawerOpen})}>
           <div className={classes.toolbar} />
           <div className="main-content"><ChildComponent {...otherProps} /></div>
         </main>
