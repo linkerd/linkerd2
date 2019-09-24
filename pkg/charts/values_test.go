@@ -46,6 +46,9 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
+		NodeSelector: map[string]string{
+			"beta.kubernetes.io/os": "linux",
+		},
 
 		Identity: &Identity{
 			TrustDomain: "cluster.local",

@@ -57,6 +57,7 @@ type (
 		Tap                         *Tap
 		Proxy                       *Proxy
 		ProxyInit                   *ProxyInit
+		NodeSelector                map[string]string
 
 		DestinationResources,
 		GrafanaResources,
