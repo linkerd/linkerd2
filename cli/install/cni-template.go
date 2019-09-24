@@ -290,6 +290,8 @@ spec:
         args:
           - --bind-port
           -  "{{.SchedulerBindPort}}"
+          - --linkerd-namespace
+          -  "{{.LinkerdNamespace}}"
         volumeMounts:
           - mountPath: /var/run/dockershim.sock
             name: dockershim-sock

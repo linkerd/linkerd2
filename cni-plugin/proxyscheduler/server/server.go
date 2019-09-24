@@ -13,10 +13,11 @@ import (
 
 type ProxySchedulerConfig struct {
 	BindPort string
+	LinkerdNamespace string
 }
 
 type server struct {
-	config     ProxySchedulerConfig
+	config     *ProxySchedulerConfig
 	kubernetes *KubernetesClient
 	runtime    *CRIRuntime
 	mux        sync.Mutex
@@ -28,12 +29,12 @@ func NewProxyAgentScheduler(config ProxySchedulerConfig) (*server, error) {
 		return nil, err
 	}
 
-	runtime, err := NewCRIRuntime(kube)
+	runtime, err := NewCRIRuntime(kube, config.LinkerdNamespace)
 	if err != nil {
 		return nil, err
 	}
 	return &server{
-		config:     config,
+		config:     &config,
 		runtime:    runtime,
 		kubernetes: kube,
 	}, nil

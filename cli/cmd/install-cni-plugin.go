@@ -32,45 +32,48 @@ type installCNIPluginConfig struct {
 	UseWaitFlag              bool
 	SchedulerBindPort        uint
 	ManageProxyLifeCycle     bool
+	LinkerdNamespace         string
 }
 
 type cniPluginOptions struct {
-	linkerdVersion      string
-	dockerRegistry      string
-	proxyControlPort    uint
-	proxyAdminPort      uint
-	inboundPort         uint
-	outboundPort        uint
-	ignoreInboundPorts  []uint
-	ignoreOutboundPorts []uint
-	proxyUID            int64
-	cniPluginImage      string
-	logLevel            string
-	destCNINetDir       string
-	destCNIBinDir       string
-	useWaitFlag         bool
-	schedulerBindPort   uint
-	manageProxyLifeCycle   bool
+	linkerdVersion       string
+	dockerRegistry       string
+	proxyControlPort     uint
+	proxyAdminPort       uint
+	inboundPort          uint
+	outboundPort         uint
+	ignoreInboundPorts   []uint
+	ignoreOutboundPorts  []uint
+	proxyUID             int64
+	cniPluginImage       string
+	logLevel             string
+	destCNINetDir        string
+	destCNIBinDir        string
+	useWaitFlag          bool
+	schedulerBindPort    uint
+	manageProxyLifeCycle bool
+	linkerdNamespace     string
 }
 
 func newCNIPluginOptions() *cniPluginOptions {
 	return &cniPluginOptions{
-		linkerdVersion:      version.Version,
-		dockerRegistry:      defaultDockerRegistry,
-		proxyControlPort:    4190,
-		proxyAdminPort:      4191,
-		inboundPort:         4143,
-		outboundPort:        4140,
-		ignoreInboundPorts:  nil,
-		ignoreOutboundPorts: nil,
-		proxyUID:            2102,
-		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
-		logLevel:            "info",
-		destCNINetDir:       "/etc/cni/net.d",
-		destCNIBinDir:       "/opt/cni/bin",
-		useWaitFlag:         false,
-		schedulerBindPort:   8087,
-		manageProxyLifeCycle:   true,
+		linkerdVersion:       version.Version,
+		dockerRegistry:       defaultDockerRegistry,
+		proxyControlPort:     4190,
+		proxyAdminPort:       4191,
+		inboundPort:          4143,
+		outboundPort:         4140,
+		ignoreInboundPorts:   nil,
+		ignoreOutboundPorts:  nil,
+		proxyUID:             2102,
+		cniPluginImage:       defaultDockerRegistry + "/cni-plugin",
+		logLevel:             "info",
+		destCNINetDir:        "/etc/cni/net.d",
+		destCNIBinDir:        "/opt/cni/bin",
+		useWaitFlag:          false,
+		schedulerBindPort:    8087,
+		manageProxyLifeCycle: true,
+		linkerdNamespace:     "linkerd",
 	}
 }
 
@@ -132,6 +135,7 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside")
 	cmd.PersistentFlags().UintVar(&options.schedulerBindPort, "scheduler-bind-port", options.schedulerBindPort, "Port to which the Proxy scheduler is bound")
 	cmd.PersistentFlags().BoolVar(&options.manageProxyLifeCycle, "manage-proxy-lifecycle", options.manageProxyLifeCycle, "Whether to manage the proxy lifecycle (default true)")
+	cmd.PersistentFlags().StringVar(&options.linkerdNamespace, "linkerd-namespace", options.linkerdNamespace, "The namespace in which linkerd has been installed (default linkerd)")
 	cmd.PersistentFlags().BoolVar(
 		&options.useWaitFlag,
 		"use-wait-flag",
@@ -174,7 +178,8 @@ func validateAndBuildCNIConfig(options *cniPluginOptions) (*installCNIPluginConf
 		CliVersion:               k8s.CreatedByAnnotationValue(),
 		UseWaitFlag:              options.useWaitFlag,
 		SchedulerBindPort:        options.schedulerBindPort,
-		ManageProxyLifeCycle:        options.manageProxyLifeCycle,
+		ManageProxyLifeCycle:     options.manageProxyLifeCycle,
+		LinkerdNamespace:         options.linkerdNamespace,
 	}, nil
 }
 

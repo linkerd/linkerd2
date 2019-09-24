@@ -18,17 +18,18 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type CRIRuntime struct {
-	startedProxy bool
+	linkerdNamespace string
 	runtimeService cri.RuntimeService
 	imageService   cri.ImageManagerService
 	httpClient     http.Client
 	kubernetes *KubernetesClient
 }
 
-func NewCRIRuntime(kubernetes *KubernetesClient) (*CRIRuntime, error) {
+func NewCRIRuntime(kubernetes *KubernetesClient, linkerdNamespace string) (*CRIRuntime, error) {
 	runtimeService, err := remote.NewRemoteRuntimeService(getRemoteRuntimeEndpoint(), 2*time.Minute)
 	if err != nil {
 		return nil, err
@@ -39,7 +40,7 @@ func NewCRIRuntime(kubernetes *KubernetesClient) (*CRIRuntime, error) {
 	}
 
 	return &CRIRuntime{
-		startedProxy:false,
+		linkerdNamespace:linkerdNamespace,
 		runtimeService: runtimeService,
 		imageService:   imageService,
 		httpClient:     http.Client{},
@@ -146,15 +147,14 @@ func makeHostsMount(podDir string, hostAliases []v1.HostAlias, useHostNetwork bo
 
 
 const (
-	sidecarLabelKey       = "istio-sidecar"
-	sidecarLabelValue     = "true"
 	containerNameLabelKey = "io.kubernetes.container.name"
 	podNameLabelKey       = "io.kubernetes.pod.name"
 	podNamespaceLabelKey  = "io.kubernetes.pod.namespace"
 	podUIDLabelKey        = "io.kubernetes.pod.uid"
 	managedHostsHeader = "# Kubernetes-managed hosts file (host network + linkerd CNI).\n"
 	etcHostsPath = "/etc/hosts"
-
+	kubeletPodsPath = "/var/lib/kubelet/pods/"
+	endIdentityPath = "/var/run/linkerd/identity/end-entity"
 )
 
 
@@ -332,7 +332,7 @@ func makeEnvVars(l5dCfg *pb.All, pod *v1.Pod) []*criapi.KeyValue {
 		envs = append(envs,
 			&criapi.KeyValue{
 				Key:   IdentityDir,
-				Value: "/var/run/linkerd/identity/end-entity",
+				Value: endIdentityPath,
 			},
 			&criapi.KeyValue{
 				Key:   IdentityTrustAnchors,
@@ -340,7 +340,7 @@ func makeEnvVars(l5dCfg *pb.All, pod *v1.Pod) []*criapi.KeyValue {
 			},
 			&criapi.KeyValue{
 				Key:   IdentityTokenFile,
-				Value: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+				Value: k8s.IdentityServiceAccountTokenPath,
 			},
 			&criapi.KeyValue{
 				Key:   IdentitySvcAddress,
@@ -423,9 +423,9 @@ func getLinkerdConfig(k *KubernetesClient, mapName, mapNamespace string) (*pb.Al
 
 
 func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
-	podDir := fmt.Sprintf("/var/lib/kubelet/pods/%s", pod.UID)
+	podDir := filepath.Join(kubeletPodsPath, string(pod.UID))
 
-	l5dCfg, err := getLinkerdConfig(p.kubernetes, "linkerd-config", "linkerd")
+	l5dCfg, err := getLinkerdConfig(p.kubernetes, k8s.ConfigConfigMapName, p.linkerdNamespace)
 	if err != nil {
 		return err
 	}
@@ -446,7 +446,7 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		LogPath: "/some-log",
 		Mounts: mounts,
 		Metadata: &criapi.ContainerMetadata{
-			Name: "linkerd-proxy",
+			Name: k8s.ProxyContainerName,
 		},
 		Image: &criapi.ImageSpec{
 			Image:  fmt.Sprintf(  "%s:%s", l5dCfg.Proxy.ProxyImage.ImageName, l5dCfg.Proxy.ProxyVersion),
@@ -463,8 +463,7 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		Envs:   envVars,
 
 		Labels: map[string]string{
-			sidecarLabelKey:       sidecarLabelValue,
-			containerNameLabelKey: "linkerd-proxy",
+			containerNameLabelKey: k8s.ProxyContainerName,
 			podNameLabelKey:       pod.Name,
 			podNamespaceLabelKey:  pod.Namespace,
 			podUIDLabelKey:        string(pod.UID),
