@@ -138,6 +138,7 @@ status:
 				"172.17.0.12:8989",
 				"172.17.0.19:8989",
 				"172.17.0.20:8989",
+				"172.17.0.21:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
