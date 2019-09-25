@@ -13,5 +13,6 @@ metadata:
     {{.ProxyInjectAnnotation}}: {{.ProxyInjectDisabled}}
   labels:
     {{.LinkerdNamespaceLabel}}: "true"
+    config.linkerd.io/admission-webhooks: disabled
 {{ end -}}
 {{- end -}}

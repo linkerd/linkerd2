@@ -130,5 +130,5 @@ LinkerdNamespaceLabel: linkerd.io/is-control-plane
 # you can disable its installation. In this case:
 # - The namespace created by the external tool must match the Namespace value above
 # - The external tool needs to create the namespace with the label:
-#     linkerd.io/is-control-plane: "true"
+#     config.linkerd.io/admission-webhooks: disabled
 InstallNamespace: true
