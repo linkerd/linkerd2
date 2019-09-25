@@ -5,6 +5,11 @@ import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import Button from '@material-ui/core/Button';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
@@ -167,7 +172,9 @@ class NavigationBase extends React.Component {
     super(props);
     this.api = this.props.api;
     this.handleApiError = this.handleApiError.bind(this);
+    this.handleConfirmNamespaceChange = this.handleConfirmNamespaceChange.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
+    this.handleDialogCancel = this.handleDialogCancel.bind(this);
     this.handleNamespaceMenuClick = this.handleNamespaceMenuClick.bind(this);
     this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
 
@@ -187,7 +194,8 @@ class NavigationBase extends React.Component {
       pendingRequests: false,
       pollingInterval: 10000,
       loaded: false,
-      error: null
+      error: null,
+      showNamespaceChangeDialog: false,
     };
   }
 
@@ -281,22 +289,41 @@ class NavigationBase extends React.Component {
     this.setState({ hideUpdateBadge: true });
   }
 
+  handleDialogCancel = () => {
+    this.setState({showNamespaceChangeDialog: false});
+  }
+
   handleDrawerClick = () => {
     this.setState(state => ({ drawerOpen: !state.drawerOpen }));
   };
 
+  handleConfirmNamespaceChange = () => {
+    this.setState({showNamespaceChangeDialog: false});
+    this.props.updateNamespaceInContext(this.state.newNamespace);
+    this.props.history.push(`/namespaces/${this.state.newNamespace}`);
+  }
+
   handleNamespaceChange = namespace => {
+    this.setState({ namespaceMenuOpen: false });
+    if (namespace === this.props.selectedNamespace) {
+      return;
+    }
     let path = this.props.history.location.pathname;
-    // if we are viewing a ResourceList such as namespace/oldNamespace/pods,
-    // we should change the path to namespace/newNamespace/pods. however,
-    // if the path is a resource detail view such as
-    // namespace/linkerd/pods/podName we should leave the path intact.
-    if (path.split("/").length < 5) {
+    let pathParts = path.split("/");
+    if (pathParts.length === 3 || pathParts.length === 4) {
+      // path is /namespaces/someNamespace/resourceType
+      //      or /namespaces/someNamespace
       path = path.replace(this.props.selectedNamespace, namespace);
       this.props.history.push(path);
+      this.props.updateNamespaceInContext(namespace);
+    } else if (pathParts.length === 5) {
+      // path is /namespace/someNamespace/resourceType/someResource
+      this.setState({ showNamespaceChangeDialog: true,
+        newNamespace: namespace });
+    } else {
+      // update the selectedNamespace in context with no path changes
+      this.props.updateNamespaceInContext(namespace);
     }
-    this.props.updateNamespaceInContext(namespace);
-    this.setState({ namespaceMenuOpen: false });
   }
 
   handleNamespaceMenuClick = event => {
@@ -333,7 +360,7 @@ class NavigationBase extends React.Component {
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    const { namespaces, anchorEl, drawerOpen } = this.state;
+    const { namespaces, anchorEl, drawerOpen, showNamespaceChangeDialog, newNamespace } = this.state;
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {
       formattedNamespaceName = "All Namespaces";
@@ -417,6 +444,27 @@ class NavigationBase extends React.Component {
                 </MenuItem>
               ))}
             </Menu>
+            <Dialog
+              open={showNamespaceChangeDialog}
+              onClose={this.handleClose}
+              aria-labelledby="form-dialog-title">
+              <DialogTitle id="form-dialog-title">
+                Change namespace?
+              </DialogTitle>
+              <DialogContent>
+                <DialogContentText>
+              The resource you are viewing is in a different namespace than the namespace you have selected. Do you want to change the namespace from { selectedNamespace } to { newNamespace }?
+                </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={this.handleConfirmNamespaceChange} color="primary">
+                    Yes
+                </Button>
+                <Button onClick={this.handleDialogCancel} variant="text">
+                  No
+                </Button>
+              </DialogActions>
+            </Dialog>
           </MenuList>
 
           <MenuList>
