@@ -112,7 +112,14 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		return apiUtil.GRPCError(err)
 	}
 
-	extract := makeExtract(req.GetIncludeMetadata())
+	extract := &proxy.ObserveRequest_Extract{}
+
+	// HTTP is the only protocol supported for extracting metadata, so this is
+	// the only field checked.
+	extractHTTP := req.GetExtract().GetHttp()
+	if extractHTTP != nil {
+		extract = buildExtractHTTP(extractHTTP)
+	}
 
 	for _, pod := range pods {
 		// create the expected pod identity from the pod spec
@@ -243,8 +250,8 @@ func destinationLabels(resource *public.Resource) map[string]string {
 	return dstLabels
 }
 
-func makeExtract(extract bool) *proxy.ObserveRequest_Extract {
-	if extract {
+func buildExtractHTTP(extract *public.TapByResourceRequest_Extract_Http) *proxy.ObserveRequest_Extract {
+	if extract.GetHeaders() != nil {
 		return &proxy.ObserveRequest_Extract{
 			Extract: &proxy.ObserveRequest_Extract_Http_{
 				Http: &proxy.ObserveRequest_Extract_Http{

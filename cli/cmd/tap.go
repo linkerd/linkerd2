@@ -164,16 +164,16 @@ func newCmdTap() *cobra.Command {
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			requestParams := util.TapRequestParams{
-				Resource:        strings.Join(args, "/"),
-				Namespace:       options.namespace,
-				ToResource:      options.toResource,
-				ToNamespace:     options.toNamespace,
-				MaxRps:          options.maxRps,
-				Scheme:          options.scheme,
-				Method:          options.method,
-				Authority:       options.authority,
-				Path:            options.path,
-				IncludeMetadata: options.output == jsonOutput,
+				Resource:    strings.Join(args, "/"),
+				Namespace:   options.namespace,
+				ToResource:  options.toResource,
+				ToNamespace: options.toNamespace,
+				MaxRps:      options.maxRps,
+				Scheme:      options.scheme,
+				Method:      options.method,
+				Authority:   options.authority,
+				Path:        options.path,
+				Extract:     options.output == jsonOutput,
 			}
 
 			err := options.validate()

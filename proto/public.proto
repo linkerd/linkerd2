@@ -91,9 +91,6 @@ message TapByResourceRequest {
   // Limits the number of events to be inspected.
   float maxRps = 3;
 
-  // Conditionally requests headers and trailers to be present in tap events.
-  bool includeMetadata = 4;
-
   message Match {
     oneof match {
       // If empty, matches all messages.
@@ -123,6 +120,24 @@ message TapByResourceRequest {
         string authority = 3;
         string path = 4;
       }
+    }
+  }
+
+  // Conditionally extracts components from requests and responses to include
+  // in tap events
+  Extract extract = 4;
+
+  message Extract {
+    oneof extract {
+      Http http = 1;
+    }
+
+    message Http {
+      oneof extract {
+        Headers headers = 1;
+      }
+
+      message Headers {}
     }
   }
 }

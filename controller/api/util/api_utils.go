@@ -96,16 +96,16 @@ type TopRoutesRequestParams struct {
 // TapRequestParams contains parameters that are used to build a
 // TapByResourceRequest.
 type TapRequestParams struct {
-	Resource        string
-	Namespace       string
-	ToResource      string
-	ToNamespace     string
-	MaxRps          float32
-	Scheme          string
-	Method          string
-	Authority       string
-	Path            string
-	IncludeMetadata bool
+	Resource    string
+	Namespace   string
+	ToResource  string
+	ToNamespace string
+	MaxRps      float32
+	Scheme      string
+	Method      string
+	Authority   string
+	Path        string
+	Extract     bool
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -490,6 +490,15 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 		matches = append(matches, &match)
 	}
 
+	extract := &pb.TapByResourceRequest_Extract{}
+	if params.Extract {
+		extract = buildExtractHTTP(&pb.TapByResourceRequest_Extract_Http{
+			Extract: &pb.TapByResourceRequest_Extract_Http_Headers_{
+				Headers: &pb.TapByResourceRequest_Extract_Http_Headers{},
+			},
+		})
+	}
+
 	return &pb.TapByResourceRequest{
 		Target: &pb.ResourceSelection{
 			Resource: &target,
@@ -502,7 +511,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 				},
 			},
 		},
-		IncludeMetadata: params.IncludeMetadata,
+		Extract: extract,
 	}, nil
 }
 
@@ -510,6 +519,14 @@ func buildMatchHTTP(match *pb.TapByResourceRequest_Match_Http) pb.TapByResourceR
 	return pb.TapByResourceRequest_Match{
 		Match: &pb.TapByResourceRequest_Match_Http_{
 			Http: match,
+		},
+	}
+}
+
+func buildExtractHTTP(extract *pb.TapByResourceRequest_Extract_Http) *pb.TapByResourceRequest_Extract {
+	return &pb.TapByResourceRequest_Extract{
+		Extract: &pb.TapByResourceRequest_Extract_Http_{
+			Http: extract,
 		},
 	}
 }
