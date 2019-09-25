@@ -658,7 +658,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 				Request: options.proxyMemoryRequest,
 			},
 		},
-		UID: options.proxyUID,
+		Trace: &charts.Trace{},
+		UID:   options.proxyUID,
 	}
 
 	inboundPortStrs := []string{}

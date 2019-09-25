@@ -2,6 +2,7 @@ package inject
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -55,6 +56,7 @@ var (
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
+		k8s.ProxyTraceCollectorSvcAddr,
 	}
 )
 
@@ -497,6 +499,11 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled for %s/%s: service name=%s, service account=%s", conf.workload.metaType.Kind, conf.workload.Meta.Name, trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Proxy.Trace = trace
+	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -537,6 +544,32 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 		}
 	}
 	return nil
+}
+
+func (conf *ResourceConfig) trace() *charts.Trace {
+	var (
+		svcAddr    = conf.getOverride(k8s.ProxyTraceCollectorSvcAddr)
+		svcAccount = conf.getOverride(k8s.ProxyTraceCollectorSvcAccount)
+	)
+
+	if svcAddr == "" {
+		return nil
+	}
+
+	splits := strings.Split(svcAddr, ".")
+	if len(splits) <= 1 {
+		log.Errorf("Fail to start tracing due to malformed collector service address %s. Expected service address to use the <svc-name>:<ns> format", svcAddr)
+		return nil
+	}
+
+	if delimiter := strings.Index(splits[1], ":"); delimiter != -1 {
+		splits[1] = splits[1][:delimiter]
+	}
+
+	return &charts.Trace{
+		CollectorSvcAddr:    svcAddr,
+		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, splits[1]),
+	}
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and

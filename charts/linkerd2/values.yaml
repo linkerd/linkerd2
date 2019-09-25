@@ -74,6 +74,9 @@ Proxy:
     Memory:
       Limit: ""
       Request: ""
+  Trace:
+    CollectorSvcAddr: ""
+    CollectorSvcAccount: default
   UID: 2102
 
 # proxy-init configuration

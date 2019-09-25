@@ -85,6 +85,10 @@ func TestNewValues(t *testing.T) {
 					Request: "",
 				},
 			},
+			Trace: &Trace{
+				CollectorSvcAddr:    "",
+				CollectorSvcAccount: "default",
+			},
 			UID: 2102,
 		},
 
