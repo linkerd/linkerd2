@@ -209,7 +209,9 @@ class NavigationBase extends React.Component {
   }
 
   componentWillUpdate() {
-    this.props.checkNamespaceMatch(this.props.history.location.pathname);
+    if (this.props.history) {
+      this.props.checkNamespaceMatch(this.props.history.location.pathname);
+    }
   }
 
   componentWillUnmount() {
