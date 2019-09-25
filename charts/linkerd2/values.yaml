@@ -56,8 +56,8 @@ PrometheusLogLevel: *controller_log_level
 
 # Trace configuration
 Trace:
-  TraceCollector: "oc-collector.tracing:55678"
-  ProbabilisticSamplingRate: 1.0
+  TraceCollector: ""
+  ProbabilisticSamplingRate: 0
 
 # proxy configuration
 Proxy:

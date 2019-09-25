@@ -827,6 +827,8 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -trace-collector=
+        - -sampling-probability=0
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1042,6 +1044,8 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -controller-namespace=linkerd
         - -log-level=info
+        - -trace-collector=
+        - -sampling-probability=0
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1253,6 +1257,8 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -trace-collector=
+        - -sampling-probability=0
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1506,6 +1512,8 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
+        - -trace-collector=
+        - -sampling-probability=0
         image: gcr.io/linkerd-io/web:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2747,6 +2755,8 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
+        - -trace-collector=
+        - -sampling-probability=0
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

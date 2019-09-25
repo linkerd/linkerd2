@@ -49,9 +49,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 
 	_, span := trace.StartSpan(ctx, "query.prometheus")
 	defer span.End()
-	span.Annotate([]trace.Attribute{
-		trace.StringAttribute("queryString", query),
-	}, "Prometheus Query Details")
+	span.AddAttributes(trace.StringAttribute("queryString", query))
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
