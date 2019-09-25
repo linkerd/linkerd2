@@ -40,7 +40,7 @@ if (pathArray[0] === "" && pathArray[1] === "namespaces" && pathArray[2]) {
   selectedNamespace = pathArray[2];
 // if the current URL path is a legacy path such as `/daemonsets`, the
 // selectedNamespace should be "_all", unless the path is `/namespaces`
-} else if (pathArray.length === 2 && pathArray[1] !== "namespaces") {
+} else if (pathArray.length === 2 && pathArray[1] !== "" && pathArray[1] !== "namespaces") {
   selectedNamespace = "_all";
 }
 
@@ -59,6 +59,13 @@ class App extends React.Component {
 
     this.state.updateNamespaceInContext = name => {
       this.setState({selectedNamespace:name});
+    };
+
+    this.state.checkNamespaceMatch = path => {
+      let pathNamespace = path.split("/")[2];
+      if (pathNamespace && pathNamespace !== this.state.selectedNamespace) {
+        this.setState({selectedNamespace:pathNamespace});
+      }
     };
   }
 

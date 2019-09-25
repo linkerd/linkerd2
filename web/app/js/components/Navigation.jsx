@@ -208,6 +208,10 @@ class NavigationBase extends React.Component {
     window.addEventListener("resize", this.updateWindowDimensions);
   }
 
+  componentWillUpdate() {
+    this.props.checkNamespaceMatch(this.props.history.location.pathname);
+  }
+
   componentWillUnmount() {
     window.removeEventListener("resize", this.updateWindowDimensions);
     window.clearInterval(this.timerId);
