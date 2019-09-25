@@ -81,8 +81,7 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
-        - -trace-collector={{.Trace.TraceCollector}}
-        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
+        {{- include "partials.linkerd.trace" .Trace | nindent 8 -}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:

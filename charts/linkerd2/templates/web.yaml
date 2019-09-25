@@ -62,8 +62,7 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        - -trace-collector={{.Trace.TraceCollector}}
-        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
+        {{- include "partials.linkerd.trace" .Trace | nindent 8 -}}
         image: {{.WebImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:

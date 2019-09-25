@@ -63,8 +63,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
-        - -trace-collector={{.Trace.TraceCollector}}
-        - -sampling-probability={{.Trace.ProbabilisticSamplingRate}}
+        {{- include "partials.linkerd.trace" .Trace | nindent 8 -}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
