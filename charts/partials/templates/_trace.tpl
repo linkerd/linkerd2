@@ -1,6 +1,6 @@
 {{ define "partials.linkerd.trace" -}}
 {{ if .TraceCollector -}}
 - -trace-collector={{.TraceCollector}}
-- -sampling-rate={{.ProbabilisticSamplingRate}}
+- -sampling-probability={{.ProbabilisticSamplingRate}}
 {{ end -}}
 {{- end }}
