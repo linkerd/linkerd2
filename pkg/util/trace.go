@@ -6,8 +6,8 @@ import (
 	"go.opencensus.io/trace"
 )
 
-// InitialiseTracing initialises trace, exporter and the sampler
-func InitialiseTracing(serviceName string, address string, probability float64) {
+// InitializeTracing initialises trace, exporter and the sampler
+func InitializeTracing(serviceName string, address string, probability float64) {
 	if address != "" {
 		oce, err := ocagent.NewExporter(
 			ocagent.WithInsecure(),

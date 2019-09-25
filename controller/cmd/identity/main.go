@@ -121,7 +121,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	util.InitialiseTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate)
+	util.InitializeTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate)
 	srv := prometheus.NewGrpcServer()
 	identity.Register(srv, svc)
 	go func() {

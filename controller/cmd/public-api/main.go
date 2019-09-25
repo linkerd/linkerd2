@@ -75,7 +75,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.InitialiseTracing("linkerd-public-api", *traceCollector, *probabilisticSamplingRate)
+	util.InitializeTracing("linkerd-public-api", *traceCollector, *probabilisticSamplingRate)
 	server := public.NewServer(
 		*addr,
 		prometheusClient,

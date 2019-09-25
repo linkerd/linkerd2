@@ -64,7 +64,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.InitialiseTracing("linkerd-tap", *traceCollector, *probabilisticSamplingRate)
+	util.InitializeTracing("linkerd-tap", *traceCollector, *probabilisticSamplingRate)
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
 	// TODO: make this configurable for local development

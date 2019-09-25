@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
 
-	util.InitialiseTracing("linkerd-web", *traceCollector, *probabilisticSamplingRate)
+	util.InitializeTracing("linkerd-web", *traceCollector, *probabilisticSamplingRate)
 
 	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
 	clusterDomain := globalConfig.GetClusterDomain()
