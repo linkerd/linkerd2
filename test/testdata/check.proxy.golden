@@ -22,7 +22,7 @@ linkerd-config
 linkerd-existence
 -----------------
 √ 'linkerd-config' config map exists
-√ control plane ServiceAccounts exist
+√ heartbeat ServiceAccount exist
 √ control plane replica sets are ready
 √ no unschedulable pods
 √ controller pod is running
