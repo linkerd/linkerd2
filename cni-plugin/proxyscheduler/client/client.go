@@ -32,12 +32,13 @@ func handleResponseError(rsp *http.Response) error {
 }
 
 
-func (p *ProxySchedulerClient) StartProxy(podName, podNamespace, podIP, infraContainerID string) error {
+func (p *ProxySchedulerClient) StartProxy(podName, podNamespace, podIP, infraContainerID string, cniNs string) error {
 	httpResponse, err := p.dispatchCallToScheduler(http.MethodPost, "/api/proxy", api.StartProxyRequest {
 		&podIP,
 		&infraContainerID,
 		&podName,
 		&podNamespace,
+		&cniNs,
 	}, nil)
 
 	if err != nil {

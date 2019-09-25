@@ -7,6 +7,17 @@ import (
 	"net/http"
 )
 
+const (
+	schedulerManagedPodNsAnnotation = "l5d.proxyscheduler.pod.ns"
+	schedulerManagedPodAnnotation   = "l5d.proxyscheduler.managed.pod"
+	schedulerCreatedContainerLabel  = "l5d.schleduler.proxy"
+	trueValue                       = "true"
+	ReadinessCheckInitialDelayMs  = 10000
+	LivenessCheckInitialDelayMs   = 2000
+	LivenessCheckIntervalMs       = 5000
+)
+
+
 type (
 	apiError struct {
 		Error error `json:"error,omitempty"`

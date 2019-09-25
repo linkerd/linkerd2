@@ -24,7 +24,6 @@ import (
 	"net"
 	"os"
 	"strings"
-
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
@@ -135,12 +134,12 @@ func parseConfig(stdin []byte) (*PluginConf, error) {
 }
 
 
-func startProxy(logEntry *logrus.Entry, podName, namespace, ip, sandboxID string,  conf *PluginConf) error {
+func startProxy(logEntry *logrus.Entry, podName, namespace, ip, sandboxID string,  conf *PluginConf, cniNs string) error {
 	if schedulerClient, err := schedulerapi.NewProxyAgentClient(conf.ProxyInit.SchedulerPort, logEntry); err != nil {
 		logEntry.Errorf("Creating proxy agent client failed: %v", err)
 	} else {
 		logEntry.Info("Starting Proxy")
-		if err := schedulerClient.StartProxy(podName, namespace, ip, sandboxID); err != nil {
+		if err := schedulerClient.StartProxy(podName, namespace, ip, sandboxID, cniNs); err != nil {
 			logEntry.Errorf("Starting linkerd-proxy failed: %v", err)
 			return err
 		}
@@ -180,7 +179,6 @@ func setupFirewall(logEntry *logrus.Entry, conf *PluginConf, args *skel.CmdArgs)
 func cmdAdd(args *skel.CmdArgs) error {
 
 	logrus.Debugf("linkerd-cni: cmdAdd, args: %v", *args)
-
 	logrus.Debug("linkerd-cni: cmdAdd, parsing config")
 	conf, err := parseConfig(args.StdinData)
 	if err != nil {
@@ -253,7 +251,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				}
 			}
 			if !containsLinkerdProxy {
-				if err := startProxy(logEntry, podName, namespace, ip, sandboxID, conf); err != nil {
+				if err := startProxy(logEntry, podName, namespace, ip, sandboxID, conf, args.Netns); err != nil {
 					return err
 				}
 			}

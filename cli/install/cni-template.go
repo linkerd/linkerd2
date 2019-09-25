@@ -101,7 +101,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces", "secrets"]
-  verbs: ["list", "get", "watch"]
+  verbs: ["list", "get", "watch", "update"]
 - apiGroups: [""]
   resources: ["configmaps"]
   resourceNames: ["linkerd-config"]

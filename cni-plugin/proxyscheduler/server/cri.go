@@ -73,7 +73,7 @@ func writeSecret(dir string, secretData map[string][]byte) error {
 	return nil
 }
 
-func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*criapi.Mount, error) {
+func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string, logEntry *logrus.Entry) (*criapi.Mount, error) {
 
 	//1. Find the secret name
 	secretName, err := findSvcAccountSecret(pod)
@@ -101,6 +101,7 @@ func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*
 	}
 
 
+	logEntry.Debugf("Created [svc account] mount {h:%s, c:%s}",secretDirectory, IdentityServiceAccountPath)
 	//5. Return the mountpoint for the container
 	return &criapi.Mount{
 		ContainerPath:  IdentityServiceAccountPath,
@@ -110,12 +111,13 @@ func makeServiceAccountMount(k *KubernetesClient, pod *v1.Pod, podDir string) (*
 	}, nil
 }
 
-func makeEndIdentityMount(podDir string) (*criapi.Mount, error) {
+func makeEndIdentityMount(podDir string, logEntry *logrus.Entry) (*criapi.Mount, error) {
 	endIdentityDir := path.Join(podDir, k8sEmptyDirVolumePath,  k8s.IdentityEndEntityVolumeName)
 	if err := createEmptyDirVolume(endIdentityDir); err != nil {
 		return nil, err
 	}
 
+	logEntry.Debugf("Created [end identity] mount {h:%s, c:%s}",endIdentityDir, containerEndIdentityPath)
 	return &criapi.Mount{
 		HostPath:      endIdentityDir,
 		ContainerPath: containerEndIdentityPath,
@@ -126,7 +128,7 @@ func makeEndIdentityMount(podDir string) (*criapi.Mount, error) {
 
 
 
-func makeHostsMount(podDir string, hostAliases []v1.HostAlias) (*criapi.Mount, error) {
+func makeHostsMount(podDir string, hostAliases []v1.HostAlias, logEntry *logrus.Entry) (*criapi.Mount, error) {
 
 	if err := createEmptyDirVolume(podDir); err != nil {
 		return nil, err
@@ -137,6 +139,7 @@ func makeHostsMount(podDir string, hostAliases []v1.HostAlias) (*criapi.Mount, e
 		return nil, err
 	}
 
+	logEntry.Debugf("Created [etc-hosts] mount {h:%s, c:%s}",hostsFilePath, etcHostsPath)
 	return &criapi.Mount{
 		ContainerPath:  etcHostsPath,
 		HostPath:       hostsFilePath,
@@ -173,8 +176,6 @@ func ensureHostsFile(fileName string, hostAliases []v1.HostAlias,) error {
 	buffer.WriteString("fe00::1\tip6-allnodes\n")
 	buffer.WriteString("fe00::2\tip6-allrouters\n")
 	buffer.Write(hostsEntriesFromHostAliases(hostAliases))
-
-	logrus.Debugf("Creating file %s", fileName)
 	return ioutil.WriteFile(fileName, buffer.Bytes(), 0777)
 }
 
@@ -388,22 +389,23 @@ func makeEnvVars(l5dCfg *pb.All, pod *v1.Pod) []*criapi.KeyValue {
 	return envs
 }
 
-func makeMounts(k *KubernetesClient, pod *v1.Pod, podDir string) ([]*criapi.Mount ,error)  {
-	endIdMount, err := makeEndIdentityMount(podDir)
+func makeMounts(k *KubernetesClient, pod *v1.Pod, podDir string, logEntry *logrus.Entry) ([]*criapi.Mount ,error)  {
+	logEntry.Debug("Creating proxy container mounts for pod with id: %s",pod.UID )
+	endIdMount, err := makeEndIdentityMount(podDir, logEntry)
 	if err != nil {
-		logrus.Error("Could not make end identity mount", err)
+		logEntry.Error("Could not make end identity mount", err)
 		return nil, err
 	}
 
-	hostsMount, err := makeHostsMount(podDir, pod.Spec.HostAliases)
+	hostsMount, err := makeHostsMount(podDir, pod.Spec.HostAliases, logEntry)
 	if err != nil {
-		logrus.Error("Could not make hosts mount", err)
+		logEntry.Error("Could not make hosts mount", err)
 		return nil, err
 	}
 
-	svcAccountMount, err :=  makeServiceAccountMount(k,pod, podDir)
+	svcAccountMount, err :=  makeServiceAccountMount(k,pod, podDir, logEntry)
 	if err != nil {
-		logrus.Error("Could not make svc account mount", err)
+		logEntry.Error("Could not make svc account mount", err)
 		return nil, err
 	}
 
@@ -411,25 +413,25 @@ func makeMounts(k *KubernetesClient, pod *v1.Pod, podDir string) ([]*criapi.Moun
 
 }
 
-func getLinkerdConfig(k *KubernetesClient, mapName, mapNamespace string) (*pb.All, error) {
+func getLinkerdConfig(k *KubernetesClient, mapName, mapNamespace string, logEntry *logrus.Entry) (*pb.All, error) {
 	data, err := k.getConfigMap(mapName, mapNamespace)
 	if err != nil {
-		logrus.Error("Could not load linkerd config map", err)
+		logEntry.Error("Could not load linkerd config map", err)
 		return nil, err
 	}
 	l5dCfg, err := config.FromConfigMap(data)
 	if err != nil {
-		logrus.Error("Could not parse linkerd config map", err)
+		logEntry.Error("Could not parse linkerd config map", err)
 		return nil, err
 	}
 	return l5dCfg, nil
 }
 
 
-func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
+func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod, logEntry *logrus.Entry) error {
 	podDir := filepath.Join(kubeletPodsPath, string(pod.UID))
 
-	l5dCfg, err := getLinkerdConfig(p.kubernetes, k8s.ConfigConfigMapName, p.linkerdNamespace)
+	l5dCfg, err := getLinkerdConfig(p.kubernetes, k8s.ConfigConfigMapName, p.linkerdNamespace, logEntry)
 	if err != nil {
 		return err
 	}
@@ -439,24 +441,24 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		return fmt.Errorf("Error getting pod sandbox status: %v", err)
 	}
 
-	mounts, err := makeMounts(p.kubernetes, pod, podDir)
+	mounts, err := makeMounts(p.kubernetes, pod, podDir, logEntry)
 	if err != nil {
 		return err
 	}
 
 	envVars :=  makeEnvVars(l5dCfg, pod)
 
-	containerConfig := criapi.ContainerConfig{
+	containerConfig := criapi.ContainerConfig {
 		LogPath: "/some-log",
 		Mounts: mounts,
-		Metadata: &criapi.ContainerMetadata{
+		Metadata: &criapi.ContainerMetadata {
 			Name: k8s.ProxyContainerName,
 		},
 		Image: &criapi.ImageSpec{
 			Image:  fmt.Sprintf(  "%s:%s", l5dCfg.Proxy.ProxyImage.ImageName, l5dCfg.Proxy.ProxyVersion),
 		},
 
-		Linux: &criapi.LinuxContainerConfig{
+		Linux: &criapi.LinuxContainerConfig {
 			SecurityContext: &criapi.LinuxContainerSecurityContext{
 				RunAsUser:          &criapi.Int64Value{l5dCfg.Proxy.ProxyUid},
 				SupplementalGroups: []int64{0},
@@ -466,7 +468,8 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		},
 		Envs:   envVars,
 
-		Labels: map[string]string{
+		Labels: map[string]string {
+			schedulerCreatedContainerLabel: trueValue,
 			containerNameLabelKey: k8s.ProxyContainerName,
 			podNameLabelKey:       pod.Name,
 			podNamespaceLabelKey:  pod.Namespace,
@@ -478,30 +481,25 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod) error {
 		Metadata:     status.GetMetadata(),
 	}
 
-	logrus.Debugf("Creating proxy sidecar container for pod %s", pod.Name)
+	logEntry.Debug("Creating proxy sidecar container")
 	containerID, err := p.runtimeService.CreateContainer(podSandboxID, &containerConfig, &podSandboxConfig)
 	if err != nil {
 		return fmt.Errorf("Error creating sidecar container: %v", err)
 	}
-	logrus.Debugf("Created proxy sidecar container: %s", containerID)
+	logEntry.Debugf("Created proxy sidecar container with id: %s", containerID)
 
 	err = p.runtimeService.StartContainer(containerID)
 	if err != nil {
-		return fmt.Errorf("Error starting sidecar container: %v", err)
+		return fmt.Errorf("error starting sidecar container: %v", err)
 	}
-
-
-	logrus.Debugf("Started proxy sidecar container: %s", containerID)
+	logEntry.Debugf("Started proxy sidecar container: %s", containerID)
 
 	st, err := p.runtimeService.ContainerStatus(containerID)
 
-	time.Sleep(20 * time.Second)
-
 	if err != nil {
-		return fmt.Errorf("Error getting status sidecar container: %v", err)
+		return fmt.Errorf("error getting status sidecar container: %v", err)
 	}
-	logrus.Debugf("Status of container: %v", st.State)
+	logEntry.Debugf("Status of container: %v", st.State)
 	return nil
 }
-
 
