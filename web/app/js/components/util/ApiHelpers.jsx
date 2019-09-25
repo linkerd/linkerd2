@@ -127,7 +127,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     // Traffic Performance Summary. This retrieves stats for the given resource.
     let resourceUrl = '/api/tps-reports?resource_type=' + type;
 
-    if (_isEmpty(namespace)) {
+    if (_isEmpty(namespace) || namespace === "_all") {
       resourceUrl += '&all_namespaces=true';
     } else {
       resourceUrl += '&namespace=' + namespace;
@@ -143,7 +143,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     // Traffic Performance Summary. This retrieves (non-Prometheus) stats for the given resource.
     let resourceUrl = '/api/tps-reports?skip_stats=true&resource_type=' + type;
 
-    if (_isEmpty(namespace)) {
+    if (_isEmpty(namespace) || namespace === "_all") {
       resourceUrl += '&all_namespaces=true';
     } else {
       resourceUrl += '&namespace=' + namespace;
