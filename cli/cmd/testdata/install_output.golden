@@ -828,7 +828,7 @@ spec:
         - identity
         - -log-level=ControllerLogLevel
         - -trace-collector=TraceCollector
-        - -sampling-probability=0
+        - -sampling-rate=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1044,7 +1044,7 @@ spec:
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -trace-collector=TraceCollector
-        - -sampling-probability=0
+        - -sampling-rate=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1256,7 +1256,7 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
         - -trace-collector=TraceCollector
-        - -sampling-probability=0
+        - -sampling-rate=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1510,7 +1510,7 @@ spec:
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -trace-collector=TraceCollector
-        - -sampling-probability=0
+        - -sampling-rate=0
         image: WebImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2748,7 +2748,7 @@ spec:
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -trace-collector=TraceCollector
-        - -sampling-probability=0
+        - -sampling-rate=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

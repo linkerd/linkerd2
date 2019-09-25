@@ -14,7 +14,7 @@ import (
 // to the flagSet and returns their pointers for usage
 func AddTraceFlags(cmd *flag.FlagSet) (*string, *float64) {
 	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
-	probabilitySampling := cmd.Float64("sampling-probability", 1.0, "The probabilistic sampling rate")
+	probabilitySampling := cmd.Float64("sampling-probability", 0, "The probabilistic sampling rate")
 
 	return traceCollector, probabilitySampling
 }
