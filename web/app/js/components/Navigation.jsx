@@ -172,6 +172,7 @@ class NavigationBase extends React.Component {
     this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
 
     this.state = this.getInitialState();
+    this.loadFromServer = this.loadFromServer.bind(this);
   }
 
   getInitialState() {
@@ -182,12 +183,17 @@ class NavigationBase extends React.Component {
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
-      namespaces: []
+      namespaces: [],
+      pendingRequests: false,
+      pollingInterval: 10000,
+      loaded: false,
+      error: null
     };
   }
 
   componentDidMount() {
     this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
     this.fetchVersion();
     this.fetchLatestCommunityUpdate();
     this.updateWindowDimensions();
@@ -196,6 +202,8 @@ class NavigationBase extends React.Component {
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.updateWindowDimensions);
+    window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
   }
 
   // API returns namespaces for namespace select button. No metrics returned.
