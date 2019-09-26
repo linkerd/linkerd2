@@ -501,7 +501,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
 	if trace := conf.trace(); trace != nil {
-		log.Infof("tracing enabled for %s/%s: service name=%s, service account=%s", conf.workload.metaType.Kind, conf.workload.Meta.Name, trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		log.Infof("tracing enabled for %s/%s: remote service=%s, service account=%s", conf.workload.ownerRef.Kind, conf.workload.ownerRef.Name, trace.CollectorSvcAddr, trace.CollectorSvcAccount)
 		values.Proxy.Trace = trace
 	}
 }
