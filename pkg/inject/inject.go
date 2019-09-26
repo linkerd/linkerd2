@@ -91,16 +91,7 @@ type ResourceConfig struct {
 	ownerRetriever OwnerRetrieverFunc
 	origin         Origin
 
-	workload struct {
-		obj      runtime.Object
-		metaType metav1.TypeMeta
-
-		// Meta is the workload's metadata. It's exported so that metadata of
-		// non-workload resources can be unmarshalled by the YAML parser
-		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-
-		ownerRef *metav1.OwnerReference
-	}
+	workload Workload
 
 	pod struct {
 		meta        *metav1.ObjectMeta
@@ -108,6 +99,18 @@ type ResourceConfig struct {
 		annotations map[string]string
 		spec        *corev1.PodSpec
 	}
+}
+
+// Workload contains the information for a given conf
+type Workload struct {
+	obj      runtime.Object
+	metaType metav1.TypeMeta
+
+	// Meta is the workload's metadata. It's exported so that metadata of
+	// non-workload resources can be unmarshalled by the YAML parser
+	Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	ownerRef *metav1.OwnerReference
 }
 
 type patch struct {
@@ -167,6 +170,16 @@ func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) 
 	}
 }
 
+// AppendNsAnnotation appends the given single annotation to the namespace under metadata
+func (conf *ResourceConfig) AppendNsAnnotation(k, v string) {
+	conf.workload.Meta = &metav1.ObjectMeta{Annotations: map[string]string{k: v}}
+}
+
+//AppendNsAnnotations appends the given annotations to a ObjectMeta
+func (conf *ResourceConfig) AppendNsAnnotations(annotations map[string]string) {
+	conf.workload.Meta = &metav1.ObjectMeta{Annotations: annotations}
+}
+
 // AppendPodAnnotation appends the given single annotation to the pod spec in conf
 func (conf *ResourceConfig) AppendPodAnnotation(k, v string) {
 	conf.pod.annotations[k] = v
@@ -203,7 +216,9 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		Labels:      map[string]string{},
 	}
 	if strings.ToLower(conf.workload.metaType.Kind) != k8s.Pod {
-		values.PathPrefix = "/spec/template"
+		if strings.ToLower(conf.workload.metaType.Kind) != k8s.Namespace {
+			values.PathPrefix = "/spec/template"
+		}
 	}
 
 	if conf.pod.spec != nil {
@@ -260,6 +275,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &appsv1.StatefulSet{}
 	case k8s.Pod:
 		return &corev1.Pod{}
+	case k8s.Namespace:
+		return &corev1.Namespace{}
 	}
 
 	return nil
@@ -868,4 +885,17 @@ func sortedKeys(m map[string]string) []string {
 	sort.Strings(keys)
 
 	return keys
+}
+
+//IsOfTypeNameSpace checks if a workload is of Kinf namespace
+func (w *Workload) IsOfTypeNameSpace() bool {
+	if strings.ToLower(w.metaType.Kind) == k8s.Namespace {
+		return true
+	}
+	return false
+}
+
+//IsNamespace checks if a given config is of type namespace
+func (conf *ResourceConfig) IsNamespace() bool {
+	return conf.workload.IsOfTypeNameSpace()
 }

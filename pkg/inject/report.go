@@ -80,7 +80,9 @@ func newReport(conf *ResourceConfig) *Report {
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddr] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddr] != ""
 	} else {
-		report.UnsupportedResource = true
+		if !conf.IsNamespace() {
+			report.UnsupportedResource = true
+		}
 	}
 
 	return report
