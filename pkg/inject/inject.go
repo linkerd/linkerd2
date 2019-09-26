@@ -558,7 +558,7 @@ func (conf *ResourceConfig) trace() *charts.Trace {
 
 	splits := strings.Split(svcAddr, ".")
 	if len(splits) <= 1 {
-		log.Errorf("Fail to start tracing due to malformed collector service address %s. Expected service address to use the <svc-name>:<ns> format", svcAddr)
+		log.Errorf("fail to enable tracing due to malformed collector service address %s. Expected service address to use the <svc-name>:<ns> format", svcAddr)
 		return nil
 	}
 
