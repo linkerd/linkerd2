@@ -1,3 +1,39 @@
+## edge-19.9.4
+
+This edge release introduces support for distributed tracing as well as a
+redesigned sidebar in the Web UI!
+
+Support for distributed tracing means that Linkerd data plane proxies can now
+emit trace spans, allowing you to see the exact amount of time spent in the
+Linkerd proxy for traced requests. The new `config.linkerd.io/trace-collector`
+and `config.alpha.linkerd.io/trace-collector-service-account` tracing
+annotations allow specifying which pods should emit trace spans.
+
+The goal of dashboard's sidebar redesign was to reduce load on Prometheus and
+simplify navigation by providing top-level views centered around namespaces and
+workloads.
+
+* CLI
+  * Introduced a new `--cluster-domain` flag to the `linkerd install` command
+    that allows setting a custom cluster domain (thanks @arminbuerkle!)
+  * Added `--disable-heartbeat` flag for `linkerd` `install|upgrade` commands
+* Controller
+  * Instrumented the proxy-injector to provide additional metrics about
+    injection (thanks @Pothulapati!)
+  * Added selectors to MWC that allow skipping namespaces; this fixes `--ha`
+    deployments where components are installed in `kube-system` (thanks
+    @hasheddan!)
+  * Introduced `config.linkerd.io/trace-collector` and
+    `config.alpha.linkerd.io/trace-collector-service-account` to support per-pod
+    tracing
+* Web UI
+  * Workloads are now viewed by namespace
+  * Individual resources are no longer listed on the sidebar
+  * Navigation between namespaces no longer changes the current page view
+* Proxy
+  * Added distributed tracing support
+  * Added http metadata to spans as annotations
+
 ## edge-19.9.3
 
 * Helm
