@@ -1,13 +1,14 @@
 ## edge-19.9.4
 
-This edge release introduces support for distributed tracing as well as a
-redesigned sidebar in the Web UI!
+This edge release introduces experimental support for distributed tracing as
+well as a redesigned sidebar in the Web UI!
 
-Support for distributed tracing means that Linkerd data plane proxies can now
-emit trace spans, allowing you to see the exact amount of time spent in the
-Linkerd proxy for traced requests. The new `config.linkerd.io/trace-collector`
-and `config.alpha.linkerd.io/trace-collector-service-account` tracing
-annotations allow specifying which pods should emit trace spans.
+Experimental support for distributed tracing means that Linkerd data plane
+proxies can now emit trace spans, allowing you to see the exact amount of time
+spent in the Linkerd proxy for traced requests. The new
+`config.linkerd.io/trace-collector` and
+`config.alpha.linkerd.io/trace-collector-service-account` tracing annotations
+allow specifying which pods should emit trace spans.
 
 The goal of the dashboard's sidebar redesign was to reduce load on Prometheus
 and simplify navigation by providing top-level views centered around namespaces
@@ -33,7 +34,7 @@ and workloads.
   * Workloads are now viewed by namespace, with an "All Namespaces" option, to
     improve dashboard performance
 * Proxy
-  * Added distributed tracing support
+  * Added experimental distributed tracing support
 
 ## edge-19.9.3
 
