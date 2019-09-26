@@ -556,19 +556,19 @@ func (conf *ResourceConfig) trace() *charts.Trace {
 		return nil
 	}
 
-	splits := strings.Split(svcAddr, ".")
-	if len(splits) <= 1 {
-		log.Errorf("fail to enable tracing due to malformed collector service address %s. Expected service address to use the <svc-name>:<ns> format", svcAddr)
-		return nil
-	}
+	hostAndPort := strings.Split(svcAddr, ":")
+	hostname := strings.Split(hostAndPort[0], ".")
 
-	if delimiter := strings.Index(splits[1], ":"); delimiter != -1 {
-		splits[1] = splits[1][:delimiter]
+	var ns string
+	if len(hostname) == 1 {
+		ns = conf.workload.Meta.Namespace
+	} else {
+		ns = hostname[1]
 	}
 
 	return &charts.Trace{
 		CollectorSvcAddr:    svcAddr,
-		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, splits[1]),
+		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, ns),
 	}
 }
 
