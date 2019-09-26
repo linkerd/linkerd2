@@ -23,10 +23,10 @@ and workloads.
 * Controller
   * Instrumented the proxy-injector to provide additional metrics about
     injection (thanks @Pothulapati!)
-  * Added support for `config.linkerd.io/skip-webhook` annotation on namespaces
-    to prevent control plane components from being installed to specific
-    namespaces; this fixes situations in HA deployments where the proxy-injector
-    is installed in `kube-system` (thanks @hasheddan!)
+  * Added support for `config.linkerd.io/skip-webhooks: disabled` label on
+    namespaces so that the pods creation events in these namespaces are ignored
+    by the proxy injector. namespaces; this fixes situations in HA deployments
+    where the proxy-injector is installed in `kube-system` (thanks @hasheddan!)
   * Introduced `config.linkerd.io/trace-collector` and
     `config.alpha.linkerd.io/trace-collector-service-account` pod spec
     annotations to support per-pod tracing
