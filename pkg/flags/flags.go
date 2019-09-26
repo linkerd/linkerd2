@@ -10,15 +10,6 @@ import (
 	"k8s.io/klog"
 )
 
-// AddTraceFlags adds the traceCollector and ProbabilisticSamplingRate flags
-// to the flagSet and returns their pointers for usage
-func AddTraceFlags(cmd *flag.FlagSet) (*string, *float64) {
-	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
-	probabilitySampling := cmd.Float64("sampling-probability", 0, "The probabilistic sampling rate for the traces")
-
-	return traceCollector, probabilitySampling
-}
-
 // ConfigureAndParse adds flags that are common to all go processes. This
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.

@@ -14,7 +14,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,8 +29,6 @@ func Main(args []string) {
 	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
 	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
-
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -64,7 +61,6 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.InitializeTracing("linkerd-tap", *traceCollector, *probabilisticSamplingRate)
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
 	// TODO: make this configurable for local development

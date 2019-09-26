@@ -16,7 +16,6 @@ import (
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
-	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -342,6 +341,6 @@ func NewServer(
 
 	return &http.Server{
 		Addr:    addr,
-		Handler: &ochttp.Handler{Handler: instrumentedHandler},
+		Handler: instrumentedHandler,
 	}
 }
