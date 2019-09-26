@@ -85,6 +85,7 @@ type (
 		SAMountPath            *SAMountPath
 		Ports                  *Ports
 		Resources              *Resources
+		Trace                  *Trace
 		UID                    int64
 	}
 
@@ -180,6 +181,12 @@ type (
 	// Helm templates
 	TLS struct {
 		KeyPEM, CrtPEM string
+	}
+
+	// Trace has all the tracing-related Helm variables
+	Trace struct {
+		CollectorSvcAddr    string
+		CollectorSvcAccount string
 	}
 )
 
