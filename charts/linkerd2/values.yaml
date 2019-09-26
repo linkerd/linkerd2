@@ -54,7 +54,7 @@ HeartbeatSchedule: "0 0 * * *"
 PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
-# Trace configuration
+# Trace configuration for the Control Plane components
 Trace:
   TraceCollector: ""
   ProbabilisticSamplingRate: 0
