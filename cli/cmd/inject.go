@@ -145,18 +145,27 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
+	//Add auto-proxy support for namespace configs
+	if conf.IsNamespace() {
+		// Namespace config annotations get appended here
+		conf.AppendNsAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+	}
+
 	if rt.injectProxy {
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	} else {
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
-		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+		// this can also be a namespace resource
+		conf.AppendAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
 
 	if len(rt.overrideAnnotations) > 0 {
-		conf.AppendPodAnnotations(rt.overrideAnnotations)
+		conf.AppendAnnotations(rt.overrideAnnotations)
 	}
 
+	// Need help from this part
 	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	fmt.Println(string(patchJSON))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -165,7 +174,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
+
 	patch, err := jsonpatch.DecodePatch(patchJSON)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,6 +188,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
+	fmt.Println(string(injectedJSON))
 	injectedYAML, err := conf.JSONToYAML(injectedJSON)
 	if err != nil {
 		return nil, nil, err

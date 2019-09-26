@@ -91,16 +91,7 @@ type ResourceConfig struct {
 	ownerRetriever OwnerRetrieverFunc
 	origin         Origin
 
-	workload struct {
-		obj      runtime.Object
-		metaType metav1.TypeMeta
-
-		// Meta is the workload's metadata. It's exported so that metadata of
-		// non-workload resources can be unmarshalled by the YAML parser
-		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-
-		ownerRef *metav1.OwnerReference
-	}
+	workload Workload
 
 	pod struct {
 		meta        *metav1.ObjectMeta
@@ -108,6 +99,18 @@ type ResourceConfig struct {
 		annotations map[string]string
 		spec        *corev1.PodSpec
 	}
+}
+
+// Workload contains the information for a given conf
+type Workload struct {
+	obj      runtime.Object
+	metaType metav1.TypeMeta
+
+	// Meta is the workload's metadata. It's exported so that metadata of
+	// non-workload resources can be unmarshalled by the YAML parser
+	Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	ownerRef *metav1.OwnerReference
 }
 
 type patch struct {
@@ -160,11 +163,25 @@ func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 	return conf.workload.ownerRef
 }
 
-// AppendPodAnnotations appends the given annotations to the pod spec in conf
-func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) {
+// AppendAnnotations appends the given annotations to the pod spec in conf if the workload is not a namespace
+func (conf *ResourceConfig) AppendAnnotations(annotations map[string]string) {
 	for annotation, value := range annotations {
-		conf.pod.annotations[annotation] = value
+		conf.AppendAnnotation(annotation, value)
 	}
+}
+
+// AppendAnnotation appends the given single annotation to the pod spec in conf if the workload is not a namespace
+func (conf *ResourceConfig) AppendAnnotation(k, v string) {
+	if conf.IsNamespace() {
+		conf.AppendNsAnnotation(k, v)
+	} else {
+		conf.AppendPodAnnotation(k, v)
+	}
+}
+
+// AppendNsAnnotation appends the given single annotation to the metadata of workload
+func (conf *ResourceConfig) AppendNsAnnotation(k, v string) {
+	conf.workload.Meta.Annotations[k] = v
 }
 
 // AppendPodAnnotation appends the given single annotation to the pod spec in conf
@@ -204,6 +221,16 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 	if strings.ToLower(conf.workload.metaType.Kind) != k8s.Pod {
 		values.PathPrefix = "/spec/template"
+		// If it is a namespace, patch has to be done to the namespace
+		// As no pod spec is present in namespace, this should work
+		if strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace {
+			values.PathPrefix = ""
+		}
+	}
+
+	// If Namespace, Inject annotations at values.Annotations directly
+	if conf.IsWorkloadNamespace() {
+		conf.injectNsAnnotations(values)
 	}
 
 	if conf.pod.spec != nil {
@@ -260,6 +287,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &appsv1.StatefulSet{}
 	case k8s.Pod:
 		return &corev1.Pod{}
+	case k8s.Namespace:
+		return &corev1.Namespace{}
 	}
 
 	return nil
@@ -309,6 +338,17 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
+	case *corev1.Namespace:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
+			return err
+		}
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		// If annotations not present previously
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
+
 	case *appsv1.Deployment:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
@@ -609,6 +649,14 @@ func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
 	}
 }
 
+func (conf *ResourceConfig) injectNsAnnotations(values *patch) {
+	values.AddRootAnnotations = len(conf.pod.meta.Annotations) == 0
+
+	for _, k := range sortedKeys(conf.workload.Meta.Annotations) {
+		values.Annotations[k] = conf.workload.Meta.Annotations[k]
+	}
+}
+
 func (conf *ResourceConfig) getOverride(annotation string) string {
 	if override := conf.pod.meta.Annotations[annotation]; override != "" {
 		return override
@@ -713,6 +761,11 @@ func (conf *ResourceConfig) identityContext() *config.IdentityContext {
 	}
 
 	return conf.configs.GetGlobal().GetIdentityContext()
+}
+
+//IsWorkloadNamespace checks if a given config is of type namespace
+func (conf *ResourceConfig) IsWorkloadNamespace() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
 
 func (conf *ResourceConfig) tapDisabled() bool {
@@ -868,4 +921,9 @@ func sortedKeys(m map[string]string) []string {
 	sort.Strings(keys)
 
 	return keys
+}
+
+//IsNamespace checks if a given config is of type namespace
+func (conf *ResourceConfig) IsNamespace() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }

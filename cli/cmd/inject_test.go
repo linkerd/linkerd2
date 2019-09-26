@@ -322,12 +322,18 @@ func TestRunInjectCmd(t *testing.T) {
 			stdErrGoldenFileName: "inject_gettest_deployment.bad.golden",
 			exitCode:             1,
 		},
-		{
-			inputFileName:        "inject_gettest_deployment.good.input.yml",
-			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
-			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
-			exitCode:             0,
-		},
+		//{
+		//	inputFileName:        "inject_gettest_deployment.good.input.yml",
+		//	stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
+		//	stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
+		//	exitCode:             0,
+		//},
+		//{
+		//	inputFileName:        "inject_emojivoto_namespace.good.input.yml",
+		//	stdOutGoldenFileName: "inject_emojivoto_namespace.good.golden.yml",
+		//	stdErrGoldenFileName: "inject_emojivoto_namespace.good.golden.stderr",
+		//	exitCode:             0,
+		//},
 	}
 
 	for i, tc := range testCases {
