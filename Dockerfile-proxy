@@ -1,4 +1,4 @@
-ARG RUNTIME_IMAGE=debian:stretch-20190812-slim
+ARG RUNTIME_IMAGE=debian:buster-20190910-slim
 
 FROM debian:stretch-20190812-slim as fetch
 RUN apt-get update && apt-get install -y ca-certificates curl

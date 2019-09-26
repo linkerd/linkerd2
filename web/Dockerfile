@@ -32,7 +32,7 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:stretch-20190812-slim
+FROM debian:buster-20190910-slim
 WORKDIR /linkerd
 
 COPY LICENSE .
