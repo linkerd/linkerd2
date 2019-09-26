@@ -28,6 +28,8 @@ const (
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
 	proxyInitResourceLimitMemory   = "50Mi"
+
+	traceDefaultSvcAccount = "default"
 )
 
 var (
@@ -554,6 +556,10 @@ func (conf *ResourceConfig) trace() *charts.Trace {
 
 	if svcAddr == "" {
 		return nil
+	}
+
+	if svcAccount == "" {
+		svcAccount = traceDefaultSvcAccount
 	}
 
 	hostAndPort := strings.Split(svcAddr, ":")
