@@ -836,6 +836,8 @@ spec:
       - args:
         - identity
         - -log-level=ControllerLogLevel
+        - -trace-collector=TraceCollector
+        - -sampling-probability=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1051,6 +1053,8 @@ spec:
         - -destination-addr=linkerd-destination.Namespace.svc.cluster.local:8086
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -trace-collector=TraceCollector
+        - -sampling-probability=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1261,6 +1265,8 @@ spec:
         - -controller-namespace=Namespace
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
+        - -trace-collector=TraceCollector
+        - -sampling-probability=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1513,6 +1519,8 @@ spec:
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -trace-collector=TraceCollector
+        - -sampling-probability=0
         image: WebImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2749,6 +2757,8 @@ spec:
         - tap
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -trace-collector=TraceCollector
+        - -sampling-probability=0
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

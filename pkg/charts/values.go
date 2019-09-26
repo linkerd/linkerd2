@@ -55,6 +55,7 @@ type (
 		ProxyInjector               *ProxyInjector
 		ProfileValidator            *ProfileValidator
 		Tap                         *Tap
+		Trace                       *Trace
 		Proxy                       *Proxy
 		ProxyInit                   *ProxyInit
 
@@ -86,6 +87,12 @@ type (
 		Ports                  *Ports
 		Resources              *Resources
 		UID                    int64
+	}
+
+	// Trace contains the fields to set the Tracing properties for all control-plane components
+	Trace struct {
+		TraceCollector            string
+		ProbabilisticSamplingRate float64
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

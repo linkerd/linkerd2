@@ -101,6 +101,10 @@ func TestRender(t *testing.T) {
 			},
 			UID: 2102,
 		},
+		Trace: &charts.Trace{
+			TraceCollector:            "TraceCollector",
+			ProbabilisticSamplingRate: 0,
+		},
 		ProxyInit: &charts.ProxyInit{
 			Image: &charts.Image{
 				Name:       "ProxyInitImageName",

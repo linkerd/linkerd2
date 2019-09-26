@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/plugin/ochttp"
 )
 
 const (
@@ -91,7 +92,7 @@ func NewServer(
 		Addr:         addr,
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
-		Handler:      wrappedServer,
+		Handler:      &ochttp.Handler{Handler: wrappedServer},
 	}
 
 	// webapp routes
