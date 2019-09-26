@@ -9,30 +9,31 @@ Linkerd proxy for traced requests. The new `config.linkerd.io/trace-collector`
 and `config.alpha.linkerd.io/trace-collector-service-account` tracing
 annotations allow specifying which pods should emit trace spans.
 
-The goal of dashboard's sidebar redesign was to reduce load on Prometheus and
-simplify navigation by providing top-level views centered around namespaces and
-workloads.
+The goal of the dashboard's sidebar redesign was to reduce load on Prometheus
+and simplify navigation by providing top-level views centered around namespaces
+and workloads.
 
 * CLI
   * Introduced a new `--cluster-domain` flag to the `linkerd install` command
     that allows setting a custom cluster domain (thanks @arminbuerkle!)
+  * Fixed the `linkerd endpoints` command to use the correct Destination API
+    address (thanks @Pothulapati!)
   * Added `--disable-heartbeat` flag for `linkerd` `install|upgrade` commands
 * Controller
   * Instrumented the proxy-injector to provide additional metrics about
     injection (thanks @Pothulapati!)
-  * Added selectors to MWC that allow skipping namespaces; this fixes `--ha`
-    deployments where components are installed in `kube-system` (thanks
-    @hasheddan!)
+  * Added support for `config.linkerd.io/skip-webhook` annotation on namespaces
+    to prevent control plane components from being installed to specific
+    namespaces; this fixes situations in HA deployments where the proxy-injector
+    is installed in `kube-system` (thanks @hasheddan!)
   * Introduced `config.linkerd.io/trace-collector` and
-    `config.alpha.linkerd.io/trace-collector-service-account` to support per-pod
-    tracing
+    `config.alpha.linkerd.io/trace-collector-service-account` pod spec
+    annotations to support per-pod tracing
 * Web UI
-  * Workloads are now viewed by namespace
-  * Individual resources are no longer listed on the sidebar
-  * Navigation between namespaces no longer changes the current page view
+  * Workloads are now viewed by namespace, with an "All Namespaces" option, to
+    improve dashboard performance
 * Proxy
   * Added distributed tracing support
-  * Added http metadata to spans as annotations
 
 ## edge-19.9.3
 
