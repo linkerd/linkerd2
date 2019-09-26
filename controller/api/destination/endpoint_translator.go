@@ -19,7 +19,6 @@ type endpointTranslator struct {
 	controllerNS        string
 	identityTrustDomain string
 	enableH2Upgrade     bool
-	labels              map[string]string
 	stream              pb.Destination_GetServer
 	log                 *logging.Entry
 }
@@ -28,7 +27,7 @@ func newEndpointTranslator(
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
-	service watcher.ServiceID,
+	service string,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -37,16 +36,12 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	labels := map[string]string{
-		"namespace": service.Namespace,
-		"service":   service.Name,
-	}
-	return &endpointTranslator{controllerNS, identityTrustDomain, enableH2Upgrade, labels, stream, log}
+	return &endpointTranslator{controllerNS, identityTrustDomain, enableH2Upgrade, stream, log}
 }
 
 func (et *endpointTranslator) Add(set watcher.PodSet) {
 	addrs := []*pb.WeightedAddr{}
-	for _, address := range set {
+	for _, address := range set.Pods {
 		var (
 			wa  *pb.WeightedAddr
 			err error
@@ -63,7 +58,6 @@ func (et *endpointTranslator) Add(set watcher.PodSet) {
 				Weight: defaultWeight,
 			}
 		}
-
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
 			continue
@@ -74,7 +68,7 @@ func (et *endpointTranslator) Add(set watcher.PodSet) {
 	add := &pb.Update{Update: &pb.Update_Add{
 		Add: &pb.WeightedAddrSet{
 			Addrs:        addrs,
-			MetricLabels: et.labels,
+			MetricLabels: set.Labels,
 		},
 	}}
 
@@ -86,7 +80,7 @@ func (et *endpointTranslator) Add(set watcher.PodSet) {
 
 func (et *endpointTranslator) Remove(set watcher.PodSet) {
 	addrs := []*net.TcpAddress{}
-	for _, address := range set {
+	for _, address := range set.Pods {
 		tcpAddr, err := et.toAddr(address)
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to addr: %s", err)

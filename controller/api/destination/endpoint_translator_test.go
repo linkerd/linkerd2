@@ -100,7 +100,7 @@ func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointT
 		"linkerd",
 		"trust.domain",
 		false,
-		watcher.ServiceID{Name: "service-name", Namespace: "service-ns"},
+		"service-name.service-ns",
 		mockGetServer,
 		logging.WithField("test", t.Name),
 	)
@@ -239,10 +239,13 @@ func TestEndpointTranslator(t *testing.T) {
 }
 
 func mkPodSet(pods ...watcher.Address) watcher.PodSet {
-	set := make(watcher.PodSet)
+	set := watcher.PodSet{
+		Pods:   make(map[watcher.PodID]watcher.Address),
+		Labels: map[string]string{"service": "service-name", "namespace": "service-ns"},
+	}
 	for _, p := range pods {
 		id := watcher.PodID{Name: p.Pod.Name, Namespace: p.Pod.Namespace}
-		set[id] = p
+		set.Pods[id] = p
 	}
 	return set
 }
