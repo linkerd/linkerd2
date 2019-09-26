@@ -13,7 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/sirupsen/logrus"
-	"go.opencensus.io/plugin/ochttp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -69,7 +68,7 @@ func NewAPIServer(
 
 	s := &http.Server{
 		Addr:    addr,
-		Handler: &ochttp.Handler{Handler: wrappedServer},
+		Handler: wrappedServer,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			ClientAuth:   tls.VerifyClientCertIfGiven,
