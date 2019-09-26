@@ -503,3 +503,6 @@ func (p *CRIRuntime) StartProxy(podSandboxID string, pod *v1.Pod, logEntry *logr
 	return nil
 }
 
+func (p *CRIRuntime) ListPodSandboxes() ([]*criapi.PodSandbox, error) {
+	return p.runtimeService.ListPodSandbox(&criapi.PodSandboxFilter{})
+}

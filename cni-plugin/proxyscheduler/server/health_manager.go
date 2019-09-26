@@ -1,11 +1,16 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"net"
+	"net/http"
+	"strings"
 	"time"
+	"github.com/containernetworking/plugins/pkg/ns"
 )
 
 type HealthMonitor struct {
@@ -68,7 +73,6 @@ func (p *HealthMonitor) restartSidecarsIfNeeded() error {
 			if err != nil {
 				logEntry.Errorf("healthmanager: Cannot collect proxy health data for pod %s.", pod.UID)
 				continue //TODO: Really wondering what to do here....
-
 			}
 			if !proxyHealthy {
 				logEntry.Debugf("healthmanager: Proxy for pod %s is not healthy.", pod.UID)
@@ -80,14 +84,59 @@ func (p *HealthMonitor) restartSidecarsIfNeeded() error {
 	return nil
 }
 
+
+func hitProxyEndpoint(path string, port int) (*int, error) {
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		return nil, fmt.Errorf("error while establishing tcp connection to server: %v", err)
+	}
+	defer conn.Close()
+
+	if _, err = conn.Write([]byte(fmt.Sprintf("GET %s HTTP/1.0\n\n", path))); err != nil {
+		return nil, fmt.Errorf("problem sending http request using net.Dial: %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("problem reading response form proxy endpoint: %v", err)
+	}
+	defer resp.Body.Close()
+	return &resp.StatusCode, nil
+}
+
+
+//TODO: Refactor.....
 func IsProxyReady(podName, podNamespace, podIP, netNS string) (bool, error) {
-	//TODO: check if proxy is ready for real
-	return true, nil
+	ready := false
+	netNS = strings.Replace(netNS, "/proc/", "/hostproc/", 1)
+	err := ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
+		status, err := hitProxyEndpoint("/ready", 4191)
+		if err != nil {
+			return err
+		}
+		if *status == http.StatusOK {
+			ready = true
+		}
+		return nil
+	})
+	return ready, err
 }
 
 func IsProxyHealthy(podName, podNamespace, podIP, netNS string) (bool, error) {
-	//TODO: check if proxy is healthy for real
-	return true, nil
+	ready := false
+	netNS = strings.Replace(netNS, "/proc/", "/hostproc/", 1)
+	err := ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
+		status, err := hitProxyEndpoint("/metrics", 4191)
+		if err != nil {
+			return err
+		}
+		if *status == http.StatusOK {
+			ready = true
+		}
+		return nil
+	})
+	return ready, err
 }
 
 func (p *HealthMonitor) StartMonitoringProxyHealth(podNamespace, podName,  cniNs string) error {

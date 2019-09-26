@@ -130,10 +130,12 @@ func (p *server) startProxy(w http.ResponseWriter, r *http.Request, params httpr
 
 
 func (p *server)  registerProxyForHealthMonitoring(startRequest *api.StartProxyRequest, podUUID types.UID, logEntry *logrus.Entry)  {
-	waitFor := ReadinessCheckInitialDelayMs * time.Millisecond
-	logEntry.Debugf("Waiting for %s before checking whether pod %s is ready", waitFor, podUUID)
-	time.Sleep(waitFor) // wait a bit before trying...
-	for start := time.Now(); time.Since(start) < time.Second * 20; {
+	initialDelay := ReadinessCheckInitialDelayMs * time.Millisecond
+	checkInterval:= 2 * time.Second
+
+	logEntry.Debugf("Waiting for %s before checking whether pod %s is ready", initialDelay, podUUID)
+	time.Sleep(initialDelay) // wait a bit before trying...
+	for start := time.Now(); time.Since(start) < time.Second * 120; {
 		ready, err := IsProxyReady(*startRequest.PodName,*startRequest.PodNamespace, *startRequest.PodIP ,*startRequest.CniNs)
 		if err != nil {
 			logEntry.Errorf("Could not perform readiness check: %v", err)
@@ -145,8 +147,8 @@ func (p *server)  registerProxyForHealthMonitoring(startRequest *api.StartProxyR
 			}
 			break
 		}
+	time.Sleep(checkInterval)
 	}
-
 }
 
 func validateReadinessCheckRequest(req *api.ReadinessCheckRequest, w http.ResponseWriter) *apiError {

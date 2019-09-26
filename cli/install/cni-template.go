@@ -292,11 +292,15 @@ spec:
           -  "{{.SchedulerBindPort}}"
           - --linkerd-namespace
           -  "{{.LinkerdNamespace}}"
+        securityContext:
+          privileged: true
         volumeMounts:
           - mountPath: /var/run/dockershim.sock
             name: dockershim-sock
           - mountPath: /var/lib/kubelet/pods
             name: pods
+          - mountPath: /hostproc
+            name: host-proc
       volumes:
       # Used to install CNI.
       {{- if ne .DestCNIBinDir .DestCNINetDir }}
@@ -317,6 +321,9 @@ spec:
       - name: pods
         hostPath:
           path: /var/lib/kubelet/pods
+      - name: host-proc
+        hostPath:
+          path: /proc/
 
 `
 )
