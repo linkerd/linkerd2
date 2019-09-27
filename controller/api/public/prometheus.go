@@ -93,10 +93,6 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 
 	if resource.Type == k8s.All {
 		for _, kind := range k8s.StatAllWorkloadKinds {
-			if isNonK8sResourceQuery(kind) {
-				names = append(names, promResourceType(kind))
-				continue
-			}
 			names = append(names, "dst_"+promResourceType(kind))
 		}
 		return names
