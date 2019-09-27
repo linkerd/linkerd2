@@ -2,6 +2,7 @@ package injector
 
 import (
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -19,6 +20,7 @@ import (
 const (
 	eventTypeSkipped  = "InjectionSkipped"
 	eventTypeInjected = "Injected"
+	eventTypeTracing  = "Tracing"
 )
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
@@ -61,7 +63,9 @@ func Inject(api *k8s.API,
 		Allowed: true,
 	}
 
+	configLabels := configToPrometheusLabels(resourceConfig)
 	var parent *runtime.Object
+	ownerKind := ""
 	if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
 		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name)
 		if err != nil {
@@ -71,13 +75,23 @@ func Inject(api *k8s.API,
 		} else {
 			parent = &objs[0]
 		}
+		ownerKind = strings.ToLower(ownerRef.Kind)
 	}
+	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
 
-	if injectable, reason := report.Injectable(); !injectable {
-		if parent != nil {
-			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", reason)
+	if injectable, reasons := report.Injectable(); !injectable {
+		var readableReasons, metricReasons string
+		metricReasons = strings.Join(reasons, ",")
+		for _, reason := range reasons {
+			readableReasons = readableReasons + ", " + inject.Reasons[reason]
 		}
-		log.Infof("skipped %s: %s", report.ResName(), reason)
+		// removing the initial comma, space
+		readableReasons = readableReasons[2:]
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableReasons)
+		}
+		log.Infof("skipped %s: %s", report.ResName(), readableReasons)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", metricReasons, report.InjectAnnotationAt, configLabels)).Inc()
 		return admissionResponse, nil
 	}
 
@@ -95,10 +109,13 @@ func Inject(api *k8s.API,
 
 	if parent != nil {
 		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+		if report.TracingEnabled {
+			recorder.Event(*parent, v1.EventTypeNormal, eventTypeTracing, "Tracing Enabled")
+		}
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
-
+	proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
 	patchType := admissionv1beta1.PatchTypeJSONPatch
 	admissionResponse.Patch = patchJSON
 	admissionResponse.PatchType = &patchType

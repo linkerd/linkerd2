@@ -11,6 +11,7 @@ metadata:
     linkerd.io/inject: disabled
   labels:
     linkerd.io/is-control-plane: "true"
+    config.linkerd.io/admission-webhooks: disabled
 ---
 ###
 ### Identity Controller Service RBAC
@@ -419,8 +420,10 @@ webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
     matchExpressions:
-    - key: linkerd.io/is-control-plane
-      operator: DoesNotExist
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -501,6 +504,12 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-sp-validator
@@ -1041,6 +1050,7 @@ spec:
       - args:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
+        - -destination-addr=linkerd-destination.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=info
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION

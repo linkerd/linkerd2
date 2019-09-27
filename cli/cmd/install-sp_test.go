@@ -9,17 +9,18 @@ import (
 func TestRenderSP(t *testing.T) {
 	testCases := []struct {
 		controlPlaneNamespace string
+		clusterDomain         string
 		goldenFileName        string
 	}{
-		{controlPlaneNamespace, "install-sp_default.golden"},
-		{"NAMESPACE", "install-sp_output.golden"},
+		{controlPlaneNamespace, "cluster.local", "install-sp_default.golden"},
+		{"NAMESPACE", "CLUSTERDOMAIN", "install-sp_output.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, "testdata/"+tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			err := renderSP(&buf, tc.controlPlaneNamespace)
+			err := renderSP(&buf, tc.controlPlaneNamespace, tc.clusterDomain)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}

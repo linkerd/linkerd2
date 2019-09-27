@@ -81,8 +81,10 @@ webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
     matchExpressions:
-    - key: linkerd.io/is-control-plane
-      operator: DoesNotExist
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-proxy-injector

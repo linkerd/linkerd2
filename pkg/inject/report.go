@@ -9,6 +9,27 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const (
+	hostNetworkEnabled             = "host_network_enabled"
+	sidecarExists                  = "sidecar_already_exists"
+	unsupportedResource            = "unsupported_resource"
+	injectEnableAnnotationAbsent   = "injection_enable_annotation_absent"
+	injectDisableAnnotationPresent = "injection_disable_annotation_present"
+	annotationAtNamespace          = "namespace"
+	annotationAtWorkload           = "workload"
+)
+
+var (
+	// Reasons is a map of inject skip reasons with human readable sentences
+	Reasons = map[string]string{
+		hostNetworkEnabled:             "hostNetwork is enabled",
+		sidecarExists:                  "pod has a sidecar injected already",
+		unsupportedResource:            "this resource kind is unsupported",
+		injectEnableAnnotationAbsent:   fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
+		injectDisableAnnotationPresent: fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+	}
+)
+
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
@@ -20,6 +41,8 @@ type Report struct {
 	UnsupportedResource  bool
 	InjectDisabled       bool
 	InjectDisabledReason string
+	InjectAnnotationAt   string
+	TracingEnabled       bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -51,10 +74,11 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
-		report.InjectDisabled, report.InjectDisabledReason = report.disableByAnnotation(conf)
+		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disableByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
+		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddr] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddr] != ""
 	} else {
 		report.UnsupportedResource = true
 	}
@@ -70,25 +94,25 @@ func (r *Report) ResName() string {
 // Injectable returns false if the report flags indicate that the workload is on a host network
 // or there is already a sidecar or the resource is not supported or inject is explicitly disabled.
 // If false, the second returned value describes the reason.
-func (r *Report) Injectable() (bool, string) {
-	reasons := []string{}
+func (r *Report) Injectable() (bool, []string) {
+	var reasons []string
 	if r.HostNetwork {
-		reasons = append(reasons, "hostNetwork is enabled")
+		reasons = append(reasons, hostNetworkEnabled)
 	}
 	if r.Sidecar {
-		reasons = append(reasons, "pod has a sidecar injected already")
+		reasons = append(reasons, sidecarExists)
 	}
 	if r.UnsupportedResource {
-		reasons = append(reasons, "this resource kind is unsupported")
+		reasons = append(reasons, unsupportedResource)
 	}
 	if r.InjectDisabled {
 		reasons = append(reasons, r.InjectDisabledReason)
 	}
 
 	if len(reasons) > 0 {
-		return false, strings.Join(reasons, ", ")
+		return false, reasons
 	}
-	return true, ""
+	return true, nil
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
@@ -103,7 +127,9 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 	return false
 }
 
-func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
+// disabledByAnnotation checks annotations for both workload, namespace and returns
+// if disabled, Inject Disabled reason and the resource where that annotation was present
+func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string) {
 	// truth table of the effects of the inject annotation:
 	//
 	// origin  | namespace | pod      | inject?  | return
@@ -125,19 +151,19 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string) {
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 
 	if conf.origin == OriginCLI {
-		return podAnnotation == k8s.ProxyInjectDisabled, ""
+		return podAnnotation == k8s.ProxyInjectDisabled, "", ""
 	}
 
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
-			return true, fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled)
+			return true, injectDisableAnnotationPresent, annotationAtWorkload
 		}
-		return false, ""
+		return false, "", annotationAtNamespace
 	}
 
 	if podAnnotation != k8s.ProxyInjectEnabled {
-		return true, fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+		return true, injectEnableAnnotationAbsent, ""
 	}
 
-	return false, ""
+	return false, "", annotationAtWorkload
 }

@@ -67,6 +67,12 @@ metadata:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-sp-validator

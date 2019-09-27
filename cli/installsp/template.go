@@ -4,7 +4,7 @@ package installsp
 const Template = `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-controller-api.{{.Namespace}}.svc.cluster.local
+  name: linkerd-controller-api.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:
   routes:
@@ -44,7 +44,7 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-destination.{{.Namespace}}.svc.cluster.local
+  name: linkerd-destination.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:
   routes:
@@ -60,7 +60,7 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-prometheus.{{.Namespace}}.svc.cluster.local
+  name: linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:
   routes:
@@ -80,7 +80,7 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-grafana.{{.Namespace}}.svc.cluster.local
+  name: linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:
   routes:
@@ -128,7 +128,7 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-tap.{{.Namespace}}.svc.cluster.local
+  name: linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:
   routes:

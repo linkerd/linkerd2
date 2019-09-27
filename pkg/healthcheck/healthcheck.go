@@ -134,6 +134,17 @@ const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
+
+	expectedServiceAccountNames = []string{
+		"linkerd-controller",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-proxy-injector",
+		"linkerd-sp-validator",
+		"linkerd-web",
+		"linkerd-tap",
+	}
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -539,7 +550,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(true)
+						return hc.checkServiceAccounts(expectedServiceAccountNames)
 					},
 				},
 				{
@@ -586,6 +597,17 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(context.Context) (err error) {
 						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
+					},
+				},
+				{
+					description: "heartbeat ServiceAccount exist",
+					hintAnchor:  "l5d-existence-sa",
+					fatal:       true,
+					check: func(context.Context) error {
+						if hc.isHeartbeatDisabled() {
+							return nil
+						}
+						return hc.checkServiceAccounts([]string{"linkerd-heartbeat"})
 					},
 				},
 				{
@@ -1033,20 +1055,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 	}
 }
 
-func expectedServiceAccountNames() []string {
-	return []string{
-		"linkerd-controller",
-		"linkerd-grafana",
-		"linkerd-heartbeat",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-proxy-injector",
-		"linkerd-sp-validator",
-		"linkerd-web",
-		"linkerd-tap",
-	}
-}
-
 func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
@@ -1093,7 +1101,16 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
+func (hc *HealthChecker) isHeartbeatDisabled() bool {
+	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
+		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (hc *HealthChecker) checkServiceAccounts(saNames []string) error {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
 	}
@@ -1108,7 +1125,7 @@ func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(), shouldExist)
+	return checkResources("ServiceAccounts", objects, saNames, true)
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {

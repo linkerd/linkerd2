@@ -36,12 +36,14 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
+		clusterDomain               string
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
+		disableHeartbeat            bool
 		noInitContainer             bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
@@ -159,12 +161,14 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 	}
 
 	return &installOptions{
+		clusterDomain:               defaults.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
 		highAvailability:            defaults.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
+		disableHeartbeat:            defaults.DisableHeartBeat,
 		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
@@ -432,6 +436,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.disableH2Upgrade, "disable-h2-upgrade", options.disableH2Upgrade,
 		"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 	)
+	flags.BoolVar(
+		&options.disableHeartbeat, "disable-heartbeat", options.disableHeartbeat,
+		"Disables the heartbeat cronjob (default false)",
+	)
 	flags.DurationVar(
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
 		"The amount of time for which the Identity issuer should certify identity",
@@ -445,6 +453,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
 
+	flags.StringVarP(&options.clusterDomain, "cluster-domain", "", options.clusterDomain, "Set custom cluster domain")
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
@@ -628,6 +637,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
+	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.UUID = configs.GetInstall().GetUuid()
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 
@@ -746,7 +756,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
-		ClusterDomain:          defaultClusterDomain,
+		ClusterDomain:          options.clusterDomain,
 	}
 }
 

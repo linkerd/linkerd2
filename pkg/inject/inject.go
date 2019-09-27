@@ -2,6 +2,7 @@ package inject
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -27,9 +28,39 @@ const (
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
 	proxyInitResourceLimitMemory   = "50Mi"
+
+	traceDefaultSvcAccount = "default"
 )
 
-var rTrail = regexp.MustCompile(`\},\s*\]`)
+var (
+	rTrail = regexp.MustCompile(`\},\s*\]`)
+
+	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace
+	ProxyAnnotations = []string{
+		k8s.ProxyAdminPortAnnotation,
+		k8s.ProxyControlPortAnnotation,
+		k8s.ProxyDisableIdentityAnnotation,
+		k8s.ProxyDisableTapAnnotation,
+		k8s.ProxyEnableDebugAnnotation,
+		k8s.ProxyEnableExternalProfilesAnnotation,
+		k8s.ProxyImagePullPolicyAnnotation,
+		k8s.ProxyInboundPortAnnotation,
+		k8s.ProxyInitImageAnnotation,
+		k8s.ProxyInitImageVersionAnnotation,
+		k8s.ProxyOutboundPortAnnotation,
+		k8s.ProxyCPULimitAnnotation,
+		k8s.ProxyCPURequestAnnotation,
+		k8s.ProxyImageAnnotation,
+		k8s.ProxyLogLevelAnnotation,
+		k8s.ProxyMemoryLimitAnnotation,
+		k8s.ProxyMemoryRequestAnnotation,
+		k8s.ProxyUIDAnnotation,
+		k8s.ProxyVersionOverrideAnnotation,
+		k8s.ProxyIgnoreInboundPortsAnnotation,
+		k8s.ProxyIgnoreOutboundPortsAnnotation,
+		k8s.ProxyTraceCollectorSvcAddr,
+	}
+)
 
 // Origin defines where the input YAML comes from. Refer the ResourceConfig's
 // 'origin' field
@@ -470,6 +501,11 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Proxy.Trace = trace
+	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -510,6 +546,36 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 		}
 	}
 	return nil
+}
+
+func (conf *ResourceConfig) trace() *charts.Trace {
+	var (
+		svcAddr    = conf.getOverride(k8s.ProxyTraceCollectorSvcAddr)
+		svcAccount = conf.getOverride(k8s.ProxyTraceCollectorSvcAccount)
+	)
+
+	if svcAddr == "" {
+		return nil
+	}
+
+	if svcAccount == "" {
+		svcAccount = traceDefaultSvcAccount
+	}
+
+	hostAndPort := strings.Split(svcAddr, ":")
+	hostname := strings.Split(hostAndPort[0], ".")
+
+	var ns string
+	if len(hostname) == 1 {
+		ns = conf.workload.Meta.Namespace
+	} else {
+		ns = hostname[1]
+	}
+
+	return &charts.Trace{
+		CollectorSvcAddr:    svcAddr,
+		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, ns),
+	}
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -781,6 +847,16 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		ports = append(ports, portStr)
 	}
 	return strings.Join(ports, ",")
+}
+
+// GetOverriddenConfiguration returns a map of the overridden proxy annotations
+func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
+	proxyOverrideConfig := map[string]string{}
+	for _, annotation := range ProxyAnnotations {
+		proxyOverrideConfig[annotation] = conf.getOverride(annotation)
+	}
+
+	return proxyOverrideConfig
 }
 
 func sortedKeys(m map[string]string) []string {
