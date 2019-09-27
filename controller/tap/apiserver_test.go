@@ -2,12 +2,12 @@ package tap
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestNewAPIServer(t *testing.T) {
@@ -16,24 +16,19 @@ func TestNewAPIServer(t *testing.T) {
 		err    error
 	}{
 		{
-			err: errors.New("failed to load [extension-apiserver-authentication] config: configmaps \"extension-apiserver-authentication\" not found"),
+			err: fmt.Errorf("failed to load [%s] config: configmaps %q not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
 			err: nil,
-			k8sRes: []string{`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: extension-apiserver-authentication
-  namespace: kube-system
-data:
-  client-ca-file: 'client-ca-file'
-  requestheader-allowed-names: '["name1", "name2"]'
-  requestheader-client-ca-file: 'requestheader-client-ca-file'
-  requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
-  requestheader-group-headers: '["X-Remote-Group"]'
-  requestheader-username-headers: '["X-Remote-User"]'
-`,
+			k8sRes: []string{
+				k8sutils.ExtensionAPIServerConfigMapResource(map[string]string{
+					"client-ca-file":                     `'client-ca-file'`,
+					"requestheader-allowed-names":        `'["name1", "name2"]'`,
+					"requestheader-extra-headers-prefix": `'["X-Remote-Extra-"]'`,
+					"requestheader-group-headers":        `'["X-Remote-Group"]'`,
+					"requestheader-username-headers":     `'["X-Remote-User"]'`,
+					k8sutils.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey: `'requestheader-client-ca-file'`,
+				}),
 			},
 		},
 	}
@@ -67,23 +62,18 @@ func TestAPIServerAuth(t *testing.T) {
 		err            error
 	}{
 		{
-			err: errors.New("failed to load [extension-apiserver-authentication] config: configmaps \"extension-apiserver-authentication\" not found"),
+			err: fmt.Errorf("failed to load [%s] config: configmaps \"%s\" not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
-			k8sRes: []string{`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: extension-apiserver-authentication
-  namespace: kube-system
-data:
-  client-ca-file: 'client-ca-file'
-  requestheader-allowed-names: '["name1", "name2"]'
-  requestheader-client-ca-file: 'requestheader-client-ca-file'
-  requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
-  requestheader-group-headers: '["X-Remote-Group"]'
-  requestheader-username-headers: '["X-Remote-User"]'
-`,
+			k8sRes: []string{
+				k8sutils.ExtensionAPIServerConfigMapResource(map[string]string{
+					"client-ca-file":                     `'client-ca-file'`,
+					"requestheader-allowed-names":        `'["name1", "name2"]'`,
+					"requestheader-extra-headers-prefix": `'["X-Remote-Extra-"]'`,
+					"requestheader-group-headers":        `'["X-Remote-Group"]'`,
+					"requestheader-username-headers":     `'["X-Remote-User"]'`,
+					k8sutils.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey: `'requestheader-client-ca-file'`,
+				}),
 			},
 			clientCAPem:    "requestheader-client-ca-file",
 			allowedNames:   []string{"name1", "name2"},

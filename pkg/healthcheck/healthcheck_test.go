@@ -392,34 +392,27 @@ status:
 }
 
 func TestCheckExtensionAPIServerAuthentication(t *testing.T) {
-	configMap := func(key, value string) string {
-		return fmt.Sprintf(`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: %s
-  namespace: %s
-data:
-  %s: %s
-`, extensionAPIServerAuthenticationConfigMapName, metav1.NamespaceSystem, key, value)
-	}
 	tests := []struct {
 		k8sConfigs []string
 		err        error
 	}{
 		{
 			[]string{},
-			fmt.Errorf("configmaps %q not found", extensionAPIServerAuthenticationConfigMapName),
+			fmt.Errorf("configmaps %q not found", k8s.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
 			[]string{
-				configMap("foo", "bar"),
+				k8s.ExtensionAPIServerConfigMapResource(map[string]string{
+					"foo": "bar",
+				}),
 			},
-			fmt.Errorf("--%s is not configured", extensionAPIServerAuthenticationRequestHeaderClientCAFileKey),
+			fmt.Errorf("--%s is not configured", k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey),
 		},
 		{
 			[]string{
-				configMap(extensionAPIServerAuthenticationRequestHeaderClientCAFileKey, "bar"),
+				k8s.ExtensionAPIServerConfigMapResource(map[string]string{
+					k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey: "bar",
+				}),
 			},
 			nil,
 		},

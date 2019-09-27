@@ -116,15 +116,6 @@ const (
 	// The value is expected to be "true", "false" or "", where "false" and
 	// "" are equal, making "false" the default
 	linkerdCniResourceLabel = "linkerd.io/cni-resource"
-
-	// extensionAPIServerAuthenticationConfigMapName is the name of the
-	// ConfigMap where authentication data for extension API servers is
-	// placed.
-	extensionAPIServerAuthenticationConfigMapName = "extension-apiserver-authentication"
-	// extensionAPIServerAuthenticationRequestHeaderClientCAFileKey is
-	// the key that contains the value of the "--requestheader-client-ca-file"
-	// flag.
-	extensionAPIServerAuthenticationRequestHeaderClientCAFileKey = "requestheader-client-ca-file"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -1361,12 +1352,12 @@ func (hc *HealthChecker) checkExtensionAPIServerAuthentication() error {
 	if hc.kubeAPI == nil {
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
-	m, err := hc.kubeAPI.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(extensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+	m, err := hc.kubeAPI.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(k8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	if v, exists := m.Data[extensionAPIServerAuthenticationRequestHeaderClientCAFileKey]; !exists || v == "" {
-		return fmt.Errorf("--%s is not configured", extensionAPIServerAuthenticationRequestHeaderClientCAFileKey)
+	if v, exists := m.Data[k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]; !exists || v == "" {
+		return fmt.Errorf("--%s is not configured", k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey)
 	}
 	return nil
 }
