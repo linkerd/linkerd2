@@ -1,5 +1,6 @@
 # Linkerd 2.x adopters
 
+- [AlphaSights](https://www.alphasights.com)
 - [Apester](https://apester.com)
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
