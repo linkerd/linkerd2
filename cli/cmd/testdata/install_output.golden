@@ -832,6 +832,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - identity
@@ -1044,6 +1046,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - public-api
@@ -1439,6 +1443,8 @@ spec:
           annotations:
             CreatedByAnnotation: CliVersion
         spec:
+          nodeSelector:
+            null
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -1507,6 +1513,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-web
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
@@ -1832,6 +1840,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -2108,6 +2118,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
+      nodeSelector:
+        null
       containers:
       - env:
         - name: GF_PATHS_DATA
@@ -2303,6 +2315,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - proxy-injector
@@ -2533,6 +2547,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - sp-validator
@@ -2744,6 +2760,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
+      nodeSelector:
+        null
       containers:
       - args:
         - tap
