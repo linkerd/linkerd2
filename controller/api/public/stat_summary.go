@@ -56,8 +56,6 @@ const (
 	tcpConnectionsQuery  = "sum(tcp_open_connections%s) by (%s)"
 	tcpReadBytesQuery    = "sum(increase(tcp_read_bytes_total%s[%s])) by (%s)"
 	tcpWriteBytesQuery   = "sum(increase(tcp_write_bytes_total%s[%s])) by (%s)"
-
-	debugTxtMismatchLabel = "the computed %s %q doesn't match any keys in the Prometheus metrics (%+v). This mismatch might cause metrics to be missing in the CLI or dashboard output"
 )
 
 type podStats struct {
@@ -632,14 +630,9 @@ func metricToKey(kind string, outboundFrom bool, metric model.Metric) rKey {
 	kindLabel := model.LabelName(k8s.KindToStatsLabel(kind, outboundFrom))
 	namespaceLabel := model.LabelName(k8s.KindToStatsLabel(k8s.Namespace, outboundFrom))
 
-	if _, exists := metric[kindLabel]; !exists {
-		log.Debugf(debugTxtMismatchLabel, "label", kindLabel, metric)
-	}
-
-	if _, exists := metric[namespaceLabel]; !exists {
-		log.Debugf(debugTxtMismatchLabel, "namespace label", namespaceLabel, metric)
-	}
-
+	// for k8s workloads, `metric` looks like `{<workload-kind>="<workload-name>", namespace="<ns>", pod="<pod-name>"}`
+	// if it is a key in `metric`, `<workload-name>` will be used as `rKey.Name`.
+	// otherwise, `rKey.Name` is empty implying that `metric` belongs to the workload kind.
 	key := rKey{
 		Type: kind,
 		Name: string(metric[kindLabel]),
