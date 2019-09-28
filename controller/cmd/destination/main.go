@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -26,6 +27,8 @@ func Main(args []string) {
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+
+	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -65,6 +68,8 @@ func Main(args []string) {
 		clusterDomain = "cluster.local"
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
+
+	util.InitializeTracing("linkerd-destination", *traceCollector, *probabilisticSamplingRate)
 
 	server := destination.NewServer(
 		*addr,
