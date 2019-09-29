@@ -9,6 +9,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	public "github.com/linkerd/linkerd2/controller/gen/public"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -135,6 +137,17 @@ func (x *tapTapByResourceClient) Recv() (*public.TapEvent, error) {
 type TapServer interface {
 	Tap(*public.TapRequest, Tap_TapServer) error
 	TapByResource(*public.TapByResourceRequest, Tap_TapByResourceServer) error
+}
+
+// UnimplementedTapServer can be embedded to have forward compatible implementations.
+type UnimplementedTapServer struct {
+}
+
+func (*UnimplementedTapServer) Tap(req *public.TapRequest, srv Tap_TapServer) error {
+	return status.Errorf(codes.Unimplemented, "method Tap not implemented")
+}
+func (*UnimplementedTapServer) TapByResource(req *public.TapByResourceRequest, srv Tap_TapByResourceServer) error {
+	return status.Errorf(codes.Unimplemented, "method TapByResource not implemented")
 }
 
 func RegisterTapServer(s *grpc.Server, srv TapServer) {

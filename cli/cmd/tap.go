@@ -45,18 +45,38 @@ type streamID struct {
 	Stream uint64 `json:"stream"`
 }
 
+type metadata interface {
+	isMetadata()
+}
+
+type metadataStr struct {
+	Name     string `json:"name"`
+	ValueStr string `json:"valueStr"`
+}
+
+func (*metadataStr) isMetadata() {}
+
+type metadataBin struct {
+	Name     string `json:"name"`
+	ValueBin []byte `json:"valueBin"`
+}
+
+func (*metadataBin) isMetadata() {}
+
 type requestInitEvent struct {
-	ID        *streamID `json:"id"`
-	Method    string    `json:"method"`
-	Scheme    string    `json:"scheme"`
-	Authority string    `json:"authority"`
-	Path      string    `json:"path"`
+	ID        *streamID  `json:"id"`
+	Method    string     `json:"method"`
+	Scheme    string     `json:"scheme"`
+	Authority string     `json:"authority"`
+	Path      string     `json:"path"`
+	Headers   []metadata `json:"headers"`
 }
 
 type responseInitEvent struct {
 	ID               *streamID          `json:"id"`
 	SinceRequestInit *duration.Duration `json:"sinceRequestInit"`
 	HTTPStatus       uint32             `json:"httpStatus"`
+	Headers          []metadata         `json:"headers"`
 }
 
 type responseEndEvent struct {
@@ -64,6 +84,7 @@ type responseEndEvent struct {
 	SinceRequestInit  *duration.Duration `json:"sinceRequestInit"`
 	SinceResponseInit *duration.Duration `json:"sinceResponseInit"`
 	ResponseBytes     uint64             `json:"responseBytes"`
+	Trailers          []metadata         `json:"trailers"`
 	GrpcStatusCode    uint32             `json:"grpcStatusCode"`
 	ResetErrorCode    uint32             `json:"resetErrorCode,omitempty"`
 }
@@ -152,6 +173,7 @@ func newCmdTap() *cobra.Command {
 				Method:      options.method,
 				Authority:   options.authority,
 				Path:        options.path,
+				Extract:     options.output == jsonOutput,
 			}
 
 			err := options.validate()
@@ -399,6 +421,7 @@ func getRequestInitEvent(pubEv *pb.TapEvent_Http) *requestInitEvent {
 		Scheme:    formatScheme(reqI.GetScheme()),
 		Authority: reqI.GetAuthority(),
 		Path:      reqI.GetPath(),
+		Headers:   formatHeadersTrailers(reqI.GetHeaders()),
 	}
 }
 
@@ -436,6 +459,7 @@ func getResponseInitEvent(pubEv *pb.TapEvent_Http) *responseInitEvent {
 		ID:               sid,
 		SinceRequestInit: resI.GetSinceRequestInit(),
 		HTTPStatus:       resI.GetHttpStatus(),
+		Headers:          formatHeadersTrailers(resI.GetHeaders()),
 	}
 }
 
@@ -454,9 +478,27 @@ func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
 		SinceRequestInit:  resE.GetSinceRequestInit(),
 		SinceResponseInit: resE.GetSinceResponseInit(),
 		ResponseBytes:     resE.GetResponseBytes(),
+		Trailers:          formatHeadersTrailers(resE.GetTrailers()),
 		GrpcStatusCode:    resE.GetEos().GetGrpcStatusCode(),
 		ResetErrorCode:    resE.GetEos().GetResetErrorCode(),
 	}
+}
+
+func formatHeadersTrailers(hs *pb.Headers) []metadata {
+	var fm []metadata
+	for _, h := range hs.GetHeaders() {
+		switch h.GetValue().(type) {
+		case *pb.Headers_Header_ValueStr:
+			fht := &metadataStr{Name: h.GetName(), ValueStr: h.GetValueStr()}
+			fm = append(fm, fht)
+			continue
+		case *pb.Headers_Header_ValueBin:
+			fht := &metadataBin{Name: h.GetName(), ValueBin: h.GetValueBin()}
+			fm = append(fm, fht)
+			continue
+		}
+	}
+	return fm
 }
 
 // src returns the source peer of a `TapEvent`.

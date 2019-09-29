@@ -22,7 +22,17 @@
     "method": "GET",
     "scheme": "HTTPS",
     "authority": "localhost",
-    "path": "/some/path"
+    "path": "/some/path",
+    "headers": [
+      {
+        "name": "header-name-1",
+        "valueStr": "header-value-str-1"
+      },
+      {
+        "name": "header-name-2",
+        "valueBin": "aGVhZGVyLXZhbHVlLWJpbi0y"
+      }
+    ]
   }
 }
 {
@@ -50,6 +60,12 @@
       "seconds": 100
     },
     "responseBytes": 1337,
+    "trailers": [
+      {
+        "name": "trailer-name",
+        "valueBin": "aGVhZGVyLXZhbHVlLWJpbg=="
+      }
+    ],
     "grpcStatusCode": 666
   }
 }
