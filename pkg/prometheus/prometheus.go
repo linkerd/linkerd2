@@ -3,11 +3,11 @@ package prometheus
 import (
 	"net/http"
 
-	"go.opencensus.io/plugin/ocgrpc"
-
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
 )
 
@@ -102,11 +102,13 @@ func NewGrpcServer() *grpc.Server {
 	return server
 }
 
-// WithTelemetry instruments the HTTP server with prometheus
-func WithTelemetry(handler http.Handler) http.HandlerFunc {
-	return promhttp.InstrumentHandlerDuration(serverLatency,
-		promhttp.InstrumentHandlerResponseSize(serverResponseSize,
-			promhttp.InstrumentHandlerCounter(serverCounter, handler)))
+// WithTelemetry instruments the HTTP server with prometheus, and Trace handlers
+func WithTelemetry(handler http.Handler) http.Handler {
+	return &ochttp.Handler{
+		Handler: promhttp.InstrumentHandlerDuration(serverLatency,
+			promhttp.InstrumentHandlerResponseSize(serverResponseSize,
+				promhttp.InstrumentHandlerCounter(serverCounter, handler))),
+	}
 }
 
 // ClientWithTelemetry instruments the HTTP client with prometheus

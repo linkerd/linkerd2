@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.opencensus.io/plugin/ochttp"
-
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -93,7 +91,7 @@ func NewServer(
 		Addr:         addr,
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
-		Handler:      &ochttp.Handler{Handler: wrappedServer},
+		Handler:      wrappedServer,
 	}
 
 	// webapp routes
