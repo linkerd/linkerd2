@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,6 +32,8 @@ func main() {
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+
+	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
@@ -63,6 +66,8 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	util.InitializeTracing("linkerd-web", *traceCollector, *probabilisticSamplingRate)
 
 	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)
 
