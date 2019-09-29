@@ -384,6 +384,9 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		}
 
 		headers := func(orig *httpPb.Headers) *public.Headers {
+			if orig == nil {
+				return nil
+			}
 			var headers []*public.Headers_Header
 			for _, header := range orig.GetHeaders() {
 				n := header.GetName()

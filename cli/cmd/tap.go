@@ -487,13 +487,12 @@ func getResponseEndEvent(pubEv *pb.TapEvent_Http) *responseEndEvent {
 func formatHeadersTrailers(hs *pb.Headers) []metadata {
 	var fm []metadata
 	for _, h := range hs.GetHeaders() {
-		if _, ok := h.GetValue().(*pb.Headers_Header_ValueStr); ok {
+		switch h.GetValue().(type) {
+		case *pb.Headers_Header_ValueStr:
 			fht := &metadataStr{Name: h.GetName(), ValueStr: h.GetValueStr()}
 			fm = append(fm, fht)
 			continue
-		}
-
-		if _, ok := h.GetValue().(*pb.Headers_Header_ValueBin); ok {
+		case *pb.Headers_Header_ValueBin:
 			fht := &metadataBin{Name: h.GetName(), ValueBin: h.GetValueBin()}
 			fm = append(fm, fht)
 			continue
