@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/plugin/ochttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -200,7 +201,7 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 		return nil, err
 	}
 
-	return newClient(apiURL, http.DefaultClient, controlPlaneNamespace)
+	return newClient(apiURL, &http.Client{Transport: &ochttp.Transport{}}, controlPlaneNamespace)
 }
 
 // NewExternalClient creates a new Public API client intended to run from
