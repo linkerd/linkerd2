@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -9,7 +8,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	logging "github.com/sirupsen/logrus"
@@ -79,8 +77,6 @@ func NewServer(
 	s := prometheus.NewGrpcServer()
 	// linkerd2-proxy-api/destination.Destination (proxy-facing)
 	pb.RegisterDestinationServer(s, &srv)
-	// controller/discovery.Discovery (controller-facing)
-	discoveryPb.RegisterDiscoveryServer(s, &srv)
 	return s
 }
 
@@ -227,11 +223,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 
 	return nil
-}
-
-func (s *server) Endpoints(ctx context.Context, params *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
-	s.log.Debugf("serving endpoints request")
-	return nil, status.Error(codes.Unimplemented, "Not implemented")
 }
 
 ////////////

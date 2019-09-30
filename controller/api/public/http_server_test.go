@@ -11,7 +11,6 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
@@ -103,11 +102,6 @@ func (m *mockGrpcServer) GetProfile(_ *destinationPb.GetDestination, _ destinati
 	return errors.New("Not implemented")
 }
 
-func (m *mockGrpcServer) Endpoints(ctx context.Context, req *discoveryPb.EndpointsParams) (*discoveryPb.EndpointsResponse, error) {
-	m.LastRequestReceived = req
-	return m.ResponseToReturn.(*discoveryPb.EndpointsResponse), m.ErrorToReturn
-}
-
 type grpcCallTestCase struct {
 	expectedRequest  proto.Message
 	expectedResponse proto.Message
@@ -145,17 +139,7 @@ func TestServer(t *testing.T) {
 			functionCall: func() (proto.Message, error) { return client.Version(context.TODO(), versionReq) },
 		}
 
-		endpointsReq := &discoveryPb.EndpointsParams{}
-		testEndpoints := grpcCallTestCase{
-			expectedRequest:  endpointsReq,
-			expectedResponse: &discoveryPb.EndpointsResponse{},
-			functionCall:     func() (proto.Message, error) { return client.Endpoints(context.TODO(), endpointsReq) },
-		}
-
 		for _, testCase := range []grpcCallTestCase{testListPods, testStatSummary, testVersion} {
-			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
-		}
-		for _, testCase := range []grpcCallTestCase{testEndpoints} {
 			assertCallWasForwarded(t, &mockGrpcServer.mockServer, testCase.expectedRequest, testCase.expectedResponse, testCase.functionCall)
 		}
 	})

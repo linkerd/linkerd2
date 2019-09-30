@@ -1390,7 +1390,6 @@ status:
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{Res: exp.mockPromResponse},
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -1415,7 +1414,6 @@ status:
 		}
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{Res: model.Vector{}},
-			nil,
 			nil,
 			k8sAPI,
 			"linkerd",
