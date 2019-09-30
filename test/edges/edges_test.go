@@ -21,13 +21,13 @@ func TestEdges(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	cmd := []string{
 		"edges",
-		"-n " + ns,
+		"-n", ns,
 		"deploy",
 		"-ojson",
 	}
-	out, _, err := TestHelper.LinkerdRun(cmd...)
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Fatalf("Unexpected error: %v\nError output: %s", err, stderr)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))

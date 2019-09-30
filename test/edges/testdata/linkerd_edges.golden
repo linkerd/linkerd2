@@ -1,20 +1,11 @@
-[
-  {
+\[
+  \{
     "src": "linkerd\-controller",
     "src_namespace": "{{.Ns}}",
     "dst": "linkerd\-prometheus",
-    "dst_namespace": "l5d\-integration-upgrade",
+    "dst_namespace": "l5d\-integration",
     "client_id": "linkerd\-controller.{{.Ns}}",
     "server_id": "linkerd\-prometheus.{{.Ns}}",
     "no_tls_reason": ""
-  },
-  {
-    "src": "linkerd\-web",
-    "src_namespace": "{{.Ns}}",
-    "dst": "linkerd\-controller",
-    "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd\-web.{{.Ns}}",
-    "server_id": "linkerd\-controller.{{.Ns}}",
-    "no_tls_reason": ""
-  }
-]
+  \}
+\]
