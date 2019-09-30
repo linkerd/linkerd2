@@ -17,6 +17,9 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestEdges requires that there has been traffic recently between linkerd-web
+// and linkerd-controller for edges to have been registered, which is the
+// case when running this test in the context of the other integration tests.
 func TestEdges(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	cmd := []string{
