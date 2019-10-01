@@ -12,6 +12,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Data Plane (Rust)](#data-plane-rust)
 - [Components](#components)
 - [Development configurations](#development-configurations)
+  - [Tilt](#tilt)
   - [Comprehensive](#comprehensive)
   - [Go](#go)
   - [Web](#web)
@@ -99,9 +100,73 @@ linkerd2_components
 Depending on use case, there are several configurations with which to develop
 and run Linkerd2:
 
+- [Tilt](#tilt): Use [Tilt](https://docs.tilt.dev/welcome_to_tilt.html) to
+  synchronize local changes to your development cluster. Suitable for most
+  contributors.
 - [Comprehensive](#comprehensive): Integrated configuration using Minikube, most
   closely matches release.
 - [Web](#web): Development of the Linkerd2 Dashboard.
+
+### Tilt
+
+[Tilt](https://docs.tilt.dev/welcome_to_tilt.html) automatically builds and
+deploys changes to the Linkerd2 components to your development cluster.
+
+To get started, following the instructions [here](https://docs.tilt.dev/install.html)
+to install Tilt.
+
+The `tilt_options.json` provides some options that you may want to alter to
+suit your workflow:
+
+- `allow_k8s_context`: (for remote cluster) Change this to the name of the k8s context
+- `default_registry`: (for remote cluster) Change this to the full name of your remote registry
+- `linkerd-install-opts`: Use this to specify additional installation options
+- `proxy-version`: Change this to the latest edge release
+
+When ready, run:
+```bash
+tilt up
+```
+
+Tilt will build the CLI and all the Linkerd components Docker images,
+sets up watches on your files, and launches the Tilt dashboard.
+
+Depending on which files you edit, Tilt will selectively build only the
+relevant components. The following table summarizes Tilt's watch behavior,
+where changes to any of the specified folders will trigger a rebuild
+of the associated component:
+
+Component      | Folders and files   |
+-------------- | ------------------- | ------
+CLI            | `cli`               |
+controller     | `controller`, `pkg` |
+destination    | `controller`, `pkg` |
+heartbeat      | `controller`, `pkg` |
+identity       | `controller`, `pkg` |
+proxy-injector | `controller`, `pkg` |
+sp-validator   | `controller`, `pkg` |
+tap            | `controller`, `pkg` |
+grafana        | `grafana`           |
+web            | `web`               |
+Helm templates | `charts`            | Calls the `bin/helm-build` script to lint the templates and dependencies
+protobuf       | `proto`             | Calls the `bin/protoc-go.sh` to build and generate the Go source code
+
+Tilt also perform live updates on the following containers, without rebuilding
+the Docker images:
+
+- `grafana` - Changes to any JSON files in the `grafana/dashboard` folder will
+  be automatically copied into the `grafana` container
+- `web` - Coming soon
+
+To remove the Linkerd2 components from your development cluster, run:
+
+```bash
+tilt down
+```
+
+Feel free to raise any questions you have on using Tilt in the
+[#contributor](https://linkerd.slack.com/messages/CMS5ZD60Y)
+Slack channel.
 
 ### Comprehensive
 
