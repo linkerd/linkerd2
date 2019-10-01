@@ -630,8 +630,8 @@ func metricToKey(kind string, outboundFrom bool, metric model.Metric) rKey {
 	kindLabel := model.LabelName(k8s.KindToStatsLabel(kind, outboundFrom))
 	namespaceLabel := model.LabelName(k8s.KindToStatsLabel(k8s.Namespace, outboundFrom))
 
-	// for k8s workloads, `metric` looks like `{<workload-kind>="<workload-name>", namespace="<ns>", pod="<pod-name>"}`
-	// if it is a key in `metric`, `<workload-name>` will be used as `rKey.Name`.
+	// for k8s workloads, `metric` looks like `{<workload-kind>="<workload-name>", namespace="<ns>", pod="<pod-name>"}`.
+	// if `<workload-name>` is a key in `metric`, it will be used as `rKey.Name`.
 	// otherwise, `rKey.Name` is empty implying that `metric` belongs to the workload kind.
 	key := rKey{
 		Type: kind,
