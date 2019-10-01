@@ -56,6 +56,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Namespace}}.svc.{{.ClusterDomain}}:8085

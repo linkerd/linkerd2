@@ -1,3 +1,14 @@
+## edge-19.9.5
+
+This edge release is a release candidate for `stable-2.6`.
+
+* Helm
+  * Added node selector constraints, so users can control which nodes the
+    control plane is deployed to (thanks @bmcstdio!)
+* CLI
+  * Added request and response headers to the JSON output option for `linkerd
+    tap`
+
 ## edge-19.9.4
 
 This edge release introduces experimental support for distributed tracing as

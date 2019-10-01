@@ -7,7 +7,7 @@ EnableH2Upgrade: true
 ImagePullPolicy: &image_pull_policy IfNotPresent
 
 # control plane version. See Proxy section for proxy version
-LinkerdVersion: &linkerd_version edge-19.9.4
+LinkerdVersion: &linkerd_version edge-19.9.5
 
 Namespace: linkerd
 OmitWebhookSideEffects: false
@@ -135,3 +135,8 @@ LinkerdNamespaceLabel: linkerd.io/is-control-plane
 # - The external tool needs to create the namespace with the label:
 #     config.linkerd.io/admission-webhooks: disabled
 InstallNamespace: true
+
+# Node selection constraints for control-plane components
+# https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
+NodeSelector:
+  beta.kubernetes.io/os: linux

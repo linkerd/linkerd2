@@ -27,6 +27,7 @@ spec:
           annotations:
             {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
         spec:
+          {{- include "linkerd.node-selector" . | nindent 10 }}
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:

@@ -122,6 +122,24 @@ message TapByResourceRequest {
       }
     }
   }
+
+  // Conditionally extracts components from requests and responses to include
+  // in tap events
+  Extract extract = 4;
+
+  message Extract {
+    oneof extract {
+      Http http = 1;
+    }
+
+    message Http {
+      oneof extract {
+        Headers headers = 1;
+      }
+
+      message Headers {}
+    }
+  }
 }
 
 message HttpMethod {
@@ -153,6 +171,22 @@ message Scheme {
     Registered registered = 1;
     string unregistered = 2;
   }
+}
+
+message Headers {
+  message Header {
+    // The name of a header in a request.
+    string name = 1;
+    // The value of a header in a request. If the value consists entirely of
+    // UTF-8 encodings, `value` will be set; otherwise a binary value is
+    // assumed and `value_bin` will be set.
+    oneof value {
+      string value_str = 2;
+      bytes value_bin = 3;
+    }
+  }
+
+  repeated Header headers = 1;
 }
 
 message IPAddress {
@@ -229,7 +263,7 @@ message TapEvent {
       Scheme scheme = 3;
       string authority = 4;
       string path = 5;
-      // TODO headers
+      Headers headers = 6;
     }
 
     message ResponseInit {
@@ -238,6 +272,7 @@ message TapEvent {
       google.protobuf.Duration since_request_init = 2;
 
       uint32 http_status = 3;
+      Headers headers = 4;
     }
 
     message ResponseEnd {
@@ -248,6 +283,7 @@ message TapEvent {
       uint64 response_bytes = 4;
 
       Eos eos = 5;
+      Headers trailers = 6;
     }
   }
 }
