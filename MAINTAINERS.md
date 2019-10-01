@@ -4,6 +4,7 @@ The Linkerd2 maintainers are:
 * Kevin Lingerfelt <kl@buoyant.io> @klingerf (super-maintainer)
 * Risha Mars <mars@buoyant.io> @rmars
 * Andrew Seigner <siggy@buoyant.io> @siggy
+* Alex Leong <alex@buoyant.io> @adleong
 
 <!--
 # Adding a new maintainer
