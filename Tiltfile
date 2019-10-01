@@ -1,8 +1,8 @@
 # -*- mode: Python -*-
 
-trigger_mode(TRIGGER_MODE_MANUAL)
-load("./bin/_tilt", "components", "images", "linkerd_yaml", "settings")
+load("./bin/_tilt", "components", "images", "linkerd_yaml", "settings", "trigger_mode_settings")
 
+trigger_mode(trigger_mode_settings())
 #default_registry(settings.get("default_registry"))
 allow_k8s_contexts(settings.get("allow_k8s_contexts"))
 enable_feature("snapshots")

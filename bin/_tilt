@@ -18,6 +18,12 @@ def linkerd_yaml():
   else:
     return local("%s upgrade --proxy-version=%s" % (linkerd,proxy_version))
 
+def trigger_mode_settings():
+  if settings.get("trigger_mode") == "TRIGGER_MODE_MANUAL":
+    return TRIGGER_MODE_MANUAL
+  else:
+    return TRIGGER_MODE_AUTO
+
 controller = {
   "name": "linkerd-controller",
   "short_name": "controller",
