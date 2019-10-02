@@ -612,19 +612,21 @@ func (s *GRPCTapServer) podForIP(ip *public.IPAddress) (*corev1.Pod, error) {
 		return objs[0].(*corev1.Pod), nil
 	}
 
+	var singleRunningPod *corev1.Pod
 	for _, obj := range objs {
 		pod := obj.(*corev1.Pod)
 		if pod.Status.Phase == corev1.PodRunning {
-			// Found a running pod with this IP --- it's that!
-			log.Debugf("found running pod at IP %s", ipStr)
-			return pod, nil
+			if singleRunningPod != nil {
+				log.Warnf(
+					"could not uniquely identify pod at %s (found %d pods)",
+					ipStr,
+					len(objs),
+				)
+				return nil, nil
+			}
+			singleRunningPod = pod
 		}
 	}
 
-	log.Warnf(
-		"could not uniquely identify pod at %s (found %d pods)",
-		ipStr,
-		len(objs),
-	)
-	return nil, nil
+	return singleRunningPod, nil
 }
