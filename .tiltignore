@@ -5,3 +5,4 @@
 **/*.swx
 **/*.go~
 **/*4913 # vim stuff
+charts/*/*charts
