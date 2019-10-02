@@ -186,7 +186,7 @@ func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateList
 	ss.Lock()
 	defer ss.Unlock()
 
-	if ss.id != ServiceID{} {
+	if (ss.id != ServiceID{}) {
 		ss.endpoints.Subscribe(ss.id, port, "", listener)
 	}
 	ss.listeners[listener] = port
@@ -196,7 +196,7 @@ func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateLi
 	ss.Lock()
 	defer ss.Unlock()
 
-	if ss.id != ServiceID{} {
+	if (ss.id != ServiceID{}) {
 		ss.endpoints.Unsubscribe(ss.id, port, "", listener)
 	}
 	delete(ss.listeners, listener)
