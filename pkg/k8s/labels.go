@@ -258,6 +258,8 @@ const (
 	 * Mount path
 	 */
 
+	// DefaultMouthPathBase is the default filesystem path where config files
+	// will be read from.
 	DefaultMouthPathBase = "/var/run/linkerd"
 )
 
@@ -281,7 +283,7 @@ func EndEntity(mountPathBase string) string { return mountPathBase + "/identity/
 // TLSKeyPEM is the path at which the TLS key PEM file is mounted.
 func TLSKeyPEM(mountPathBase string) string { return mountPathBase + "/tls/key.pem" }
 
-// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
+// TLSCrtPEM is the path at which the TLS cert PEM file is mounted.
 func TLSCrtPEM(mountPathBase string) string { return mountPathBase + "/tls/crt.pem" }
 
 // CreatedByAnnotationValue returns the value associated with
