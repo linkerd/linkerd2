@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -eu
+
+mkdir -p config
+for cfg in global install proxy ; do
+    kubectl -n linkerd get cm/linkerd-config -ojsonpath="{.data.$cfg}" > config/$cfg
+done
