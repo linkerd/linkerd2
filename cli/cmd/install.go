@@ -50,6 +50,7 @@ type (
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
+		controlPlaneTrace           bool
 		identityOptions             *installIdentityOptions
 		*proxyConfigOptions
 
@@ -118,6 +119,7 @@ var (
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
+		"templates/tracing-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -138,6 +140,7 @@ var (
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
+		"templates/tracing.yaml",
 	}
 )
 
@@ -176,6 +179,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
+		controlPlaneTrace:           defaults.ControlPlaneTrace.Enabled,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -465,6 +469,11 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
+	flags.BoolVar(
+		&options.controlPlaneTrace, "control-plane-tracing", options.controlPlaneTrace,
+		"Enables Control Plane Tracing with the defaults",
+	)
+
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
@@ -703,6 +712,15 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.ProxyInit.Image.Version = options.initImageVersion
 	installValues.ProxyInit.IgnoreInboundPorts = strings.Join(inboundPortStrs, ",")
 	installValues.ProxyInit.IgnoreOutboundPorts = strings.Join(outboundPortStrs, ",")
+
+	if options.controlPlaneTrace {
+		installValues.ControlPlaneTrace.Enabled = options.controlPlaneTrace
+		installValues.Proxy.Trace = &charts.Trace{
+			CollectorSvcAddr:    installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAddr,
+			CollectorSvcAccount: installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAccount,
+		}
+
+	}
 
 	return installValues, nil
 }

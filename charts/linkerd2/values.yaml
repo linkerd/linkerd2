@@ -56,6 +56,15 @@ HeartbeatSchedule: "0 0 * * *"
 PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
+# Control Plane Trace Configuration
+ControlPlaneTrace:
+  Enabled: false
+  SamplingProbability: 1
+  ProxyTrace:
+    CollectorSvcAddr: linkerd-collector.linkerd:55678 # leave blank to disable tracing
+    CollectorSvcAccount: linkerd-collector.linkerd
+
+
 # proxy configuration
 Proxy:
   EnableExternalProfiles: false

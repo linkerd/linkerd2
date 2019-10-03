@@ -50,6 +50,7 @@ type (
 		DisableHeartBeat            bool
 		HeartbeatSchedule           string
 		InstallNamespace            bool
+		ControlPlaneTrace           *ControlPlaneTrace
 		Configs                     ConfigJSONs
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector
@@ -73,6 +74,12 @@ type (
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
 	ConfigJSONs struct{ Global, Proxy, Install string }
+
+	ControlPlaneTrace struct {
+		Enabled             bool
+		SamplingProbability float64
+		ProxyTrace          *Trace
+	}
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
