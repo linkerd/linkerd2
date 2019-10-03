@@ -1,3 +1,14 @@
+## edge-19.10.1
+
+This edge release is a release candidate for `stable-2.6`.
+
+* Proxy
+  * Improved error logging when the proxy fails to emit trace spans
+  * Fixed bug in distributed tracing where trace ids with fewer than 16 bytes
+    were discarded
+* Internal
+  * Added integration tests for `linkerd edges` and `linkerd endpoints`
+
 ## edge-19.9.5
 
 This edge release is a release candidate for `stable-2.6`.
