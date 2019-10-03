@@ -26,9 +26,10 @@ func Main(args []string) {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := cmd.Uint("tap-port", 4190, "proxy tap port to connect to")
-	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
-	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
+	tlsCertPath := cmd.String("tls-cert", pkgK8s.TLSCrtPEM(pkgK8s.DefaultMouthPathBase), "path to TLS Cert PEM")
+	tlsKeyPath := cmd.String("tls-key", pkgK8s.TLSKeyPEM(pkgK8s.DefaultMouthPathBase), "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
+	configMountPath := cmd.String("config-mount-path", pkgK8s.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -51,7 +52,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.GlobalConfig(*configMountPath))
 	if err != nil {
 		log.Fatal(err)
 	}

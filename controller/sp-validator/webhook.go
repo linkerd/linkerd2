@@ -11,7 +11,7 @@ import (
 // AdmitSP verifies that the received Admission Request contains a valid
 // Service Profile definition
 func AdmitSP(
-	_ *k8s.API, request *admissionv1beta1.AdmissionRequest, _ record.EventRecorder,
+	_ *k8s.API, request *admissionv1beta1.AdmissionRequest, _ record.EventRecorder, _ string,
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	admissionResponse := &admissionv1beta1.AdmissionResponse{Allowed: true}
 	if err := profiles.Validate(request.Object.Raw); err != nil {

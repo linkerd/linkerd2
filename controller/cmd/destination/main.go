@@ -26,6 +26,7 @@ func Main(args []string) {
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	configMountPath := cmd.String("config-mount-path", consts.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -47,7 +48,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	global, err := config.Global(consts.MountPathGlobalConfig)
+	global, err := config.Global(consts.GlobalConfig(*configMountPath))
 	if err != nil {
 		log.Fatalf("Failed to load global config: %s", err)
 	}

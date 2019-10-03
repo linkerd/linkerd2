@@ -31,6 +31,7 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+	configMountPath := cmd.String("config-mount-path", pkgK8s.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -62,7 +63,7 @@ func Main(args []string) {
 		log.Fatal(err.Error())
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.GlobalConfig(*configMountPath))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,6 +82,7 @@ func Main(args []string) {
 		*controllerNamespace,
 		clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
+		*configMountPath,
 	)
 
 	k8sAPI.Sync() // blocks until caches are synced

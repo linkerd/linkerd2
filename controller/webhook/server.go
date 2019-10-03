@@ -19,18 +19,19 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type handlerFunc func(*k8s.API, *admissionv1beta1.AdmissionRequest, record.EventRecorder) (*admissionv1beta1.AdmissionResponse, error)
+type handlerFunc func(*k8s.API, *admissionv1beta1.AdmissionRequest, record.EventRecorder, string) (*admissionv1beta1.AdmissionResponse, error)
 
 // Server describes the https server implementing the webhook
 type Server struct {
 	*http.Server
-	api      *k8s.API
-	handler  handlerFunc
-	recorder record.EventRecorder
+	api             *k8s.API
+	handler         handlerFunc
+	recorder        record.EventRecorder
+	configMountPath string
 }
 
 // NewServer returns a new instance of Server
-func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc, component string) (*Server, error) {
+func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc, component string, configMountPath string) (*Server, error) {
 	var (
 		certPEM = cred.EncodePEM()
 		keyPEM  = cred.EncodePrivateKeyPEM()
@@ -56,7 +57,7 @@ func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
-	s := &Server{server, api, handler, recorder}
+	s := &Server{server, api, handler, recorder, configMountPath}
 	s.Handler = http.HandlerFunc(s.serve)
 	return s, nil
 }
@@ -119,7 +120,7 @@ func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 	log.Infof("received admission review request %s", admissionReview.Request.UID)
 	log.Debugf("admission request: %+v", admissionReview.Request)
 
-	admissionResponse, err := s.handler(s.api, admissionReview.Request, s.recorder)
+	admissionResponse, err := s.handler(s.api, admissionReview.Request, s.recorder, s.configMountPath)
 	if err != nil {
 		log.Error("failed to inject sidecar. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{

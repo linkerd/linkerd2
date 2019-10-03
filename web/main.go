@@ -31,6 +31,7 @@ func main() {
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	configMountPath := cmd.String("config-mount-path", pkgK8s.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
@@ -43,7 +44,7 @@ func main() {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.GlobalConfig(*configMountPath))
 	clusterDomain := globalConfig.GetClusterDomain()
 	if err != nil || clusterDomain == "" {
 		clusterDomain = "cluster.local"
@@ -55,7 +56,7 @@ func main() {
 		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
 	}
 
-	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
+	installConfig, err := config.Install(pkgK8s.InstallConfig(*configMountPath))
 	if err != nil {
 		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
 	}

@@ -1395,6 +1395,7 @@ status:
 				"linkerd",
 				"mycluster.local",
 				[]string{},
+				"",
 			)
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
@@ -1421,6 +1422,7 @@ status:
 			"linkerd",
 			"mycluster.local",
 			[]string{},
+			"",
 		)
 
 		invalidRequests := []statSumExpected{

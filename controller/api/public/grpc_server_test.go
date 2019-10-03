@@ -404,6 +404,7 @@ status:
 				"linkerd",
 				"mycluster.local",
 				[]string{},
+				"",
 			)
 
 			k8sAPI.Sync()
@@ -507,6 +508,7 @@ metadata:
 				"linkerd",
 				"mycluster.local",
 				[]string{},
+				"",
 			)
 
 			k8sAPI.Sync()
@@ -538,6 +540,7 @@ func TestConfig(t *testing.T) {
 			"linkerd",
 			"mycluster.local",
 			[]string{},
+			"",
 		)
 		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"
 		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"

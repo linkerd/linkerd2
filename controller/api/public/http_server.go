@@ -324,6 +324,7 @@ func NewServer(
 	controllerNamespace string,
 	clusterDomain string,
 	ignoredNamespaces []string,
+	configMountPath string,
 ) *http.Server {
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
@@ -334,6 +335,7 @@ func NewServer(
 			controllerNamespace,
 			clusterDomain,
 			ignoredNamespaces,
+			configMountPath,
 		),
 	}
 

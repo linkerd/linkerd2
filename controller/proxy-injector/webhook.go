@@ -28,15 +28,16 @@ const (
 func Inject(api *k8s.API,
 	request *admissionv1beta1.AdmissionRequest,
 	recorder record.EventRecorder,
+	configMountPath string,
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	globalConfig, err := config.Global(pkgK8s.GlobalConfig(configMountPath))
 	if err != nil {
 		return nil, err
 	}
 
-	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
+	proxyConfig, err := config.Proxy(pkgK8s.ProxyConfig(configMountPath))
 	if err != nil {
 		return nil, err
 	}

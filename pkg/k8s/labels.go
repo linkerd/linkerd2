@@ -241,41 +241,48 @@ const (
 	TapServiceName = "linkerd-tap"
 
 	/*
-	 * Mount paths
+	 * Account tokens
 	 */
-
-	// MountPathBase is the base directory of the mount path.
-	MountPathBase = "/var/run/linkerd"
 
 	// MountPathServiceAccount is the default path where Kuberenetes stores
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
-
-	// MountPathGlobalConfig is the path at which the global config file is mounted.
-	MountPathGlobalConfig = MountPathBase + "/config/global"
-
-	// MountPathProxyConfig is the path at which the global config file is mounted.
-	MountPathProxyConfig = MountPathBase + "/config/proxy"
-
-	// MountPathInstallConfig is the path at which the install config file is mounted.
-	MountPathInstallConfig = MountPathBase + "/config/install"
-
-	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
-	// store identity credentials.
-	MountPathEndEntity = MountPathBase + "/identity/end-entity"
-
-	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
-
-	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
 
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
 	//
 	// In the future, this should be changed to a time- and audience-scoped secret.
 	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+	/*
+	 * Mount path
+	 */
+
+	DefaultMouthPathBase = "/var/run/linkerd"
 )
+
+/*
+ * Mount paths
+ */
+
+// GlobalConfig is the path at which the global config file is mounted.
+func GlobalConfig(mountPathBase string) string { return mountPathBase + "/config/global" }
+
+// ProxyConfig is the path at which the proxy config file is mounted.
+func ProxyConfig(mountPathBase string) string { return mountPathBase + "/config/proxy" }
+
+// InstallConfig is the path at which the install config file is mounted.
+func InstallConfig(mountPathBase string) string { return mountPathBase + "/config/install" }
+
+// EndEntity is the path at which a tmpfs directory is mounted to store identity
+// credentials.
+func EndEntity(mountPathBase string) string { return mountPathBase + "/identity/end-entity" }
+
+// TLSKeyPEM is the path at which the TLS key PEM file is mounted.
+func TLSKeyPEM(mountPathBase string) string { return mountPathBase + "/tls/key.pem" }
+
+// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
+func TLSCrtPEM(mountPathBase string) string { return mountPathBase + "/tls/crt.pem" }
 
 // CreatedByAnnotationValue returns the value associated with
 // CreatedByAnnotation.

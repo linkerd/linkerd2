@@ -24,6 +24,7 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
 	addr := cmd.String("addr", ":8443", "address to serve on")
 	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
+	configMountPath := cmd.String("config-mount-path", pkgk8s.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -36,12 +37,12 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	cred, err := tls.ReadPEMCreds(pkgk8s.MountPathTLSKeyPEM, pkgk8s.MountPathTLSCrtPEM)
+	cred, err := tls.ReadPEMCreds(pkgk8s.TLSKeyPEM(*configMountPath), pkgk8s.TLSCrtPEM(*configMountPath))
 	if err != nil {
 		log.Fatalf("failed to read TLS secrets: %s", err)
 	}
 
-	s, err := NewServer(k8sAPI, *addr, cred, handler, component)
+	s, err := NewServer(k8sAPI, *addr, cred, handler, component, *configMountPath)
 	if err != nil {
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}

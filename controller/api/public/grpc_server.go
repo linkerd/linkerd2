@@ -67,6 +67,7 @@ func newGrpcServer(
 	controllerNamespace string,
 	clusterDomain string,
 	ignoredNamespaces []string,
+	configMountPath string,
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
@@ -77,8 +78,8 @@ func newGrpcServer(
 		controllerNamespace:   controllerNamespace,
 		clusterDomain:         clusterDomain,
 		ignoredNamespaces:     ignoredNamespaces,
-		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
-		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,
+		mountPathGlobalConfig: pkgK8s.GlobalConfig(configMountPath),
+		mountPathProxyConfig:  pkgK8s.ProxyConfig(configMountPath),
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)

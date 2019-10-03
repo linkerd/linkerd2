@@ -36,10 +36,11 @@ func Main(args []string) {
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
+	configMountPath := cmd.String("config-mount-path", consts.DefaultMouthPathBase, "Path where Linkerd configs are mounted")
 
 	flags.ConfigureAndParse(cmd, args)
 
-	cfg, err := config.Global(consts.MountPathGlobalConfig)
+	cfg, err := config.Global(consts.GlobalConfig(*configMountPath))
 	if err != nil {
 		log.Fatalf("Failed to load config: %s", err.Error())
 	}
