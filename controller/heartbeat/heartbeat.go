@@ -138,9 +138,12 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 func promQuery(promAPI promv1.API, query string, precision int) (string, error) {
 	log.Debugf("Prometheus query: %s", query)
 
-	res, err := promAPI.Query(context.Background(), query, time.Time{})
+	res, warn, err := promAPI.Query(context.Background(), query, time.Time{})
 	if err != nil {
 		return "", err
+	}
+	if warn != nil {
+		log.Warnf("%v", warn)
 	}
 
 	switch result := res.(type) {
