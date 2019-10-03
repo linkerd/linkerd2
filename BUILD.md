@@ -201,11 +201,17 @@ Linkerd2's control plane is composed of several Go microservices. You can run
 these components in a Kubernetes (or Minikube) cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
-pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
-to run the destination service locally, run:
+pass in valid Kubernetes credentials via the `-kubeconfig` flag. Some components
+also require config files which are typically mounted from a ConfigMap when
+the component is running in Kubernetes.  To run locally, you will need to
+provide these config files via the `-config-mount-path` flag.  If you already
+have Linkerd installed on a Kubernetes cluster, you can use the
+`bin/fetch-config` script to download Linkerd's config files for local use.
+For instance, to run the destination service locally, run:
 
 ```bash
-bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+bin/fetch-config
+bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug -config-mount-path .
 ```
 
 You can send test requests to the destination service using the
@@ -213,11 +219,6 @@ You can send test requests to the destination service using the
 
 ```bash
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
-```
-
-You can also send test requests to the destination's discovery interface:
-```bash
-bin/go-run controller/script/discovery-client
 ```
 
 ##### Running the Tap APIService for development
