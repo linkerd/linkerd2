@@ -421,7 +421,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 				continue
 			}
 			if endpoint.TargetRef == nil {
-				id := PodID{
+				id := ServiceID{
 					Name: strings.Join([]string{
 						endpoints.ObjectMeta.Name,
 						endpoint.IP,
