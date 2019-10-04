@@ -53,9 +53,8 @@ func Main(args []string) {
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
-		if err != nil {
-			trustDomain = global.GetIdentityContext().GetTrustDomain()
-		} else {
+		trustDomain = global.GetIdentityContext().GetTrustDomain()
+		if err != nil || trustDomain == "" {
 			trustDomain = "cluster.local"
 			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, trustDomain)
 		}
