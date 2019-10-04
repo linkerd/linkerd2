@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"unicode/utf8"
 
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
@@ -111,6 +112,15 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		return apiUtil.GRPCError(err)
 	}
 
+	extract := &proxy.ObserveRequest_Extract{}
+
+	// HTTP is the only protocol supported for extracting metadata, so this is
+	// the only field checked.
+	extractHTTP := req.GetExtract().GetHttp()
+	if extractHTTP != nil {
+		extract = buildExtractHTTP(extractHTTP)
+	}
+
 	for _, pod := range pods {
 		// create the expected pod identity from the pod spec
 		ns := res.GetNamespace()
@@ -125,7 +135,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		ctx = metadata.AppendToOutgoingContext(ctx, requireIDHeader, name)
 
 		// initiate a tap on the pod
-		go s.tapProxy(ctx, rpsPerPod, match, pod.Status.PodIP, events)
+		go s.tapProxy(ctx, rpsPerPod, match, extract, pod.Status.PodIP, events)
 	}
 
 	// read events from the taps and send them back
@@ -240,6 +250,21 @@ func destinationLabels(resource *public.Resource) map[string]string {
 	return dstLabels
 }
 
+func buildExtractHTTP(extract *public.TapByResourceRequest_Extract_Http) *proxy.ObserveRequest_Extract {
+	if extract.GetHeaders() != nil {
+		return &proxy.ObserveRequest_Extract{
+			Extract: &proxy.ObserveRequest_Extract_Http_{
+				Http: &proxy.ObserveRequest_Extract_Http{
+					Extract: &proxy.ObserveRequest_Extract_Http_Headers_{
+						Headers: &proxy.ObserveRequest_Extract_Http_Headers{},
+					},
+				},
+			},
+		}
+	}
+	return nil
+}
+
 // Tap a pod.
 // This method will run continuously until an error is encountered or the
 // request is cancelled via the context.  Thus it should be called as a
@@ -248,7 +273,7 @@ func destinationLabels(resource *public.Resource) map[string]string {
 // of maxRps * 1s at most once per 1s window.  If this limit is reached in
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
-func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, addr string, events chan *public.TapEvent) {
+func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, extract *proxy.ObserveRequest_Extract, addr string, events chan *public.TapEvent) {
 	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithInsecure())
@@ -260,8 +285,9 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 	defer conn.Close()
 
 	req := &proxy.ObserveRequest{
-		Limit: uint32(maxRps * float32(tapInterval.Seconds())),
-		Match: match,
+		Limit:   uint32(maxRps * float32(tapInterval.Seconds())),
+		Match:   match,
+		Extract: extract,
 	}
 
 	for { // Request loop
@@ -357,6 +383,25 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 			}
 		}
 
+		headers := func(orig *httpPb.Headers) *public.Headers {
+			if orig == nil {
+				return nil
+			}
+			var headers []*public.Headers_Header
+			for _, header := range orig.GetHeaders() {
+				n := header.GetName()
+				b := header.GetValue()
+				h := public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueBin{ValueBin: b}}
+				if utf8.Valid(b) {
+					h = public.Headers_Header{Name: n, Value: &public.Headers_Header_ValueStr{ValueStr: string(b)}}
+				}
+				headers = append(headers, &h)
+			}
+			return &public.Headers{
+				Headers: headers,
+			}
+		}
+
 		switch orig := orig.GetEvent().(type) {
 		case *proxy.TapEvent_Http_RequestInit_:
 			return &public.TapEvent_Http_{
@@ -368,6 +413,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							Scheme:    scheme(orig.RequestInit.GetScheme()),
 							Authority: orig.RequestInit.Authority,
 							Path:      orig.RequestInit.Path,
+							Headers:   headers(orig.RequestInit.GetHeaders()),
 						},
 					},
 				},
@@ -381,6 +427,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							Id:               id(orig.ResponseInit.GetId()),
 							SinceRequestInit: orig.ResponseInit.GetSinceRequestInit(),
 							HttpStatus:       orig.ResponseInit.GetHttpStatus(),
+							Headers:          headers(orig.ResponseInit.GetHeaders()),
 						},
 					},
 				},
@@ -415,6 +462,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							SinceResponseInit: orig.ResponseEnd.GetSinceResponseInit(),
 							ResponseBytes:     orig.ResponseEnd.GetResponseBytes(),
 							Eos:               eos(orig.ResponseEnd.GetEos()),
+							Trailers:          headers(orig.ResponseEnd.GetTrailers()),
 						},
 					},
 				},

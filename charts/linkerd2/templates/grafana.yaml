@@ -113,6 +113,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - env:
         - name: GF_PATHS_DATA

@@ -32,6 +32,7 @@ spec:
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .EnablePodAntiAffinity -}}
       {{- $local := dict "Component" "proxy-injector" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}

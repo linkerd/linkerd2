@@ -52,6 +52,22 @@ func busyTest(t *testing.T, output string) {
 					},
 					Authority: params.Authority,
 					Path:      params.Path,
+					Headers: &pb.Headers{
+						Headers: []*pb.Headers_Header{
+							{
+								Name: "header-name-1",
+								Value: &pb.Headers_Header_ValueStr{
+									ValueStr: "header-value-str-1",
+								},
+							},
+							{
+								Name: "header-name-2",
+								Value: &pb.Headers_Header_ValueBin{
+									ValueBin: []byte("header-value-bin-2"),
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -78,6 +94,16 @@ func busyTest(t *testing.T, output string) {
 						Seconds: 100,
 					},
 					ResponseBytes: 1337,
+					Trailers: &pb.Headers{
+						Headers: []*pb.Headers_Header{
+							{
+								Name: "trailer-name",
+								Value: &pb.Headers_Header_ValueBin{
+									ValueBin: []byte("header-value-bin"),
+								},
+							},
+						},
+					},
 				},
 			},
 		},

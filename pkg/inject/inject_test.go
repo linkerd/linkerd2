@@ -31,6 +31,7 @@ type expectedProxyConfigs struct {
 	initVersion          string
 	inboundSkipPorts     string
 	outboundSkipPorts    string
+	trace                *charts.Trace
 }
 
 func TestConfigAccessors(t *testing.T) {
@@ -103,7 +104,10 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyUIDAnnotation:                    "8500",
 							k8s.ProxyLogLevelAnnotation:               "debug,linkerd2_proxy=debug",
 							k8s.ProxyEnableExternalProfilesAnnotation: "false",
-							k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride},
+							k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride,
+							k8s.ProxyTraceCollectorSvcAddr:            "oc-collector.tracing:55678",
+							k8s.ProxyTraceCollectorSvcAccount:         "default",
+						},
 					},
 					Spec: corev1.PodSpec{},
 				},
@@ -133,6 +137,10 @@ func TestConfigAccessors(t *testing.T) {
 				initVersion:         version.ProxyInitVersion,
 				inboundSkipPorts:    "4222,6222",
 				outboundSkipPorts:   "8079,8080",
+				trace: &charts.Trace{
+					CollectorSvcAddr:    "oc-collector.tracing:55678",
+					CollectorSvcAccount: "default.tracing",
+				},
 			},
 		},
 		{id: "use defaults",
@@ -189,7 +197,10 @@ func TestConfigAccessors(t *testing.T) {
 				k8s.ProxyUIDAnnotation:                    "8500",
 				k8s.ProxyLogLevelAnnotation:               "debug,linkerd2_proxy=debug",
 				k8s.ProxyEnableExternalProfilesAnnotation: "false",
-				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride},
+				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride,
+				k8s.ProxyTraceCollectorSvcAddr:            "oc-collector.tracing:55678",
+				k8s.ProxyTraceCollectorSvcAccount:         "default",
+			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{},
@@ -220,6 +231,10 @@ func TestConfigAccessors(t *testing.T) {
 				initVersion:         version.ProxyInitVersion,
 				inboundSkipPorts:    "4222,6222",
 				outboundSkipPorts:   "8079,8080",
+				trace: &charts.Trace{
+					CollectorSvcAddr:    "oc-collector.tracing:55678",
+					CollectorSvcAccount: "default.tracing",
+				},
 			},
 		},
 	}
@@ -346,6 +361,20 @@ func TestConfigAccessors(t *testing.T) {
 				expected := testCase.expected.outboundSkipPorts
 				if actual := resourceConfig.proxyOutboundSkipPorts(); expected != actual {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
+				}
+			})
+
+			t.Run("proxyTraceCollectorService", func(t *testing.T) {
+				var expected *charts.Trace
+				if testCase.expected.trace != nil {
+					expected = &charts.Trace{
+						CollectorSvcAddr:    testCase.expected.trace.CollectorSvcAddr,
+						CollectorSvcAccount: testCase.expected.trace.CollectorSvcAccount,
+					}
+				}
+
+				if actual := resourceConfig.trace(); !reflect.DeepEqual(expected, actual) {
+					t.Errorf("Expected: %+v Actual: %+v", expected, actual)
 				}
 			})
 		})

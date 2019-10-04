@@ -2,6 +2,7 @@ package inject
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -27,6 +28,8 @@ const (
 	proxyInitResourceRequestMemory = "10Mi"
 	proxyInitResourceLimitCPU      = "100m"
 	proxyInitResourceLimitMemory   = "50Mi"
+
+	traceDefaultSvcAccount = "default"
 )
 
 var (
@@ -55,6 +58,7 @@ var (
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
+		k8s.ProxyTraceCollectorSvcAddr,
 	}
 )
 
@@ -497,6 +501,11 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Proxy.Trace = trace
+	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -537,6 +546,36 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 		}
 	}
 	return nil
+}
+
+func (conf *ResourceConfig) trace() *charts.Trace {
+	var (
+		svcAddr    = conf.getOverride(k8s.ProxyTraceCollectorSvcAddr)
+		svcAccount = conf.getOverride(k8s.ProxyTraceCollectorSvcAccount)
+	)
+
+	if svcAddr == "" {
+		return nil
+	}
+
+	if svcAccount == "" {
+		svcAccount = traceDefaultSvcAccount
+	}
+
+	hostAndPort := strings.Split(svcAddr, ":")
+	hostname := strings.Split(hostAndPort[0], ".")
+
+	var ns string
+	if len(hostname) == 1 {
+		ns = conf.workload.Meta.Namespace
+	} else {
+		ns = hostname[1]
+	}
+
+	return &charts.Trace{
+		CollectorSvcAddr:    svcAddr,
+		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, ns),
+	}
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and

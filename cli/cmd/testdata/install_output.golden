@@ -832,6 +832,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - identity
@@ -1044,6 +1046,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - public-api
@@ -1254,6 +1258,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - destination
@@ -1439,6 +1445,8 @@ spec:
           annotations:
             CreatedByAnnotation: CliVersion
         spec:
+          nodeSelector:
+            beta.kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -1507,6 +1515,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-web
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
@@ -1832,6 +1842,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -2108,6 +2120,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - env:
         - name: GF_PATHS_DATA
@@ -2303,6 +2317,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - proxy-injector
@@ -2533,6 +2549,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - sp-validator
@@ -2744,6 +2762,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - tap

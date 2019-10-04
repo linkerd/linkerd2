@@ -205,7 +205,7 @@ pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
 to run the destination service locally, run:
 
 ```bash
-bin/go-run controller/cmd/destination -kubeconfig ~/.kube/config -log-level debug
+bin/go-run controller/cmd destination -kubeconfig ~/.kube/config -log-level debug
 ```
 
 You can send test requests to the destination service using the
@@ -224,7 +224,7 @@ bin/go-run controller/script/discovery-client
 
 ```bash
 openssl req -nodes -x509 -newkey rsa:4096 -keyout $HOME/key.pem -out $HOME/crt.pem -subj "/C=US"
-bin/go-run controller/cmd/tap --disable-common-names --tls-cert=$HOME/crt.pem --tls-key=$HOME/key.pem
+bin/go-run controller/cmd tap --disable-common-names --tls-cert=$HOME/crt.pem --tls-key=$HOME/key.pem
 
 curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
 ```
