@@ -20,6 +20,10 @@ const (
 	// DefaultIssuanceLifetime is the default lifetime of certificates issued by
 	// the identity service.
 	DefaultIssuanceLifetime = 24 * time.Hour
+
+	// EnvTrustAnchors is the environment variable holding the trust anchors for
+	// the proxy identity.
+	EnvTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 type (
