@@ -833,7 +833,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - identity
@@ -1047,7 +1047,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - public-api
@@ -1258,6 +1258,8 @@ spec:
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - destination
@@ -1444,7 +1446,7 @@ spec:
             CreatedByAnnotation: CliVersion
         spec:
           nodeSelector:
-            null
+            beta.kubernetes.io/os: linux
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -1514,7 +1516,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-web
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
@@ -1841,7 +1843,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -2119,7 +2121,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - env:
         - name: GF_PATHS_DATA
@@ -2316,7 +2318,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - proxy-injector
@@ -2548,7 +2550,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - sp-validator
@@ -2761,7 +2763,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
-        null
+        beta.kubernetes.io/os: linux
       containers:
       - args:
         - tap

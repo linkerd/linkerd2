@@ -76,6 +76,7 @@ func TestRender(t *testing.T) {
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
 		InstallNamespace:            true,
+		NodeSelector:                defaultValues.NodeSelector,
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
