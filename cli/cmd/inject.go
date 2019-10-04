@@ -149,11 +149,12 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	} else {
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
-		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
+		// this can also be a namespace resource
+		conf.AppendAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
 
 	if len(rt.overrideAnnotations) > 0 {
-		conf.AppendPodAnnotations(rt.overrideAnnotations)
+		conf.AppendAnnotations(rt.overrideAnnotations)
 	}
 
 	patchJSON, err := conf.GetPatch(rt.injectProxy)
