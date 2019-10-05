@@ -23,7 +23,17 @@ const status = {
 
 export const dashboardTheme = {
   palette: {
-    primary: green
+    primary: {
+      main: '#001443',
+    },
+  },
+  // substituting default Material breakpoints with Bootstrap breakpoints
+  breakpoints: {
+    values: {
+      sm: 576,
+      md: 992,
+      lg: 1200,
+    },
   },
   typography: {
     useNextVariants: true,
