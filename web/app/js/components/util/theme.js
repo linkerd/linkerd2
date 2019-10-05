@@ -25,6 +25,14 @@ export const dashboardTheme = {
   palette: {
     primary: green
   },
+  // substituting default Material breakpoints with Bootstrap breakpoints
+  breakpoints: {
+    values: {
+      sm: 576,
+      md: 992,
+      lg: 1200,
+    },
+  },
   typography: {
     useNextVariants: true,
     suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
