@@ -3,15 +3,19 @@
 ### Linkerd Namespace
 ###
 ---
-kind: Namespace
 apiVersion: v1
+kind: Namespace
 metadata:
-  name: Namespace
   annotations:
     ProxyInjectAnnotation: ProxyInjectDisabled
+    linkerd.io/inject: enabled
+  creationTimestamp: null
   labels:
     LinkerdNamespaceLabel: "true"
     config.linkerd.io/admission-webhooks: disabled
+  name: Namespace
+spec: {}
+status: {}
 ---
 ###
 ### Identity Controller Service RBAC
