@@ -1397,6 +1397,8 @@ spec:
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
