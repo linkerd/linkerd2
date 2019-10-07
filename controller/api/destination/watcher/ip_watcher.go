@@ -11,6 +11,10 @@ import (
 )
 
 type (
+	// IPWatcher wraps a EndpointsWatcher and allows subscriptions by
+	// IP address.  It watches all services in the cluster to keep an index
+	// of service by cluster IP and translates subscriptions by IP address into
+	// subscriptions on the EndpointWatcher by service name.
 	IPWatcher struct {
 		publishers map[string]*serviceSubscriptions
 		endpoints  *EndpointsWatcher
@@ -32,6 +36,8 @@ type (
 	}
 )
 
+// NewIPWatcher creates an IPWatcher and begins watching the k8sAPI for service
+// changes.
 func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Entry) *IPWatcher {
 	iw := &IPWatcher{
 		publishers: make(map[string]*serviceSubscriptions),
@@ -71,8 +77,7 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 func (iw *IPWatcher) Subscribe(clusterIP string, port Port, listener EndpointUpdateListener) error {
 	iw.log.Infof("Establishing watch on service cluster ip [%s:%d]", clusterIP, port)
 	ss := iw.getOrNewServiceSubscriptions(clusterIP)
-	ss.subscribe(port, listener)
-	return nil
+	return ss.subscribe(port, listener)
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
@@ -177,19 +182,26 @@ func (ss *serviceSubscriptions) deleteService() {
 	defer ss.Unlock()
 
 	for listener, port := range ss.listeners {
+		listener.NoEndpoints(false)
 		ss.endpoints.Unsubscribe(ss.id, port, "", listener)
 	}
 	ss.id = ServiceID{}
 }
 
-func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateListener) {
+func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateListener) error {
 	ss.Lock()
 	defer ss.Unlock()
 
-	if (ss.id != ServiceID{}) {
-		ss.endpoints.Subscribe(ss.id, port, "", listener)
+	if (ss.id == ServiceID{}) {
+		listener.NoEndpoints(false)
+	} else {
+		err := ss.endpoints.Subscribe(ss.id, port, "", listener)
+		if err != nil {
+			return err
+		}
 	}
 	ss.listeners[listener] = port
+	return nil
 }
 
 func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateListener) {

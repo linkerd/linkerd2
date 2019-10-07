@@ -33,7 +33,10 @@ type (
 	}
 
 	// PodSet is a set of pods, indexed by IP.
-	PodSet = map[PodID]Address
+	PodSet struct {
+		Pods   map[PodID]Address
+		Labels map[string]string
+	}
 
 	portAndHostname struct {
 		port     Port
@@ -388,17 +391,17 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	newPods := pp.endpointsToAddresses(endpoints)
-	if len(newPods) == 0 {
+	if len(newPods.Pods) == 0 {
 		for _, listener := range pp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
 		add, remove := diffPods(pp.pods, newPods)
 		for _, listener := range pp.listeners {
-			if len(remove) > 0 {
+			if len(remove.Pods) > 0 {
 				listener.Remove(remove)
 			}
-			if len(add) > 0 {
+			if len(add.Pods) > 0 {
 				listener.Add(add)
 			}
 		}
@@ -407,12 +410,12 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	pp.pods = newPods
 
 	pp.metrics.incUpdates()
-	pp.metrics.setPods(len(pp.pods))
+	pp.metrics.setPods(len(pp.pods.Pods))
 	pp.metrics.setExists(true)
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSet {
-	pods := make(PodSet)
+	pods := make(map[PodID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
@@ -444,7 +447,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 			}
 		}
 	}
-	return pods
+	return PodSet{
+		Pods:   pods,
+		Labels: map[string]string{"service": endpoints.Name, "namespace": endpoints.Namespace},
+	}
 }
 
 func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
@@ -473,7 +479,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
-	pp.pods = make(PodSet)
+	pp.pods = PodSet{}
 	for _, listener := range pp.listeners {
 		listener.NoEndpoints(exists)
 	}
@@ -485,7 +491,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 	if pp.exists {
-		if len(pp.pods) > 0 {
+		if len(pp.pods.Pods) > 0 {
 			listener.Add(pp.pods)
 		} else {
 			listener.NoEndpoints(true)
@@ -544,17 +550,24 @@ func diffPods(oldPods, newPods PodSet) (add, remove PodSet) {
 	// TODO: this detects pods which have been added or removed, but does not
 	// detect pods which have been modified.  A modified pod should trigger
 	// an add of the new version.
-	add = make(PodSet)
-	remove = make(PodSet)
-	for id, pod := range newPods {
-		if _, ok := oldPods[id]; !ok {
-			add[id] = pod
+	addPods := make(map[PodID]Address)
+	removePods := make(map[PodID]Address)
+	for id, pod := range newPods.Pods {
+		if _, ok := oldPods.Pods[id]; !ok {
+			addPods[id] = pod
 		}
 	}
-	for id, pod := range oldPods {
-		if _, ok := newPods[id]; !ok {
-			remove[id] = pod
+	for id, pod := range oldPods.Pods {
+		if _, ok := newPods.Pods[id]; !ok {
+			removePods[id] = pod
 		}
+	}
+	add = PodSet{
+		Pods:   addPods,
+		Labels: newPods.Labels,
+	}
+	remove = PodSet{
+		Pods: removePods,
 	}
 	return
 }
