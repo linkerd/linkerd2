@@ -39,15 +39,9 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	}
 	t.InitContainers = initContainers
 
-	containers := []v1.Container{}
-	for _, container := range t.Containers {
-		if container.Name != k8s.ProxyContainerName {
-			containers = append(containers, container)
-		} else {
-			report.Uninjected.Proxy = true
-		}
+	if conf.uninjectContainer(k8s.ProxyContainerName) {
+		report.Uninjected.Proxy = true
 	}
-	t.Containers = containers
 
 	volumes := []v1.Volume{}
 	for _, volume := range t.Volumes {
@@ -58,24 +52,42 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	t.Volumes = volumes
 }
 
-func uninjectObjectMeta(t *metav1.ObjectMeta, report *Report) {
-	newAnnotations := make(map[string]string)
-	for key, val := range t.Annotations {
-		if !strings.HasPrefix(key, k8s.Prefix) ||
-			(key == k8s.ProxyInjectAnnotation && val == k8s.ProxyInjectDisabled) {
-			newAnnotations[key] = val
+func (conf *ResourceConfig) uninjectContainer(containerName string) bool {
+	t := conf.pod.spec
+	unInjected := false
+	var containers []v1.Container
+	for _, container := range t.Containers {
+		if container.Name != containerName {
+			containers = append(containers, container)
 		} else {
-			report.Uninjected.Proxy = true
-		}
-
-	}
-	t.Annotations = newAnnotations
-
-	labels := make(map[string]string)
-	for key, val := range t.Labels {
-		if !strings.HasPrefix(key, k8s.Prefix) {
-			labels[key] = val
+			unInjected = true
 		}
 	}
-	t.Labels = labels
+	t.Containers = containers
+	return unInjected
+}
+
+func uninjectObjectMeta(t *metav1.ObjectMeta, report *Report) {
+	//do not uninject meta if this is a control plane component
+	if _, ok := t.Labels[k8s.ControllerComponentLabel]; !ok {
+		newAnnotations := make(map[string]string)
+		for key, val := range t.Annotations {
+			if !strings.HasPrefix(key, k8s.Prefix) ||
+				(key == k8s.ProxyInjectAnnotation && val == k8s.ProxyInjectDisabled) {
+				newAnnotations[key] = val
+			} else {
+				report.Uninjected.Proxy = true
+			}
+
+		}
+		t.Annotations = newAnnotations
+
+		labels := make(map[string]string)
+		for key, val := range t.Labels {
+			if !strings.HasPrefix(key, k8s.Prefix) {
+				labels[key] = val
+			}
+		}
+		t.Labels = labels
+	}
 }

@@ -104,6 +104,7 @@ func init() {
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
+	RootCmd.AddCommand(newCmdInternal())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdInstallSP())
