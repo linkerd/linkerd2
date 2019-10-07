@@ -91,7 +91,16 @@ type ResourceConfig struct {
 	ownerRetriever OwnerRetrieverFunc
 	origin         Origin
 
-	workload Workload
+	workload struct {
+		obj      runtime.Object
+		metaType metav1.TypeMeta
+
+		// Meta is the workload's metadata. It's exported so that metadata of
+		// non-workload resources can be unmarshalled by the YAML parser
+		Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+		ownerRef *metav1.OwnerReference
+	}
 
 	pod struct {
 		meta        *metav1.ObjectMeta
@@ -99,18 +108,6 @@ type ResourceConfig struct {
 		annotations map[string]string
 		spec        *corev1.PodSpec
 	}
-}
-
-// Workload contains the information for a given conf
-type Workload struct {
-	obj      runtime.Object
-	metaType metav1.TypeMeta
-
-	// Meta is the workload's metadata. It's exported so that metadata of
-	// non-workload resources can be unmarshalled by the YAML parser
-	Meta *metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-
-	ownerRef *metav1.OwnerReference
 }
 
 type patch struct {
@@ -172,7 +169,7 @@ func (conf *ResourceConfig) AppendAnnotations(annotations map[string]string) {
 
 // AppendAnnotation appends the given single annotation to the pod spec in conf if the workload is not a namespace
 func (conf *ResourceConfig) AppendAnnotation(k, v string) {
-	if conf.IsNamespace() {
+	if conf.IsWorkloadNamespace() {
 		conf.AppendNsAnnotation(k, v)
 	} else {
 		conf.AppendPodAnnotation(k, v)
@@ -182,6 +179,7 @@ func (conf *ResourceConfig) AppendAnnotation(k, v string) {
 // AppendNsAnnotation appends the given single annotation to the metadata of workload
 func (conf *ResourceConfig) AppendNsAnnotation(k, v string) {
 	conf.workload.Meta.Annotations[k] = v
+
 }
 
 // AppendPodAnnotation appends the given single annotation to the pod spec in conf
@@ -921,9 +919,4 @@ func sortedKeys(m map[string]string) []string {
 	sort.Strings(keys)
 
 	return keys
-}
-
-//IsNamespace checks if a given config is of type namespace
-func (conf *ResourceConfig) IsNamespace() bool {
-	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
 }
