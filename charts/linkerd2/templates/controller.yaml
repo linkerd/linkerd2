@@ -81,7 +81,7 @@ spec:
       - args:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090
-        - -destination-addr=linkerd-destination.{{.Namespace}}.svc.{{.ClusterDomain}}:8086
+        - -destination-addr=linkerd-dst.{{.Namespace}}.svc.{{.ClusterDomain}}:8086
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
