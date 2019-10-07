@@ -1071,7 +1071,7 @@ spec:
       - args:
         - public-api
         - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
-        - -destination-addr=linkerd-destination.Namespace.svc.cluster.local:8086
+        - -destination-addr=linkerd-dst.Namespace.svc.cluster.local:8086
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         image: ControllerImage:ControllerImageVersion
