@@ -119,7 +119,6 @@ var (
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
-		"templates/tracing-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -140,7 +139,6 @@ var (
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
-		"templates/tracing.yaml",
 	}
 )
 

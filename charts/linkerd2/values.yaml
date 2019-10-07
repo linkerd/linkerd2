@@ -61,8 +61,8 @@ ControlPlaneTrace:
   Enabled: false
   SamplingProbability: 1
   ProxyTrace:
-    CollectorSvcAddr: linkerd-collector.linkerd:55678 # leave blank to disable tracing
-    CollectorSvcAccount: linkerd-collector.linkerd
+    CollectorSvcAddr: linkerd-collector.linkerd-tracing:55678 # leave blank to disable tracing
+    CollectorSvcAccount: linkerd-collector.linkerd-tracing
 
 
 # proxy configuration
