@@ -65,6 +65,15 @@ func TestNewValues(t *testing.T) {
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
 
+		ControlPlaneTrace: &ControlPlaneTrace{
+			Enabled:             false,
+			SamplingProbability: 1,
+			ProxyTrace: &Trace{
+				CollectorSvcAddr:    "linkerd-collector.linkerd-tracing:55678",
+				CollectorSvcAccount: "linkerd-collector.linkerd-tracing",
+			},
+		},
+
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{

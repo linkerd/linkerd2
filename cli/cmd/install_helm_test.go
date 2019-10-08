@@ -171,6 +171,7 @@ func chartPartials(t *testing.T) *pb.Chart {
 			{Name: "templates/_metadata.tpl"},
 			{Name: "templates/_helpers.tpl"},
 			{Name: "templates/_debug.tpl"},
+			{Name: "templates/_trace.tpl"},
 			{Name: "templates/_capabilities.tpl"},
 		},
 	}
