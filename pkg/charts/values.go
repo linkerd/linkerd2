@@ -75,6 +75,7 @@ type (
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
 	ConfigJSONs struct{ Global, Proxy, Install string }
 
+	// ControlPlaneTrace contains fields to enable Control Plane Components Tracing
 	ControlPlaneTrace struct {
 		Enabled             bool
 		SamplingProbability float64
