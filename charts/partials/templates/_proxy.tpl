@@ -3,7 +3,7 @@ env:
 - name: LINKERD2_PROXY_LOG
   value: {{.Proxy.LogLevel}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-  value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .Namespace .ClusterDomain) (eq .Proxy.Component "linkerd-destination")}}
+  value: {{ternary "localhost.:8086" (printf "linkerd-dst.%s.svc.%s:8086" .Namespace .ClusterDomain) (eq .Proxy.Component "linkerd-destination")}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Proxy.Ports.Control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
