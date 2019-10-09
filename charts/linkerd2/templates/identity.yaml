@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{ if .Identity.Issuer -}}
+{{ if and (.Identity.Issuer) (eq .Identity.Issuer.ExternalMode false) -}}
 ---
 kind: Secret
 apiVersion: v1
