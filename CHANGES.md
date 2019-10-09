@@ -1,3 +1,13 @@
+## edge-19.10.2
+
+This edge release is a release candidate for `stable-2.6`.
+
+* Controller
+  * Added the destination container back to the controller; it had previously
+    been separated into its own deployment. This ensures backwards compatibility
+    and allows users to avoid data plane downtime during an upcoming upgrade to
+    `stable-2.6`.
+
 ## edge-19.10.1
 
 This edge release is a release candidate for `stable-2.6`.
