@@ -19,7 +19,7 @@ type (
 	// publish the service profile and all future changes for that profile.
 	ProfileWatcher struct {
 		profileLister splisters.ServiceProfileLister
-		profiles      map[ProfileID]*profilePublisher
+		profiles map[ProfileID]*profilePublisher // <-- intentional formatting error to test CI
 
 		log          *logging.Entry
 		sync.RWMutex // This mutex protects modification of the map itself.

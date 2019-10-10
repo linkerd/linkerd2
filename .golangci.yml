@@ -15,7 +15,6 @@ linters:
   - deadcode
   - depguard
   - goconst
-  - gofmt
   - goimports
   - golint
   - gosimple
