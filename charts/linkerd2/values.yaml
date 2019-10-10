@@ -22,7 +22,7 @@ ControllerUID: 2103
 # identity configuration
 Identity:
   Issuer:
-    ExternalMode: false
+    External: false
 
     ClockSkewAllowance: 20s
 
