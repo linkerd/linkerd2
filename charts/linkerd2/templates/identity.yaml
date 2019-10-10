@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{ if and (.Identity.Issuer) (eq .Identity.Issuer.ExternalMode false) -}}
+{{ if and (.Identity.Issuer) (eq .Identity.Issuer.External false) -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -82,6 +82,7 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
+        - -external-issuer={{.Identity.Issuer.External}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
