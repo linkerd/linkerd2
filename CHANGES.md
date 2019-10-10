@@ -1,3 +1,76 @@
+## stable-2.6.0
+
+This release introduces distributed tracing support, adds request and response
+headers to `linkerd tap`, dramatically improves the performance of the dashboard
+on large clusters, adds traffic split visualizations to the dashboard, adds a
+public Helm repo, and many more improvements!
+
+For more details, see the announcement blog post: TODO
+https://linkerd.io/2019/08/20/announcing-linkerd-2.6/
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: Please see the [upgrade
+instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-6-0).
+
+**Special thanks to**: @alenkacz, @arminbuerkle, @bmcstdio, @bourquep,
+@brianstorti, @kevtaylor, @KIVagant, @pierDipi, and @Pothulapati!
+
+**Full release notes**:
+
+* CLI
+  * Added a new `json` output option to the `linkerd tap` command, which exposes
+    request and response headers
+  * Added a public Helm repo - for full installation instructions, see our [Helm
+    documentation](https://linkerd.io/2/tasks/install-helm/).
+  * Added an `--address` flag to `linkerd dashboard`, allowing users to specify
+    a port-forwarding address (thanks @bmcstdio!)
+  * Added node selector constraints to Helm installation, so users can control
+    which nodes the control plane is deployed to (thanks @bmcstdio!)
+  * Added a `--cluster-domain` flag to the `linkerd install` command that allows
+    setting a custom cluster domain (thanks @arminbuerkle!)
+  * Added a `--disable-heartbeat` flag for `linkerd install | upgrade` commands
+  * Allowed disabling namespace creation when installing Linkerd using Helm
+    (thanks @KIVagant!)
+  * Improved the error message when the CLI cannot connect to Kubernetes (thanks
+    @alenkacz!)
+* Controller
+  * Updated the Prometheus config to keep only needed `cadvisor` metrics,
+    substantially reducing the number of time-series stored in most clusters
+  * Introduced `config.linkerd.io/trace-collector` and
+    `config.alpha.linkerd.io/trace-collector-service-account` pod spec
+    annotations to support per-pod tracing
+  * Instrumented the proxy injector to provide additional metrics about
+    injection (thanks @Pothulapati!)
+  * Added Kubernetes events (and log lines) when the proxy injector injects a
+    deployment, and when injection is skipped
+  * Fixed a workload admission error between the Kubernetes apiserver and the HA
+    proxy injector, by allowing workloads in a namespace to be omitted from the
+    admission webhooks phase using the `config.linkerd.io/admission-webhooks:
+    disabled` label (thanks @hasheddan!)
+  * Fixed proxy injector timeout during a large number of concurrent injections
+  * Added support for disabling the heartbeat cronjob (thanks @kevtaylor!)
+* Proxy
+  * Added distributed tracing support
+  * Decreased proxy Docker image size by removing bundled debug tools
+  * Added 587 (SMTP) to the list of ports to ignore in protocol detection (bound
+    to server-speaks-first protocols) (thanks @brianstorti!)
+* Web UI
+  * Redesigned dashboard navigation so workloads are now viewed by namespace,
+    with an "All Namespaces" option, in order to increase dashboard speed
+  * Added Traffic Splits as a resource to the dashboard, including a Traffic
+    Split detail page
+  * Added a `Linkerd Namespace` Grafana dashboard, allowing users to view
+    historical data for a given namespace, similar to CLI output for `linkerd
+    stat deploy -n myNs` (thanks @bourquep!)
+  * Fixed bad request in the top routes tab on empty fields (thanks @pierDipi!)
+* Internal
+  * Moved CI from Travis to GitHub Actions
+  * Added requirement for Go `1.12.9` for controller builds to include security
+    fixes
+  * Added support for Kubernetes `1.16`
+  * Upgraded client-go to `v12.0.0`
+
 ## edge-19.10.2
 
 This edge release is a release candidate for `stable-2.6`.
