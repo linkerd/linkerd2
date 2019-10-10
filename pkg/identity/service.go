@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -29,8 +30,9 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		Validator
-		tls.Issuer
+		validator   Validator
+		issuer      *tls.Issuer
+		issuerMutex *sync.Mutex
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -57,8 +59,21 @@ type (
 )
 
 // NewService creates a new identity service.
-func NewService(v Validator, i tls.Issuer) *Service {
-	return &Service{v, i}
+func NewService(v Validator, issuerChan <-chan tls.Issuer) *Service {
+
+	var issuerMutex = &sync.Mutex{}
+	service := &Service{v, nil, issuerMutex}
+
+	go func() {
+		for is := range issuerChan {
+			newIssuer := is
+			issuerMutex.Lock()
+			service.issuer = &newIssuer
+			log.Debug("Issuer has been updated")
+			issuerMutex.Unlock()
+		}
+	}()
+	return service
 }
 
 // Register registers an identity service implementation in the provided gRPC
@@ -69,6 +84,14 @@ func Register(g *grpc.Server, s *Service) {
 
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
+	svc.issuerMutex.Lock()
+	defer svc.issuerMutex.Unlock()
+
+	if svc.issuer == nil {
+		log.Warn("Certificate issuer is not ready")
+		return nil, status.Error(codes.Unavailable, "cert issuer not ready yet")
+	}
+
 	// Extract the relevant info from the request.
 	reqIdentity, tok, csr, err := checkRequest(req)
 	if err != nil {
@@ -81,7 +104,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 
 	// Authenticate the provided token against the Kubernetes API.
 	log.Debugf("Validating token for %s", reqIdentity)
-	tokIdentity, err := svc.Validate(ctx, tok)
+	tokIdentity, err := svc.validator.Validate(ctx, tok)
 	if err != nil {
 		switch e := err.(type) {
 		case NotAuthenticated:
@@ -106,7 +129,8 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 
 	// Create a certificate
-	crt, err := svc.IssueEndEntityCrt(csr)
+	issuer := *svc.issuer
+	crt, err := issuer.IssueEndEntityCrt(csr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
