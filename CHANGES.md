@@ -5,8 +5,8 @@ headers to `linkerd tap`, dramatically improves the performance of the dashboard
 on large clusters, adds traffic split visualizations to the dashboard, adds a
 public Helm repo, and many more improvements!
 
-For more details, see the announcement blog post: TODO
-https://linkerd.io/2019/08/20/announcing-linkerd-2.6/
+For more details, see the announcement blog post:
+https://linkerd.io/2019/10/10/announcing-linkerd-2.6/
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
