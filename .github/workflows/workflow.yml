@@ -98,7 +98,7 @@ jobs:
         echo "$GITCOOKIE_SH" | bash
         bin/lint --verbose
 
-   go_fmt:
+  go_fmt:
     name: Go Format
     runs-on: ubuntu-18.04
     container:
