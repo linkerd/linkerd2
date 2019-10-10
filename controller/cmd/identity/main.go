@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/golang/protobuf/ptypes"
@@ -74,19 +73,6 @@ func Main(args []string) {
 		crtName = consts.IdentityIssuerCrtNameExternal
 	}
 
-	creds, err := tls.ReadPEMCreds(
-		filepath.Join(*issuerPath, keyName),
-		filepath.Join(*issuerPath, crtName),
-	)
-	if err != nil {
-		log.Fatalf("Failed to read CA from %s: %s", *issuerPath, err)
-	}
-
-	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
-	if err := creds.Crt.Verify(trustAnchors, expectedName); err != nil {
-		log.Fatalf("Failed to verify issuer credentials for '%s' with trust anchors: %s", expectedName, err)
-	}
-
 	validity := tls.Validity{
 		ClockSkewAllowance: tls.DefaultClockSkewAllowance,
 		Lifetime:           identity.DefaultIssuanceLifetime,
@@ -108,7 +94,12 @@ func Main(args []string) {
 		}
 	}
 
-	ca := tls.NewCA(*creds, validity)
+	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
+	watcher := idctl.NewFsCredsWatcher(*issuerPath, keyName, crtName, expectedName, trustAnchors, validity)
+
+	if err := watcher.StartWatching(); err != nil {
+		log.Fatalf("Failed to start creds watcher: %s", err)
+	}
 
 	k8s, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
@@ -119,7 +110,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
 
-	svc := identity.NewService(v, ca)
+	svc := identity.NewService(v, watcher.Creds())
 
 	go admin.StartServer(*adminAddr)
 	lis, err := net.Listen("tcp", *addr)

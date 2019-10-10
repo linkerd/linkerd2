@@ -66,7 +66,7 @@ type (
 		clockSkewAllowance time.Duration
 
 		trustPEMFile, crtPEMFile, keyPEMFile string
-		identityExternalIssuer bool
+		identityExternalIssuer               bool
 	}
 )
 
@@ -197,9 +197,9 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			enableExternalProfiles: defaults.Proxy.EnableExternalProfiles,
 		},
 		identityOptions: &installIdentityOptions{
-			trustDomain:        defaults.Identity.TrustDomain,
-			issuanceLifetime:   issuanceLifetime,
-			clockSkewAllowance: clockSkewAllowance,
+			trustDomain:            defaults.Identity.TrustDomain,
+			issuanceLifetime:       issuanceLifetime,
+			clockSkewAllowance:     clockSkewAllowance,
 			identityExternalIssuer: false,
 		},
 
@@ -952,7 +952,6 @@ func (idopts *installIdentityOptions) validate() error {
 		}
 	}
 
-
 	if idopts.identityExternalIssuer {
 
 		if idopts.crtPEMFile != "" {
@@ -991,7 +990,6 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-
 func (idopts *installIdentityOptions) validateAndBuild() (*charts.Identity, error) {
 	if idopts == nil {
 		return nil, nil
@@ -1024,7 +1022,7 @@ func (idopts *installIdentityOptions) genValues() (*charts.Identity, error) {
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 		Issuer: &charts.Issuer{
-			External:        false,
+			External:            false,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
@@ -1048,7 +1046,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: string(trustb),
 		Issuer: &charts.Issuer{
-			External:       true,
+			External:           true,
 			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:   idopts.issuanceLifetime.String(),
 		},
@@ -1084,7 +1082,7 @@ func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: trustAnchorsPEM,
 		Issuer: &charts.Issuer{
-			External:        false,
+			External:            false,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           creds.Crt.Certificate.NotAfter,
