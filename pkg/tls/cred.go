@@ -165,6 +165,7 @@ func (cred *Cred) SignCrt(template *x509.Certificate) (Crt, error) {
 	return crt, nil
 }
 
+// ValidateAndCreateCreds reads PEM-encoded credentials from strings and validates them
 func ValidateAndCreateCreds(crt, key string) (*Cred, error) {
 	k, err := DecodePEMKey(key)
 	if err != nil {

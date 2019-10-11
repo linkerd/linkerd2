@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -27,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type (
@@ -1034,8 +1034,8 @@ func (idopts *installIdentityOptions) genValues() (*charts.Identity, error) {
 
 type externalIssuerData struct {
 	trustAnchors string
-	issuerCrt string
-	issuerKey string
+	issuerCrt    string
+	issuerKey    string
 }
 
 func loadExternalIssuerData() (*externalIssuerData, error) {
@@ -1058,20 +1058,20 @@ func loadExternalIssuerData() (*externalIssuerData, error) {
 
 	anchors, ok := secret.Data[consts.IdentityIssuerTrustAnchorsNameExternal]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerTrustAnchorsNameExternal,"trust anchors", consts.IdentityIssuerSecretName )
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerTrustAnchorsNameExternal, "trust anchors", consts.IdentityIssuerSecretName)
 	}
 
 	crt, ok := secret.Data[consts.IdentityIssuerCrtNameExternal]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerCrtNameExternal,"issuer certificate",consts.IdentityIssuerSecretName )
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerCrtNameExternal, "issuer certificate", consts.IdentityIssuerSecretName)
 	}
 
 	key, ok := secret.Data[consts.IdentityIssuerKeyNameExternal]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerKeyNameExternal,"issuer key", consts.IdentityIssuerSecretName )
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerKeyNameExternal, "issuer key", consts.IdentityIssuerSecretName)
 	}
 
-	return &externalIssuerData {string(anchors), string(crt), string(key)}, nil
+	return &externalIssuerData{string(anchors), string(crt), string(key)}, nil
 }
 
 func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity, error) {
@@ -1086,7 +1086,6 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 	if err != nil {
 		log.Fatalf("Failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
-
 
 	trustAnchors, err := tls.DecodePEMCertPool(externalIssuerData.trustAnchors)
 	if err != nil {

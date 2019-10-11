@@ -9,12 +9,11 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version)) && \
     mv "$proxy" linkerd2-proxy)
 
 ## compile proxy-identity agent
-FROM gcr.io/linkerd-io/go-deps:e9a301f6 as golang
+FROM gcr.io/linkerd-io/go-deps:98895304 as golang
 WORKDIR /linkerd-build
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls
 COPY pkg/version pkg/version
-COPY pkg/identity pkg/identity
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly ./pkg/...
 COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
