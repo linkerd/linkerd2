@@ -11,5 +11,4 @@ RUN apt-get update \
         dnsutils \
         iptables \
         jq \
-        nghttp2 \
-    && rm -rf /var/lib/apt/lists/*
+        nghttp2
