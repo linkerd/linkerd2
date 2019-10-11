@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/linkerd/linkerd2/pkg/tls"
-	log "github.com/sirupsen/logrus"
 )
 
 // FsCredsWatcher is used to monitor tls credentials on the filesystem
@@ -28,21 +27,29 @@ func (fscw *FsCredsWatcher) Creds() <-chan tls.Issuer {
 	return fscw.issuerChan
 }
 
-// StartWatching starts watching the filesystem for cert updates
-func (fscw *FsCredsWatcher) StartWatching() error {
-	//TODO: Actually monitor the filesystem........
-	log.Infof("Starting FsCredsWatcher watcher for path: %s", fscw.issuerPath)
+func (fscw *FsCredsWatcher) loadCredentials() (*tls.CA, error) {
 	creds, err := tls.ReadPEMCreds(
 		filepath.Join(fscw.issuerPath, fscw.keyName),
 		filepath.Join(fscw.issuerPath, fscw.crtName),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to read CA from %s: %s", fscw.issuerPath, err)
+		return nil, fmt.Errorf("failed to read CA from %s: %s", fscw.issuerPath, err)
 	}
 
 	if err := creds.Crt.Verify(fscw.roots, fscw.expectedName); err != nil {
-		return fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", fscw.expectedName, err)
+		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", fscw.expectedName, err)
 	}
-	fscw.issuerChan <- tls.NewCA(*creds, fscw.validity)
+
+	return tls.NewCA(*creds, fscw.validity), nil
+
+}
+
+// StartWatching starts watching the filesystem for cert updates
+func (fscw *FsCredsWatcher) StartWatching() error {
+	initialCredentials, err := fscw.loadCredentials()
+	if err != nil {
+		return fmt.Errorf("failed to read initial credentials: %s", err)
+	}
+	fscw.issuerChan <- initialCredentials
 	return nil
 }
