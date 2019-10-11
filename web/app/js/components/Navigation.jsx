@@ -276,7 +276,14 @@ class NavigationBase extends React.Component {
   }
 
   handleDrawerClick = () => {
-    this.setState(state => ({ mobileSidebarOpen: !state.mobileSidebarOpen }));
+    if (!this.state.mobileSidebarOpen) {
+      this.setState({ mobileSidebarOpen: true });
+    } else {
+      // due to a bug in Safari that renders the SVG gradient incorrectly when
+      // the mobile sidebar is closed, perform a hard reload of the page to
+      // ensure the logo renders correctly.
+      window.location.reload();
+    }
   };
 
   handleConfirmNamespaceChange = () => {
