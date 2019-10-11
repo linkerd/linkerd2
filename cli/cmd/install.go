@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type (
@@ -971,12 +972,8 @@ func (idopts *installIdentityOptions) validate() error {
 			return errors.New("--identity-issuer-key-file must not be specified if --identity-external-issuer=true")
 		}
 
-		if idopts.trustPEMFile == "" {
-			return errors.New("a trust anchors file must be specified if --identity-external-issuer=true")
-		}
-
-		if err := checkFiles([]string{idopts.trustPEMFile}); err != nil {
-			return err
+		if idopts.trustPEMFile != "" {
+			return errors.New("--identity-trust-anchors-file must not be specified if --identity-external-issuer=true")
 		}
 
 	} else {
@@ -1044,16 +1041,74 @@ func (idopts *installIdentityOptions) genValues() (*charts.Identity, error) {
 	}, nil
 }
 
+type externalIssuerData struct {
+	trustAnchors string
+	issuerCrt string
+	issuerKey string
+}
+
+func loadExternalIssuerData() (*externalIssuerData, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
+	}
+
+	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
+	}
+
+	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+	if secret == nil || kerrors.IsNotFound(err) {
+		return nil, fmt.Errorf("'linkerd-identity-issuer' needs to exist if --identity-external-issuer=true")
+	}
+
+	keyMissingError := "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=true"
+
+	anchors, ok := secret.Data[consts.IdentityIssuerTrustAnchorsNameExternal]
+	if !ok {
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerTrustAnchorsNameExternal,"trust anchors", consts.IdentityIssuerSecretName )
+	}
+
+	crt, ok := secret.Data[consts.IdentityIssuerCrtNameExternal]
+	if !ok {
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerCrtNameExternal,"issuer certificate",consts.IdentityIssuerSecretName )
+	}
+
+	key, ok := secret.Data[consts.IdentityIssuerKeyNameExternal]
+	if !ok {
+		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerKeyNameExternal,"issuer key", consts.IdentityIssuerSecretName )
+	}
+
+	return &externalIssuerData {string(anchors), string(crt), string(key)}, nil
+}
+
 func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity, error) {
 
-	trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
+	externalIssuerData, err := loadExternalIssuerData()
 	if err != nil {
 		return nil, err
 	}
 
+	creds, err := tls.ValidateAndCreateCreds(externalIssuerData.issuerCrt, externalIssuerData.issuerKey)
+
+	if err != nil {
+		log.Fatalf("Failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
+	}
+
+
+	trustAnchors, err := tls.DecodePEMCertPool(externalIssuerData.trustAnchors)
+	if err != nil {
+		log.Fatalf("Failed to read trust anchors from %s: %s", consts.IdentityIssuerSecretName, err)
+	}
+
+	if err := creds.Crt.Verify(trustAnchors, idopts.issuerName()); err != nil {
+		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", idopts.issuerName(), err)
+	}
+
 	return &charts.Identity{
 		TrustDomain:     idopts.trustDomain,
-		TrustAnchorsPEM: string(trustb),
+		TrustAnchorsPEM: externalIssuerData.trustAnchors,
 		Issuer: &charts.Issuer{
 			External:           true,
 			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
