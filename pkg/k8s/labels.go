@@ -225,7 +225,7 @@ const (
 	// IdentityIssuerCrtNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerCrtNameExternal = "tls.crt"
 
-	// IdentityIssuerCrtNameExternal is the issuer's certificate file (when using cert-manager).
+	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
 
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
