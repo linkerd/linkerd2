@@ -279,10 +279,15 @@ class NavigationBase extends React.Component {
     if (!this.state.mobileSidebarOpen) {
       this.setState({ mobileSidebarOpen: true });
     } else {
-      // due to a bug in Safari that renders the SVG gradient incorrectly when
-      // the mobile sidebar is closed, perform a hard reload of the page to
-      // ensure the logo renders correctly.
-      window.location.reload();
+      this.setState({ mobileSidebarOpen: false });
+      window.setTimeout(function() {
+        let linkerdHash = document.querySelector(".linkerd-word-logo #linkerd-hash");
+        linkerdHash.style.display='none';
+        window.setTimeout(function() {
+          linkerdHash.offsetHeight;
+          linkerdHash.style.display='';
+        }, 15);
+      }, 300);
     }
   };
 

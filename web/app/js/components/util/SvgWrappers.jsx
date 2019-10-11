@@ -190,7 +190,7 @@ export const linkerdWordLogo = (
       <path
         className="st2"
         d="M951.7,164.6V68.9c0-5.8,3.2-9,9.2-9h31.4c35.5,0,59,24.2,59,57c0,32.9-23.5,56.8-59,56.8h-31.4 C954.9,173.6,951.7,170.4,951.7,164.6z M992.3,158.6c26.3,0,41.4-18.8,41.4-41.8c0-23.4-14.7-41.9-41.4-41.9h-23.5v83.7H992.3z" />
-      <g>
+      <g id="linkerd-hash">
         <linearGradient
           id="SVGID_1_"
           gradientUnits="userSpaceOnUse"
